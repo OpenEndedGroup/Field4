@@ -8,7 +8,7 @@ correctness while writing no committed assets.
 
 | harness | id | output |
 | --- | --- | --- |
-| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 10 piano rolls, **SVG** |
+| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 11 piano rolls, **SVG** |
 | `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 8 stereo **`.wav`**s |
 | `afield.four.synth.PatTranscriptionGallery` | `synth.pat.transcription` | 3 notated-vs-recovered overlays, **SVG** |
 
@@ -161,6 +161,18 @@ than two. The roll's `verify` checks each of those against the language rather t
 remembered picture.
 
 ![kolakoski](assets/pat_gallery/pat-kolakoski.svg)
+
+**`patCondense`, drawn as four pairs.** The upper lane of each pair is a rhythm spelled out one slot
+per step; the lower is whatever `patCondense` returned for it, *played*. The claim being made is that
+the two lanes of a pair coincide, and it is drawn rather than asserted because a condensation that
+quietly changes the rhythm is the one failure worth being able to see at a glance. The labels carry
+the finding: eight slots become `x(3,8)`, sixteen become `x(k16)`, and a grouped four-step figure
+becomes `bd hh*2 sd cp*2`. The last pair is the counter-example — eight atoms with no repeat at any
+split the grammar can take, which come back **unchanged**, because a search scored on description
+length has to be shown not naming a figure as well as naming one. The roll's `verify` compares the
+two lanes of each pair event for event and pins all four labels.
+
+![condense](assets/pat_gallery/pat-condense.svg)
 
 ---
 

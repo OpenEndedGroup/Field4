@@ -225,6 +225,51 @@ a lone hit. `kolakoskiInv` and `kolakoskiFull` complete the family the way `eucl
 `euclidFull` do, and `->kolakoski` is in [RectSL](rectsl_cheatsheet.md#rhythm-in-space) for laying
 the figure out in space rather than in time.
 
+### The shortest way to write a rhythm down
+
+`patCondense` runs the parser backwards. Give it a rhythm and it hands back the shortest string that
+plays it.
+
+```diffstatic {data-lang=kotlin}
+patCondense("x ~ ~ x ~ x ~ ~").notation          // x(3,8)
+patCondense(kolakoskiMask(16)).notation          // x(k16)
+patCondense("bd [hh hh] sd [cp cp]").notation    // bd hh*2 sd cp*2
+pat("bd sd hh cp").rev().condense().notation     // cp hh sd bd
+```
+
+The search covers the grammar the rest of this page describes: atoms and `~`, `_` and `@n`, `[ ]` at
+every divisor of a span, `!n`, `*n`, `(p,s,r)`, `(kN)` and `(gN)`, `,` and `< >`. It scores a
+candidate by the length of the string and accepts it only if it is exact, and exact is settled by
+playing it: every candidate goes back through `pat` and its events are compared to the target's. The
+one-slot-per-step spelling is always in the running, so the answer is never longer than that.
+
+A rhythm with nothing in it comes back as itself. `patCondense("a b c d e c a d")` is
+`a b c d e c a d`, because no operator in the grammar shortens it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/condense.png" wait="2" capture="box" open-outputs="true" name="pat-doc-condense"}
+:::static
+// Four pairs: a rhythm above, its condensation below, played. Each pair has to coincide.
+showPatRoll("condense")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of four rhythms against their condensations: x(3,8), x(k16), bd hh*2 sd cp*2, and one unchanged](assets/pattern_language/condense.png)
+
+Three kinds of target are refused rather than approximated, and `PatCondensation.refusal` says which.
+A pattern that changes at random from cycle to cycle, such as `[a|b|c] d` or `bd*8?0.4`, has no period
+to condense. A pattern whose events cross a bar line has no bar to spell them in. And a pattern
+carrying parameters no atom can write down, like the `pan` that `jux` adds, would lose them.
+
+Besides `notation`, a `PatCondensation` carries `flat` (the slot-by-slot spelling), `compression`
+(the ratio of the two lengths), `structure` (the constructs in the answer, read back off its parse)
+and `limits` (the search bounds, and which of them the run used).
+
+This is also where the transcription path ends. `patTranscribe` recovers a step grid from audio and
+writes it out one slot per step; `patCondense(transcription)` turns that into a figure. The loop it
+belongs to is drawn in [Audio render and analysis](audio_render_analysis.md).
+
 ### Time spans cycles, and events can cross bar lines
 
 `slow`, `fast`, `timeScale`, `density` and mini-notation's `/n` are defined in absolute
