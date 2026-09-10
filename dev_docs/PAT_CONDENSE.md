@@ -68,8 +68,8 @@ Candidate forms, taken from `MiniPat.Node` (`TidalPatterns.kt:1127`) rather than
 | `x!n` | adjacent equal items after an equal split |
 | `x@n` | an item followed by `n-1` holds |
 | `[ … ]` | any equal split into `m` parts, for every divisor `m` |
-| `x(p,s)` / `x(p,s,r)` | the span is one atom on a `bjorklund(p, s)` mask, rotated |
-| `x(kN)` / `x(gN)` and offsets | the span is one atom on a `kolakoskiMask` |
+| `X(p,s)` / `X(p,s,r)` | the span is `s` equal blocks, each either all rests or the same block `X`, on a `bjorklund(p, s)` mask, rotated |
+| `X(kN)` / `X(gN)` and offsets | the same, on a `kolakoskiMask` |
 | `a, b` | between layers |
 | `< … >` | between cycles, when they differ |
 
@@ -136,7 +136,7 @@ really does contain runs.
 
 So the sharper claim is asserted instead. Over those 400, **6** read as a single whole-span figure,
 and each was recomputed here from `bjorklund` / `kolakoskiMask` and compared against the mask:
-**0 wrong**. Their median compression is **0.645**, against **0.127** for a real Kolakoski figure — a
+**0 wrong**. Their median compression is **0.613**, against **0.127** for a real Kolakoski figure — a
 separation with a floor asserted on it, because if noise compressed as well as structure the search
 would be finding figures in nothing.
 
@@ -151,9 +151,14 @@ list.
 
 ## What it cannot find, and why
 
-Pinned in `PatCondenseTest.the four things the search cannot find are the four things it says it
+Pinned in `PatCondenseTest.the three things the search cannot find are the three things it says it
 cannot find`, each against a *live pattern* so the source string is not available as a fallback.
-Whichever of these gets built next should turn one of those assertions red.
+Whichever of these gets built next should turn one of those assertions red — which is how the one
+that used to be third came off the list. It read "a rhythm figure is recognised only over a single
+repeated atom, so `[bd cp](3,8)` is out of reach"; `rhythmCands` now sweeps the block width over
+every divisor of the span, because `mask` squeezes a whole cycle of its argument into each true step,
+and `[bd cp](3,8)` condenses to itself. The case is still in the test, as the thing that used to
+fail.
 
 1. **Alternation nested inside a sequence.** `< … >` is proposed only at the top level, one whole
    cycle per alternative, so `bd <sd cp>` costs `<[bd sd] [bd cp]>` — 17 characters against 10.
@@ -162,25 +167,21 @@ Whichever of these gets built next should turn one of those assertions red.
 2. **Polymeter is never proposed.** `{a b c}%8` phases over three cycles and comes back as those three
    cycles written out: 54 characters against 9. A polymeter recogniser would have to notice that the
    same short sequence is being read at a different rate, which the slot model erases.
-3. **A rhythm figure over anything but a single atom.** `[bd cp](3,8)` puts a two-atom group on the
-   Euclidean onsets; the recogniser requires one repeated voice and will not look at it. This is the
-   cheapest of the four to fix: propose `unit(block)(p,s)` wherever the true steps all hold the same
-   *sub-expression* rather than the same token.
-4. **The Kolakoski alphabet.** `kolakoskiMask(16, a = 2, b = 3)` has no spelling — the notation has
+3. **The Kolakoski alphabet.** `kolakoskiMask(16, a = 2, b = 3)` has no spelling — the notation has
    `k` and `g` over `{1,2}` and nothing else — so that figure decomposes into pieces. This one is a
    grammar gap, not a search gap.
 
 Four more, not pinned because they are properties of the model rather than of the search:
 
-5. **Randomised targets are refused**, not approximated: `?`, `|`, `shuffle`, `randcat`. Two
+4. **Randomised targets are refused**, not approximated: `?`, `|`, `shuffle`, `randcat`. Two
    comparison windows are used rather than one, because a coin-flip agrees with itself across a
    single comparison often enough to matter.
-6. **Events crossing a bar line are refused.** `pat("a b c").slow(2)` has no bar to spell itself in.
-7. **Parameters no atom can write down are refused.** `jux` writes `pan` onto every event and `chop`
+5. **Events crossing a bar line are refused.** `pat("a b c").slow(2)` has no bar to spell itself in.
+6. **Parameters no atom can write down are refused.** `jux` writes `pan` onto every event and `chop`
    writes `begin`/`end`; the only parameter mini-notation carries is the `:n` sample index. The flat
    spelling is already lossy for those, so the search says so rather than returning a rhythm that
    sounds different.
-8. **Grouped unequal weights are not proposed.** `[a b]@5 [c d]@3` is reachable only as
+7. **Grouped unequal weights are not proposed.** `[a b]@5 [c d]@3` is reachable only as
    `a@5 b@5 c@3 d@3`, which happens to be the same length. A wider split rule would need weights in
    the DP state.
 

@@ -275,7 +275,7 @@ class PatCondenseTest {
                 "is periodic — so this being non-zero means the search stopped finding runs"
         )
         // The separation is the claim. A structured figure reaches 0.127 of its flat spelling and the
-        // corpus's shortenable half reaches 0.429; random noise reached 0.645 on 2026-09-10. If noise
+        // corpus's shortenable half reaches 0.429; random noise reached 0.613 on 2026-09-10. If noise
         // ever compressed as well as structure, the search would be finding figures in nothing.
         assertTrue(
             median > 0.55,
@@ -532,10 +532,11 @@ class PatCondenseTest {
      *
      * These are pinned rather than left in prose because a limits list nobody runs goes stale, and
      * every one of them is a plausible next operator: whichever gets built should turn one of these
-     * assertions red.
+     * assertions red. That is how `[bd cp](3,8)` came off the list — it is still below, as the case
+     * that used to fail, now asserting the answer instead of the absence of one.
      */
     @Test
-    fun `the four things the search cannot find are the four things it says it cannot find`() {
+    fun `the three things the search cannot find are the three things it says it cannot find`() {
         // 1. Alternation is proposed only at the top level, one whole cycle per alternative. A `<>`
         //    nested inside a sequence is out of reach, so `bd <sd cp>` costs 17 instead of 10.
         val alternating = patCondense(pat("bd <sd cp>"), cycles = 2)
@@ -556,22 +557,20 @@ class PatCondenseTest {
         )
         assertTrue(polymeter.notation.length > 40, "unexpectedly short: ${polymeter.notation}")
 
-        // 3. A rhythm figure is recognised only over a single repeated *atom*. `[bd cp](3,8)` puts a
-        //    two-atom group on the Euclidean onsets, and the recogniser will not look at it.
+        // 3. (was a limit until the block sweep landed) A rhythm figure is recognised over a repeated
+        //    *term*, not only a repeated atom, because `mask` squeezes a whole cycle of its argument
+        //    into each true step. Kept here as the case that used to fail.
         val grouped = patCondense(pat("[bd cp](3,8)"), cycles = 1)
         assertTrue(grouped.exact)
-        assertTrue(
-            "euclid" !in grouped.structure,
-            "the search found a Euclidean figure under a group, so limit 3 is gone: ${grouped.notation}"
-        )
+        assertEquals("[bd cp](3,8)", grouped.notation, "a figure over a two-atom group")
 
-        // 4. The Kolakoski alphabet is a parameter of `kolakoskiMask` and not of the notation: there
+        // 3. The Kolakoski alphabet is a parameter of `kolakoskiMask` and not of the notation: there
         //    is no spelling for {2,3}, only `k` and `g` over {1,2}. So that figure decomposes.
         val alphabet = patCondense(kolakoskiMask(16, a = 2, b = 3))
         assertTrue(alphabet.exact)
         assertTrue(
             alphabet.notation.length > "x(k16)".length,
-            "the notation grew a spelling for the alphabet, so limit 4 is gone: ${alphabet.notation}"
+            "the notation grew a spelling for the alphabet, so limit 3 is gone: ${alphabet.notation}"
         )
 
         println(

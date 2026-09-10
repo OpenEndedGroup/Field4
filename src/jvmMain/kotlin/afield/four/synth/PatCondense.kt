@@ -33,10 +33,10 @@ import java.math.BigInteger
  **What it searches.** The candidate grammar is read off `MiniPat.Node` (`TidalPatterns.kt:1127`) —
  what the parser actually accepts, not what a mini-notation tutorial says. Atoms and `~`; `_` holds
  and their `@n` spelling; `[ … ]` grouping at every divisor of the span; `x!n` replication; `x*n`
- repetition; `x(p,s,r)` Euclidean figures; `x(kN)` / `x(gN)` Kolakoski figures and their offsets;
- `a, b` stacking, from an interval partition of overlapping events; and `< … >` alternation when the
- cycles differ. What it does **not** search is listed in [PatCondensation.limits] and in
- `dev_docs/PAT_CONDENSE.md`, because an honest limits list is worth more than one more operator.
+ repetition; `X(p,s,r)` Euclidean figures and `X(kN)` / `X(gN)` Kolakoski ones over any repeated
+ *term* rather than only a repeated atom; `a, b` stacking, from an interval partition of overlapping
+ events; and `< … >` alternation when the cycles differ. What it does **not** search is listed in
+ `dev_docs/PAT_CONDENSE.md` and pinned as tests, so the list cannot go stale on its own.
 
  **It is bounded, and it says so.** A structural search over this grammar does not terminate if you
  let it enumerate freely, so the range DP keeps [PAT_CONDENSE_BEAM] candidates per span, stops
@@ -120,8 +120,9 @@ data class PatCondensation(
 /**
  * Condense a mini-notation string: parse it, then find the shortest string that plays the same thing.
  *
- * `patCondense("x ~ ~ x ~ ~ x ~")` is `x(3,8)`. `patCondense("bd(3,8)")` is `bd(3,8)` — already
- * minimal, and the search says so by not beating it.
+ * `patCondense("x ~ ~ x ~ x ~ ~")` is `x(3,8)`, and `patCondense("x ~ ~ x ~ ~ x ~")` is `x(3,8,5)`,
+ * the same figure turned. `patCondense("bd(3,8)")` is `bd(3,8)` — already minimal, and the search
+ * says so by not beating it.
  *
  * @param cycles how many cycles must agree. Null asks [patCondense] to find the target's own period,
  *   up to [PAT_CONDENSE_MAX_PERIOD]; a target with no period inside that window is refused rather
@@ -585,37 +586,83 @@ private class PatCondenseSearch(private val cells: List<String>) {
     }
 
     /**
-     * `x(p,s,r)` and `x(kN)` / `x(gN)` — the span is one atom on a named figure.
+     * `X(p,s,r)` and `X(kN)` / `X(gN)` — the span is one repeated thing on a named figure.
      *
-     * Proposed by rebuilding the figure's mask from [bjorklund] and [kolakoskiMask] and comparing;
-     * the emitted offset sense is the parser's (`MiniPat.compileNode` passes `rotation = -offset`),
-     * and if that sign is ever wrong the oracle drops the candidate rather than mis-spelling it.
+     * **`X` is a term, not an atom.** `bd(3,8)` and `[bd cp](3,8)` are both reachable, because
+     * `euclidFill` is built on `mask`, and `mask` *squeezes a whole cycle of its argument into each
+     * true step* (`TidalPatterns.kt:876`) rather than clipping it. So on the slot grid the figure is
+     * `s` blocks of equal width, each either all rests or cell-for-cell the same block, and the
+     * content of that block is whatever the DP can spell it as. Reading the family off one slot at a
+     * time would find `bd(3,8)` and miss everything above it.
+     *
+     * The block width is swept over every divisor of the span, so the same scan covers a one-slot
+     * atom (`width == 1`) and a sixteenth-note pair. A block that begins with a hold is rejected: `_`
+     * has nothing to continue at the start of a group.
+     *
+     * The masks are rebuilt from [bjorklund] and [kolakoskiMask] and rotated locally rather than
+     * regenerated per offset. The emitted offset sense is the parser's — `MiniPat.compileNode` passes
+     * `rotation = -offset` — and if that sign is ever wrong the oracle drops the candidate rather
+     * than letting it out with the figure mis-turned.
      */
     private fun rhythmCands(from: Int, to: Int): List<PatCand> {
         val length = to - from
         if (length < 2) return emptyList()
-        val tokens = (from until to).map { cells[it] }
-        if (tokens.any { it == "_" }) return emptyList()
-        val voices = tokens.filter { it != "~" }.distinct()
-        if (voices.size != 1) return emptyList()
-        val atom = voices[0]
-        val target = tokens.map { it != "~" }
-        val pulses = target.count { it }
-        if (pulses == 0 || pulses == length) return emptyList()
-
         val out = mutableListOf<PatCand>()
-        val figure = bjorklund(pulses, length)
-        for (offset in 0 until length) {
-            if (rotated(figure, -offset) != target) continue
-            out += PatCand(if (offset == 0) "$atom($pulses,$length)" else "$atom($pulses,$length,$offset)", true)
-            break
-        }
-        for (reading in KolakoskiReading.entries) {
-            val letter = if (reading == KolakoskiReading.RUNS) "k" else "g"
-            for (offset in 0 until length) {
-                if (kolakoskiMask(length, reading, rotation = -offset) != target) continue
-                out += PatCand(if (offset == 0) "$atom($letter$length)" else "$atom($letter$length,$offset)", true)
+
+        for (width in 1..length) {
+            if (length % width != 0) continue
+            val steps = length / width
+            if (steps < 2) continue
+
+            var body: List<String>? = null
+            var bodyAt = -1
+            var usable = true
+            val target = ArrayList<Boolean>(steps)
+            for (index in 0 until steps) {
+                val start = from + index * width
+                val block = (0 until width).map { cells[start + it] }
+                if (block.all { it == "~" }) {
+                    target += false
+                    continue
+                }
+                if (block[0] == "_") {
+                    usable = false
+                    break
+                }
+                if (body == null) {
+                    body = block
+                    bodyAt = start
+                } else if (body != block) {
+                    usable = false
+                    break
+                }
+                target += true
+            }
+            if (!usable || body == null) continue
+            val pulses = target.count { it }
+            if (pulses == 0 || pulses == steps) continue
+
+            val spellings = if (width == 1) listOf(PatCand(cells[bodyAt], true)) else unit(bodyAt, bodyAt + width)
+            if (spellings.isEmpty()) continue
+
+            val named = mutableListOf<String>()
+            val euclidean = bjorklund(pulses, steps)
+            for (offset in 0 until steps) {
+                if (rotated(euclidean, -offset) != target) continue
+                named += if (offset == 0) "($pulses,$steps)" else "($pulses,$steps,$offset)"
                 break
+            }
+            for (reading in KolakoskiReading.entries) {
+                val letter = if (reading == KolakoskiReading.RUNS) "k" else "g"
+                val base = kolakoskiMask(steps, reading)
+                for (offset in 0 until steps) {
+                    if (rotated(base, -offset) != target) continue
+                    named += if (offset == 0) "($letter$steps)" else "($letter$steps,$offset)"
+                    break
+                }
+            }
+            for (suffix in named) {
+                for (spelling in spellings) out += PatCand(spelling.text + suffix, true)
             }
         }
         return out
