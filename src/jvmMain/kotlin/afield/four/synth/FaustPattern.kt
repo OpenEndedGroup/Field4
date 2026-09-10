@@ -23,19 +23,18 @@ import kotlin.math.min
 import kotlin.math.roundToLong
 import kotlin.math.sqrt
 
-/*
- A pattern plays a Faust program.
-
- Two systems that did not know each other existed. On one side Field's pattern language — mini-notation,
- the `Pat` algebra, rational cycle time — which knew how to say *when* and *what pitch* and had only a
- stand-in CPU voice to say it with. On the other side a real Faust compiler, whose output was a single
- always-on DSP with sliders. This file is the join, and it is small on purpose: the pattern language needs
- nothing added to it, and Faust needs nothing recompiled.
-
- The whole conversion is one function, [faustNotesForArc]: a pattern event's rational arc becomes an integer
- frame on the bank's own clock, and its atom becomes a frequency in Hz. Everything after that is integers,
- which is why the timing can be asserted in samples.
-*/
+/**
+ * A pattern plays a Faust program.
+ *
+ * The join between two things that each need nothing added to them. Field's pattern language,
+ * mini-notation over the `Pat` algebra in rational cycle time, says *when* and *what pitch*. A
+ * compiled Faust program is one always-on DSP with sliders. This file is small because neither side
+ * is modified and nothing is recompiled.
+ *
+ * The whole conversion is one function, [faustNotesForArc]: a pattern event's rational arc becomes an integer
+ * frame on the bank's own clock, and its atom becomes a frequency in Hz. Everything after that is integers,
+ * which is why the timing can be asserted in samples.
+ */
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //  Pattern → notes

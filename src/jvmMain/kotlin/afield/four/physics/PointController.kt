@@ -9,50 +9,47 @@ import afield.stdlib.vec
 import afield.stdlib.x
 import kotlin.math.*
 
-/*
+/**
  * PointDriver -- position in, force out.
  *
- *   val drv = PointDriver(DriverConfig(dt = 1.0 / 120.0, worldScale = 1.0))
- *   drv.grab(target)                     // may be called every frame; target can move
- *   val f = drv.update(pos)              // per frame, fixed dt
- *   drv.releaseGrab()                    // then keep calling update() -- see below
+ *     val drv = PointDriver(DriverConfig(dt = 1.0 / 120.0, worldScale = 1.0))
+ *     drv.grab(target)                     // may be called every frame; target can move
+ *     val f = drv.update(pos)              // per frame, fixed dt
+ *     drv.releaseGrab()                    // then keep calling update() -- see below
  *
  * Vectors are Field's ordinary Vector3f; every scalar the controller reasons
- * about -- gains, timescales, the identified plant -- stays Double. This file is
- * otherwise standalone and REPLACES AdaptivePointController.kt and ForceLimiter.kt.
+ * about -- gains, timescales, the identified plant -- stays Double. The file is otherwise standalone.
  *
  * The whole controller state lives in the instance, so a rune-keyed slot holding
  * one PointDriver per particle survives hot-reload with the learned plant model
  * intact. Nothing needs re-priming except omega, which re-converges in ~1s.
  *
- * ---------------------------------------------------------------------------
- * What it does, in four coupled timescales
- * ---------------------------------------------------------------------------
- *  1. ~dt      model-inverting PD+I on acceleration, output through a
- *              bounded-curvature force limiter (magnitude, magnitude rate, and
- *              angular rate/acceleration on the direction).
- *  2. ~100ms   discrete-time RLS identification of the host's own integrator:
- *                x[k+1] - 2x[k] + x[k-1] = dt^2 (b F[k] + c v[k] + d)
- *              exact under semi-implicit Euler, so b^ absorbs the host's
- *              numerical damping and dispersion, not just the mass. Gains are
- *              synthesised from (b,c,d); the only free knobs are physical.
- *  3. ~seconds omega hunting driven by sin(lagAngle) -- the direction-limiter's
- *              turn-rate deficit. Slow rise, fast knockback: self-organised
- *              criticality that pins omega to the capture/orbit bifurcation.
- *  4. ~10s     winding memory in the limiter's rotation axis. Chirality flips
- *              become rare punctuated events with heavy-tailed dwell times.
+ * #### What it does, in four coupled timescales
  *
- * ---------------------------------------------------------------------------
- * Position-only input, done properly
- * ---------------------------------------------------------------------------
+ *  1. ~dt      model-inverting PD+I on acceleration, output through a
+ *     bounded-curvature force limiter (magnitude, magnitude rate, and
+ *     angular rate/acceleration on the direction).
+ *  2. ~100ms   discrete-time RLS identification of the host's own integrator:
+ *       x[k+1] - 2x[k] + x[k-1] = dt^2 (b F[k] + c v[k] + d)
+ *     exact under semi-implicit Euler, so b^ absorbs the host's
+ *     numerical damping and dispersion, not just the mass. Gains are
+ *     synthesised from (b,c,d); the only free knobs are physical.
+ *  3. ~seconds omega hunting driven by sin(lagAngle) -- the direction-limiter's
+ *     turn-rate deficit. Slow rise, fast knockback: self-organised
+ *     criticality that pins omega to the capture/orbit bifurcation.
+ *  4. ~10s     winding memory in the limiter's rotation axis. Chirality flips
+ *     become rare punctuated events with heavy-tailed dwell times.
+ *
+ * #### Position-only input, done properly
+ *
  *  - Velocity comes from the host's delta-position, which is the average over
  *    the interval and therefore centred at t - dt/2. Corrected by extrapolating
  *    dt/2 forward through the identified model -- pure phase recovery, no noise
  *    amplification. Uncorrected this donates omega*dt/2 of lag straight to the
  *    limiter and lowers the bandwidth ceiling.
  *  - TWO velocity signals, never crossed:
- *      vHat  (model observer)  -> control law only
- *      vPrev (raw, prefiltered) -> identifier only
+ *        vHat  (model observer)  -> control law only
+ *        vPrev (raw, prefiltered) -> identifier only
  *    Feeding the observer estimate to the identifier is circular -- it was built
  *    from the force and the current model, so the RLS would confirm whatever it
  *    already believes. That failure looks stable for minutes, then diverges.

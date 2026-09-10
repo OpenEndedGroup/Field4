@@ -100,7 +100,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 |  | [Sound: from a pattern to something you can hear](../sound.md) |
 | [DirtSamples.kt](audio.md#dirtsamples-kt) | Audio | 59 | 3 |  | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [Dough.kt](synthesis.md#dough-kt) | Synthesis | 20 | 0 |  |  |
-| [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
+| [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 | Native Kotlin ports of low-level DSP from dough, carrying dough's AGPL-3.0 terms. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 13 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [Dyn4jScene.kt](simulation.md#dyn4jscene-kt) | Simulation | 43 | 0 |  |  |
 | [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
@@ -114,7 +114,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FaustDsp.kt](synthesis.md#faustdsp-kt) | Synthesis | 15 | 8 |  |  |
 | [FaustEditorExtension.kt](synthesis.md#fausteditorextension-kt) | Synthesis | 5 | 1 |  |  |
 | [FaustEngine.kt](synthesis.md#faustengine-kt) | Synthesis | 51 | 23 |  | [Faust](../faust.md) |
-| [FaustPattern.kt](synthesis.md#faustpattern-kt) | Synthesis | 62 | 35 |  | [Faust](../faust.md) |
+| [FaustPattern.kt](synthesis.md#faustpattern-kt) | Synthesis | 62 | 35 | A pattern plays a Faust program. | [Faust](../faust.md) |
 | [FaustPoly.kt](synthesis.md#faustpoly-kt) | Synthesis | 48 | 34 |  |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
@@ -253,7 +253,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [pf.kt](math.md#pf-kt) | Math | 38 | 29 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 1 |  |  |
 | [plotly.kt](visualization.md#plotly-kt) | Visualization | 12 | 12 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Where do these things sit, relative to each other?](../projection_examples.md) |
-| [PointController.kt](simulation.md#pointcontroller-kt) | Simulation | 58 | 10 |  |  |
+| [PointController.kt](simulation.md#pointcontroller-kt) | Simulation | 58 | 10 | PointDriver -- position in, force out. |  |
 | [pointing.kt](graphics.md#pointing-kt) | Graphics | 43 | 29 | Turning a place a person is looking at back into a place in the world. |  |
 | [pointing_pick.kt](graphics.md#pointing-pick-kt) | Graphics | 51 | 48 | A scene you can point at, and a hit record that names the **part** you touched rather than the triangle. |  |
 | [pointing_pointer.kt](graphics.md#pointing-pointer-kt) | Graphics | 36 | 32 | A person pointing — mouse, XR controller or pinched hand — behind one interface, and the hover / press / drag / release machine that turns a stream of samples into an interaction. |  |
@@ -302,7 +302,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 |  | [Sonic Pi](../sonic_pi.md) |
 | [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 |  |  |
 | [SonicPiLaunch.kt](audio.md#sonicpilaunch-kt) | Audio | 12 | 7 |  |  |
-| [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 |  | [Sonic Pi](../sonic_pi.md) |
+| [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 36 | 36 |  |  |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |

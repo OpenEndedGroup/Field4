@@ -6,44 +6,42 @@ import afield.graphquery.LiveGraphInspectable
 import kotlin.math.abs
 import kotlin.math.floor
 
-/*
- ═══════════════════════════════════════════════════════════════════
-  DoughDsp – native Kotlin ports of low-level DSP from dough
- ═══════════════════════════════════════════════════════════════════
-
- Ported from dough.c (https://codeberg.org/uzu/dough), which is
- licensed AGPL-3.0. These are line-by-line ports, so this file is a
- derivative work and carries dough's AGPL-3.0 terms.
-
- Within dough.c, the Dattorro reverb ([PlateReverb] here) is itself
- noted as adapted from el-visio's MIT-licensed implementation of the
- algorithm in Jon Dattorro, "Effect Design Part 1: Reverberator and
- Other Filters" (1997):
-   https://ccrma.stanford.edu/~dattorro/EffectDesignPart1.pdf
-
- This file is deliberately *complementary* to the WASM binding in
- Dough.kt — that path runs the real dough engine and is unaffected by
- anything here. What follows is only the subset of dough's primitives
- that afield.four.synth did not already cover:
-
-   [DoughMath]          fast float approximations (log2/exp2/pow/sin)
-   [PlateReverb]        Dattorro plate reverb, mono in → stereo out
-   [Phaser]             LFO-swept cascaded notches (no prior equivalent)
-   [ChamberlinLowpass]  the "superdough" 2-pole lowpass + its res curve
-   [CurvedADSR]         time-based ADSR with click-free retrigger
-   [SoftDistort]        dough's expm1 k-curve soft clipper
-   [ZawOsc], [PulzeOsc] naive (deliberately aliasing) saw and pulse
-
- Skipped as already covered by this package: polyBLEP saw/pulse/square/
- tri (Oscillators.kt, in double precision), white/pink/brown noise
- (same coefficients), the Audio-EQ-Cookbook biquad (Filters.kt),
- delay (Effects.kt), flanger/chorus (Effects.kt), bit crush + sample-rate
- reduction (Effects.kt BitCrusher), and lag (Envelopes.kt Slew). The
- voice allocator, event/mini-notation parser, orbits and scheduler are
- out of scope — use the WASM engine for those.
-
- The oscillators here live alongside the rest of the port rather than in
- Oscillators.kt so that the licence attribution above covers one file.
+/**
+ * Native Kotlin ports of low-level DSP from dough, carrying dough's AGPL-3.0 terms.
+ *
+ * Ported from dough.c (https://codeberg.org/uzu/dough), which is
+ * licensed AGPL-3.0. These are line-by-line ports, so this file is a
+ * derivative work and the licence travels with it.
+ *
+ * Within dough.c, the Dattorro reverb ([PlateReverb] here) is itself
+ * noted as adapted from el-visio's MIT-licensed implementation of the
+ * algorithm in Jon Dattorro, "Effect Design Part 1: Reverberator and
+ * Other Filters" (1997):
+ *   https://ccrma.stanford.edu/~dattorro/EffectDesignPart1.pdf
+ *
+ * This file complements the WASM binding in Dough.kt rather than competing
+ * with it: that path runs the real dough engine and nothing here affects it.
+ * What follows is the subset of dough's primitives that the rest of
+ * afield.four.synth does not cover.
+ *
+ * - [DoughMath] — fast float approximations (log2/exp2/pow/sin)
+ * - [PlateReverb] — Dattorro plate reverb, mono in, stereo out
+ * - [Phaser] — LFO-swept cascaded notches
+ * - [ChamberlinLowpass] — the "superdough" 2-pole lowpass and its resonance curve
+ * - [CurvedADSR] — time-based ADSR with click-free retrigger
+ * - [SoftDistort] — dough's expm1 k-curve soft clipper
+ * - [ZawOsc] and [PulzeOsc] — naive saw and pulse, aliasing included
+ *
+ * Skipped as already covered by this package: polyBLEP saw/pulse/square/
+ * tri (Oscillators.kt, in double precision), white/pink/brown noise
+ * (same coefficients), the Audio-EQ-Cookbook biquad (Filters.kt),
+ * delay (Effects.kt), flanger/chorus (Effects.kt), bit crush + sample-rate
+ * reduction (Effects.kt BitCrusher), and lag (Envelopes.kt Slew). The
+ * voice allocator, event/mini-notation parser, orbits and scheduler are
+ * out of scope — use the WASM engine for those.
+ *
+ * The oscillators here live alongside the rest of the port rather than in
+ * Oscillators.kt so that the licence attribution above covers one file.
  */
 
 // ═══════════════════════════════════════════════════════════════════

@@ -1,69 +1,70 @@
 @file:afield.CompletionCategory("Audio")
-/*
- Field's pattern algebra as a sequencer for Sonic Pi's engine.
-
- Two things existed in this package and had never met. `pat("bd [hh hh] sd")` and everything around it
- (`TidalPatterns.kt`, `PatAlgebra.kt`, `PatComposition.kt`) keeps musical structure exact in rational
- cycle space and can transform it live. `SonicPi.kt` owns a real Sonic Pi v5 — 66 synths, 42 FX, 206
- samples, a scheduler that is better than anything Field has. Until this file the only way to use the
- second from Field was to type Sonic Pi's own language into a string literal, which the pattern
- algebra cannot reach into.
-
- There are two ways to join them and they are good at different things, so both are here.
-
- **compile** — turn a pattern into a Sonic Pi program.
-
-     sonicPiProgram(
-         "drums" to pat("bd [hh hh] sd hh"),
-         "bass" to pat("<e1 g1> ~ e2 ~").every(4) { it.rev() } on "tb303",
-         cps = 0.5,
-         cycles = 4
-     ).source
-
- gives you a `live_loop` per layer, with `sleep`s that are the pattern's own rational cycle
- positions. The result is ordinary Sonic Pi source: paste it into a `#sonicpi` region and edit it by
- hand, or hand it to [Box.sonicPiPattern] and hear it. Field's clock is not involved once it is
- running — Sonic Pi's scheduler is, which is the accurate one.
-
- The tempo trick that makes this readable is [SonicPiProgram.bpm]: `use_bpm 60 * cps` makes one Sonic
- Pi *beat* exactly one Field *cycle*, so every `sleep` in the emitted program is literally the cycle
- fraction the pattern computed. A third stays a third — `Rational(1, 3)` is emitted where a decimal
- would round, and a decimal where it would not.
-
- **drive** — Field's clock sequences, Sonic Pi sounds.
-
-     pat("bd*4, [~ cp]*2").sonicPiLive(cps = 0.5)
-
- One `/run-code` per event, dispatched by the same `PatResponseSpec` machinery that drives every
- other live pattern in Field, so `.every`, `.degradeBy` and a signal on `gain(...)` stay live while
- you edit. Costs a network hop of jitter per note; buys you a pattern you can change mid-bar.
-
- Both return something a box can be running: compile returns a [SonicPiLaunch], drive returns a
- `PatResponseSpec`. Either way the box stays lit while the music plays and stopping the box stops it.
-
- **Atoms become instruments** through [SonicPiInstruments], which resolves in this order: an explicit
- override, then a real sample name, then a real synth name, then a note (`c4`, `e2`, `60`), then the
- drum-machine aliases (`bd`, `sd`, `hh`, `cp`, …). "Real" means *in the installed vocabulary* —
- `sonicpi-vocabulary.json`, extracted from the app by `tools/generate_sonic_pi_vocabulary.py`. An atom
- that resolves to nothing is reported in [SonicPiProgram.unresolved] rather than dropped quietly,
- and a mistyped alias is a test failure rather than silence (`synth.sonic-pi.patterns`).
-
- **Parameters** come from `PatAlgebra`'s annotations, so `with(gain(sine().range(0.2, 0.8)))` works
- unchanged. Three of them are not pass-throughs and the difference matters:
-
- - `gain` → `amp:`, unchanged.
- - `pan` → `pan:`, rescaled: Field's pan is 0..1, Sonic Pi's is -1..1.
- - `cutoff` → `cutoff:` (synths) or `lpf:` (samples), converted: Field's cutoff is **Hz**, Sonic Pi's
-   is a **MIDI note number**.
-
- Any other annotation is passed through only if the vocabulary says the target accepts it — `cutoff`
- on `:beep` is not a Sonic Pi opt, so it is dropped and recorded in [SonicPiProgram.droppedOpts]
- instead of being sent for Sonic Pi to ignore.
-
- Notes are emitted as MIDI numbers, not as `:c4`. Field's `patNoteNumber` defaults a bare `c` to
- octave 5 and Sonic Pi's `:c` is octave 4; emitting the number the pattern actually meant removes a
- whole class of off-by-an-octave that neither side would report.
+/**
+ * Field's pattern algebra as a sequencer for Sonic Pi's engine.
+ *
+ * `pat("bd [hh hh] sd")` and the algebra around it (`TidalPatterns.kt`, `PatAlgebra.kt`,
+ * `PatComposition.kt`) keep musical structure exact in rational cycle space and can transform it
+ * live. `SonicPi.kt` owns a real Sonic Pi 5: 66 synths, 42 effects and 206 samples in the installed
+ * vocabulary, and a scheduler better than Field's own. This file is how a pattern reaches that engine
+ * without going through Sonic Pi's own language in a string literal, which the pattern algebra cannot
+ * see into.
+ *
+ * There are two routes, good at different things, and both are here.
+ *
+ * **compile** — turn a pattern into a Sonic Pi program.
+ *
+ *     sonicPiProgram(
+ *         "drums" to pat("bd [hh hh] sd hh"),
+ *         "bass" to pat("<e1 g1> ~ e2 ~").every(4) { it.rev() } on "tb303",
+ *         cps = 0.5,
+ *         cycles = 4
+ *     ).source
+ *
+ * gives you a `live_loop` per layer, with `sleep`s that are the pattern's own rational cycle
+ * positions. The result is ordinary Sonic Pi source: paste it into a `#sonicpi` region and edit it by
+ * hand, or hand it to [Box.sonicPiPattern] and hear it. Field's clock is not involved once it is
+ * running — Sonic Pi's scheduler is, which is the accurate one.
+ *
+ * The tempo mapping that makes this readable is [SonicPiProgram.bpm]: `use_bpm 60 * cps` makes one Sonic
+ * Pi *beat* exactly one Field *cycle*, so every `sleep` in the emitted program is literally the cycle
+ * fraction the pattern computed. A third stays a third — `Rational(1, 3)` is emitted where a decimal
+ * would round, and a decimal where it would not.
+ *
+ * **drive** — Field's clock sequences, Sonic Pi sounds.
+ *
+ *     pat("bd*4, [~ cp]*2").sonicPiLive(cps = 0.5)
+ *
+ * One `/run-code` per event, dispatched by the same `PatResponseSpec` machinery that drives every
+ * other live pattern in Field, so `.every`, `.degradeBy` and a signal on `gain(...)` stay live while
+ * you edit. Costs a network hop of jitter per note; buys you a pattern you can change mid-bar.
+ *
+ * Both return something a box can be running: compile returns a [SonicPiLaunch], drive returns a
+ * `PatResponseSpec`. Either way the box stays lit while the music plays and stopping the box stops it.
+ *
+ * **Atoms become instruments** through [SonicPiInstruments], which resolves in this order: an explicit
+ * override, then a real sample name, then a real synth name, then a note (`c4`, `e2`, `60`), then the
+ * drum-machine aliases (`bd`, `sd`, `hh`, `cp`, …). "Real" means *in the installed vocabulary* —
+ * `sonicpi-vocabulary.json`, extracted from the app by `tools/generate_sonic_pi_vocabulary.py`. An atom
+ * that resolves to nothing is reported in [SonicPiProgram.unresolved] rather than dropped quietly,
+ * and a mistyped alias is a test failure rather than silence (`synth.sonic-pi.patterns`).
+ *
+ * **Parameters** come from `PatAlgebra`'s annotations, so `with(gain(sine().range(0.2, 0.8)))` works
+ * unchanged. Three of them are not pass-throughs and the difference matters:
+ *
+ * - `gain` → `amp:`, unchanged.
+ * - `pan` → `pan:`, rescaled: Field's pan is 0..1, Sonic Pi's is -1..1.
+ * - `cutoff` → `cutoff:` (synths) or `lpf:` (samples), converted: Field's cutoff is **Hz**, Sonic Pi's
+ *   is a **MIDI note number**.
+ *
+ * Any other annotation is passed through only if the vocabulary says the target accepts it — `cutoff`
+ * on `:beep` is not a Sonic Pi opt, so it is dropped and recorded in [SonicPiProgram.droppedOpts]
+ * instead of being sent for Sonic Pi to ignore.
+ *
+ * Notes are emitted as MIDI numbers, not as `:c4`. Field's `patNoteNumber` defaults a bare `c` to
+ * octave 5 and Sonic Pi's `:c` is octave 4; emitting the number the pattern actually meant removes a
+ * whole class of off-by-an-octave that neither side would report.
  */
+
 package afield.four.synth
 
 import afield.Box

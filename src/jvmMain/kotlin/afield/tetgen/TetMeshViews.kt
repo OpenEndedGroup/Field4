@@ -15,8 +15,8 @@ import kotlin.math.sqrt
  * half-space predicate for a cutaway, and [toTriMesh] with `shrink` below 1 for a shrunken-element
  * view where each tetrahedron is visibly its own cell.
  *
- * The quality measures are separated deliberately, because they answer different questions and this
- * project has already confused them once:
+ * The two quality measures are kept apart because they answer different questions, and they are
+ * easily confused:
  *
  * - [radiusEdgeRatios] is what TetGen's `-q` switch bounds, and therefore the number to check when
  *   you want to know whether the mesher honoured what you asked for.
