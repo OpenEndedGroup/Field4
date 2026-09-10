@@ -152,9 +152,9 @@ will not reach the page. The guard treats them as benign, annotated or not.
 
 This is the part that surprises people, and it has already caused one confident misattribution. The
 generated pages carry `Used in:` back-links, and those are *derived from the docs pages themselves*,
-not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:1045#private fun buildEvidenceIndex`)
+not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:1559#private fun buildEvidenceIndex`)
 lists **every** `public/docs/*.md` except the nine in `EVIDENCE_PAGE_BLOCKLIST`
-(`StdlibReferenceGenerator.kt:320#EVIDENCE_PAGE_BLOCKLIST`), reduces each to its *code* text only — fenced blocks plus
+(`StdlibReferenceGenerator.kt:625#EVIDENCE_PAGE_BLOCKLIST`), reduces each to its *code* text only — fenced blocks plus
 inline code spans, with bare filename spans dropped (`codeTextOf`, `:1091`) — and links a page to
 a source file when at least `MIN_EVIDENCE_HITS` = 2 (`:94`) tokens that are **uniquely owned** by
 that one file (ownership built at `:1038-1040`, applied at `:1049`) match in it.
@@ -188,13 +188,33 @@ regenerating, say so in the commit message (`git commit --no-verify`, since the 
    row, and `afield.stdlib.DocumentedBehaviourTest` exists because several of those rows were wrong
    in ways only reading the code could reveal.
 
+## A KDoc `[Symbol]` reference, and what a *qualified* one means
+
+Only **top-level** types get an anchor on these pages, so a nested type has none. That leaves
+`[Outer.Nested]` with nothing to resolve to, and until 2026-09 `linkify` fell back to the last
+segment alone — which is a false link waiting for a name collision anywhere in the corpus.
+
+Adding the simulation roots supplied one, and it is a good illustration of how far this drift
+reaches. `afield.stdlib/tuio.kt` documents `[TuioReceiver.Frame]`; `TuioReceiver.Frame` is a nested
+`data class` with no anchor; `afield.four.physics/CSVReader.kt` declares a top-level `Frame` for
+motion-capture samples. The moment the physics root was published, a sentence on `data.md` about a
+TUIO cursor frame acquired a link into the physics page — on a page nobody had edited, from a change
+in a different package, and it would have shipped had the diff not been read.
+
+`TypeAnchors.resolveReference` is the narrowest rule that closes it: **when a reference is qualified
+and this reference knows the qualifier, the match has to live in the same source file the qualifier
+does**, because a nested type cannot live anywhere else. An unknown qualifier — a package name, a
+JDK type — still falls back to the last segment, so `[java.nio.ByteBuffer]` behaves exactly as
+before. Measured over the whole corpus at the time it landed: it changed nothing except that one
+line, and `data.md` went back to byte-identical with base.
+
 ## Which page a file lands on, and the one label that is not an annotation
 
 A generated page is a **completion category**, and a file's category is normally the
 `@file:CompletionCategory("…")` it carries. `StdlibReferenceGenerator.fileCategory` reads exactly
 that annotation and nothing else; a file under a source root with no annotation falls through to
 `inferredCategory`, and a file that reaches `Uncategorised` is a **build failure** rather than a page
-(`StdlibReferenceGenerator.kt:340#UNCATEGORISED` says why: the drift guard certifies faithfulness, not
+(`StdlibReferenceGenerator.kt:439#UNCATEGORISED` says why: the drift guard certifies faithfulness, not
 correctness, so once an `uncategorised.md` is committed every guard goes green while the site ships a
 page named after the fact that nobody categorised it).
 
@@ -215,13 +235,39 @@ not know they existed. The obvious move — annotate them — is the one move th
 So a `@file:` line added to publish a page can change — or delete — rows in a working programmer's
 autocomplete, and can do it for a declaration in a different package that merely shares a name. The
 measured cost of the near-miss is recorded on `EXCLUDE_PREFIXES`
-(`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:190#Excluding by path costs nothing`):
+(`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:232#Excluding by path costs nothing`):
 eleven candidate files, 574 declaration names, 235 of them also declared elsewhere *and* present in
 real box code.
 
+The `Simulation` page was measured the same way in 2026-09, and the numbers are worth keeping
+because they say something the synth ones did not. Population: the **18** of that page's 26 files
+that carry no annotation today, which is exactly what an "annotate instead" route would have had to
+annotate. Counted with the real parser (`KotlinSourceIndex.scanDefinitions`, no visibility filter,
+simple names) against the whole index corpus of 45618 declarations / 26468 distinct simple names:
+
+| | count | denominator |
+| --- | --- | --- |
+| declarations in the 18 files | 916 | — |
+| distinct names they would newly file under one label | **670** | 916 declarations |
+| …also declared elsewhere in the tree | **190** | 670 names |
+| …*and* appearing in real box code | **157** | 190 names |
+
+The box-code population is 247 sources — 95 transcript yaml, 36 corpus preambles, 116 published
+pages reduced to their code text. On the headline ratio this is *milder* than the synth case
+(157/670 = 23% against 235/574 = 41%), and on composition it is worse: the 157 include `Box`,
+`lines`, `add`, `get`, `size`, `copy`, `close`, `start`, `state`, `step`, `time`, `update`, `x`, `y`
+and `z`. `Box` is the type every box has in scope and `lines` is how anything gets drawn.
+
+One difference from the synth case is worth stating precisely rather than dramatised. `Internal`
+*hides*; `Simulation` does not, so the counterfactual harm here is 157 names at risk of having a
+name-only first-wins lookup answer "Simulation" for them in the popup's category header, not 235
+names at risk of vanishing. Different severity, same mechanism, same conclusion — and the realised
+cost of doing it by path instead is zero lines changed under any of the three roots, which `git
+diff` can be asked rather than believed.
+
 ### The mechanism actually used
 
-`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:269#private val CATEGORY_BY_PATH`)
+`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:366#private val CATEGORY_BY_PATH`)
 maps a repo-relative path prefix to a page label, first match wins, and is read by the generator and
 by nothing else. It is not new machinery: the `afield/visualization/` entry in it *is* the hardcoded
 `if` it generalises, which has assigned a category by path since the reference shipped.
@@ -244,6 +290,28 @@ Two properties make it safe, and both are checked rather than argued:
 `"language"` onto `"Kotlin"`, so a rename to the tidier-looking `Language` would file the page under
 an existing, unrelated category the moment anything normalised it. The test pins both directions.
 
+### The same mechanism, used for a label that is not reference-only
+
+`Simulation` (added 2026-09) is the second thing `CATEGORY_BY_PATH` files, and it is a weaker case
+than `Languages` in one way that matters. `Languages` is a label that exists nowhere but that map.
+`Simulation` is a real completion category **eight files already carry** — six in `afield.kratos`,
+two in `afield.tetgen` — so the two prefixes are not inventing a label, they are extending one the
+source chose to the eighteen files beside it that never got annotated.
+
+That makes two of `LanguagesCategoryTest`'s assertions inapplicable rather than violated, and the
+test says so itself: the "never enters the completion vocabulary" check `continue`s for anything
+that is not `Languages`, and the "no file under a path prefix carries its own annotation" check runs
+only over the prefixes filed under `Languages`. Both are right to. A file's own annotation always
+wins, so a `Simulation`-annotated file under a `Simulation` prefix is not a conflict — it is the map
+agreeing with the source. The three checks that *do* apply to it all pass: the label is not hidden
+from completion, its prefixes are real directories inside `SOURCE_ROOTS`, and it has a page blurb.
+
+`afield.tetgen` deliberately has **no** prefix even though it is a source root, because every file
+it has annotates itself. A prefix there would label nothing today, and if a fourth file lands
+unannotated the `Uncategorised` build failure telling its author to add the annotation its siblings
+carry is correct advice in that package. In `afield.kratos` it would not be — two of its published
+files have never had one.
+
 ### Which packages are on the Languages page, and which are not
 
 Membership is derived, not curated: a package is there because it is on one of the two language
@@ -265,6 +333,39 @@ Four packages that pass that test are deliberately **not** there, and one fails 
 The rule underneath all five rows is the same one: **a file's own label wins**, so a package that has
 already chosen a category has already answered this question. Adding one to the Languages page means
 editing its annotations, which means changing completion, which means it is not a documentation task.
+
+### Choosing a page is not the same as appearing on one — 26 files, measured
+
+The four rows above used to end "so each is already published under a category its own source chose",
+and that sentence was **false**, in a way that hid a real gap for as long as it stood. A file's label
+decides *which* page it belongs on. `SOURCE_ROOTS` decides *whether the file is read at all*. A file
+can have answered the first question and still be invisible, and 26 of them are.
+
+Measured 2026-09-10 over all 18 committed pages read whole, with the exact section heading the
+generator emits (`## <basename> { #`) as the predicate:
+
+| package | files | label they chose |
+| --- | --- | --- |
+| `afield.solidsl` | 9 | `Graphics` |
+| `afield.petri` | 6 | `Visualization` (5), `Audio` (1) |
+| `afield.onnx` | 4 | `Machine learning` |
+| `afield.brief` | 2 | `Solvers` |
+| `afield.manifold` | 2 | `Graphics` |
+| `afield.graphics` | 2 | `Graphics` |
+| `afield.macros` | 1 | `Workspace` |
+
+Denominator: 248 files in `src/jvmMain` carry a file-level `@file:CompletionCategory`; 219 sit inside
+a source root and are published; 28 do not, of which 2 say `Internal` and are correctly absent
+(`ManifoldNative.kt` and `StdlibReferenceGenerator.kt` itself), leaving these 26.
+
+Two of them are worth naming. `Solid.kt` and `Section.kt` say `Graphics`, and `Solid` is the type
+`manifold.md`, `tetgen.md`, `mesh_examples.md` and `solid_notation.md` are all written about. And the
+`Graphics` blurb's claim to cover "the small shading languages' host side" is, today, a promise the
+page does not keep: every `solidsl` file that phrase refers to is one of the 26.
+
+Nothing here is fixed by the change that measured it, deliberately — six more roots is a different
+diff, and the `Used in:` links are corpus-global, so it wants a night of its own. But the false
+sentence is gone, and the number has a denominator now.
 
 ### Adding a language package to the reference
 

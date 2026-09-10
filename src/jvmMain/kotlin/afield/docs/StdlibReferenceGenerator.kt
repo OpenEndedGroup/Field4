@@ -129,16 +129,58 @@ object StdlibReferenceGenerator {
      * - **Route A with a Kotlin compiler behind it** — an embedded-region extension that appears
      *   inside a Kotlin string, compiled on the JVM: `rectsl`, `stacksl`.
      *
-     * `petri`, `solidsl`, `brief` and `macros` are all deliberately absent, and not because they are
-     * uninteresting: each one already labels its own files (`Visualization`/`Audio`, `Graphics`,
-     * `Solvers`, `Workspace` respectively), so each is already published under a category its own
-     * source chose. `graphquery` is absent because it is a query notation over the reflective object
+     * `petri`, `solidsl`, `brief` and `macros` are all deliberately absent from *this list*, and not
+     * because they are uninteresting: each one already labels its own files
+     * (`Visualization`/`Audio`, `Graphics`, `Solvers`, `Workspace` respectively), so each has
+     * already answered the question of which page it belongs on, and moving it would mean editing
+     * annotations. `graphquery` is absent because it is a query notation over the reflective object
      * graph rather than a language on either route — no `BoxExecution`, no editor extension.
+     *
+     * **This paragraph used to end "so each is already published under a category its own source
+     * chose", and that was false.** Choosing a page and appearing on one are different things: a
+     * file's label decides *which* page, and this list decides *whether* the file is read at all.
+     * Measured 2026-09-10 over all 18 committed pages, whole, with the section heading this
+     * generator emits (`## <basename> { #`) as the predicate: **26** files in `src/jvmMain` carry a
+     * file-level `@file:CompletionCategory` naming a category that has a page, and appear on no
+     * page — 9 in `solidsl`, 6 in `petri`, 4 in `onnx`, 2 each in `brief`, `manifold` and
+     * `afield.graphics`, 1 in `macros`. `Solid.kt` and `Section.kt` say `Graphics`, and
+     * `Solid` is the type `manifold.md`, `tetgen.md`, `mesh_examples.md` and `solid_notation.md` are
+     * all written about. The `Graphics` blurb's claim to cover "the small shading languages' host
+     * side" is, today, a promise the page does not keep — every `solidsl` file it refers to is one
+     * of the 26. (Two more, `ManifoldNative.kt` and this file, say `Internal` and are correctly
+     * absent; they are not in the 26.)
+     *
+     * That gap is **not fixed here**, deliberately: six more roots is a different change with a
+     * different diff, and the evidence links are corpus-global, so it wants its own night. It is
+     * recorded rather than left for the next reader to rediscover, which is what the false sentence
+     * prevented for as long as it stood.
+     *
+     * The three simulation roots — `afield.four.physics`, `afield.kratos` and `afield.tetgen` —
+     * were derived the same way, from a question rather than a taste: *which completion category
+     * does the source already carry that this reference publishes no page for?* Exactly two, and
+     * the larger was `Simulation`, chosen by eight files with nowhere to appear. Six of the eight
+     * are `afield.kratos`, the other two are `afield.tetgen`, so neither of those roots is a
+     * judgement call — the files had already voted and the reference was not listening.
+     * `afield.four.physics` is here by the [LANGUAGES] argument instead: it carries no category
+     * annotation of any kind, it is the largest unpublished body of box-facing API left in the
+     * tree (the Jolt binding, the SIMD Verlet solver, its colliders, wind, tearing and strands),
+     * and `public/docs/physics.md` is a whole page written about symbols this reference did not
+     * know existed. See [CATEGORY_BY_PATH] for how it is labelled without an annotation.
+     *
+     * The other completion category with no page at all is `Machine learning` — four files in
+     * `afield.onnx`, every one of them already annotated, so publishing it needs a root, two
+     * `EXCLUDE_PREFIXES` entries for its smoke tests and a blurb, and no [CATEGORY_BY_PATH] entry
+     * whatever. It is deliberately left for its own change rather than folded in here: it is a
+     * different subject with a different orientation problem, and two widenings in one diff make
+     * neither of them readable against the corpus-global evidence links.
      */
     private val SOURCE_ROOTS = listOf(
         "src/jvmMain/kotlin/afield/stdlib",
         "src/jvmMain/kotlin/afield/visualization",
         "src/jvmMain/kotlin/afield/four/synth",
+        "src/jvmMain/kotlin/afield/four/physics",
+        "src/jvmMain/kotlin/afield/kratos",
+        "src/jvmMain/kotlin/afield/tetgen",
         "src/jvmMain/kotlin/afield/clojure",
         "src/jvmMain/kotlin/afield/datalog",
         "src/jvmMain/kotlin/afield/forth",
@@ -204,6 +246,33 @@ object StdlibReferenceGenerator {
      * subject and stays in. `StackSLCpuGallery.kt` calls itself "the oracle" and exists to run the
      * 31 committed programs; `StackSLCpuContactSheet.kt` imports AWT to write a `.png`. Both are the
      * test-run-or-a-picture case exactly, so they are named here rather than published.
+     *
+     * The three simulation roots contribute exactly **one** entry, and the interesting half of that
+     * is the files that were considered and kept:
+     *
+     * - `KratosProtocol.kt` is excluded, and it is the `PrettyPrint.kt` case rather than the
+     *   harness case: every one of its declarations is `internal` or `private`, so publishing it
+     *   emits a section heading with no rows under it. Nothing else in these three roots is empty.
+     * - `KratosDemo.kt` **stays**, although it does carry a FIELD_TEST runner, because it is not
+     *   "a runner and nothing more": alongside `KratosSmokeTest` and `KratosStructuralSmokeTest` it
+     *   declares `KratosDemo`, whose single function `body()` is what three committed operation
+     *   transcripts in `dev_docs/agents/transcripts/` import to build their geometry. Excluding the
+     *   file would leave a reader following those transcripts with nowhere to look the call up. The
+     *   price is two `main` rows on the page, which is cheaper than a dead end.
+     * - `KratosStudyFigure.kt` **stays**, and is not the docs-figure case its name suggests. It
+     *   writes no file and imports no AWT — it is a [afield.RasterImage] library, and
+     *   `kratos_parameter_study.yaml` calls `KratosStudyFigure.landscape(…)` and `.convergence(…)`
+     *   from inside a box. A figure generator produces a picture nobody calls; this produces pixels
+     *   a box displays.
+     * - `KratosStudyRun.kt` stays for the same reason and by a wider margin: `KratosStudyDemo` is
+     *   the shared experiment definition that the verification run, the catalog smoke and the
+     *   loadable document all read their numbers from.
+     * - `afield.four.physics` contributes nothing at all. No file under it contains a FIELD_TEST
+     *   block, its one `java.awt` import is `java.awt.geom` path flattening in `Dyn4jScene.kt`
+     *   rather than image writing, and its one stray top-level `main` is a fourteen-line
+     *   "Example Usage" at the bottom of `CSVReader.kt` sitting under `MotionClip` and `Frame`,
+     *   which are real API. Deleting that `main` is a source change and does not belong in a
+     *   documentation commit, so it is published, honestly, as a `main` row.
      */
     private val EXCLUDE_PREFIXES = listOf(
         "src/jvmMain/kotlin/afield/stdlib/linalg/",
@@ -219,6 +288,7 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/four/synth/SonicPiSmokeTest.kt",
         "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt",
         "src/jvmMain/kotlin/afield/four/synth/SynthCookbookCompileDemo.kt",
+        "src/jvmMain/kotlin/afield/kratos/KratosProtocol.kt",
         "src/jvmMain/kotlin/afield/datalog/DatalogSmokeTest.kt",
         "src/jvmMain/kotlin/afield/rectsl/RectSLFitFigure.kt",
         "src/jvmMain/kotlin/afield/rectsl/RectSLSoftRasterFigure.kt",
@@ -273,9 +343,30 @@ object StdlibReferenceGenerator {
      * `Languages` is plural on purpose. [afield.KotlinCompletionSupport] normalises the *singular*
      * `"language"` to `"Kotlin"`, so a file (or a future entry here) spelled `Language` would be
      * quietly filed under the Kotlin category instead. The test pins the plural.
+     *
+     * **`Simulation` is here for a weaker reason than `Languages`, and the difference matters.**
+     * `Languages` is a label that exists nowhere but this map. `Simulation` is a real completion
+     * category that eight files in `afield.kratos` and `afield.tetgen` already carry, so the two
+     * entries below are not inventing a label — they are extending one the source chose to the
+     * files beside it that never got annotated. Which is why the two entries are not three: every
+     * file in `afield.tetgen` annotates itself, so a prefix for it would label nothing today, and
+     * if a third file ever lands there unannotated the [UNCATEGORISED] build failure telling its
+     * author to "add the annotation its package siblings carry" is *correct advice in that
+     * package*. In `afield.kratos` it would not be — three of its nine files are unannotated and
+     * always were — so the prefix does real work there, and it does all of it in
+     * `afield.four.physics`, where nothing is annotated at all.
+     *
+     * The safety argument is the same one and is unchanged by the label being real: this map is
+     * still read by the generator and by nothing else, and this branch adds **no** annotation to
+     * any file, so [KotlinSourceIndex.fileCompletionCategory] keeps returning exactly what it
+     * returned before for every file under both prefixes and the completion popup cannot tell the
+     * difference. The counterfactual — annotating the 18 unannotated files instead — was measured
+     * rather than waved at, and the numbers are in `dev_docs/kdoc_reference_contract.md`.
      */
     private val CATEGORY_BY_PATH: List<Pair<String, String>> = listOf(
         "src/jvmMain/kotlin/afield/visualization/" to "Visualization",
+        "src/jvmMain/kotlin/afield/four/physics/" to "Simulation",
+        "src/jvmMain/kotlin/afield/kratos/" to "Simulation",
         "src/jvmMain/kotlin/afield/clojure/" to LANGUAGES,
         "src/jvmMain/kotlin/afield/datalog/" to LANGUAGES,
         "src/jvmMain/kotlin/afield/forth/" to LANGUAGES,
@@ -383,6 +474,55 @@ object StdlibReferenceGenerator {
             "here draws — a solve returns points, and drawing them is your business. Start from " +
             "`CeresGeometry.kt`, which is the vocabulary everything else is written in; " +
             "`ArchitecturalGeometry.kt` is the layer most calls go through.",
+        "Simulation" to "Making a shape behave. Three stacks live here, they answer different " +
+            "questions, and picking the wrong one is the mistake this page exists to prevent.\n\n" +
+            "**`afield.four.physics` is the one that moves.** It is a CPU solver you step inside " +
+            "your own `loop { }`, at frame rate, with a person's hand on it: " +
+            "`SimdVerlet` holds some thousands of particles in flat float arrays and pulls them " +
+            "together with distance constraints, and on top of that sit `Cloth`, `Strand`, " +
+            "`Wind`, tearing and a collider set. `JoltPhysicsWorld` is the rigid-body half — " +
+            "boxes, spheres, meshes, joints and character controllers over the Jolt engine — and " +
+            "`Dyn4jScene` is the same idea flat, in 2D. Nothing here owns a renderer: every one of " +
+            "them hands back `FLine`s and where those go is your business. Nothing here needs a " +
+            "GPU either. It is fast and it is approximate, and the number it gives you is not a " +
+            "number you would put in a report.\n\n" +
+            "**`afield.kratos` is the one that is right.** It is finite elements, out of process: " +
+            "`KratosSession` starts a Python worker — a local venv, a container, or one already " +
+            "running — and talks to it over an authenticated socket, so nothing in Field's own " +
+            "startup imports a solver and a machine without the optional environment simply says " +
+            "so. A solve is seconds, not milliseconds, which is why the Kratos examples put it " +
+            "behind a button. What you get back is a `SimulationResult`, which describes its own " +
+            "fields rather than declaring them, so one class carries a scalar temperature and a " +
+            "velocity–pressure pair without knowing about either. The layer above it is the " +
+            "reason to care: a `StudySpace` varies the design, a `measure` reduces each answer to " +
+            "one number, and `KratosStudy` reports the landscape and where its optimum lies. " +
+            "Because the embedded formulations reclassify one fixed background grid instead of " +
+            "remeshing, **geometry is an ordinary study axis** — sweeping an arm length costs what " +
+            "sweeping a conductivity costs. `KratosStudyFigure` draws the result as pixels a box " +
+            "can display.\n\n" +
+            "**`afield.tetgen` is the one in between.** Kratos has no embedded structural element, " +
+            "so stress needs a mesh whose boundary really is the part's surface, sharp edges " +
+            "included. `Tetgen.tetrahedralize` takes a closed triangle surface — a " +
+            "[Manifold](../manifold.md) solid, usually — and fills it with tetrahedra that " +
+            "reproduce it exactly, optionally quadratic, in Kratos's own node order. " +
+            "`TetMeshViews` is how you look at the inside of the result rather than at its skin.\n\n" +
+            "Where the neighbours are. [Solvers](solvers.md) is Ceres, and the distinction is " +
+            "worth holding onto: Ceres finds the shape you *want* by minimising residuals you " +
+            "declare, and simulation tells you what that shape then *does*. A gridshell relaxed " +
+            "in `Solvers` and a bracket solved in Kratos are two halves of the same design loop, " +
+            "not two ways of doing one thing. Everything above returns geometry, so " +
+            "[Graphics](graphics.md) is where it gets drawn.\n\n" +
+            "The prose, with pictures: " +
+            "[Physics: particles, constraints, and the one number that decides everything]" +
+            "(../physics.md) for the real-time stack — read it before touching `stiffness`, " +
+            "because it and `iterations` are not two knobs — and " +
+            "[Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and " +
+            "the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and " +
+            "the parameter study) and the cloth starting point are in the " +
+            "[Agent Transcript Gallery](../agent_transcripts.md); " +
+            "[Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator " +
+            "wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose " +
+            "this route.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +
             "and edges, corners, blobs and morphology, multiscale pyramids, warps and optical " +
             "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +
@@ -1332,19 +1472,59 @@ object StdlibReferenceGenerator {
      * already-resolved links in `interactionnets.kt`'s own KDoc turned back into inline code on
      * `visualization.md` — a page nobody had touched. Corpus-wide-only resolution makes every new
      * source root a possible silent un-linking of the pages already shipped.
+     *
+     * ### Why a *qualified* reference is checked against its qualifier
+     *
+     * Only top-level types get an anchor here, so a KDoc reference to a nested one — `[Outer.Nested]`
+     * — has nothing to resolve to, and [linkify] used to fall back to the last segment alone. That is
+     * a false link waiting for a name collision, and adding the simulation roots supplied one:
+     * `afield.stdlib/tuio.kt` documents `[TuioReceiver.Frame]`, `TuioReceiver.Frame` is a nested
+     * `data class` with no anchor, and `afield.four.physics/CSVReader.kt` declares a top-level
+     * `Frame` for motion-capture samples. The name matched, so a sentence on `data.md` about a TUIO
+     * cursor frame acquired a link into the physics page — on a page nobody had edited, from a
+     * change in a different package.
+     *
+     * [resolveReference] closes it with the narrowest rule that does: when a reference is qualified
+     * and this reference *knows* the qualifier, the target has to live in the same source file the
+     * qualifier does, because a nested type cannot live anywhere else. An unknown qualifier — a
+     * package name, a JDK type — still falls back to the last segment, so `[java.nio.ByteBuffer]`
+     * behaves exactly as before.
      */
     private class TypeAnchors(
         private val corpus: Map<String, String>,
+        private val corpusOwner: Map<String, String>,
         private val byFile: Map<String, Map<String, String>>,
     ) {
         /** [name]'s anchor as seen from [doc], or null when it resolves nowhere this reference emits. */
         fun resolve(name: String, doc: SourceDocument?): String? =
             doc?.let { byFile[it.relativePath]?.get(name) } ?: corpus[name]
+
+        /** The source file [resolve] would have taken [name]'s anchor from, by the same two steps. */
+        private fun owner(name: String, doc: SourceDocument?): String? =
+            doc?.takeIf { byFile[it.relativePath]?.containsKey(name) == true }?.relativePath
+                ?: corpusOwner[name]
+
+        /**
+         * A whole KDoc reference — `Symbol`, `Outer.Nested` or `some.package.Symbol` — resolved.
+         *
+         * Null both when nothing matches and when the qualifier contradicts the match; the caller
+         * renders inline code either way, which is the honest answer for a nested type this
+         * reference does not emit an anchor for.
+         */
+        fun resolveReference(raw: String, doc: SourceDocument?): String? {
+            val simple = raw.substringAfterLast('.')
+            val target = resolve(simple, doc) ?: return null
+            if (simple == raw) return target
+            val qualifier = raw.substringBeforeLast('.').substringAfterLast('.')
+            val qualifierOwner = owner(qualifier, doc) ?: return target
+            return target.takeIf { qualifierOwner == owner(simple, doc) }
+        }
     }
 
     /** Type simple name -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
     private fun buildTypeAnchorIndex(documents: List<SourceDocument>): TypeAnchors {
         val corpus = mutableMapOf<String, String>()
+        val corpusOwner = mutableMapOf<String, String>()
         val ambiguous = mutableSetOf<String>()
         val byFile = mutableMapOf<String, MutableMap<String, String>>()
         documents.forEach { doc ->
@@ -1352,6 +1532,7 @@ object StdlibReferenceGenerator {
                 val name = type.symbol.simpleName
                 val target = "${slug(doc.category)}.md#${typeAnchor(doc, type.symbol)}"
                 if (corpus.putIfAbsent(name, target) != null) ambiguous += name
+                corpusOwner.putIfAbsent(name, doc.relativePath)
                 // Two types with one simple name in one file does not compile, so first-wins here is a
                 // formality rather than a policy.
                 byFile.getOrPut(doc.relativePath) { mutableMapOf() }.putIfAbsent(name, target)
@@ -1359,8 +1540,8 @@ object StdlibReferenceGenerator {
         }
         // A name that two files both define cannot be linked unambiguously from a third, so from a
         // third it is not linked at all. From either of the two it still resolves — see [TypeAnchors].
-        ambiguous.forEach { corpus.remove(it) }
-        return TypeAnchors(corpus, byFile)
+        ambiguous.forEach { corpus.remove(it); corpusOwner.remove(it) }
+        return TypeAnchors(corpus, corpusOwner, byFile)
     }
 
     /**
@@ -2080,12 +2261,12 @@ object StdlibReferenceGenerator {
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)]""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors.resolve(m.groupValues[2].substringAfterLast('.'), doc)
+            val target = typeAnchors.resolveReference(m.groupValues[2], doc)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors.resolve(raw.substringAfterLast('.'), doc)
+            val target = typeAnchors.resolveReference(raw, doc)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out
