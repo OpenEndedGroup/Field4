@@ -27,7 +27,7 @@ layout(set=0,binding=0) uniform Frame {
     ivec4 scene; // node count, environment width, environment height, max bounces
     vec4 lighting; // environment intensity, yaw radians, ray epsilon, show environment background
     vec4 background; // premultiplied linear RGBA for primary misses
-    vec4 sampling; // indirect luminance clamp per sample (zero disables), reserved
+    vec4 sampling; // indirect clamp, pixel jitter width, aperture radius, focus-plane distance
 } frame;
 layout(set=0,binding=1) uniform sampler2D environmentMap;
 
@@ -388,15 +388,34 @@ vec4 tracePath(vec3 ro,vec3 rd) {
         indirect*=frame.sampling.x/indirectLuminance;
     return vec4(radiance+indirect,1);
 }
+// Area-preserving concentric square-to-disk map for a circular thin lens.
+vec2 lensDisk(vec2 u) {
+    vec2 p=2.0*u-1.0;
+    if (p.x==0.0 && p.y==0.0) return vec2(0);
+    float r,angle;
+    if (abs(p.x)>abs(p.y)) { r=p.x; angle=(PI*0.25)*(p.y/p.x); }
+    else { r=p.y; angle=PI*0.5-(PI*0.25)*(p.x/p.y); }
+    return r*vec2(cos(angle),sin(angle));
+}
 void main() {
     ivec2 pixel=ivec2(gl_GlobalInvocationID.xy); if (any(greaterThanEqual(pixel,frame.image.xy))) return;
     int index=pixel.y*frame.image.x+pixel.x; pixelSeed=hash(uint(index));
     vec4 sum=vec4(0);
     for (int s=0;s<frame.image.w;s++) {
         sampleIndex=uint(frame.image.z+s);
-        vec2 uv=(vec2(pixel)+sample2(0u))/vec2(frame.image.xy)*2.0-1.0;
-        vec3 ray=normalize(frame.forward.xyz+frame.right.xyz*uv.x-frame.up.xyz*uv.y);
-        vec4 value=tracePath(frame.origin.xyz,ray);
+        vec2 subpixel=vec2(0.5)+(sample2(0u)-0.5)*frame.sampling.y;
+        vec2 uv=(vec2(pixel)+subpixel)/vec2(frame.image.xy)*2.0-1.0;
+        vec3 direction=frame.forward.xyz+frame.right.xyz*uv.x-frame.up.xyz*uv.y;
+        vec3 origin=frame.origin.xyz;
+        if (frame.sampling.z>0.0) {
+            // Dimensions 98/99 are reserved for the lens; existing pixel/bounce sequences stay unchanged.
+            vec2 lens=lensDisk(sample2(49u))*frame.sampling.z;
+            vec3 offset=normalize(frame.right.xyz)*lens.x+normalize(frame.up.xyz)*lens.y;
+            // direction has unit forward component, so this intersects a plane, not a focal sphere.
+            direction=direction*frame.sampling.w-offset;
+            origin+=offset;
+        }
+        vec4 value=tracePath(origin,normalize(direction));
         if (!any(isnan(value)) && !any(isinf(value))) sum+=value;
     }
     // Read no uninitialized memory on reset. Keep an HDR mean, never tone-map accumulated samples.

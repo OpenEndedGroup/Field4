@@ -77,6 +77,57 @@ STB. Maps are equirectangular: north at the top; longitude is `atan2(z, x)`.
 Recreate the tracer after geometry, CPU material or map changes. Shader material
 functions can instead be edited and reloaded in place, as below.
 
+## Camera, jitter and depth of field
+
+The tracer uses an ordinary Field `Camera`: `at`, `target`, `up` and `p.fov` control
+the view. You can share it with rasterized geometry, animate it, or attach the usual
+keyboard controls. The tracer uses perspective projection and its own output aspect
+ratio; `SuperProjection` orthographic blending and principal-point offsets are not used.
+
+```diffstatic {data-lang=kotlin}
+import afield.four.util.keyCamera
+
+val camera = tracer.camera
+camera.at.set(0f, 2.6f, 8f)
+camera.target.set(0f, 0.65f, 0f)
+camera.p.fov = 0.62 // vertical field of view, in radians
+var cameraKeys by keyCamera(renderer = renderer, camera = camera)
+
+tracer.pixelJitter = 1f
+tracer.apertureRadius = 0.25f
+tracer.focusDistance = null // follow the target
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/camera.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="camera study converged" embed=true hidden=true timeout="180" name="path-tracing-camera" alt="A sharp gold sphere at the focus plane between a blurred near red sphere and distant blue sphere, over a checkerboard" macro-file="../../dev_docs/agents/transcripts/path_tracing_camera.yaml" capture-box="path_trace_camera"}
+// Camera, antialiasing and depth of field in a live Field scene.
+```
+
+| Control | Default | Meaning |
+| --- | --- | --- |
+| `pixelJitter` | `1f` | Samples the full pixel footprint for antialiasing. `0f` samples its centre; values between zero and one narrow the footprint. |
+| `apertureRadius` | `0f` | Circular lens radius in world units. Zero disables depth of field; larger values increase defocus blur. |
+| `focusDistance` | `null` | Tracks the camera target. Set a positive distance in world units to hold focus independently of the target. |
+
+```diffstatic {data-lang=kotlin}
+tracer.focusDistance = 5f // focus plane five world units along camera.forward
+tracer.apertureRadius = 0.08f // a smaller opening gives subtler blur
+// tracer.apertureRadius = 0f // pinhole view again
+```
+
+Focus is a plane perpendicular to the viewing direction, so off-axis objects at the
+same depth remain sharp. This uses a [thin-lens camera model](https://www.pbr-book.org/4ed/Cameras_and_Film/Projective_Camera_Models):
+each path starts at a sampled point on the circular lens and aims at that plane.
+Aperture changes blur without changing exposure. Lens samples use their own two
+Sobol dimensions, independently of pixel and lighting samples; depth of field still
+converges when `pixelJitter` is zero.
+
+Pose, FOV, jitter, aperture and focus changes reset accumulation before the next
+sample. With automatic focus, moving the target nearer or farther also resets it,
+even if the viewing direction is unchanged. If sampling is paused, the new view
+appears when you resume. Scaling a scene calls for scaling its aperture and explicit
+focus distance too. This models a circular aperture; it does not simulate shutter
+motion blur, diffraction or a multi-element photographic lens.
+
 ## Loading glTF and GLB models
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/gltf.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glTF study converged" embed=true hidden=true timeout="240" name="path-tracing-gltf" alt="Textured Toy Car imported from GLB and path traced on a grey floor with hidden sunset environment lighting" macro-file="../../dev_docs/agents/transcripts/path_tracing_gltf.yaml" capture-box="path_trace_gltf"}
@@ -337,7 +388,7 @@ cutouts or transparent output-background compositing.
 
 ## Accumulation and interaction
 
-Each frame traces `samplesPerFrame` new paths per pixel. A 98-dimensional scrambled Sobol sequence gives
+Each frame traces `samplesPerFrame` new paths per pixel. A 100-dimensional scrambled Sobol sequence gives
 each pixel a low-discrepancy temporal sequence, with distinct Joe–Kuo direction
 numbers for every sampling decision and a separate scramble per pixel/dimension. This is **not a spatial blue-noise mask**.
 The GPU accumulates a linear HDR mean. Exposure and Reinhard tone mapping are
@@ -346,7 +397,7 @@ applied only in the display pass.
 - Start with 640 × 360, one sample per frame, five bounces. Reduce resolution first
   when camera movement is too slow; this implementation does not denoise or reproject.
 - Move the supplied Field `Camera` with your usual controls. Pose and FOV changes
-  automatically clear the history before the next dispatch.
+  automatically clear the history before the next dispatch, as do the jitter and lens controls.
 - Lighting, bounce count and ray epsilon changes reset history too. `reset()` is an
   explicit reset; `paused` stops sampling while leaving the current image visible.
 - `samples` reports the number of samples recorded for the current view. `exposure`

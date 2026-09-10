@@ -329,6 +329,7 @@ object DemoTranscriptExecSmokeTest {
         "graphics_renderer_launch",
         // These open a native Vulkan renderer; real pixels and reloads are checked separately.
         "path_tracing_materials",
+        "path_tracing_camera",
         "path_tracing_glass",
         "path_tracing_gltf",
         "path_tracing_hidden_environment",

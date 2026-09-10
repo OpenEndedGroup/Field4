@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 100 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 101 transcripts on every build, at three
 depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-31 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+32 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1291,6 +1291,12 @@ into Chromium. Electron continues to play the page's audio. Without a headset th
 shows the same side-by-side scene and its mouse supplies the controller ray.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_vr_browser/metadata.edn)
+
+**path_tracing_camera** — A keyboard-controlled perspective camera with subpixel antialiasing
+and thin-lens depth of field. The middle sphere stays sharp while the nearer and farther spheres
+blur; focus follows the camera target unless a distance is supplied.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_camera/metadata.edn)
 
 **path_tracing_materials** — Plastic, polished gold and rough metal under a sunset environment.
 The [path tracer](path_tracing.md) accumulates into a render-to-texture target and uses a separate

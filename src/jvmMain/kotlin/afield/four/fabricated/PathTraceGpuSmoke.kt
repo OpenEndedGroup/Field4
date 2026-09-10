@@ -234,6 +234,69 @@ object PathTraceGpuSmoke {
         measure(slab(PathTraceMaterial.glass(),1f),camera,"total internal reflection",listOf(0f,0f,0f))
     }
 
+    /** Thin-lens focus, coverage, jitter, and automatic reset checks on real GPU pixels. */
+    suspend fun runCamera(renderer: Renderer) {
+        val backends = listOf(PathTracingRenderer.Backend.COMPUTE_BVH) +
+            if (renderer.device.supportsRayQuery) listOf(PathTracingRenderer.Backend.RAY_QUERY) else emptyList()
+        for (backend in backends) {
+            val camera = Camera(renderer).also {
+                it.at.set(0f,0f,3f); it.target.set(0f,0f,0f); it.p.fov=Math.PI/2
+            }
+            val scene=PathTraceScene().apply {
+                val white=material(PathTraceMaterial.emissive(1f,1f,1f))
+                quad(Vector3f(0.035f,-20f,0f),Vector3f(20f,-20f,0f),
+                    Vector3f(20f,20f,0f),Vector3f(0.035f,20f,0f),white)
+            }
+            PathTracingRenderer(renderer,scene,PathTraceEnvironment.constant(0f),48,32,camera,backend).use { tracer ->
+                tracer.maxBounces=1; tracer.samplesPerFrame=16; tracer.pixelJitter=0f
+                tracer.showEnvironment=false; tracer.background=afield.stdlib.linalg.Vector4f(0f)
+                tracer.install()
+                suspend fun capture(change: () -> Unit = {}): FloatArray {
+                    val old=tracer.samples
+                    change()
+                    tracer.paused=false
+                    if (old>0) awaitReset(tracer,old)
+                    awaitSamples(tracer,512); tracer.paused=true
+                    return tracer.readLinear().also { pixels ->
+                        check(pixels.all { it.isFinite() && it in 0f..1.00001f })
+                        for (i in pixels.indices step 4) check(abs(pixels[i]-pixels[i+3])<1e-5) {
+                            "Lens coverage must match premultiplied white radiance"
+                        }
+                    }
+                }
+                fun softPixels(p: FloatArray)=p.indices.count { it%4==0 && p[it] in 0.02f..0.98f }
+                val pinhole=capture()
+                check(softPixels(pinhole)==0)
+                val focused=capture { tracer.apertureRadius=1.2f }
+                check(focused.indices.all { abs(focused[it]-pinhole[it])<1e-5 }) {
+                    "A wide aperture blurred the focus plane (including off-axis pixels)"
+                }
+                val defocused=capture { tracer.focusDistance=6f }
+                check(softPixels(defocused)>128) { "Changing focus did not blur the edge" }
+                check(abs(defocused.average()-focused.average())<0.02) { "Aperture changed exposure" }
+                val targetFocused=capture { tracer.focusDistance=null; camera.target.z=-3f }
+                check(targetFocused.indices.all { abs(targetFocused[it]-defocused[it])<0.03f })
+                val retargeted=capture { camera.target.z=0f }
+                check(retargeted.indices.all { abs(retargeted[it]-pinhole[it])<1e-5 }) {
+                    "Changing only target distance failed to reset focus history"
+                }
+                val jittered=capture { tracer.apertureRadius=0f; tracer.pixelJitter=1f }
+                check(softPixels(jittered) in 1..64) { "Pixel jitter did not antialias the subpixel edge" }
+                val centred=capture { tracer.pixelJitter=0f }
+                check(centred.contentEquals(pinhole)) { "Turning jitter off retained old samples" }
+                for (bad in listOf(-1f,Float.NaN,Float.POSITIVE_INFINITY)) {
+                    check(runCatching { tracer.apertureRadius=bad }.isFailure)
+                    check(runCatching { tracer.focusDistance=bad }.isFailure)
+                    check(runCatching { tracer.pixelJitter=bad }.isFailure)
+                }
+                check(runCatching { tracer.focusDistance=0f }.isFailure)
+                check(runCatching { tracer.pixelJitter=1.01f }.isFailure)
+                println("PASS GPU $backend camera: sharp focus plane, ${softPixels(defocused)} defocused pixels, " +
+                    "${softPixels(jittered)} antialiased pixels, premultiplied coverage and focus/jitter resets")
+            }
+        }
+    }
+
     private suspend fun awaitReset(tracer: PathTracingRenderer, old: Int) {
         val deadline=System.nanoTime()+20_000_000_000L
         while (tracer.samples>=old || tracer.samples==0) {

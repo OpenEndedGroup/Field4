@@ -48,6 +48,15 @@ class PathTracingRenderer(
     val backend: Backend
     var samplesPerFrame: Int = 1
         set(value) { require(value in 1..64); field = value }
+    /** Subpixel sample width in pixels: one covers the pixel, zero always samples its centre. */
+    var pixelJitter: Float = 1f
+        set(value) { require(value.isFinite() && value in 0f..1f); if (value != field) reset(); field = value }
+    /** Circular thin-lens radius in world units. Zero gives a pinhole camera with everything in focus. */
+    var apertureRadius: Float = 0f
+        set(value) { require(value.isFinite() && value >= 0f); if (value != field) reset(); field = value }
+    /** Focus-plane distance along camera.forward in world units; null follows camera.target. */
+    var focusDistance: Float? = null
+        set(value) { require(value == null || (value.isFinite() && value > 0f)); if (value != field) reset(); field = value }
     var maxBounces: Int = 5
         set(value) { require(value in 1..12); if (value != field) reset(); field = value }
     var environmentIntensity: Float = 1f
@@ -276,10 +285,17 @@ class PathTracingRenderer(
     private fun updateFrame() {
         val forward = camera.forward; val right = camera.right
         val up = Vector3f(right).cross(forward).normalize()
+        require(camera.p.fov.isFinite() && camera.p.fov > 0.0 && camera.p.fov < Math.PI) {
+            "Camera field of view must lie between zero and pi radians"
+        }
         val scale = tan(camera.p.fov * 0.5).toFloat()
+        val focus = focusDistance ?: camera.distanceToTarget()
+        require(apertureRadius == 0f || (focus.isFinite() && focus > 0f)) {
+            "Depth of field needs a positive focus distance or a camera target away from the eye"
+        }
         require(scale.isFinite() && scale > 0f) { "Camera field of view must lie between zero and pi radians" }
         val values = floatArrayOf(camera.at.x, camera.at.y, camera.at.z, forward.x, forward.y, forward.z,
-            right.x, right.y, right.z, up.x, up.y, up.z, scale)
+            right.x, right.y, right.z, up.x, up.y, up.z, scale, if (apertureRadius > 0f) focus else 0f)
         require(values.all { it.isFinite() }) { "Path tracer camera contains non-finite values" }
         val pipeline = materialModule.current.pipeline
         if (pipeline != previousPipeline) {
@@ -307,7 +323,7 @@ class PathTracingRenderer(
         frame["image"] = Int4(width, height, samples, samplesPerFrame)
         frame["scene"] = Int4(packed.nodes.size, envWidth, envHeight, maxBounces)
         frame["lighting"] = Vector4f(environmentIntensity, environmentRotation, rayEpsilon, if (showEnvironment) 1f else 0f)
-        frame["sampling"] = Vector4f(indirectClamp, 0f, 0f, 0f)
+        frame["sampling"] = Vector4f(indirectClamp, pixelJitter, apertureRadius, if (apertureRadius > 0f) focus else 1f)
         frame["background"] = Vector4f(backgroundValue.x * backgroundValue.w, backgroundValue.y * backgroundValue.w,
             backgroundValue.z * backgroundValue.w, backgroundValue.w)
     }
@@ -357,9 +373,9 @@ class PathTracingRenderer(
     }
     companion object {
         internal val sobolWords: IntArray by lazy {
-            val data = PathTracingRenderer::class.java.getResourceAsStream("/afield/four/pathtracing/sobol-98x32.bin")!!.use { it.readBytes() }
-            check(data.size == 98 * 32 * 4)
-            IntArray(98 * 32).also { ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(it) }
+            val data = PathTracingRenderer::class.java.getResourceAsStream("/afield/four/pathtracing/sobol-100x32.bin")!!.use { it.readBytes() }
+            check(data.size == 100 * 32 * 4)
+            IntArray(100 * 32).also { ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(it) }
         }
         internal fun shader(hardware: Boolean): String {
             val source = PathTracingRenderer::class.java.getResource("/afield/four/pathtracing/trace.comp")!!.readText()

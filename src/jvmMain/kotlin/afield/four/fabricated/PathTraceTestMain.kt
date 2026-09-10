@@ -89,6 +89,7 @@ object PathTraceTestMain {
             check(bright.distribution[2*i+1] == bright.distribution[2*i]-previous)
         }
         val directions = PathTracingRenderer.sobolWords
+        check(directions.size == 100*32)
         fun sobol(index: Int, dimension: Int): Double {
             var i=index xor (index ushr 1); var bit=0; var word=0
             while (i!=0) { if ((i and 1)!=0) word=word xor directions[dimension*32+bit]; i=i ushr 1; bit++ }
@@ -97,7 +98,7 @@ object PathTraceTestMain {
         val reference=doubleArrayOf(0.0,0.5,0.75,0.25,0.375,0.875,0.625,0.125)
         reference.indices.forEach { check(sobol(it,0)==reference[it]) }
         // Cross-decision projections, not just the reused 2D pairs that formerly hid a noise floor.
-        for ((a,b) in listOf(2 to 7, 4 to 9, 11 to 17, 32 to 97)) {
+        for ((a,b) in listOf(2 to 7, 4 to 9, 11 to 17, 32 to 97, 0 to 98, 1 to 99, 98 to 99)) {
             val counts=IntArray(16)
             repeat(1024) { counts[(sobol(it,a)*4).toInt()*4+(sobol(it,b)*4).toInt()]++ }
             check(counts.all { it in 48..80 }) { "Poor Sobol projection $a/$b: ${counts.toList()}" }
