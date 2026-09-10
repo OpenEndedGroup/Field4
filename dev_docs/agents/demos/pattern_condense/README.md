@@ -32,6 +32,34 @@ Each box names one value worth poking, at the top of its code.
   `60(k8)`; `60 60 ~ 60 ~ ~ 60 ~` has no single figure and comes back as two halves,
   `60(g4) 60(1,4,2)`.
 
+## Rebuilding this document
+
+`build.yaml` beside this file is the `OperationTranscript` that built the document. Replay it into a
+fresh Field with:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
+  --command 'macro write pattern_condense --file dev_docs/agents/demos/pattern_condense/build.yaml' \
+  --command 'macro run pattern_condense'
+```
+
+That replay reported `applied=7 skipped=0 errors=0` with all three boxes `ok`.
+
+The loose `*_code_.kt` files are what Field loads; `metadata.edn` carries portable inline copies of
+the same text, and `./gradlew checkAgentDemos` fails if the two ever disagree. If you edit a sidecar
+by hand, do it with **no Field holding this document open** — a running Field saves the document on
+its own schedule, and an edit that races that save can land a property *blanked* rather than
+conflicted. Nothing warns you: the box simply runs with an empty value and produces plausible wrong
+output. Observed here on 2026-09-10, with `val bar = ""` in the live document while both the sidecar
+and the inline copy on disk were byte-correct.
+
+## Each output on its own channel
+
+Every box writes each of its outputs to a distinct channel — box 1 uses `roll` and `main`, box 3
+uses `roll`, `played`, `condensed` and `main`. Two `display`/`markdown` calls naming the same
+channel is **not** an error; the second silently replaces the first. Boxes 1 and 3 originally wrote
+the piano roll and then the markdown table both to `main`, so the figure was never visible.
+
 ## Where the mechanism is
 
 `src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` — the search, its candidate grammar, and the
