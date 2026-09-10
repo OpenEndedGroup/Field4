@@ -462,6 +462,35 @@ class Chart(
     var grid: Boolean = true
 
     /**
+     * Whether the figure is kept inside the frame it declared. On, and there is a published figure
+     * behind it.
+     *
+     * Two things, one switch, because they are one property and they failed together: mark geometry
+     * is clipped to [plotRect], and [title] and [note] are wrapped to [width].
+     *
+     * A `Chart` maps every datum it is given into figure pixels, and until this existed it *drew*
+     * whatever came out, however far outside the axes that landed; a [note] was one unwrapped line
+     * however long it was. Neither is the harmless overdraw it sounds like: [toHTML] hands the lines
+     * to `linesToHTML`, which stamps their own union bounds onto the wrapper, and a box output panel
+     * or a docs capture then fits **those** bounds. So geometry outside the frame does not get
+     * cropped — it shrinks everything else. Measured, both of them, on one published page:
+     *
+     *  - a cross section 2 × 3 across, charted into a 0.24 × 0.24 window with an explicit
+     *    [xDomain]/[yDomain], put its outline 5137 px outside a 780 × 440 frame, and the axes ended up
+     *    an illegible stamp at **10%** of the declared size;
+     *  - that same figure's 142-character [note] measured 1197 px on one line against 711 px of room,
+     *    and drew the whole figure at **63%**.
+     *
+     * That is `public/docs/tetgen.md`'s `sharp_edge.png`, and five gates were green over it.
+     *
+     * Set it `false` for exactly that behaviour back. It is a switch and not a fact for two reasons:
+     * a caller composing a chart with other FLine geometry under a shared transform sometimes wants
+     * the overflow, and the before half of the captures in `dev_docs/chart_clip_and_note.md` is this
+     * flag turned off, so the counterfactual stays runnable instead of being a screenshot of history.
+     */
+    var clip: Boolean = true
+
+    /**
      * Whether point, bar and bin marks are individually hoverable and clickable.
      *
      * `true` by default, and it is what routes the figure through the interactive SVG renderer
@@ -781,6 +810,11 @@ class Chart(
             for (i in 0 until mark.count) {
                 val v = mark.x[i]
                 if (!v.isFinite()) continue
+                // Symmetric with [resolvedYDomain], which has always done this and which x had not.
+                // A non-positive datum is not representable on a log axis; letting it into the domain
+                // sends `padDegenerate` down its `a = b / 100` path, and every genuinely small
+                // positive datum then maps to the left of the frame instead of onto the axis.
+                if (xKind == ScaleKind.LOG && v <= 0.0) continue
                 lo = min(lo, v - half); hi = max(hi, v + half)
             }
         }
@@ -859,15 +893,15 @@ class Chart(
                 MarkKind.BAND -> emptyList()
                 MarkKind.HRULE -> ruleLines(mark, plot, sy, horizontal = true)
                 MarkKind.VRULE -> ruleLines(mark, plot, sx, horizontal = false)
-                MarkKind.LINE -> lineLines(mark, sx, sy)
-                MarkKind.AREA -> areaLines(mark, sx, sy)
-                MarkKind.POINTS -> pointLines(mark, sx, sy)
+                MarkKind.LINE -> lineLines(mark, sx, sy, plot)
+                MarkKind.AREA -> areaLines(mark, sx, sy, plot)
+                MarkKind.POINTS -> pointLines(mark, sx, sy, plot)
                 MarkKind.BARS, MarkKind.HISTOGRAM -> barLines(mark, sx, sy, plot)
             }
         }
 
         out += axisLines(plot, sx, sy, xTicks, yTicks, xTickText, yTickText)
-        out += chromeLines(plot)
+        out += chromeLines(l)
         return out
     }
 
@@ -898,10 +932,20 @@ class Chart(
         val yTicks: List<Double>,
         val xTickText: List<String>,
         val yTickText: List<String>,
+        /** [title], wrapped to the figure width. Empty when there is no title. */
+        val titleLines: List<String>,
+        /** [footnote], wrapped to the figure width. Empty when there is no footnote. */
+        val footnoteLines: List<String>,
     )
 
     /**
-     * The plot area, in figure pixels — the rectangle the axes bound and the data is clipped to.
+     * The plot area, in figure pixels — the rectangle the axes bound and mark geometry is clipped to.
+     *
+     * "Clipped to" is a fact about the drawing and not a hope about the data: every mark kind is cut
+     * against this rectangle before it becomes an [FLine], by [clip], which is on by default. Set
+     * [clip] `false` and the sentence above stops being true, which is the whole point of the switch.
+     * The axis labels, the title and the footnote live *outside* this rectangle and inside [width] ×
+     * [height]; those are the only things a figure draws beyond it.
      *
      * Public because the insets are *derived*, not configured: they come from the widest tick label,
      * whether there is a title, a legend, an axis label, a footnote. A caller overlaying an
@@ -913,7 +957,8 @@ class Chart(
     /**
      * Domains, ticks, label widths, insets, scales — computed together because each one needs the
      * one before it. The ticks come first: they depend only on the domain, and the *widest tick
-     * label* is what decides the left inset, which decides the pixel range the scales map onto.
+     * label* is what decides the left inset, which in turn decides both the pixel range the scales
+     * map onto and the width the title and the footnote are wrapped to.
      */
     internal fun layout(): Layout {
         val (dx0, dx1) = resolvedXDomain()
@@ -930,10 +975,18 @@ class Chart(
         val padLeft = 12.0 + (if (yLabel != null) LABEL_SIZE + 6.0 else 0.0) +
             (yTickText.maxOfOrNull { measure(it) } ?: 0.0) + 8.0
         val padRight = 12.0 + (xTickText.lastOrNull()?.let { measure(it) / 2.0 } ?: 0.0)
-        val padTop = 10.0 + (if (title != null) TITLE_SIZE + 12.0 else 0.0) +
+
+        // Both start at the left edge of the plot and run right, so the room they have is the same
+        // and it is known as soon as `padLeft` is. Wrapping cannot feed back into `padLeft`, only
+        // into `padTop` and `padBottom`, which is why this is one pass and not a fixed point.
+        val textRoom = if (clip) width - padLeft - 12.0 else Double.MAX_VALUE
+        val titleLines = title?.let { wrapToWidth(it, textRoom, TITLE_SIZE, MAX_TITLE_LINES) } ?: emptyList()
+        val footnoteLines = footnote()?.let { wrapToWidth(it, textRoom, LABEL_SIZE, MAX_NOTE_LINES) } ?: emptyList()
+
+        val padTop = 10.0 + (if (titleLines.isNotEmpty()) titleLines.size * TITLE_SIZE + 12.0 else 0.0) +
             (if (drawLegend()) LABEL_SIZE + 8.0 else 0.0)
         val padBottom = 12.0 + LABEL_SIZE + 8.0 + (if (xLabel != null) LABEL_SIZE + 6.0 else 0.0) +
-            (if (footnote() != null) LABEL_SIZE + 8.0 else 0.0)
+            (if (footnoteLines.isNotEmpty()) footnoteLines.size * LABEL_SIZE + 8.0 else 0.0)
 
         val plot = Rect(
             padLeft, padTop,
@@ -944,7 +997,7 @@ class Chart(
             plot,
             Scale(dx0, dx1, plot.x, plot.x + plot.w, xKind),
             Scale(dy0, dy1, plot.y + plot.h, plot.y, yKind),
-            xTicks, yTicks, xTickText, yTickText
+            xTicks, yTicks, xTickText, yTickText, titleLines, footnoteLines
         )
     }
 
@@ -967,7 +1020,9 @@ class Chart(
         val top = sy.toPixel(mark.y[0])
         val bottom = sy.toPixel(mark.baseline?.get(0) ?: mark.y[0])
         if (!top.isFinite() || !bottom.isFinite()) return emptyList()
-        return listOf(filledRect(plot.x, min(top, bottom), plot.w, abs(bottom - top), mark.color))
+        val (y0, y1) = clipSpan(min(top, bottom), max(top, bottom), plot.y, plot.y + plot.h)
+            ?: return emptyList()
+        return listOf(filledRect(plot.x, y0, plot.w, y1 - y0, mark.color))
     }
 
     private fun expectationLines(
@@ -983,26 +1038,42 @@ class Chart(
         val pHi = sy.toPixel(hi)
         if (!pLo.isFinite() || !pHi.isFinite()) return emptyList()
         val out = mutableListOf<FLine>()
+        val (bandTop, bandBottom) = clipSpan(min(pLo, pHi), max(pLo, pHi), plot.y, plot.y + plot.h)
+            ?: return emptyList()
         out += filledRect(
-            plot.x, min(pLo, pHi), plot.w, max(1.0, abs(pLo - pHi)),
+            plot.x, bandTop, plot.w, max(1.0, bandBottom - bandTop),
             vec(CHART_BAD.x, CHART_BAD.y, CHART_BAD.z, 0.09)
         ).also { it.label = e.because ?: "expected range" }
         // Rule the edges the claim actually names. An unbounded side has no edge to draw, which is
-        // the visual difference between "at most 1e-6" and "between 0 and 1e-6".
+        // the visual difference between "at most 1e-6" and "between 0 and 1e-6". An edge that falls
+        // off the axis has nowhere to be drawn *truthfully*, so it is not drawn at all.
         if (e.min.isFinite()) out += edgeRule(plot, sy.toPixel(e.min), e.because)
         if (e.max.isFinite()) out += edgeRule(plot, sy.toPixel(e.max), e.because)
         return out
     }
 
-    private fun edgeRule(plot: Rect, py: Double, because: String?): FLine = fline {
-        moveTo(plot.x, py); lineTo(plot.x + plot.w, py)
-        color = vec(CHART_BAD.x, CHART_BAD.y, CHART_BAD.z, 0.55)
-        thickness = 1.0
-    }.also { it.label = because ?: "expected range" }
+    private fun edgeRule(plot: Rect, py: Double, because: String?): List<FLine> {
+        if (!py.isFinite()) return emptyList()
+        if (clip && (py < plot.y || py > plot.y + plot.h)) return emptyList()
+        return listOf(
+            fline {
+                moveTo(plot.x, py); lineTo(plot.x + plot.w, py)
+                color = vec(CHART_BAD.x, CHART_BAD.y, CHART_BAD.z, 0.55)
+                thickness = 1.0
+            }.also { it.label = because ?: "expected range" }
+        )
+    }
 
     private fun ruleLines(mark: ChartMark, plot: Rect, scale: Scale, horizontal: Boolean): List<FLine> {
         val p = scale.toPixel(if (horizontal) mark.y[0] else mark.x[0])
         if (!p.isFinite()) return emptyList()
+        // A rule is a claim about a value *on the axis*. Off the axis it has no honest position, and
+        // drawing it anyway is what put geometry outside the frame; drop it instead.
+        if (clip) {
+            val lo = if (horizontal) plot.y else plot.x
+            val hi = if (horizontal) plot.y + plot.h else plot.x + plot.w
+            if (p < lo || p > hi) return emptyList()
+        }
         val f = fline {
             if (horizontal) { moveTo(plot.x, p); lineTo(plot.x + plot.w, p) }
             else { moveTo(p, plot.y); lineTo(p, plot.y + plot.h) }
@@ -1013,47 +1084,73 @@ class Chart(
         return listOf(f)
     }
 
-    private fun lineLines(mark: ChartMark, sx: Scale, sy: Scale): List<FLine> {
-        val f = FLine()
-        var open = false
-        var drawn = 0
+    /**
+     * The pixel runs of one mark: a new run wherever a datum is non-representable.
+     *
+     * A `NaN` — a non-positive value on a log axis, a gap a caller put in on purpose — has always
+     * broken the polyline rather than being bridged across, because bridging draws a line through
+     * data that is not there. [clipPolyline] then splits these runs again wherever they leave
+     * [plotRect], for the same reason: the segment between two off-window points did not happen
+     * inside the window.
+     */
+    private fun pixelRuns(mark: ChartMark, sx: Scale, sy: Scale): List<List<DoubleArray>> {
+        val runs = mutableListOf<MutableList<DoubleArray>>()
+        var current: MutableList<DoubleArray>? = null
         for (i in 0 until min(mark.count, maxPoints)) {
             val px = sx.toPixel(mark.x[i])
             val py = sy.toPixel(mark.y[i])
-            if (!px.isFinite() || !py.isFinite()) { open = false; continue }
-            if (!open) { f.moveTo(px, py); open = true } else f.lineTo(px, py)
-            drawn++
+            if (!px.isFinite() || !py.isFinite()) { current = null; continue }
+            if (current == null) { current = mutableListOf(); runs += current }
+            current.add(doubleArrayOf(px, py))
         }
-        if (drawn == 0) return emptyList()
+        return runs
+    }
+
+    private fun lineLines(mark: ChartMark, sx: Scale, sy: Scale, plot: Rect): List<FLine> {
+        val runs = pixelRuns(mark, sx, sy).flatMap { if (clip) clipPolyline(it, plot) else listOf(it) }
+        if (runs.isEmpty()) return emptyList()
+        // One FLine with several subpaths, not several FLines: a clipped series is still one series,
+        // and one legend entry, and one thing to hover. That is the same choice `tetgen.md`'s fence
+        // made when it emitted a NaN between disjoint runs.
+        val f = FLine()
+        runs.forEach { run ->
+            run.forEachIndexed { i, p -> if (i == 0) f.moveTo(p[0], p[1]) else f.lineTo(p[0], p[1]) }
+        }
         f.color = Vec4(mark.color)
         f.thickness = mark.thickness
         f.label = mark.label
         return listOf(f)
     }
 
-    private fun areaLines(mark: ChartMark, sx: Scale, sy: Scale): List<FLine> {
-        val n = min(mark.count, maxPoints)
-        val fill = FLine()
-        val top = mutableListOf<Pair<Double, Double>>()
-        for (i in 0 until n) {
-            val px = sx.toPixel(mark.x[i])
-            val py = sy.toPixel(mark.y[i])
-            if (px.isFinite() && py.isFinite()) top += px to py
-        }
-        if (top.isEmpty()) return emptyList()
+    private fun areaLines(mark: ChartMark, sx: Scale, sy: Scale, plot: Rect): List<FLine> {
+        val runs = pixelRuns(mark, sx, sy)
+        if (runs.isEmpty()) return emptyList()
         val baseY = sy.toPixel(mark.baseline?.getOrNull(0) ?: 0.0)
-        if (!baseY.isFinite()) return lineLines(mark, sx, sy)
-        top.forEachIndexed { i, (px, py) -> if (i == 0) fill.moveTo(px, py) else fill.lineTo(px, py) }
-        fill.lineTo(top.last().first, baseY)
-        fill.lineTo(top.first().first, baseY)
-        fill.close()
-        fill.color = vec(mark.color.x, mark.color.y, mark.color.z, mark.color.w * 0.22)
-        fill.filled = true
-        fill.stroked = false
-        return listOf(fill) + lineLines(mark, sx, sy)
+        if (!baseY.isFinite()) return lineLines(mark, sx, sy, plot)
+        val out = mutableListOf<FLine>()
+        // The fill is a *polygon*, so Liang–Barsky on its edges would leave it open where it crossed
+        // the window. Sutherland–Hodgman against the same rectangle keeps it closed, which is what a
+        // filled region needs and a polyline does not.
+        runs.forEach { top ->
+            val polygon = buildList {
+                addAll(top)
+                add(doubleArrayOf(top.last()[0], baseY))
+                add(doubleArrayOf(top.first()[0], baseY))
+            }
+            val clipped = if (clip) clipPolygon(polygon, plot) else polygon
+            if (clipped.size < 3) return@forEach
+            val fill = FLine()
+            clipped.forEachIndexed { i, p -> if (i == 0) fill.moveTo(p[0], p[1]) else fill.lineTo(p[0], p[1]) }
+            fill.close()
+            fill.color = vec(mark.color.x, mark.color.y, mark.color.z, mark.color.w * 0.22)
+            fill.filled = true
+            fill.stroked = false
+            out += fill
+        }
+        return out + lineLines(mark, sx, sy, plot)
     }
 
-    private fun pointLines(mark: ChartMark, sx: Scale, sy: Scale): List<FLine> {
+    private fun pointLines(mark: ChartMark, sx: Scale, sy: Scale, plot: Rect): List<FLine> {
         val n = min(mark.count, maxPoints)
         val individually = pickable && n <= pickLimit
         val out = mutableListOf<FLine>()
@@ -1063,6 +1160,9 @@ class Chart(
             val px = sx.toPixel(mark.x[i])
             val py = sy.toPixel(mark.y[i])
             if (!px.isFinite() || !py.isFinite()) continue
+            // A dot is dropped whole rather than cut: half a disc hanging off the axis reads as a
+            // rendering artefact, and every other plotting library in the world drops it too.
+            if (clip && !plot.holds(px, py)) continue
             val why = failed(mark, i)
             val colour = if (why != null) CHART_BAD else mark.color
             val radius = if (why != null) mark.size + 1.5 else mark.size
@@ -1103,9 +1203,12 @@ class Chart(
             if (!left.isFinite() || !right.isFinite() || !top.isFinite() || !base.isFinite()) continue
             val why = failed(mark, i)
             val colour = if (why != null) CHART_BAD else mark.color
-            val y0 = min(top, base).coerceIn(plot.y, plot.y + plot.h)
-            val y1 = max(top, base).coerceIn(plot.y, plot.y + plot.h)
-            val bar = filledRect(min(left, right), y0, abs(right - left), max(1.0, y1 - y0), colour)
+            // y was already clamped here before the clip layer existed; x was not, and a `coerceIn`
+            // on a bar wholly off the axis leaves a one-pixel smear on the frame rather than nothing,
+            // so both axes go through `clipSpan`, which drops a disjoint bar instead of flattening it.
+            val (y0, y1) = clipSpan(min(top, base), max(top, base), plot.y, plot.y + plot.h) ?: continue
+            val (x0, x1) = clipSpan(min(left, right), max(left, right), plot.x, plot.x + plot.w) ?: continue
+            val bar = filledRect(x0, y0, x1 - x0, max(1.0, y1 - y0), colour)
             if (pickable && n <= pickLimit) decorate(bar, mark, i, why)
             out += bar
         }
@@ -1177,11 +1280,12 @@ class Chart(
         return out
     }
 
-    private fun chromeLines(plot: Rect): List<FLine> {
+    private fun chromeLines(l: Layout): List<FLine> {
+        val plot = l.plot
         val out = mutableListOf<FLine>()
-        title?.let {
+        l.titleLines.forEachIndexed { i, line ->
             out += labelLines(
-                it, plot.x, 10.0 + TITLE_SIZE, Anchor.LEFT,
+                line, plot.x, 10.0 + TITLE_SIZE * (i + 1), Anchor.LEFT,
                 size = TITLE_SIZE, colour = hexColor(signalPalette[0])
             )
         }
@@ -1198,12 +1302,15 @@ class Chart(
             val lines = labelLines(it, 0.0, 0.0, Anchor.CENTRE)
             out += lines.map { line -> line.transform { p -> vec(p.y + 4.0 + LABEL_SIZE, -p.x + cy, p.z) } }
         }
-        footnote()?.let {
-            out += labelLines(it, plot.x, height - 6.0, Anchor.LEFT)
+        // Bottom-anchored, so a one-line footnote sits exactly where it always did and the extra
+        // lines of a wrapped one grow *upwards* into the room `layout` reserved for them.
+        val footLines = l.footnoteLines
+        footLines.forEachIndexed { i, line ->
+            out += labelLines(line, plot.x, height - 6.0 - (footLines.size - 1 - i) * LABEL_SIZE, Anchor.LEFT)
         }
         if (drawLegend()) {
             var x = plot.x + plot.w
-            val y = padTopForLegend()
+            val y = padTopForLegend(l.titleLines.size)
             legendEntries().reversed().forEach { (name, colour) ->
                 val w = measure(name)
                 out += labelLines(name, x, y, Anchor.RIGHT, colour = colour)
@@ -1231,11 +1338,23 @@ class Chart(
         return seen.map { (k, v) -> k to v }
     }
 
-    private fun padTopForLegend(): Double =
-        10.0 + (if (title != null) TITLE_SIZE + 12.0 else 0.0) + LABEL_SIZE
+    private fun padTopForLegend(titleLineCount: Int): Double =
+        10.0 + (if (titleLineCount > 0) titleLineCount * TITLE_SIZE + 12.0 else 0.0) + LABEL_SIZE
 
-    private fun measure(text: String): Double =
-        runCatching { textWidth(text, labelTypeface()) }.getOrElse { text.length * LABEL_SIZE * 0.6 }
+    private fun measure(text: String): Double = chartLabelWidth(text)
+
+    // ── clipping ──────────────────────────────────────────────────────────────────
+
+    /**
+     * [a0]..[a1] intersected with [lo]..[hi]; `null` when they are disjoint, identity when [clip] is
+     * off. A degenerate span that lies inside survives as a degenerate span, because a bar whose
+     * value equals its baseline is a real zero and still gets its one-pixel line.
+     */
+    private fun clipSpan(a0: Double, a1: Double, lo: Double, hi: Double): Pair<Double, Double>? {
+        if (!clip) return a0 to a1
+        if (a1 < lo || a0 > hi) return null
+        return max(a0, lo) to min(a1, hi)
+    }
 }
 
 /** Whether a mark kind carries data a claim can be made about, or is pure decoration. */
@@ -1256,7 +1375,177 @@ private const val TITLE_SIZE = 18.0
 /** Where a label's given position sits relative to the text. */
 private enum class Anchor { LEFT, CENTRE, RIGHT }
 
-private fun labelTypeface() = typeface(Font.MONOSPACED, LABEL_SIZE)
+/**
+ * How many lines a wrapped [Chart.note] may occupy before the rest is elided.
+ *
+ * Four lines of [LABEL_SIZE] is 56 px, 13% of the default 420 px figure. Past that the footnote has
+ * stopped annotating the plot and started competing with it, and the honest thing is to say so with
+ * an ellipsis — the same bargain [Chart.maxPoints] strikes with too much data.
+ */
+private const val MAX_NOTE_LINES = 4
+
+/** How many lines a wrapped [Chart.title] may occupy. A title needing a third line is a note. */
+private const val MAX_TITLE_LINES = 2
+
+/**
+ * One line of chart label text, measured in figure pixels.
+ *
+ * `internal` rather than private because the wrapping in [Chart.note] is only worth anything if a
+ * test can measure the *unwrapped* width it exists to avoid — the counterfactual half of
+ * `ChartGallery`'s frame gate. Falls back to a monospace estimate on a machine with no fonts,
+ * exactly as [labelLines] does, so it never throws in the middle of a figure.
+ */
+internal fun chartLabelWidth(text: String, size: Double = LABEL_SIZE): Double =
+    runCatching { textWidth(text, typeface(Font.MONOSPACED, size)) }
+        .getOrElse { text.length * size * 0.6 }
+
+/**
+ * Greedy word wrap by *measured* width, capped at [maxLines] with an ellipsis on the overflow.
+ *
+ * Measured and not counted, even though the face is monospace, because the fallback in
+ * [chartLabelWidth] is an estimate and the whole point of this function is that the result fits.
+ *
+ * A single word too wide for a line of its own is hard-broken. That is not a nicety: a 200-character
+ * URL in a note is exactly the input that produced the defect this exists to fix, and a wrap that
+ * politely leaves it on one line has not wrapped anything.
+ */
+private fun wrapToWidth(text: String, maxWidth: Double, size: Double, maxLines: Int): List<String> {
+    if (text.isBlank()) return emptyList()
+    if (maxWidth <= 0.0 || chartLabelWidth(text, size) <= maxWidth) return listOf(text)
+
+    val lines = mutableListOf<String>()
+    var line = ""
+    fun push() { if (line.isNotEmpty()) { lines += line; line = "" } }
+    text.split(Regex("\\s+")).filter { it.isNotEmpty() }.forEach { word ->
+        var rest = word
+        while (chartLabelWidth(rest, size) > maxWidth) {
+            push()
+            var cut = rest.length - 1
+            while (cut > 1 && chartLabelWidth(rest.substring(0, cut), size) > maxWidth) cut--
+            lines += rest.substring(0, cut)
+            rest = rest.substring(cut)
+        }
+        val candidate = if (line.isEmpty()) rest else "$line $rest"
+        if (chartLabelWidth(candidate, size) <= maxWidth) line = candidate else { push(); line = rest }
+    }
+    push()
+
+    if (lines.size <= maxLines) return lines
+    val kept = lines.take(maxLines).toMutableList()
+    var last = kept[maxLines - 1]
+    while (last.isNotEmpty() && chartLabelWidth("$last …", size) > maxWidth) last = last.dropLast(1)
+    kept[maxLines - 1] = "$last …"
+    return kept
+}
+
+// ── clipping ───────────────────────────────────────────────────────────────────────────────────
+//
+// In *pixel* space against `Chart.plotRect`, not in data space against the domain, for two reasons
+// worth stating once. A log scale is not affine, so a data-space box and a pixel-space box are not
+// the same box. And bars, bands and rules are positioned in pixels from the plot rectangle to begin
+// with, so a pixel-space clip is the only one that can be applied to all of them uniformly.
+
+/** Whether ([x], [y]) is inside this rectangle, edges included. */
+private fun Rect.holds(x: Double, y: Double): Boolean =
+    x >= this.x && x <= this.x + w && y >= this.y && y <= this.y + h
+
+/**
+ * Liang–Barsky: the part of the segment ([x0], [y0]) → ([x1], [y1]) inside [r], or `null`.
+ *
+ * Returned as `[x, y, x, y]` rather than as objects because this runs once per segment per mark and
+ * a 20,000-point series would otherwise allocate 80,000 pairs to draw one line.
+ *
+ * Lifted from the workaround in `public/docs/tetgen.md`'s fence (`9f7ffc4f2`), which is where this
+ * algorithm was first written in this repo, in a page, because the library would not do it.
+ */
+private fun clipSegment(x0: Double, y0: Double, x1: Double, y1: Double, r: Rect): DoubleArray? {
+    val dx = x1 - x0
+    val dy = y1 - y0
+    val edge = doubleArrayOf(-dx, dx, -dy, dy)
+    val slack = doubleArrayOf(x0 - r.x, (r.x + r.w) - x0, y0 - r.y, (r.y + r.h) - y0)
+    var t0 = 0.0
+    var t1 = 1.0
+    for (k in 0..3) {
+        if (edge[k] == 0.0) {
+            // Parallel to this edge: either wholly on the right side of it or wholly off.
+            if (slack[k] < 0.0) return null
+        } else {
+            val t = slack[k] / edge[k]
+            if (edge[k] < 0.0) { if (t > t1) return null; if (t > t0) t0 = t }
+            else { if (t < t0) return null; if (t < t1) t1 = t }
+        }
+    }
+    return doubleArrayOf(x0 + t0 * dx, y0 + t0 * dy, x0 + t1 * dx, y0 + t1 * dy)
+}
+
+/**
+ * A polyline clipped to [r], as the runs that survive.
+ *
+ * Runs and not one path: a series that leaves the window and comes back did not travel in a straight
+ * line across the outside, and joining the two visible pieces would draw a chord that is not in the
+ * data. Consecutive clipped segments that meet are joined, so a series entirely inside comes back as
+ * exactly one run with its original vertices.
+ */
+private fun clipPolyline(points: List<DoubleArray>, r: Rect): List<List<DoubleArray>> {
+    if (points.isEmpty()) return emptyList()
+    if (points.size == 1) return if (r.holds(points[0][0], points[0][1])) listOf(points) else emptyList()
+    val runs = mutableListOf<MutableList<DoubleArray>>()
+    for (i in 0 until points.size - 1) {
+        val a = points[i]
+        val b = points[i + 1]
+        val seg = clipSegment(a[0], a[1], b[0], b[1], r)
+        if (seg == null) continue
+        // Continue the run in progress only if this piece starts exactly where that one ended. If it
+        // does not, the series went outside in between and this is a new run.
+        val head = runs.lastOrNull()?.last()
+        val continues = head != null && abs(head[0] - seg[0]) <= 1e-9 && abs(head[1] - seg[1]) <= 1e-9
+        val run = if (continues) runs.last() else mutableListOf(doubleArrayOf(seg[0], seg[1])).also { runs += it }
+        run.add(doubleArrayOf(seg[2], seg[3]))
+    }
+    return runs
+}
+
+/**
+ * Sutherland–Hodgman: [points], as a closed polygon, clipped to [r].
+ *
+ * A filled region cannot use [clipPolyline] — cutting its edges leaves it open where it crossed the
+ * window and the triangulator then fills a shape nobody drew. Clipping the polygon against each of
+ * the four half-planes in turn keeps it closed, which is the property the fill depends on. [r] is
+ * convex, which is the algorithm's one precondition.
+ */
+private fun clipPolygon(points: List<DoubleArray>, r: Rect): List<DoubleArray> {
+    var out = points
+    for (k in 0..3) {
+        if (out.size < 3) return emptyList()
+        fun inside(p: DoubleArray) = when (k) {
+            0 -> p[0] >= r.x
+            1 -> p[0] <= r.x + r.w
+            2 -> p[1] >= r.y
+            else -> p[1] <= r.y + r.h
+        }
+        fun crossing(a: DoubleArray, b: DoubleArray): DoubleArray {
+            val denominator = if (k < 2) b[0] - a[0] else b[1] - a[1]
+            if (denominator == 0.0) return a
+            val t = when (k) {
+                0 -> (r.x - a[0]) / denominator
+                1 -> (r.x + r.w - a[0]) / denominator
+                2 -> (r.y - a[1]) / denominator
+                else -> (r.y + r.h - a[1]) / denominator
+            }
+            return doubleArrayOf(a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
+        }
+        val next = mutableListOf<DoubleArray>()
+        for (i in out.indices) {
+            val a = out[i]
+            val b = out[(i + 1) % out.size]
+            val aIn = inside(a)
+            if (aIn) next += a
+            if (aIn != inside(b)) next += crossing(a, b)
+        }
+        out = next
+    }
+    return out
+}
 
 /**
  * A string as glyph outlines, placed with its baseline at ([x], [y]).

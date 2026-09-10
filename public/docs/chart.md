@@ -159,11 +159,37 @@ Series are capped for auto-selection, because a legend stops being readable past
 entries, and the per-datum dots are dropped automatically for a frame with more rows than `pickLimit`. See
 [DataFrames in a Box](dataframe.md).
 
+## A figure stays inside the frame it declared
+
+A `Chart` is fixed geometry, so the panel it lands in fits it — and it fits the geometry's *own*
+bounds, which `linesToHTML` stamps on the wrapper as `data-afield-bounds-*`. That has one
+consequence worth knowing before it bites you: anything drawn outside `width` × `height` is not
+cropped, it **shrinks everything else**.
+
+`clip`, on by default, is what stops that. It does two things, because they are one property:
+
+- **mark geometry is cut to `plotRect`** — lines and area outlines by Liang–Barsky, an area's fill
+  by Sutherland–Hodgman so it stays closed, a point outside dropped whole, a bar clamped on both
+  axes and dropped when no part of it is in the window, a rule or a band that falls off the axis not
+  drawn at all. A clipped series stays *one* `FLine` with several subpaths, so it is still one
+  series, one legend entry, and one thing to hover;
+- **`title` and `note` are wrapped to the figure width**, by measured width, capped at two and four
+  lines with an ellipsis past that.
+
+This only matters when you set an explicit `xDomain` or `yDomain`, because a derived domain always
+covers its own data. When you do, the numbers are stark. A cross section 2 × 3 across charted into a
+0.24 × 0.24 window put its outline 5137 px outside a 780 × 440 frame, and the panel drew the figure
+at **9%** of its declared size. A 142-character note measured 1197 px against 711 px of room and
+drew it at **63%**. Both of those shipped on [a published page](tetgen.md).
+
+Set `clip = false` to get that behaviour back — worth it when you are composing a chart with other
+FLine geometry under a shared transform and want the overflow.
+
 ## Down to geometry
 
 `toFLines()` lowers the whole figure to `List<FLine>` in pixel space and `plotRect()` reports the
-frame the derived insets landed on, so the chart can go into the same drawing as the rest of your
-geometry, under one transform. `toHTML()` goes through
+frame the derived insets landed on — the rectangle mark geometry is clipped to — so the chart can go
+into the same drawing as the rest of your geometry, under one transform. `toHTML()` goes through
 `afield.graphics.linesToHTML`, the same markup `Box.lines` builds.
 
 Labels are glyph outlines, and `labelLines` handles the three things that go wrong with those.

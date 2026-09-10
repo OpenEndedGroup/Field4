@@ -6,6 +6,7 @@ import afield.FLineClick
 import afield.ScaleKind
 import afield.chart
 import afield.getFLineClickCallback
+import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
 import afield.graphics.linesToHTML
 import afield.graphics.outputTo
 import afield.hexColor
@@ -13,6 +14,8 @@ import afield.niceTicks
 import afield.signalPalette
 import afield.stdlib.Vec4
 import afield.stdlib.label
+import afield.stdlib.thickness
+import afield.stdlib.vec
 import afield.toIntersection
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.EncodedImageFormat
@@ -20,8 +23,10 @@ import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.Surface
 import java.io.File
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sin
@@ -224,17 +229,23 @@ object ChartGallery {
                     "something did not draw"
             }
             checkGuttersInked(figure.name, chart, raster)
+            // The sixth gate, applied to every committed figure too: nothing may leave the frame.
+            frameProblems(figure.name, chart).forEach { error(it) }
             val file = File(dir, "chart-${figure.name}.png")
             file.writeBytes(raster.png)
             println(
                 "  ${figure.name}: ${chart.marks.size} mark(s), ${chart.marks.sumOf { it.count }} points, " +
-                    "ink ${"%.1f%%".format(ink * 100)} -> ${file.absolutePath}"
+                    "ink ${"%.1f%%".format(ink * 100)}, " +
+                    "frame overshoot ${"%.2f".format(frameOvershoot(chart))} px " +
+                    "-> ${file.absolutePath}"
             )
         }
 
         checkCounterfactual(dir)
         checkPixelMapping()
         checkInteractivePath()
+        checkNothingLeavesTheFrame(dir)
+        checkPaletteSeparation()
 
         println("chart gallery rendered ${FIGURES.size + 1} figure(s) into ${dir.absolutePath}")
     }
@@ -370,7 +381,383 @@ object ChartGallery {
         println("  interactive markup: ${ids.size} live callback(s), ${html.length} bytes")
     }
 
+    // ── the sixth gate: a figure has to fit inside the figure ─────────────────────
 
+    /**
+     * How far outside its declared `width` x `height` a figure's geometry may reach, in pixels.
+     *
+     * Not zero: glyph outlines overshoot their advance box by a fraction of a pixel, a stroked axis
+     * is drawn on the frame line itself, and `fast2DBounds` is a bounding box over Bézier *control*
+     * points rather than over the curve. Measured over the five committed gallery figures, the worst
+     * overshoot is under a pixel, so 4 px is a floor with room and still four hundred times smaller
+     * than the failure it is here to catch.
+     */
+    private const val FRAME_SLOP = 4.0
+
+    /**
+     * Five green gates shipped `sharp_edge.png` — an empty olive rectangle with the real plot as an
+     * illegible stamp in one corner. This is the sixth, and it is the one that would have caught it.
+     *
+     * The mechanism, which nothing in a build makes visible: a [Chart] declares a `width` x `height`
+     * frame, `Chart.toHTML` hands the lines to `linesToHTML`, and that stamps the geometry's *own*
+     * union bounds onto the wrapper as `data-afield-bounds-*`. The box output panel and the docs
+     * capture then fit **those** bounds. So any geometry outside the declared frame does not get
+     * cropped, it shrinks everything else. Two ways to produce it, both of which shipped:
+     *
+     *  - data outside an explicit `xDomain`/`yDomain`, which used to be mapped and drawn wherever it
+     *    landed — the tetgen corner figure put a cross section 2 x 3 across into a 0.24 x 0.24
+     *    window and the outline landed thousands of pixels off-frame;
+     *  - a long `note`, which used to be one unwrapped line running off the right edge.
+     *
+     * Each case is measured twice. Once for the fix — the figure's bounds are inside the frame, and
+     * the mark geometry is inside `plotRect` — and once for the **counterfactual**: the same numbers
+     * mapped through the figure's own scales *without* the clip must land far outside, and the note
+     * unwrapped must be far too wide. Without that second half a future refactor that quietly
+     * disabled the clip would leave a test that still passes because the input became harmless.
+     */
+    private fun checkNothingLeavesTheFrame(dir: File) {
+        val problems = mutableListOf<String>()
+
+        // ── (i) data outside an explicit domain ───────────────────────────────────
+        // The tetgen corner, reduced to its arithmetic: a closed 2 x 3 outline charted into a
+        // 0.24 x 0.24 window on one of its corners.
+        val outline = listOf(
+            -1.0 to -1.5, 1.0 to -1.5, 1.0 to 1.5, -1.0 to 1.5, -1.0 to -1.5,
+        )
+        val corner = Chart(
+            title = "one corner of a 2 x 3 outline",
+            xLabel = "x", yLabel = "y",
+        ).line("outline", outline.map { it.first }, outline.map { it.second })
+        corner.width = 780.0
+        corner.height = 440.0
+        corner.xDomain = 0.82 to 1.06
+        corner.yDomain = 1.32 to 1.56
+
+        val plot = corner.plotRect()
+        // The counterfactual, computed from the figure's own layout so it cannot drift out of step:
+        // where the unclipped outline *would* land. If this is not far outside, the case is a
+        // tautology and the assertion below proves nothing.
+        val sx = afield.Scale(0.82, 1.06, plot.x, plot.x + plot.w)
+        val sy = afield.Scale(1.32, 1.56, plot.y + plot.h, plot.y)
+        val rawExcursion = outline.maxOf { (x, y) ->
+            val px = sx.toPixel(x)
+            val py = sy.toPixel(y)
+            maxOf(plot.x - px, px - (plot.x + plot.w), plot.y - py, py - (plot.y + plot.h), 0.0)
+        }
+        if (rawExcursion < 2_000.0) {
+            problems += "the corner counterfactual is toothless: unclipped, the outline would only " +
+                "reach ${"%.0f".format(rawExcursion)} px outside a ${plot.w.toInt()}x${plot.h.toInt()} " +
+                "plot, and the case no longer reproduces the defect it is here for"
+        }
+        problems += frameProblems("corner-window", corner)
+        problems += markProblems("corner-window", corner, "outline")
+        println(
+            "  corner-window: unclipped the outline would reach ${"%.0f".format(rawExcursion)} px " +
+                "outside the plot; drawn, ${extentReport(corner)}"
+        )
+
+        // ── (ii) a long note ──────────────────────────────────────────────────────
+        // Verbatim the note the tetgen corner figure ships with, because that is the one that is
+        // published wrong today.
+        val longNote = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
+            "(1.0, 1.5); every level set cuts it off, and halving h halves what is left."
+        val noted = Chart(title = "a long note", xLabel = "x", yLabel = "y", note = longNote)
+            .line("ramp", (0..10).map { it }, (0..10).map { it })
+        noted.width = 780.0
+        noted.height = 440.0
+
+        val oneLineWidth = afield.chartLabelWidth(longNote)
+        val room = noted.width - noted.plotRect().x - 12.0
+        if (oneLineWidth < room + 200.0) {
+            problems += "the long-note counterfactual is toothless: on one line the note measures " +
+                "${"%.0f".format(oneLineWidth)} px against ${"%.0f".format(room)} px of room, which " +
+                "is not enough overhang to prove the wrap did anything"
+        }
+        problems += frameProblems("long-note", noted)
+        println(
+            "  long-note: ${longNote.length} chars, ${"%.0f".format(oneLineWidth)} px on one line " +
+                "against ${"%.0f".format(room)} px of room; drawn, ${extentReport(noted)}"
+        )
+
+        // ── (iii) a note nobody typed ─────────────────────────────────────────────
+        // The survey's most interesting hit: `DataFrameCharts.chart` *generates* a footnote, and on
+        // a categorical x with spare numeric columns it generates one of unbounded length out of the
+        // column names. No caller wrote it, no reviewer saw it, and it is reachable from
+        // `showChart(frame)` — one word.
+        val frame = dataFrameOf(
+            "component", "leakage current", "quiescent draw", "peak inrush", "settling time",
+        )(
+            "regulator", 0.4, 12.0, 320.0, 1.8,
+            "level shifter", 1.1, 3.0, 41.0, 0.3,
+            "charge pump", 0.7, 21.0, 512.0, 4.4,
+        )
+        // `x = "component"` and not auto-selection: with two or more numeric columns the auto path
+        // picks a *numeric* x, and the branch that generates the long footnote is the categorical
+        // one. Naming the categorical column is how a caller reaches it, and it is the obvious thing
+        // to write for a frame shaped like this.
+        val generated = frame.chart(x = "component", title = "a note the library wrote")
+        generated.width = 780.0
+        generated.height = 440.0
+        val generatedNote = generated.note ?: ""
+        val generatedWidth = afield.chartLabelWidth(generatedNote)
+        if (generatedWidth <= generated.width) {
+            problems += "the generated-note case is toothless: DataFrameCharts produced only " +
+                "${"%.0f".format(generatedWidth)} px of footnote on a ${generated.width.toInt()} px " +
+                "frame, so it no longer demonstrates a note nobody typed running off the edge"
+        }
+        problems += frameProblems("generated-note", generated)
+        println(
+            "  generated-note: DataFrameCharts wrote ${generatedNote.length} chars, " +
+                "${"%.0f".format(generatedWidth)} px on one line; drawn, ${extentReport(generated)}"
+        )
+
+        // ── (iv) a log x axis with a datum that is not on it ──────────────────────
+        // Found by reading rather than by report: `resolvedYDomain` drops a non-positive datum on a
+        // log axis and `resolvedXDomain` did not, so one zero in x dragged the domain to hi/100 and
+        // put every small positive datum off the left of the frame — no explicit domain required.
+        val logged = Chart(title = "a log x axis with a zero in it", xLabel = "n", yLabel = "t")
+            .line("measured", listOf(0.0, 0.001, 0.1, 10.0, 1000.0), listOf(1.0, 2.0, 3.0, 4.0, 5.0))
+        logged.xKind = ScaleKind.LOG
+        val (lx0, lx1) = logged.resolvedXDomain()
+        if (lx0 > 0.001) {
+            problems += "a log x domain of ${"%.2e".format(lx0)}..${"%.2e".format(lx1)} excludes the " +
+                "0.001 datum, so it is drawn off the left of the axis"
+        }
+        problems += frameProblems("log-x-with-zero", logged)
+        // The counterfactual, stated as the domain the unfiltered code actually produced —
+        // `padDegenerate(0, 1000, LOG)` takes its `a = b / 100` path and gives 10..1000. Pinned as a
+        // rendering rather than as a comment, so removing the filter fails here and not silently.
+        val unfiltered = Chart(title = "the pre-fix domain", xLabel = "n", yLabel = "t")
+            .line("measured", listOf(0.001, 0.1, 10.0, 1000.0), listOf(2.0, 3.0, 4.0, 5.0))
+        unfiltered.xKind = ScaleKind.LOG
+        unfiltered.xDomain = 10.0 to 1000.0
+        unfiltered.clip = false
+        val leftOfAxis = unfiltered.plotRect().x -
+            (drawnBounds(unfiltered)?.x ?: unfiltered.plotRect().x)
+        if (leftOfAxis < 400.0) {
+            problems += "the log-x counterfactual is toothless: on the pre-fix domain 10..1000 the " +
+                "0.001 datum lands only ${"%.0f".format(leftOfAxis)} px left of the axis"
+        }
+        println(
+            "  log-x-with-zero: domain ${"%.2e".format(lx0)}..${"%.2e".format(lx1)}, " +
+                "${extentReport(logged)}; on the pre-fix domain the smallest datum sat " +
+                "${"%.0f".format(leftOfAxis)} px left of the axis"
+        )
+
+        // Both cases, before and after, as a *panel* would draw them — because "it compiles" is not
+        // verification for anything visual, and the raw 780 x 440 raster is not what a reader saw.
+        // The before half is `clip = false`, which is the behaviour these two defects were, so the
+        // pair is a thing this harness re-derives rather than a screenshot of history.
+        listOf("corner-window" to corner, "long-note" to noted).forEach { (name, chart) ->
+            chart.clip = false
+            val before = renderAsPanelWouldFit(chart)
+            chart.clip = true
+            val after = renderAsPanelWouldFit(chart)
+            File(dir, "chart-clip-$name-before.png").writeBytes(before.first.png)
+            File(dir, "chart-clip-$name-after.png").writeBytes(after.first.png)
+            println(
+                "  $name as a panel fits it: before ${"%.0f%%".format(before.second * 100)}, " +
+                    "after ${"%.0f%%".format(after.second * 100)} of declared size"
+            )
+            if (after.second <= before.second * 1.5) {
+                problems += "$name: the panel fit only went ${"%.2f".format(before.second)} -> " +
+                    "${"%.2f".format(after.second)}, which is not a fix anyone would see"
+            }
+        }
+
+        check(problems.isEmpty()) { "figures left their own frame:\n  - " + problems.joinToString("\n  - ") }
+        println(
+            "  frame gate: 4 regression figures + ${FIGURES.size} gallery figures inside their own " +
+                "frames to within $FRAME_SLOP px"
+        )
+    }
+
+    // ── is the default palette actually distinguishable? ──────────────────────────
+
+    /**
+     * The third cause of `sharp_edge.png` was reported as "four near-identical warm series colours".
+     * Measured rather than judged, and the report is **wrong about the palette** — it is right about
+     * that figure. Both numbers, and the one nobody was looking for, are below.
+     *
+     * CIEDE2000 over the six [signalPalette] entries, 15 unordered pairs: min **23.81**
+     * (orange vs yellow), median 47.48, max 74.94. A working floor for a categorical palette is
+     * around 20–25, so the palette clears it, if only just at its weakest pair.
+     *
+     * What actually happened on that page: its first series was hand-coloured
+     * `vec(1.0, 0.72, 0.35)` = `#ffb859`, which is **ΔE*ab 13.91** from palette slot 1 `#ff9e4a` —
+     * the slot the *second* series then took, because an explicitly coloured mark still consumes
+     * one. Series three and four took green and yellow, and yellow is 23.81 from that orange. So
+     * three warm lines, and the cause is a hand-picked colour colliding with the palette rather than
+     * the palette colliding with itself.
+     *
+     * And the one that was not being looked for: palette slot 5, pink `#ff7a9e`, is **ΔE2000 12.25**
+     * from [CHART_BAD] `#ff6b6b`. A six-series chart with an `expect()` claim recolours its failing
+     * data to a colour a reader cannot tell from its sixth series. Slot 1, orange, is 24.96, which is
+     * borderline. That is a real defect and it is *not* fixed here: moving either colour rewrites
+     * every committed capture in the repo, which is its own change and not a passenger on a clip fix.
+     * It is pinned at its current value so it cannot get worse unnoticed.
+     */
+    private fun checkPaletteSeparation() {
+        val labs = signalPalette.map { toLab(hexColor(it)) }
+        val pairs = mutableListOf<Triple<Double, Int, Int>>()
+        for (i in labs.indices) for (j in i + 1 until labs.size) {
+            pairs += Triple(deltaE2000(labs[i], labs[j]), i, j)
+        }
+        val worst = pairs.minBy { it.first }
+        check(worst.first >= MIN_PALETTE_SEPARATION) {
+            "signalPalette slots ${worst.second} and ${worst.third} are only " +
+                "${"%.2f".format(worst.first)} apart in CIEDE2000, floor is $MIN_PALETTE_SEPARATION — " +
+                "two series in one figure would read as one"
+        }
+
+        val background = toLab(afield.hexColor("#12151c"))
+        val faintest = labs.minOf { deltaE2000(it, background) }
+        check(faintest >= MIN_PALETTE_AGAINST_BACKGROUND) {
+            "a palette colour is only ${"%.2f".format(faintest)} from the figure background, floor is " +
+                "$MIN_PALETTE_AGAINST_BACKGROUND"
+        }
+
+        val badLab = toLab(CHART_BAD)
+        val nearestToBad = labs.withIndex().minBy { deltaE2000(it.value, badLab) }
+        val badGap = deltaE2000(nearestToBad.value, badLab)
+        check(badGap >= MIN_PALETTE_AGAINST_BAD) {
+            "signalPalette slot ${nearestToBad.index} is ${"%.2f".format(badGap)} from CHART_BAD, " +
+                "which is worse than the $MIN_PALETTE_AGAINST_BAD this was already at — a failing " +
+                "datum would be even harder to tell from that series than it already is"
+        }
+        println(
+            "  palette: ${signalPalette.size} colours, ${pairs.size} pairs, CIEDE2000 min " +
+                "${"%.2f".format(worst.first)} (slots ${worst.second}/${worst.third}), median " +
+                "${"%.2f".format(pairs.map { it.first }.sorted()[pairs.size / 2])}, faintest against " +
+                "background ${"%.2f".format(faintest)}; nearest to CHART_BAD is slot " +
+                "${nearestToBad.index} at ${"%.2f".format(badGap)} — a known defect, pinned, not fixed"
+        )
+    }
+
+    /** The weakest pair the default categorical palette is allowed to have. Measured at 23.81. */
+    private const val MIN_PALETTE_SEPARATION = 20.0
+
+    /** How far a series colour must sit from the dark figure background. Measured at 55.60. */
+    private const val MIN_PALETTE_AGAINST_BACKGROUND = 40.0
+
+    /**
+     * A ratchet, not a target. Slot 5 is 12.25 from [CHART_BAD] today and that is already too close;
+     * this stops it getting closer while the real fix — moving one of the two colours, and
+     * re-rendering every committed capture — is done as its own change.
+     */
+    private const val MIN_PALETTE_AGAINST_BAD = 12.0
+
+    /** sRGB in `0..1` to CIE L*a*b* under D65, the space the difference below is defined in. */
+    private fun toLab(c: Vec4): DoubleArray {
+        fun linear(v: Float): Double {
+            val u = v.toDouble().coerceIn(0.0, 1.0)
+            return if (u <= 0.04045) u / 12.92 else ((u + 0.055) / 1.055).pow(2.4)
+        }
+        val r = linear(c.x); val g = linear(c.y); val b = linear(c.z)
+        val x = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047
+        val y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750
+        val z = (r * 0.0193339 + g * 0.1191920 + b * 0.9503041) / 1.08883
+        fun f(t: Double) = if (t > 216.0 / 24389.0) t.pow(1.0 / 3.0) else (841.0 / 108.0) * t + 4.0 / 29.0
+        val fx = f(x); val fy = f(y); val fz = f(z)
+        return doubleArrayOf(116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
+    }
+
+    /**
+     * CIEDE2000, and not the Euclidean CIE76 it replaced, because CIE76 badly overstates the
+     * difference between two saturated colours of similar hue — which is exactly the case being
+     * judged here and exactly where it would have said the palette was fine.
+     */
+    private fun deltaE2000(a: DoubleArray, b: DoubleArray): Double {
+        val (l1, a1, b1) = Triple(a[0], a[1], a[2])
+        val (l2, a2, b2) = Triple(b[0], b[1], b[2])
+        val c1 = hypot(a1, b1); val c2 = hypot(a2, b2)
+        val cBar = (c1 + c2) / 2.0
+        val g = 0.5 * (1 - sqrt(cBar.pow(7) / (cBar.pow(7) + 25.0.pow(7))))
+        val a1p = (1 + g) * a1; val a2p = (1 + g) * a2
+        val c1p = hypot(a1p, b1); val c2p = hypot(a2p, b2)
+        fun hue(ap: Double, bp: Double) = if (ap == 0.0 && bp == 0.0) 0.0
+        else (Math.toDegrees(atan2(bp, ap)) + 360.0) % 360.0
+        val h1p = hue(a1p, b1); val h2p = hue(a2p, b2)
+        val dLp = l2 - l1
+        val dCp = c2p - c1p
+        val dhp = when {
+            c1p * c2p == 0.0 -> 0.0
+            abs(h2p - h1p) <= 180.0 -> h2p - h1p
+            h2p - h1p > 180.0 -> h2p - h1p - 360.0
+            else -> h2p - h1p + 360.0
+        }
+        val dHp = 2 * sqrt(c1p * c2p) * sin(Math.toRadians(dhp) / 2.0)
+        val lBar = (l1 + l2) / 2.0
+        val cBarP = (c1p + c2p) / 2.0
+        val hBarP = when {
+            c1p * c2p == 0.0 -> h1p + h2p
+            abs(h1p - h2p) <= 180.0 -> (h1p + h2p) / 2.0
+            h1p + h2p < 360.0 -> (h1p + h2p + 360.0) / 2.0
+            else -> (h1p + h2p - 360.0) / 2.0
+        }
+        val t = 1 - 0.17 * cos(Math.toRadians(hBarP - 30)) + 0.24 * cos(Math.toRadians(2 * hBarP)) +
+            0.32 * cos(Math.toRadians(3 * hBarP + 6)) - 0.20 * cos(Math.toRadians(4 * hBarP - 63))
+        val dTheta = 30 * exp(-((hBarP - 275) / 25).pow(2))
+        val rc = 2 * sqrt(cBarP.pow(7) / (cBarP.pow(7) + 25.0.pow(7)))
+        val sl = 1 + (0.015 * (lBar - 50).pow(2)) / sqrt(20 + (lBar - 50).pow(2))
+        val sc = 1 + 0.045 * cBarP
+        val sh = 1 + 0.015 * cBarP * t
+        val rt = -sin(Math.toRadians(2 * dTheta)) * rc
+        return sqrt(
+            (dLp / sl).pow(2) + (dCp / sc).pow(2) + (dHp / sh).pow(2) +
+                rt * (dCp / sc) * (dHp / sh)
+        )
+    }
+
+    /** The union of everything a chart draws, in figure pixels. */
+    private fun drawnBounds(chart: Chart): afield.Rect? =
+        chart.toFLines().mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
+            .filter { it.x.isFinite() && it.y.isFinite() && it.w.isFinite() && it.h.isFinite() }
+            .reduceOrNull { a, b -> a.union(b) }
+
+    /** How far outside its declared frame a figure's geometry reaches, in pixels; 0 if none does. */
+    private fun frameOvershoot(chart: Chart): Double {
+        val b = drawnBounds(chart) ?: return 0.0
+        return maxOf(-b.x, -b.y, (b.x + b.w) - chart.width, (b.y + b.h) - chart.height, 0.0)
+    }
+
+    /** Empty if the whole figure is inside its declared frame, else one line saying by how much. */
+    private fun frameProblems(name: String, chart: Chart): List<String> {
+        val b = drawnBounds(chart) ?: return listOf("$name: the figure drew nothing at all")
+        val over = frameOvershoot(chart)
+        if (over <= FRAME_SLOP) return emptyList()
+        val shrink = minOf(chart.width / b.w, chart.height / b.h).coerceAtMost(1.0)
+        return listOf(
+            "$name: geometry reaches ${"%.0f".format(over)} px outside a " +
+                "${chart.width.toInt()}x${chart.height.toInt()} frame — bounds " +
+                "${"%.0f".format(b.x)},${"%.0f".format(b.y)} " +
+                "${"%.0f".format(b.w)}x${"%.0f".format(b.h)}, so a panel fitting those bounds draws " +
+                "this figure at ${"%.0f%%".format(shrink * 100)} of its declared size"
+        )
+    }
+
+    /** `""` if every line of the named series is inside `plotRect`, else one line saying by how much. */
+    private fun markProblems(name: String, chart: Chart, series: String): List<String> {
+        val plot = chart.plotRect()
+        val lines = chart.toFLines().filter { it.label?.startsWith(series) == true }
+        if (lines.isEmpty()) return listOf("$name: no line is labelled `$series`; the case did not draw")
+        val over = lines.mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }.maxOf { b ->
+            maxOf(plot.x - b.x, plot.y - b.y, (b.x + b.w) - (plot.x + plot.w), (b.y + b.h) - (plot.y + plot.h), 0.0)
+        }
+        if (over <= FRAME_SLOP) return emptyList()
+        return listOf(
+            "$name: series `$series` reaches ${"%.0f".format(over)} px outside plotRect " +
+                "(${plot.x.toInt()},${plot.y.toInt()} ${plot.w.toInt()}x${plot.h.toInt()}), and " +
+                "plotRect's own KDoc says the data is clipped to it"
+        )
+    }
+
+    private fun extentReport(chart: Chart): String {
+        val b = drawnBounds(chart) ?: return "nothing"
+        return "bounds ${"%.0f".format(b.x)},${"%.0f".format(b.y)} " +
+            "${"%.0f".format(b.w)}x${"%.0f".format(b.h)} in a " +
+            "${chart.width.toInt()}x${chart.height.toInt()} frame"
+    }
 
     /**
      * Ink outside the plot frame proves the *labels* drew, not only the data.
@@ -420,6 +807,31 @@ object ChartGallery {
      */
     private fun render(chart: Chart): Raster =
         renderLines(chart.toFLines(), chart.width, chart.height)
+
+    /**
+     * A chart as the *box output panel* draws it, with the fit scale it chose.
+     *
+     * [render] rasterises the figure's own coordinates onto a `width` x `height` surface, so anything
+     * off-frame is simply not in the picture and the failure is invisible. A panel does the opposite:
+     * `linesToHTML` stamps the geometry's union bounds on the wrapper and the panel scales *those*
+     * down to fit, which is why one stray point turns the axes into a stamp. This reproduces that
+     * arithmetic — the same 20 px safety inset and `min` of the two ratios as
+     * `someSkiko.kt`'s `computeFitTransform` — so the captures show what a reader sees.
+     */
+    private fun renderAsPanelWouldFit(chart: Chart): Pair<Raster, Double> {
+        val lines = chart.toFLines()
+        val b = drawnBounds(chart) ?: return renderLines(lines, chart.width, chart.height) to 1.0
+        val safety = 20.0
+        val scale = minOf((chart.width - safety * 2) / b.w, (chart.height - safety * 2) / b.h)
+        val placed = lines.map { line ->
+            line.transform { p ->
+                vec((p.x - b.x) * scale + safety, (p.y - b.y) * scale + safety, p.z)
+            }.also { moved ->
+                line.thickness?.let { moved.thickness = it * scale.coerceIn(0.0, 1.0) }
+            }
+        }
+        return renderLines(placed, chart.width, chart.height) to scale
+    }
 
     private fun renderLines(lines: List<afield.graphics.FLine>, wd: Double, ht: Double): Raster {
         val w = wd.toInt()

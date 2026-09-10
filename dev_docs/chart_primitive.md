@@ -287,13 +287,18 @@ a document.
 Two harnesses, deliberately split: `ChartTest` owns the arithmetic, `ChartGallery` owns the pixels.
 
 ```bash
-# 20 assertions: ticks, mapping, log refusals, loudness, expectations
+# 24 assertions: ticks, mapping, log refusals, loudness, expectations, clipping, wrapping
 ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
 
 # six figures plus two grids rendered to real PNGs, with ink floors and two counterfactuals
 CHART_GALLERY_DIR=/tmp/chart-gallery-out \
   python3 tools/run_field_tests.py --id visualization.chart-gallery --port 9477
 ```
+
+A **sixth gate** landed on 2026-09-10, after a figure shipped visibly broken over the five below:
+nothing a chart draws may leave the frame it declared. The mechanism, the measured numbers, the
+before/after pairs and a CIEDE2000 measurement of the default palette are in
+[`chart_clip_and_note.md`](chart_clip_and_note.md).
 
 `ChartGallery`'s floors are set near measurements rather than at "more than nothing":
 

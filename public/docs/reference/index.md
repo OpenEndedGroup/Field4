@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**11938 public symbols across 280 source files**, 6534 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**11939 public symbols across 280 source files**, 6535 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -18,7 +18,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 9 | 420 | 229 (54%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
-| [Visualization](visualization.md) | 15 | 483 | 429 (88%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 376 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 18 | 758 | 323 (42%) | Musical time, as a value. |
 | [Audio](audio.md) | 16 | 841 | 230 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -68,7 +68,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [CeresExpression.kt](solvers.md#ceresexpression-kt) | Solvers | 77 | 44 | Residuals written in Kotlin, compiled to a little register machine, and differentiated exactly by Ceres. |  |
 | [CeresGeometry.kt](solvers.md#ceresgeometry-kt) | Solvers | 351 | 104 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
 | [CeresRealization.kt](polytopes.md#ceresrealization-kt) | Polytopes | 20 | 15 | Optional bridge: run a `RelaxationPlan` on the native Ceres solver instead of the built-in one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [charts.kt](visualization.md#charts-kt) | Visualization | 93 | 85 | Plots — the structure, the scales, and the one renderer for them. | [Charts as FLines](../chart.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
+| [charts.kt](visualization.md#charts-kt) | Visualization | 94 | 86 | Plots — the structure, the scales, and the one renderer for them. | [Charts as FLines](../chart.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 32 | 1 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
 | [clustering.kt](data.md#clustering-kt) | Data | 81 | 81 | Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [CodecVisualization.kt](audio-ai.md#codecvisualization-kt) | Audio AI | 18 | 18 | The EnCodec reconstruction microscope: what a neural codec kept, what it threw away, and what it wrote down in between. | [EnCodec reconstruction microscope](../audio_ai_codec.md) |
