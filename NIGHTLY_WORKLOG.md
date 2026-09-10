@@ -336,8 +336,13 @@ sentence is gone and the number has a denominator, which is what the next night 
   contract's "several branches in flight" case, and a red `checkCodebaseReference` after a sibling
   merge is expected rather than a failure to investigate.
 - **R2 resolved into a measurement rather than a worry.** `four/physics` KDoc coverage is thin: the
-  page is 300/780 (38%) documented, the lowest of the 18 except Solvers (41%) — and the reference's
-  honesty rule prints those as blanks rather than guesses. The blurb carries the orientation instead.
+  page is 300/780 (**38%**) documented. Ranked against all 17 category pages that is **4th lowest**,
+  not the lowest — Audio 27%, Languages 29% and Synthesis 35% are below it, and Solvers is *above* at
+  41%. (I wrote the opposite here from memory and then sorted the index table, which said
+  27/29/35/**38**/41/42/47/50/54/66/72/73/75/81/83/88/96. Corrected rather than deleted, because the
+  first version is the mistake this loop's rules are aimed at.) So the page is unremarkable rather
+  than an outlier, and the reference's honesty rule prints the gaps as blanks rather than guesses.
+  The blurb carries the orientation instead.
   `JoltPhysicsWorld.kt` is the worst single case: 116 symbols, 1 documented. It is now on
   `dev_docs/kdoc_worklist.md`, which is what that file is for.
 - **R3 measured and closed.** The widening added 12967 lines of corpus and changed **one** line on
