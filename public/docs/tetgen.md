@@ -388,12 +388,13 @@ println("  worst node outside the true box: " +
 // One corner of the true cross section, magnified. The exact outline is what TetGen is given and
 // what its boundary reproduces; each level set is a different rounded approximation of it.
 //
-// Clip to the window before charting, and this is not cosmetic. A Chart maps every point it is
-// given into frame pixels and does NOT clip to its own axes, and a box output panel then fits
-// whatever geometry it receives. Hand a cross section 2 x 3 across to a 0.24 x 0.24 window and the
-// outline lands some five thousand pixels outside a 780 x 440 frame; the fit shrinks the figure
-// until that fits, and the axes end up an illegible stamp in one corner. A non-finite point breaks
-// the polyline, so the pieces of one outline stay one series with one legend entry.
+// Clipping to the window before charting was load-bearing here, and is now belt and braces. A
+// Chart used not to clip to its own axes: handed a cross section 2 x 3 across for a 0.24 x 0.24
+// window, it put the outline 5137 px outside a 780 x 440 frame, the output panel fitted THOSE
+// bounds, and the axes ended up an illegible stamp in one corner at 9% of their declared size.
+// `Chart.clip` does this in the library now, for every mark kind. This is left standing only
+// because taking it out would mean recapturing the two unrelated figures on this page as well; it
+// cuts against the same rectangle and draws the same picture.
 val xLo = 0.82; val xHi = 1.06; val yLo = 1.32; val yHi = 1.56
 fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
     val xs = mutableListOf<Double>()
@@ -426,9 +427,9 @@ fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
 }
 
 val exactCorner = clippedToWindow(exactBox.slice(0.0).toPolygons().first())
-// Keep the note and the series labels short. A Chart's note is one unwrapped line: longer than the
-// figure is wide and it is clipped at the frame edge while still counting towards the bounds the
-// output panel fits, so an overlong caption both loses its own tail and shrinks the whole figure.
+// This note had to be short by hand. The one it started with ran to 142 characters, 1197 px against
+// 711 px of room, and it drew the whole figure at 63% of its declared size. A note wraps to the
+// figure width now, so its length is a matter of taste again rather than of layout.
 val corner = Chart(title = "the corner at (1.0, 1.5), in a 0.24 x 0.24 window",
                    xLabel = "x", yLabel = "y",
                    note = "halving h halves the bite the level set takes out of the corner")
