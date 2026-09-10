@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**12746 public symbols across 307 source files**, 6882 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**12746 public symbols across 307 source files**, 6883 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -20,7 +20,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 9 | 420 | 229 (54%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 25 | 1058 | 403 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 19 | 784 | 342 (43%) | Musical time, as a value. |
 | [Audio](audio.md) | 16 | 841 | 230 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
@@ -320,11 +320,11 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 |  |  |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something printable. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 19 |  | [Making a sound in Field: every path there is](../sound_paths.md) |
+| [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Making a sound in Field: every path there is](../sound_paths.md) |
 | [tables.kt](visualization.md#tables-kt) | Visualization | 35 | 35 | Tabular output — the structure, and the one renderer for it. | [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How completions are ranked](../completion_ranking.md) |
 | [Tetgen.kt](simulation.md#tetgen-kt) | Simulation | 19 | 13 |  | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
-| [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 171 | 36 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
+| [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 171 | 36 | Field's pattern language: a compact text notation for musical structure, an exact algebra over cycles, and a scheduler that turns the result into events in seconds. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
 | [Token.kt](languages.md#token-kt) | Languages | 5 | 0 |  |  |
 | [Topology.kt](polytopes.md#topology-kt) | Polytopes | 89 | 61 | The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |

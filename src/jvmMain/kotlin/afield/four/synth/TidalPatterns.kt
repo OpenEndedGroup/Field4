@@ -1,177 +1,185 @@
 @file:afield.CompletionCategory("Patterns")
-/*
- Pattern language and event model for live-coded musical structure.
-
- This is inspired by Tidal's style of compact pattern notation, but the goal
- here is not strict compatibility. The Field-facing API is intentionally small,
- direct, and biased toward generic event streams rather than drum machines or
- sample triggers.
-
- The design split is:
-
- - parse short textual pattern expressions with `pat("...")`
- - keep transforms exact in rational cycle space using `PatQ` / `PatArc`
- - expose scheduled events in seconds at the public boundary
- - allow atoms to mean anything, not just instruments or samples
- - bridge easily into the existing note-process / piano-roll system
- - also launch directly as a generic side-effecting event source
-
- Read the surface from the outside in:
-
- 1. Parse:
-
-        val hats = pat("bd [hh hh] sd")
-
- 2. Transform in cycle space:
-
-        val varied = pat("a b c d")
-            .every(4) { it.rev() }
-            .sometimes { it.fast(2) }
-
-        val layered = stack(
-            pat("bd ~ sd"),
-            pat("[hh hh hh hh]").degradeBy(0.2)
-        )
-
-     Simultaneous events (chords in music contexts):
-
-        val triad = pat("c, e, g")     // All three fire at once during the same beat
-        val voicing = pat("<c e g>, <g b d>")  // Pick one set per cycle, stacked
-
-     Arpeggiate over a chord or note sequence:
-
-        val bassArp = pat("bass bass bass").arp(60, 64, 67, speed = 4) // C major chord, 4 steps
-        val upAndDown = pat("pad").arp(listOf("C3", "E3", "G3"), mode = ArpMode.UPDOWN, speed = 8)
-        val randomArp = pat("keys").arp(48, 50, 52, 55, 57, mode = ArpMode.RANDOM, seed = 42)
-
- 3. Schedule into seconds:
-
-        val events = pat("kick <snare rim>")
-            .scheduled(cps = 2.0, startAt = 1.5)
-            .take(8)
-            .toList()
-
-        events.first().start
-        events.first().duration
-
-     Or align directly to a shared musical clock:
-
-        val master = musicClock()
-        val sixteenth = master.subdivide(4.0)
-        val upcoming = pat("bd [hh hh] sd")
-            .scheduled(cps = 0.5, clock = sixteenth)
-            .take(8)
-            .toList()
-
-     Euclidean suffixes attach directly to the preceding event or subgroup:
-
-        val groove = pat("[bd cp](3,8) hh!2")
-
-     A `k` or `g` in the same brackets asks for a Kolakoski figure over that many steps instead —
-     `k` for the self-describing run-length reading, `g` for the gaps one. See PatKolakoski.kt:
-
-        val selfDescribing = pat("bd(k16) hh*4")
-        val dense = pat("bd(g16,3)")
-
-     Repetition and density are distinct:
-
-        val replicated = pat("bd!2 cp")
-        val densified = pat("bd*2 cp")
-
-     Elongation holds an event across later steps:
-
-        val held = pat("superpiano@3 superpiano")
-
-     Curly-brace polymeters can also take an explicit subdivision:
-
-        val polymeter = pat("{bd hh 808:4}%8")
-        val layeredPolymeter = pat("{bd sd stab, cp arpy cr arpy}")
-
-     Inside square brackets, `|` picks one alternative per cycle:
-
-        val randomChoice = pat("[bd*4|hh*12|cp*2]")
-
-     Atom names can still carry sample-style parameter payloads:
-
-        val parameterized = pat("bd:(1,2,3) hh")
-
-     By default, `scheduled(...)`, `respond(...)`, `respondAhead(...)`, and
-     `asNotes(...)` use the ambient `PatClock` from box context if one exists,
-     otherwise they fall back to `musicClock()`. Pass `clock = null` if you
-     want a zero-based schedule instead.
-
- 4. Map atoms into existing note processes:
-
-        val bass = pat("0 3 5 7").asNotes(cps = 2.0) { event ->
-            val degree = event.value.toIntOrNull() ?: return@asNotes emptyList()
-            listOf(
-                note(
-                    pitch = 36 + degree,
-                    duration = event.duration * 0.95,
-                    start = event.start,
-                    label = event.value
-                )
-            )
-        }
-
- 5. Or respond directly, without assuming anything about the atom:
-
-        pat("flash spin fade").respond(cps = 1.0) { event ->
-            box.display("atoms", "${event.value} @ ${event.start}")
-        }
-
-     If you want callback time slightly before event time, use lookahead:
-
-        pat("flash spin fade").respondAhead(ahead = 0.05, clock = musicClock()) { event ->
-            box.display("atoms", "${event.value} in ${event.start - now}")
-        }
-
-     Scheduled events also retain the source span of the atom that produced
-     them, so live debug tools can point back into the pattern text:
-
-        pat("bd [hh hh] sd").respond(cps = 2.0) { event ->
-            __m("pat").patHighlight(event)
-        }
-
- You can also map the parsed atom text immediately:
-
-        data class Cue(val color: String, val gain: Float)
-
-        val cues = pat("calm bright danger") { atom ->
-            when (atom) {
-                "calm" -> Cue("#0af", 0.15f)
-                "bright" -> Cue("#fff", 0.4f)
-                else -> Cue("#f80", 0.8f)
-            }
-        }
-
- Important units and expectations:
-
- - `start`, `end`, and `duration` on scheduled events are in seconds.
- - `cps` still means cycles per second; that is the conversion boundary from
-   cycle space into scheduled real time.
- - Most pattern combinators are pure transforms over cycle queries.
- - `respond(...)` is a coroutine event driver. `respondAhead(...)` lets the
-   callback see future events before their target `start`.
- - `asNotes(...)` is the memoized bridge when you want the same future schedule
-   to drive playback logic and piano-roll inspection without recomputing it.
-
- Three companion files extend this one, and are worth knowing about before you reach for a
- `map { }`:
-
- - `PatSignals.kt` — continuous/signal patterns (`sine`, `saw`, `perlin`, `rand`) and the
-   discretisers that turn them back into events (`segment`, `struct`, `range`, `quantise`).
- - `PatAlgebra.kt` — how two patterns of different types meet, and whose rhythm survives
-   (`|+|` / `|+` / `+|`, `#`, and named parameters via `with(gain(...), pan(...))`).
- - `PatComposition.kt` — arrangement (`off`, `superimpose`, `jux`, `iter`, `linger`, `randcat`,
-   `shuffle`) and pitch (`scale`, `chords`, `voiceLead`).
-
- The intentionally generic hooks in this file are `respond(...)` and
- `respondAhead(...)`: atoms can drive synth voices, visuals, property
- mutations, OSC, sample playback, box launches, or any other live-coded
- behavior. If the pattern language evolves away from Pat over time, `pat(...)`
- is the stable user-facing name we expect to keep.
+/**
+ * Field's pattern language: a compact text notation for musical structure, an exact algebra over
+ * cycles, and a scheduler that turns the result into events in seconds.
+ *
+ * `pat("bd [hh hh] sd")` parses, the combinators on [PatPattern] transform, and `scheduled(…)`,
+ * `respond(…)` and `asNotes(…)` are the three ways out. What matters about the middle is that it is
+ * exact: a query asks a pattern about a [PatArc], a half-open span of [PatQ] rational cycles, so a
+ * third of a bar sped up, reversed and slowed down again lands where it started. Seconds appear only
+ * at the boundary, and `cps` is where that conversion happens.
+ *
+ * The notation follows Tidal in style rather than to the letter, and an atom is any string rather
+ * than a sample name, so a pattern can drive a synth voice, a property, an OSC send or a box launch
+ * as readily as a drum. The Field-facing API stays small and biased toward generic event streams
+ * rather than toward drum machines or sample triggers.
+ *
+ * The design split is:
+ *
+ * - parse short textual pattern expressions with `pat("...")`
+ * - keep transforms exact in rational cycle space using `PatQ` / `PatArc`
+ * - expose scheduled events in seconds at the public boundary
+ * - allow atoms to mean anything, not just instruments or samples
+ * - bridge easily into the existing note-process / piano-roll system
+ * - also launch directly as a generic side-effecting event source
+ *
+ * Read the surface from the outside in:
+ *
+ * 1. Parse:
+ *
+ *        val hats = pat("bd [hh hh] sd")
+ *
+ * 2. Transform in cycle space:
+ *
+ *        val varied = pat("a b c d")
+ *            .every(4) { it.rev() }
+ *            .sometimes { it.fast(2) }
+ *
+ *        val layered = stack(
+ *            pat("bd ~ sd"),
+ *            pat("[hh hh hh hh]").degradeBy(0.2)
+ *        )
+ *
+ *     Simultaneous events (chords in music contexts):
+ *
+ *        val triad = pat("c, e, g")     // All three fire at once during the same beat
+ *        val voicing = pat("<c e g>, <g b d>")  // Pick one set per cycle, stacked
+ *
+ *     Arpeggiate over a chord or note sequence:
+ *
+ *        val bassArp = pat("bass bass bass").arp(60, 64, 67, speed = 4) // C major chord, 4 steps
+ *        val upAndDown = pat("pad").arp(listOf("C3", "E3", "G3"), mode = ArpMode.UPDOWN, speed = 8)
+ *        val randomArp = pat("keys").arp(48, 50, 52, 55, 57, mode = ArpMode.RANDOM, seed = 42)
+ *
+ * 3. Schedule into seconds:
+ *
+ *        val events = pat("kick <snare rim>")
+ *            .scheduled(cps = 2.0, startAt = 1.5)
+ *            .take(8)
+ *            .toList()
+ *
+ *        events.first().start
+ *        events.first().duration
+ *
+ *     Or align directly to a shared musical clock:
+ *
+ *        val master = musicClock()
+ *        val sixteenth = master.subdivide(4.0)
+ *        val upcoming = pat("bd [hh hh] sd")
+ *            .scheduled(cps = 0.5, clock = sixteenth)
+ *            .take(8)
+ *            .toList()
+ *
+ *     Euclidean suffixes attach directly to the preceding event or subgroup:
+ *
+ *        val groove = pat("[bd cp](3,8) hh!2")
+ *
+ *     A `k` or `g` in the same brackets asks for a Kolakoski figure over that many steps instead —
+ *     `k` for the self-describing run-length reading, `g` for the gaps one. See PatKolakoski.kt:
+ *
+ *        val selfDescribing = pat("bd(k16) hh*4")
+ *        val dense = pat("bd(g16,3)")
+ *
+ *     Repetition and density are distinct:
+ *
+ *        val replicated = pat("bd!2 cp")
+ *        val densified = pat("bd*2 cp")
+ *
+ *     Elongation holds an event across later steps:
+ *
+ *        val held = pat("superpiano@3 superpiano")
+ *
+ *     Curly-brace polymeters can also take an explicit subdivision:
+ *
+ *        val polymeter = pat("{bd hh 808:4}%8")
+ *        val layeredPolymeter = pat("{bd sd stab, cp arpy cr arpy}")
+ *
+ *     Inside square brackets, `|` picks one alternative per cycle:
+ *
+ *        val randomChoice = pat("[bd*4|hh*12|cp*2]")
+ *
+ *     Atom names can still carry sample-style parameter payloads:
+ *
+ *        val parameterized = pat("bd:(1,2,3) hh")
+ *
+ *     By default, `scheduled(...)`, `respond(...)`, `respondAhead(...)`, and
+ *     `asNotes(...)` use the ambient `PatClock` from box context if one exists,
+ *     otherwise they fall back to `musicClock()`. Pass `clock = null` if you
+ *     want a zero-based schedule instead.
+ *
+ * 4. Map atoms into existing note processes:
+ *
+ *        val bass = pat("0 3 5 7").asNotes(cps = 2.0) { event ->
+ *            val degree = event.value.toIntOrNull() ?: return@asNotes emptyList()
+ *            listOf(
+ *                note(
+ *                    pitch = 36 + degree,
+ *                    duration = event.duration * 0.95,
+ *                    start = event.start,
+ *                    label = event.value
+ *                )
+ *            )
+ *        }
+ *
+ * 5. Or respond directly, without assuming anything about the atom:
+ *
+ *        pat("flash spin fade").respond(cps = 1.0) { event ->
+ *            box.display("atoms", "${event.value} @ ${event.start}")
+ *        }
+ *
+ *     If you want callback time slightly before event time, use lookahead:
+ *
+ *        pat("flash spin fade").respondAhead(ahead = 0.05, clock = musicClock()) { event ->
+ *            box.display("atoms", "${event.value} in ${event.start - now}")
+ *        }
+ *
+ *     Scheduled events also retain the source span of the atom that produced
+ *     them, so live debug tools can point back into the pattern text:
+ *
+ *        pat("bd [hh hh] sd").respond(cps = 2.0) { event ->
+ *            __m("pat").patHighlight(event)
+ *        }
+ *
+ * You can also map the parsed atom text immediately:
+ *
+ *        data class Cue(val color: String, val gain: Float)
+ *
+ *        val cues = pat("calm bright danger") { atom ->
+ *            when (atom) {
+ *                "calm" -> Cue("#0af", 0.15f)
+ *                "bright" -> Cue("#fff", 0.4f)
+ *                else -> Cue("#f80", 0.8f)
+ *            }
+ *        }
+ *
+ * Important units and expectations:
+ *
+ * - `start`, `end`, and `duration` on scheduled events are in seconds.
+ * - `cps` still means cycles per second; that is the conversion boundary from
+ *   cycle space into scheduled real time.
+ * - Most pattern combinators are pure transforms over cycle queries.
+ * - `respond(...)` is a coroutine event driver. `respondAhead(...)` lets the
+ *   callback see future events before their target `start`.
+ * - `asNotes(...)` is the memoized bridge when you want the same future schedule
+ *   to drive playback logic and piano-roll inspection without recomputing it.
+ *
+ * Three companion files extend this one, and are worth knowing about before you reach for a
+ * `map { }`:
+ *
+ * - `PatSignals.kt` — continuous/signal patterns (`sine`, `saw`, `perlin`, `rand`) and the
+ *   discretisers that turn them back into events (`segment`, `struct`, `range`, `quantise`).
+ * - `PatAlgebra.kt` — how two patterns of different types meet, and whose rhythm survives
+ *   (`|+|` / `|+` / `+|`, `#`, and named parameters via `with(gain(...), pan(...))`).
+ * - `PatComposition.kt` — arrangement (`off`, `superimpose`, `jux`, `iter`, `linger`, `randcat`,
+ *   `shuffle`) and pitch (`scale`, `chords`, `voiceLead`).
+ *
+ * The intentionally generic hooks in this file are `respond(...)` and
+ * `respondAhead(...)`: atoms can drive synth voices, visuals, property
+ * mutations, OSC, sample playback, box launches, or any other live-coded
+ * behavior. If the pattern language evolves away from Pat over time, `pat(...)`
+ * is the stable user-facing name we expect to keep.
  */
+
 package afield.four.synth
 
 import afield.Box

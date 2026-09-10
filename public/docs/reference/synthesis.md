@@ -4,7 +4,7 @@
 
 Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. One value type carries the whole thing: `Signal` is a block-rendered mono source, `SignalProcessor` is a `Signal` that reads another one, and `/` chains the two, so `saw / OnePole(800.p)` is a filtered sawtooth and nothing else had to be declared. Control values are `Param`, which a plain number becomes with `.p`, and which can itself be driven by a signal. `audio { … }` closes a mono or stereo graph into an `AudioPatchSpec`; return one as a box's last expression and the box stays lit for as long as it is making sound. Underneath is a shared OpenAL engine, one process-wide, with warm-up passes available so the first buffer is not also the JIT's first look at your graph. On top of the oscillator / filter / effect / envelope families sit three larger things that are not Field's own DSP: **Faust**, whose compiler is embedded as WebAssembly and turns a `#faust` box into a running node in the same graph; the **dough** ports, hand-rolled float math whose inaccuracy is part of the sound; and the **spectral** and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at any of it — every function there is an extension on a type declared in this category. Start from `synth.kt`, which is the terse surface a box actually imports; [Sound: from a pattern to something you can hear](../sound.md) is the prose, [Faust](../faust.md) is the embedded compiler with worked examples, and [DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.
 
-25 source file(s), 1058 public symbol(s), 403 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+25 source file(s), 1058 public symbol(s), 404 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2204,6 +2204,637 @@ The stereo tap. It wraps a [`StereoRenderable`](synthesis.md#signal-kt-stereoren
 
 ## synth.kt { #synth-kt }
 
+The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a [`Param`](synthesis.md#signal-kt-param),
+and lowercase names for the things reached for constantly.
+
+Field's default preamble carries `import afield.four.synth.*`, so everything below is already in
+scope in any box. `audio { … }` wraps a mono or stereo graph as an [`AudioPatchSpec`](synthesis.md#fieldaudioengine-kt-audiopatchspec); return one as
+a box's last expression and the shared engine picks it up. Its overloads cover value and lambda,
+mono and stereo, and a `Float` or a [`Param`](synthesis.md#signal-kt-param) for the gain, which is why
+`audio { saw / lpf(800) * 0.1f }` and `audio(mySignal, gain = 0.2f)` are the same function.
+
+The rest of this file is a tour of the surface, family by family, with a worked snippet for each.
+
+Core ideas:
+
+- Plain numbers can become Params with `.p`
+- Lowercase vals such as `saw`, `sine`, `white`, `gate`, and `audioIn`
+  return fresh instances each time they are referenced
+- `/` chains a Signal into a SignalProcessor
+- `audio { ... }` wraps a mono or stereo graph as something launchable
+- `.onBeat(...)` quantizes any launchable return value to the next musical boundary
+- Mono signals cache automatically for the duration of an audio block; built-in
+  stereo nodes do the same, and `hold()` is available for arbitrary stereo renderables
+- Returning a Signal, Pan, StereoSignal, StereoGrainCloud, or AudioPatchSpec
+  from a launched box inserts it into Field's shared audio engine
+
+### Basic oscillators
+
+A bare oscillator:
+
+    sine
+
+Set frequency with Params:
+
+    SineOsc(220.p)
+    SawOsc(55.p)
+    PulseOsc(freq = 110.p, width = 0.2.p)
+
+Since the lowercase vals are getters, these are different oscillators:
+
+    saw + saw
+    sine * 0.1f + square * 0.1f
+
+### Launchable patches
+
+Return a signal directly from a box:
+
+    saw * 0.05f
+
+Or be explicit:
+
+    audio { saw * 0.05f }
+
+Stereo output with panning:
+
+    audio { (saw * 0.1f).pan(-0.35f) }
+    audio { Pan(sine * 0.08f, 0.4.p) }
+
+Launch more than one thing from a box either with `+`:
+
+    audio { saw * 0.05f } +
+        pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
+            __m("pat").patHighlight(event)
+        }
+
+Or by returning a list:
+
+    listOf(
+        audio { saw * 0.05f },
+        pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
+            __m("pat").patHighlight(event)
+        }
+    )
+
+### Quantized launch timing
+
+Delay any launchable return value until the next clock boundary:
+
+    audio { saw * 0.05f }.onBeat(every = 4, preroll = 0.02)
+
+This also works for bundles:
+
+    (audio { saw * 0.05f } +
+        pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
+            __m("pat").patHighlight(event)
+        }).onBeat(every = 4, preroll = 0.02)
+
+In `frames {}` / `loop {}` code you can suspend directly:
+
+    frames {
+        waitForBeat(every = 4, preroll = 0.02)
+        println("downbeat")
+    }
+
+`every` is measured in the chosen clock's units, so `every = 4` means every
+fourth rollover of that clock. Use a subdivided clock when you need finer
+boundaries, or a slower clock / larger `every` when you want measure-level
+quantization.
+
+### Params and modulation
+
+`.p` is the quickest way to build Params:
+
+    440.p
+    0.15.p
+    8.p
+
+Params can also be dynamic:
+
+    val cutoff = Param { 400f + 300f * kotlin.math.sin(time * 0.3f) }
+    saw / MoogLadder(cutoff = cutoff, resonance = 0.2.p)
+
+Or stepped from a sequence, one value per audio block:
+
+    val seq = Param(sequenceOf(220f, 330f, 440f, 550f))
+    SineOsc(seq)
+
+Or as a coroutine-style generator that can `yield(...)` values and see the
+current audio-block `time` directly:
+
+    val seq = Param {
+        var t = 0
+        while (true) {
+            t++
+            if (t > 10) t = 0
+            yield(10f - t + 0.15f * kotlin.math.sin(time * 0.5f))
+        }
+    }
+    SuperSaw() * seq * 0.05f
+
+A Param can be modulated by another signal:
+
+    val freq = 220.p.modulate(sine * 20f)
+    SineOsc(freq)
+
+### Chaining with `/`
+
+`/` keeps processing terse:
+
+    saw / Delay()
+    saw / FreeVerb()
+    white / SVF(mode = SVFMode.BP, cutoff = 1200.p, resonance = 0.6.p)
+
+Longer chains are fine:
+
+    saw / MoogLadder(cutoff = 800.p) / Chorus() / FreeVerb()
+
+Fractional delay is available when you need tuned delay times or resonant
+feedback structures:
+
+    saw / FractionalDelay(delayTime = 0.0125.p, feedback = 0.7.p, mix = 0.6.p)
+
+Remember that `signal / signal` is still division. Chaining only happens when
+the right-hand side is a SignalProcessor.
+
+### Envelopes and gates
+
+Quick percussive patch:
+
+    val g = gate.also { it.open() }
+    SawOsc(80.p) * AR(gate = g, attack = 0.001.p, release = 0.15.p)
+
+Sustained voice:
+
+    val g = gate.also { it.open() }
+    SineOsc(220.p) * ADSR(
+        gate = g,
+        attack = 0.01.p,
+        decay = 0.08.p,
+        sustain = 0.6.p,
+        release = 0.3.p
+    )
+
+Gate can be kept in a top-level var and opened/closed from later fragments:
+
+    var g = gate
+    g.open()
+    SineOsc(110.p) * ADSR(gate = g, release = 0.5.p)
+
+Later:
+
+    g.close()
+
+### Mixing and stereo
+
+Layered voices:
+
+    Mix(
+        SawOsc(110.p),
+        SawOsc(110.5.p),
+        SineOsc(55.p) * 0.3f
+    ) * 0.08f
+
+Manual left/right signal:
+
+    StereoSignal(
+        left = saw * 0.08f,
+        right = tri * 0.08f
+    )
+
+Mono source placed in the stereo field:
+
+    Pan(white / FreeVerb(), Param(-0.2f))
+
+### Audio input
+
+Monitor mono input:
+
+    audioIn * 0.8f
+
+Process input with effects:
+
+    audioIn / Delay(delayTime = 0.2.p, feedback = 0.35.p, mix = 0.4.p)
+
+Stereo input:
+
+    audio(gain = 0.9f) { audioInStereo }
+
+Input into a filter and reverb:
+
+    audio(gain = 0.7f) { audioIn / MoogLadder(cutoff = 1800.p) / FreeVerb() }
+
+### Ableton Link
+
+    val link = abletonLink()
+    println(link.snapshot())
+
+    val syncedWobble = Param { linkPhase.toFloat() }
+    audio { saw(110) * (0.05f + syncedWobble * 0.05f) }
+
+    linkAudioOut()
+    audio { saw * 0.05f }
+
+    audio(gain = 0.8f) { linkAudioInStereo() }
+
+### Granular and sampling examples
+
+Sample playback:
+
+    val sample = AudioSample.generate(0.25f) { t ->
+        kotlin.math.sin((t * 55f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
+    }
+    Sampler(sample) * 0.5f
+
+Granular cloud:
+
+    val sample = AudioSample.generate(1f) { t ->
+        kotlin.math.sin((t * 220f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
+    }
+    GrainCloud(
+        sample,
+        density = 18.p,
+        position = 0.35.p,
+        grainSize = 0.08.p,
+        grainSizeJitter = 0.025.p,
+        densityJitter = 0.5.p,
+        gainJitter = 0.35.p,
+        direction = GrainDirection.BIDIRECTIONAL
+    )
+
+Stereo cloud:
+
+    val sample = AudioSample.generate(1.5f) { t ->
+        kotlin.math.sin((t * 110f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
+    }
+    StereoGrainCloud(sample, density = 12.p, spread = 0.7.p)
+
+Live input cloud:
+
+    audio {
+        LiveGrainCloud(
+            audioIn,
+            bufferSeconds = 6f,
+            position = 0.35.p,
+            density = 24.p,
+            grainSize = 0.07.p,
+            grainSizeJitter = 0.03.p,
+            densityJitter = 0.6.p,
+            pitchJitterCents = 300.p,
+            gainJitter = 0.4.p,
+            direction = GrainDirection.BIDIRECTIONAL
+        ) * 0.6f
+    }
+
+Dirt sample library and polyphonic player:
+
+    val lib = dirt("/path/to/Dirt-Samples")
+    val kit = dirtPlayer(library = lib, voices = 24)
+    audio { kit }
+    kit.trigger("bd:3")
+
+Pattern glue for real Dirt tokens:
+
+    val lib = dirt("/path/to/Dirt-Samples")
+    val kit = dirtPlayer(library = lib)
+    audio { kit }
+    pat("bd:3 [hh*2|hh:3*2] sn:1").playDirt(kit, cps = 2.0)
+
+### FM examples
+
+A simple operator:
+
+    FMOperator(freq = 220.p, feedbackAmount = 0.2f)
+
+Patch-style FM:
+
+    FMPatch.twoOp(
+        carrierFreq = 110f,
+        index = 3.p
+    ) * 0.08f
+
+### String and unison synthesis
+
+Tuned Karplus-Strong resonator driven by a short noise burst:
+
+    val g = gate.also { it.open() }
+    val burst = white * AR(gate = g, attack = 0.0005.p, release = 0.008.p)
+    audio { burst / KarplusStrong(freq = 110.p, decay = 0.992.p, brightness = 0.6.p) }
+
+Hammer-like excitation from an oscillator click:
+
+    val g = gate.also { it.open() }
+    val hammer = impulse * AR(gate = g, attack = 0.0001.p, release = 0.002.p) * 0.8f
+    audio { hammer / KarplusStrong(freq = 220.p, pickPosition = 0.08.p, brightness = 0.75.p) }
+
+SuperSaw:
+
+    supersaw
+    SuperSaw(freq = 55.p, detuneCents = 18.p, blend = 0.9.p)
+    audio { SuperSaw(freq = 110.p, detuneCents = 24.p, blend = 0.85.p) / MoogLadder(cutoff = 1400.p) }
+
+Tidal-inspired super voices:
+
+    supersquare
+    SuperSquare(freq = 110.p, voice = 0.42.p, lfo = 0.8.p)
+    audio { SuperPWM(freq = 82.p, voice = 0.18.p, secondarySweep = 0.72.p) * 0.08f }
+    audio { SuperComparator(freq = 55.p, voice = 0.7.p, resonance = 0.3.p) * 0.06f }
+    audio { SuperChip(freq = 110.p, pitch2 = 2.p, pitch3 = 3.01.p, voice = 0.35.p) * 0.08f }
+    audio { SuperNoise(freq = 90.p, voice = 0.4.p, resonance = 0.2.p) * 0.12f }
+    audio { SuperFork(freq = 440.p) * 0.08f }
+
+### Distortion and folding
+
+Gentle full-wave rectification:
+
+    audio { saw / Rectifier(mode = RectifierMode.FULL_WAVE, mix = 0.35.p) * 0.08f }
+
+Half-wave clipping into a filter:
+
+    audio { sine * 3f / Rectifier(RectifierMode.HALF_WAVE) / SVF(mode = SVFMode.LP, cutoff = 900.p) * 0.05f }
+
+Multi-stage folding with asymmetry:
+
+    audio {
+        sine * 4f /
+            StagedWaveFolder(stages = 4, symmetry = 0.18.p, stageGain = 1.5.p, makeup = 0.4.p) *
+            0.08f
+    }
+
+### Spectral wavetable synthesis
+
+Make a wavetable and inspect it:
+
+    val wt = wavetable
+    display("wt", wt)
+    wt
+
+Use it as a morphable oscillator:
+
+    val wt = wavetable
+    audio {
+        SpectralWavetableOsc(
+            wt,
+            freq = 110.p,
+            position = Param { 0.5f + 0.45f * kotlin.math.sin(time * 0.18f) }
+        ) * 0.08f
+    }
+
+Rewrite the table from a live source while listening to the result:
+
+    val wt = wavetable
+    audio { audioIn / SpectralWavetableRecorder(wt, position = 0.2.p, captureRate = 6.p) }
+    audio {
+        SpectralWavetableOsc(
+            wt,
+            freq = 55.p,
+            position = Param { 0.2f + 0.6f * kotlin.math.sin(time * 0.09f) }
+        ) / FreeVerb() * 0.08f
+    }
+
+You can also write explicit frames:
+
+    val wt = wavetable
+    wt.setFrame(0, fn = { phase: Float ->
+        kotlin.math.sin((phase * kotlin.math.PI.toFloat() * 2f).toDouble()).toFloat()
+    })
+    wt.setFrame(1, fn = { phase: Float -> if (phase < 0.5f) 1f else -1f })
+    SpectralWavetableOsc(wt, freq = 220.p, position = 0.5.p)
+
+### Scheduled notes and piano roll
+
+Build a memoized note process:
+
+    val arp = noteProcess {
+        val chord = listOf(48, 55, 60, 64)
+        var step = 0
+        while (true) {
+            note(
+                pitch = chord[step % chord.size],
+                duration = 0.18,
+                velocity = 0.85,
+                label = "n$step"
+            )
+            rest(0.25)
+            step++
+        }
+    }
+
+Move the playhead and inspect the roll in an output area:
+
+    arp.at(3.5)
+    display("roll", arp.pianoRollSvg())
+
+Inline in the editor, in the style of history / histogram:
+
+    __m("arp").pianoRoll(arp.at(4.0))
+
+Chords and explicit timing are supported inside the process:
+
+    val motif = notes {
+        chord(60, 64, 67, durationSeconds = 0.35, velocity = 0.7)
+        rest(0.5)
+        note(pitch = 72, duration = 0.2, velocity = 1.0, label = "lead")
+        rest(0.25)
+        note(pitch = 67, duration = 0.45, start = 1.2)
+    }
+
+You can also render plain note collections without a process:
+
+    val clip = listOf(
+        note(60, duration = 0.25, start = 0.0),
+        note(64, duration = 0.25, start = 0.25),
+        note(67, duration = 0.5, start = 0.5)
+    )
+    display("clip", clip.pianoRollSvg(nowSeconds = 0.4, futureSeconds = 1.2))
+
+Note processes are resettable and memoized, so the same future schedule can
+drive playback logic and visual inspection without re-running the generator
+for every query.
+
+### Tidal-style patterns
+
+Parse a compact pattern language into timed atom events:
+
+    val hats = pat("bd [hh hh] sd")
+    hats.scheduled(cps = 2.0).take(4).toList()
+
+By default, pattern scheduling uses the ambient `PatClock` in box context if
+one exists, otherwise the shared `musicClock()`. Pass `clock = null` if you
+want a zero-based schedule instead.
+
+Sync multiple patterns against a shared musical clock:
+
+    val master = musicClock()
+    val sixteenth = master.subdivide(4.0)
+    pat("bd [hh hh] sd").scheduled(cps = 0.5, clock = sixteenth).take(8).toList()
+
+The shared `musicClock()` runs at real time, so `cps = 1.0` means one cycle
+per second, which is 60 cycles per minute. If you treat one cycle as a beat,
+that is 60 BPM.
+
+Clocks can be paused and resumed. Already-dispatched future callbacks are not
+recalled when a clock pauses:
+
+    val master = musicClock()
+    master.pause()
+    master.start()
+
+Map atoms into notes so they feed the existing piano-roll / note-process path:
+
+    val degrees = pat("0 3 5 7")
+    val bass = degrees.asNotes(cps = 2.0) { event ->
+        val degree = event.value.toIntOrNull() ?: return@asNotes emptyList()
+        listOf(
+            note(
+                pitch = 36 + degree,
+                duration = event.duration * 0.95,
+                start = event.start,
+                label = event.value
+            )
+        )
+    }
+
+Or respond directly to the atoms as a launchable event source:
+
+    pat("kick <snare rim>").respond(cps = 2.0) { event ->
+        box.display("atoms", event.value.toString())
+    }
+
+Or run the callback slightly ahead of the target event time:
+
+    pat("kick <snare rim>").respondAhead(ahead = 0.05, cps = 2.0, clock = musicClock()) { event ->
+        box.display("atoms", "${event.value} in ${event.start - now}")
+    }
+
+The responder callback gets the atom plus timing metadata (`start`,
+`duration`, `cycleIndex`) and a `box` reference, so it can be used for
+audio triggers, visuals, automation, or arbitrary live-coded side effects.
+
+Patterns can also become scalar functions over time. The first shape is a
+palette of finite-support atoms:
+
+    val fn = patFn(
+        "g:(0,0.12) tent:(1,0.08,0.8) wendland:(-0.5,0.2,0.4)",
+        cps = 2.0,
+        range = 0.9
+    )
+
+    fn(0.0)
+    fn(0.5)
+
+`g:(value,sigma)` defaults the weight to `1.0`. The current shapes are:
+`g`, `tent`, `box`, `wendland`, `spline`, `env`, and `adsr`.
+
+Or directly from an already-parsed pattern:
+
+    val field = pat("env:(0.7,0.03,0.12) adsr:(0.4,0.01,0.08,0.5,0.2)")
+        .asFn(cps = 1.5, range = 0.4)
+
+Or map atoms into typed late-bound function specs:
+
+    val animated = pat("a b c") { atom ->
+        when (atom) {
+            "a" -> gaussianAtom(sigma = 0.08) { x -> kotlin.math.sin(local(x) * 12.0) }
+            "b" -> gaussianAtom(sigma = 0.12) { x -> bipolarRandom() * (1.0 - normalized(x)) }
+            else -> adsrAtom(attack = 0.01, decay = 0.08, sustain = 0.4, release = 0.2) { x ->
+                0.5 + 0.5 * noise(x, frequency = 18.0)
+            }
+        }
+    }.asFn(cps = 2.0, maxLookAhead = 0.5)
+
+### Graph queries and ParamSet surgery
+
+Find params by path. Note the odd-looking concatenation: this cookbook is one
+big block comment, and writing the recursive glob as a single literal would put
+a star-slash in the middle of it, closing the comment right here and breaking
+the file. In your own code (and in public/docs/graph_query.md) write the glob
+directly as one string — do not copy the concatenation out of here.
+
+    val gains = someSignal matches ("**" + "/gain")
+    gains
+
+Tweak a whole set together:
+
+    (someSignal matches ("**" + "/gain")).set(0.15f)
+    (someSignal matches ("**" + "/freq")).scale(0.5f)
+
+Randomize and shape a set:
+
+    val cutoffs = someSignal matches ("**" + "/cutoff")
+    cutoffs.random(200f..4000f)
+    cutoffs.rewrite {
+        normalize(300f..1800f)
+        jitter(60f)
+    }
+
+Add shared or per-parameter modulation:
+
+    (someSignal matches ("**" + "/gain")).modulate(sine * 0.1f, mode = ParamModulationMode.ADD)
+
+    (someSignal matches ("**" + "/freq")).modulate { entry, index ->
+        SineOsc((0.08f + index * 0.03f).p) * (entry.base * 0.02f)
+    }
+
+Drive a set from dynamic supplier expressions:
+
+    val freqs = someSignal matches ("**" + "/freq")
+    freqs.supply { entry, index, group ->
+        group.mean + kotlin.math.sin(time * (0.2f + index * 0.05f)) * 12f
+    }
+
+If you want the generic path wrapper instead of only Params:
+
+    val paths = someSignal.graphPaths("**")
+    paths
+    paths.matching("**" + "/input").writable()
+
+### Visualizers and scopes
+
+Audio patches retain a recent stereo output history, so once a patch is
+running you can inspect it directly:
+
+    val patch = audio(gain = 0.1f) { saw / FreeVerb() }
+    display("audio", patch.summaryHtml())
+    patch
+
+If you want to tap an internal point in the graph, use a Scope:
+
+    val sc = (saw / MoogLadder(cutoff = 900.p)).scope()
+    audio { sc * 0.1f }
+    sc.liveWaveform("scope")
+
+Stereo graphs can be tapped too:
+
+    val sc = audioInStereo.scope()
+    audio(gain = 0.8f) { sc }
+    sc.liveSpectrum("stereo")
+
+`waveformSvg()` and `spectrumSvg()` are snapshots of the current trace. If you
+call them before the scoped signal has actually been rendered, they will say
+"Waiting for audio". Use `liveWaveform(...)`, `liveSpectrum(...)`, or
+`liveSummary(...)` when you want the output area to keep updating while audio runs.
+
+Stateful processors expose compact state views:
+
+    val env = ADSR(gate = gate.also { it.open() }, release = 0.4.p)
+    display("env", env.stateSvg())
+
+    val comp = Compressor(threshold = (-18).p, ratio = 6.p)
+    display("comp", comp.stateSvg())
+    audio { audioIn / comp }
+
+### Engine access
+
+If you need explicit engine access:
+
+    val engine = audioEngine()
+    val handle = engine.register(audio { saw * 0.05f })
+    handle.close()
+
+Most live coding should just return the graph from the box and let Field's
+launch/stop manage registration automatically.
+
 `src/jvmMain/kotlin/afield/four/synth/synth.kt` — [read the source](source/jvmMain/afield/four/synth/synth/)
 
 **Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
@@ -2212,82 +2843,82 @@ The stereo tap. It wraps a [`StereoRenderable`](synthesis.md#signal-kt-stereoren
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">audioEngine</span><span class="p">(</span><span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">bufferSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">queuedBufferCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">inputChannels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldAudioEngine</span></code>](source/jvmMain/afield/four/synth/synth/#L674) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">signal</span><span class="p">:</span> <span class="nc">Signal</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">pan</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">0f</span><span class="p">)</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L689)<span class="sig-overloads">+1 overload · also Float</span> |  |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">pan</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Signal</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L694)<span class="sig-overloads">+1 overload · also Param</span> |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">signal</span><span class="p">:</span> <span class="nc">StereoRenderable</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L713)<span class="sig-overloads">+1 overload · also Float</span> |  |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">StereoRenderable</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L718)<span class="sig-overloads">+1 overload · also Param</span> |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">audioInput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L732) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">audioInputStereo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L734) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">abletonLink</span><span class="p">(</span><span class="n">tempo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">peerName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">quantum</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkAudioInterface</span></code>](source/jvmMain/afield/four/synth/synth/#L736) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkTiming</span><span class="p">(</span><span class="n">tempo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">peerName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">quantum</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkTimingSnapshot</span></code>](source/jvmMain/afield/four/synth/synth/#L746) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioOut</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">tempo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">peerName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">quantum</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="n">monitorLocal</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">engine</span><span class="p">:</span> <span class="nc">FieldAudioEngine</span> <span class="o">=</span> <span class="nf">audioEngine</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkAudioInterface</span></code>](source/jvmMain/afield/four/synth/synth/#L756) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioIn</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L769) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioInStereo</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L771) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioInput</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L773) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioInputStereo</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L775) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">pan</span><span class="p">(</span><span class="n">position</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">0f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pan</span></code>](source/jvmMain/afield/four/synth/synth/#L779)<span class="sig-overloads">+1 overload · also Float</span> |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Gate</span></code>](source/jvmMain/afield/four/synth/synth/#L862) | A gate that is immediately open |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">sine</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">SineOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L866) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">saw</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">SawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L867) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">square</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">SquareOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L868) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tri</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L869) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">pulse</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">PulseOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L870) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fm</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">ratio</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">feedback</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L876) | `fm(110, index = 3)` — twoOp FM patch |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">ar</span><span class="p">(</span><span class="n">attack</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">release</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L889) | AR envelope with auto-opened gate |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">adsr</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L893) | ADSR envelope with auto-opened gate |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">perc</span><span class="p">(</span><span class="n">release</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">attack</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L899) | Percussive hit — short attack, variable release |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span><span class="p">:</span> <span class="nc">MoogLadder</span></code>](source/jvmMain/afield/four/synth/synth/#L906)<span class="sig-overloads">+1 overload · also Param</span> |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">hpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">SVF</span></code>](source/jvmMain/afield/four/synth/synth/#L911) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">bpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">SVF</span></code>](source/jvmMain/afield/four/synth/synth/#L915) | Creates a band-pass SVF filter centered on `cutoff`, with `resonance` shaping the band width. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reverb</span><span class="p">(</span><span class="n">roomSize</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.33</span><span class="p">)</span><span class="p">:</span> <span class="nc">FreeVerb</span></code>](source/jvmMain/afield/four/synth/synth/#L922) | Creates a FreeVerb reverb with room size, damping, and dry/wet mix controls. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">springReverb</span><span class="p">(</span><span class="n">tension</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.72</span><span class="p">,</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.65</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.28</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpringReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L925) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">spring</span><span class="p">(</span><span class="n">tension</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.72</span><span class="p">,</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.65</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.28</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpringReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L933) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">convolutionReverb</span><span class="p">(</span><span class="n">impulse</span><span class="p">:</span> <span class="nc">AudioSample</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.35</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">normalize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">maxIrSamples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8192</span><span class="p">)</span><span class="p">:</span> <span class="nc">ConvolutionReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L936) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reverbImpulse</span><span class="p">(</span><span class="n">lengthSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.45</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.65</span><span class="p">,</span> <span class="n">diffusion</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">44100</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioSample</span></code>](source/jvmMain/afield/four/synth/synth/#L951) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">delay</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">feedback</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Delay</span></code>](source/jvmMain/afield/four/synth/synth/#L967) | Creates a delay effect with controllable delay time, feedback, and dry/wet mix. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">chorus</span><span class="p">(</span><span class="n">rate</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.003</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chorus</span></code>](source/jvmMain/afield/four/synth/synth/#L970) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">zaw</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">ZawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L983) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">pulze</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duty</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">PulzeOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L985) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">phaser</span><span class="p">(</span><span class="n">rate</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">sweep</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">600</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Phaser</span></code>](source/jvmMain/afield/four/synth/synth/#L989) | LFO-swept cascaded notches: `supersaw / phaser(rate = 0.4)` |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">chamberlinLpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ChamberlinLowpass</span></code>](source/jvmMain/afield/four/synth/synth/#L1005) | The superdough 2-pole lowpass — snarlier resonance than `lpf`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">softDistort</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">postGain</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">SoftDistort</span></code>](source/jvmMain/afield/four/synth/synth/#L1009) | Soft clipper with exponential drive: `saw / softDistort(2)` |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">curvedAdsr</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">attackCurve</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">decayCurve</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CurvedADSR</span></code>](source/jvmMain/afield/four/synth/synth/#L1013) | ADSR with shaped curves and click-free retrigger, auto-opened gate. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">plateReverb</span><span class="p">(</span><span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">preDelay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">diffusion</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.70</span><span class="p">)</span><span class="p">:</span> <span class="nc">PlateReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L1029) | Dattorro plate reverb — mono in, decorrelated stereo out: `(saw(110) / lpf(1200)).plateReverb(decay = 0.85)` |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">plate</span><span class="p">(</span><span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">)</span><span class="p">:</span> <span class="nc">PlateReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L1046) | Alias for `plateReverb`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">stack</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/synth/#L1055) | Layer two patterns: `pat("bd").stack(pat("hh"))` |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">fn</span><span class="p">(</span><span class="n">cps</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">range</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">outside</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/four/synth/synth/#L1059) | Terse `.asFn()` alias: `pat("g:(0,0.08)").fn(cps = 2.0)` |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">audioEngine</span><span class="p">(</span><span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">bufferSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">queuedBufferCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">inputChannels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldAudioEngine</span></code>](source/jvmMain/afield/four/synth/synth/#L650) | The process-wide [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine), started if it was not already running. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">signal</span><span class="p">:</span> <span class="nc">Signal</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">pan</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">0f</span><span class="p">)</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L665)<span class="sig-overloads">+1 overload · also Float</span> |  |
+| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">pan</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Signal</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L670)<span class="sig-overloads">+1 overload · also Param</span> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">signal</span><span class="p">:</span> <span class="nc">StereoRenderable</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L689)<span class="sig-overloads">+1 overload · also Float</span> |  |
+| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">audio</span><span class="p">(</span><span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">StereoRenderable</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span></code>](source/jvmMain/afield/four/synth/synth/#L694)<span class="sig-overloads">+1 overload · also Param</span> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">audioInput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L708) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">audioInputStereo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L710) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">abletonLink</span><span class="p">(</span><span class="n">tempo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">peerName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">quantum</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkAudioInterface</span></code>](source/jvmMain/afield/four/synth/synth/#L712) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkTiming</span><span class="p">(</span><span class="n">tempo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">peerName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">quantum</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkTimingSnapshot</span></code>](source/jvmMain/afield/four/synth/synth/#L722) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioOut</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">tempo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">peerName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field4&quot;</span><span class="p">,</span> <span class="n">quantum</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="n">monitorLocal</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">engine</span><span class="p">:</span> <span class="nc">FieldAudioEngine</span> <span class="o">=</span> <span class="nf">audioEngine</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkAudioInterface</span></code>](source/jvmMain/afield/four/synth/synth/#L732) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioIn</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L745) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioInStereo</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L747) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioInput</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L749) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">linkAudioInputStereo</span><span class="p">(</span><span class="n">channelName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L751) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">pan</span><span class="p">(</span><span class="n">position</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">0f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pan</span></code>](source/jvmMain/afield/four/synth/synth/#L755)<span class="sig-overloads">+1 overload · also Float</span> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Gate</span></code>](source/jvmMain/afield/four/synth/synth/#L838) | A gate that is immediately open |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">sine</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">SineOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L842) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">saw</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">SawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L843) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">square</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">SquareOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L844) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tri</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L845) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pulse</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">PulseOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L846) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fm</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">ratio</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">feedback</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L852) | `fm(110, index = 3)` — twoOp FM patch |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">ar</span><span class="p">(</span><span class="n">attack</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">release</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L865) | AR envelope with auto-opened gate |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">adsr</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L869) | ADSR envelope with auto-opened gate |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">perc</span><span class="p">(</span><span class="n">release</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">attack</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L875) | Percussive hit — short attack, variable release |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span><span class="p">:</span> <span class="nc">MoogLadder</span></code>](source/jvmMain/afield/four/synth/synth/#L882)<span class="sig-overloads">+1 overload · also Param</span> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">hpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">SVF</span></code>](source/jvmMain/afield/four/synth/synth/#L887) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">bpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">SVF</span></code>](source/jvmMain/afield/four/synth/synth/#L891) | Creates a band-pass SVF filter centered on `cutoff`, with `resonance` shaping the band width. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reverb</span><span class="p">(</span><span class="n">roomSize</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.33</span><span class="p">)</span><span class="p">:</span> <span class="nc">FreeVerb</span></code>](source/jvmMain/afield/four/synth/synth/#L898) | Creates a FreeVerb reverb with room size, damping, and dry/wet mix controls. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">springReverb</span><span class="p">(</span><span class="n">tension</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.72</span><span class="p">,</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.65</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.28</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpringReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L901) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">spring</span><span class="p">(</span><span class="n">tension</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.72</span><span class="p">,</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.65</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.28</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpringReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L909) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">convolutionReverb</span><span class="p">(</span><span class="n">impulse</span><span class="p">:</span> <span class="nc">AudioSample</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.35</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">normalize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">maxIrSamples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8192</span><span class="p">)</span><span class="p">:</span> <span class="nc">ConvolutionReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L912) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reverbImpulse</span><span class="p">(</span><span class="n">lengthSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.45</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.65</span><span class="p">,</span> <span class="n">diffusion</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">44100</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioSample</span></code>](source/jvmMain/afield/four/synth/synth/#L927) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">delay</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">feedback</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Delay</span></code>](source/jvmMain/afield/four/synth/synth/#L943) | Creates a delay effect with controllable delay time, feedback, and dry/wet mix. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">chorus</span><span class="p">(</span><span class="n">rate</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.003</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chorus</span></code>](source/jvmMain/afield/four/synth/synth/#L946) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">zaw</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">ZawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L959) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pulze</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duty</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">PulzeOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L961) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">phaser</span><span class="p">(</span><span class="n">rate</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">sweep</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">600</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Phaser</span></code>](source/jvmMain/afield/four/synth/synth/#L965) | LFO-swept cascaded notches: `supersaw / phaser(rate = 0.4)` |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">chamberlinLpf</span><span class="p">(</span><span class="n">cutoff</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ChamberlinLowpass</span></code>](source/jvmMain/afield/four/synth/synth/#L981) | The superdough 2-pole lowpass — snarlier resonance than `lpf`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">softDistort</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">postGain</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">SoftDistort</span></code>](source/jvmMain/afield/four/synth/synth/#L985) | Soft clipper with exponential drive: `saw / softDistort(2)` |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">curvedAdsr</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">attackCurve</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">decayCurve</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span> <span class="o">=</span> <span class="nf">openGate</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CurvedADSR</span></code>](source/jvmMain/afield/four/synth/synth/#L989) | ADSR with shaped curves and click-free retrigger, auto-opened gate. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">plateReverb</span><span class="p">(</span><span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">preDelay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">diffusion</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.70</span><span class="p">)</span><span class="p">:</span> <span class="nc">PlateReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L1005) | Dattorro plate reverb — mono in, decorrelated stereo out: `(saw(110) / lpf(1200)).plateReverb(decay = 0.85)` |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">plate</span><span class="p">(</span><span class="n">decay</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">mix</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">)</span><span class="p">:</span> <span class="nc">PlateReverb</span></code>](source/jvmMain/afield/four/synth/synth/#L1022) | Alias for `plateReverb`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">stack</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/synth/#L1031) | Layer two patterns: `pat("bd").stack(pat("hh"))` |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">fn</span><span class="p">(</span><span class="n">cps</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">range</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">outside</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/four/synth/synth/#L1035) | Terse `.asFn()` alias: `pat("g:(0,0.08)").fn(cps = 2.0)` |
 
 ### Top-level values { #synth-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">p</span><span class="p">:</span> <span class="nc">Param</span></code>](source/jvmMain/afield/four/synth/synth/#L781) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">sine</span><span class="p">:</span> <span class="nc">SineOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L784) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">saw</span><span class="p">:</span> <span class="nc">SawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L787) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">square</span><span class="p">:</span> <span class="nc">SquareOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L790) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">pulse</span><span class="p">:</span> <span class="nc">PulseOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L793) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">tri</span><span class="p">:</span> <span class="nc">TriOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L796) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">phasor</span><span class="p">:</span> <span class="nc">Phasor</span></code>](source/jvmMain/afield/four/synth/synth/#L799) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">impulse</span><span class="p">:</span> <span class="nc">Impulse</span></code>](source/jvmMain/afield/four/synth/synth/#L802) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">white</span><span class="p">:</span> <span class="nc">WhiteNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L805) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">pink</span><span class="p">:</span> <span class="nc">PinkNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L808) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">brown</span><span class="p">:</span> <span class="nc">BrownNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L811) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">supersaw</span><span class="p">:</span> <span class="nc">SuperSaw</span></code>](source/jvmMain/afield/four/synth/synth/#L814) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">supersquare</span><span class="p">:</span> <span class="nc">SuperSquare</span></code>](source/jvmMain/afield/four/synth/synth/#L817) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">superpwm</span><span class="p">:</span> <span class="nc">SuperPWM</span></code>](source/jvmMain/afield/four/synth/synth/#L820) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">supercomparator</span><span class="p">:</span> <span class="nc">SuperComparator</span></code>](source/jvmMain/afield/four/synth/synth/#L823) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">superchip</span><span class="p">:</span> <span class="nc">SuperChip</span></code>](source/jvmMain/afield/four/synth/synth/#L826) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">supernoise</span><span class="p">:</span> <span class="nc">SuperNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L829) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">superfork</span><span class="p">:</span> <span class="nc">SuperFork</span></code>](source/jvmMain/afield/four/synth/synth/#L832) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">wavetable</span><span class="p">:</span> <span class="nc">SpectralWavetable</span></code>](source/jvmMain/afield/four/synth/synth/#L835) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">rectifier</span><span class="p">:</span> <span class="nc">Rectifier</span></code>](source/jvmMain/afield/four/synth/synth/#L838) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fold</span><span class="p">:</span> <span class="nc">StagedWaveFolder</span></code>](source/jvmMain/afield/four/synth/synth/#L841) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span></code>](source/jvmMain/afield/four/synth/synth/#L844) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">audioIn</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L847) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">audioInStereo</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L850) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">hz</span><span class="p">:</span> <span class="nc">Param</span></code>](source/jvmMain/afield/four/synth/synth/#L856) | Self-documenting frequency param: `440.hz` |
-| [<code class="highlight"><span class="k">val</span> <span class="n">zaw</span><span class="p">:</span> <span class="nc">ZawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L976) | Naive, aliasing sawtooth — dough's `zaw`. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">pulze</span><span class="p">:</span> <span class="nc">PulzeOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L980) | Naive, aliasing pulse — dough's `pulze`. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">p</span><span class="p">:</span> <span class="nc">Param</span></code>](source/jvmMain/afield/four/synth/synth/#L757) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sine</span><span class="p">:</span> <span class="nc">SineOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L760) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">saw</span><span class="p">:</span> <span class="nc">SawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L763) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">square</span><span class="p">:</span> <span class="nc">SquareOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L766) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">pulse</span><span class="p">:</span> <span class="nc">PulseOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L769) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">tri</span><span class="p">:</span> <span class="nc">TriOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L772) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">phasor</span><span class="p">:</span> <span class="nc">Phasor</span></code>](source/jvmMain/afield/four/synth/synth/#L775) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">impulse</span><span class="p">:</span> <span class="nc">Impulse</span></code>](source/jvmMain/afield/four/synth/synth/#L778) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">white</span><span class="p">:</span> <span class="nc">WhiteNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L781) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">pink</span><span class="p">:</span> <span class="nc">PinkNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L784) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">brown</span><span class="p">:</span> <span class="nc">BrownNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L787) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">supersaw</span><span class="p">:</span> <span class="nc">SuperSaw</span></code>](source/jvmMain/afield/four/synth/synth/#L790) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">supersquare</span><span class="p">:</span> <span class="nc">SuperSquare</span></code>](source/jvmMain/afield/four/synth/synth/#L793) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">superpwm</span><span class="p">:</span> <span class="nc">SuperPWM</span></code>](source/jvmMain/afield/four/synth/synth/#L796) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">supercomparator</span><span class="p">:</span> <span class="nc">SuperComparator</span></code>](source/jvmMain/afield/four/synth/synth/#L799) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">superchip</span><span class="p">:</span> <span class="nc">SuperChip</span></code>](source/jvmMain/afield/four/synth/synth/#L802) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">supernoise</span><span class="p">:</span> <span class="nc">SuperNoise</span></code>](source/jvmMain/afield/four/synth/synth/#L805) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">superfork</span><span class="p">:</span> <span class="nc">SuperFork</span></code>](source/jvmMain/afield/four/synth/synth/#L808) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">wavetable</span><span class="p">:</span> <span class="nc">SpectralWavetable</span></code>](source/jvmMain/afield/four/synth/synth/#L811) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">rectifier</span><span class="p">:</span> <span class="nc">Rectifier</span></code>](source/jvmMain/afield/four/synth/synth/#L814) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fold</span><span class="p">:</span> <span class="nc">StagedWaveFolder</span></code>](source/jvmMain/afield/four/synth/synth/#L817) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">Gate</span></code>](source/jvmMain/afield/four/synth/synth/#L820) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">audioIn</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/four/synth/synth/#L823) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">audioInStereo</span><span class="p">:</span> <span class="nc">StereoSignal</span></code>](source/jvmMain/afield/four/synth/synth/#L826) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">hz</span><span class="p">:</span> <span class="nc">Param</span></code>](source/jvmMain/afield/four/synth/synth/#L832) | Self-documenting frequency param: `440.hz` |
+| [<code class="highlight"><span class="k">val</span> <span class="n">zaw</span><span class="p">:</span> <span class="nc">ZawOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L952) | Naive, aliasing sawtooth — dough's `zaw`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">pulze</span><span class="p">:</span> <span class="nc">PulzeOsc</span></code>](source/jvmMain/afield/four/synth/synth/#L956) | Naive, aliasing pulse — dough's `pulze`. |
 
 </div>
