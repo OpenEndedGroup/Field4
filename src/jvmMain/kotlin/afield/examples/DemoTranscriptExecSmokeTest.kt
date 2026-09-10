@@ -327,6 +327,12 @@ object DemoTranscriptExecSmokeTest {
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
         "graphics_renderer_launch",
+        // These open a native Vulkan renderer; real pixels and reloads are checked separately.
+        "path_tracing_materials",
+        "path_tracing_glass",
+        "path_tracing_gltf",
+        "path_tracing_hidden_environment",
+        "path_tracing_material_shader_check",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",

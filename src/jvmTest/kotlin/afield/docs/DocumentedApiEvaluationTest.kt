@@ -165,6 +165,18 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        "blitToScreen" to
+            "path_tracing.md; path-tracing transcripts are COMPILE_ONLY because presentation needs " +
+                "a native Vulkan window. Live GPU checks exercise the separate display pass.",
+        "pathTracingHere" to
+            "path_tracing.md; creating the tracer needs a live renderer in Field graph context. " +
+                "Live material-box checks exercise installation and shader reload outside headless CI.",
+        "readLinear" to
+            "path_tracing.md; accumulation readback needs a live Vulkan render target. " +
+                "PathTraceGpuSmoke and PathTraceGltfGpuSmoke exercise it in live renderer checks.",
+        "shadeMaterial" to
+            "path_tracing.md; this is a GLSL material hook in the editable compute shader. " +
+                "Live material-box checks exercise it on a GPU; headless CI compiles the transcript.",
         "eyeGazeState" to
             "vision.md; openxr_eye_intersection is COMPILE_ONLY. The target requires a live " +
                 "Vulkan/OpenXR session. Native binding calls and state validity are tested separately.",

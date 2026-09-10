@@ -146,6 +146,7 @@ nav:
       - GPU State: gpu_state.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
+      - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md
       - Field Probes: field_probes.md

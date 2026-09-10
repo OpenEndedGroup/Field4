@@ -18,6 +18,7 @@ import afield.stdlib.f
 import afield.stdlib.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.KHRAccelerationStructure.VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
@@ -152,6 +153,10 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             ci.ssbo.forEach     { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
             ci.textures.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
             ci.images.forEach   { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            ci.accelerationStructures.forEach { setsNeeded.computeIfAbsent(it.set) { mutableListOf() }.add(it.binding) }
+            require(ci.accelerationStructures.isEmpty() || parameters.renderer.device.supportsRayQuery) {
+                "Compute acceleration structures require enabled KHR ray queries"
+            }
 
             setsNeeded.keys.toList().forEach { s ->
                 setsNeeded[s] = setsNeeded[s]!!.distinct().sorted().toMutableList()
@@ -202,6 +207,14 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                         }
                     }
 
+                    ci.accelerationStructures.forEach {
+                        if (it.set == set && it.binding == bind) {
+                            stages = stages or VK_SHADER_STAGE_COMPUTE_BIT
+                            kind = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
+                            lens.add(1)
+                        }
+                    }
+
                     if (kind == 0) throw IllegalArgumentException(" couldn't find binding $bind for set $set in $bindingList")
                     kinds.add(kind)
                 }
@@ -224,7 +237,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp)
                         ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(), kind)
+                    uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
                 }
             }
 
@@ -280,6 +293,12 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     val image = parameters.imageResolver(it as Introspected.Image)!!
                     uniforms[it.name] = ImagePointer(it.name, it, source = null, image)
                 }
+            }
+
+            ci.accelerationStructures.forEach { accel ->
+                val resolved = parameters.accelerationStructureResolver(accel)
+                    ?: throw IllegalArgumentException("cannot link acceleration structure ${accel.name}")
+                uniforms[accel.name] = RayTracingModule.AccelerationStructurePointer(accel.name, accel, resolved)
             }
 
             // --- Pipeline creation
@@ -533,7 +552,11 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     fun copyMeshesFrom(old: ComputeModule) {
         old.meshes.entries.removeIf {
             meshes[it.key] = it.value
-            (it.value as? ComputeMesh)?.let { cm -> cm.inside = this.pointer() }
+            (it.value as? ComputeMesh)?.let { cm ->
+                cm.inside = this.pointer()
+                // Reloaded bindings are available immediately, before the next dispatch.
+                cm.push.setMembers(ci.pushConstants.flatMap { block -> block.members })
+            }
             true
         }
         before.putAll(old.before)

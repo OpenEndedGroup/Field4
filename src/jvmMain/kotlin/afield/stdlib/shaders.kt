@@ -4869,13 +4869,19 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
  * wall of unresolved Kotlin references.
  */
 @OptIn(DelicateCoroutinesApi::class)
-fun Box.macro_computeModuleHere(args: List<String>): Insert {
+fun Box.macro_computeModuleHere(args: List<String>): Insert = macro_computeModuleHereWithDefaultShader(args)
+
+/** Seed a specialised compute shader while retaining normal Field reflection, linking and reload actions. */
+@OptIn(DelicateCoroutinesApi::class)
+fun Box.macro_computeModuleHereWithDefaultShader(
+    args: List<String>, compute: String? = null, resolvesToCall: String = "_computeModuleHere"
+): Insert {
     installComputeShaderReloadAction()
     installComputeShaderUpdateAction()
 
     if (!hasShaderSource(this, "compute")) {
         this.setPropertyRaw(
-            "compute", """
+            "compute", compute ?: """
 #version 450
 
 layout(local_size_x = 64) in;
@@ -4904,12 +4910,12 @@ void main() {
     }
 
     if (ci == null) {
-        return Insert(here = "_computeModuleHere${args[0]}")
+        return Insert(here = "$resolvesToCall${args[0]}")
     } else {
         clearShaderErrorsForBaseProperties(this, "compute")
         val insert = buildComputeInsert(ci, this)
         return insert.copy(here = run {
-            var here = "_computeModuleHere${args[0]}"
+            var here = "$resolvesToCall${args[0]}"
             if (args.size == 2) here += args[1]
             here
         })

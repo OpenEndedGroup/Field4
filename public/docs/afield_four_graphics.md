@@ -16,6 +16,13 @@ That last part is the one to learn. If a vertex shader declares `layout(location
   allowfullscreen>
 </iframe>
 
+For progressive PBR rendering with environment lighting, glass and editable
+material shaders, see [Progressive path tracing](path_tracing.md), including
+[glTF and GLB import](path_tracing.md#loading-gltf-and-glb-models). It renders into
+an ordinary `RenderToTexture`, so its output can be combined with the techniques
+in this guide. The [firefly controls](path_tracing.md#reducing-bright-specks) help
+keep interactive previews clean.
+
 ## A traditional triangle
 
 Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.

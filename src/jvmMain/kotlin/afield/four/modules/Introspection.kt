@@ -926,12 +926,8 @@ class Introspection private constructor(
                 val name = uo.getString("name")
                 val ty = normalizePushConstantMembers(name, types.getValue(uo.getString("type")))
                 val size = if (ty.isEmpty()) 0 else {
-                    ty.maxOf { m ->
-                        m.offset + m.type.fold(
-                            { it.sizeInBytes.toInt() },
-                            { it.sumOf { sub -> sub.memberSize() }.toInt() }
-                        )
-                    }
+                    // Buffer-reference members occupy one device address, not the pointee's structure.
+                    ty.maxOf { m -> m.offset + m.layoutSizeInBytes() }
                 }
 
                 pushConstants.add(PushConstant(name, size.nearest16(), ty))

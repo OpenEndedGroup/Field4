@@ -1,0 +1,62 @@
+name: path_tracing_gltf
+description: Static textured glTF/GLB import into the progressive path tracer, using the bundled Toy Car.
+operations:
+  - create:
+      box: path_trace_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · Path tracing")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: path_trace_gltf
+      name: textured glTF path tracing
+      frame: { x: 320.0, y: 140.0, w: 250.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.*
+          import afield.four.util.Camera
+          import afield.stdlib.linalg.Matrix4f
+          import afield.stdlib.linalg.Vector3f
+          val renderer: Renderer = fromContext()
+          val scene = PathTraceScene()
+          val model = scene.importGltf("public/docs/assets/fabricate_demo/ToyCar.glb", Matrix4f().scale(20f))
+          val center = Vector3f(model.boundsMin).add(model.boundsMax).mul(0.5f)
+          val radius = model.boundsMin.distance(model.boundsMax)*0.5f
+          val floor = scene.material(PathTraceMaterial.diffuse(0.35f,0.35f,0.35f))
+          val y=model.boundsMin.y-radius*0.003f
+          val d=radius*4f
+          scene.quad(Vector3f(center.x-d,y,center.z-d),Vector3f(center.x-d,y,center.z+d),Vector3f(center.x+d,y,center.z+d),Vector3f(center.x+d,y,center.z-d),floor)
+          val camera = Camera(renderer).also {
+           it.target.set(center)
+           it.at.set(center).add(radius*1.7f,radius*1.05f,radius*2f)
+           it.p.fov=0.55
+          }
+          val tracer = PathTracingRenderer(renderer,scene,
+           PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr"),
+           width=640,height=360,camera=camera).install()
+          tracer.maxBounces=8
+          tracer.samplesPerFrame=4
+          tracer.rayEpsilon=(radius*0.00001f).coerceAtLeast(0.0000001f)
+          tracer.showEnvironment=false
+          tracer.indirectClamp=10f
+          tracer.exposure=1.5f
+          tracer.blitToScreen()
+          frames {
+           while(tracer.samples<1024) frame()
+           println("glTF study converged: ${tracer.samples} samples; ${model.triangleCount} imported triangles")
+          }
+  - connect: { parent: path_trace_renderer, child: path_trace_gltf }
+  - launch: { box: path_trace_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: path_trace_gltf, property: code }
+  - await: { wait: pending }

@@ -1,0 +1,406 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+// HARDWARE_QUERY is injected only when the device enabled VK_KHR_ray_query.
+#ifdef HARDWARE_QUERY
+#extension GL_EXT_ray_query : require
+layout(set=0,binding=2) uniform accelerationStructureEXT sceneAS;
+#endif
+layout(local_size_x=8,local_size_y=8) in;
+const float PI = 3.141592653589793;
+struct Triangle { vec4 a; vec4 b; vec4 c; vec4 na; vec4 nb; vec4 nc; vec4 uv[6]; vec4 color[3]; };
+struct Node { vec4 lo; vec4 hi; ivec4 data; };
+struct Material { vec4 base; vec4 emission; vec4 optical; vec4 absorption; ivec4 maps; vec4 coverage; vec4 textureParams; };
+// optical: transmission flag, IOR, thin-sheet flag, reserved. absorption: sigma_a or sheet tint.
+layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Triangles { Triangle items[]; };
+layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Nodes { Node items[]; };
+layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Materials { Material items[]; };
+layout(buffer_reference,std430,buffer_reference_align=16) buffer Accumulation { vec4 items[]; };
+layout(buffer_reference,std430,buffer_reference_align=8) readonly buffer Distribution { vec2 items[]; };
+layout(buffer_reference,std430,buffer_reference_align=4) readonly buffer Directions { uint items[]; };
+layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer TextureData { vec4 items[]; };
+layout(set=0,binding=3,std140) uniform SceneBuffers {
+    Triangles triangles; Nodes nodes; Materials materials; Accumulation accumulation; Distribution distribution; Directions directions; TextureData textures;
+} ptScene;
+layout(set=0,binding=0) uniform Frame {
+    vec4 origin; vec4 right; vec4 up; vec4 forward;
+    ivec4 image; // width, height, first sample index, samples per dispatch
+    ivec4 scene; // node count, environment width, environment height, max bounces
+    vec4 lighting; // environment intensity, yaw radians, ray epsilon, show environment background
+    vec4 background; // premultiplied linear RGBA for primary misses
+    vec4 sampling; // indirect luminance clamp per sample (zero disables), reserved
+} frame;
+layout(set=0,binding=1) uniform sampler2D environmentMap;
+
+// Editable material code is inserted here, after the public types and before the integrator.
+struct PathTraceSurface { vec3 position; vec3 normal; vec3 geometricNormal; vec3 outgoing; vec2 barycentric; int materialId; vec2 uv; vec4 color; };
+// MATERIAL_BEGIN
+Material shadeMaterial(Material material, PathTraceSurface surface) { return material; }
+// MATERIAL_END
+
+uint hash(uint x) { x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16); }
+// Nested uniform scramble: each output prefix is a permutation of the corresponding input prefix.
+uint owen(uint x, uint seed) {
+    x = bitfieldReverse(x);
+    x ^= x * 0x3d20adeau; x += seed; x *= (seed >> 16) | 1u;
+    x ^= x * 0x05526c56u; x ^= x * 0x53a22864u;
+    return bitfieldReverse(x);
+}
+uint pixelSeed; uint sampleIndex;
+float sampleDimension(uint dimension) {
+    uint value=0u, bit=0u;
+    // A distinct generating matrix per decision is essential: independently scrambling the
+    // same 2D matrix at each bounce leaves high-dimensional correlations that never converge.
+    for (uint i=sampleIndex^(sampleIndex>>1u); i!=0u; i>>=1u,bit++)
+        if ((i&1u)!=0u) value^=ptScene.directions.items[dimension*32u+bit];
+    return float(owen(value,hash(pixelSeed^(dimension*0x9e3779b9u)))>>8)*(1.0/16777216.0);
+}
+vec2 sample2(uint domain) { return vec2(sampleDimension(domain*2u),sampleDimension(domain*2u+1u)); }
+
+// Texture pixels are linear RGBA in ordinary storage buffers: no descriptor-indexing extension.
+int wrappedTexel(int x,int size,int mode) {
+    if(mode==1) return clamp(x,0,size-1);
+    int period=mode==2 ? size*2 : size;
+    int p=((x%period)+period)%period;
+    return mode==2 && p>=size ? period-1-p : p;
+}
+vec4 texel(int offset,ivec2 p,ivec2 size,ivec2 wrap) {
+    p=ivec2(wrappedTexel(p.x,size.x,wrap.x),wrappedTexel(p.y,size.y,wrap.y));
+    return ptScene.textures.items[offset+2+p.y*size.x+p.x];
+}
+vec4 sampleMap(int offset,vec2 uv) {
+    if(offset<0) return vec4(1);
+    vec4 header=ptScene.textures.items[offset];ivec2 size=ivec2(header.xy),wrap=ivec2(header.zw);
+    // Bound coordinates before conversion to integer (large tiling UVs must not overflow).
+    for(int i=0;i<2;i++) uv[i]=wrap[i]==1 ? clamp(uv[i],0.0,1.0) : mod(uv[i],wrap[i]==2 ? 2.0 : 1.0);
+    vec2 p=uv*vec2(size);
+    if(ptScene.textures.items[offset+1].x>0.5) return texel(offset,ivec2(floor(p)),size,wrap);
+    p-=0.5;ivec2 base=ivec2(floor(p));vec2 f=fract(p);
+    return mix(mix(texel(offset,base,size,wrap),texel(offset,base+ivec2(1,0),size,wrap),f.x),
+               mix(texel(offset,base+ivec2(0,1),size,wrap),texel(offset,base+ivec2(1,1),size,wrap),f.x),f.y);
+}
+vec2 vertexUV(Triangle t,int vertex,int slot) {
+    vec4 uv=t.uv[vertex*2+slot/2];return (slot%2)==0 ? uv.xy : uv.zw;
+}
+vec2 hitUV(Triangle t,vec2 bary,int slot) {
+    return vertexUV(t,0,slot)*(1.0-bary.x-bary.y)+vertexUV(t,1,slot)*bary.x+vertexUV(t,2,slot)*bary.y;
+}
+vec4 hitColor(Triangle t,vec2 bary) { return t.color[0]*(1.0-bary.x-bary.y)+t.color[1]*bary.x+t.color[2]*bary.y; }
+Material texturedMaterial(Triangle t,vec2 bary) {
+    Material m=ptScene.materials.items[int(t.a.w)];
+    vec4 base=sampleMap(m.maps.x,hitUV(t,bary,0))*hitColor(t,bary);
+    m.base.rgb*=base.rgb;m.coverage.x*=base.a;
+    vec4 mr=sampleMap(m.maps.y,hitUV(t,bary,1));m.base.w*=mr.b;m.emission.w*=mr.g;
+    m.emission.rgb*=sampleMap(m.maps.z,hitUV(t,bary,2)).rgb;
+    return m;
+}
+bool acceptsHit(int id,vec2 bary,vec3 ro,vec3 rd) {
+    Triangle t=ptScene.triangles.items[id];Material m=ptScene.materials.items[int(t.a.w)];
+    if(m.coverage.w<0.5 && m.optical.x<0.5 && dot(cross(t.b.xyz-t.a.xyz,t.c.xyz-t.a.xyz),rd)>=0.0) return false;
+    if(m.coverage.z<0.5) return true;
+    float alpha=m.coverage.x*sampleMap(m.maps.x,hitUV(t,bary,0)).a*hitColor(t,bary).a;
+    if(m.coverage.z<1.5) return alpha>=m.coverage.y;
+    // Stochastic coverage is shared by camera, continuation and shadow traversal. It does not bend rays.
+    uint seed=hash(pixelSeed^hash(sampleIndex)^hash(uint(id)));
+    seed=hash(seed^floatBitsToUint(ro.x)^floatBitsToUint(ro.y)^floatBitsToUint(ro.z));
+    seed=hash(seed^floatBitsToUint(rd.x)^floatBitsToUint(rd.y)^floatBitsToUint(rd.z));
+    return float(seed>>8)*(1.0/16777216.0)<alpha;
+}
+vec3 mappedNormal(Material m,Triangle t,vec2 bary,vec3 n) {
+    if(m.maps.w<0) return n;
+    vec2 d1=vertexUV(t,1,3)-vertexUV(t,0,3),d2=vertexUV(t,2,3)-vertexUV(t,0,3);
+    float det=d1.x*d2.y-d1.y*d2.x;if(abs(det)<1e-12) return n;
+    vec3 e1=t.b.xyz-t.a.xyz,e2=t.c.xyz-t.a.xyz;
+    vec3 tangent=(e1*d2.y-e2*d1.y)/det,bitangent=(e2*d1.x-e1*d2.x)/det;
+    tangent-=n*dot(n,tangent);if(dot(tangent,tangent)<1e-16) return n;
+    tangent=normalize(tangent);bitangent=normalize(cross(n,tangent))*sign(dot(cross(n,tangent),bitangent));
+    vec3 map=sampleMap(m.maps.w,hitUV(t,bary,3)).xyz*2.0-1.0;map.xy*=m.textureParams.x;
+    vec3 result=tangent*map.x+bitangent*map.y+n*map.z;
+    return dot(result,result)>1e-16 ? normalize(result) : n;
+}
+struct Hit { float t; int triangle; vec2 bary; };
+bool boxHit(vec3 ro, vec3 rd, vec3 lo, vec3 hi, float limit) {
+    float nearT = frame.lighting.z, farT = limit;
+    for (int axis=0; axis<3; axis++) {
+        if (abs(rd[axis]) < 1e-20) { if (ro[axis]<lo[axis] || ro[axis]>hi[axis]) return false; }
+        else {
+            float a=(lo[axis]-ro[axis])/rd[axis], b=(hi[axis]-ro[axis])/rd[axis];
+            nearT=max(nearT,min(a,b)); farT=min(farT,max(a,b));
+        }
+    }
+    return nearT <= farT;
+}
+Hit intersectScene(vec3 ro, vec3 rd, bool shadow) {
+    Hit h = Hit(1e30, -1, vec2(0));
+#ifdef HARDWARE_QUERY
+    rayQueryEXT query;
+    uint flags = gl_RayFlagsNoOpaqueEXT;
+    if (shadow) flags |= gl_RayFlagsTerminateOnFirstHitEXT;
+    rayQueryInitializeEXT(query, sceneAS, flags, 255, ro, frame.lighting.z, rd, h.t);
+    while (rayQueryProceedEXT(query)) {
+        if(rayQueryGetIntersectionTypeEXT(query,false)==gl_RayQueryCandidateIntersectionTriangleEXT &&
+           acceptsHit(rayQueryGetIntersectionPrimitiveIndexEXT(query,false),rayQueryGetIntersectionBarycentricsEXT(query,false),ro,rd))
+            rayQueryConfirmIntersectionEXT(query);
+    }
+    if (rayQueryGetIntersectionTypeEXT(query,true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
+        h.t = rayQueryGetIntersectionTEXT(query,true);
+        h.triangle = rayQueryGetIntersectionPrimitiveIndexEXT(query,true);
+        h.bary = rayQueryGetIntersectionBarycentricsEXT(query,true);
+    }
+#else
+    int nodeIndex=0;
+    while (nodeIndex < frame.scene.x) {
+        Node node=ptScene.nodes.items[nodeIndex];
+        if (!boxHit(ro,rd,node.lo.xyz,node.hi.xyz,h.t)) { nodeIndex=node.data.z; continue; }
+        for (int j=0; j<node.data.y; j++) {
+            int id=node.data.x+j; Triangle t=ptScene.triangles.items[id];
+            vec3 e1=t.b.xyz-t.a.xyz, e2=t.c.xyz-t.a.xyz, p=cross(rd,e2);
+            float det=dot(e1,p); if (abs(det)<1e-10) continue;
+            vec3 s=ro-t.a.xyz; float u=dot(s,p)/det;
+            if (u<0.0 || u>1.0) continue;
+            vec3 q=cross(s,e1); float v=dot(rd,q)/det;
+            if (v<0.0 || u+v>1.0) continue;
+            float distance=dot(e2,q)/det;
+            if (distance>frame.lighting.z && distance<h.t && acceptsHit(id,vec2(u,v),ro,rd)) {
+                h=Hit(distance,id,vec2(u,v)); if (shadow) return h;
+            }
+        }
+        nodeIndex++;
+    }
+#endif
+    return h;
+}
+mat3 basis(vec3 n) {
+    vec3 t=normalize(cross(abs(n.z)<0.999 ? vec3(0,0,1) : vec3(0,1,0),n));
+    return mat3(t,cross(n,t),n);
+}
+vec3 rotateY(vec3 v, float a) { float c=cos(a),s=sin(a); return vec3(c*v.x+s*v.z,v.y,-s*v.x+c*v.z); }
+vec2 environmentUV(vec3 d) {
+    d=rotateY(d,-frame.lighting.y);
+    return vec2(fract(atan(d.z,d.x)/(2.0*PI)+0.5),acos(clamp(d.y,-1.0,1.0))/PI);
+}
+vec3 environment(vec3 d) { return textureLod(environmentMap,environmentUV(d),0).rgb*frame.lighting.x; }
+float solidAngle(int row) {
+    return (2.0*PI/float(frame.scene.y)) * (cos(PI*float(row)/float(frame.scene.z))-cos(PI*float(row+1)/float(frame.scene.z)));
+}
+float environmentPdf(vec3 d) {
+    ivec2 p=clamp(ivec2(environmentUV(d)*vec2(frame.scene.yz)),ivec2(0),frame.scene.yz-1);
+    return 0.95*ptScene.distribution.items[p.y*frame.scene.y+p.x].y / max(solidAngle(p.y),1e-20) + 0.05/(4.0*PI);
+}
+vec3 sampleEnvironment(vec2 xi, float jitter, out float pdf) {
+    if (xi.x<0.05) {
+        float phi=2.0*PI*(xi.y-0.5), c=1.0-2.0*jitter;
+        float r=sqrt(max(0.0,1.0-c*c));
+        vec3 direction=rotateY(vec3(cos(phi)*r,c,sin(phi)*r),frame.lighting.y);
+        pdf=environmentPdf(direction);
+        return direction;
+    }
+    xi.x=min((xi.x-0.05)/0.95,0.99999994);
+    int low=0, high=frame.scene.y*frame.scene.z-1;
+    while (low<high) { int middle=(low+high)/2; if (xi.x<ptScene.distribution.items[middle].x) high=middle; else low=middle+1; }
+    int x=low%frame.scene.y, y=low/frame.scene.y;
+    float phi=2.0*PI*((float(x)+xi.y)/float(frame.scene.y)-0.5);
+    float cosTheta=mix(cos(PI*float(y)/float(frame.scene.z)),cos(PI*float(y+1)/float(frame.scene.z)),jitter);
+    float sinTheta=sqrt(max(0.0,1.0-cosTheta*cosTheta));
+    pdf=0.95*ptScene.distribution.items[low].y/max(solidAngle(y),1e-20)+0.05/(4.0*PI);
+    return rotateY(vec3(cos(phi)*sinTheta,cosTheta,sin(phi)*sinTheta),frame.lighting.y);
+}
+float powerWeight(float a,float b) {
+    // Narrow refractive lobes can have very large directional PDFs. Normalize before squaring.
+    float scale=max(a,b); if (scale<=0.0) return 0.0;
+    a/=scale; b/=scale; return a*a/(a*a+b*b);
+}
+float specProbability(Material m) { return mix(0.35,1.0,m.base.w); }
+vec3 fresnel(vec3 f0,float cosTheta) { return f0+(1.0-f0)*pow(1.0-clamp(cosTheta,0.0,1.0),5.0); }
+float ggxD(float nh,float alpha) { float a2=alpha*alpha; float d=nh*nh*(a2-1.0)+1.0; return a2/(PI*d*d); }
+float smithG1(float nv,float alpha) { return 2.0*nv/max(nv+sqrt(alpha*alpha+(1.0-alpha*alpha)*nv*nv),1e-20); }
+// GGX visible-normal sampling (Heitz; PBRT 4e section 9.6.4).
+// Sample the projected visible hemisphere, then undo the roughness stretch.
+vec3 sampleVisibleNormal(vec3 n,vec3 wo,float alpha,vec2 xi) {
+    mat3 localToWorld=basis(n);
+    vec3 view=transpose(localToWorld)*wo;
+    vec3 stretched=normalize(vec3(alpha*view.xy,view.z));
+    vec3 tangent=stretched.z<0.99999 ? normalize(cross(vec3(0,0,1),stretched)) : vec3(1,0,0);
+    vec3 bitangent=cross(stretched,tangent);
+    float radius=sqrt(xi.x),phi=2.0*PI*xi.y;
+    vec2 disk=radius*vec2(cos(phi),sin(phi));
+    disk.y=mix(sqrt(max(0.0,1.0-disk.x*disk.x)),disk.y,0.5*(1.0+stretched.z));
+    vec3 h=disk.x*tangent+disk.y*bitangent+sqrt(max(0.0,1.0-dot(disk,disk)))*stretched;
+    return localToWorld*normalize(vec3(alpha*h.xy,max(1e-6,h.z)));
+}
+vec3 evaluate(Material m,vec3 n,vec3 wo,vec3 wi,out float pdf) {
+    pdf=0.0; float nv=dot(n,wo),nl=dot(n,wi);
+    if (nv<=0.0 || nl<=0.0) return vec3(0);
+    vec3 h=normalize(wo+wi); float nh=max(dot(n,h),0.0),vh=max(dot(wo,h),1e-8);
+    float alpha=max(m.emission.w*m.emission.w,0.001);
+    float d=ggxD(nh,alpha); vec3 f=fresnel(mix(vec3(0.04),m.base.rgb,m.base.w),vh);
+    float p=specProbability(m);
+    pdf=mix(nl/PI,d*smithG1(nv,alpha)/(4.0*nv),p);
+    return (1.0-f)*m.base.rgb*(1.0-m.base.w)/PI + f*d*smithG1(nv,alpha)*smithG1(nl,alpha)/(4.0*nv*nl);
+}
+vec3 sampleBSDF(Material m,vec3 n,vec3 wo,vec2 xi,float selector) {
+    float phi=2.0*PI*xi.x;
+    if (selector<specProbability(m)) {
+        float alpha=max(m.emission.w*m.emission.w,0.001);
+        vec3 h=sampleVisibleNormal(n,wo,alpha,xi);
+        return reflect(-wo,h);
+    }
+    return basis(n)*vec3(sqrt(xi.y)*vec2(cos(phi),sin(phi)),sqrt(1.0-xi.y));
+}
+// eta is transmitted IOR / incident IOR. Exact dielectric Fresnel includes total internal reflection.
+float dielectricFresnel(float cosine, float eta) {
+    if (eta==1.0) return 0.0;
+    float c=clamp(abs(cosine),0.0,1.0);
+    float sin2=(1.0-c*c)/(eta*eta);
+    if (sin2>=1.0) return 1.0;
+    float ct=sqrt(1.0-sin2);
+    float parallel=(eta*c-ct)/(eta*c+ct), perpendicular=(c-eta*ct)/(c+eta*ct);
+    return 0.5*(parallel*parallel+perpendicular*perpendicular);
+}
+// Single-scattering GGX dielectric. Visible-normal sampling and matching reflection/refraction
+// Jacobians follow the dielectric BSDF formulation in PBRT, 4th ed., section 9.5.
+vec3 evaluateGlass(Material m,vec3 n,vec3 wo,vec3 wi,float eta,out float pdf) {
+    pdf=0.0;
+    float nv=dot(n,wo),nl=dot(n,wi);
+    if (nv<=0.0 || abs(nl)<1e-8) return vec3(0);
+    bool reflection=nl>0.0;
+    vec3 sum=wo+wi*(reflection ? 1.0 : eta);
+    if (dot(sum,sum)<1e-16) return vec3(0);
+    vec3 h=normalize(sum); if (dot(n,h)<0.0) h=-h;
+    float oh=dot(wo,h),ih=dot(wi,h),nh=dot(n,h);
+    if (oh<=0.0 || (reflection ? ih<=0.0 : ih>=0.0)) return vec3(0);
+    float alpha=max(m.emission.w*m.emission.w,0.001);
+    float d=ggxD(nh,alpha),g=smithG1(nv,alpha)*smithG1(abs(nl),alpha);
+    float r=dielectricFresnel(oh,eta);
+    float normalPdf=d*smithG1(nv,alpha)*oh/nv;
+    if (reflection) {
+        pdf=r*normalPdf/(4.0*oh);
+        return vec3(r*d*g/(4.0*nv*nl));
+    }
+    float denom=ih+oh/eta; denom*=denom;
+    if (denom<1e-20) return vec3(0);
+    pdf=(1.0-r)*normalPdf*abs(ih)/denom;
+    return vec3((1.0-r)*d*g*abs(ih*oh/(nl*nv*denom))/(eta*eta));
+}
+vec4 tracePath(vec3 ro,vec3 rd) {
+    vec3 radiance=vec3(0),indirect=vec3(0),throughput=vec3(1),sigma=vec3(0);
+    float previousPdf=0.0,etaScale=1.0;
+    bool previousDelta=true;
+    for (int bounce=0; bounce<frame.scene.w; bounce++) {
+        Hit hit=intersectScene(ro,rd,false);
+        if (hit.triangle<0) {
+            if (bounce==0 && frame.lighting.w<0.5) return frame.background;
+            float weight=previousDelta ? 1.0 : powerWeight(previousPdf,environmentPdf(rd));
+            vec3 contribution=throughput*environment(rd)*weight;
+            if (bounce<2) radiance+=contribution; else indirect+=contribution;
+            break;
+        }
+        Triangle t=ptScene.triangles.items[hit.triangle]; Material m=texturedMaterial(t,hit.bary);
+        vec3 geometric=normalize(cross(t.b.xyz-t.a.xyz,t.c.xyz-t.a.xyz));
+        bool entering=dot(geometric,rd)<0.0;
+
+        if (!entering) geometric=-geometric;
+        vec3 n=normalize(t.na.xyz*(1.0-hit.bary.x-hit.bary.y)+t.nb.xyz*hit.bary.x+t.nc.xyz*hit.bary.y);
+        if (dot(n,geometric)<0.0) n=-n;
+        if (dot(n,-rd)<=0.0) n=geometric;
+        n=mappedNormal(m,t,hit.bary,n);
+        if(dot(n,geometric)<=0.0 || dot(n,-rd)<=0.0) n=geometric;
+        vec3 point=ro+rd*hit.t;
+        m=shadeMaterial(m,PathTraceSurface(point,n,geometric,-rd,hit.bary,int(t.a.w),hitUV(t,hit.bary,0),hitColor(t,hit.bary)));
+        bool glass=m.optical.x>0.5;
+        // A first back face also supports a camera placed inside one homogeneous solid.
+        if (bounce==0 && glass && !entering && m.optical.z<0.5) sigma=m.absorption.rgb;
+        throughput*=exp(-sigma*hit.t);
+        if (bounce<2) radiance+=throughput*m.emission.rgb; else indirect+=throughput*m.emission.rgb;
+        uint domain=uint(bounce)*4u+1u;
+        vec2 extra=sample2(domain+2u);
+        float bsdfPdf=0.0; vec3 next;
+        if (glass) {
+            bool thin=m.optical.z>0.5;
+            float eta=thin || entering ? m.optical.y : 1.0/m.optical.y;
+            bool delta=thin || m.emission.w<=0.001 || eta==1.0;
+            if (!delta) {
+                float lightPdf; vec3 light=sampleEnvironment(sample2(domain),extra.x,lightPdf);
+                vec3 f=evaluateGlass(m,n,-rd,light,eta,bsdfPdf);
+                float side=dot(geometric,light)>0.0 ? 1.0 : -1.0;
+                float weight=bounce+1==frame.scene.w ? 1.0 : powerWeight(lightPdf,bsdfPdf);
+                if (dot(n,light)*side>0.0 && f.r>0.0 &&
+                    intersectScene(point+geometric*(side*frame.lighting.z),light,true).triangle<0)
+                {
+                    vec3 contribution=throughput*f*abs(dot(n,light))*environment(light)*weight/max(lightPdf,1e-20);
+                    if (bounce==0) radiance+=contribution; else indirect+=contribution;
+                }
+            }
+            if (bounce+1==frame.scene.w) break;
+            vec3 h=delta ? n : sampleVisibleNormal(n,-rd,max(m.emission.w*m.emission.w,0.001),sample2(domain+1u));
+            if (dot(h,-rd)<=0.0) break;
+            float reflectance=dielectricFresnel(dot(h,-rd),eta);
+            // Sum the unresolved internal reflections of a parallel, zero-thickness pane.
+            if (thin) reflectance=2.0*reflectance/(1.0+reflectance);
+            bool reflected=extra.y<reflectance;
+            next=reflected ? reflect(rd,h) : (thin ? rd : refract(rd,h,1.0/eta));
+            if ((dot(geometric,next)>0.0)!=reflected || (dot(n,next)>0.0)!=reflected || dot(next,next)<0.5) break;
+            if (!delta) {
+                vec3 f=evaluateGlass(m,n,-rd,next,eta,bsdfPdf);
+                if (bsdfPdf<=0.0) break;
+                throughput*=f*abs(dot(n,next))/bsdfPdf;
+            }
+            if (!reflected) {
+                if (thin) throughput*=m.absorption.rgb;
+                else {
+                    if (delta) throughput/=eta*eta;
+                    etaScale*=eta*eta;
+                    sigma=entering ? m.absorption.rgb : vec3(0);
+                }
+            }
+            previousDelta=delta;
+        } else {
+            float lightPdf; vec3 light=sampleEnvironment(sample2(domain),extra.x,lightPdf);
+            vec3 f=evaluate(m,n,-rd,light,bsdfPdf);
+            float weight=bounce+1==frame.scene.w ? 1.0 : powerWeight(lightPdf,bsdfPdf);
+            if (dot(geometric,light)>0.0 && max(f.r,max(f.g,f.b))>0.0 &&
+                intersectScene(point+geometric*frame.lighting.z,light,true).triangle<0)
+            {
+                vec3 contribution=throughput*f*max(dot(n,light),0.0)*environment(light)*weight/max(lightPdf,1e-20);
+                if (bounce==0) radiance+=contribution; else indirect+=contribution;
+            }
+            if (bounce+1==frame.scene.w) break;
+            next=sampleBSDF(m,n,-rd,sample2(domain+1u),extra.y);
+            if (dot(geometric,next)<=0.0) break;
+            f=evaluate(m,n,-rd,next,bsdfPdf);
+            if (bsdfPdf<=0.0) break;
+            throughput*=f*max(dot(n,next),0.0)/bsdfPdf;
+            previousDelta=false;
+        }
+        if (max(throughput.r,max(throughput.g,throughput.b))<=0.0) break;
+        if (bounce>=2) {
+            // Refraction changes radiance units, not path importance for Russian roulette.
+            float survive=clamp(max(throughput.r,max(throughput.g,throughput.b))*etaScale,0.05,0.95);
+            if (sample2(domain+3u).x>=survive) break;
+            throughput/=survive;
+        }
+        ro=point+geometric*(dot(geometric,next)>0.0 ? frame.lighting.z : -frame.lighting.z);
+        previousPdf=bsdfPdf; rd=normalize(next);
+    }
+    // Limit the indirect contribution of this sample, preserving its hue. Direct camera-visible
+    // emission, background, first-surface lighting and first reflections remain unclamped.
+    float indirectLuminance=dot(indirect,vec3(0.2126,0.7152,0.0722));
+    if (frame.sampling.x>0.0 && indirectLuminance>frame.sampling.x)
+        indirect*=frame.sampling.x/indirectLuminance;
+    return vec4(radiance+indirect,1);
+}
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy); if (any(greaterThanEqual(pixel,frame.image.xy))) return;
+    int index=pixel.y*frame.image.x+pixel.x; pixelSeed=hash(uint(index));
+    vec4 sum=vec4(0);
+    for (int s=0;s<frame.image.w;s++) {
+        sampleIndex=uint(frame.image.z+s);
+        vec2 uv=(vec2(pixel)+sample2(0u))/vec2(frame.image.xy)*2.0-1.0;
+        vec3 ray=normalize(frame.forward.xyz+frame.right.xyz*uv.x-frame.up.xyz*uv.y);
+        vec4 value=tracePath(frame.origin.xyz,ray);
+        if (!any(isnan(value)) && !any(isinf(value))) sum+=value;
+    }
+    // Read no uninitialized memory on reset. Keep an HDR mean, never tone-map accumulated samples.
+    vec4 old=frame.image.z==0 ? vec4(0) : ptScene.accumulation.items[index];
+    float count=float(frame.image.z+frame.image.w);
+    ptScene.accumulation.items[index]=old+(sum-float(frame.image.w)*old)/count;
+}

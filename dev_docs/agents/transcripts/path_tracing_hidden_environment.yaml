@@ -1,0 +1,50 @@
+name: path_tracing_hidden_environment
+description: Progressive compute path tracer with an OpenEXR environment, three PBR materials, and optional KHR ray queries.
+operations:
+  - create:
+      box: path_trace_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · Path tracing")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: path_trace_hidden_environment
+      name: environment lighting without a visible sky
+      frame: { x: 320.0, y: 140.0, w: 250.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.PathTraceDemo
+          import afield.four.fabricated.PathTracingRenderer
+          import afield.four.modules.fromContext
+          import java.io.File
+          val renderer: Renderer = fromContext()
+          prop<PathTracingRenderer>(tracer)
+          tracer = PathTraceDemo.install(renderer,
+              File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+          tracer.samplesPerFrame = 1
+          tracer.maxBounces = 5
+          tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+          tracer.exposure = 1.5f
+          println("${tracer.backend}: ${tracer.triangleCount} triangles, ${tracer.width} x ${tracer.height}")
+          tracer.showEnvironment = false
+          tracer.blitToScreen()
+          // This coroutine only announces capture readiness; the named scene owns the tracer.
+          frames {
+              while (tracer.samples < 1024) { frame() }
+              println("hidden environment study converged: ${tracer.samples} samples")
+          }
+  - connect: { parent: path_trace_renderer, child: path_trace_hidden_environment }
+  - launch: { box: path_trace_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: path_trace_hidden_environment, property: code }
+  - await: { wait: pending }
