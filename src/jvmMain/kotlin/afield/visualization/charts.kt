@@ -1259,6 +1259,18 @@ private enum class Anchor { LEFT, CENTRE, RIGHT }
 private fun labelTypeface() = typeface(Font.MONOSPACED, LABEL_SIZE)
 
 /**
+ * One line of chart label text, measured in figure pixels.
+ *
+ * `internal` rather than private because the wrapping in [Chart.note] is only worth anything if a
+ * test can measure the *unwrapped* width it exists to avoid — the counterfactual half of
+ * `ChartGallery`'s frame gate. Falls back to a monospace estimate on a machine with no fonts,
+ * exactly as [labelLines] does, so it never throws in the middle of a figure.
+ */
+internal fun chartLabelWidth(text: String, size: Double = LABEL_SIZE): Double =
+    runCatching { textWidth(text, typeface(Font.MONOSPACED, size)) }
+        .getOrElse { text.length * size * 0.6 }
+
+/**
  * A string as glyph outlines, placed with its baseline at ([x], [y]).
  *
  * Three deliberate choices, each of which has been got wrong before in this repo:

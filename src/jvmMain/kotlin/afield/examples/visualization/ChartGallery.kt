@@ -224,17 +224,22 @@ object ChartGallery {
                     "something did not draw"
             }
             checkGuttersInked(figure.name, chart, raster)
+            // The sixth gate, applied to every committed figure too: nothing may leave the frame.
+            frameProblems(figure.name, chart).forEach { error(it) }
             val file = File(dir, "chart-${figure.name}.png")
             file.writeBytes(raster.png)
             println(
                 "  ${figure.name}: ${chart.marks.size} mark(s), ${chart.marks.sumOf { it.count }} points, " +
-                    "ink ${"%.1f%%".format(ink * 100)} -> ${file.absolutePath}"
+                    "ink ${"%.1f%%".format(ink * 100)}, " +
+                    "frame overshoot ${"%.2f".format(frameOvershoot(chart))} px " +
+                    "-> ${file.absolutePath}"
             )
         }
 
         checkCounterfactual(dir)
         checkPixelMapping()
         checkInteractivePath()
+        checkNothingLeavesTheFrame(dir)
 
         println("chart gallery rendered ${FIGURES.size + 1} figure(s) into ${dir.absolutePath}")
     }
@@ -370,7 +375,164 @@ object ChartGallery {
         println("  interactive markup: ${ids.size} live callback(s), ${html.length} bytes")
     }
 
+    // ── the sixth gate: a figure has to fit inside the figure ─────────────────────
 
+    /**
+     * How far outside its declared `width` x `height` a figure's geometry may reach, in pixels.
+     *
+     * Not zero: glyph outlines overshoot their advance box by a fraction of a pixel, a stroked axis
+     * is drawn on the frame line itself, and `fast2DBounds` is a bounding box over Bézier *control*
+     * points rather than over the curve. Measured over the five committed gallery figures, the worst
+     * overshoot is under a pixel, so 4 px is a floor with room and still four hundred times smaller
+     * than the failure it is here to catch.
+     */
+    private const val FRAME_SLOP = 4.0
+
+    /**
+     * Five green gates shipped `sharp_edge.png` — an empty olive rectangle with the real plot as an
+     * illegible stamp in one corner. This is the sixth, and it is the one that would have caught it.
+     *
+     * The mechanism, which nothing in a build makes visible: a [Chart] declares a `width` x `height`
+     * frame, `Chart.toHTML` hands the lines to `linesToHTML`, and that stamps the geometry's *own*
+     * union bounds onto the wrapper as `data-afield-bounds-*`. The box output panel and the docs
+     * capture then fit **those** bounds. So any geometry outside the declared frame does not get
+     * cropped, it shrinks everything else. Two ways to produce it, both of which shipped:
+     *
+     *  - data outside an explicit `xDomain`/`yDomain`, which used to be mapped and drawn wherever it
+     *    landed — the tetgen corner figure put a cross section 2 x 3 across into a 0.24 x 0.24
+     *    window and the outline landed thousands of pixels off-frame;
+     *  - a long `note`, which used to be one unwrapped line running off the right edge.
+     *
+     * Each case is measured twice. Once for the fix — the figure's bounds are inside the frame, and
+     * the mark geometry is inside `plotRect` — and once for the **counterfactual**: the same numbers
+     * mapped through the figure's own scales *without* the clip must land far outside, and the note
+     * unwrapped must be far too wide. Without that second half a future refactor that quietly
+     * disabled the clip would leave a test that still passes because the input became harmless.
+     */
+    private fun checkNothingLeavesTheFrame(dir: File) {
+        val problems = mutableListOf<String>()
+
+        // ── (i) data outside an explicit domain ───────────────────────────────────
+        // The tetgen corner, reduced to its arithmetic: a closed 2 x 3 outline charted into a
+        // 0.24 x 0.24 window on one of its corners.
+        val outline = listOf(
+            -1.0 to -1.5, 1.0 to -1.5, 1.0 to 1.5, -1.0 to 1.5, -1.0 to -1.5,
+        )
+        val corner = Chart(
+            title = "one corner of a 2 x 3 outline",
+            xLabel = "x", yLabel = "y",
+        ).line("outline", outline.map { it.first }, outline.map { it.second })
+        corner.width = 780.0
+        corner.height = 440.0
+        corner.xDomain = 0.82 to 1.06
+        corner.yDomain = 1.32 to 1.56
+
+        val plot = corner.plotRect()
+        // The counterfactual, computed from the figure's own layout so it cannot drift out of step:
+        // where the unclipped outline *would* land. If this is not far outside, the case is a
+        // tautology and the assertion below proves nothing.
+        val sx = afield.Scale(0.82, 1.06, plot.x, plot.x + plot.w)
+        val sy = afield.Scale(1.32, 1.56, plot.y + plot.h, plot.y)
+        val rawExcursion = outline.maxOf { (x, y) ->
+            val px = sx.toPixel(x)
+            val py = sy.toPixel(y)
+            maxOf(plot.x - px, px - (plot.x + plot.w), plot.y - py, py - (plot.y + plot.h), 0.0)
+        }
+        if (rawExcursion < 2_000.0) {
+            problems += "the corner counterfactual is toothless: unclipped, the outline would only " +
+                "reach ${"%.0f".format(rawExcursion)} px outside a ${plot.w.toInt()}x${plot.h.toInt()} " +
+                "plot, and the case no longer reproduces the defect it is here for"
+        }
+        problems += frameProblems("corner-window", corner)
+        problems += markProblems("corner-window", corner, "outline")
+        println(
+            "  corner-window: unclipped the outline would reach ${"%.0f".format(rawExcursion)} px " +
+                "outside the plot; drawn, ${extentReport(corner)}"
+        )
+
+        // ── (ii) a long note ──────────────────────────────────────────────────────
+        // Verbatim the note the tetgen corner figure ships with, because that is the one that is
+        // published wrong today.
+        val longNote = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
+            "(1.0, 1.5); every level set cuts it off, and halving h halves what is left."
+        val noted = Chart(title = "a long note", xLabel = "x", yLabel = "y", note = longNote)
+            .line("ramp", (0..10).map { it }, (0..10).map { it })
+        noted.width = 780.0
+        noted.height = 440.0
+
+        val oneLineWidth = afield.chartLabelWidth(longNote)
+        val room = noted.width - noted.plotRect().x - 12.0
+        if (oneLineWidth < room + 200.0) {
+            problems += "the long-note counterfactual is toothless: on one line the note measures " +
+                "${"%.0f".format(oneLineWidth)} px against ${"%.0f".format(room)} px of room, which " +
+                "is not enough overhang to prove the wrap did anything"
+        }
+        problems += frameProblems("long-note", noted)
+        println(
+            "  long-note: ${longNote.length} chars, ${"%.0f".format(oneLineWidth)} px on one line " +
+                "against ${"%.0f".format(room)} px of room; drawn, ${extentReport(noted)}"
+        )
+
+        // Both figures are captured, because "it compiles" is not verification for anything visual.
+        File(dir, "chart-clip-corner-window.png").writeBytes(render(corner).png)
+        File(dir, "chart-clip-long-note.png").writeBytes(render(noted).png)
+
+        check(problems.isEmpty()) { "figures left their own frame:\n  - " + problems.joinToString("\n  - ") }
+        println(
+            "  frame gate: 2 regression figures + ${FIGURES.size} gallery figures inside their own " +
+                "frames to within $FRAME_SLOP px"
+        )
+    }
+
+    /** The union of everything a chart draws, in figure pixels. */
+    private fun drawnBounds(chart: Chart): afield.Rect? =
+        chart.toFLines().mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
+            .filter { it.x.isFinite() && it.y.isFinite() && it.w.isFinite() && it.h.isFinite() }
+            .reduceOrNull { a, b -> a.union(b) }
+
+    /** How far outside its declared frame a figure's geometry reaches, in pixels; 0 if none does. */
+    private fun frameOvershoot(chart: Chart): Double {
+        val b = drawnBounds(chart) ?: return 0.0
+        return maxOf(-b.x, -b.y, (b.x + b.w) - chart.width, (b.y + b.h) - chart.height, 0.0)
+    }
+
+    /** Empty if the whole figure is inside its declared frame, else one line saying by how much. */
+    private fun frameProblems(name: String, chart: Chart): List<String> {
+        val b = drawnBounds(chart) ?: return listOf("$name: the figure drew nothing at all")
+        val over = frameOvershoot(chart)
+        if (over <= FRAME_SLOP) return emptyList()
+        val shrink = minOf(chart.width / b.w, chart.height / b.h).coerceAtMost(1.0)
+        return listOf(
+            "$name: geometry reaches ${"%.0f".format(over)} px outside a " +
+                "${chart.width.toInt()}x${chart.height.toInt()} frame — bounds " +
+                "${"%.0f".format(b.x)},${"%.0f".format(b.y)} " +
+                "${"%.0f".format(b.w)}x${"%.0f".format(b.h)}, so a panel fitting those bounds draws " +
+                "this figure at ${"%.0f%%".format(shrink * 100)} of its declared size"
+        )
+    }
+
+    /** `""` if every line of the named series is inside `plotRect`, else one line saying by how much. */
+    private fun markProblems(name: String, chart: Chart, series: String): List<String> {
+        val plot = chart.plotRect()
+        val lines = chart.toFLines().filter { it.label?.startsWith(series) == true }
+        if (lines.isEmpty()) return listOf("$name: no line is labelled `$series`; the case did not draw")
+        val over = lines.mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }.maxOf { b ->
+            maxOf(plot.x - b.x, plot.y - b.y, (b.x + b.w) - (plot.x + plot.w), (b.y + b.h) - (plot.y + plot.h), 0.0)
+        }
+        if (over <= FRAME_SLOP) return emptyList()
+        return listOf(
+            "$name: series `$series` reaches ${"%.0f".format(over)} px outside plotRect " +
+                "(${plot.x.toInt()},${plot.y.toInt()} ${plot.w.toInt()}x${plot.h.toInt()}), and " +
+                "plotRect's own KDoc says the data is clipped to it"
+        )
+    }
+
+    private fun extentReport(chart: Chart): String {
+        val b = drawnBounds(chart) ?: return "nothing"
+        return "bounds ${"%.0f".format(b.x)},${"%.0f".format(b.y)} " +
+            "${"%.0f".format(b.w)}x${"%.0f".format(b.h)} in a " +
+            "${chart.width.toInt()}x${chart.height.toInt()} frame"
+    }
 
     /**
      * Ink outside the plot frame proves the *labels* drew, not only the data.
