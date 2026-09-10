@@ -29,6 +29,8 @@ tracer = pathTracingHere(scene, env, camera = camera)
 tracer.apertureRadius = 0.25f // world units; zero switches depth of field off
 tracer.focusDistance = null // keep the camera target in focus
 tracer.pixelJitter = 1f // full-pixel antialiasing; zero samples pixel centres
+tracer.temporalReuse = true // retain compatible surface history during camera motion
+tracer.temporalMaxSamples = 16
 tracer.samplesPerFrame = 4
 tracer.indirectClamp = 10f
 tracer.showEnvironment = false

@@ -58,6 +58,7 @@ class KeyCamera(
                 checkKeys(frameFactor)
 
                 // decay & run actions
+                val acted = actions.isNotEmpty()
                 actions.entries.retainAll { entry ->
                     var (amount, action) = entry.value
                     val localDecay = perActionDecays.computeIfAbsent(entry.key) { decay }
@@ -70,8 +71,9 @@ class KeyCamera(
                     amount > 0.01
                 }
 
-                // keep up ⟂ forward so rotations stay sane
-                camera.reorthogonalizeUp()
+                // Keep up perpendicular after motion. Repeating normalization while idle can
+                // oscillate by a few float ULPs and continually invalidate progressive renderers.
+                if (acted) camera.reorthogonalizeUp()
 
                 yield(true)
             }

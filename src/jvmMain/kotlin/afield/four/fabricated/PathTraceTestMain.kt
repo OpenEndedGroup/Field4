@@ -109,11 +109,11 @@ object PathTraceTestMain {
                 errorHandler = { message, _ -> errors += message })
             check(shader.valid) { "Shader hardware=$hardware: ${errors.joinToString("\n")}" }
             check(shader.pushConstants.isEmpty()) { "Unexpected push allocation: ${shader.pushConstants}" }
-            check(shader.ubos.single { it.name == "SceneBuffers" }.members.map { it.offset } == listOf(0,8,16,24,32,40,48))
+            check(shader.ubos.single { it.name == "SceneBuffers" }.members.map { it.offset } == listOf(0,8,16,24,32,40,48,56,64))
             check(shader.ubos.map { it.name }.toSet() == setOf("Frame", "SceneBuffers"))
-            check(shader.ubos.single { it.name == "Frame" }.size == 144)
+            check(shader.ubos.single { it.name == "Frame" }.size == 272)
             check(shader.accelerationStructures.size == if (hardware) 1 else 0)
-            println("PASS path-tracing shader hardware=$hardware, SceneBuffers=64, Frame=144")
+            println("PASS path-tracing shader hardware=$hardware, SceneBuffers=80, Frame=272")
         }
         println("PASS path-tracing scene, BVH, importance distribution and shader contracts")
     }

@@ -28,7 +28,8 @@ import kotlin.math.tan
 /**
  * Progressive GPU path tracer: stackless software BVH on every Field Vulkan device, optional KHR ray queries.
  * Construct/install/close on Field's render thread, like other afield.four modules. Scene and environment
- * are snapshots; recreate the tracer to edit them. Camera and lighting changes reset accumulation automatically.
+ * are snapshots; recreate the tracer to edit them. Camera motion resets or optionally reprojects history;
+ * lighting edits always reset accumulation.
  * Output is a fixed-resolution linear HDR RTT. Call blitToScreen separately for exposure + Reinhard presentation.
  * Installing under the same name retires the previous tracer; no coroutine lifetime bookkeeping is needed.
  */
@@ -57,6 +58,40 @@ class PathTracingRenderer(
     /** Focus-plane distance along camera.forward in world units; null follows camera.target. */
     var focusDistance: Float? = null
         set(value) { require(value == null || (value.isFinite() && value > 0f)); if (value != field) reset(); field = value }
+    /** Reproject compatible surface history on camera motion. Approximate, bounded, and off by default. */
+    var temporalReuse: Boolean = false
+        set(value) { if (value != field) reset(); field = value }
+    /** Maximum old samples carried across a camera move; glossy surfaces or a changing view may retain fewer. */
+    var temporalMaxSamples: Int = 16
+        set(value) { require(value in 1..256); if (value != field) reset(); field = value }
+    /** Camera-angle penalty: one uses conservative view rejection; zero ignores view-angle changes. */
+    var temporalMotionSensitivity: Float = 1f
+        set(value) { require(value.isFinite() && value in 0f..1f); if (value != field) reset(); field = value }
+    /** Roughness penalty: one rejects polished surfaces and reduces glossy history; zero removes both restrictions. */
+    var temporalRoughnessSensitivity: Float = 1f
+        set(value) { require(value.isFinite() && value in 0f..1f); if (value != field) reset(); field = value }
+    /** Largest estimated defocus radius in pixels allowed to retain surface history during motion. */
+    var temporalMaxBlurRadius: Float = 0.5f
+        set(value) { require(value.isFinite() && value >= 0f); if (value != field) reset(); field = value }
+    /** Exponential depth-fog density per world unit. Zero disables fog. */
+    var fogDensity: Float = 0f
+        set(value) { require(value.isFinite() && value >= 0f); if (value != field) reset(); field = value }
+    /** Clear distance from the camera, in world units, before depth fog starts. */
+    var fogStartDistance: Float = 0f
+        set(value) { require(value.isFinite() && value >= 0f); if (value != field) reset(); field = value }
+    private var fogColorValue = Vector3f(0.5f, 0.5f, 0.5f)
+    /** Linear HDR fog colour; returned by copy. Depth fog preserves image alpha. */
+    var fogColor: Vector3f
+        get() = Vector3f(fogColorValue)
+        set(value) {
+            require(value.x.isFinite() && value.y.isFinite() && value.z.isFinite())
+            require(value.x >= 0f && value.y >= 0f && value.z >= 0f)
+            if (value != fogColorValue) reset()
+            fogColorValue = Vector3f(value)
+        }
+    /** Treat background misses as infinitely distant when fog is enabled; transparent backgrounds stay transparent. */
+    var fogBackground: Boolean = true
+        set(value) { if (value != field) reset(); field = value }
     var maxBounces: Int = 5
         set(value) { require(value in 1..12); if (value != field) reset(); field = value }
     var environmentIntensity: Float = 1f
@@ -89,12 +124,18 @@ class PathTracingRenderer(
     /** Exposure affects display only and never discards samples. */
     var exposure: Float = 1f
         set(value) { require(value.isFinite() && value >= 0f); field = value }
-    @Volatile var samples: Int = 0
+    /** Fresh samples per pixel since the last view change/reset, excluding reprojected history. */
+    @Volatile
+    var samples: Int = 0
         private set
     @Volatile var paused: Boolean = false
     private val resetVersion = AtomicLong(0)
     private var seenReset = -1L
     private var previousCamera = FloatArray(0)
+    private var sequenceIndex = 0
+    private var historyWriteIndex = 0
+    private var historyBuffers = emptyList<VulkanBuffer>()
+    private var previousFrameCamera = Array(4) { Vector4f() }
     private val disposals = mutableListOf<() -> Unit>()
     private val packed = scene.pack()
     private val envWidth = environment.width
@@ -246,6 +287,8 @@ class PathTracingRenderer(
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
         materialModule.current.render(command, afield.stdlib.linalg.Rectanglef())
         graphicsMemoryBarrier(command, accumulation)
+        if (temporalReuse) historyWriteIndex = 1 - historyWriteIndex
+        sequenceIndex += samplesPerFrame
         blit?.enable()
         samples += samplesPerFrame
     }
@@ -310,16 +353,50 @@ class PathTracingRenderer(
             }
         }
         val revision = resetVersion.get()
-        if (!values.contentEquals(previousCamera) || seenReset != revision || samples > 16_000_000 - samplesPerFrame) {
-            samples = 0; previousCamera = values; seenReset = revision
+        val cameraChanged = !values.contentEquals(previousCamera)
+        val viewChanged = previousCamera.size != values.size || (0..12).any { values[it] != previousCamera[it] }
+        // A focus-only edit is not camera motion. Never blend two different lens configurations.
+        val focusOnlyChange = cameraChanged && !viewChanged
+        val hardReset = previousCamera.isEmpty() || seenReset != revision || focusOnlyChange ||
+            sequenceIndex > 16_000_000 - samplesPerFrame
+        val historyMode = when {
+            !temporalReuse -> -1
+            hardReset -> 0
+            cameraChanged -> 2
+            else -> 1
+        }
+        if (hardReset || cameraChanged) samples = 0
+        if (hardReset || (cameraChanged && !temporalReuse)) sequenceIndex = 0
+        previousCamera = values; seenReset = revision
+        if (temporalReuse && historyBuffers.isEmpty()) {
+            // Two disjoint histories: this dispatch only reads the previous one and writes the other.
+            historyBuffers = List(2) {
+                own(VulkanBuffer(renderer, width.toLong() * height * 64,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true)) { cleanup() }
+            }
         }
         val buffers = materialModule.current.liveUniformStructures.getValue("SceneBuffers")
         sceneBuffers.forEach { (name, buffer) -> buffers[name] = buffer }
+        // In disabled mode the shader never dereferences these placeholders.
+        buffers["historyRead"] = historyBuffers.getOrNull(1-historyWriteIndex) ?: accumulation
+        buffers["historyWrite"] = historyBuffers.getOrNull(historyWriteIndex) ?: accumulation
         val frame = materialModule.current.liveUniformStructures.getValue("Frame")
-        frame["origin"] = Vector4f(camera.at, 0f)
-        frame["forward"] = Vector4f(forward, 0f)
-        frame["right"] = Vector4f(right.mul(scale * width / height), 0f)
-        frame["up"] = Vector4f(up.mul(scale), 0f)
+        frame["previousOrigin"] = previousFrameCamera[0]
+        frame["previousRight"] = previousFrameCamera[1]
+        frame["previousUp"] = previousFrameCamera[2]
+        frame["previousForward"] = previousFrameCamera[3]
+        previousFrameCamera = arrayOf(Vector4f(camera.at, apertureRadius),
+            Vector4f(right.mul(scale * width / height), if (apertureRadius > 0f) focus else 1f),
+            Vector4f(up.mul(scale), 0f), Vector4f(forward, 0f))
+        frame["origin"] = previousFrameCamera[0]
+        frame["right"] = previousFrameCamera[1]
+        frame["up"] = previousFrameCamera[2]
+        frame["forward"] = previousFrameCamera[3]
+        frame["temporal"] = Int4(historyMode, sequenceIndex, temporalMaxSamples, 0)
+        frame["historyPolicy"] = Vector4f(temporalMotionSensitivity, temporalRoughnessSensitivity, temporalMaxBlurRadius, 0f)
+        frame["fog"] = Vector4f(fogColorValue, fogDensity)
+        frame["fogOptions"] = Vector4f(fogStartDistance, if (fogBackground) 1f else 0f, 0f, 0f)
         frame["image"] = Int4(width, height, samples, samplesPerFrame)
         frame["scene"] = Int4(packed.nodes.size, envWidth, envHeight, maxBounces)
         frame["lighting"] = Vector4f(environmentIntensity, environmentRotation, rayEpsilon, if (showEnvironment) 1f else 0f)
@@ -331,7 +408,17 @@ class PathTracingRenderer(
     /** Synchronous GPU readback for export/verification. Call on the render thread, outside frame recording. */
     fun readLinear(): FloatArray {
         check(!closed && samples > 0) { "Render at least one frame before readback" }
-        val staging = VulkanBuffer(renderer, accumulation.requestedSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        return readBuffer(accumulation)
+    }
+
+    internal fun readHistorySampleCounts(): FloatArray {
+        check(temporalReuse && samples > 0)
+        val values = readBuffer(historyBuffers[1-historyWriteIndex])
+        return FloatArray(width*height) { values[it*16+15] }
+    }
+
+    private fun readBuffer(source: VulkanBuffer): FloatArray {
+        val staging = VulkanBuffer(renderer, source.requestedSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
         val command = CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true)
         val fence = Fence(renderer.device, signaled = false)
@@ -340,15 +427,15 @@ class PathTracingRenderer(
             memoryBarrier(command, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT)
             MemoryStack.stackPush().use { stack ->
-                val region = VkBufferCopy.calloc(1, stack).size(accumulation.requestedSize)
-                vkCmdCopyBuffer(command.vkCommandBuffer, accumulation.buffer, staging.buffer, region)
+                val region = VkBufferCopy.calloc(1, stack).size(source.requestedSize)
+                vkCmdCopyBuffer(command.vkCommandBuffer, source.buffer, staging.buffer, region)
             }
             memoryBarrier(command, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT)
             command.endRecording()
             MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(command.vkCommandBuffer), null, null, null, fence) }
             fence.fenceWait()
-            return FloatArray(width * height * 4).also { data -> staging.mapAndRead { get(data) } }
+            return FloatArray((source.requestedSize/4).toInt()).also { data -> staging.mapAndRead { get(data) } }
         } finally { fence.cleanup(); command.cleanup(); staging.cleanup() }
     }
 

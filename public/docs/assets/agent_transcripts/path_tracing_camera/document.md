@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_camera" index="1" -->
 
 ```edn [field-box id="path_trace_camera" role="properties"]
-{"id" "path_trace_camera" "index" 1 "name" "camera and depth of field" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "camera and depth of field" "_tombstone" false "frame" #afield/rect [320.0 140.0 250.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_camera_code_.kt" "lines" 41 "characters" 1884 "sha256" "8b328cbde63b5421756c3aec4e59f2476a5ee8e7016f2d171d46355ec8f57078"}]}
+{"id" "path_trace_camera" "index" 1 "name" "camera and depth of field" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "camera and depth of field" "_tombstone" false "frame" #afield/rect [320.0 140.0 250.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_camera_code_.kt" "lines" 43 "characters" 2001 "sha256" "a46bed080b4012cf3173c29d294003dc8e934a5ea0ee560137bf7076bb1aa799"}]}
 ```
 
 ```kotlin [field-property box="path_trace_camera" name="code" path="path_trace_camera_code_.kt"]
@@ -66,6 +66,8 @@ tracer = pathTracingHere(scene, env, camera = camera)
 tracer.apertureRadius = 0.25f // world units; zero switches depth of field off
 tracer.focusDistance = null // keep the camera target in focus
 tracer.pixelJitter = 1f // full-pixel antialiasing; zero samples pixel centres
+tracer.temporalReuse = true // retain compatible surface history during camera motion
+tracer.temporalMaxSamples = 16
 tracer.samplesPerFrame = 4
 tracer.indirectClamp = 10f
 tracer.showEnvironment = false

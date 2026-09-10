@@ -18,8 +18,12 @@ layout(buffer_reference,std430,buffer_reference_align=16) buffer Accumulation { 
 layout(buffer_reference,std430,buffer_reference_align=8) readonly buffer Distribution { vec2 items[]; };
 layout(buffer_reference,std430,buffer_reference_align=4) readonly buffer Directions { uint items[]; };
 layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer TextureData { vec4 items[]; };
+// value is unfogged radiance. normal.w is roughness, or -1 if unsafe; albedoCount.w is sample count.
+struct HistoryPixel { vec4 value; vec4 position; vec4 normal; vec4 albedoCount; };
+layout(buffer_reference,std430,buffer_reference_align=16) buffer History { HistoryPixel items[]; };
 layout(set=0,binding=3,std140) uniform SceneBuffers {
     Triangles triangles; Nodes nodes; Materials materials; Accumulation accumulation; Distribution distribution; Directions directions; TextureData textures;
+    History historyRead; History historyWrite;
 } ptScene;
 layout(set=0,binding=0) uniform Frame {
     vec4 origin; vec4 right; vec4 up; vec4 forward;
@@ -28,6 +32,11 @@ layout(set=0,binding=0) uniform Frame {
     vec4 lighting; // environment intensity, yaw radians, ray epsilon, show environment background
     vec4 background; // premultiplied linear RGBA for primary misses
     vec4 sampling; // indirect clamp, pixel jitter width, aperture radius, focus-plane distance
+    ivec4 temporal; // -1 disabled, 0 reset, 1 stationary, 2 reproject; sequence index; history cap; reserved
+    vec4 previousOrigin; vec4 previousRight; vec4 previousUp; vec4 previousForward;
+    vec4 historyPolicy; // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
+    vec4 fog; // linear RGB, density per world unit
+    vec4 fogOptions; // clear start distance, fog background misses, reserved, reserved
 } frame;
 layout(set=0,binding=1) uniform sampler2D environmentMap;
 
@@ -281,7 +290,14 @@ vec3 evaluateGlass(Material m,vec3 n,vec3 wo,vec3 wi,float eta,out float pdf) {
     pdf=(1.0-r)*normalPdf*abs(ih)/denom;
     return vec3((1.0-r)*d*g*abs(ih*oh/(nl*nv*denom))/(eta*eta));
 }
-vec4 tracePath(vec3 ro,vec3 rd) {
+vec4 depthFog(vec4 color,float depth) {
+    if (frame.fog.w<=0.0 || (depth<0.0 && frame.fogOptions.y<0.5)) return color;
+    float transmission=depth<0.0 ? 0.0 : exp(-frame.fog.w*max(depth-frame.fogOptions.x,0.0));
+    return vec4(color.rgb*transmission+frame.fog.rgb*color.a*(1.0-transmission),color.a);
+}
+vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
+    primaryDepth=-1.0;
+    guide=HistoryPixel(vec4(0),vec4(0,0,0,-1),vec4(0,0,0,-1),vec4(0));
     vec3 radiance=vec3(0),indirect=vec3(0),throughput=vec3(1),sigma=vec3(0);
     float previousPdf=0.0,etaScale=1.0;
     bool previousDelta=true;
@@ -305,8 +321,16 @@ vec4 tracePath(vec3 ro,vec3 rd) {
         n=mappedNormal(m,t,hit.bary,n);
         if(dot(n,geometric)<=0.0 || dot(n,-rd)<=0.0) n=geometric;
         vec3 point=ro+rd*hit.t;
+        if (bounce==0) primaryDepth=distance(point,frame.origin.xyz);
         m=shadeMaterial(m,PathTraceSurface(point,n,geometric,-rd,hit.bary,int(t.a.w),hitUV(t,hit.bary,0),hitColor(t,hit.bary)));
         bool glass=m.optical.x>0.5;
+        if (bounce==0 && frame.temporal.x>=0) {
+            guide.position=vec4(point,float(hit.triangle));
+            // Glossy reuse can deliberately keep reflected images attached to the first surface.
+            bool safe=!glass && m.coverage.z<0.5 && m.emission.w>=0.25*frame.historyPolicy.y;
+            guide.normal=vec4(n,safe ? clamp(m.emission.w,0.0,1.0) : -1.0);
+            guide.albedoCount=vec4(m.base.rgb,0);
+        }
         // A first back face also supports a camera placed inside one homogeneous solid.
         if (bounce==0 && glass && !entering && m.optical.z<0.5) sigma=m.absorption.rgb;
         throughput*=exp(-sigma*hit.t);
@@ -397,29 +421,117 @@ vec2 lensDisk(vec2 u) {
     else { r=p.y; angle=PI*0.5-(PI*0.25)*(p.x/p.y); }
     return r*vec2(cos(angle),sin(angle));
 }
+// Pixel-sized surface validation also rejects newly exposed geometry and texture boundaries.
+float worldPixel(vec3 point,vec4 origin,vec4 up,vec4 forward) {
+    return 2.0*length(up.xyz)*max(dot(point-origin.xyz,forward.xyz),0.0)/float(frame.image.y);
+}
+bool sameSurface(HistoryPixel a,HistoryPixel b,float footprint) {
+    if (a.normal.w<0.0 || b.normal.w<0.0) return false;
+    // Adjacent triangles of one smooth/material-continuous surface are valid correspondences.
+    // Exact triangle identity poisoned stationary history anywhere pixel jitter crossed an edge.
+    if (ptScene.triangles.items[int(a.position.w)].a.w!=ptScene.triangles.items[int(b.position.w)].a.w) return false;
+    vec3 delta=b.position.xyz-a.position.xyz;
+    float incidence=abs(dot(normalize(a.position.xyz-frame.origin.xyz),a.normal.xyz));
+    // A reset has no previous view; within-frame and stationary validation use this camera only.
+    if (frame.temporal.x==2) incidence=min(incidence,
+        abs(dot(normalize(a.position.xyz-frame.previousOrigin.xyz),a.normal.xyz)));
+    // The world-space footprint stretches along a surface at grazing angles; its thickness does not.
+    float tangentLimit=max(1.5*footprint/max(incidence,0.05),4.0*frame.lighting.z);
+    float planeLimit=max(0.3*footprint,4.0*frame.lighting.z);
+    return
+        dot(a.normal.xyz,b.normal.xyz)>0.97 &&
+        length(delta)<tangentLimit && abs(dot(delta,a.normal.xyz))<planeLimit &&
+        abs(dot(delta,b.normal.xyz))<planeLimit &&
+        all(lessThan(abs(a.albedoCount.rgb-b.albedoCount.rgb),vec3(0.1)));
+}
+float blurRadius(vec3 point,vec4 origin,vec4 right,vec4 up,vec4 forward) {
+    float depth=dot(point-origin.xyz,forward.xyz);
+    if (depth<=0.0) return 1e20;
+    return origin.w*abs(1.0/depth-1.0/right.w)*float(frame.image.y)/(2.0*length(up.xyz));
+}
+vec4 reproject(HistoryPixel guide,out float count) {
+    count=0.0;
+    if (guide.normal.w<0.0) return vec4(0);
+    vec3 rel=guide.position.xyz-frame.previousOrigin.xyz;
+    float depth=dot(rel,frame.previousForward.xyz);
+    if (depth<=frame.lighting.z) return vec4(0);
+    // A single first-hit position is not a reliable correspondence for a wide defocus footprint.
+    if (blurRadius(guide.position.xyz,frame.origin,frame.right,frame.up,frame.forward)>frame.historyPolicy.z ||
+        blurRadius(guide.position.xyz,frame.previousOrigin,frame.previousRight,frame.previousUp,frame.previousForward)>frame.historyPolicy.z)
+        return vec4(0);
+    float viewCos=dot(normalize(frame.origin.xyz-guide.position.xyz),normalize(-rel));
+    float viewWeight=mix(1.0,smoothstep(0.995,1.0,viewCos),frame.historyPolicy.x);
+    if (viewWeight<=0.0) return vec4(0);
+    vec2 uv=vec2(dot(rel,frame.previousRight.xyz)/dot(frame.previousRight.xyz,frame.previousRight.xyz),
+        -dot(rel,frame.previousUp.xyz)/dot(frame.previousUp.xyz,frame.previousUp.xyz))/depth;
+    vec2 p=(uv*0.5+0.5)*vec2(frame.image.xy)-0.5;
+    if (any(lessThan(p,vec2(-0.5))) || any(greaterThanEqual(p,vec2(frame.image.xy)-0.5))) return vec4(0);
+    ivec2 base=ivec2(floor(p));vec2 f=fract(p);vec4 color=vec4(0);float weight=0.0;
+    float footprint=max(worldPixel(guide.position.xyz,frame.origin,frame.up,frame.forward),
+        worldPixel(guide.position.xyz,frame.previousOrigin,frame.previousUp,frame.previousForward));
+    for (int y=0;y<2;y++) for (int x=0;x<2;x++) {
+        ivec2 q=base+ivec2(x,y);
+        if (any(lessThan(q,ivec2(0))) || any(greaterThanEqual(q,frame.image.xy))) continue;
+        HistoryPixel old=ptScene.historyRead.items[q.y*frame.image.x+q.x];
+        if (!sameSurface(guide,old,footprint)) continue;
+        float w=(x==0 ? 1.0-f.x : f.x)*(y==0 ? 1.0-f.y : f.y);
+        color+=old.value*w;count+=old.albedoCount.w*w;weight+=w;
+    }
+    if (weight<0.5) { count=0.0;return vec4(0); }
+    // Effective weights are bounded; bilinear history samples are correlated, not fresh paths.
+    float roughnessWeight=mix(1.0,guide.normal.w*guide.normal.w,frame.historyPolicy.y);
+    float cap=float(frame.temporal.z)*roughnessWeight*viewWeight;
+    count=min(count/weight,cap);
+    return color/weight;
+}
 void main() {
     ivec2 pixel=ivec2(gl_GlobalInvocationID.xy); if (any(greaterThanEqual(pixel,frame.image.xy))) return;
     int index=pixel.y*frame.image.x+pixel.x; pixelSeed=hash(uint(index));
-    vec4 sum=vec4(0);
+    vec4 sum=vec4(0),fogSum=vec4(0);HistoryPixel guide;
     for (int s=0;s<frame.image.w;s++) {
-        sampleIndex=uint(frame.image.z+s);
+        sampleIndex=uint(frame.temporal.y+s);
         vec2 subpixel=vec2(0.5)+(sample2(0u)-0.5)*frame.sampling.y;
         vec2 uv=(vec2(pixel)+subpixel)/vec2(frame.image.xy)*2.0-1.0;
         vec3 direction=frame.forward.xyz+frame.right.xyz*uv.x-frame.up.xyz*uv.y;
         vec3 origin=frame.origin.xyz;
         if (frame.sampling.z>0.0) {
-            // Dimensions 98/99 are reserved for the lens; existing pixel/bounce sequences stay unchanged.
             vec2 lens=lensDisk(sample2(49u))*frame.sampling.z;
             vec3 offset=normalize(frame.right.xyz)*lens.x+normalize(frame.up.xyz)*lens.y;
-            // direction has unit forward component, so this intersects a plane, not a focal sphere.
             direction=direction*frame.sampling.w-offset;
             origin+=offset;
         }
-        vec4 value=tracePath(origin,normalize(direction));
-        if (!any(isnan(value)) && !any(isinf(value))) sum+=value;
+        HistoryPixel sampleGuide;
+        float primaryDepth;
+        vec4 value=tracePath(origin,normalize(direction),sampleGuide,primaryDepth);
+        if (!any(isnan(value)) && !any(isinf(value))) {
+            sum+=value;fogSum+=depthFog(value,primaryDepth);
+        }
+        if (frame.temporal.x>=0) {
+            if (s==0) guide=sampleGuide;
+            else if (!sameSurface(guide,sampleGuide,worldPixel(guide.position.xyz,frame.origin,frame.up,frame.forward)))
+                guide.normal.w=-1.0;
+        }
     }
-    // Read no uninitialized memory on reset. Keep an HDR mean, never tone-map accumulated samples.
-    vec4 old=frame.image.z==0 ? vec4(0) : ptScene.accumulation.items[index];
-    float count=float(frame.image.z+frame.image.w);
-    ptScene.accumulation.items[index]=old+(sum-float(frame.image.w)*old)/count;
+    vec4 old=vec4(0);float count=0.0;
+    if (frame.temporal.x<0) {
+        count=float(frame.image.z);
+        if (count>0.0) old=ptScene.accumulation.items[index];
+    } else if (frame.temporal.x==1) {
+        HistoryPixel previous=ptScene.historyRead.items[index];old=previous.value;count=previous.albedoCount.w;
+        // Once stationary accumulation mixes a silhouette, don't later carry that mixed pixel onto a surface.
+        if (!sameSurface(guide,previous,worldPixel(guide.position.xyz,frame.origin,frame.up,frame.forward)))
+            guide.normal.w=-1.0;
+    } else if (frame.temporal.x==2) old=reproject(guide,count);
+    float total=count+float(frame.image.w);
+    vec4 mean=old+(sum-float(frame.image.w)*old)/total;
+    // Keep unfogged history, so reprojection uses the NEW camera distance even through dense fog.
+    // Stationary pixels accumulate per-path fogged samples, preserving jitter/DOF edge coverage.
+    vec4 oldFog=vec4(0);
+    if (count>0.0) oldFog=frame.temporal.x==2 ?
+        depthFog(old,distance(guide.position.xyz,frame.origin.xyz)) : ptScene.accumulation.items[index];
+    ptScene.accumulation.items[index]=oldFog+(fogSum-float(frame.image.w)*oldFog)/total;
+    if (frame.temporal.x>=0) {
+        guide.value=mean;guide.albedoCount.w=total;
+        ptScene.historyWrite.items[index]=guide;
+    }
 }

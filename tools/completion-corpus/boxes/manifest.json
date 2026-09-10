@@ -158,7 +158,7 @@
   {"doc": "pat_fn_graph_fit", "box": "pat_fn_fit", "codeSha256": "5c9c8e2b69b04899", "codeLines": 25, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "pat_fn_graph_fit", "box": "pat_fn_inspect", "codeSha256": "6720e1fe2ab0060c", "codeLines": 20, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "pat_fn_graph_fit", "box": "pat_fn_permute", "codeSha256": "4dc35d2b83ee5bcf", "codeLines": 27, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "path_tracing_camera", "box": "path_trace_camera", "codeSha256": "9c7c6289d10b2ce7", "codeLines": 41, "receivers": ["afield.Box"], "preamble": "path_tracing_camera__path_trace_camera.preamble.kt"},
+  {"doc": "path_tracing_camera", "box": "path_trace_camera", "codeSha256": "f96ff00812db57d1", "codeLines": 43, "receivers": ["afield.Box"], "preamble": "path_tracing_camera__path_trace_camera.preamble.kt"},
   {"doc": "path_tracing_camera", "box": "path_trace_renderer", "codeSha256": "a03b3ff19fc1b87b", "codeLines": 9, "receivers": ["afield.Box"], "preamble": "path_tracing_camera__path_trace_renderer.preamble.kt"},
   {"doc": "path_tracing_glass", "box": "path_trace_glass", "codeSha256": "e13229efb74bf1b8", "codeLines": 18, "receivers": ["afield.Box"], "preamble": "path_tracing_glass__path_trace_glass.preamble.kt"},
   {"doc": "path_tracing_glass", "box": "path_trace_renderer", "codeSha256": "a03b3ff19fc1b87b", "codeLines": 9, "receivers": ["afield.Box"], "preamble": "path_tracing_glass__path_trace_renderer.preamble.kt"},

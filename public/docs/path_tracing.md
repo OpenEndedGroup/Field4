@@ -121,9 +121,11 @@ Aperture changes blur without changing exposure. Lens samples use their own two
 Sobol dimensions, independently of pixel and lighting samples; depth of field still
 converges when `pixelJitter` is zero.
 
-Pose, FOV, jitter, aperture and focus changes reset accumulation before the next
-sample. With automatic focus, moving the target nearer or farther also resets it,
-even if the viewing direction is unchanged. If sampling is paused, the new view
+By default, pose, FOV, jitter, aperture and focus changes reset accumulation before
+the next sample. Enable [temporal reuse](#keeping-convergence-during-camera-motion)
+to retain compatible surface history on camera movement. With automatic focus,
+moving only the target nearer or farther still resets accumulation, even if the
+viewing direction is unchanged. If sampling is paused, the new view
 appears when you resume. Scaling a scene calls for scaling its aperture and explicit
 focus distance too. This models a circular aperture; it does not simulate shutter
 motion blur, diffraction or a multi-element photographic lens.
@@ -261,6 +263,79 @@ still illuminates objects and remains visible in reflections and through refract
 surfaces. Changing either background control resets accumulation. This is a useful
 art-direction/compositing control; it does not change the environment's radiance.
 
+## Depth fog
+
+Blend distant surfaces toward a colour, with a clear region around the camera:
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.linalg.Vector3f
+
+tracer.fogColor = Vector3f(0.25f, 0.35f, 0.5f)
+tracer.fogDensity = 0.1f
+tracer.fogStartDistance = 5f
+tracer.fogBackground = true
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
+import afield.four.fabricated.*
+import afield.four.util.Camera
+import afield.four.modules.fromContext
+import afield.stdlib.linalg.Vector3f
+
+val renderer: Renderer = fromContext()
+val scene = PathTraceScene()
+val grey = scene.material(PathTraceMaterial.diffuse(0.3f, 0.3f, 0.3f))
+val light = scene.material(PathTraceMaterial.diffuse(0.65f, 0.65f, 0.65f))
+for (z in -20..8) for (x in -6..6) {
+    scene.quad(Vector3f(x.toFloat(),0f,z.toFloat()), Vector3f(x.toFloat(),0f,z+1f),
+        Vector3f(x+1f,0f,z+1f), Vector3f(x+1f,0f,z.toFloat()),
+        if ((x+z) and 1 == 0) grey else light)
+}
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.035f, 0.015f, 0.25f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.18f))
+for (i in 0..5) scene.sphere(Vector3f(if (i%2 == 0) -1.2f else 1.2f, 0.8f, 4f-i*3.5f),
+    0.8f, if (i%2 == 0) red else gold, 32, 16)
+val camera = Camera(renderer).also {
+    it.at.set(6f,3.5f,10f); it.target.set(0f,0.65f,-3f); it.p.fov=0.65
+}
+val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+val tracer = PathTracingRenderer(renderer, scene, env, 640, 360, camera).install()
+tracer.samplesPerFrame = 8
+tracer.indirectClamp = 10f
+tracer.fogColor = Vector3f(0.25f, 0.35f, 0.5f)
+tracer.fogDensity = 0.1f
+tracer.fogStartDistance = 5f
+tracer.blitToScreen()
+frames {
+    while (tracer.samples < 512) { frame() }
+    tracer.paused = true
+    println("fog study converged")
+}
+```
+
+| Control | Default | Meaning |
+| --- | --- | --- |
+| `fogDensity` | `0f` | Nonnegative density per world unit. Zero disables fog. |
+| `fogStartDistance` | `0f` | Nonnegative clear distance before fog begins. |
+| `fogColor` | `Vector3f(0.5f, 0.5f, 0.5f)` | Linear HDR colour, before exposure and display tone mapping. Assign a new vector to change it; the getter returns a copy. |
+| `fogBackground` | `true` | Treat primary-ray misses as infinitely distant. Set false to preserve the camera-visible environment or background colour. |
+
+At distance `d`, the surface contribution is multiplied by
+`exp(-fogDensity * max(d - fogStartDistance, 0))`; the remaining weight comes from
+`fogColor`. Distance is measured from the camera centre to the first visible hit,
+in world units. Fog is applied per path sample, so jitter and depth-of-field
+coverage still accumulate normally. Changing any fog control resets accumulation.
+
+Fog preserves premultiplied alpha. A transparent hidden background remains
+transparent; an opaque background or visible environment fades fully to the fog
+colour when `fogBackground` is enabled. Environment lighting remains unchanged.
+
+This is an artistic depth effect, not volumetric scattering: it does not create
+light shafts or march through a medium. A mirror or glass surface uses its first-hit
+distance, rather than distances along subsequent reflected or refracted rays.
+Temporal history stores unfogged colour, then applies the current camera distance
+when reprojecting it; moving out of dense fog can reveal retained surface detail.
+
 ## Material shaders in a Field box
 
 Use `pathTracingHere` instead of the plain constructor to put material evaluation
@@ -291,10 +366,47 @@ box properties with `{% include "paint.compute" %}` (box name plus property), an
 Shader** / **Update Compute Shader** actions. Failed compilation keeps the last
 working pipeline. Successful shader replacement resets accumulation automatically.
 
+`Material` is declared by `pathTracing.preamble`. Here is its complete GLSL
+definition, expanded and annotated for reference; you do not need to paste it into
+the box again:
+
+```diffstatic {data-lang=glsl}
+struct Material {
+    vec4 base;          // rgb: linear base colour; w: metallic
+    vec4 emission;      // rgb: linear emitted radiance; w: roughness
+    vec4 optical;       // x: transmission (0/1); y: IOR; z: thin sheet (0/1); w: reserved
+    vec4 absorption;    // rgb: solid absorption coefficient OR thin-sheet tint; w: reserved
+    ivec4 maps;         // texture offsets: base colour, metallic/roughness, emission, normal
+    vec4 coverage;     // x: alpha; y: cutoff; z: mode (0 opaque, 1 mask, 2 blend); w: double-sided (0/1)
+    vec4 textureParams; // x: normal-map scale; yzw: reserved
+};
+```
+
+The fourth components are easy to confuse: **`base.w` is metallic, not alpha**,
+and **`emission.w` is roughness**. Keep base RGB, metallic and roughness in `[0, 1]`;
+emitted RGB is nonnegative HDR radiance and may exceed one. The incoming base colour
+already includes its texture and vertex colour, and metallic, roughness and emission
+already include their textures. Assigning `material.base.rgb` replaces that result;
+multiplying it applies a tint while retaining those details.
+
+For glass, `optical.x = 1.0` enables transmission and `optical.y` is an IOR of at
+least one. Solid glass stores nonnegative absorption coefficients per world unit
+in `absorption.rgb`: transmission over distance `d` is `exp(-absorption.rgb * d)`.
+Thin glass (`optical.z = 1.0`) instead stores a `[0, 1]` RGB tint applied per crossing.
+Glass requires zero metallic; thin glass also requires zero roughness. Leave reserved
+components unchanged.
+
+Leave `maps`, `coverage` and `textureParams` as supplied. Texture lookup, normal
+mapping, alpha rejection and sidedness have already been evaluated before this hook,
+so editing those fields here will not change them for this hit. Configure them through
+the CPU material or glTF import instead. The hook edits the returned PBR parameters;
+the integrator owns BSDF sampling and its matching PDFs.
+
 `surface.materialId` is the integer returned by `scene.material(...)`. The other
 fields are world-space `position`, oriented `normal` and `geometricNormal`,
-`outgoing`, and triangle `barycentric` coordinates. For example, select material
-zero and give it a procedural stripe:
+`outgoing` (toward the preceding path vertex), triangle `barycentric` coordinates,
+base-colour `uv`, and interpolated vertex `color`. For example, select material
+zero and give it a procedural stripe with an explicit metallic value and roughness:
 
 ```diffstatic {data-lang=glsl}
 {{ pathTracing.preamble }}
@@ -304,6 +416,8 @@ Material shadeMaterial(Material material, PathTraceSurface surface) {
     if (surface.materialId == 0) {
         float stripe = step(0.5, fract(surface.position.x * paint.stripeScale));
         material.base.rgb = mix(vec3(0.08), vec3(0.8, 0.12, 0.03), stripe);
+        material.base.w = 0.0;     // dielectric, rather than metal
+        material.emission.w = 0.3; // moderately smooth
     }
     return material;
 }
@@ -315,14 +429,6 @@ The usual reflection generates `ComputeMesh.stripeScale`; use it on
 After changing parameter values or a sampled texture, call `tracer.reset()` to
 start a new accumulation. For continuously animated material parameters, reset
 once per frame. Reload/update actions themselves reset automatically.
-
-`material.maps` holds internal texture offsets; `coverage` holds alpha, cutoff,
-coverage mode and sidedness; `textureParams.x` is normal scale.
-`material.base` is RGB plus metallic; `emission` is emitted RGB plus roughness;
-`optical` is transmission flag, IOR, thin-sheet flag, reserved; `absorption` is
-absorption coefficient RGB for solids or direct tint RGB for thin sheets. Preserve
-the same ranges and restrictions as the CPU material factories. This hook changes
-PBR parameters; the integrator continues to own BSDF sampling and its matching PDFs.
 
 All materials share one compiled compute pipeline. Individual material functions
 can live in included box properties and be selected by `materialId`. Internal
@@ -395,12 +501,14 @@ The GPU accumulates a linear HDR mean. Exposure and Reinhard tone mapping are
 applied only in the display pass.
 
 - Start with 640 × 360, one sample per frame, five bounces. Reduce resolution first
-  when camera movement is too slow; this implementation does not denoise or reproject.
+  when camera movement is too slow. Optional temporal reprojection helps retain convergence; there is no spatial denoiser.
 - Move the supplied Field `Camera` with your usual controls. Pose and FOV changes
-  automatically clear the history before the next dispatch, as do the jitter and lens controls.
+  clear history by default; with `temporalReuse`, compatible pixels retain a bounded amount.
+  Jitter and explicit lens-control edits still clear history.
 - Lighting, bounce count and ray epsilon changes reset history too. `reset()` is an
   explicit reset; `paused` stops sampling while leaving the current image visible.
-- `samples` reports the number of samples recorded for the current view. `exposure`
+- `samples` reports new samples recorded since the last camera change or reset;
+  it excludes reprojected history, whose effective weight varies per pixel. `exposure`
   changes presentation without restarting convergence.
 - Size is fixed for each tracer. The fullscreen pass preserves its aspect ratio with black
   letterboxing when needed. Recreate the tracer to change resolution.
@@ -415,6 +523,104 @@ texel boundaries. A separately sampled 5% uniform-sphere component preserves
 support even for very dim texels. GGX reflection and rough transmission sample
 visible microfacet normals with matching PDFs.
 The software backend traverses a CPU-built, median-split, stackless triangle BVH.
+
+## Keeping convergence during camera motion
+
+Enable reprojection on the existing tracer:
+
+```diffstatic {data-lang=kotlin}
+tracer.temporalReuse = true
+tracer.temporalMaxSamples = 16 // maximum old sample weight carried across a camera move
+```
+
+The [keyboard camera example](#camera-jitter-and-depth-of-field) enables this already.
+Each pixel stores its first hit's world position, triangle identity, normal, base
+colour and effective sample weight beside its linear HDR colour. On the next camera
+move, the tracer projects the new hit into the previous camera, gathers matching
+history, and combines it with fresh paths. Separate read/write history buffers avoid
+races between pixels. The Sobol sequence keeps advancing while you move.
+
+History must match a nearby surface with the same material, a similar normal and
+a similar base colour. It can cross triangle edges within that surface; position
+checks account for the stretched pixel footprint at grazing angles while rejecting
+separate layers in depth. Newly revealed surfaces and pixels outside the old view start
+fresh. Alpha-tested/blended surfaces, glass and background misses start fresh on
+motion too. By default, very smooth materials (roughness below `0.25`) do as well.
+Strong defocus has no unique
+world-space correspondence: reuse is limited to surfaces whose estimated defocus
+radius is at most half a pixel in both views. In-focus surfaces can therefore retain
+history even with depth of field enabled.
+
+`temporalMaxSamples` defaults to `16` and accepts `1..256`. The actual cap is reduced
+by roughness and changes in viewing direction; a large viewpoint change rejects
+history altogether. Lower the cap if you see lag or smearing. Set `temporalReuse = false`
+to return to fresh accumulation after each camera change. It is off by default because
+reprojected, interpolated samples are correlated and their radiance can change with
+the view: this is an approximate interactive preview, with some bias and possible blur.
+
+With the default sensitivities, the demo's red plastic (`0.22` roughness) and polished gold (`0.12`) fall below the
+reuse cutoff, so they still restart on motion. Its rough metal (`0.55`) can retain
+history, but with a cap of `32` its roughness-scaled maximum is about `9.7` old samples.
+Increasing the cap does not override the material or visibility rejection checks;
+the sensitivity controls below let you change the motion and roughness policies.
+
+### More persistence, including artifacts
+
+For a more persistent, deliberately less accurate moving image:
+
+```diffstatic {data-lang=kotlin}
+tracer.temporalReuse = true
+tracer.temporalMaxSamples = 128
+tracer.temporalMotionSensitivity = 0f
+tracer.temporalRoughnessSensitivity = 0f
+// Optional: permit more defocus in the history match.
+tracer.temporalMaxBlurRadius = 2f
+```
+
+| Control | Default | Effect |
+| --- | --- | --- |
+| `temporalMotionSensitivity` | `1f` | Range `0..1`. Zero removes the camera-angle penalty; one applies the original conservative penalty and rejection. Intermediate values blend the two weights. |
+| `temporalRoughnessSensitivity` | `1f` | Range `0..1`. Zero permits glossy surfaces and mirrors at full history weight. One applies the `0.25` roughness cutoff and roughness-squared weight. Intermediate values lower the cutoff and soften the weight reduction. |
+| `temporalMaxBlurRadius` | `0.5f` | Nonnegative defocus radius in pixels. Raise it to permit more out-of-focus surface history. |
+
+With both sensitivities at zero, matching pixels can carry the full
+`temporalMaxSamples` weight while moving, including on the demo's red and gold
+spheres. Reflections can lag or appear attached to the surface; interpolated
+history can soften or smear. Larger caps make those effects persist longer.
+Restoring both sensitivities to `1f` and the blur radius to `0.5f` restores the
+default policy.
+
+These controls still require matching geometry, normals and material colour.
+Glass, alpha-tested/blended hits, background misses and newly revealed surfaces
+continue to start fresh. A larger blur allowance permits a match but does not
+guarantee one when lens samples land on different surfaces. Changing a policy
+control resets history once; it can then be adjusted again while the tracer runs.
+
+When keyboard motion settles, the controller leaves the camera unchanged, including
+near-vertical views. Pixels then accumulate fresh paths normally; the motion cap no
+longer applies, and the retained history's influence diminishes as new samples arrive.
+Lighting, shader reloads, explicit focus/aperture/jitter edits, reuse-setting changes
+and `tracer.reset()` discard history. Animated material parameters still need an
+explicit reset. Scene geometry remains a static snapshot; object motion vectors and
+a spatial denoiser are not part of this implementation.
+
+The two history buffers are allocated on first use and retained until the tracer
+closes. They add 128 bytes per pixel: about 28 MiB at 640 × 360, or 253 MiB at
+1920 × 1080. `samples` continues to count fresh samples for the current view, so it
+may stay at `samplesPerFrame` while moving even though valid pixels carry history.
+
+A GPU regression compares the same small camera translation with reuse enabled
+and disabled in a constant-environment diffuse-plane scene. It checks retained
+weights and noise reduction, then exercises continuous translation, rotation, FOV
+changes, disocclusion, camera cuts, transparent backgrounds and lens invalidation.
+The existing glass, glTF, camera and convergence regressions run alongside it.
+
+In that 48 × 32 regression, after warming up for 512 samples, a small translation
+with a 16-sample cap retained a mean weight of approximately 16 in the measured
+surface patch. A separate densely tessellated plane checks that jitter crossing
+triangle seams preserves useful history. These tests include interpolation of
+history; their noise reduction is not a count of independent samples or a general
+speedup.
 
 ## Reducing bright specks
 
@@ -441,14 +647,14 @@ The sampling improvements work with the clamp disabled.
 Start at `10f` for the bundled sunset scene. Lower the limit if specks are still
 obtrusive; raise it if reflected or transmitted light becomes too dim. Set it to
 `0f` when preserving the unclamped lighting matters more than fast convergence.
-Use `tracer.samples` to compare views at the same sample count, and adjust
+With temporal reuse disabled, use `tracer.samples` to compare views at the same sample count, and adjust
 `tracer.exposure` separately for display brightness.
 
 ## Current limits
 
 This is a basic static-scene renderer. It does not yet include scattering volumes,
 nested dielectric media, deformation/refitting, area-light
-importance sampling, motion blur, denoising, reprojection or an OpenXR stereo pass.
+importance sampling, motion blur, spatial denoising or an OpenXR stereo pass.
 Emissive triangles contribute when hit; small emitters can therefore converge slowly.
 The intended interactive resolution is a workload choice, not a frame-rate guarantee.
 
@@ -471,6 +677,11 @@ val renderer: Renderer = fromContext()
 val verify: suspend () -> Unit = { PathTraceGpuSmoke.run(renderer) }
 start(verify)
 ```
+
+`PathTraceTemporalGpuSmoke.runFog(renderer)` checks the exponential fog curve,
+clear distance, background controls, fog-setting resets and dense-to-clear camera
+motion with retained history. It also checks premultiplied silhouette coverage
+with pixel jitter and depth of field, with temporal reuse both enabled and disabled.
 
 `tracer.readLinear()` returns the actual GPU RGBA accumulation buffer as floats;
 alpha holds primary visibility coverage. RGB is premultiplied by alpha; `samples`
