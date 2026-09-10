@@ -1,47 +1,47 @@
-/*
- What pitch a rendered pattern is actually sounding, measured from the audio.
-
- `PatOnsetDetection` answers *when*. This answers *what*, and the two are not the same question with
- a different threshold. An energy detector reads the amplitude envelope, so it can only see a note
- that begins with an attack; a pitch detector reads periodicity, so it can see a note that begins
- while the previous one is still sounding at full level. That difference is not a nicety. `patVoice`
- defaults to `sustain = 1.0` (`PatSoundDocs.kt:747`), which means the *default* render of a gapless
- melodic sequence is one continuous tone with exactly one attack in it, and an energy detector cannot
- segment it however it is tuned — not because it is badly configured but because the evidence it
- consumes is not in the signal. [patDetectPitchChangeSamples] is the complement, and
- `PatPitchTranscriptionTest` measures the pair on the same render so the claim is a number.
-
- The estimator is YIN — the cumulative-mean-normalised difference function — computed directly in the
- time domain. `Spectral.kt:26` has a real FFT and an autocorrelation could be had from it for less
- arithmetic, but the difference function is what YIN's threshold and its aperiodicity confidence are
- defined on, and at these corpus sizes the direct form costs seconds, not minutes. Choosing the
- cheaper transform and then keeping YIN's constants would have been the kind of borrowing that works
- until it quietly doesn't.
-
- Three things here are load-bearing.
-
- **The window is derived from [PAT_PITCH_MIN_HZ], not fixed.** YIN needs a frame at least twice the
- longest period it is asked to consider, so the lowest pitch admitted sets the frame length, and the
- frame length sets the time resolution — a detector told it might hear a 65 Hz note is looking through
- a 50 ms window whatever it is actually listening to. So `minHz`/`maxHz` are the same kind of
- parameter as `patDetectOnsetSamples`' `minGapSeconds`: the detector is told what register it is
- allowed to resolve, and it buys sharpness with that promise. Telling it the truth about a treble line
- shortens its window fourfold. Guessing wide costs time resolution silently, which is the failure
- mode this file is arranged to make visible rather than to hide.
-
- **A frame's pitch belongs to the frame's centre, not its start.** A frame spans `window + tauMax`
- samples, so attributing its estimate to the first of them would report a note as starting up to 50 ms
- before it did. [PatF0Frame.centerSample] is what every consumer here uses, and a detected pitch
- change is then localised inside the frame it was noticed in by re-analysing with a window sized to
- the *new* note's period — the same walk-back move `patDetectOnsetSamples` makes, for the same reason.
-
- **Timbre is not polyphony, and the detector has to be able to tell them apart.** A sawtooth is a
- stack of partials and a triad is a stack of partials; refusing everything harmonically rich would
- make the refusal worthless. [patHarmonicResidual] measures the fraction of strong spectral peak
- energy that does *not* sit near an integer multiple of the detected f0, which is near zero for any
- single note of any timbre and large for a chord. A monophonic detector that reports it cannot name
- a chord is telling the truth; one that picks the loudest note is not.
+/**
+ * What pitch a rendered pattern is actually sounding, measured from the audio.
+ *
+ * `PatOnsetDetection` answers *when*. This answers *what*, and the two are not the same question with
+ * a different threshold. An energy detector reads the amplitude envelope, so it can only see a note
+ * that begins with an attack; a pitch detector reads periodicity, so it can see a note that begins
+ * while the previous one is still sounding at full level. That difference is not a nicety. `patVoice`
+ * defaults to `sustain = 1.0` (`PatSoundDocs.kt:747`), which means the *default* render of a gapless
+ * melodic sequence is one continuous tone with exactly one attack in it, and an energy detector cannot
+ * segment it however it is tuned — not because it is badly configured but because the evidence it
+ * consumes is not in the signal. [patDetectPitchChangeSamples] is the complement, and
+ * `PatPitchTranscriptionTest` measures the pair on the same render so the claim is a number.
+ *
+ * The estimator is YIN, the cumulative-mean-normalised difference function, computed directly in the
+ * time domain. `Spectral.kt:26` has a real FFT and an autocorrelation could be had from it for less
+ * arithmetic, but YIN's threshold and its aperiodicity confidence are both defined on the difference
+ * function, so keeping those constants over an autocorrelation would be taking the numbers without
+ * the derivation they come from. At these corpus sizes the direct form costs seconds.
+ *
+ * Three things here decide what the detector can resolve.
+ *
+ * **The window is derived from [PAT_PITCH_MIN_HZ], not fixed.** YIN needs a frame at least twice the
+ * longest period it is asked to consider, so the lowest pitch admitted sets the frame length, and the
+ * frame length sets the time resolution. A detector told it might hear a 65 Hz note is looking through
+ * a 50 ms window whatever it is actually listening to. So `minHz`/`maxHz` are the same kind of
+ * parameter as `patDetectOnsetSamples`' `minGapSeconds`: the detector is told what register it is
+ * allowed to resolve, and buys sharpness with that promise. Telling it the truth about a treble line
+ * shortens its window fourfold; guessing wide costs time resolution and gains nothing, which is why
+ * the register is an argument here rather than a constant.
+ *
+ * **A frame's pitch belongs to the frame's centre, not its start.** A frame spans `window + tauMax`
+ * samples, so attributing its estimate to the first of them would report a note as starting up to 50 ms
+ * before it did. [PatF0Frame.centerSample] is what every consumer here uses, and a detected pitch
+ * change is then localised inside the frame it was noticed in by re-analysing with a window sized to
+ * the *new* note's period — the same walk-back move `patDetectOnsetSamples` makes, for the same reason.
+ *
+ * **Timbre is not polyphony, and the detector has to be able to tell them apart.** A sawtooth is a
+ * stack of partials and a triad is a stack of partials; refusing everything harmonically rich would
+ * make the refusal worthless. [patHarmonicResidual] measures the fraction of strong spectral peak
+ * energy that does *not* sit near an integer multiple of the detected f0, which is near zero for any
+ * single note of any timbre and large for a chord. A monophonic detector that reports it cannot name
+ * a chord is telling the truth; one that picks the loudest note is not.
  */
+
 @file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth

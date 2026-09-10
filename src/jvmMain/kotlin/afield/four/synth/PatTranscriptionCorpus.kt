@@ -1,32 +1,32 @@
-/*
- A corpus that scores a transcription against the notation that generated the audio.
-
- The ground truth here costs nothing and is exact, which is unusual enough to be worth stating.
- Transcription research is normally bounded by annotation: someone listens to a recording and writes
- down what they think is in it, and the transcriber is then measured against a human's opinion.
- Field authored the notation, rendered it through its own synthesiser, and still has the notation — so
- the reference is not an annotation of the audio, it *is* the audio's cause. Every number in
- [PatTranscriptionCorpus] is a comparison against a fact.
-
- [referenceOf] therefore mirrors `patRenderStereo` (`PatSoundDocs.kt:785-797`) line for line rather
- than reimplementing the schedule: same `events(PatArc(ZERO, of(cycles)))`, same sort, same
- `arc.start · secondsPerCycle`, same `(startSec · sampleRate).toInt()` truncation, and deliberately no
- `hasOnset` filter, because the renderer has none either. A reference computed from what the schedule
- *ought* to be would be measuring this file's understanding of the renderer instead of the detector.
-
- **Half the corpus is designed to fail**, and those cases are the point. A harness that only contains
- material its detector handles reports the detector's tuning, not its range. So there is a legato line
- with no attacks in it, a triad a monophonic detector must refuse rather than name, a line fast enough
- to sit under the analysis window, a noise train with no pitch in it at all, and square and sawtooth
- timbres whose harmonic stacks are the classic octave-error traps. What each case is *for* is written
- into [PatTranscriptionCase.purpose] and printed with its score, so a regression shows up as a
- sentence rather than a delta.
-
- The `*-untold` cases exist to measure one design claim rather than assert it: that telling the
- detector the register it is listening to — the same contract `patDetectOnsetSamples` has with
- `minGapSeconds` — is worth more than any threshold. The pair differs in nothing but whether
- `minHz`/`maxHz` come from the notation or from the wide default.
+/**
+ * A corpus that scores a transcription against the notation that generated the audio.
+ *
+ * The ground truth here costs nothing and is exact. Transcription research is normally bounded by
+ * annotation: someone listens to a recording, writes down what they think is in it, and the
+ * transcriber is measured against a human's opinion. Field authored the notation, rendered it through
+ * its own synthesiser, and still has the notation, so the reference is the audio's cause rather than
+ * a reading of it. Every number in [PatTranscriptionCorpus] is a comparison against that.
+ *
+ * [referenceOf] therefore mirrors `patRenderStereo` (`PatSoundDocs.kt:785-797`) line for line rather
+ * than reimplementing the schedule: same `events(PatArc(ZERO, of(cycles)))`, same sort, same
+ * `arc.start · secondsPerCycle`, same `(startSec · sampleRate).toInt()` truncation, and deliberately no
+ * `hasOnset` filter, because the renderer has none either. A reference computed from what the schedule
+ * *ought* to be would be measuring this file's understanding of the renderer instead of the detector.
+ *
+ * **Half the corpus is designed to fail.** A harness that only contains material its detector handles
+ * measures the tuning rather than the range. So there is a legato line
+ * with no attacks in it, a triad a monophonic detector must refuse rather than name, a line fast enough
+ * to sit under the analysis window, a noise train with no pitch in it at all, and square and sawtooth
+ * timbres whose harmonic stacks are the classic octave-error traps. What each case is *for* is written
+ * into [PatTranscriptionCase.purpose] and printed with its score, so a regression shows up as a
+ * sentence rather than a delta.
+ *
+ * The `*-untold` cases exist to measure one design claim rather than assert it: that telling the
+ * detector the register it is listening to — the same contract `patDetectOnsetSamples` has with
+ * `minGapSeconds` — is worth more than any threshold. The pair differs in nothing but whether
+ * `minHz`/`maxHz` come from the notation or from the wide default.
  */
+
 @file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth

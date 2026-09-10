@@ -1,32 +1,31 @@
 @file:afield.CompletionCategory("Patterns")
-/*
- Where a rendered pattern's notes actually start, measured from the audio.
-
- This exists so that two different renderers can be measured with the *same* instrument. Field
- renders a pattern offline through `patRenderStereo`; Sonic Pi renders it through SuperCollider after
- `SonicPiPatterns` lowers it. Each can be checked against the pattern's exact rational schedule, and
- the comparison is only worth making if the measuring device is shared — two detectors tuned
- separately would agree with their own renderer and tell you nothing about the pair.
-
- Nothing here is novel signal processing. It is an energy envelope, half-wave rectified flux, a
- local-maximum test and a refractory gap, and it is adequate because the question is *when* rather
- than *what*: these are bare percussive trains with nothing else in the mix.
-
- Two details are load-bearing, and both were learned by getting them wrong in a way that looked like
- success. They are the reason this is a file rather than four lines at a call site.
-
- **Resolution.** A flux peak in a 256-sample window can only say which *frame* something happened
- in. A measurement whose resolution is coarser than the error it is looking for reports zero
- whatever the truth is — the first version of this reported `0.0 ms` at a resolution of 2.7 ms, and
- was believed. So every coarse hit is walked back to the first sample that crosses a fraction of the
- local peak, and [patDetectOnsetSamples] returns *samples*.
-
- **The refractory gap, applied after refinement.** `bd_haus` has a secondary energy rise 129 ms into
- its decay. A first-past-the-post refractory on the coarse stage reports that shoulder *and*
- suppresses the real attack that follows it — which reads as a timing failure rather than the
- detection failure it is, and which cost an hour. The gap is the pattern's own smallest interval,
- and deduplication happens after the onsets are exact.
+/**
+ * Where a rendered pattern's notes actually start, measured from the audio.
+ *
+ * One detector, so that two renderers can be measured with the same instrument. Field renders a
+ * pattern offline through `patRenderStereo`; Sonic Pi renders it through SuperCollider after
+ * `SonicPiPatterns` lowers it. Either can be checked against the pattern's exact rational schedule,
+ * and the comparison only means anything if the measuring device is shared, since two detectors tuned
+ * separately would each agree with their own renderer.
+ *
+ * The signal processing is ordinary: an energy envelope, half-wave rectified flux, a local-maximum
+ * test and a refractory gap. That is adequate because the question is *when* rather than *what*, and
+ * these are bare percussive trains with nothing else in the mix.
+ *
+ * Two details decide whether the answer means anything.
+ *
+ * **Resolution.** A flux peak in a 256-sample window can only say which *frame* something happened
+ * in, and a measurement whose resolution is coarser than the error it is looking for reports zero
+ * whatever the truth is. So every coarse hit is walked back to the first sample that crosses a
+ * fraction of the local peak, and [patDetectOnsetSamples] returns *samples* rather than frames.
+ *
+ * **The refractory gap, applied after refinement.** `bd_haus` has a secondary energy rise 129 ms into
+ * its decay. A first-past-the-post refractory on the coarse stage reports that shoulder and
+ * suppresses the real attack behind it, which reads as a timing error rather than the detection error
+ * it is. So the gap is the pattern's own smallest interval, and deduplication happens after the
+ * onsets are exact.
  */
+
 package afield.four.synth
 
 import kotlin.math.abs

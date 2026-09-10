@@ -4,46 +4,44 @@ package afield.four.synth
 
 import java.math.BigInteger
 
-/*
- The shortest mini-notation expression that plays a given rhythm.
-
- `PatTranscription.kt` closed the audio→notation loop at the **flat** level: [patNotationOf] fits a
- step grid to a set of onsets and writes one slot per step, `x . . x . . x .`, which is faithful and
- says nothing. `bd(3,8)` says the same thing in a third of the characters *and* says what kind of
- thing it is. Nothing in Field could get from the first to the second, in either direction — the
- only notation emitter in the repo was the flat one.
-
- This file is the second direction. Give it a rhythm — a mask, a `PatPattern`, a list of events, a
- [PatTranscription] — and it returns the shortest string in Field's own mini-notation whose parse
- renders to an **identical** event set, together with the structure it found.
-
- **Description length is the whole criterion.** There is no notion here of a "better" reading of a
- rhythm than a shorter one. `x..x.x..` is `bd(3,8)` because that is eight characters against
- twenty-three, not because Euclidean rhythms are privileged; a figure that no operator shortens comes
- back as itself, spelled out. That is the property that stops the whole exercise being a tautology,
- and [PatCondenseTest] asserts it over generated structureless masks rather than trusting it.
-
- **The oracle is Field's own parser.** Every candidate this file emits is handed back to [pat] — the
- same entry point a user's box calls — re-rendered, and compared event for event against the target.
- Nothing is accepted on the strength of the reasoning that produced it. A second, hand-written
- evaluator would agree with itself forever while drifting away from the language, and this project
- has that mistake written down twice; there is no such evaluator here. The proposers below are
- allowed to be wrong, because being wrong only costs a rejected candidate.
-
- **What it searches.** The candidate grammar is read off `MiniPat.Node` (`TidalPatterns.kt:1127`) —
- what the parser actually accepts, not what a mini-notation tutorial says. Atoms and `~`; `_` holds
- and their `@n` spelling; `[ … ]` grouping at every divisor of the span; `x!n` replication; `x*n`
- repetition; `X(p,s,r)` Euclidean figures and `X(kN)` / `X(gN)` Kolakoski ones over any repeated
- *term* rather than only a repeated atom; `a, b` stacking, from an interval partition of overlapping
- events; and `< … >` alternation when the cycles differ. What it does **not** search is listed in
- `dev_docs/PAT_CONDENSE.md` and pinned as tests, so the list cannot go stale on its own.
-
- **It is bounded, and it says so.** A structural search over this grammar does not terminate if you
- let it enumerate freely, so the range DP keeps [PAT_CONDENSE_BEAM] candidates per span, stops
- proposing after [PAT_CONDENSE_NODES] spans, refuses a grid finer than [PAT_CONDENSE_MAX_SLOTS]
- steps, and calls the oracle at most [PAT_CONDENSE_ORACLE_CALLS] times. Every one of those bounds is
- reported on the result, so a caller can tell a genuine "there is nothing shorter" from a search that
- ran out of room.
+/**
+ * The shortest mini-notation expression that plays a given rhythm.
+ *
+ * `PatTranscription.kt` writes a rhythm out flat: [patNotationOf] fits a step grid to a set of onsets
+ * and emits one slot per step, `x . . x . . x .`, which is faithful and says nothing about what it is
+ * looking at. `bd(3,8)` says the same thing in a third of the characters and names the figure.
+ *
+ * This file gets from the first spelling to the second. Give it a rhythm, as a mask, a `PatPattern`, a
+ * list of events or a [PatTranscription], and it returns the shortest string in Field's own
+ * mini-notation whose parse renders to an **identical** event set, together with the structure it
+ * found.
+ *
+ * **Description length is the whole criterion.** There is no notion here of a "better" reading of a
+ * rhythm than a shorter one. `x..x.x..` is `bd(3,8)` because that is eight characters against
+ * twenty-three, not because Euclidean rhythms are privileged, and a figure that no operator shortens
+ * comes back as itself, spelled out. [PatCondenseTest] asserts that last part over generated
+ * structureless masks, since a condenser that always found *something* would be finding nothing.
+ *
+ * **The oracle is Field's own parser.** Every candidate this file emits is handed back to [pat], the
+ * same entry point a box calls, re-rendered, and compared event for event against the target. Nothing
+ * is accepted on the strength of the reasoning that produced it, and there is no second hand-written
+ * evaluator to drift away from the language. The proposers below are allowed to be wrong, because
+ * being wrong only costs a rejected candidate.
+ *
+ * **What it searches.** The candidate grammar is read off `MiniPat.Node` (`TidalPatterns.kt:1127`) —
+ * what the parser actually accepts, not what a mini-notation tutorial says. Atoms and `~`; `_` holds
+ * and their `@n` spelling; `[ … ]` grouping at every divisor of the span; `x!n` replication; `x*n`
+ * repetition; `X(p,s,r)` Euclidean figures and `X(kN)` / `X(gN)` Kolakoski ones over any repeated
+ * *term* rather than only a repeated atom; `a, b` stacking, from an interval partition of overlapping
+ * events; and `< … >` alternation when the cycles differ. What it does **not** search is listed in
+ * `dev_docs/PAT_CONDENSE.md` and pinned as tests, so the list cannot go stale on its own.
+ *
+ * **It is bounded, and it says so.** A structural search over this grammar does not terminate if you
+ * let it enumerate freely, so the range DP keeps [PAT_CONDENSE_BEAM] candidates per span, stops
+ * proposing after [PAT_CONDENSE_NODES] spans, refuses a grid finer than [PAT_CONDENSE_MAX_SLOTS]
+ * steps, and calls the oracle at most [PAT_CONDENSE_ORACLE_CALLS] times. Every one of those bounds is
+ * reported on the result, so a caller can tell a genuine "there is nothing shorter" from a search that
+ * ran out of room.
  */
 
 /** Candidates kept per span by the range DP. Raising it widens the search and slows it. */
@@ -66,9 +64,9 @@ const val PAT_CONDENSE_MAX_PERIOD: Int = 8
  *
  * [notation] is always something [pat] parses. When [exact] is true it renders to the target's events
  * exactly, over [cycles] cycles, checked by re-rendering rather than by construction. When it is
- * false, [refusal] says why the search would not sign for the result and [notation] is the best
- * honest thing left — usually the flat spelling, and for a target that could not even be reduced to a
- * grid, the source it came from.
+ * false, [refusal] says why the search would not sign for the result and [notation] is the closest
+ * thing that still parses: usually the flat spelling, or for a target that would not reduce to a grid
+ * at all, the source it came from.
  *
  * @param flat the same rhythm spelled one slot per step, which is the denominator [compression]
  *   divides by and the floor the search is never allowed to lose to.

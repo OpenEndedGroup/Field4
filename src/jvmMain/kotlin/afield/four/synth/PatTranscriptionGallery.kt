@@ -1,21 +1,22 @@
-/*
- The figure that makes the round trip something you look at rather than read about.
-
- One panel per case, one shared MIDI axis, and the two note sets drawn on top of each other: the
- notation Field authored as a hollow outline, and what the detector heard as a solid bar inside it.
- Agreement is then a filled outline and disagreement is a bar with nothing around it or an outline with
- nothing in it — which is the whole reason to overlay rather than stack. A stacked pair of piano rolls
- asks the reader to compare two pictures; an overlay asks them to spot the exceptions.
-
- Drawn as SVG strings into a `StringBuilder`, following `PatPianoRollGallery` exactly, including its
- palette. Same reasons: a piano roll is line art, and a diffable figure shows a changed detector as a
- changed rectangle rather than as a changed PNG blob. No AWT, no browser, no GPU, no Field window.
-
- The F0 trace is drawn on the same axis as the notes, because it is in the same units. That is worth
- stating because it is the part of the figure that shows *why* a note was missed: a trace that wanders
- between two outlines is a straddling window, and a trace that vanishes is the voicing gate closing.
- Neither is visible in a score table.
+/**
+ * The figure that makes the round trip something you look at rather than read about.
+ *
+ * One panel per case, one shared MIDI axis, and the two note sets drawn on top of each other: the
+ * notation Field authored as a hollow outline, and what the detector heard as a solid bar inside it.
+ * Agreement is then a filled outline and disagreement is a bar with nothing around it or an outline with
+ * nothing in it — which is the whole reason to overlay rather than stack. A stacked pair of piano rolls
+ * asks the reader to compare two pictures; an overlay asks them to spot the exceptions.
+ *
+ * Drawn as SVG strings into a `StringBuilder`, following `PatPianoRollGallery` exactly, including its
+ * palette. Same reasons: a piano roll is line art, and a diffable figure shows a changed detector as a
+ * changed rectangle rather than as a changed PNG blob. No AWT, no browser, no GPU, no Field window.
+ *
+ * The F0 trace is drawn on the same axis as the notes, because it is in the same units, and it is the
+ * part of the figure that shows *why* a note was missed: a trace wandering between two outlines is a
+ * straddling window, and a trace that vanishes is the voicing gate closing. Neither is visible in a
+ * score table.
  */
+
 @file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth

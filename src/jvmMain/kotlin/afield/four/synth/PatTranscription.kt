@@ -1,32 +1,29 @@
-/*
- Recovered audio, written back out as notation Field can re-render.
-
- `public/docs/audio_render_analysis.md` draws the loop — notate, render, analyse, revise — and its
- last arrow, "→ revise the generating code", is drawn by hand. This file is that arrow. Given a
- rendered buffer it returns a `pat("…")` string and the `PatPattern` it parses to, so the output of
- analysis is the same kind of object as the input to synthesis and the loop closes without a human in
- the middle of it.
-
- Nothing in the repo could do this before: there is no mini-notation printer anywhere in Field, in
- either direction. `PatEvent.sourceSpan` can hand back the substring that *produced* an event, which
- is the opposite problem.
-
- **What is recoverable and what is not.** A step grid is recoverable from onsets; a *cycle* length is
- not. Eight notes a beat apart are equally well "eight steps in one cycle at 0.5 cps" and "four steps
- per cycle over two cycles at 1 cps", and no amount of listening distinguishes them, because the two
- render to identical samples. So [patTranscribe] recovers the grid honestly and then makes the one
- arbitrary choice it must — one cycle, however many steps it found — and reports the [PatTranscription.cps]
- that makes that choice sound right. The notation is faithful to the audio, not to the authoring
- decision that happened to produce it, and that distinction is the interesting part of the result
- rather than a defect in it.
-
- **A rest and a refusal are different, and mini-notation cannot say so.** `~` means "nothing sounds
- here". There is no token for "something sounds here and a monophonic detector will not pretend to
- name it". So a span whose harmonic residual says chord is dropped from [PatTranscription.notes] into
- [PatTranscription.declined], appears in the emitted string as `~`, and is named explicitly in
- [PatTranscription.warnings]. The emitted notation is what the detector will stand behind; the
- warnings are what it heard and would not sign.
+/**
+ * Recovered audio, written back out as notation Field can re-render.
+ *
+ * `public/docs/audio_render_analysis.md` draws the loop: notate, render, analyse, revise. This file is
+ * the last arrow. Given a rendered buffer it returns a `pat("…")` string and the `PatPattern` it
+ * parses to, so the output of analysis is the same kind of object as the input to synthesis and the
+ * loop closes without a human in the middle of it. It is Field's only mini-notation printer, in
+ * either direction; `PatEvent.sourceSpan` hands back the substring that *produced* an event, which is
+ * the opposite problem.
+ *
+ * **What is recoverable and what is not.** A step grid is recoverable from onsets; a *cycle* length is
+ * not. Eight notes a beat apart are equally well "eight steps in one cycle at 0.5 cps" and "four steps
+ * per cycle over two cycles at 1 cps", and no amount of listening distinguishes them, because the two
+ * render to identical samples. So [patTranscribe] recovers the grid, makes the one arbitrary choice it
+ * has to (one cycle, however many steps it found), and reports the [PatTranscription.cps] that makes
+ * that choice sound right. What comes back is faithful to the audio rather than to the authoring
+ * decision that produced it.
+ *
+ * **A rest and a refusal are different, and mini-notation cannot say so.** `~` means "nothing sounds
+ * here". There is no token for "something sounds here and a monophonic detector will not pretend to
+ * name it". So a span whose harmonic residual says chord is dropped from [PatTranscription.notes] into
+ * [PatTranscription.declined], appears in the emitted string as `~`, and is named explicitly in
+ * [PatTranscription.warnings]. So the notation is what the detector will stand behind and the
+ * warnings are the rest of what it heard.
  */
+
 @file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth
