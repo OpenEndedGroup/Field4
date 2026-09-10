@@ -1,7 +1,12 @@
 # Filling a solid: tetrahedral meshing with TetGen
 
-*Every public declaration used below carries its own KDoc — start from `Tetgen`, `TetMesh` and
-`TetgenLibrary` in `afield.tetgen`. `dev_docs/TETGEN.md` carries the mesher comparison that chose
+*Every public declaration used below carries its own KDoc, and all of it is browsable on the
+[Simulation](reference/simulation.md) reference page, beside the Kratos solver this feeds and the
+real-time particle stack it does not — start from
+[`Tetgen`](reference/simulation.md#tetgen-kt-tetgen),
+[`TetMesh`](reference/simulation.md#tetgen-kt-tetmesh) and
+[`TetgenLibrary`](reference/simulation.md#tetgen-kt-tetgenlibrary) in `afield.tetgen`.
+`dev_docs/TETGEN.md` carries the mesher comparison that chose
 this route, and the numbers on this page were produced in this repository on an Apple M-series
 laptop, natively, with no container. The one exception is labelled where it appears: the beam
 deflections under [Into Kratos](#into-kratos) come from the solver container.*

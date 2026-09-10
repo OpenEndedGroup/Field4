@@ -188,6 +188,26 @@ regenerating, say so in the commit message (`git commit --no-verify`, since the 
    row, and `afield.stdlib.DocumentedBehaviourTest` exists because several of those rows were wrong
    in ways only reading the code could reveal.
 
+## A KDoc `[Symbol]` reference, and what a *qualified* one means
+
+Only **top-level** types get an anchor on these pages, so a nested type has none. That leaves
+`[Outer.Nested]` with nothing to resolve to, and until 2026-09 `linkify` fell back to the last
+segment alone — which is a false link waiting for a name collision anywhere in the corpus.
+
+Adding the simulation roots supplied one, and it is a good illustration of how far this drift
+reaches. `afield.stdlib/tuio.kt` documents `[TuioReceiver.Frame]`; `TuioReceiver.Frame` is a nested
+`data class` with no anchor; `afield.four.physics/CSVReader.kt` declares a top-level `Frame` for
+motion-capture samples. The moment the physics root was published, a sentence on `data.md` about a
+TUIO cursor frame acquired a link into the physics page — on a page nobody had edited, from a change
+in a different package, and it would have shipped had the diff not been read.
+
+`TypeAnchors.resolveReference` is the narrowest rule that closes it: **when a reference is qualified
+and this reference knows the qualifier, the match has to live in the same source file the qualifier
+does**, because a nested type cannot live anywhere else. An unknown qualifier — a package name, a
+JDK type — still falls back to the last segment, so `[java.nio.ByteBuffer]` behaves exactly as
+before. Measured over the whole corpus at the time it landed: it changed nothing except that one
+line, and `data.md` went back to byte-identical with base.
+
 ## Which page a file lands on, and the one label that is not an annotation
 
 A generated page is a **completion category**, and a file's category is normally the
@@ -219,6 +239,32 @@ measured cost of the near-miss is recorded on `EXCLUDE_PREFIXES`
 eleven candidate files, 574 declaration names, 235 of them also declared elsewhere *and* present in
 real box code.
 
+The `Simulation` page was measured the same way in 2026-09, and the numbers are worth keeping
+because they say something the synth ones did not. Population: the **18** of that page's 26 files
+that carry no annotation today, which is exactly what an "annotate instead" route would have had to
+annotate. Counted with the real parser (`KotlinSourceIndex.scanDefinitions`, no visibility filter,
+simple names) against the whole index corpus of 45618 declarations / 26468 distinct simple names:
+
+| | count | denominator |
+| --- | --- | --- |
+| declarations in the 18 files | 916 | — |
+| distinct names they would newly file under one label | **670** | 916 declarations |
+| …also declared elsewhere in the tree | **190** | 670 names |
+| …*and* appearing in real box code | **157** | 190 names |
+
+The box-code population is 247 sources — 95 transcript yaml, 36 corpus preambles, 116 published
+pages reduced to their code text. On the headline ratio this is *milder* than the synth case
+(157/670 = 23% against 235/574 = 41%), and on composition it is worse: the 157 include `Box`,
+`lines`, `add`, `get`, `size`, `copy`, `close`, `start`, `state`, `step`, `time`, `update`, `x`, `y`
+and `z`. `Box` is the type every box has in scope and `lines` is how anything gets drawn.
+
+One difference from the synth case is worth stating precisely rather than dramatised. `Internal`
+*hides*; `Simulation` does not, so the counterfactual harm here is 157 names at risk of having a
+name-only first-wins lookup answer "Simulation" for them in the popup's category header, not 235
+names at risk of vanishing. Different severity, same mechanism, same conclusion — and the realised
+cost of doing it by path instead is zero lines changed under any of the three roots, which `git
+diff` can be asked rather than believed.
+
 ### The mechanism actually used
 
 `CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:269#private val CATEGORY_BY_PATH`)
@@ -243,6 +289,28 @@ Two properties make it safe, and both are checked rather than argued:
 **The plural in `Languages` is load-bearing.** `normalizedCompletionCategory` maps the singular
 `"language"` onto `"Kotlin"`, so a rename to the tidier-looking `Language` would file the page under
 an existing, unrelated category the moment anything normalised it. The test pins both directions.
+
+### The same mechanism, used for a label that is not reference-only
+
+`Simulation` (added 2026-09) is the second thing `CATEGORY_BY_PATH` files, and it is a weaker case
+than `Languages` in one way that matters. `Languages` is a label that exists nowhere but that map.
+`Simulation` is a real completion category **eight files already carry** — six in `afield.kratos`,
+two in `afield.tetgen` — so the two prefixes are not inventing a label, they are extending one the
+source chose to the eighteen files beside it that never got annotated.
+
+That makes two of `LanguagesCategoryTest`'s assertions inapplicable rather than violated, and the
+test says so itself: the "never enters the completion vocabulary" check `continue`s for anything
+that is not `Languages`, and the "no file under a path prefix carries its own annotation" check runs
+only over the prefixes filed under `Languages`. Both are right to. A file's own annotation always
+wins, so a `Simulation`-annotated file under a `Simulation` prefix is not a conflict — it is the map
+agreeing with the source. The three checks that *do* apply to it all pass: the label is not hidden
+from completion, its prefixes are real directories inside `SOURCE_ROOTS`, and it has a page blurb.
+
+`afield.tetgen` deliberately has **no** prefix even though it is a source root, because every file
+it has annotates itself. A prefix there would label nothing today, and if a fourth file lands
+unannotated the `Uncategorised` build failure telling its author to add the annotation its siblings
+carry is correct advice in that package. In `afield.kratos` it would not be — two of its published
+files have never had one.
 
 ### Which packages are on the Languages page, and which are not
 

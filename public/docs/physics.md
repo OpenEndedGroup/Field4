@@ -700,6 +700,12 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 ## Where to look next
 
+- **[Simulation, in the codebase reference](reference/simulation.md)** — every public declaration in
+  this package, with the KDoc that sits beside it, on one browsable page. It is also where the two
+  neighbours this page does not cover live: Kratos, which answers the same kind of question slowly
+  and correctly instead of quickly and approximately, and
+  [tetrahedral meshing](reference/simulation.md#tetgen-kt), which is what stands between a solid and
+  a solver that wants elements.
 - **[Frames, and What a Frame Is](animation_time_model.md#a-physics-system-in-the-loop)** — the same
   cloth as a moving picture, and the argument for a fixed `dt`. It also has the generator layer that
   `addPidPositionController` is written in.
