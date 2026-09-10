@@ -11,6 +11,7 @@ were measured rather than assumed, and one advertised feature that turned out to
 | `PatAlgebra.kt` | how two patterns of different types meet, whose rhythm survives, and named parameters |
 | `PatComposition.kt` | arrangement operators, scales, chords, and voice leading |
 | `PatFunctions.kt` | the bridge into `Functions.Fn`: kernel atoms, and the `pat` graph op of §7 |
+| `PatCondense.kt` | the parser run backwards: the shortest mini-notation that plays a given rhythm — see [PAT_CONDENSE.md](PAT_CONDENSE.md) |
 
 Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest`, `MiniNotationTest` and
 `PatContractTest` (97 tests), the `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav`

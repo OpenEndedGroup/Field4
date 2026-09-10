@@ -673,7 +673,75 @@ object PatPianoRollGallery {
                 check(pairs.size >= 6) { "{2,3} over sixteen steps left only ${pairs.size} onsets" }
             }
         ),
+
+        // 11 ── patCondense: a rhythm and its shortest spelling, drawn on top of each other.
+        Roll(
+            name = "condense",
+            blurb = "Four pairs. The upper lane of each is a rhythm spelled out one slot per step; " +
+                "the lower is whatever `patCondense` returned for it, played. **The two lanes of a " +
+                "pair have to coincide exactly** — that is the whole claim, and it is drawn rather " +
+                "than asserted, because a condensation that changes the rhythm is the one failure " +
+                "worth being able to see at a glance. The labels say what the search found: eight " +
+                "slots become `x(3,8)`, sixteen become `x(k16)`, and a grouped four-step figure " +
+                "becomes `bd hh*2 sd cp*2` — fifteen characters against twenty-one, which is the " +
+                "only reason the search prefers it. The last pair is the counter-example that stops " +
+                "this being a tautology: eight atoms with no repeat at any split the grammar can " +
+                "take, which come back **unchanged**. The search finds structure; it does not " +
+                "manufacture it.",
+            build = {
+                val cases = listOf(
+                    bjorklund(3, 8).joinToString(" ") { if (it) "x" else "~" },
+                    kolakoskiMask(16).joinToString(" ") { if (it) "x" else "~" },
+                    "bd [hh hh] sd [cp cp]",
+                    "a b c d e c a d"
+                )
+                PatRollSpec(
+                    title = "patCondense: the shortest notation that plays the same bar",
+                    subtitle = "given (above) against condensed (below) — four pairs, each of which must coincide",
+                    cycles = 1,
+                    lanes = cases.flatMapIndexed { index, source ->
+                        val condensed = patCondense(source)
+                        val color = LANE_COLORS[index % LANE_COLORS.size]
+                        listOf(
+                            Lane(condenseLaneLabel(source), pat(source), color = color),
+                            Lane("→ ${condensed.notation}", pat(condensed.notation), color = color)
+                        )
+                    }
+                )
+            },
+            verify = { lanes ->
+                check(lanes.size == 8) { "the condense roll drew ${lanes.size} lanes, expected four pairs" }
+                for (index in lanes.indices step 2) {
+                    val given = lanes[index]
+                    val found = lanes[index + 1]
+                    fun shape(events: List<PatEvent<String>>) =
+                        events.map { "${it.arc.start}..${it.arc.end}|${it.value}" }.sorted()
+                    check(shape(given.cycle(0)) == shape(found.cycle(0))) {
+                        "${found.label} does not play ${given.label}: " +
+                            "${shape(given.cycle(0))} against ${shape(found.cycle(0))}"
+                    }
+                    check(given.cycle(0).isNotEmpty()) { "${given.label} drew nothing at all" }
+                }
+                // The three structured pairs really did shorten, and the fourth really did not.
+                check(lanes[1].label == "→ x(3,8)") { "the Euclidean pair reads ${lanes[1].label}" }
+                check(lanes[3].label == "→ x(k16)") { "the Kolakoski pair reads ${lanes[3].label}" }
+                check(lanes[5].label == "→ bd hh*2 sd cp*2") { "the grouped pair reads ${lanes[5].label}" }
+                check(lanes[7].label == "→ a b c d e c a d") {
+                    "the structureless pair was condensed to ${lanes[7].label}, so the search invented " +
+                        "something that is not in the rhythm"
+                }
+            }
+        ),
     )
+
+    /** A given-rhythm lane's label: the `x`/`.` reading when it is a one-voice mask, else the source. */
+    private fun condenseLaneLabel(source: String): String {
+        val steps = source.trim().split(Regex("\\s+"))
+        if (steps.size > 4 && steps.all { it == "~" || it == "x" }) {
+            return steps.joinToString("") { if (it == "x") "x" else "." }
+        }
+        return source
+    }
 
     /** Cycle-0 arcs of a lane, for the terse checks above. */
     private fun arcsOfLane(lane: LaneEvents): List<Pair<PatQ, PatQ>> =
