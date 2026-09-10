@@ -13,6 +13,8 @@ import afield.niceTicks
 import afield.signalPalette
 import afield.stdlib.Vec4
 import afield.stdlib.label
+import afield.stdlib.thickness
+import afield.stdlib.vec
 import afield.toIntersection
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.EncodedImageFormat
@@ -473,9 +475,26 @@ object ChartGallery {
                 "against ${"%.0f".format(room)} px of room; drawn, ${extentReport(noted)}"
         )
 
-        // Both figures are captured, because "it compiles" is not verification for anything visual.
-        File(dir, "chart-clip-corner-window.png").writeBytes(render(corner).png)
-        File(dir, "chart-clip-long-note.png").writeBytes(render(noted).png)
+        // Both cases, before and after, as a *panel* would draw them — because "it compiles" is not
+        // verification for anything visual, and the raw 780 x 440 raster is not what a reader saw.
+        // The before half is `clip = false`, which is the behaviour these two defects were, so the
+        // pair is a thing this harness re-derives rather than a screenshot of history.
+        listOf("corner-window" to corner, "long-note" to noted).forEach { (name, chart) ->
+            chart.clip = false
+            val before = renderAsPanelWouldFit(chart)
+            chart.clip = true
+            val after = renderAsPanelWouldFit(chart)
+            File(dir, "chart-clip-$name-before.png").writeBytes(before.first.png)
+            File(dir, "chart-clip-$name-after.png").writeBytes(after.first.png)
+            println(
+                "  $name as a panel fits it: before ${"%.0f%%".format(before.second * 100)}, " +
+                    "after ${"%.0f%%".format(after.second * 100)} of declared size"
+            )
+            if (after.second <= before.second * 1.5) {
+                problems += "$name: the panel fit only went ${"%.2f".format(before.second)} -> " +
+                    "${"%.2f".format(after.second)}, which is not a fix anyone would see"
+            }
+        }
 
         check(problems.isEmpty()) { "figures left their own frame:\n  - " + problems.joinToString("\n  - ") }
         println(
@@ -582,6 +601,31 @@ object ChartGallery {
      */
     private fun render(chart: Chart): Raster =
         renderLines(chart.toFLines(), chart.width, chart.height)
+
+    /**
+     * A chart as the *box output panel* draws it, with the fit scale it chose.
+     *
+     * [render] rasterises the figure's own coordinates onto a `width` x `height` surface, so anything
+     * off-frame is simply not in the picture and the failure is invisible. A panel does the opposite:
+     * `linesToHTML` stamps the geometry's union bounds on the wrapper and the panel scales *those*
+     * down to fit, which is why one stray point turns the axes into a stamp. This reproduces that
+     * arithmetic — the same 20 px safety inset and `min` of the two ratios as
+     * `someSkiko.kt`'s `computeFitTransform` — so the captures show what a reader sees.
+     */
+    private fun renderAsPanelWouldFit(chart: Chart): Pair<Raster, Double> {
+        val lines = chart.toFLines()
+        val b = drawnBounds(chart) ?: return renderLines(lines, chart.width, chart.height) to 1.0
+        val safety = 20.0
+        val scale = minOf((chart.width - safety * 2) / b.w, (chart.height - safety * 2) / b.h)
+        val placed = lines.map { line ->
+            line.transform { p ->
+                vec((p.x - b.x) * scale + safety, (p.y - b.y) * scale + safety, p.z)
+            }.also { moved ->
+                line.thickness?.let { moved.thickness = it * scale.coerceIn(0.0, 1.0) }
+            }
+        }
+        return renderLines(placed, chart.width, chart.height) to scale
+    }
 
     private fun renderLines(lines: List<afield.graphics.FLine>, wd: Double, ht: Double): Raster {
         val w = wd.toInt()
