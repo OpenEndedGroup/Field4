@@ -1,48 +1,47 @@
 @file:afield.CompletionCategory("Patterns")
-/*
- Continuous (signal) patterns, and the discretisers that turn them back into events.
-
- `PatPattern` in TidalPatterns.kt is an *event* stream: query an arc, get back a list of
- things that happened inside it. A **signal** is the degenerate — and much more useful than
- it looks — case of exactly one event per query, spanning the whole arc, whose value is a
- function of time. Nothing new is needed in the type system: a signal is a `PatPattern<Double>`
- that always answers, so every combinator in the language already applies to it.
-
- Read the surface from the outside in:
-
- 1. A continuous value:
-
-        val lfo = sine()                 // 0..1, one cycle per pattern cycle
-        val swept = saw().range(200, 4000)
-
- 2. Sample it — nothing plays a continuous pattern directly, you discretise it:
-
-        val steps = sine().segment(8)     // exactly 8 events per cycle
-        val grid  = struct(euclid(3, 8), pat("bd"))
-
- 3. Or hand it to the parameter algebra in PatAlgebra.kt, which samples it for you:
-
-        pat("bd sd hh sd") with gain(sine().range(0.2, 1.0))
-
- The sampling convention
- -----------------------
-
- A continuous pattern queried with arc `a` returns one event spanning `a` whose value is
- `f(mid(a))`, and `mid(a)` is the **exact rational midpoint** `(a.start + a.end) / 2` — the
- conversion to `Double` happens only inside `f`. Three reasons this is the right convention:
-
- - it is what Tidal does, so ear-knowledge transfers;
- - the midpoint is the only choice under which `segment(n)` samples each segment at that
-   segment's own centre, which makes `sine().segment(4)` symmetric about the cycle and stable
-   under `rev()` — an asymmetric convention (start, or end) breaks both;
- - it is total. Every arc, however small, has a value, so a continuous pattern can never be
-   "missed" by a query the way a zero-width event could be.
-
- `segment(n)` deliberately does NOT just sample at the query arc's midpoint. It builds the
- `1/n` grid itself, samples the source over each **whole** grid cell, and only then clips the
- result to the query arc — so the values you observe do not depend on how the caller chopped
- up the arc. `PatSignalsTest` asserts exactly that.
+/**
+ * Continuous (signal) patterns, and the discretisers that turn them back into events.
+ *
+ * `PatPattern` in TidalPatterns.kt is an *event* stream: query an arc, get back a list of
+ * things that happened inside it. A **signal** is the limiting case of that: exactly one event per
+ * query, spanning the whole arc, whose value is a function of time. It needs nothing new in the type
+ * system, because a signal is a `PatPattern<Double>` that always answers, so every combinator in the
+ * language already applies to it.
+ *
+ * Read the surface from the outside in:
+ *
+ * 1. A continuous value:
+ *
+ *        val lfo = sine()                 // 0..1, one cycle per pattern cycle
+ *        val swept = saw().range(200, 4000)
+ *
+ * 2. Sample it — nothing plays a continuous pattern directly, you discretise it:
+ *
+ *        val steps = sine().segment(8)     // exactly 8 events per cycle
+ *        val grid  = struct(euclid(3, 8), pat("bd"))
+ *
+ * 3. Or hand it to the parameter algebra in PatAlgebra.kt, which samples it for you:
+ *
+ *        pat("bd sd hh sd") with gain(sine().range(0.2, 1.0))
+ *
+ * #### The sampling convention
+ *
+ * A continuous pattern queried with arc `a` returns one event spanning `a` whose value is
+ * `f(mid(a))`, and `mid(a)` is the **exact rational midpoint** `(a.start + a.end) / 2` — the
+ * conversion to `Double` happens only inside `f`. Three reasons this is the right convention:
+ *
+ * - it is what Tidal does, so ear-knowledge transfers;
+ * - the midpoint is the only choice under which `segment(n)` samples each segment at that
+ *   segment's own centre, which makes `sine().segment(4)` symmetric about the cycle and stable
+ *   under `rev()` — an asymmetric convention (start, or end) breaks both;
+ * - it is total. Every arc, however small, has a value, so a continuous pattern can never be
+ *   "missed" by a query the way a zero-width event could be.
+ *
+ * `segment(n)` does not sample at the query arc's midpoint. It builds the `1/n` grid itself, samples
+ * the source over each **whole** grid cell, and clips to the query arc only afterwards, so the values
+ * you observe do not depend on how the caller chopped up the arc. `PatSignalsTest` asserts that.
  */
+
 package afield.four.synth
 
 import java.math.BigInteger

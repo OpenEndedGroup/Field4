@@ -35,12 +35,8 @@ import kotlin.random.Random
  * modulatable, which is why the generic query core underneath knows nothing
  * about audio.
  *
- * This used to end "Only this file touches [Runloop]". Checked while auditing this package's KDoc
- * for the sound-path map, and it is not true — [AudioReturnValue], [PatPatternReturnValue] and
- * `BooleanNetworkSequencing` all reach for `Runloop.runLoop` too. What is true is narrower, and is
- * what the sentence was reaching for: the *generic query core* — path resolution, grouping,
- * [ScalarPathState] — has no runloop dependency at all, and this file is where the runloop-bound
- * half of the param layer is confined.
+ * The split runs along the same line. Path resolution, grouping and [ScalarPathState] carry no
+ * runloop dependency, and this file is where the runloop-bound half of the param layer is confined.
  */
 
 enum class ParamModulationMode {

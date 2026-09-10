@@ -9,7 +9,7 @@
  *
  * [referenceOf] therefore mirrors `patRenderStereo` (`PatSoundDocs.kt:785-797`) line for line rather
  * than reimplementing the schedule: same `events(PatArc(ZERO, of(cycles)))`, same sort, same
- * `arc.start · secondsPerCycle`, same `(startSec · sampleRate).toInt()` truncation, and deliberately no
+ * `arc.start · secondsPerCycle`, same `(startSec · sampleRate).toInt()` truncation, and no
  * `hasOnset` filter, because the renderer has none either. A reference computed from what the schedule
  * *ought* to be would be measuring this file's understanding of the renderer instead of the detector.
  *

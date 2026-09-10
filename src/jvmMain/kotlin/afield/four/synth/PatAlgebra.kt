@@ -1,68 +1,68 @@
 @file:afield.CompletionCategory("Patterns")
-/*
- The parameter-application algebra: combining patterns of different types, and choosing
- whose rhythm survives.
-
- This is the piece that turns the event language in TidalPatterns.kt into a composition
- language. Everything else — signals, scales, chords, `off`, `jux` — is built on top of the
- three combinators here.
-
- Read the surface from the outside in:
-
- 1. Structure choice. When two patterns meet, one of three things can happen to the rhythm:
-
-        pat("0 1").nums() `|+|` pat("10 20 30").nums()   // structure from BOTH: 4 events
-        pat("0 1").nums() `|+`  pat("10 20 30").nums()   // structure from LEFT:  2 events
-        pat("0 1").nums() `+|`  pat("10 20 30").nums()   // structure from RIGHT: 3 events
-
-    The bars mark where the structure comes from, exactly as in Tidal. Every operator also has
-    a prose alias (`addBoth`, `addLeft`, `addRight`) for people who dislike backticks.
-
- 2. Taking a value rather than combining:
-
-        pat("bd sd") `#`  pat("a b c")   // left's rhythm, right's values (Tidal's `|>`)
-        pat("bd sd") `|L` pat("a b c")   // left's rhythm, left's values  (Tidal's `|<`)
-
- 3. Named parameters, which is what you actually reach for:
-
-        val voice = pat("bd sd hh sd") with gain(sine().range(0.3, 1.0)) with pan(saw())
-
-    A parameter is stored in the event's existing `annotations` map, so it survives every
-    transform in the language, arrives intact in `PatScheduledEvent`, and reads back typed:
-
-        voice.peek(4).forEach { println(it.value to it.num("gain")) }
-
- Structure choice, precisely
- ---------------------------
-
- - `appBoth` — the cross product of every pair of intersecting events; each output arc is the
-   *intersection*. This is the only one of the three that can create events.
-
- - `appLeft` — **exactly the left pattern's events survive**, one output per input. Each left
-   event queries the right pattern over its own arc and takes the right event containing the
-   left arc's start.
-
- - `appRight` — the mirror image.
-
- The "query the right over the left's arc, latch at the left's start" rule is deliberate, and
- it is the one place this language knowingly diverges from Tidal. Tidal splits the left event
- into fragments, one per overlapping right event, because its events carry both a `whole` and a
- `part`. `PatEvent` has a single arc, so fragmenting here would silently multiply notes: ask for
- four kicks with a sixteen-step filter sweep and you would get sixty-four kicks. Instead:
-
- - a **discrete** right pattern latches its value at note onset, which is what a synth voice
-   does anyway (parameters are read when the envelope is triggered);
- - a **continuous** right pattern answers the left event's whole arc with a single event whose
-   value is the midpoint of that note, so `gain(sine())` gives one gain per note, taken at the
-   middle of the note.
-
- One implementation, both behaviours, and note count is preserved. `PatAlgebraTest` asserts the
- cardinality laws and the midpoint sampling in exact rational cycle space.
-
- Because `appLeft` never fragments, sub-cycle queries sample the *clipped* fragment's start.
- Every scheduling path in the language (`eventSequence`, `scheduled`, `peek`) queries whole
- cycles, so this only matters if you call `events(...)` with a partial arc by hand.
+/**
+ * The parameter-application algebra: combining patterns of different types, and choosing
+ * whose rhythm survives.
+ *
+ * This is the piece that turns the event language in TidalPatterns.kt into a composition
+ * language. Everything else — signals, scales, chords, `off`, `jux` — is built on top of the
+ * three combinators here.
+ *
+ * Read the surface from the outside in:
+ *
+ * 1. Structure choice. When two patterns meet, one of three things can happen to the rhythm:
+ *
+ *        pat("0 1").nums() `|+|` pat("10 20 30").nums()   // structure from BOTH: 4 events
+ *        pat("0 1").nums() `|+`  pat("10 20 30").nums()   // structure from LEFT:  2 events
+ *        pat("0 1").nums() `+|`  pat("10 20 30").nums()   // structure from RIGHT: 3 events
+ *
+ *    The bars mark where the structure comes from, exactly as in Tidal. Every operator also has
+ *    a prose alias (`addBoth`, `addLeft`, `addRight`) for people who dislike backticks.
+ *
+ * 2. Taking a value rather than combining:
+ *
+ *        pat("bd sd") `#`  pat("a b c")   // left's rhythm, right's values (Tidal's `|>`)
+ *        pat("bd sd") `|L` pat("a b c")   // left's rhythm, left's values  (Tidal's `|<`)
+ *
+ * 3. Named parameters, which is what you actually reach for:
+ *
+ *        val voice = pat("bd sd hh sd") with gain(sine().range(0.3, 1.0)) with pan(saw())
+ *
+ *    A parameter is stored in the event's existing `annotations` map, so it survives every
+ *    transform in the language, arrives intact in `PatScheduledEvent`, and reads back typed:
+ *
+ *        voice.peek(4).forEach { println(it.value to it.num("gain")) }
+ *
+ * #### Structure choice, precisely
+ *
+ * - `appBoth` — the cross product of every pair of intersecting events; each output arc is the
+ *   *intersection*. This is the only one of the three that can create events.
+ *
+ * - `appLeft` — **exactly the left pattern's events survive**, one output per input. Each left
+ *   event queries the right pattern over its own arc and takes the right event containing the
+ *   left arc's start.
+ *
+ * - `appRight` — the mirror image.
+ *
+ * The "query the right over the left's arc, latch at the left's start" rule is the one place this
+ * language knowingly diverges from Tidal, and the reason is the event type. Tidal splits the left event
+ * into fragments, one per overlapping right event, because its events carry both a `whole` and a
+ * `part`. `PatEvent` has a single arc, so fragmenting here would silently multiply notes: ask for
+ * four kicks with a sixteen-step filter sweep and you would get sixty-four kicks. Instead:
+ *
+ * - a **discrete** right pattern latches its value at note onset, which is what a synth voice
+ *   does anyway (parameters are read when the envelope is triggered);
+ * - a **continuous** right pattern answers the left event's whole arc with a single event whose
+ *   value is the midpoint of that note, so `gain(sine())` gives one gain per note, taken at the
+ *   middle of the note.
+ *
+ * One implementation, both behaviours, and note count is preserved. `PatAlgebraTest` asserts the
+ * cardinality laws and the midpoint sampling in exact rational cycle space.
+ *
+ * Because `appLeft` never fragments, sub-cycle queries sample the *clipped* fragment's start.
+ * Every scheduling path in the language (`eventSequence`, `scheduled`, `peek`) queries whole
+ * cycles, so this only matters if you call `events(...)` with a partial arc by hand.
  */
+
 @file:Suppress("DANGEROUS_CHARACTERS") // `|+|` and friends are JVM method names, never file names.
 
 package afield.four.synth

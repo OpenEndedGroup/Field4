@@ -13,93 +13,92 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.reflect.KProperty1
 
-/*
- Bridge from `pat(...)` into scalar functions (`Functions.Fn`).
-
- There are now two complementary surfaces:
-
- 1. String atoms:
-
-      val fn = pat("g:(0,0.12) tent:(1,0.08,0.8) adsr:(0.6,0.01,0.08,0.4,0.2)")
-          .asFn(cps = 2.0, range = 0.9)
-
- 2. Typed atoms with late-bound values:
-
-      val fn = pat("a b c") { atom ->
-          when (atom) {
-              "a" -> gaussianAtom(sigma = 0.08) { x -> kotlin.math.sin(local(x) * 12.0) }
-              "b" -> gaussianAtom(sigma = 0.12) { x -> bipolarRandom() * (1.0 - normalized(x)) }
-              else -> adsrAtom(attack = 0.01, decay = 0.08, sustain = 0.4, release = 0.2) { x ->
-                  0.5 + 0.5 * noise(x, frequency = 18.0)
-              }
-          }
-      }.asFn(cps = 2.0, maxLookAhead = 0.5)
-
- The evaluator keeps a rolling cache of decoded atoms and only unrolls the
- source pattern far enough ahead to cover the maximum possible pre-support of
- future atoms. The current string forms are:
-
- - `g:(value,sigma[,weight])`
- - `tent:(value,radius[,weight])`
- - `box:(value,radius[,weight])`
- - `wendland:(value,radius[,weight])`
- - `spline:(value,radius[,weight])`
- - `env:(value,attack,release[,weight])`
- - `adsr:(value,attack,decay,sustain,release[,weight])`
-
- 3. String atoms with `%binding` placeholders resolved at event-decode time:
-
-      var t = 0.0
-      val fn = pat("g:(%x,0.2) tent:(0.3,0.08,0.8) adsr:(%y,0.01,0.08,0.4,0.2)")
-          .asFn(cps = 2.0, range = 0.9) { binding ->
-              when (binding) {
-                  "x" -> Math.random()
-                  "y" -> Math.sin(t)
-                  else -> 0.0
-              }
-          }
-
-    Any numeric position in a string atom can hold `%name` instead of a literal.
-    The resolver is called at event-decode time (when the evaluator unrolls
-    events), so each cycle gets a fresh snapshot of the bound values.
-
-    If no explicit resolver is given, `%name` bindings are resolved from the
-    current box's KotlinInterface vars table (`Box.context` → `ki.context.vars`).
-    Any `Number`-typed var is coerced to `Double`; non-numeric or missing vars
-    resolve to `0.0`.
-
- The `pat` graph op
- -----------------
-
- A string-atom pattern does not just *evaluate* as an `Fn`, it appears in the
- `Fn` graph as a node of its own — `op = "pat"` — so a rhythm is a first-class
- citizen of the rewrite/fit/evolve machinery rather than an opaque lambda that
- happens to produce numbers. See [scanPatAtomSlots] for what gets hoisted.
-
- - `strings["source"]` is the pattern text, with the node's *current* numbers
-   spliced back in, so a fitted gesture is a string you can paste into a box.
- - every numeric position of every string atom becomes a role-tagged child
-   (`atom0.sigma`, `atom1.attack`, …), and `cps` is one too. Those children are
-   `param` leaves, which is exactly what `extractParameters` / `fitGradient`
-   treat as θ — so Adam tunes kernel widths, atom values and tempo directly.
- - `numbers` carries `range` and `outside`, and `booleans` carries `strict`.
-   These describe the *evaluator*, not the gesture, so they stay out of θ
-   deliberately: a gradient has no business wandering into a cache bound.
-
- A parameter child is read at each atom's own onset rather than once at build
- time, so grafting a real signal into a role (rather than leaving the constant
- leaf there) gives a kernel width that drifts across the piece.
-
- Not every pattern can carry the node, and the ones that cannot fall back to
- the opaque `Fn` this file has always produced:
-
- - the typed-atom and custom-`atomDecoder` surfaces (2. above) hold user
-   lambdas, and a lambda cannot describe how to rebuild itself;
- - a `%binding` in a numeric position resolves against live box state at
-   decode time, so the result is not a function of `x` alone. `fitGradient`
-   samples non-monotonically and would be fitting a moving target, so a source
-   that really uses a binding stays opaque. A binding *resolver* that the text
-   never calls on is harmless, and does not cost the node.
+/**
+ * Bridge from `pat(...)` into scalar functions (`Functions.Fn`).
+ *
+ * Three surfaces, in increasing order of how late the numbers arrive:
+ *
+ * 1. String atoms:
+ *
+ *      val fn = pat("g:(0,0.12) tent:(1,0.08,0.8) adsr:(0.6,0.01,0.08,0.4,0.2)")
+ *          .asFn(cps = 2.0, range = 0.9)
+ *
+ * 2. Typed atoms with late-bound values:
+ *
+ *      val fn = pat("a b c") { atom ->
+ *          when (atom) {
+ *              "a" -> gaussianAtom(sigma = 0.08) { x -> kotlin.math.sin(local(x) * 12.0) }
+ *              "b" -> gaussianAtom(sigma = 0.12) { x -> bipolarRandom() * (1.0 - normalized(x)) }
+ *              else -> adsrAtom(attack = 0.01, decay = 0.08, sustain = 0.4, release = 0.2) { x ->
+ *                  0.5 + 0.5 * noise(x, frequency = 18.0)
+ *              }
+ *          }
+ *      }.asFn(cps = 2.0, maxLookAhead = 0.5)
+ *
+ * The evaluator keeps a rolling cache of decoded atoms and only unrolls the
+ * source pattern far enough ahead to cover the maximum possible pre-support of
+ * future atoms. The current string forms are:
+ *
+ * - `g:(value,sigma[,weight])`
+ * - `tent:(value,radius[,weight])`
+ * - `box:(value,radius[,weight])`
+ * - `wendland:(value,radius[,weight])`
+ * - `spline:(value,radius[,weight])`
+ * - `env:(value,attack,release[,weight])`
+ * - `adsr:(value,attack,decay,sustain,release[,weight])`
+ *
+ * 3. String atoms with `%binding` placeholders resolved at event-decode time:
+ *
+ *      var t = 0.0
+ *      val fn = pat("g:(%x,0.2) tent:(0.3,0.08,0.8) adsr:(%y,0.01,0.08,0.4,0.2)")
+ *          .asFn(cps = 2.0, range = 0.9) { binding ->
+ *              when (binding) {
+ *                  "x" -> Math.random()
+ *                  "y" -> Math.sin(t)
+ *                  else -> 0.0
+ *              }
+ *          }
+ *
+ *    Any numeric position in a string atom can hold `%name` instead of a literal.
+ *    The resolver is called at event-decode time (when the evaluator unrolls
+ *    events), so each cycle gets a fresh snapshot of the bound values.
+ *
+ *    If no explicit resolver is given, `%name` bindings are resolved from the
+ *    current box's KotlinInterface vars table (`Box.context` → `ki.context.vars`).
+ *    Any `Number`-typed var is coerced to `Double`; non-numeric or missing vars
+ *    resolve to `0.0`.
+ *
+ * #### The `pat` graph op
+ *
+ * A string-atom pattern does not just *evaluate* as an `Fn`, it appears in the
+ * `Fn` graph as a node of its own — `op = "pat"` — so a rhythm is a first-class
+ * citizen of the rewrite/fit/evolve machinery rather than an opaque lambda that
+ * happens to produce numbers. See [scanPatAtomSlots] for what gets hoisted.
+ *
+ * - `strings["source"]` is the pattern text, with the node's *current* numbers
+ *   spliced back in, so a fitted gesture is a string you can paste into a box.
+ * - every numeric position of every string atom becomes a role-tagged child
+ *   (`atom0.sigma`, `atom1.attack`, …), and `cps` is one too. Those children are
+ *   `param` leaves, which is exactly what `extractParameters` / `fitGradient`
+ *   treat as θ — so Adam tunes kernel widths, atom values and tempo directly.
+ * - `numbers` carries `range` and `outside`, and `booleans` carries `strict`.
+ *   These describe the *evaluator* rather than the gesture, so they are kept
+ *   out of θ: a gradient has no business wandering into a cache bound.
+ *
+ * A parameter child is read at each atom's own onset rather than once at build
+ * time, so grafting a real signal into a role (rather than leaving the constant
+ * leaf there) gives a kernel width that drifts across the piece.
+ *
+ * Not every pattern can carry the node. The ones that cannot fall back to an
+ * opaque `Fn`, which evaluates identically and simply cannot be rewritten:
+ *
+ * - the typed-atom and custom-`atomDecoder` surfaces (2. above) hold user
+ *   lambdas, and a lambda cannot describe how to rebuild itself;
+ * - a `%binding` in a numeric position resolves against live box state at
+ *   decode time, so the result is not a function of `x` alone. `fitGradient`
+ *   samples non-monotonically and would be fitting a moving target, so a source
+ *   that really uses a binding stays opaque. A binding *resolver* that the text
+ *   never calls on is harmless, and does not cost the node.
  */
 
 data class PatFunctionAtom(

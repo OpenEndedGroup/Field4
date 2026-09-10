@@ -4,10 +4,10 @@
  * cycles, and a scheduler that turns the result into events in seconds.
  *
  * `pat("bd [hh hh] sd")` parses, the combinators on [PatPattern] transform, and `scheduled(…)`,
- * `respond(…)` and `asNotes(…)` are the three ways out. What matters about the middle is that it is
- * exact: a query asks a pattern about a [PatArc], a half-open span of [PatQ] rational cycles, so a
- * third of a bar sped up, reversed and slowed down again lands where it started. Seconds appear only
- * at the boundary, and `cps` is where that conversion happens.
+ * `respond(…)` and `asNotes(…)` are the three ways out. The middle stage is exact: a query asks a
+ * pattern about a [PatArc], a half-open span of [PatQ] rational cycles, so a third of a bar sped up,
+ * reversed and slowed down again lands where it started. Seconds appear only at the boundary, and
+ * `cps` is where that conversion happens.
  *
  * The notation follows Tidal in style rather than to the letter, and an atom is any string rather
  * than a sample name, so a pattern can drive a synth voice, a property, an OSC send or a box launch
@@ -163,8 +163,8 @@
  * - `asNotes(...)` is the memoized bridge when you want the same future schedule
  *   to drive playback logic and piano-roll inspection without recomputing it.
  *
- * Three companion files extend this one, and are worth knowing about before you reach for a
- * `map { }`:
+ * Three companion files extend this one. Read them before writing a `map { }`, because one of them
+ * probably already has the combinator:
  *
  * - `PatSignals.kt` — continuous/signal patterns (`sine`, `saw`, `perlin`, `rand`) and the
  *   discretisers that turn them back into events (`segment`, `struct`, `range`, `quantise`).
@@ -173,11 +173,9 @@
  * - `PatComposition.kt` — arrangement (`off`, `superimpose`, `jux`, `iter`, `linger`, `randcat`,
  *   `shuffle`) and pitch (`scale`, `chords`, `voiceLead`).
  *
- * The intentionally generic hooks in this file are `respond(...)` and
- * `respondAhead(...)`: atoms can drive synth voices, visuals, property
- * mutations, OSC, sample playback, box launches, or any other live-coded
- * behavior. If the pattern language evolves away from Pat over time, `pat(...)`
- * is the stable user-facing name we expect to keep.
+ * `respond(...)` and `respondAhead(...)` are the hooks that assume nothing about the atom: it can
+ * drive a synth voice, a visual, a property, an OSC send, a sample or a box launch. `pat(...)` is the
+ * name to write against, and the one that will survive if the language underneath it changes.
  */
 
 package afield.four.synth

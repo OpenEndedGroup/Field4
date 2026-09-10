@@ -1,48 +1,50 @@
 @file:afield.CompletionCategory("Patterns")
-/*
- Compositional structure: the transforms that build a piece out of a pattern, and the pitch
- vocabulary — scales, named chords, and voice leading.
-
- TidalPatterns.kt gives you one line of music and the means to vary it. PatAlgebra.kt lets two
- lines meet. This file is what you reach for when you want *an arrangement*: the same material
- displaced, superimposed, rotated, split across the stereo field, and spelled in a key.
-
- Read the surface from the outside in:
-
- 1. Displace and layer:
-
-        pat("bd ~ sd ~")
-            .off(PatQ.of(1, 8)) { it with gain(0.4) }     // a ghost note an eighth later
-            .superimpose { it.fast(2) }
-            .jux { it.rev() }                              // left ear forward, right ear reversed
-
- 2. Rotate and hold:
-
-        pat("a b c d").iter(4)      // cycle 0: a b c d, cycle 1: b c d a, …
-        pat("a b c d").linger(PatQ.of(1, 2))   // just "a b", twice
-
- 3. Choose per cycle:
-
-        randcat(pat("bd*4"), pat("bd sd"), pat("~ sd"))
-        wrandcat(pat("bd*4") to 3.0, pat("~ sd") to 1.0)
-        pat("a b c d").shuffle(4)
-
- 4. Spell it in a key:
-
-        run(8).scale("minor", root = 60)                   // eight degrees of C minor
-        pat("0 3 4 3").nums().scale("dorian", root = 62)
-
- 5. Chords, and the part Tidal has no answer for — voice leading:
-
-        val progression = chords("c'maj7 a'min7 d'min7 g'dom7")
-        progression.voiceLead(center = 60).notesOf()
-
-    `voiceLead` picks each chord's inversion and octave to minimise the total semitone movement
-    of the voices from the previous chord. Played as block chords straight from their roots, that
-    progression moves **83** semitones; voice-led it moves **9**, and the harmony is unchanged —
-    every chord is still the same set of pitch classes. `PatCompositionTest` computes both numbers
-    live rather than asserting a remembered one.
+/**
+ * Compositional structure: the transforms that build a piece out of a pattern, and the pitch
+ * vocabulary — scales, named chords, and voice leading.
+ *
+ * TidalPatterns.kt gives you one line of music and the means to vary it. PatAlgebra.kt lets two
+ * lines meet. This file is what you reach for when you want *an arrangement*: the same material
+ * displaced, superimposed, rotated, split across the stereo field, and spelled in a key.
+ *
+ * Read the surface from the outside in:
+ *
+ * 1. Displace and layer:
+ *
+ *        pat("bd ~ sd ~")
+ *            .off(PatQ.of(1, 8)) { it with gain(0.4) }     // a ghost note an eighth later
+ *            .superimpose { it.fast(2) }
+ *            .jux { it.rev() }                              // left ear forward, right ear reversed
+ *
+ * 2. Rotate and hold:
+ *
+ *        pat("a b c d").iter(4)      // cycle 0: a b c d, cycle 1: b c d a, …
+ *        pat("a b c d").linger(PatQ.of(1, 2))   // just "a b", twice
+ *
+ * 3. Choose per cycle:
+ *
+ *        randcat(pat("bd*4"), pat("bd sd"), pat("~ sd"))
+ *        wrandcat(pat("bd*4") to 3.0, pat("~ sd") to 1.0)
+ *        pat("a b c d").shuffle(4)
+ *
+ * 4. Spell it in a key:
+ *
+ *        run(8).scale("minor", root = 60)                   // eight degrees of C minor
+ *        pat("0 3 4 3").nums().scale("dorian", root = 62)
+ *
+ * 5. Chords, and the part Tidal has no answer for — voice leading:
+ *
+ *        val progression = chords("c'maj7 a'min7 d'min7 g'dom7")
+ *        progression.voiceLead(center = 60).notesOf()
+ *
+ *    `voiceLead` picks each chord's inversion and octave to minimise the total semitone movement
+ *    of the voices from the previous chord, which for that progression is close to an order of
+ *    magnitude less than playing the chords from their roots. The harmony survives it: every chord
+ *    comes back as the same set of pitch classes, in the same number of voices, inside the register
+ *    asked for. `PatCompositionTest` asserts those three and that the movement strictly decreases,
+ *    and prints the before-and-after figures rather than pinning them.
  */
+
 package afield.four.synth
 
 import kotlin.math.abs
