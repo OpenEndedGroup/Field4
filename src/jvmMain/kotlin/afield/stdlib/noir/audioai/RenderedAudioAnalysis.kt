@@ -31,6 +31,26 @@ import javax.sound.sampled.AudioSystem
 import kotlin.math.roundToInt
 
 /**
+ * The render-to-analysis pipeline: render Field synthesis to a WAV, upload it once, and fan out durable analysis jobs.
+ *
+ * [RenderedAudioFile] is a WAV produced by Field code, tagged with a generator name and a
+ * provenance map that identify what produced the bytes. Six render functions cover the synthesis
+ * systems: `renderPatWav` (Pat rhythmic patterns), `renderDirtWav` (Pat through the Dirt sample
+ * library), `renderDoughWav` and `renderDoughStereoWav` (Dough signal graphs), `renderFaustWav`
+ * and `renderFaustWavAsync` (Faust programs), and `recordSonicPiWav` (real-time Sonic Pi capture).
+ *
+ * [analyzeRenderedAudio] uploads the WAV once, submits a fan-out of analysis jobs (beats,
+ * monophonic pitch, and polyphonic pitch by default), watches progress over WebSocket, and
+ * completes with a [RenderedAudioAnalysis]. The fan-out is all-or-nothing: a failed leg abandons
+ * the others rather than returning a partial result. [RenderedAudioAnalysis.visualizationHtml]
+ * renders the waveform and all analysis lanes on a shared, bidirectional time cursor.
+ *
+ *     val wav = renderPatWav(tmp, pattern, cycles = 4, cps = 1.5)
+ *     val analysis = client.analyzeRenderedAudio(wav).get()
+ *     display(analysis.visualizationHtml())
+ */
+
+/**
  * A finite sound made by Field code and written to a real WAV file.
  *
  * This is the seam between Field's synthesis systems and Field Audio. Pat, Dirt, Dough and Faust

@@ -6,6 +6,22 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 
+/**
+ * Phase portrait renderers for speech and spectral embedding spaces, synchronized with a shared audio cursor.
+ *
+ * Two kinds of space are supported. Speech embeddings come from learned models such as WavLM and
+ * use voice activity as the opacity modulator. Spectral embeddings come from
+ * [SpectralEmbeddingProjection] and use spectral flux instead. Both draw two phase portraits
+ * (axes 0/1 and 2/3) above an activity strip, with hover audition and click-to-seek wired into
+ * the same `field-time-*` event bus as the audio player.
+ *
+ * Each kind has three entry points: a single-panel live variant that fetches from an
+ * [AnalysisResult], a single-panel preview variant that works from a cached [AnalysisPreview],
+ * and a multi-panel dashboard that stacks several panels with a shared cursor. The spectral
+ * variants accept the MDS or t-SNE preview that `withSpectralProjection` attaches to an
+ * [AnalysisPreview].
+ */
+
 private val speechVisualizationJson = Json {
     encodeDefaults = true
     explicitNulls = false

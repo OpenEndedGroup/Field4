@@ -6,6 +6,22 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 
+/**
+ * Analysis viewers and dashboards for beat, pitch, and note results, with zoom, pan, and a shared time cursor.
+ *
+ * [analysisVisualizationHtml] turns an [AnalysisResult] into a zoomable interactive display; the
+ * browser decides which of the three layouts to draw from [AnalysisPreview.operation]: onset
+ * strength and multi-scale tempo for a beat analysis, pYIN frequency and voicing probability for
+ * a monophonic pitch analysis, or a Basic Pitch piano roll with activation curves for a
+ * polyphonic one. [analysisPreviewVisualizationHtml] takes an already-fetched [AnalysisPreview]
+ * and works without any service round trip.
+ *
+ * Dashboard variants ([analysisDashboardHtml], [analysisPreviewDashboardHtml]) stack panels with
+ * a synchronized cursor, making beat/pYIN/Basic Pitch disagreements inspectable side by side.
+ * All panels support wheel zoom, drag pan, hover inspection, and click-to-seek, synchronized
+ * across panels that share a `syncGroup`.
+ */
+
 private val analysisVisualizationJson = Json {
     encodeDefaults = true
     explicitNulls = false

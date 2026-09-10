@@ -9,6 +9,18 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import kotlin.math.abs
 
+/**
+ * Multi-scale corpus operations: segment a source into overlapping windows, embed each window
+ * with grouped audio descriptors, and retrieve neighbours by weighted distance.
+ *
+ * The three operations form a pipeline that runs server-side. [segmentCorpus] enumerates
+ * deterministic time windows at several scales without computing any descriptors. [embedCorpus]
+ * computes and persists the five grouped descriptor families (harmony, pitch, texture, rhythm,
+ * dynamics) for every window. [findCorpusNeighbours] retrieves the closest embedded windows
+ * to a query using [CorpusDistanceWeights], which controls how much each group contributes to
+ * the distance. All three produce a [ModelOperation] that [FieldAudioClient.submit] executes.
+ */
+
 /** Explicit weights for the five interpretable descriptor groups used by corpus retrieval. */
 data class CorpusDistanceWeights(
     val harmony: Double = 1.0,

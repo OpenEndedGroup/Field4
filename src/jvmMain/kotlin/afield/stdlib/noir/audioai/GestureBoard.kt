@@ -8,6 +8,28 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
+/**
+ * Temporal sketches for source-conditioned generation, with prompt regions, onset events,
+ * and parameter curves that together express a generation intent.
+ *
+ * Build a [GestureBoard] with the `gestureBoard{}` DSL and pass it to [gestureCandidates] to
+ * produce a multi-seed [ModelOperation]. Prompt regions are compiled into the model's global text
+ * condition; onset events and parameter curves are evaluative: the service scores each generated
+ * candidate against them rather than passing them as native model controls.
+ *
+ * [compileGestureBoard] previews the protocol locally and returns a [GestureCompilation] that lists
+ * how each board element is wired to the backend. Example:
+ *
+ *     val board = gestureBoard(8.0, "acoustic guitar, warm") {
+ *         prompt(0.0, 4.0, "sparse, arpeggiated")
+ *         event(3.5, "accent")
+ *         curve("energy", GestureCurveKind.ACTIVITY) {
+ *             point(0.0, 0.2); point(4.0, 0.8); point(8.0, 0.3)
+ *         }
+ *     }
+ *     val operation = gestureCandidates(source, board, seeds = 0L until 4L)
+ */
+
 @DslMarker
 annotation class GestureBoardDsl
 

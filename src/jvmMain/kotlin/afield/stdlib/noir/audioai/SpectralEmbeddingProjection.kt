@@ -16,6 +16,30 @@ import java.util.concurrent.CompletableFuture
 import kotlin.math.abs
 import kotlin.math.round
 
+/**
+ * Spectral embedding: decode, pool, and project the short-time spectral frames stored in an analysis artifact.
+ *
+ * A spectral analysis job writes a binary MessagePack artifact.
+ * [decodeSpectralEmbeddingMessagePack] reads it into a [SpectralEmbeddingFrames] value containing
+ * mel distributions, log-mel spectrograms, and MFCC vectors, optionally bounded to a time window,
+ * temporally pooled, and sampled to a target frame count. Call `.mds()` or `.tsne()` on the
+ * result to get a [SpectralEmbeddingProjection] with exact frame times, then pass it to
+ * `withSpectralProjection` to attach the axes to an `AnalysisPreview` as named time series.
+ *
+ * Five distance metrics are available via [SpectralEmbeddingDistance]. The default, mel Wasserstein,
+ * treats each frame as a probability distribution over perceptual mel-bin positions and computes
+ * earth-mover distance. The other four apply cosine or Euclidean distance to log-mel or MFCC
+ * vectors directly. Both projection methods delegate to Smile via the `smileMds` and `smileTsne`
+ * families.
+ *
+ * Temporal pooling and hop length are independent: overlapping perceptual windows can still sample
+ * at display rate. Sampling to `maxFrames` happens after pooling and retains time order. Example:
+ *
+ *     val frames = client.spectralEmbeddingFrames(result).get()
+ *     val projection = frames.mds()
+ *     val preview = preview.withSpectralProjection(projection)
+ */
+
 /** The interchangeable short-time representations and metrics retained by one spectral job. */
 enum class SpectralEmbeddingDistance(val label: String) {
     /** Earth mover / Wasserstein-1 distance along normalized perceptual mel-bin position. */

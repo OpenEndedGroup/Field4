@@ -47,7 +47,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
 | [alife_lsystem.kt](alife.md#alife-lsystem-kt) | ALife | 57 | 34 | Structural spatial ALife: a bracketed, parametric, optionally stochastic L-system with a turtle that emits `FLine`s, plus space-colonization branching. | [Spatial artificial life](../alife_examples.md) |
 | [AnalysisOperations.kt](audio-ai.md#analysisoperations-kt) | Audio AI | 8 | 8 | Typed constructors for model-free musical analysis and learned speech representations. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Speech-reactive learned spaces](../audio_ai_speech_embeddings.md) |
-| [AnalysisVisualization.kt](audio-ai.md#analysisvisualization-kt) | Audio AI | 4 | 4 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md) |
+| [AnalysisVisualization.kt](audio-ai.md#analysisvisualization-kt) | Audio AI | 4 | 4 | Analysis viewers and dashboards for beat, pitch, and note results, with zoom, pan, and a shared time cursor. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md) |
 | [ArchitecturalGeometry.kt](solvers.md#architecturalgeometry-kt) | Solvers | 186 | 94 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
 | [Asta.kt](languages.md#asta-kt) | Languages | 16 | 0 |  |  |
 | [Attributes.kt](polytopes.md#attributes-kt) | Polytopes | 7 | 7 | Untyped per-element data, carried alongside the topology and propagated through transforms. |  |
@@ -81,7 +81,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Conway.kt](polytopes.md#conway-kt) | Polytopes | 14 | 9 | Conway prefix notation: the one-line string that names a polyhedron by how it is built. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Core.kt](languages.md#core-kt) | Languages | 76 | 1 |  |  |
 | [CorpusMicroscope.kt](audio-ai.md#corpusmicroscope-kt) | Audio AI | 1 | 1 |  |  |
-| [CorpusOperations.kt](audio-ai.md#corpusoperations-kt) | Audio AI | 9 | 4 |  | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
+| [CorpusOperations.kt](audio-ai.md#corpusoperations-kt) | Audio AI | 9 | 4 | Multi-scale corpus operations: segment a source into overlapping windows, embed each window with grouped audio descriptors, and retrieve neighbours by weighted distance. | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
 | [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [CSVReader.kt](simulation.md#csvreader-kt) | Simulation | 10 | 1 |  |  |
 | [DataFrameCharts.kt](visualization.md#dataframecharts-kt) | Visualization | 2 | 2 | A typed frame, charting its own columns. |  |
@@ -143,7 +143,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FunctionRewriteKotlin.kt](function.md#functionrewritekotlin-kt) | Function | 16 | 16 | The bridge that gives the string rewrite DSL a real Kotlin right-hand side. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionRewritePattern.kt](function.md#functionrewritepattern-kt) | Function | 13 | 11 | The third rewriting surface in the family, and the algebraic one. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [Functions.kt](math.md#functions-kt) | Math | 548 | 461 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 3 |  | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
+| [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 3 | Temporal sketches for source-conditioned generation, with prompt regions, onset events, and parameter curves that together express a generation intent. | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [GestureBoardVisualization.kt](audio-ai.md#gestureboardvisualization-kt) | Audio AI | 3 | 1 |  |  |
 | [GlslInterpreter.kt](languages.md#glslinterpreter-kt) | Languages | 7 | 7 |  |  |
 | [GlslParser.kt](languages.md#glslparser-kt) | Languages | 5 | 5 |  |  |
@@ -280,7 +280,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. |  |
 | [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
-| [RenderedAudioAnalysis.kt](audio-ai.md#renderedaudioanalysis-kt) | Audio AI | 28 | 14 |  | [Render Field music, then analyse it](../audio_render_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [RenderedAudioAnalysis.kt](audio-ai.md#renderedaudioanalysis-kt) | Audio AI | 28 | 14 | The render-to-analysis pipeline: render Field synthesis to a WAV, upload it once, and fan out durable analysis jobs. | [Render Field music, then analyse it](../audio_render_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [Sampling.kt](synthesis.md#sampling-kt) | Synthesis | 81 | 30 |  |  |
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
@@ -308,9 +308,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 |  |  |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Spectral examples](../spectral_examples.md) |
-| [SpectralEmbeddingProjection.kt](audio-ai.md#spectralembeddingprojection-kt) | Audio AI | 41 | 9 |  | [Short-time spectral spaces](../audio_ai_spectral_embeddings.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [SpectralEmbeddingProjection.kt](audio-ai.md#spectralembeddingprojection-kt) | Audio AI | 41 | 9 | Spectral embedding: decode, pool, and project the short-time spectral frames stored in an analysis artifact. | [Short-time spectral spaces](../audio_ai_spectral_embeddings.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SpeechEmbeddingMds.kt](audio-ai.md#speechembeddingmds-kt) | Audio AI | 54 | 12 |  |  |
-| [SpeechEmbeddingVisualization.kt](audio-ai.md#speechembeddingvisualization-kt) | Audio AI | 6 | 6 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [SpeechEmbeddingVisualization.kt](audio-ai.md#speechembeddingvisualization-kt) | Audio AI | 6 | 6 | Phase portrait renderers for speech and spectral embedding spaces, synchronized with a shared audio cursor. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 13 | 12 |  |  |
