@@ -14,7 +14,7 @@ Underneath all three sits `FabricateScene`, a Three.js-shaped scene graph that o
 
 Two constraints apply to everything here. A renderer is constructed, installed and closed on Field's render thread, like any other `afield.four` module — installing under a name already in use retires the previous occupant, so there is no coroutine lifetime bookkeeping to do. And a device is required: nothing on this page draws into an `FLine` or runs in a headless test the way the `Math` page's contents do. For the same ground with pictures, see [The Fabricate renderer](../fabricate_renderer.md), [Path tracing](../path_tracing.md) and [afield.four graphics](../afield_four_graphics.md).
 
-25 source file(s), 523 public symbol(s), 183 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+25 source file(s), 523 public symbol(s), 184 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -317,6 +317,14 @@ A library of worked multi-resolution passes, expressed as [`FabricatePassSpec`](
 
 ## FabricatePostEffects.kt { #fabricateposteffects-kt }
 
+High-level post-processing helpers for `StandardRenderer.Bundle`, layered on top of the ordered
+[`FabricatePostStack`](renderers.md#fabricatepoststack-kt-fabricatepoststack). These are the "make HDR look right" and "make emissive glow" effects that
+Three.js users expect from an EffectComposer: tone mapping + exposure, and bloom.
+
+All passes are built with `StandardRenderer.Bundle.addShaderEffect`, so they chain automatically
+(each samples the previous stack output as `sourceTex`). Build the post stack once, then call
+`bundle.attachTo(renderer)` so the new passes are synced into the window's frame graph.
+
 `src/jvmMain/kotlin/afield/four/fabricated/FabricatePostEffects.kt` — [read the source](source/jvmMain/afield/four/fabricated/FabricatePostEffects/)
 
 **Used in:** [Fabricate Renderer](../fabricate_renderer.md)
@@ -325,20 +333,20 @@ A library of worked multi-resolution passes, expressed as [`FabricatePassSpec`](
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">StandardRenderer</span><span class="p">.</span><span class="nc">Bundle</span><span class="p">.</span><span class="nf">setToneMapping</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">FabricateToneMap</span> <span class="o">=</span> <span class="nc">FabricateToneMap</span><span class="p">.</span><span class="nc">ACES</span><span class="p">,</span> <span class="n">exposure</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricatePostEffect</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L45) | Set (or replace) the final tone-mapping pass. Tone mapping always runs last in the post stack, so it maps HDR lighting into a displayable range after every other effect. Re-invoking this replaces the previous tone-map pass; `FabricateToneMap.NONE` removes it. Remember to re-attach the frame graph afterwards so the pass is scheduled. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">StandardRenderer</span><span class="p">.</span><span class="nc">Bundle</span><span class="p">.</span><span class="nf">addBloom</span><span class="p">(</span><span class="n">threshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.0f</span><span class="p">,</span> <span class="n">intensity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.6f</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">2.5f</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricatePostEffect</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L71) | Add a bloom chain: a bright-pass extract, a separable Gaussian blur, and an additive composite back over the pre-bloom image. Bloom runs on HDR values, so it is inserted before any tone-mapping pass. Calling this again rebuilds the chain. Re-attach the frame graph afterwards. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">StandardRenderer</span><span class="p">.</span><span class="nc">Bundle</span><span class="p">.</span><span class="nf">setToneMapping</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">FabricateToneMap</span> <span class="o">=</span> <span class="nc">FabricateToneMap</span><span class="p">.</span><span class="nc">ACES</span><span class="p">,</span> <span class="n">exposure</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricatePostEffect</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L47) | Set (or replace) the final tone-mapping pass. Tone mapping always runs last in the post stack, so it maps HDR lighting into a displayable range after every other effect. Re-invoking this replaces the previous tone-map pass; `FabricateToneMap.NONE` removes it. Remember to re-attach the frame graph afterwards so the pass is scheduled. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">StandardRenderer</span><span class="p">.</span><span class="nc">Bundle</span><span class="p">.</span><span class="nf">addBloom</span><span class="p">(</span><span class="n">threshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.0f</span><span class="p">,</span> <span class="n">intensity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.6f</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">2.5f</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricatePostEffect</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L73) | Add a bloom chain: a bright-pass extract, a separable Gaussian blur, and an additive composite back over the pre-bloom image. Bloom runs on HDR values, so it is inserted before any tone-mapping pass. Calling this again rebuilds the chain. Re-attach the frame graph afterwards. |
 
 ### Top-level values { #fabricateposteffects-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TONEMAP&#95;EFFECT&#95;NAME</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L36) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TONEMAP&#95;EFFECT&#95;NAME</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L38) |  |
 
 ### FabricateToneMap { #fabricateposteffects-kt-fabricatetonemap }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FabricateToneMap</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L19)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FabricateToneMap</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostEffects/#L21)
 
-High-level post-processing helpers for `StandardRenderer.Bundle`, layered on top of the ordered [`FabricatePostStack`](renderers.md#fabricatepoststack-kt-fabricatepoststack). These are the "make HDR look right" and "make emissive glow" effects that Three.js users expect from an EffectComposer: tone mapping + exposure, and bloom.
+Tone-mapping operator passed to `setToneMapping`.
 
 Constants: `desaturates`, `hue`.
 
@@ -379,6 +387,15 @@ Ordered post-processing stack for Fabricate, intentionally close to Three.js' Ef
 
 ## FabricateRenderPlan.kt { #fabricaterenderplan-kt }
 
+Render queue data structures and the `FabricateScenePlanner` that builds them from a `FabricateScene`.
+
+The planner walks the scene graph, assigns each visible renderable to one of three queues based
+on its material's `alphaMode` (`Opaque`, `AlphaMask`, or `Transparent`), and sorts each queue
+for correct draw ordering: opaque and masked items front-to-back by sort order, transparent
+items back-to-front by camera distance. Shadow casters are collected from the opaque and masked
+sets. `FabricateScene.planScene` calls the planner; `StandardRenderer.Bundle.applyScenePlan`
+consumes the resulting `FabricateRenderPlan`.
+
 `src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt` — [read the source](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/)
 
 **Used in:** [Fabricate Renderer](../fabricate_renderer.md)
@@ -387,17 +404,19 @@ Ordered post-processing stack for Fabricate, intentionally close to Three.js' Ef
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">FabricateNode</span><span class="p">.</span><span class="nf">isEffectivelyVisible</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L110) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">FabricateNode</span><span class="p">.</span><span class="nf">isEffectivelyVisible</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L122) |  |
 
 ### Top-level values { #fabricaterenderplan-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">FabricateMaterial</span><span class="p">.</span><span class="n">renderQueue</span><span class="p">:</span> <span class="nc">FabricateRenderQueue</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L33) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">FabricateMaterial</span><span class="p">.</span><span class="n">renderQueue</span><span class="p">:</span> <span class="nc">FabricateRenderQueue</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L45) |  |
 
 ### FabricateRenderItem { #fabricaterenderplan-kt-fabricaterenderitem }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FabricateRenderItem</span><span class="p">(</span><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FabricateNode</span><span class="p">,</span> <span class="k">val</span> <span class="n">renderable</span><span class="p">:</span> <span class="nc">FabricateRenderable</span><span class="p">,</span> <span class="k">val</span> <span class="n">materialId</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">queue</span><span class="p">:</span> <span class="nc">FabricateRenderQueue</span><span class="p">,</span> <span class="k">val</span> <span class="n">world</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="k">val</span> <span class="n">previousWorld</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="k">val</span> <span class="n">cameraDistanceSquared</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L6)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FabricateRenderItem</span><span class="p">(</span><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FabricateNode</span><span class="p">,</span> <span class="k">val</span> <span class="n">renderable</span><span class="p">:</span> <span class="nc">FabricateRenderable</span><span class="p">,</span> <span class="k">val</span> <span class="n">materialId</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">queue</span><span class="p">:</span> <span class="nc">FabricateRenderQueue</span><span class="p">,</span> <span class="k">val</span> <span class="n">world</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="k">val</span> <span class="n">previousWorld</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="k">val</span> <span class="n">cameraDistanceSquared</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L18)
+
+One visible renderable node, resolved with its material ID, world transforms, and camera distance.
 
 | Declaration | Summary |
 | --- | --- |
@@ -411,7 +430,7 @@ Ordered post-processing stack for Fabricate, intentionally close to Three.js' Ef
 
 ### FabricateRenderPlan { #fabricaterenderplan-kt-fabricaterenderplan }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FabricateRenderPlan</span><span class="p">(</span><span class="k">val</span> <span class="n">opaque</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">alphaMask</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">transparent</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">shadowCasters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">materials</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateMaterialRecord</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L16)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FabricateRenderPlan</span><span class="p">(</span><span class="k">val</span> <span class="n">opaque</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">alphaMask</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">transparent</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">shadowCasters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">materials</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateMaterialRecord</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L28)
 
 | Declaration | Summary |
 | --- | --- |
@@ -420,24 +439,24 @@ Ordered post-processing stack for Fabricate, intentionally close to Three.js' Ef
 | <code class="highlight"><span class="k">val</span> <span class="n">transparent</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">shadowCasters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">materials</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateMaterialRecord</span><span class="p">&gt;</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">allDrawItems</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L23) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">allDrawItems</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FabricateRenderItem</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L35) |  |
 
 ### FabricateRenderQueue { #fabricaterenderplan-kt-fabricaterenderqueue }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FabricateRenderQueue</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L27)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FabricateRenderQueue</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L39)
 
 Constants: `Opaque`, `AlphaMask`, `Transparent`.
 
 ### FabricateScenePlanner { #fabricaterenderplan-kt-fabricatesceneplanner }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FabricateScenePlanner</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">materialLibrary</span><span class="p">:</span> <span class="nc">FabricateMaterialLibrary</span> <span class="o">=</span> <span class="nc">FabricateMaterialLibrary</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L41)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FabricateScenePlanner</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">materialLibrary</span><span class="p">:</span> <span class="nc">FabricateMaterialLibrary</span> <span class="o">=</span> <span class="nc">FabricateMaterialLibrary</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L53)
 
 Builds deterministic opaque/masked/transparent queues from a FabricateScene.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">plan</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">FabricateScene</span><span class="p">,</span> <span class="n">cameraPosition</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateRenderPlan</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L44) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">plan</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">FabricateNode</span><span class="p">,</span> <span class="n">cameraPosition</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateRenderPlan</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L49) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">plan</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">FabricateScene</span><span class="p">,</span> <span class="n">cameraPosition</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateRenderPlan</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L56) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">plan</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">FabricateNode</span><span class="p">,</span> <span class="n">cameraPosition</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateRenderPlan</span></code>](source/jvmMain/afield/four/fabricated/FabricateRenderPlan/#L61) |  |
 
 ## FabricateScene.kt { #fabricatescene-kt }
 
@@ -840,31 +859,46 @@ Details of one static import. Material IDs also select materials in shadeMateria
 
 ## PathTraceGpuSmoke.kt { #pathtracegpusmoke-kt }
 
+GPU smoke tests and a demo entry point for `PathTracingRenderer`.
+
+`PathTraceGpuSmoke.run` sets up known scenes (a constant HDR environment, emissive quads, a
+white-furnace diffuse surface, and glass slabs) and reads back linear pixels from real GPU
+dispatches to assert accumulation behaviour, lighting and camera resets, HDR material
+correctness, Beer-Lambert attenuation, Fresnel, indirect clamping, and transparent-background
+compositing. Where the device supports ray queries, both the compute-BVH and ray-query backends
+run, and their pixel outputs are compared.
+
+`PathTraceGpuSmoke.runCamera` covers the thin-lens model: pinhole sharpness, aperture blur,
+focus-distance changes, pixel jitter, and accumulation invalidation on target or parameter change.
+
+`PathTraceDemo.install` builds a three-sphere scene (diffuse, metallic, rough metal over a floor)
+and returns a live `PathTracingRenderer` for interactive use from a box.
+
 `src/jvmMain/kotlin/afield/four/fabricated/PathTraceGpuSmoke.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/)
 
 **Used in:** [Progressive path tracing](../path_tracing.md)
 
 ### PathTraceGpuSmoke { #pathtracegpusmoke-kt-pathtracegpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceGpuSmoke</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L10)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceGpuSmoke</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L27)
 
 Real GPU readback assertions. Run from a Field box below a live renderer; no placeholder captures.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L11) |  |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">runCamera</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L238) | Thin-lens focus, coverage, jitter, and automatic reset checks on real GPU pixels. |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">awaitSamples</span><span class="p">(</span><span class="n">tracer</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L306) |  |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L28) |  |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">runCamera</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L255) | Thin-lens focus, coverage, jitter, and automatic reset checks on real GPU pixels. |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">awaitSamples</span><span class="p">(</span><span class="n">tracer</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L323) |  |
 
 ### PathTraceDemo { #pathtracegpusmoke-kt-pathtracedemo }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceDemo</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L315)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceDemo</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L332)
 
 Small reusable material study; the environment file is optional, with a constant white map as fallback.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">environmentPath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L316) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">environmentPath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGpuSmoke/#L333) |  |
 
 ## PathTraceInstrument.kt { #pathtraceinstrument-kt }
 

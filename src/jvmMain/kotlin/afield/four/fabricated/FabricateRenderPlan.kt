@@ -3,6 +3,18 @@ package afield.four.fabricated
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 
+/**
+ * Render queue data structures and the `FabricateScenePlanner` that builds them from a `FabricateScene`.
+ *
+ * The planner walks the scene graph, assigns each visible renderable to one of three queues based
+ * on its material's `alphaMode` (`Opaque`, `AlphaMask`, or `Transparent`), and sorts each queue
+ * for correct draw ordering: opaque and masked items front-to-back by sort order, transparent
+ * items back-to-front by camera distance. Shadow casters are collected from the opaque and masked
+ * sets. `FabricateScene.planScene` calls the planner; `StandardRenderer.Bundle.applyScenePlan`
+ * consumes the resulting `FabricateRenderPlan`.
+ */
+
+/** One visible renderable node, resolved with its material ID, world transforms, and camera distance. */
 data class FabricateRenderItem(
     val node: FabricateNode,
     val renderable: FabricateRenderable,

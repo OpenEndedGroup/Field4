@@ -16,6 +16,8 @@ import java.util.WeakHashMap
  * (each samples the previous stack output as `sourceTex`). Build the post stack once, then call
  * `bundle.attachTo(renderer)` so the new passes are synced into the window's frame graph.
  */
+
+/** Tone-mapping operator passed to `setToneMapping`. */
 enum class FabricateToneMap {
     /** Pass-through (exposure still applies). */
     NONE,

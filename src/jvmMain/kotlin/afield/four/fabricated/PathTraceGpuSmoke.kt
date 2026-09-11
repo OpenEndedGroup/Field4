@@ -6,6 +6,23 @@ import afield.stdlib.linalg.Vector3f
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
+/**
+ * GPU smoke tests and a demo entry point for `PathTracingRenderer`.
+ *
+ * `PathTraceGpuSmoke.run` sets up known scenes (a constant HDR environment, emissive quads, a
+ * white-furnace diffuse surface, and glass slabs) and reads back linear pixels from real GPU
+ * dispatches to assert accumulation behaviour, lighting and camera resets, HDR material
+ * correctness, Beer-Lambert attenuation, Fresnel, indirect clamping, and transparent-background
+ * compositing. Where the device supports ray queries, both the compute-BVH and ray-query backends
+ * run, and their pixel outputs are compared.
+ *
+ * `PathTraceGpuSmoke.runCamera` covers the thin-lens model: pinhole sharpness, aperture blur,
+ * focus-distance changes, pixel jitter, and accumulation invalidation on target or parameter change.
+ *
+ * `PathTraceDemo.install` builds a three-sphere scene (diffuse, metallic, rough metal over a floor)
+ * and returns a live `PathTracingRenderer` for interactive use from a box.
+ */
+
 /** Real GPU readback assertions. Run from a Field box below a live renderer; no placeholder captures. */
 object PathTraceGpuSmoke {
     suspend fun run(renderer: Renderer) {
