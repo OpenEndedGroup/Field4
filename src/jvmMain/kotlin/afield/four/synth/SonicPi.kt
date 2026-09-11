@@ -23,6 +23,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * Sonic Pi v5 client for Field, running in owned mode.
+ *
+ * Field spawns the Sonic Pi daemon and holds its authentication token, giving the control API
+ * full access. [SonicPi.shared] is the singleton; [sonicPi] and [Box.sonicPi] are the two
+ * entry points for box code.
+ */
+
+/**
  * Sonic Pi v5 driven from Field, in *owned* mode: Field spawns the Sonic Pi daemon itself and
  * becomes the client the daemon expects, so there is no Sonic Pi window anywhere — a Field box is
  * the buffer, and Sonic Pi's log and error reports come back into the box.
@@ -45,7 +53,7 @@ import java.util.concurrent.atomic.AtomicReference
  * which is what the GUI does and leaves no room for argument. [close] skips the wait and asks the
  * daemon to exit immediately.
  *
- * Two deliberate implementation choices:
+ * Two implementation choices:
  *
  * Nothing here touches Field's main runloop. [afield.stdlib.OscServer] steps its handlers as
  * Generators on the main thread, which is right for a box reacting to a control surface and wrong
