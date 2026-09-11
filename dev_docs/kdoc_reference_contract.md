@@ -312,6 +312,57 @@ unannotated the `Uncategorised` build failure telling its author to add the anno
 carry is correct advice in that package. In `afield.kratos` it would not be — two of its published
 files have never had one.
 
+### The second reference-only label: `Renderers`, and the word that could not be used
+
+`Renderers` (added 2026-09-11, for `afield.four.fabricated`) is the third thing `CATEGORY_BY_PATH`
+files and the second that is *reference-only* in the `Languages` sense: no source file anywhere in
+`src/` carries the label, and no file under the prefix carries a category annotation of any kind.
+That makes it the strong case rather than the `Simulation` case — there is no existing category
+being extended, so there is nothing to get wrong about which page a file "already" belongs on.
+
+The root qualified by the argument recorded on `SOURCE_ROOTS` for `afield.four.physics`, with every
+term larger: 35 files, 14735 lines, no annotation anywhere, and **three** prose pages written about
+symbols the reference did not know existed (`fabricate_renderer.md`, `path_tracing.md`,
+`afield_four_graphics.md`) where physics had one. It is worth being precise about why it appeared in
+neither gap recorded above: the 26 files are files that *chose* a category and are not read, and
+these 35 never chose one, so no census of annotated files could ever have found them. The predicate
+that finds this kind of gap is "is this directory inside `SOURCE_ROOTS`", not "does this file carry
+an annotation".
+
+**The label's spelling is load-bearing, and for a different reason than `Languages`'.**
+`normalizedCompletionCategory` maps `"rendering"` onto `"Graphics"`
+(`src/jvmMain/kotlin/afield/KotlinCompletionSupport.kt:488`), so a page called `Rendering` would be
+filed under an existing, unrelated category the moment anything normalised it — the
+`Language` → `Kotlin` trap through a different word. The same `when` branch takes `"shader"`,
+`"shaders"`, `"drawing"`, `"geometry"` and `"vulkan"`, so most of the obvious names for this page
+are unavailable. `"renderers"` matches no branch and titlecases to itself.
+`LanguagesCategoryTest` pins `Renderers` normalising to itself and five of the near misses still
+collapsing onto `Graphics`.
+
+Two things follow that are easy to get backwards:
+
+- **Completion already answers `Graphics` for these files, and this change does not alter that.**
+  `categoryFromPath` in `KotlinCompletionSupport` (`:506`) maps any path containing `/afield/four/`
+  to `Graphics`. That inference is completion's, runs on the path rather than on an annotation, and
+  is untouched here. The reference and the popup therefore disagree about the label for these 23
+  files, on purpose: the popup is answering "what kind of thing is this symbol" and the page is
+  answering "what is this body of code". Annotating to make them agree is the move that is not
+  available, for the reason the rest of this section gives.
+- **The existing `Graphics` page was the other candidate and is the wrong home.** Not because the
+  subject is unrelated, but on size and on promise: the kept half of the root is 9207 lines, which
+  would nearly triple `graphics.md` (3582 lines, already the second largest), and the `Graphics`
+  blurb describes "everything that ends up as an `FLine`, a colour or a shader", which does not
+  describe a deferred renderer, a path tracer and a splat renderer.
+
+Because two of the three `LanguagesCategoryTest` assertions that make a reference-only label safe
+were written against `Languages` by name, adding a second one meant deriving their population
+instead: a path-assigned category is reference-only exactly when `declaredCompletionCategories()`
+does not contain it. `Renderers` joined both guards without being named in either, and a third will
+too. The derivation can go vacuous in one way — a file growing
+`@file:CompletionCategory("Renderers")` takes the label *out* of the reference-only set and the
+checks stop applying — so both labels are asserted to be in that set first, with a message saying
+to fix the annotation rather than the assertion.
+
 ### Which packages are on the Languages page, and which are not
 
 Membership is derived, not curated: a package is there because it is on one of the two language
@@ -367,20 +418,76 @@ Nothing here is fixed by the change that measured it, deliberately — six more 
 diff, and the `Used in:` links are corpus-global, so it wants a night of its own. But the false
 sentence is gone, and the number has a denominator now.
 
-### Adding a language package to the reference
+#### Re-measured over 19 pages — the list holds, the predicate sentence does not
+
+Re-running that census on 2026-09-11 (same population: every `.kt` under `src/jvmMain` carrying a
+file-level `@file:CompletionCategory`; same predicate: the basename appears as no
+`## <basename> { #` heading on any committed page, now 19 of them) confirms the **list** exactly —
+9 `solidsl`, 6 `petri`, 4 `onnx`, 2 each `brief`, `manifold` and `afield.graphics`, 1 `macros`, 26
+files. Publishing `afield.four.fabricated` changed none of it: those files sit outside
+`SOURCE_ROOTS` and this root contained none of them.
+
+Two numbers above are wrong, though, and both were wrong when written:
+
+- **The stated predicate does not select 26. It selects 22.** The sentence says "naming a category
+  that has a page", and 4 of the 26 — all of `afield.onnx` — name `Machine learning`, which has no
+  page. They belong in the list, because a file with nowhere to appear is the gap whether or not its
+  label has a page; it is the qualifier that does not belong. Counted strictly as written the answer
+  is 22: `solidsl` (9), `petri` (6), `manifold` (2), `brief` (2), `afield.graphics` (2), `macros` (1).
+- **Nine files say `Internal` and are absent, not two.** The two named — `ManifoldNative.kt` and
+  `StdlibReferenceGenerator.kt` — are absent because they sit outside every source root. The other
+  seven (`afield/stdlib/PrettyStrings.kt`, `SourceBackedBlock.kt`, `actors.kt`, `binding.kt`,
+  `ceres/FfmCeresBackend.kt`, `extensions.kt`, `scratch.kt`) are *inside* `afield/stdlib` and are
+  kept out by `EXCLUDE_CATEGORIES` instead. All nine are correctly absent, by two different
+  mechanisms, and the difference matters to anyone auditing the list: a file absent by category is
+  published by deleting one line, a file absent by root is not.
+
+The denominators, measured the same day and reconciled: **248** files carry a file-level annotation
+(unchanged). **28** sit outside every entry in `SOURCE_ROOTS`, which is exactly the 28 reported
+above, so that number is solid. The other **220** sit inside a root, and of those **213** are
+published while **7** are the `Internal` ones held out by `EXCLUDE_CATEGORIES`. So "219 sit inside a
+source root and are published" is two measurements written as one: today they are 220 and 213, and
+no single count is equal to both.
+
+None of this moved because of `afield.four.fabricated`, and that is the useful part. The 23 files
+that root contributed carry no annotation, so they sit outside this census's population altogether
+while raising the published total from 307 to 330 — which is as plainly as it can be shown that
+"annotated" and "published" are independent, and why a census built on the annotation could never
+have found this gap. The predicate that finds it is `SOURCE_ROOTS` membership.
+
+### Adding a source root to the reference
+
+Written for the language packages and generalised when `afield.four.physics`,
+`afield.kratos`, `afield.tetgen` and `afield.four.fabricated` went through the same seven steps.
 
 1. Add the root to `SOURCE_ROOTS`. `SourcePageGenerator` reads the same list, so its "read the
    source" pages follow automatically — that coupling exists because the reference emits those links
    from each file's own partition and would otherwise link to pages nobody rendered.
 2. Add a `CATEGORY_BY_PATH` prefix for it *only if* its files carry no annotation of their own. If
    they do, they are already on a page; leave them there.
-3. Keep harnesses out via `EXCLUDE_PREFIXES` — a FIELD_TEST runner or a docs-figure generator, and
+3. **Run the label past `normalizedCompletionCategory` before writing it anywhere.** That `when`
+   collapses whole families of the obvious names — `rendering`, `shader`, `drawing`, `geometry` and
+   `vulkan` all become `Graphics`, `language` becomes `Kotlin`, `viz` and `plot` become
+   `Visualization` — so a label that reads perfectly on the page can name a different category the
+   moment anything normalises it. Add the pin to `LanguagesCategoryTest` in both directions, as
+   `Languages` and `Renderers` both have.
+4. Keep harnesses out via `EXCLUDE_PREFIXES` — a FIELD_TEST runner or a docs-figure generator, and
    nothing more. The bar is deliberately low otherwise: on a page about languages a lexer, a parser
-   and a bytecode VM *are* the subject.
-4. `./gradlew generateCodebaseReference`, then read the diff on the pages you did not expect to
+   and a bytecode VM *are* the subject. Judge a file by what calls it and not by its name: in
+   `afield.four.fabricated` two files whose names end `GpuSmoke` and `Demo` are imported by
+   committed operation transcripts, and excluding them would have left a reader following those
+   transcripts with nowhere to look the call up.
+5. `./gradlew generateCodebaseReference`, then read the diff on the pages you did not expect to
    change. Widening the corpus changes cross-file `[Symbol]` resolution and the `Used in:` evidence
-   links, both of which are corpus-global.
-5. Add the page to `public/zensical.yml`, or `LanguagesCategoryTest` will tell you that you didn't.
+   links, both of which are corpus-global. It does not always drift them — adding
+   `afield.four.fabricated`'s 459 public symbols left all 18 pre-existing pages byte-identical — but
+   that is a result to check rather than to expect.
+6. Add the page to `public/zensical.yml`, or `LanguagesCategoryTest` will tell you that you didn't.
+7. Write the floors, never pins. `LanguagesCategoryTest` holds a published-file count, a root count
+   and a page count, and all three are `>=` because several branches regenerate this corpus
+   independently: a derived count can break across two branches whose file sets are *disjoint*, one
+   owning the page that states the number and the other owning the code it measures, which neither
+   `git merge-tree` nor a path intersection can see coming.
 
 ## If the guard fires and the parser is the problem
 
