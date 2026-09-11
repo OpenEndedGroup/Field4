@@ -119,6 +119,18 @@ class PathTracingRenderer(
      */
     var indirectClamp: Float = 0f
         set(value) { require(value.isFinite() && value >= 0f); if (field != value) reset(); field = value }
+    /**
+     * Sample emissive triangles directly, in addition to the environment, and combine that estimate
+     * with the emission a BSDF sample finds using the same power heuristic. This is unbiased: a
+     * converged image matches one rendered with it off. It costs one extra shadow ray per
+     * non-delta surface interaction, and it is what makes a small, bright lamp converge at all.
+     * Emitters behind stochastic alpha coverage, and emissive glass, stay BSDF-only.
+     * Turning it off reaches the previous estimator exactly. Changing this value resets accumulation.
+     */
+    var emitterSampling: Boolean = true
+        set(value) { if (value != field) reset(); field = value }
+    /** Emissive triangles this scene offers the direct sampler; zero leaves emission to BSDF hits. */
+    val emitterCount: Int get() = packed.emitterCount
     var rayEpsilon: Float = 0.0001f
         set(value) { require(value.isFinite() && value > 0f); if (value != field) reset(); field = value }
     /** Exposure affects display only and never discards samples. */
@@ -168,6 +180,8 @@ class PathTracingRenderer(
             val nodes = upload(packed.nodes.size * 48L, packed::writeNodes)
             val materials = upload(packed.materials.size * PathTraceMaterial.STRIDE.toLong(), packed::writeMaterials)
             val distribution = upload(environment.distribution.size * 4L) { it.asFloatBuffer().put(environment.distribution) }
+            val emitterTable = upload(packed.emitterByteSize, packed::writeEmitters)
+            val emitterLookup = upload(packed.emitterLookupByteSize, packed::writeEmitterLookup)
             val textures = upload(packed.textureByteSize, packed::writeTextures)
             val directions = upload(sobolWords.size * 4L) { it.asIntBuffer().put(sobolWords) }
             accumulation = own(VulkanBuffer(renderer, width.toLong() * height * 16,
@@ -218,7 +232,8 @@ class PathTracingRenderer(
             materialModule += "trace" to materialMesh
             materialMesh.push.setMembers(module.ci.pushConstants.flatMap { it.members })
             sceneBuffers.putAll(mapOf("triangles" to triangles, "nodes" to nodes, "materials" to materials,
-                "accumulation" to accumulation, "distribution" to distribution, "directions" to directions, "textures" to textures))
+                "accumulation" to accumulation, "distribution" to distribution, "directions" to directions, "textures" to textures,
+                "emitterTable" to emitterTable, "emitterLookup" to emitterLookup))
             val display = own(Module(parameters(renderer) {
                 name = "${this@PathTracingRenderer.name}-resolve"
                 output.apply()
@@ -401,6 +416,7 @@ class PathTracingRenderer(
         frame["scene"] = Int4(packed.nodes.size, envWidth, envHeight, maxBounces)
         frame["lighting"] = Vector4f(environmentIntensity, environmentRotation, rayEpsilon, if (showEnvironment) 1f else 0f)
         frame["sampling"] = Vector4f(indirectClamp, pixelJitter, apertureRadius, if (apertureRadius > 0f) focus else 1f)
+        frame["emitters"] = Int4(if (emitterSampling) packed.emitterCount else 0, 0, 0, 0)
         frame["background"] = Vector4f(backgroundValue.x * backgroundValue.w, backgroundValue.y * backgroundValue.w,
             backgroundValue.z * backgroundValue.w, backgroundValue.w)
     }

@@ -1,0 +1,47 @@
+name: emitter_verify
+description: |
+  Drives PathTraceEmitterGpuSmoke against real GPU pixels: the unbiasedness checks, the
+  variance floor, and the before/after captures. About four minutes on an M1 Max.
+
+  Output goes to `build/emitter-check/`, relative to the checkout root, which is the
+  backdoor-managed server's working directory. `println` from a box lands in the box's
+  output, not the server's stdout, so the numbers are in
+  `.field-backdoor/logs/*.managed-server.log`.
+
+  The invocation is in `dev_docs/emitter_sampling.md`.
+operations:
+  - create:
+      box: pt_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · emitter check")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: pt_emitter_check
+      name: emitter sampling check
+      frame: { x: 320.0, y: 140.0, w: 260.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.PathTraceEmitterGpuSmoke
+          import afield.four.modules.fromContext
+          val renderer: Renderer = fromContext()
+          val verify: suspend () -> Unit = {
+              PathTraceEmitterGpuSmoke.run(renderer, "build/emitter-check")
+              println("EMITTER CHECK DONE")
+          }
+          start(verify)
+  - connect: { parent: pt_renderer, child: pt_emitter_check }
+  - launch: { box: pt_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: pt_emitter_check, property: code }
+  - await: { wait: pending }

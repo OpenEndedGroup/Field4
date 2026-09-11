@@ -24,6 +24,9 @@ layout(buffer_reference,std430,buffer_reference_align=16) buffer History { Histo
 layout(set=0,binding=3,std140) uniform SceneBuffers {
     Triangles triangles; Nodes nodes; Materials materials; Accumulation accumulation; Distribution distribution; Directions directions; TextureData textures;
     History historyRead; History historyWrite;
+    // emitterTable: cumulative probability and triangle index per emissive triangle.
+    // emitterLookup: selection probability and area per triangle, the inverse map MIS needs.
+    Distribution emitterTable; Distribution emitterLookup;
 } ptScene;
 layout(set=0,binding=0) uniform Frame {
     vec4 origin; vec4 right; vec4 up; vec4 forward;
@@ -37,6 +40,7 @@ layout(set=0,binding=0) uniform Frame {
     vec4 historyPolicy; // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
     vec4 fog; // linear RGB, density per world unit
     vec4 fogOptions; // clear start distance, fog background misses, reserved, reserved
+    ivec4 emitters; // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
 } frame;
 layout(set=0,binding=1) uniform sampler2D environmentMap;
 
@@ -126,6 +130,18 @@ vec3 mappedNormal(Material m,Triangle t,vec2 bary,vec3 n) {
     vec3 result=tangent*map.x+bitangent*map.y+n*map.z;
     return dot(result,result)>1e-16 ? normalize(result) : n;
 }
+// Interpolated, flipped to the arriving ray's side, then normal-mapped, with the same guard at
+// every step. The integrator and the emitter sampler must agree here: a material hook that reads
+// surface.normal would otherwise hand the two strategies different radiance for one point, which
+// is a bias in their combination rather than a shading difference.
+vec3 shadingNormal(Triangle t,Material m,vec2 bary,vec3 rd,vec3 geometric) {
+    vec3 n=normalize(t.na.xyz*(1.0-bary.x-bary.y)+t.nb.xyz*bary.x+t.nc.xyz*bary.y);
+    if (dot(n,geometric)<0.0) n=-n;
+    if (dot(n,-rd)<=0.0) n=geometric;
+    n=mappedNormal(m,t,bary,n);
+    if (dot(n,geometric)<=0.0 || dot(n,-rd)<=0.0) n=geometric;
+    return n;
+}
 struct Hit { float t; int triangle; vec2 bary; };
 bool boxHit(vec3 ro, vec3 rd, vec3 lo, vec3 hi, float limit) {
     float nearT = frame.lighting.z, farT = limit;
@@ -138,8 +154,9 @@ bool boxHit(vec3 ro, vec3 rd, vec3 lo, vec3 hi, float limit) {
     }
     return nearT <= farT;
 }
-Hit intersectScene(vec3 ro, vec3 rd, bool shadow) {
-    Hit h = Hit(1e30, -1, vec2(0));
+// limit is a distance along a unit rd: an area-light shadow ray has to stop short of its own light.
+Hit intersectScene(vec3 ro, vec3 rd, bool shadow, float limit) {
+    Hit h = Hit(limit, -1, vec2(0));
 #ifdef HARDWARE_QUERY
     rayQueryEXT query;
     uint flags = gl_RayFlagsNoOpaqueEXT;
@@ -178,6 +195,7 @@ Hit intersectScene(vec3 ro, vec3 rd, bool shadow) {
 #endif
     return h;
 }
+Hit intersectScene(vec3 ro, vec3 rd, bool shadow) { return intersectScene(ro,rd,shadow,1e30); }
 mat3 basis(vec3 n) {
     vec3 t=normalize(cross(abs(n.z)<0.999 ? vec3(0,0,1) : vec3(0,1,0),n));
     return mat3(t,cross(n,t),n);
@@ -217,6 +235,51 @@ float powerWeight(float a,float b) {
     // Narrow refractive lobes can have very large directional PDFs. Normalize before squaring.
     float scale=max(a,b); if (scale<=0.0) return 0.0;
     a/=scale; b/=scale; return a*a/(a*a+b*b);
+}
+struct EmitterSample { vec3 direction; vec3 radiance; float pdf; float distance; };
+// Probability this triangle's own area sampling would have produced a hit arriving along
+// direction after travelling dist, as a solid-angle density. Zero whenever the emitter strategy
+// cannot produce the point at all, which leaves the BSDF-hit arm's MIS weight at exactly one.
+float emitterPdf(int id,vec3 direction,float dist) {
+    if (frame.emitters.x<=0) return 0.0;
+    vec2 entry=ptScene.emitterLookup.items[id];
+    if (entry.x<=0.0 || entry.y<=0.0) return 0.0;
+    Triangle t=ptScene.triangles.items[id];
+    float cosLight=abs(dot(normalize(cross(t.b.xyz-t.a.xyz,t.c.xyz-t.a.xyz)),direction));
+    return entry.x*dist*dist/max(entry.y*cosLight,1e-20);
+}
+// Pick a triangle from the power-weighted table, then a point uniformly over its area. The
+// dist^2/|cos| Jacobian is what converts that area density into something comparable with a BSDF
+// pdf, and is where this kind of change is usually wrong.
+EmitterSample sampleEmitter(vec3 origin,float selector,vec2 xi) {
+    EmitterSample s=EmitterSample(vec3(0,0,1),vec3(0),0.0,0.0);
+    int count=frame.emitters.x;
+    if (count<=0) return s;
+    int low=0,high=count-1;
+    while (low<high) { int middle=(low+high)/2; if (selector<ptScene.emitterTable.items[middle].x) high=middle; else low=middle+1; }
+    int id=int(ptScene.emitterTable.items[low].y);
+    vec2 entry=ptScene.emitterLookup.items[id];
+    if (entry.x<=0.0 || entry.y<=0.0) return s;
+    Triangle t=ptScene.triangles.items[id];
+    float edge=sqrt(clamp(xi.x,0.0,1.0));
+    vec2 bary=vec2(edge*(1.0-xi.y),edge*xi.y);
+    vec3 point=t.a.xyz*(1.0-bary.x-bary.y)+t.b.xyz*bary.x+t.c.xyz*bary.y;
+    vec3 delta=point-origin;
+    float d2=dot(delta,delta);
+    if (d2<1e-20) return s;
+    s.distance=sqrt(d2);
+    s.direction=delta/s.distance;
+    vec3 face=normalize(cross(t.b.xyz-t.a.xyz,t.c.xyz-t.a.xyz));
+    float cosLight=-dot(face,s.direction);
+    Material stored=ptScene.materials.items[int(t.a.w)];
+    // A one-sided emitter's back face is culled in acceptsHit, so it must be dark here too.
+    if (cosLight<=0.0) { if (stored.coverage.w<0.5) return s; cosLight=-cosLight; face=-face; }
+    s.pdf=entry.x*d2/max(entry.y*cosLight,1e-20);
+    Material m=texturedMaterial(t,bary);
+    vec3 n=shadingNormal(t,m,bary,s.direction,face);
+    m=shadeMaterial(m,PathTraceSurface(point,n,face,-s.direction,bary,int(t.a.w),hitUV(t,bary,0),hitColor(t,bary)));
+    s.radiance=m.emission.rgb;
+    return s;
 }
 float specProbability(Material m) { return mix(0.35,1.0,m.base.w); }
 vec3 fresnel(vec3 f0,float cosTheta) { return f0+(1.0-f0)*pow(1.0-clamp(cosTheta,0.0,1.0),5.0); }
@@ -299,6 +362,10 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
     primaryDepth=-1.0;
     guide=HistoryPixel(vec4(0),vec4(0,0,0,-1),vec4(0,0,0,-1),vec4(0));
     vec3 radiance=vec3(0),indirect=vec3(0),throughput=vec3(1),sigma=vec3(0);
+    // The unoffset previous vertex. An emitter pdf measured from the epsilon-offset ray origin
+    // instead would not match the one the emitter arm used, and MIS weights have to sum to one
+    // exactly, not nearly.
+    vec3 previousPoint=ro;
     float previousPdf=0.0,etaScale=1.0;
     bool previousDelta=true;
     for (int bounce=0; bounce<frame.scene.w; bounce++) {
@@ -315,11 +382,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
         bool entering=dot(geometric,rd)<0.0;
 
         if (!entering) geometric=-geometric;
-        vec3 n=normalize(t.na.xyz*(1.0-hit.bary.x-hit.bary.y)+t.nb.xyz*hit.bary.x+t.nc.xyz*hit.bary.y);
-        if (dot(n,geometric)<0.0) n=-n;
-        if (dot(n,-rd)<=0.0) n=geometric;
-        n=mappedNormal(m,t,hit.bary,n);
-        if(dot(n,geometric)<=0.0 || dot(n,-rd)<=0.0) n=geometric;
+        vec3 n=shadingNormal(t,m,hit.bary,rd,geometric);
         vec3 point=ro+rd*hit.t;
         if (bounce==0) primaryDepth=distance(point,frame.origin.xyz);
         m=shadeMaterial(m,PathTraceSurface(point,n,geometric,-rd,hit.bary,int(t.a.w),hitUV(t,hit.bary,0),hitColor(t,hit.bary)));
@@ -334,16 +397,29 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
         // A first back face also supports a camera placed inside one homogeneous solid.
         if (bounce==0 && glass && !entering && m.optical.z<0.5) sigma=m.absorption.rgb;
         throughput*=exp(-sigma*hit.t);
-        if (bounce<2) radiance+=throughput*m.emission.rgb; else indirect+=throughput*m.emission.rgb;
+        // The other half of the emitter pair: weight this hit against the density the emitter arm
+        // would have had for it, so the two strategies compose instead of double-counting. A delta
+        // bounce, or an emitter the table cannot see, leaves this at one.
+        vec3 toHit=point-previousPoint;
+        float hitDistance=length(toHit);
+        float emissionWeight=previousDelta || hitDistance<=0.0 ? 1.0 :
+            powerWeight(previousPdf,emitterPdf(hit.triangle,toHit/hitDistance,hitDistance));
+        vec3 emitted=throughput*m.emission.rgb*emissionWeight;
+        if (bounce<2) radiance+=emitted; else indirect+=emitted;
         uint domain=uint(bounce)*4u+1u;
         vec2 extra=sample2(domain+2u);
+        // The emitter point shares the environment arm's stratified pair: one sample serving two
+        // estimators of two different integrals biases neither. Only the discrete triangle choice
+        // needs a dimension of its own, and domain+3's second component is the one nothing reads.
+        vec2 lightXi=sample2(domain);
+        float emitterSelector=sampleDimension((domain+3u)*2u+1u);
         float bsdfPdf=0.0; vec3 next;
         if (glass) {
             bool thin=m.optical.z>0.5;
             float eta=thin || entering ? m.optical.y : 1.0/m.optical.y;
             bool delta=thin || m.emission.w<=0.001 || eta==1.0;
             if (!delta) {
-                float lightPdf; vec3 light=sampleEnvironment(sample2(domain),extra.x,lightPdf);
+                float lightPdf; vec3 light=sampleEnvironment(lightXi,extra.x,lightPdf);
                 vec3 f=evaluateGlass(m,n,-rd,light,eta,bsdfPdf);
                 float side=dot(geometric,light)>0.0 ? 1.0 : -1.0;
                 float weight=bounce+1==frame.scene.w ? 1.0 : powerWeight(lightPdf,bsdfPdf);
@@ -352,6 +428,19 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
                 {
                     vec3 contribution=throughput*f*abs(dot(n,light))*environment(light)*weight/max(lightPdf,1e-20);
                     if (bounce==0) radiance+=contribution; else indirect+=contribution;
+                }
+                EmitterSample lamp=sampleEmitter(point,emitterSelector,lightXi);
+                if (lamp.pdf>0.0) {
+                    float lampPdf; vec3 lampF=evaluateGlass(m,n,-rd,lamp.direction,eta,lampPdf);
+                    float lampSide=dot(geometric,lamp.direction)>0.0 ? 1.0 : -1.0;
+                    float lampWeight=bounce+1==frame.scene.w ? 1.0 : powerWeight(lamp.pdf,lampPdf);
+                    if (dot(n,lamp.direction)*lampSide>0.0 && lampF.r>0.0 &&
+                        intersectScene(point+geometric*(lampSide*frame.lighting.z),lamp.direction,true,
+                            lamp.distance*(1.0-1e-3)).triangle<0)
+                    {
+                        vec3 contribution=throughput*lampF*abs(dot(n,lamp.direction))*lamp.radiance*lampWeight/lamp.pdf;
+                        if (bounce==0) radiance+=contribution; else indirect+=contribution;
+                    }
                 }
             }
             if (bounce+1==frame.scene.w) break;
@@ -378,7 +467,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
             }
             previousDelta=delta;
         } else {
-            float lightPdf; vec3 light=sampleEnvironment(sample2(domain),extra.x,lightPdf);
+            float lightPdf; vec3 light=sampleEnvironment(lightXi,extra.x,lightPdf);
             vec3 f=evaluate(m,n,-rd,light,bsdfPdf);
             float weight=bounce+1==frame.scene.w ? 1.0 : powerWeight(lightPdf,bsdfPdf);
             if (dot(geometric,light)>0.0 && max(f.r,max(f.g,f.b))>0.0 &&
@@ -386,6 +475,18 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
             {
                 vec3 contribution=throughput*f*max(dot(n,light),0.0)*environment(light)*weight/max(lightPdf,1e-20);
                 if (bounce==0) radiance+=contribution; else indirect+=contribution;
+            }
+            EmitterSample lamp=sampleEmitter(point,emitterSelector,lightXi);
+            if (lamp.pdf>0.0 && dot(geometric,lamp.direction)>0.0) {
+                float lampPdf; vec3 lampF=evaluate(m,n,-rd,lamp.direction,lampPdf);
+                float lampWeight=bounce+1==frame.scene.w ? 1.0 : powerWeight(lamp.pdf,lampPdf);
+                if (max(lampF.r,max(lampF.g,lampF.b))>0.0 &&
+                    intersectScene(point+geometric*frame.lighting.z,lamp.direction,true,
+                        lamp.distance*(1.0-1e-3)).triangle<0)
+                {
+                    vec3 contribution=throughput*lampF*max(dot(n,lamp.direction),0.0)*lamp.radiance*lampWeight/lamp.pdf;
+                    if (bounce==0) radiance+=contribution; else indirect+=contribution;
+                }
             }
             if (bounce+1==frame.scene.w) break;
             next=sampleBSDF(m,n,-rd,sample2(domain+1u),extra.y);
@@ -403,7 +504,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
             throughput/=survive;
         }
         ro=point+geometric*(dot(geometric,next)>0.0 ? frame.lighting.z : -frame.lighting.z);
-        previousPdf=bsdfPdf; rd=normalize(next);
+        previousPoint=point; previousPdf=bsdfPdf; rd=normalize(next);
     }
     // Limit the indirect contribution of this sample, preserving its hue. Direct camera-visible
     // emission, background, first-surface lighting and first reflections remain unclamped.

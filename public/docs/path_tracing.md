@@ -650,12 +650,106 @@ obtrusive; raise it if reflected or transmitted light becomes too dim. Set it to
 With temporal reuse disabled, use `tracer.samples` to compare views at the same sample count, and adjust
 `tracer.exposure` separately for display brightness.
 
+## Sampling the lamps directly
+
+The clamp above buys a clean preview and pays bias for it. For one particular source
+of specks there is no need to pay: a small, bright emissive triangle.
+
+Emissive geometry used to be found only by chance — a path had to *happen* to scatter
+into a lamp. The smaller and brighter the lamp, the rarer that is, and the spikier
+each rare hit. The environment map has never had this problem, because it is
+importance-sampled against a cumulative table and connected to with a shadow ray.
+Emissive triangles now are too:
+
+```diffstatic {data-lang=kotlin}
+tracer.emitterSampling = true // the default; false reaches the previous estimator exactly
+println("${tracer.emitterCount} emissive triangles are sampled directly")
+```
+
+A table over the scene's emissive triangles is built on the CPU and uploaded beside
+the environment's, weighted by emitted power: triangle area times emitted luminance,
+doubled when both faces radiate. At every non-delta surface interaction the
+integrator sends a second shadow ray, toward a point sampled uniformly over a
+triangle drawn from that table, and weights the result against what a BSDF sample
+would have been worth in the same direction. The emission a BSDF sample *does* find
+carries the reciprocal weight. The two strategies therefore compose instead of
+double-counting, and the result is the same image, reached sooner.
+
+Both of these are 256 samples per pixel at 480 × 360, three bounces, two lamps of
+0.64 and 0.12 square units in a black environment. They are one flag apart:
+
+![Two small lamps over a sphere on a floor, rendered without emitter sampling: a dense blizzard of black and white speckle over every lit surface, with the sphere and its shadow barely legible](assets/path_tracing/emitter_off.png)
+
+![The same scene and sample count with emitter sampling on: clean diffuse surfaces, a soft shadow under the sphere, a cool tint on its right side from the smaller lamp](assets/path_tracing/emitter_on.png)
+
+`PathTraceEmitterGpuSmoke` measures both halves of that on real GPU readback. Over
+the 6,746 lit pixels of a 96 × 72 render of the same scene — luminance between 0.004
+and 6, which excludes the black background and the directly visible lamps — at an
+equal 257 samples per pixel:
+
+| Emitter sampling | RMSE against a 65,536-sample reference | Ratio |
+| --- | ---: | ---: |
+| off | 0.13534 | |
+| on | 0.00389 | **34.8×** |
+
+The ratio's denominator is a property of the scene, not of the estimator: a larger
+lamp, or any environment light at all, moves it down. The check asserts a floor of
+28×, near the measurement rather than comfortably below it.
+
+Unbiasedness is the half that matters more, and it is checked against something
+other than itself. A sphere inside a uniformly emissive cube, at one bounce, is the
+identical integral as the same sphere under a constant unit environment map — which
+the tracer solves through the separate, already-checked environment path. At one
+bounce neither run applies a multiple-importance weight, so what is under test is
+exactly the new pdf and its area-to-solid-angle Jacobian:
+
+| Check | Whole image | Worst of 24 tiles | Per-pixel p95 |
+| --- | ---: | ---: | ---: |
+| Emissive enclosure against a constant environment, 1 bounce | 0.00001 | 0.00011 | 0.00206 |
+| Six differently coloured faces, on against off, 2 bounces | 0.00004 | 0.00054 | 0.00360 |
+| Two small lamps, on against off, 3 bounces, 65,536 samples | 0.00070 | 0.01071 | 0.13316 |
+
+The first two are over all 6,912 pixels; the third uses the 6,746 lit ones. The
+white-furnace mean under unit radiance from every direction came out 0.99811 through
+emissive geometry and 0.99810 through the environment map — the same number by two
+unrelated routes. The third row's larger residual is the lamp box's own reference
+noise rather than bias: it shrinks 5.49× when the reference budget grows 4×, and the
+two references differ by 0.00359 RMS against a predicted standard error of 0.00848
+for the off reference at that budget.
+
+The extra shadow ray costs one traversal per surface interaction. A scene with no
+emissive triangle is bit-for-bit identical with the control on or off.
+
+Four things stay deliberately outside the table, and in each case the consequence is
+that emission from them is found by BSDF sampling alone, exactly as before:
+
+- **Emitters behind stochastic alpha coverage** (`AlphaMode.MASK` or `BLEND`). The
+  two strategies would otherwise disagree about whether the emitter is there at all.
+- **Emissive glass.** Transmissive materials are shaded on the dielectric path.
+- **Emission that comes only from a texture.** The table's weight reads the
+  material's emission factor, so a triangle whose factor is black and whose emissive
+  *texture* is bright carries weight zero. Where the factor is non-zero the texture
+  is fully honoured: the direct sampler reads radiance through the same texture
+  lookup, and the same box-authored `shadeMaterial` hook, that a BSDF hit does. If
+  those two disagreed about one point, their combination would be biased.
+- **Zero-area triangles**, which cannot be sampled by area at all.
+
+One asymmetry is worth knowing before comparing images. `maxBounces` is a path
+length limit, and a shadow ray reaches one segment past it: the connection from the
+last path vertex to a light is a scattering event that a BSDF hit would have needed
+another bounce to make. So `emitterSampling = true` at three bounces transports what
+`false` transports at four. That is more light for the same budget, not a brightness
+bug — but a strict A/B of the two flags at equal `maxBounces` shows the deeper
+setting slightly brighter, and on this scene that difference is 1.9% of the image.
+
 ## Current limits
 
 This is a basic static-scene renderer. It does not yet include scattering volumes,
-nested dielectric media, deformation/refitting, area-light
-importance sampling, motion blur, spatial denoising or an OpenXR stereo pass.
-Emissive triangles contribute when hit; small emitters can therefore converge slowly.
+nested dielectric media, deformation/refitting, motion blur, spatial denoising or an
+OpenXR stereo pass. Emissive triangles are importance-sampled by area and power (see
+above), but there is no spatial or directional light hierarchy, so a scene with
+thousands of small lamps still spends most of its shadow rays on lamps that cannot
+reach the shading point.
 The intended interactive resolution is a workload choice, not a frame-rate guarantee.
 
 ## Verification and export
@@ -682,6 +776,12 @@ start(verify)
 clear distance, background controls, fog-setting resets and dense-to-clear camera
 motion with retained history. It also checks premultiplied silhouette coverage
 with pixel jitter and depth of field, with temporal reuse both enabled and disabled.
+
+`PathTraceEmitterGpuSmoke.run(renderer, directory)` checks emitter sampling: that it
+is inert with no emitters, that its pdf matches the environment sampler in absolute
+terms, that its two arms compose without double counting, and that it reduces RMSE by
+an asserted factor at an equal sample budget. It writes the before/after captures on
+the way past.
 
 `tracer.readLinear()` returns the actual GPU RGBA accumulation buffer as floats;
 alpha holds primary visibility coverage. RGB is premultiplied by alpha; `samples`
