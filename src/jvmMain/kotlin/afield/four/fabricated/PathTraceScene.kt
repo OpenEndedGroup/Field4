@@ -125,6 +125,48 @@ class PathTraceScene {
     internal data class Node(val lo: Vector3f, val hi: Vector3f, var first: Int = 0, var count: Int = 0, var escape: Int = 0)
     internal class Packed(val triangles: List<Triangle>, val nodes: List<Node>, val materials: List<PathTraceMaterial>, val textures: List<PathTraceTexture>) {
         private val textureOffsets = textures.runningFold(0) { offset, t -> offset + 2 + t.width * t.height }
+        /** Two floats per emissive triangle: cumulative probability and triangle index, as in [PathTraceEnvironment]. */
+        val emitterDistribution: FloatArray
+        /** Two floats per triangle: its selection probability and area. Zero for anything the sampler cannot see. */
+        val emitterLookup: FloatArray
+        val emitterCount: Int
+        init {
+            require(triangles.size < 1 shl 24) { "Emitter table stores triangle indices as exact floats" }
+            // Only geometry the direct sampler and a BSDF hit agree about. Stochastic coverage would
+            // let the two strategies disagree about whether the emitter is there at all, and a
+            // transmissive emitter is shaded on the glass path; both keep weight zero, which leaves
+            // the BSDF-hit arm at MIS weight one and the estimate unchanged.
+            fun visible(m: PathTraceMaterial) = m.alphaMode == PathTraceMaterial.AlphaMode.OPAQUE && !m.transmission
+            fun area(t: Triangle) = 0.5 * Vector3f(t.p[1]).sub(t.p[0]).cross(Vector3f(t.p[2]).sub(t.p[0])).length()
+            // Emitted power: area times emitted luminance, doubled when both faces radiate.
+            fun power(t: Triangle): Double {
+                val m = materials[t.material]
+                if (!visible(m)) return 0.0
+                val luminance = 0.2126 * m.emissionRed + 0.7152 * m.emissionGreen + 0.0722 * m.emissionBlue
+                return luminance * area(t) * (if (m.doubleSided) 2.0 else 1.0)
+            }
+            val ids = triangles.indices.filter { power(triangles[it]) > 0.0 }
+            emitterCount = ids.size
+            emitterDistribution = FloatArray(maxOf(1, ids.size) * 2)
+            emitterLookup = FloatArray(triangles.size * 2)
+            val total = ids.sumOf { power(triangles[it]) }
+            var sum = 0.0
+            var previous = 0f
+            ids.indices.forEach { i ->
+                sum += power(triangles[ids[i]]) / total
+                val cumulative = if (i == ids.lastIndex) 1f else sum.toFloat().coerceIn(previous, 1f)
+                emitterDistribution[2*i] = cumulative
+                emitterDistribution[2*i+1] = ids[i].toFloat()
+                // Match the actual uploaded CDF intervals; the pdf must come from the table, not the weight.
+                emitterLookup[2*ids[i]] = cumulative - previous
+                emitterLookup[2*ids[i]+1] = area(triangles[ids[i]]).toFloat()
+                previous = cumulative
+            }
+        }
+        val emitterByteSize: Long get() = emitterDistribution.size * 4L
+        val emitterLookupByteSize: Long get() = emitterLookup.size * 4L
+        fun writeEmitters(out: ByteBuffer) { emitterDistribution.forEach { out.putFloat(it) } }
+        fun writeEmitterLookup(out: ByteBuffer) { emitterLookup.forEach { out.putFloat(it) } }
         val textureByteSize: Long get() = maxOf(1, textureOffsets.last()).toLong() * 16
         fun writeTextures(out: ByteBuffer) {
             if (textures.isEmpty()) { repeat(4) { out.putFloat(0f) }; return }

@@ -88,6 +88,81 @@ object PathTraceTestMain {
             val previous = if (i == 0) 0f else bright.distribution[2*i-2]
             check(bright.distribution[2*i+1] == bright.distribution[2*i]-previous)
         }
+        // Emitter selection table: power-weighted over emissive triangles, plus the per-triangle
+        // inverse map the BSDF-hit MIS weight reads. Same two-float layout as the environment's.
+        val lampScene = PathTraceScene()
+        val dull = lampScene.material(PathTraceMaterial.diffuse(0.5f,0.5f,0.5f))
+        val small = lampScene.material(PathTraceMaterial.emissive(6f,6f,6f))
+        val wide = lampScene.material(PathTraceMaterial.emissive(1f,1f,1f))
+        val masked = lampScene.material(PathTraceMaterial(emissionRed=9f, alphaMode=PathTraceMaterial.AlphaMode.MASK))
+        val litGlass = lampScene.material(PathTraceMaterial.glass().copy(emissionRed=9f))
+        lampScene.quad(Vector3f(-1f,0f,-1f),Vector3f(1f,0f,-1f),Vector3f(1f,0f,1f),Vector3f(-1f,0f,1f),dull)
+        lampScene.triangle(Vector3f(0f,2f,0f),Vector3f(1f,2f,0f),Vector3f(0f,2f,1f),small)
+        lampScene.triangle(Vector3f(0f,3f,0f),Vector3f(2f,3f,0f),Vector3f(0f,3f,2f),wide)
+        lampScene.triangle(Vector3f(0f,4f,0f),Vector3f(1f,4f,0f),Vector3f(0f,4f,1f),masked)
+        lampScene.triangle(Vector3f(0f,5f,0f),Vector3f(1f,5f,0f),Vector3f(0f,5f,1f),litGlass)
+        val lamps = lampScene.pack()
+        fun packedIds(material: Int) = lamps.triangles.indices.filter { lamps.triangles[it].material == material }
+        check(lamps.emitterCount == 2) { "Emitter count ${lamps.emitterCount}" }
+        check(lamps.emitterDistribution.size == 4 && lamps.emitterLookup.size == lamps.triangles.size*2)
+        check(lamps.emitterByteSize == 16L && lamps.emitterLookupByteSize == lamps.triangles.size*8L)
+        val tableIds = (0 until lamps.emitterCount).map { lamps.emitterDistribution[2*it+1].toInt() }
+        check(tableIds.toSet() == (packedIds(small)+packedIds(wide)).toSet() && tableIds.size == tableIds.toSet().size) {
+            "The table must hold exactly the sampler-visible emissive triangles, once each: $tableIds"
+        }
+        check(lamps.emitterDistribution[2*(lamps.emitterCount-1)] == 1f) { "Last cumulative must be exactly one" }
+        var lampPrevious = 0f
+        for (i in 0 until lamps.emitterCount) {
+            val cumulative = lamps.emitterDistribution[2*i]
+            check(cumulative >= lampPrevious)
+            // The pdf comes from the uploaded interval, not the weight: a rounded CDF must stay normalized.
+            check(lamps.emitterLookup[2*tableIds[i]] == cumulative - lampPrevious) {
+                "Probability ${lamps.emitterLookup[2*tableIds[i]]} does not match interval ${cumulative-lampPrevious}"
+            }
+            lampPrevious = cumulative
+        }
+        // Area times emitted luminance: 0.5 x 6 against 2 x 1 is 3:2.
+        check(abs(lamps.emitterLookup[2*packedIds(small).single()]-0.6f) < 1e-6) { "Area x luminance weighting" }
+        check(abs(lamps.emitterLookup[2*packedIds(wide).single()]-0.4f) < 1e-6)
+        check(abs(lamps.emitterLookup[2*packedIds(small).single()+1]-0.5f) < 1e-6) { "Stored triangle area" }
+        check(abs(lamps.emitterLookup[2*packedIds(wide).single()+1]-2f) < 1e-6)
+        (packedIds(dull)+packedIds(masked)+packedIds(litGlass)).forEach {
+            check(lamps.emitterLookup[2*it] == 0f && lamps.emitterLookup[2*it+1] == 0f) {
+                "Dark, stochastically masked and transmissive triangles must stay invisible to the direct sampler"
+            }
+        }
+        // Both faces radiate, so a two-sided emitter of equal size and colour carries twice the power.
+        val sidedScene = PathTraceScene()
+        val oneSided = sidedScene.material(PathTraceMaterial.emissive(1f,1f,1f).copy(doubleSided=false))
+        val twoSided = sidedScene.material(PathTraceMaterial.emissive(1f,1f,1f))
+        sidedScene.triangle(Vector3f(0f,0f,0f),Vector3f(1f,0f,0f),Vector3f(0f,1f,0f),oneSided)
+        sidedScene.triangle(Vector3f(0f,0f,1f),Vector3f(1f,0f,1f),Vector3f(0f,1f,1f),twoSided)
+        val sided = sidedScene.pack()
+        check(abs(sided.emitterLookup[2*sided.triangles.indices.single { sided.triangles[it].material==oneSided }]-1f/3f) < 1e-6)
+        check(abs(sided.emitterLookup[2*sided.triangles.indices.single { sided.triangles[it].material==twoSided }]-2f/3f) < 1e-6)
+        // A scene with no emitter at all still uploads a buffer, and the shader reads none of it.
+        val darkScene = PathTraceScene()
+        darkScene.triangle(Vector3f(),Vector3f(1f,0f,0f),Vector3f(0f,1f,0f),
+            darkScene.material(PathTraceMaterial.diffuse(1f,1f,1f)))
+        val dark = darkScene.pack()
+        check(dark.emitterCount == 0 && dark.emitterByteSize == 8L && dark.emitterLookupByteSize == 8L)
+        check(dark.emitterDistribution.all { it == 0f } && dark.emitterLookup.all { it == 0f })
+        // Many equal emitters: monotone cumulative, exact normalization, every triangle present once.
+        val shellScene = PathTraceScene()
+        val shell = shellScene.material(PathTraceMaterial.emissive(0.5f,0.5f,0.5f))
+        shellScene.sphere(Vector3f(), 1f, shell, 8, 4)
+        val shellPacked = shellScene.pack()
+        check(shellPacked.emitterCount == shellPacked.triangles.size)
+        val shellProbabilities = (0 until shellPacked.emitterCount).map {
+            shellPacked.emitterLookup[2*shellPacked.emitterDistribution[2*it+1].toInt()].toDouble()
+        }
+        check(abs(shellProbabilities.sum()-1.0) < 1e-6) { "Emitter probabilities sum to ${shellProbabilities.sum()}" }
+        check((0 until shellPacked.emitterCount).all { it == 0 ||
+            shellPacked.emitterDistribution[2*it] >= shellPacked.emitterDistribution[2*it-2] })
+        check(shellPacked.emitterLookup.filterIndexed { i, _ -> i%2 == 1 }.all { it > 0f })
+        println("PASS emitter table: ${lamps.emitterCount} of ${lamps.triangles.size} triangles sampled, " +
+            "${shellPacked.emitterCount}-emitter shell normalized to ${shellProbabilities.sum()}")
+
         val directions = PathTracingRenderer.sobolWords
         check(directions.size == 100*32)
         fun sobol(index: Int, dimension: Int): Double {
@@ -109,11 +184,17 @@ object PathTraceTestMain {
                 errorHandler = { message, _ -> errors += message })
             check(shader.valid) { "Shader hardware=$hardware: ${errors.joinToString("\n")}" }
             check(shader.pushConstants.isEmpty()) { "Unexpected push allocation: ${shader.pushConstants}" }
-            check(shader.ubos.single { it.name == "SceneBuffers" }.members.map { it.offset } == listOf(0,8,16,24,32,40,48,56,64))
+            val sceneBuffers = shader.ubos.single { it.name == "SceneBuffers" }
+            check(sceneBuffers.members.map { it.offset } == listOf(0,8,16,24,32,40,48,56,64,72,80)) {
+                "SceneBuffers pointer layout: ${sceneBuffers.members.map { it.name to it.offset }}"
+            }
+            check(sceneBuffers.members.map { it.name }.takeLast(2) == listOf("emitterTable","emitterLookup"))
             check(shader.ubos.map { it.name }.toSet() == setOf("Frame", "SceneBuffers"))
-            check(shader.ubos.single { it.name == "Frame" }.size == 272)
+            val frameUbo = shader.ubos.single { it.name == "Frame" }
+            check(frameUbo.size == 288) { "Frame size ${frameUbo.size}" }
+            check(frameUbo.members.last().name == "emitters")
             check(shader.accelerationStructures.size == if (hardware) 1 else 0)
-            println("PASS path-tracing shader hardware=$hardware, SceneBuffers=80, Frame=272")
+            println("PASS path-tracing shader hardware=$hardware, SceneBuffers=${sceneBuffers.size}, Frame=${frameUbo.size}")
         }
         println("PASS path-tracing scene, BVH, importance distribution and shader contracts")
     }
