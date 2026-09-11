@@ -9,7 +9,7 @@ import java.util.WeakHashMap
 /**
  * Ordered, inspectable pass contract for [StandardRenderer].
  *
- * This is intentionally thin: it does not hide the underlying RenderToTexture/Target objects or
+ * It is thin: it does not hide the underlying RenderToTexture/Target objects or
  * prevent direct pass manipulation. Instead it gives the fabricated renderer a stable ordered
  * surface for built-in passes and user-inserted post/utility passes before syncing that order into
  * a RenderTarget's preTargets map.

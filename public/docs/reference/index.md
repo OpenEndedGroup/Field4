@@ -20,6 +20,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 9 | 420 | 229 (54%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
+| [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 19 | 784 | 342 (43%) | Musical time, as a value. |
@@ -27,7 +28,6 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2204 | 649 (29%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Search](search.md) | 1 | 50 | 25 (50%) |  |
 
 ## Every file
 
@@ -282,7 +282,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [pointing_render.kt](graphics.md#pointing-render-kt) | Graphics | 17 | 14 | Seeing what the pointer found: the picked part lit, a crosshair where the pointer was aimed, and a caption that names what it hit. |  |
 | [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that exercise the incidence core at a rank a polyhedron library never reaches. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
-| [PopulationSearch.kt](search.md#populationsearch-kt) | Search | 50 | 25 | Population search over *any* genome type — the generic drivers that `alife_evolve.kt` and `FunctionEvolve.kt` both run on. | [Spatial artificial life](../alife_examples.md) |
+| [PopulationSearch.kt](search.md#populationsearch-kt) | Search | 50 | 25 | Population search over *any* genome type — the generic drivers that `alife_evolve.kt`, `FunctionEvolve.kt` and `afield.kratos.KratosStudy` all run on. | [Spatial artificial life](../alife_examples.md) |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 267 | 195 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. | [Python in a box](../python.md) |

@@ -555,19 +555,17 @@ object StdlibReferenceGenerator {
             "helpers, contouring, geometry, colour spaces, keyframing and the small shading " +
             "languages' host side.",
         RENDERERS to "Turning a scene into pixels on a Vulkan device. Three renderers live in " +
-            "`afield.four.fabricated`, they disagree about what a frame costs, and choosing " +
-            "between them is the first decision this page exists to help with.\n\n" +
+            "`afield.four.fabricated`, and they disagree about what a frame costs.\n\n" +
             "**`StandardRenderer` is the one that runs at frame rate.** A small deferred " +
             "renderer — g-buffer, shadow map, ambient occlusion, lighting composite — built on " +
             "the `afield.four` primitives rather than hiding them, so you feed it meshes and wire " +
             "a `RenderTarget` around the passes it hands back. `FabricateFrameGraph` is that pass " +
-            "list made ordered and named, and it deliberately does not hide the underlying " +
-            "`Target` objects: inserting a pass and manipulating one directly are both still " +
-            "available. `FabricatePostStack` and `FabricatePassChain` are the two post-processing " +
-            "surfaces, and they are not redundant — a `FabricatePostStack` pass inherits its " +
-            "source's resolution and format, while a `FabricatePassChain` lets every pass declare " +
-            "its own, which is what a half-resolution reduce or a downsample pyramid needs and " +
-            "could not previously get without owning the `RenderToTexture` yourself.\n\n" +
+            "list made ordered and named, and it does not hide the underlying `Target` objects: " +
+            "inserting a pass and manipulating one directly are both available. " +
+            "`FabricatePostStack` and `FabricatePassChain` are the two post-processing surfaces, " +
+            "and they differ in one thing: a `FabricatePostStack` pass inherits its source's " +
+            "resolution and format, while a `FabricatePassChain` lets every pass declare its own, " +
+            "which is what a half-resolution reduce or a downsample pyramid needs.\n\n" +
             "**`PathTracingRenderer` is the one that converges.** A progressive GPU path tracer " +
             "with a stackless software BVH that works on every Field Vulkan device and KHR ray " +
             "queries where the device has them. It accumulates: the image improves while nothing " +
@@ -588,13 +586,16 @@ object StdlibReferenceGenerator {
             "no Vulkan resources at all: nodes carry transforms, renderables carry material and " +
             "rendering intent, and `FabricateScenePlanner` turns that into the opaque, " +
             "alpha-masked and back-to-front transparent draw queues a renderer consumes. That " +
-            "independence is why the scene graph, the pass graph and the render plan can be " +
-            "exercised without a GPU, and they are.\n\n" +
-            "Two constraints apply to everything here. A renderer is constructed, installed and " +
-            "closed on Field's render thread, like any other `afield.four` module — installing " +
+            "independence is what lets the scene graph, the pass graph and the render plan be " +
+            "exercised without a GPU: `FabricateSceneGraphTestMain`, `FabricatePassGraphTestMain` " +
+            "and `FabricateRenderPlanTestMain` are plain `main`s that do, carrying their own " +
+            "assertions. They are not in the `FIELD_TEST` smoke catalog, so run them by hand.\n\n" +
+            "Two constraints apply to the renderers themselves. A renderer is constructed, " +
+            "installed and closed on Field's render thread, like any other `afield.four` module " +
+            "— installing " +
             "under a name already in use retires the previous occupant, so there is no coroutine " +
-            "lifetime bookkeeping to do. And a device is required: nothing on this page draws " +
-            "into an `FLine` or runs in a headless test the way the `Math` page's contents do. " +
+            "lifetime bookkeeping to do. And a device is required: nothing here that draws does " +
+            "so into an `FLine`, or in a headless test, the way the `Math` page's contents do. " +
             "For the same ground with pictures, see [The Fabricate renderer](" +
             "../fabricate_renderer.md), [Path tracing](../path_tracing.md) and " +
             "[afield.four graphics](../afield_four_graphics.md).",
@@ -622,8 +623,8 @@ object StdlibReferenceGenerator {
             "here draws — a solve returns points, and drawing them is your business. Start from " +
             "`CeresGeometry.kt`, which is the vocabulary everything else is written in; " +
             "`ArchitecturalGeometry.kt` is the layer most calls go through.",
-        "Simulation" to "Making a shape behave. Three stacks live here, they answer different " +
-            "questions, and picking the wrong one is the mistake this page exists to prevent.\n\n" +
+        "Simulation" to "Making a shape behave. Three stacks live here and they answer different " +
+            "questions.\n\n" +
             "**`afield.four.physics` is the one that moves.** It is a CPU solver you step inside " +
             "your own `loop { }`, at frame rate, with a person's hand on it: " +
             "`SimdVerlet` holds some thousands of particles in flat float arrays and pulls them " +
@@ -654,9 +655,9 @@ object StdlibReferenceGenerator {
             "[Manifold](../manifold.md) solid, usually — and fills it with tetrahedra that " +
             "reproduce it exactly, optionally quadratic, in Kratos's own node order. " +
             "`TetMeshViews` is how you look at the inside of the result rather than at its skin.\n\n" +
-            "Where the neighbours are. [Solvers](solvers.md) is Ceres, and the distinction is " +
-            "worth holding onto: Ceres finds the shape you *want* by minimising residuals you " +
-            "declare, and simulation tells you what that shape then *does*. A gridshell relaxed " +
+            "Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape you " +
+            "*want* by minimising residuals you declare; simulation tells you what that shape " +
+            "then *does*. A gridshell relaxed " +
             "in `Solvers` and a bracket solved in Kratos are two halves of the same design loop, " +
             "not two ways of doing one thing. Everything above returns geometry, so " +
             "[Graphics](graphics.md) is where it gets drawn.\n\n" +
@@ -684,6 +685,17 @@ object StdlibReferenceGenerator {
         "Function" to "The function algebra — Field's first-class, evolvable, graph-rewritable " +
             "notion of a function. Build them, compose them, fit them, mutate them, and rewrite " +
             "their graphs with user-authored patterns.",
+        "Search" to "Optimisation over a space you can only sample. You say how to make a genome " +
+            "and how to vary one, you say what a genome scored, and a driver spends a budget of " +
+            "*evaluations* against that pair. Nothing in the drivers knows what a genome is, so " +
+            "it can be a cellular-automaton rule, an L-system, an `Fn` graph or a design vector. " +
+            "One file holds all five: random sampling, hill climbing, a (µ+λ) evolutionary loop, " +
+            "novelty search and MAP-Elites. The callers are on three other pages: " +
+            "[ALife](alife.md) evolves rules and L-systems, [Function](function.md) evolves " +
+            "function graphs, and [Simulation](simulation.md)'s `KratosStudy` searches a design " +
+            "space. `afield.morpho` keeps a search of its own. Read `PopulationSearch.kt` for why " +
+            "`random` is reported as a control arm, and why the budget is evaluations rather than " +
+            "generations: both decide whether a result means anything.",
         "Visualization" to "Turning a value into something you can look at, without leaving the box.",
         "Synthesis" to "Field's own signal graph — the part of the audio stack that makes samples " +
             "rather than arranging them. One value type carries the whole thing: `Signal` is a " +

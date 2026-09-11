@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # Simulation
 
-Making a shape behave. Three stacks live here, they answer different questions, and picking the wrong one is the mistake this page exists to prevent.
+Making a shape behave. Three stacks live here and they answer different questions.
 
 **`afield.four.physics` is the one that moves.** It is a CPU solver you step inside your own `loop { }`, at frame rate, with a person's hand on it: `SimdVerlet` holds some thousands of particles in flat float arrays and pulls them together with distance constraints, and on top of that sit `Cloth`, `Strand`, `Wind`, tearing and a collider set. `JoltPhysicsWorld` is the rigid-body half — boxes, spheres, meshes, joints and character controllers over the Jolt engine — and `Dyn4jScene` is the same idea flat, in 2D. Nothing here owns a renderer: every one of them hands back `FLine`s and where those go is your business. Nothing here needs a GPU either. It is fast and it is approximate, and the number it gives you is not a number you would put in a report.
 
@@ -10,7 +10,7 @@ Making a shape behave. Three stacks live here, they answer different questions, 
 
 **`afield.tetgen` is the one in between.** Kratos has no embedded structural element, so stress needs a mesh whose boundary really is the part's surface, sharp edges included. `Tetgen.tetrahedralize` takes a closed triangle surface — a [Manifold](../manifold.md) solid, usually — and fills it with tetrahedra that reproduce it exactly, optionally quadratic, in Kratos's own node order. `TetMeshViews` is how you look at the inside of the result rather than at its skin.
 
-Where the neighbours are. [Solvers](solvers.md) is Ceres, and the distinction is worth holding onto: Ceres finds the shape you *want* by minimising residuals you declare, and simulation tells you what that shape then *does*. A gridshell relaxed in `Solvers` and a bracket solved in Kratos are two halves of the same design loop, not two ways of doing one thing. Everything above returns geometry, so [Graphics](graphics.md) is where it gets drawn.
+Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape you *want* by minimising residuals you declare; simulation tells you what that shape then *does*. A gridshell relaxed in `Solvers` and a bracket solved in Kratos are two halves of the same design loop, not two ways of doing one thing. Everything above returns geometry, so [Graphics](graphics.md) is where it gets drawn.
 
 The prose, with pictures: [Physics: particles, constraints, and the one number that decides everything](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 

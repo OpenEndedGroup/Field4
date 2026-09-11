@@ -5,19 +5,21 @@ package afield.stdlib
 import kotlin.random.Random
 
 /**
- * Population search over *any* genome type — the generic drivers that `alife_evolve.kt` and
- * `FunctionEvolve.kt` both run on. (`afield.morpho.MorphoSearch` keeps its own.)
+ * Population search over *any* genome type — the generic drivers that `alife_evolve.kt`,
+ * `FunctionEvolve.kt` and `afield.kratos.KratosStudy` all run on. (`afield.morpho.MorphoSearch`
+ * keeps its own.)
  *
  * A caller supplies two things and nothing else. [GenomeOps] says how to make a genome, how to vary
- * one, and (optionally) how to recombine two; [Objective] says what a genome scored. The four
+ * one, and (optionally) how to recombine two; [Objective] says what a genome scored. The five
  * drivers in [PopulationSearch] then spend a budget of *evaluations* against that pair:
  * [PopulationSearch.random] draws independently and keeps the best, [PopulationSearch.hillClimb]
  * walks one point, [PopulationSearch.evolve] runs a (µ+λ) generational loop with tournament or
- * lexicase selection, and [PopulationSearch.novelty] replaces the objective's own fitness with
- * distance from an archive of behaviours.
+ * lexicase selection, [PopulationSearch.novelty] replaces the objective's own fitness with
+ * distance from an archive of behaviours, and [PopulationSearch.mapElites] keeps the best genome
+ * per cell of a grid over the behaviour space rather than one winner.
  *
  * [PopulationSearch.random] is the **control arm**. It draws from exactly the distribution the
- * other three mutate within, so a difference between their results is a difference in *selection*
+ * other four mutate within, so a difference between their results is a difference in *selection*
  * rather than in the generator. Reporting an evolutionary result without it says nothing: a
  * generator good enough to stumble onto a decent genome occasionally looks like a successful
  * search. `MorphoSearch` reports the same pair for the same reason.
