@@ -7,6 +7,14 @@ import afield.stdlib.vec
 import kotlin.math.sqrt
 
 /**
+ * A rectangular cloth patch on a [SimdVerlet] simulation.
+ *
+ * [Cloth] manages a `width * height` grid of particles wired into axis-aligned distance
+ * constraints, with an optional curvature-flattening pass and tearing support.
+ * Create one with [SimdVerlet.addCloth].
+ */
+
+/**
  * A rectangular cloth patch living inside somebody else's [SimdVerlet].
  *
  * [Cloth.addTo] (or `sim.addCloth(...)`) appends `width * height` particles to a simulation

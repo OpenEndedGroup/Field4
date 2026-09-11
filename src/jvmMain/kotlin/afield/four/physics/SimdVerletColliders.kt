@@ -20,6 +20,14 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * Collision shapes for [SimdVerlet]: geometry that particles can bounce off or rest on.
+ *
+ * [PlaneCollider], [SphereCollider], [CapsuleCollider], [BoxCollider] and [SdfCollider] are
+ * the concrete shapes; [ColliderSet] batches them into one registered pass. Create a set
+ * with [SimdVerlet.addColliders].
+ */
+
+/**
  * Things for the particles to hit: the world layer of [SimdVerlet].
  *
  * A collider is a **post-solve position projection**, not a force. Register it through

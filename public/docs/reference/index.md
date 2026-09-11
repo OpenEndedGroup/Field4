@@ -72,7 +72,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [CeresRealization.kt](polytopes.md#ceresrealization-kt) | Polytopes | 20 | 15 | Optional bridge: run a `RelaxationPlan` on the native Ceres solver instead of the built-in one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [charts.kt](visualization.md#charts-kt) | Visualization | 94 | 86 | Plots — the structure, the scales, and the one renderer for them. | [Charts as FLines](../chart.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 32 | 1 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
-| [Cloth.kt](simulation.md#cloth-kt) | Simulation | 34 | 34 |  | [Frames, and what a frame is](../animation_time_model.md), [Physics: particles, constraints, and the one number that decides everything](../physics.md) |
+| [Cloth.kt](simulation.md#cloth-kt) | Simulation | 34 | 34 | A rectangular cloth patch on a `SimdVerlet` simulation. | [Frames, and what a frame is](../animation_time_model.md), [Physics: particles, constraints, and the one number that decides everything](../physics.md) |
 | [clustering.kt](data.md#clustering-kt) | Data | 81 | 81 | Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [CodecVisualization.kt](audio-ai.md#codecvisualization-kt) | Audio AI | 18 | 18 | The EnCodec reconstruction microscope: what a neural codec kept, what it threw away, and what it wrote down in between. | [EnCodec reconstruction microscope](../audio_ai_codec.md) |
 | [Colormaps.kt](visualization.md#colormaps-kt) | Visualization | 21 | 4 |  |  |
@@ -226,7 +226,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoGenerator.kt](languages.md#morphogenerator-kt) | Languages | 28 | 11 | Where MorphoHDL programs come from when nobody writes them. |  |
 | [MorphoGenome.kt](languages.md#morphogenome-kt) | Languages | 35 | 22 | The thing a search actually mutates: a MorphoHDL **program, as text**. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoGraal.kt](languages.md#morphograal-kt) | Languages | 17 | 12 |  |  |
-| [MorphoInterface.kt](languages.md#morphointerface-kt) | Languages | 14 | 6 |  | [Somebody else's language, running in Field](../morpho_examples.md) |
+| [MorphoInterface.kt](languages.md#morphointerface-kt) | Languages | 14 | 6 | Field4 language adapter for MorphoHDL, a Python-syntax hardware-description language. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoLayout3D.kt](languages.md#morpholayout3d-kt) | Languages | 10 | 9 |  |  |
 | [MorphoNetlist.kt](languages.md#morphonetlist-kt) | Languages | 31 | 15 |  |  |
 | [MorphoProblems.kt](languages.md#morphoproblems-kt) | Languages | 19 | 14 |  |  |
@@ -237,7 +237,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
 | [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
-| [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 |  | [What a document is on disk](../document_on_disk.md) |
+| [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 | Field4 language adapter for the Nano 8-bit assembly language. | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 3 |  |  |
 | [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 |  |  |
 | [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
@@ -295,10 +295,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 1 |  |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
 | [RectSLFn.kt](languages.md#rectslfn-kt) | Languages | 18 | 18 | RectSL tracks as differentiable `Fn` graphs — the third backend. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [A solid, written down: `afield.solidsl`](../solid_notation.md) |
-| [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
-| [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
+| [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 | What to *do* with a RectSL distance field once you have one. | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. |  |
 | [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
@@ -310,7 +310,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [shaders.kt](graphics.md#shaders-kt) | Graphics | 180 | 180 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 28 | The value types the rest of the synthesis category is written in, and the per-block contract they render under. | [Making a sound in Field: every path there is](../sound_paths.md), [Faust](../faust.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SimdVerlet.kt](simulation.md#simdverlet-kt) | Simulation | 31 | 18 |  |  |
-| [SimdVerletColliders.kt](simulation.md#simdverletcolliders-kt) | Simulation | 60 | 32 |  | [Physics: particles, constraints, and the one number that decides everything](../physics.md) |
+| [SimdVerletColliders.kt](simulation.md#simdverletcolliders-kt) | Simulation | 60 | 32 | Collision shapes for `SimdVerlet`: geometry that particles can bounce off or rest on. | [Physics: particles, constraints, and the one number that decides everything](../physics.md) |
 | [SimdVerletDebugLines.kt](simulation.md#simdverletdebuglines-kt) | Simulation | 1 | 1 |  |  |
 | [SimdVerletDyn4jBridge.kt](simulation.md#simdverletdyn4jbridge-kt) | Simulation | 22 | 0 |  |  |
 | [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 |  |  |
@@ -348,7 +348,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Making a sound in Field: every path there is](../sound_paths.md) |
 | [tables.kt](visualization.md#tables-kt) | Visualization | 35 | 35 | Tabular output — the structure, and the one renderer for it. | [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How completions are ranked](../completion_ranking.md) |
-| [Tetgen.kt](simulation.md#tetgen-kt) | Simulation | 19 | 13 |  | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
+| [Tetgen.kt](simulation.md#tetgen-kt) | Simulation | 19 | 13 | A closed surface turned into tetrahedra, with its sharp edges intact. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 171 | 36 | Field's pattern language: a compact text notation for musical structure, an exact algebra over cycles, and a scheduler that turns the result into events in seconds. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
