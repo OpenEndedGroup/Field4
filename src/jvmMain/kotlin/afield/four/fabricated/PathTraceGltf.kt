@@ -13,6 +13,30 @@ import java.nio.file.Path
 import kotlin.math.pow
 import kotlinx.serialization.json.*
 
+/**
+ * glTF and GLB into a [PathTraceScene]: hierarchy baked to world space, PBR parameters mapped onto
+ * [PathTraceMaterial], and an extension check that refuses rather than renders the wrong thing.
+ *
+ * The tracer has no scene graph — it holds world-space triangles — so this importer flattens the
+ * glTF node hierarchy as it reads, composing each node's transform with the caller's. Textures are
+ * copied out and every Assimp resource is released before the call returns, which is why no
+ * renderer or device is involved and an import is testable from a plain `main`.
+ *
+ * Two behaviours are easier to find here than to rediscover from a wrong picture. The first is that
+ * the extension set is read from the JSON directly, ahead of Assimp: an extension in
+ * `extensionsRequired` that this importer does not implement fails the call, while one in
+ * `extensionsUsed` produces a warning and an import of the base material. Declining to load is the
+ * right answer for the former because a required extension means the asset is wrong without it.
+ * The second is that the import is all-or-nothing — geometry accumulates into a staging scene and
+ * is appended only on success, so a failure leaves the target scene exactly as it was rather than
+ * half-populated.
+ *
+ * Colour space is the detail that most often looks like a renderer bug. Base colour and emission
+ * textures are sRGB and are decoded; metallic-roughness and normal maps are linear data and are
+ * not. Vertex colours and the base colour factor multiply after decoding, alpha is never squared,
+ * and `PathTraceGltfGpuSmoke` pins all of it against known byte values through real GPU traversal.
+ */
+
 /** Details of one static import. Material IDs also select materials in shadeMaterial(). */
 data class PathTraceGltfImport(val triangleCount: Int, val materialIds: Map<String, Int>,
     val boundsMin: Vector3f, val boundsMax: Vector3f, val warnings: List<String>)

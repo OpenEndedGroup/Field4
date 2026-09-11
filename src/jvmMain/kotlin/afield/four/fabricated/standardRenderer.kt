@@ -27,6 +27,31 @@ import java.util.*
 import kotlin.math.abs
 
 /**
+ * The deferred renderer the rest of Fabricate is arranged around: the pass bundle, its shaders, and
+ * the configuration that sizes them.
+ *
+ * This is the largest file in the package and the one to read first, because the objects it returns
+ * are what almost everything else here consumes. `StandardRenderer.build(...)` builds the five
+ * passes — g-buffer, shadow map, ambient occlusion, lighting composite, transparent composite —
+ * and hands back a `Bundle` holding each as an ordinary `afield.four` `Target`, along with the
+ * scene defaults, the scene graph and the post stack. Nothing is hidden
+ * behind that: `FabricateFrameGraph` wraps the same targets to give them names and an order,
+ * `FabricatePostStack` appends to them, and a box that wants to reach past all of it and
+ * manipulate a `RenderToTexture` directly still can. The design decision throughout is to compose
+ * the existing primitives rather than replace them.
+ *
+ * Deferred is the choice that explains the pass list. Geometry is rasterized once into a g-buffer
+ * of positions, normals and material parameters, and lighting is then evaluated per screen pixel,
+ * so cost scales with lights rather than with lights times triangles — which is what lets
+ * `FabricateScene`'s light list be arbitrary. It is also why transparency needs a separate pass at
+ * the end: a g-buffer holds one surface per pixel, and a blended surface is a second one.
+ *
+ * Scenes are not built here. `FabricateScene` owns the graph and `FabricateScenePlanner` produces
+ * the draw queues; this file renders what it is given. For the renderer working, with captures of
+ * each pass, see `public/docs/fabricate_renderer.md`.
+ */
+
+/**
  * One-stop shop for a small deferred renderer: g-buffer, shadow map, AO, and a lighting
  * composite. Everything here is built on top of the existing afield.four primitives so users
  * can just feed meshes in and wire a RenderTarget around the passes.

@@ -13,6 +13,32 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
+ * The scene graph: nodes, transforms, materials, lights, animation playback, and the glTF import
+ * that fills them.
+ *
+ * This file owns no Vulkan resources and imports no device type, which is a constraint rather than
+ * an accident. A `FabricateNode` carries a transform and children; a renderable carries a
+ * `FabricateMaterial` and the intent to be drawn; `updateWorldTransforms` composes the hierarchy
+ * into world matrices. None of that needs a GPU, so the scene graph, the animation sampler and the
+ * draw-order planning in `FabricateRenderPlan.kt` are all exercisable from a plain `main` — which
+ * `FabricateSceneGraphTestMain` and `FabricateSceneTestMain` do, deliberately without a device.
+ *
+ * `FabricateTransform` is a position/rotation/scale triple rather than a matrix, and that asymmetry
+ * has bitten callers: handing the graph a composed `Matrix4f` is not enough on its own, so
+ * `FabricateTransform.set(Matrix4f)` decomposes it back into the triple. A transform that cannot
+ * be expressed as one — a shear — will not survive the round trip.
+ *
+ * Lights are a list, and an empty list is not the same as no lighting: it preserves the single
+ * default directional light Fabricate has always had, so scenes written before the list existed
+ * render unchanged. One shadow-casting directional light is treated as the key light and drives the
+ * shadow map; the rest reach the deferred lighting pass through a lights buffer.
+ *
+ * `FabricateAlphaMode` is the field that decides which of the three draw queues a renderable joins,
+ * and it is the same OPAQUE/MASK/BLEND distinction glTF makes, carried through deliberately rather
+ * than collapsed.
+ */
+
+/**
  * A small Three.js-like scene layer for Fabricate. It is deliberately independent of Vulkan
  * resources: nodes own transforms, renderables own material/rendering intent, and renderer
  * bindings can consume the ordered draw lists.
