@@ -116,10 +116,10 @@ class PatCondenseTest {
             val result = patCondense(source)
             if (!result.exact) {
                 assertTrue(
-                    result.refusal != null && result.refusal!!.length > 40,
+                    result.refusal != null && result.refusal.length > 40,
                     "\"$source\" was not condensed and gave no reason for it"
                 )
-                refused += source to result.refusal!!
+                refused += source to result.refusal
                 continue
             }
             assertTrue(
@@ -432,7 +432,7 @@ class PatCondenseTest {
         val condensed = pat("a b c").slow(2).condense()
         assertTrue(!condensed.exact, "a pattern slower than one cycle was condensed to \"${condensed.notation}\"")
         assertTrue(
-            condensed.refusal!!.contains("step grid") || condensed.refusal!!.contains("no period"),
+            condensed.refusal!!.contains("step grid") || condensed.refusal.contains("no period"),
             "the wrong refusal: ${condensed.refusal}"
         )
     }
