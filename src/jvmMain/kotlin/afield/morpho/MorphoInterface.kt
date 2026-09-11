@@ -11,6 +11,21 @@ import afield.stdlib.Delegation
 import io.ktor.websocket.WebSocketSession
 
 /**
+ * Field4 language adapter for MorphoHDL, a Python-syntax hardware-description language.
+ *
+ * MorphoHDL programs describe recursive circuit structures that Field compiles via morpho's
+ * own compiler on GraalJS and lays out with its Barnes–Hut kernel on GraalWasm. The result
+ * lands on [Box.morphoCircuit]; a neighbouring Kotlin box reads it and draws with
+ * `circuit.flines()`.
+ *
+ * [MorphoExecution] is the [BoxExecution] implementation. Setting a parent box's `isMorphoRoot`
+ * to `true` turns its children into MorphoHDL boxes. Execute mode grows the circuit to
+ * completion; launch mode expands a few cells per frame while relaxing the layout between
+ * expansions, so the recursive division is visible in motion. [installMorpho] registers the
+ * runtime; [installMorphoPlugin] starts the topology watcher.
+ */
+
+/**
  * MorphoHDL as a first-class Field language.
  *
  * The runtime underneath is not Field's — it is morpho's own compiler on GraalJS and morpho's own
