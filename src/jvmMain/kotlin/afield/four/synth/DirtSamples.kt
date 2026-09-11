@@ -26,9 +26,10 @@ import kotlin.math.min
 /**
  * The TidalCycles Dirt-Samples collection loaded, indexed, and played from Field.
  *
- * [dirt] attaches a [DirtSampleLibrary] to the current box context; [dirtPlayer] builds a
- * polyphonic [DirtSamplePlayer] from it. [PatPattern.playDirt] connects a string pattern of
- * `family:variant` tokens to a player for pattern-driven sample sequencing.
+ * [dirt] attaches a [DirtSampleLibrary] to the current box context and [dirtPlayer] builds a
+ * polyphonic [DirtSamplePlayer] from it; [PatPattern.playDirt] drives one from a pattern of
+ * `family:variant` tokens. The library scans a directory into [DirtSampleFamily] groups of
+ * [DirtSampleDescriptor], each resolving to a [StereoAudioSample].
  */
 
 /**

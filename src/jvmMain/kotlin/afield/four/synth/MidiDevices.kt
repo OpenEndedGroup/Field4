@@ -16,12 +16,19 @@ import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
 import kotlin.math.abs
 
-// Live MIDI device I/O, and offline rendering of a [MidiClip] to a WAV through the JDK's own
-// software synthesizer.
-//
-// Everything here has to survive a machine with no MIDI hardware, so every entry point either
-// returns null / an empty list or throws a message that names what was missing. Nothing fakes a
-// device.
+/**
+ * Live MIDI device I/O, and offline rendering of a [MidiClip] to a WAV through the JDK's own
+ * software synthesizer.
+ *
+ * [MidiDevices] enumerates what the JVM can see and opens a [MidiOutput] or [MidiInput] on it;
+ * [MidiClip.playTo] sends a clip to a device by name fragment. [MidiClip.renderWav] and
+ * [renderToWav] take the offline route instead, which needs no hardware at all.
+ *
+ * Everything here has to survive a machine with no MIDI hardware, so every entry point either
+ * returns null or an empty list, or throws a message that names what was missing —
+ * [midiRenderUnavailableReason] is that check on its own, for asking before committing to a
+ * render. Nothing fakes a device.
+ */
 
 /**
  * One MIDI device the JVM can see.

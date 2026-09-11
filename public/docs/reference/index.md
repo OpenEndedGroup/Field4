@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13269 public symbols across 332 source files**, 7068 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13269 public symbols across 332 source files**, 7069 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -23,7 +23,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 19 | 784 | 342 (43%) | Musical time, as a value. |
-| [Audio](audio.md) | 16 | 841 | 231 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 16 | 841 | 232 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2204 | 649 (29%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -36,7 +36,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | File | Category | Symbols | Documented | What it is | Used in |
 | --- | --- | --- | --- | --- | --- |
 | [AbletonLinkAudio.kt](audio.md#abletonlinkaudio-kt) | Audio | 34 | 0 |  |  |
-| [AbletonSet.kt](audio.md#abletonset-kt) | Audio | 190 | 0 |  |  |
+| [AbletonSet.kt](audio.md#abletonset-kt) | Audio | 190 | 1 | An Ableton Live set read into Field: tracks, clips, tempo, automation and sample analysis. |  |
 | [AbletonSetDebugDrawing.kt](audio.md#abletonsetdebugdrawing-kt) | Audio | 26 | 0 |  |  |
 | [alife.kt](alife.md#alife-kt) | ALife | 51 | 39 | Spatial artificial life for the Field stdlib — the *continuous / grid / agent* half of ALife, the counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`, `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_agents.kt](alife.md#alife-agents-kt) | ALife | 59 | 24 | Agent-based spatial ALife: boids flocking, a Physarum (slime-mould) deposit–sense–move population over a trail `Img`, and diffusion-limited aggregation. | [Spatial artificial life](../alife_examples.md) |
@@ -216,8 +216,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [mesh_repair.kt](graphics.md#mesh-repair-kt) | Graphics | 78 | 46 | Why a mesh is not a solid, and what can be done about it — the paved road between "I loaded a file" and `toSolid()`. | [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [mesh_sdf.kt](graphics.md#mesh-sdf-kt) | Graphics | 36 | 36 | Modelling with functions: a `ScalarField3D` is `(Vec3) -> Float`, the signed-distance primitives and combinators that let you write a shape as an expression, and `marchingCubes`, which turns any such expression into a watertight `TriMesh`. | [Meshes and 3D geometry](../mesh_examples.md), [Field's 3D output](../three_output.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [mesh_topology.kt](graphics.md#mesh-topology-kt) | Graphics | 33 | 33 | What a `TriMesh` *is*, as opposed to where it is: adjacency, boundaries, components, manifoldness, orientation, and the Euler characteristic those add up to — plus the repairs (`TriMesh.weld`, `TriMesh.fixWinding`, `TriMesh.removeDegenerateTriangles`) that turn a mesh which fails those checks into one that passes. | [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
-| [Midi.kt](audio.md#midi-kt) | Audio | 81 | 35 |  |  |
-| [MidiDevices.kt](audio.md#mididevices-kt) | Audio | 51 | 33 |  |  |
+| [Midi.kt](audio.md#midi-kt) | Audio | 81 | 35 | A Standard MIDI File surface for Field. |  |
+| [MidiDevices.kt](audio.md#mididevices-kt) | Audio | 51 | 33 | Live MIDI device I/O, and offline rendering of a `MidiClip` to a WAV through the JDK's own software synthesizer. |  |
 | [MidiPat.kt](audio.md#midipat-kt) | Audio | 18 | 12 |  |  |
 | [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 |  |  |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
@@ -322,7 +322,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 9 |  | [Where do these things sit, relative to each other?](../projection_examples.md) |
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 client for Field, running in owned mode. | [Sonic Pi](../sonic_pi.md) |
+| [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 driven from a Field box, in owned mode. | [Sonic Pi](../sonic_pi.md) |
 | [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 |  |  |
 | [SonicPiLaunch.kt](audio.md#sonicpilaunch-kt) | Audio | 12 | 7 |  |  |
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |

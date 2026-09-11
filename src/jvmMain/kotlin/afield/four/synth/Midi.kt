@@ -13,17 +13,23 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-// A Standard MIDI File surface for Field.
-//
-// Field has had exactly two `javax.sound.midi` call sites since basic-pitch integration landed:
-// `MidiSystem.getSequence` in AbletonSet (reading an *external* transcriber's output) and
-// `MidiSystem.write` in AbletonSetSmokeTest (a test fixture). Neither was reachable as a feature.
-// This file is the product surface, and it owns the tick/tempo/note-pairing helpers that used to
-// be private to AbletonSet.kt — AbletonSet is now a caller, not a second implementation.
-//
-// Time is carried in *beats* (quarter notes) in the Field-native model, because that is what the
-// pattern stack speaks. Ticks and PPQ are a file-format detail and appear only at the edges, in
-// [MidiTempoEvent] / [MidiTimedNote] / the reader and writer.
+/**
+ * A Standard MIDI File surface for Field.
+ *
+ * [readMidiClip] reads a `.mid` into a [MidiClip] and [MidiClip.writeTo] writes one back as a
+ * format-1 file; [Sequence.toMidiClip] converts a `javax.sound.midi.Sequence` already in hand.
+ * `AbletonSet.kt` reads MIDI through this file rather than carrying its own helpers, so the
+ * note-on to note-off pairing in [Sequence.readTimedNotes], along with [Sequence.tempoEvents]
+ * and [tickToSeconds], lives here.
+ *
+ * Time is carried in *beats* (quarter notes) in the Field-native model, because that is what the
+ * pattern stack speaks. Ticks and PPQ are a file-format detail and appear only at the edges, in
+ * [MidiTempoEvent], [MidiTimedNote] and the reader and writer.
+ *
+ * [MidiClip.quantized] and [MidiClip.transposed] return edited copies; [quantize] and [gridError]
+ * snap and score a [MidiNote] list against a beat grid, and [GeneralMidi] holds the program
+ * numbers and the percussion channel as named constants.
+ */
 
 /** Default pulses-per-quarter-note for files Field writes. 480 divides 2, 3, 4, 5, 6 and 8 evenly. */
 const val MIDI_DEFAULT_PPQ: Int = 480

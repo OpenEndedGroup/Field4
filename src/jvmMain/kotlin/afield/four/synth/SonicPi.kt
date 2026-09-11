@@ -23,11 +23,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Sonic Pi v5 client for Field, running in owned mode.
+ * Sonic Pi v5 driven from a Field box, in owned mode.
  *
- * Field spawns the Sonic Pi daemon and holds its authentication token, giving the control API
- * full access. [SonicPi.shared] is the singleton; [sonicPi] and [Box.sonicPi] are the two
- * entry points for box code.
+ * [sonicPi] and [Box.sonicPi] are the box-facing entry points, both booting the one shared
+ * [SonicPi] on first use. That class carries the control API — running and stopping code, the
+ * mixer, recording, and the log and error feeds that come back into the box. The types around it
+ * model what the daemon sends: [SonicPiLogMessage], [SonicPiError], [SonicPiFlash],
+ * [SonicPiPorts] and [SonicPiVersion].
  */
 
 /**

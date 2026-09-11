@@ -27,6 +27,33 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+/**
+ * An Ableton Live set read into Field: tracks, clips, tempo, automation and sample analysis.
+ *
+ * [AbletonSet.read] parses an `.als`, which is gzipped XML — recognised by its magic bytes rather
+ * than its extension, so an already-unzipped set reads too. The model runs [AbletonSet] to
+ * [AbletonTrack] to [AbletonClip], with [AbletonTempoMap] converting between arrangement beats and
+ * seconds.
+ *
+ * The queries take an arrangement position and answer for that instant:
+ * [AbletonSet.clipsPlayingAtBeat], [AbletonSet.trackVolumesAtBeat] and
+ * [AbletonSet.dominantPitchesAtBeat], each with an `AtSeconds` twin.
+ * [AbletonAutomationEnvelope] carries the envelopes they read.
+ *
+ * A clip names its audio through [AbletonSampleRef], which [AbletonSampleFileMapper] and
+ * [AbletonSet.resolveSamples] resolve to files on this machine. Opening those files is what
+ * [AbletonSampleVolumeAnalysisCache] and [AbletonSamplePitchAnalysisCache] are for: both memoise
+ * in process and on disk, keyed on the sample's path, size, modification time and the analysis
+ * config, so a second run is a lookup rather than a re-read.
+ */
+
+/**
+ * One Ableton Live set, as read from an `.als` file by [read].
+ *
+ * [tracks] holds the set's own tracks and [allTracks] adds [mainTrack] when the set has one.
+ * [clips] and [automationEnvelopes] flatten the tree, for the common case of wanting every one of
+ * them without walking the tracks.
+ */
 data class AbletonSet(
     val source: File,
     val tempoMap: AbletonTempoMap,
