@@ -39,9 +39,9 @@ import kotlin.math.max
  */
 
 /**
- * A small Three.js-like scene layer for Fabricate. It is deliberately independent of Vulkan
- * resources: nodes own transforms, renderables own material/rendering intent, and renderer
- * bindings can consume the ordered draw lists.
+ * A small Three.js-like scene layer for Fabricate, independent of Vulkan resources: nodes own
+ * transforms, renderables own material/rendering intent, and renderer bindings consume the
+ * ordered draw lists.
  */
 class FabricateScene(
     val root: FabricateNode = FabricateNode("root")

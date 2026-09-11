@@ -4,9 +4,9 @@ import afield.four.targets.RenderToTexture
 import afield.four.modules.ModulePointer
 
 /**
- * Ordered post-processing stack for Fabricate, intentionally close to Three.js'
- * EffectComposer model: one source texture enters the stack, named passes run in order,
- * and the final pass is the image to present.
+ * Ordered post-processing stack for Fabricate, following Three.js' EffectComposer model:
+ * one source texture enters the stack, named passes run in order, and the final pass is
+ * the image to present.
  */
 class FabricatePostStack(
     val input: RenderToTexture,

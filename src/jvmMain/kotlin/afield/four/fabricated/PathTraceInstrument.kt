@@ -22,48 +22,41 @@ import kotlin.math.min
 /**
  * The path tracer's instrument: what it is doing, why it restarted, and how fast it is converging.
  *
- * ## Why this file exists
+ * Answering any of that from a box by hand means a `frames { repeat(180) { frame() } }` loop with a
+ * `println` inside: it costs frames of its own, it misses a reset that lands between frame
+ * boundaries, and it cannot see the camera basis the tracer actually built. What is here instead is
+ * a `.h` printer, a `.h2` drill-down and [PathTraceConvergence], which the tracer appends to from
+ * its own render. Recompiling the integrator in place, the other thing such a loop gets written
+ * for, is [PathTracingRenderer.reloadIntegrator].
  *
- * A live session on 2026-09-10 left five scratch boxes beside a 1920×1080 copy of the shipped
- * hidden-environment demo. Four of them were printf loops — `frames { repeat(180) { frame() } }`
- * with a `println` inside, two of them byte-identical copy-pastes of the other two — and all four
- * asked the same two questions: *how fast is this converging*, and *what is the camera actually
- * doing*. The fifth hand-rolled an integrator hot reload. This file and
- * [PathTracingRenderer.reloadIntegrator] are those five boxes, done once.
+ * ## The two renderings
  *
- * ## What was already there, and what was not
+ * [registerPathTraceInstrument] gives [PathTracingRenderer] both an [afield.registerValuePrinter]
+ * and an [afield.registerH2Value] entry, because the class is not a data class and reflection alone
+ * serves the two panels unevenly. `H2Reflect` reflects any type, so `.h2` reaches every public
+ * tuning property without help; `.h` with no printer falls through to `ValueVisualizer`'s
+ * `formatFallbackObject`, which prints the class name and an identity hash and nothing else — while
+ * the `afield.four` types the tracer is *built out of* (`Renderer`, `Camera`,
+ * `ComputeModulePointer`, `RenderToTexture`, `VulkanBuffer`, …) all have printers in
+ * `FourVisualizers.kt`.
  *
- * `.h2` needed less than it looked. `H2Reflect` reflects any type, and on a live tracer it already
- * rendered `PathTracingRenderer · 33 properties` in a paged explorer — 33 being exactly the count
- * of the class's public properties, so every tuning value was already on screen. `.h` needed
- * everything: `PathTracingRenderer` is not a data class and had no
- * [afield.registerValuePrinter] entry, so `ValueVisualizer` fell through to
- * `formatFallbackObject` and `print(tracer.h)` produced
- * `PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3` and nothing else —
- * while all 26 of the `afield.four` types the tracer is *built out of* (`Renderer`, `Camera`,
- * `ComputeModulePointer`, `RenderToTexture`, `VulkanBuffer`, …) have had printers in
- * `FourVisualizers.kt` since they were written.
- *
- * So the two renderings here are deliberately different jobs, and the split is why the `.h` panel
- * stays short:
+ * So the two renderings do different jobs, and the split is why the `.h` panel stays short:
  *
  *  - **`.h`** is the glance. One header line and a handful of rows, with the rows that are at their
  *    defaults *dropped* — so a plain tracer shows five rows, and each of the five optional groups
  *    (a non-agreeing up, a lens, temporal reuse, fog, an attached convergence log) costs one more,
  *    to a maximum of ten. It is meant to fit in the gap above the next box.
- *  - **`.h2`** is the drill-down. A strict superset of what reflection showed: the same 33 values,
- *    grouped rather than flat, with the derived facts beside them and the sub-objects still
+ *  - **`.h2`** is the drill-down. A strict superset of what reflection reaches on its own: the same
+ *    values, grouped rather than flat, with the derived facts beside them and the sub-objects still
  *    reachable so each one lands on its own printer.
  *
- * ## The fact reflection could not reach
+ * ## The fact reflection cannot reach
  *
- * Two of those four scratch boxes printed `camera.up` and then its three components as
- * `toRawBits()`, which is what you do when a number is not what you expect and you have run out of
- * ideas. They were watching the wrong vector. The tracer does not use `camera.up`: `updateFrame`
- * builds its own up as `right × forward`, i.e. the part of the declared up that is perpendicular to
- * the view direction, normalised. A declared up of `(0, 3, 0)`, or one tilted 20° out of the view
+ * The tracer does not use `camera.up`. `updateFrame` builds its own up as `right × forward`, i.e.
+ * the part of the declared up that is perpendicular to the view direction, normalised, and that is
+ * what reaches the `Frame` uniform. A declared up of `(0, 3, 0)`, or one tilted 20° out of the view
  * plane, gives a *different* vector from the one the image is built with, and no property tree can
- * show that because the value is a local inside a private method. [PathTraceCameraBasis] computes
+ * show it, because the value is a local inside a private method. [PathTraceCameraBasis] computes
  * both and reports the angle between them, and the `.h` row appears only when they disagree.
  */
 
@@ -120,8 +113,8 @@ data class PathTraceConvergenceSummary(
 /**
  * An immutable snapshot of everything the instrument shows, read once off a live tracer.
  *
- * Immutable and plain on purpose: it is what makes the two renderings below testable without a
- * Vulkan device, and it means the `.h` a box printed cannot change under it while the render thread
+ * Immutable and plain: that is what makes the two renderings below testable without a Vulkan
+ * device, and it means the `.h` a box printed cannot change under it while the render thread
  * carries on. [tuning] is ordered, holds every property the reflective `.h2` was already showing,
  * and is the group both renderings read for "the other twenty".
  */
@@ -337,7 +330,7 @@ internal fun pathTraceStatusMap(s: PathTraceStatus, objects: Map<String, Any?> =
  * approximating, and it is strictly better than them in two ways: it costs no frames of its own,
  * and it sees resets that a loop sampling `samples` at frame boundaries would miss.
  *
- * **Bounded, and honest about it.** Memory is capped at [maxPoints]; when the log fills, every
+ * **Bounded, at a cost to resolution.** Memory is capped at [maxPoints]; when the log fills, every
  * other point is dropped and the sampling stride doubles. So a run of any length keeps the *shape*
  * of its curve in fixed memory, at halving resolution, rather than either stopping or growing
  * without limit. [points] is what is retained, not what happened.
@@ -466,8 +459,8 @@ fun PathTracingRenderer.recordConvergence(maxPoints: Int = 4096): PathTraceConve
  * Plot a [PathTraceConvergence] — samples against wall seconds, with a labelled dashed rule
  * wherever accumulation restarted and why.
  *
- * This is one call to [showSignals] and no new plotting code, which is the point. Plotly is this
- * repo's first choice for a chart and nothing about this figure asks for more than it offers:
+ * This is one call to [showSignals] and no new plotting code. Plotly is this repo's first choice for
+ * a chart and nothing about this figure asks for more than it offers:
  * `showSignals` already takes named series, a shared `x` in seconds, and
  * `marks: List<Pair<String, Number>>`, which it draws as full-height dashed rules carrying their
  * label into the legend. That is exactly "samples against wall time, and the reason the last reset

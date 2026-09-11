@@ -47,8 +47,8 @@ import kotlin.math.sqrt
  * culled on a BSDF hit, so it has to be dark to the direct sampler too. A sphere on the floor,
  * whose shadow *is* the shadow ray — had the occlusion query not been shortened to stop before the
  * light, every shadow ray would hit the lamp itself, every direct contribution would be discarded,
- * and the result would be a correct image with no improvement at all, which is why the variance
- * floor is as load-bearing here as the bias checks.
+ * and the result would be a correct image with no improvement at all. Nothing but the variance
+ * floor catches that, so it is asserted here alongside the bias checks.
  */
 object PathTraceEmitterGpuSmoke {
     private const val WIDTH = 96
@@ -308,9 +308,8 @@ object PathTraceEmitterGpuSmoke {
     }
 
     /**
-     * The composition check. Six differently coloured faces at two bounces: both MIS weights are now
-     * load-bearing, and a double count or a probability that has come off its triangle changes the
-     * answer. Uniform near-field radiance means the off run converges too, so this resolves a
+     * The composition check. Six differently coloured faces at two bounces: both MIS weights matter
+     * now, and a double count or a probability that has come off its triangle changes the answer. Uniform near-field radiance means the off run converges too, so this resolves a
      * fraction of a percent rather than a few percent.
      */
     private suspend fun enclosureComposition(renderer: Renderer, backend: PathTracingRenderer.Backend) {

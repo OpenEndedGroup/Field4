@@ -187,8 +187,8 @@ object GaussianSplatRenderer {
      * A splat cloud on the GPU.
      *
      * Sized by [capacity] rather than by the data it was built with, so [reupload] can rewrite it
-     * every frame with a different number of splats — which is the point when fifteen files a frame
-     * land in one cloud. [table] and [packed] are null for a cloud built empty by [streaming].
+     * every frame with a different number of splats — which is what lets fifteen files a frame land
+     * in one cloud. [table] and [packed] are null for a cloud built empty by [streaming].
      */
     class Cloud internal constructor(
         val renderer: Renderer = fromContext(),
@@ -678,8 +678,8 @@ object GaussianSplatRenderer {
 
     /**
      * Apply the raster state expected by the built-in splat shaders to either an internal module or
-     * a caller's live `moduleHere` module. Shader source is deliberately not assigned here:
-     * `moduleHere` owns source through the box's vertex and fragment properties.
+     * a caller's live `moduleHere` module. Shader source is not assigned here, because `moduleHere`
+     * owns source through the box's vertex and fragment properties.
      */
     fun configureModule(
         parameters: Parameters,
@@ -920,9 +920,9 @@ object GaussianSplatRenderer {
      * Decode compressed splat payloads straight into [dest] in the 16-float GPU layout, with no
      * [PlyFloatTable] in between.
      *
-     * [sources] all land in one destination, back to back, which is the point: fifteen files a frame
-     * become one buffer, one draw and — if you sort — one order that is correct *across* sources
-     * rather than fifteen locally-correct orders that interleave wrongly.
+     * [sources] all land in one destination, back to back: fifteen files a frame become one buffer,
+     * one draw and — if you sort — one order that is correct *across* sources rather than fifteen
+     * locally-correct orders that interleave wrongly.
      *
      * Two round trips that [pack] performs are skipped here, because the compressed format already
      * stores what the shader wants. Colour is linear 0..1 in the file, so `f_dc = (c - 0.5) / SH_C0`
@@ -1896,8 +1896,8 @@ layout(location = 0) in vec3 vColor;
 layout(location = 1) in float vOpacity;
 layout(location = 2) in vec2 vGaussianCoord;
 layout(location = 3) in float vAlphaCutoff;
-// Declared, and deliberately unused by the default shading: it is the hook a fork of this shader
-// uses to index per-source data -- a retrojection camera matrix, a texture layer, an id colour.
+// Declared, and unused by the default shading: it is the hook a fork of this shader uses to
+// index per-source data -- a retrojection camera matrix, a texture layer, an id colour.
 layout(location = 4) flat in int vSource;
 
 layout(location = 0) out vec4 uFragColor;
