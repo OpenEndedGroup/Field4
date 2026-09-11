@@ -799,7 +799,7 @@ Real GPU checks for `PathTracingRenderer.emitterSampling`, in the order that mat
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/#L346) | Drives every check and writes the before/after captures under `outputDirectory`. Call from a suspend body in a box below a live renderer, as with the other path-trace smokes. |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/#L347) | Drives every check and writes the before/after captures under `outputDirectory`. Call from a suspend body in a box below a live renderer, as with the other path-trace smokes. |
 
 ## PathTraceGlassDemo.kt { #pathtraceglassdemo-kt }
 

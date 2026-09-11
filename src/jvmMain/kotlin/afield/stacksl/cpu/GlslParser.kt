@@ -1,32 +1,32 @@
 package afield.stacksl.cpu
 
-// ---------------------------------------------------------------------------------------------
-// A parser for the GLSL that StackSL's emitter actually produces.
-//
-// WHY A PARSER AND NOT A SECOND BACKEND IN THE COMPILER.
-//
-// `StackSLCompiler` has no symbolic node to hang a CPU arm off: its one internal node is
-// `StackValue(id, expression: String, …)` and `expression` is already GLSL text, built by
-// `String`-returning lambdas (`StackSL.kt:399-406`, `2024-2035`). Adding an `eval:` beside every
-// `glsl:` — the RectSL `TrackOp` shape — would mean rewriting the emitter word by word, and every
-// one of those rewrites is a chance to make the CPU arm disagree with the GPU arm. That
-// disagreement is the exact defect this backend exists to rule out: a hand-written CPU twin that
-// contradicted its own published documentation.
-//
-// So instead: parse the emitter's output. The CPU backend then consumes *the same text the GPU
-// consumes*, byte for byte, and cannot drift from the shipping emitter by construction. It also
-// needs zero edits to `StackSL.kt`, so it cannot regress the GPU path at all.
-//
-// WHAT THE SUBSET IS, MEASURED RATHER THAN GUESSED.
-//
-// Dumped for all 31 committed gallery programs (1472 lines of emitted GLSL), the entire surface
-// is: scalar/vector/matrix declarations, `=`/`+=`/`-=`/`*=`/`/=`, `if`, `for (int i = …; …; i++)`,
-// `return`, function definitions, and about 30 builtins. **No ternary, no `while`, no `switch`,
-// no structs, no arrays, no bit operators.** This parser covers a little more than that (ternary,
-// `while`, `do`, `break`/`continue`, interface blocks) so the first shader that reaches slightly
-// further does not fail; anything genuinely outside throws [GlslUnsupported] with the token
-// quoted rather than guessing.
-// ---------------------------------------------------------------------------------------------
+/**
+ * A parser for the GLSL that StackSL's emitter actually produces.
+ *
+ * #### Why a parser and not a second backend in the compiler
+ *
+ * `StackSLCompiler` has no symbolic node to hang a CPU arm off: its one internal node is
+ * `StackValue(id, expression: String, …)` and `expression` is already GLSL text, built by
+ * `String`-returning lambdas in `StackSL.kt`. Adding an `eval:` beside every `glsl:` — the
+ * RectSL `TrackOp` shape — would mean rewriting the emitter word by word, and every one of
+ * those rewrites is a chance to make the CPU arm disagree with the GPU arm. That disagreement
+ * is the exact defect this backend exists to rule out: a hand-written CPU twin that diverged
+ * from its own emitter.
+ *
+ * Parsing the emitter's output means the CPU backend consumes *the same text the GPU consumes*,
+ * byte for byte, and cannot drift from the shipping emitter by construction. It also needs zero
+ * edits to `StackSL.kt`, so it cannot regress the GPU path at all.
+ *
+ * #### What the subset is, measured
+ *
+ * Dumped for all 31 committed gallery programs (1472 lines of emitted GLSL), the entire surface
+ * is: scalar/vector/matrix declarations, `=`/`+=`/`-=`/`*=`/`/=`, `if`, `for (int i = …; …; i++)`,
+ * `return`, function definitions, and about 30 builtins. **No ternary, no `while`, no `switch`,
+ * no structs, no arrays, no bit operators.** This parser covers a little more than that (ternary,
+ * `while`, `do`, `break`/`continue`, interface blocks) so the first shader that reaches slightly
+ * further does not fail; anything genuinely outside throws [GlslUnsupported] with the token
+ * quoted rather than guessing.
+ */
 
 // ---------------------------------------------------------------------------------------------
 // AST

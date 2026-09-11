@@ -20,36 +20,36 @@ import kotlin.math.tan
 import kotlin.math.tanh
 import kotlin.math.truncate
 
-// ---------------------------------------------------------------------------------------------
-// The value model for the GLSL-subset interpreter behind StackSL's CPU backend.
-//
-// WHY FLOAT AND NOT DOUBLE, EVERYWHERE, WITHOUT EXCEPTION.
-//
-// The thing being mirrored is a GPU fragment shader whose `float` is IEEE-754 binary32. Every
-// intermediate here is therefore a `Float`, and every builtin rounds to `Float` at every step,
-// including the ones Kotlin would rather do in `Double` (`kotlin.math.sin` takes and returns
-// `Double`, so those are computed wide and narrowed once — see [f1]). Widening an intermediate
-// would make the CPU result *more* accurate than the shader and therefore a worse reference:
-// the point is to reproduce the shader, not to improve on it.
-//
-// Two consequences are worth naming up front because they set the honest ceiling on agreement
-// with a GPU, and neither is a defect in this file:
-//
-//   - `sin`, `cos`, `exp`, `log`, `pow`, `atan` are IMPLEMENTATION-DEFINED in GLSL. The spec
-//     gives them no accuracy requirement at all beyond monotonicity in places. So no CPU
-//     implementation can be bit-exact with a GPU's, even in principle, and any program that
-//     reaches one of them can only be compared under a tolerance.
-//   - even the exact operations do not compose exactly, because a GPU may CONTRACT `a * b + c`
-//     into a fused multiply-add with one rounding while the JVM performs two. Kotlin has no
-//     `fma`-free guarantee to offer here either way; what it does have is no automatic
-//     contraction, so this interpreter is the *unfused* reading of the shader.
-//
-// The interesting failure is neither of those. `fract` of a large product amplifies a last-bit
-// difference in its argument to O(1) — so `_hash21`, which is multiply/add/fract only and
-// therefore exact operation by operation, can still produce a visibly different image from a
-// backend that differed by one ulp three operations earlier. That is chaos, not error, and the
-// gallery characterisation reports it separately from tolerance.
-// ---------------------------------------------------------------------------------------------
+/**
+ * The value model for the GLSL-subset interpreter behind StackSL's CPU backend.
+ *
+ * #### Why Float, not Double
+ *
+ * The thing being mirrored is a GPU fragment shader whose `float` is IEEE-754 binary32. Every
+ * intermediate here is therefore a `Float`, and every builtin rounds to `Float` at every step,
+ * including the ones Kotlin would rather do in `Double` (`kotlin.math.sin` takes and returns
+ * `Double`, so those are computed wide and narrowed once — see [f1]). Widening an intermediate
+ * would make the CPU result *more* accurate than the shader and therefore a worse reference:
+ * the goal is to reproduce the shader, not to improve on it.
+ *
+ * Two consequences bound what any CPU implementation can agree with a GPU on, and neither is a
+ * defect in this file:
+ *
+ *   - `sin`, `cos`, `exp`, `log`, `pow`, `atan` are IMPLEMENTATION-DEFINED in GLSL. The spec
+ *     gives them no accuracy requirement at all beyond monotonicity in places. So no CPU
+ *     implementation can be bit-exact with a GPU's, even in principle, and any program that
+ *     reaches one of them can only be compared under a tolerance.
+ *   - Even the exact operations do not compose exactly, because a GPU may CONTRACT `a * b + c`
+ *     into a fused multiply-add with one rounding while the JVM performs two. Kotlin has no
+ *     `fma`-free guarantee to offer here either way; what it does have is no automatic
+ *     contraction, so this interpreter is the *unfused* reading of the shader.
+ *
+ * The interesting failure is neither of those. `fract` of a large product amplifies a last-bit
+ * difference in its argument to O(1) — so `_hash21`, which is multiply/add/fract only and
+ * therefore exact operation by operation, can still produce a visibly different image from a
+ * backend that differed by one ulp three operations earlier. That is chaos, not error, and the
+ * gallery characterisation reports it separately from tolerance.
+ */
 
 /**
  * The scalar element type of a [GlslType]. GLSL's `uint` is folded into `INT` (nothing in the

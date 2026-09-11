@@ -1,24 +1,25 @@
 package afield.stacksl.cpu
 
-// ---------------------------------------------------------------------------------------------
-// The evaluator. Tree-walking, single-threaded per invocation, no state between invocations
-// except the globals the caller hands in — so a raster can be rendered by running one of these
-// per row on as many threads as there are cores (see `StackSLCpu`).
-//
-// TWO DESIGN CHOICES WORTH THE WORDS.
-//
-// 1. **Control flow is a return value, not an exception.** `return`/`break`/`continue` are
-//    reported as a [Flow] from `exec`, and the caller unwinds. The usual shape for a tree-walking
-//    interpreter is a control-flow exception, and it would be a bad fit here for a reason of
-//    scale rather than taste: `_fbm` returns from inside a five-iteration loop, and a 512x512
-//    render evaluates that `return` 1.3 million times per program. A stack-trace-bearing
-//    exception on that path is not a cost worth taking on faith.
-//
-// 2. **One flat frame per function call, with block scopes as marks into it.** Entering a block
-//    records the current top of the frame and leaving truncates back to it, which gives correct
-//    GLSL shadowing with no per-block allocation. Lookup is a backwards linear scan, which for
-//    the emitted subset (never more than about a dozen live names) beats a hash map.
-// ---------------------------------------------------------------------------------------------
+/**
+ * The evaluator for parsed GLSL shaders, tree-walking and single-threaded per invocation.
+ *
+ * It holds no state between invocations except the globals the caller supplies, so a raster can
+ * be rendered by running one [GlslInvocation] per row across as many threads as there are cores
+ * — see [StackSLCpu].
+ *
+ * #### Two design choices
+ *
+ * **Control flow as a return value, not an exception.** `return`/`break`/`continue` are reported
+ * as a [Flow] result from `exec`, and the caller unwinds. The tree-walking pattern normally uses a
+ * control-flow exception, but at this scale the cost adds up: `_fbm` returns from inside a
+ * five-iteration loop, and a 512×512 render evaluates that `return` 1.3 million times per
+ * program. A stack-trace-bearing exception on that path is not worth taking.
+ *
+ * **One flat frame per function call, with block scopes as marks into it.** Entering a block
+ * records the current top of the frame and leaving truncates back to it, giving correct GLSL
+ * shadowing with no per-block allocation. Lookup is a backwards linear scan, which for the
+ * emitted subset (never more than about a dozen live names) beats a hash map.
+ */
 
 /** What a statement did to control flow. */
 private enum class Flow { NORMAL, BREAK, CONTINUE, RETURN, DISCARD }

@@ -4,57 +4,53 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.sqrt
 
-// ---------------------------------------------------------------------------------------------
-// StackSL's volumetric noise family: noise3 fbm3 fbmd3 warp3 curl3 worley3 noise4 fbm4.
-//
-// WHY A SEPARATE FAMILY, AND NOT A THIRD ARGUMENT TO `noise`.
-//
-// StackSL's original `noise` and `fbm` are two-dimensional. The word lowers to
-// `_noise(input.xy + input.zw * 0.07)`, so a vec4 carrying a position and a time is squashed into
-// a plane: z enters at one fourteenth the weight of x, as a SHEAR rather than as a third
-// dimension. On a volume seen down z that reads as one fixed pattern imprinted at every depth.
-// The two-slice-sum workaround (f(x,y) + f(y,z) + f(z,x)) is what people write instead, and it
-// costs three fbms and does not actually give a 3D field — it gives three sheared 2D ones.
-//
-// THREE THINGS THIS FAMILY DOES DIFFERENTLY, EACH OF WHICH IS A BUG IN THE 2D WORDS.
-//
-// 1. The range really is [0,1). `_fbm(vec2)` sums five octaves at amplitudes 0.5 0.25 0.125
-//    0.0625 0.03125, which total 0.96875, not 1 — so the usual `0.5 -` recentering leaves a
-//    constant bias of about -0.031. A constant force integrates into a drift instead of
-//    averaging out. Here the amplitude sum is ACCUMULATED at runtime and divided out, so the
-//    range is exactly [0,1) for any octave count, lacunarity and gain. The bug cannot recur
-//    because nothing is hard-coded to be recomputed.
-//
-// 2. The hashes contain no `sin()`. The two existing hashes are NOT the same animal, and an
-//    earlier version of this comment ran them together and was wrong about the one that
-//    matters. `_hash11(float)` really is `fract(sin(p * 127.1) * 43758.5453123)`, and `sin` is
-//    not bit-portable: its precision is implementation-defined, it loses all meaning for large
-//    arguments, and no CPU implementation can be trusted to agree with a GPU's. `_hash21(vec2)`
-//    — the hash that actually feeds `_noise` and `_fbm` — has no `sin` at all; it is
-//    `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`, `fract(p.x * p.y)`, so it is
-//    already multiply/add/fract and already IEEE-754 exact. (Exact is not the same as stable:
-//    `fract` of a large product amplifies a last-bit difference in its ARGUMENT to O(1), which
-//    is why an exactly-specified noise can still disagree visibly across backends.)
-//    So the reason this family could not have been built on `_hash21` is DIMENSIONALITY, not
-//    `sin`: `_hash21` takes a `vec2`, and a 3D/4D family needs a hash over 3 and 4 inputs. The
-//    hashes below are multiply/add/fract only for the same reason `_hash21` is, and that is what
-//    makes [VolumetricNoiseReference] a real reference and not an approximation — and that is
-//    now MACHINE-CHECKED rather than asserted: `StackSLCpuVolumetricCrossCheckTest` evaluates the
-//    emitted GLSL with `afield.stacksl.cpu` and compares every function here against it,
-//    bit-for-bit. It was that check which found the one place this file was NOT a faithful
-//    transliteration (the algebraic form of [mix]) and it is what keeps it faithful now.
-//
-// 3. `curl3` is divergence-free by construction, not approximately. It is the curl of a vector
-//    potential taken with central differences at ONE shared epsilon. Discrete shift operators
-//    commute, so the discrete divergence of the discrete curl cancels term for term and is zero
-//    up to float rounding — see [VolumetricNoiseTest]. Particles advected through it swirl
-//    instead of piling into sinks, which is the entire reason to reach for curl noise.
-//
-// THE CONSTANTS BELOW ARE THE SINGLE SOURCE OF TRUTH. The Kotlin reference reads them and the
-// emitted GLSL interpolates them, so the two cannot drift apart in their numbers.
-// `VolumetricNoiseTest.glsl constants are the Kotlin constants` fails if a literal is ever typed
-// into the shader text by hand.
-// ---------------------------------------------------------------------------------------------
+/**
+ * StackSL's volumetric noise family: `noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`,
+ * `noise4`, `fbm4` — eight words that work as true 3D and 4D fields.
+ *
+ * #### Why a separate family
+ *
+ * StackSL's original `noise` and `fbm` are two-dimensional. The word lowers to
+ * `_noise(input.xy + input.zw * 0.07)`, so a vec4 carrying a position and a time is squashed
+ * into a plane: z enters at one fourteenth the weight of x, as a shear rather than as a third
+ * dimension. On a volume seen down z that reads as one fixed pattern imprinted at every depth.
+ * The two-slice-sum workaround (`f(x,y) + f(y,z) + f(z,x)`) is what people write instead, and
+ * it costs three fbms and does not give a 3D field — it gives three sheared 2D ones.
+ *
+ * #### Three properties the 2D words lack
+ *
+ * **The range really is [0,1).** `_fbm(vec2)` sums five octaves at amplitudes 0.5 0.25 0.125
+ * 0.0625 0.03125, which total 0.96875, not 1 — so the usual `0.5 -` recentering leaves a
+ * constant bias of about -0.031. A constant force integrates into a drift instead of averaging
+ * out. Here the amplitude sum is accumulated at runtime and divided out, so the range is exactly
+ * [0,1) for any octave count, lacunarity and gain.
+ *
+ * **The hashes contain no `sin()`.** `_hash11(float)` uses `fract(sin(p * 127.1) * 43758.5453123)`,
+ * and `sin` is not bit-portable: its precision is implementation-defined, it loses all meaning
+ * for large arguments, and no CPU implementation can be trusted to agree with a GPU's.
+ * `_hash21(vec2)` — the hash that actually feeds `_noise` and `_fbm` — has no `sin` at all; it
+ * is `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`, `fract(p.x * p.y)`, so it is
+ * already multiply/add/fract and already IEEE-754 exact. (Exact is not the same as stable:
+ * `fract` of a large product amplifies a last-bit difference in its argument to O(1), which is
+ * why an exactly-specified noise can still disagree visibly across backends.) The reason this
+ * family could not use `_hash21` is dimensionality: `_hash21` takes a `vec2`, and a 3D/4D family
+ * needs a hash over 3 and 4 inputs. The hashes below are multiply/add/fract only, which makes
+ * [VolumetricNoiseReference] a real reference rather than an approximation.
+ * `StackSLCpuVolumetricCrossCheckTest` evaluates the emitted GLSL against every function here,
+ * bit-for-bit.
+ *
+ * **`curl3` is divergence-free by construction.** It is the curl of a vector potential taken
+ * with central differences at one shared epsilon. Discrete shift operators commute, so the
+ * discrete divergence of the discrete curl cancels term for term and is zero up to float rounding
+ * — see [VolumetricNoiseTest]. Particles advected through it swirl instead of piling into sinks.
+ *
+ * #### Constants
+ *
+ * [VolumetricNoiseConstants] holds the single source of truth for all numeric literals. The
+ * Kotlin reference reads them and the emitted GLSL interpolates them, so the two cannot drift
+ * apart. `VolumetricNoiseTest.glsl constants are the Kotlin constants` fails if a literal is
+ * ever typed into the shader text by hand.
+ */
 
 /** A float triple. Deliberately `Float`, not `Double`: GLSL `float` is what is being mirrored. */
 data class NoiseVec3(val x: Float, val y: Float, val z: Float) {
