@@ -309,8 +309,9 @@ object PathTraceEmitterGpuSmoke {
 
     /**
      * The composition check. Six differently coloured faces at two bounces: both MIS weights matter
-     * now, and a double count or a probability that has come off its triangle changes the answer. Uniform near-field radiance means the off run converges too, so this resolves a
-     * fraction of a percent rather than a few percent.
+     * now, and a double count or a probability that has come off its triangle changes the answer.
+     * Uniform near-field radiance means the off run converges too, so this resolves a fraction of a
+     * percent rather than a few percent.
      */
     private suspend fun enclosureComposition(renderer: Renderer, backend: PathTracingRenderer.Backend) {
         val radiances = listOf(Vector3f(0.9f,0.35f,0.2f), Vector3f(1.4f,1.4f,1.3f), Vector3f(0.2f,0.4f,1.1f),
