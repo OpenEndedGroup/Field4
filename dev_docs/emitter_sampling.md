@@ -183,6 +183,15 @@ reference does not fit into on a machine that is doing anything else. Two runs d
 there having reached 63,168 and 10,496 samples. That reads as a hang and is only load;
 the emitter smoke carries its own 900-second deadline.
 
+**The managed server's stdout log loses its last block.** A `println` from inside a
+`start { }` coroutine goes to the server's stdout, not to the box's output buffer, so
+`.field-backdoor/logs/*.managed-server.log` is where the smoke's numbers are. But the
+box output event that `wait-output` matches arrives over the websocket *immediately*,
+and the backdoor then stops the server — so the tail of the block-buffered stdout is
+never flushed. The full regression sweep read 33 PASS lines with the final one missing,
+which looks exactly like a test that silently did not run. Add
+`--command 'sleep 8'` after the `wait-output` and it reads 34.
+
 ## Running it
 
 CPU contracts, through the canonical runner:

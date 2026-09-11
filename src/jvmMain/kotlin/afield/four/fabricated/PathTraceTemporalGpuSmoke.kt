@@ -306,6 +306,12 @@ object PathTraceTemporalGpuSmoke {
             }
             camera.lookAt(Vector3f(0f,0f,3f),Vector3f())
             PathTracingRenderer(renderer,occlusion,PathTraceEnvironment.constant(0f),48,32,camera,backend).use { t ->
+                // The two emissive quads are colour TAGS for history here, not lights, and the
+                // assertion below needs each pixel to be exactly pure red or exactly pure blue.
+                // Direct emitter sampling would make the red panel at z=1 light the blue plane at
+                // z=0 through its 4% dielectric lobe -- correctly, and at maxBounces=1, where a BSDF
+                // continuation gathers nothing because a shadow ray reaches one segment further.
+                t.emitterSampling=false
                 t.temporalReuse=true;t.pixelJitter=0f;t.maxBounces=1;t.samplesPerFrame=16;latch(t);repeat(8) { step(t) }
                 camera.moveWorld(0.2,0.0,0.0);t.samplesPerFrame=1;step(t)
                 val image=t.readLinear();val counts=t.readHistorySampleCounts()
