@@ -319,7 +319,7 @@ ways; a derivation with no sensible superset stays forward-only and the census s
 > In this repository there are exactly four registrations, all of them DataFrame's … so no
 > non-DataFrame value's rendering can change.
 
-There are 54<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
+There are 55<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
 citation that **resolved perfectly**, on a page that passed
 `citationGates` — one of the 13<!--count:citationGuardTestClasses--> focused test classes that task
 runs — with every anchor green. The grep behind it saw `ValuePrinterRegistry.register` and
