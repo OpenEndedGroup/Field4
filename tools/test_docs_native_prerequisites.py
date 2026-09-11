@@ -71,7 +71,7 @@ class TetgenLibraryPathTests(unittest.TestCase):
         self.assertIn("tetgen", NATIVE_PREREQUISITES)
         resolve, how_to_build = NATIVE_PREREQUISITES["tetgen"]
         self.assertIs(resolve, tetgen_library_path)
-        self.assertIn("build_tetgen_native.py", how_to_build)
+        self.assertEqual("./gradlew buildTetgenNative", how_to_build)
 
 
 class NativePrerequisiteTests(unittest.TestCase):

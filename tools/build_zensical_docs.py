@@ -209,7 +209,7 @@ def default_python_venv_to_this_tree(repo_root: Path) -> None:
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
-    "tetgen": (tetgen_library_path, "python3 tools/build_tetgen_native.py"),
+    "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
     "jep": (
         jep_library_path,
         "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "

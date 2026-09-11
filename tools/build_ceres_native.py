@@ -32,7 +32,8 @@ reasons that all live here now: it shelled out to curl/tar/shasum, it asserted s
 `otool`, and sh itself is not a thing a Windows runner has.
 
 Downloads are checksummed. Nothing is vendored, so the first run needs the network; after that the
-tarballs are cached under build/ceres-dist/downloads.
+tarballs are cached in the platform's per-user Field cache, shared by clones and preserved by
+Gradle ``clean``. Override the root with ``AFIELD_NATIVE_DOWNLOAD_CACHE``.
 
     python3 tools/build_ceres_native.py
     ./gradlew smokeCeres -PceresLibrary=build/ken-ceres-redistributable/libken_ceres_jvm.dylib
@@ -54,6 +55,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_native_selfcontained import check as check_selfcontained  # noqa: E402
+from native_download_cache import native_download_cache, seed_from_legacy_cache  # noqa: E402
 
 CERES_VERSION = "2.2.0"
 CERES_SHA256 = "12efacfadbfdc1bbfa203c236e96f4d3c210bed96994288b3ff0c8e7c6f350d4"
@@ -69,7 +71,7 @@ LOG_LEVEL = -3
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORK = REPO_ROOT / "build" / "ceres-dist"
-DOWNLOADS = WORK / "downloads"
+LEGACY_DOWNLOADS = WORK / "downloads"
 PREFIX = WORK / "prefix"
 OUT_DIR = REPO_ROOT / "build" / "ken-ceres-redistributable"
 WRAPPER_SOURCE = REPO_ROOT / "native" / "ken-ceres"
@@ -171,16 +173,18 @@ def fetch(url: str, sha256: str, dest: Path) -> None:
         print(f"  cached  {dest.name}")
         return
     print(f"  fetch   {dest.name}")
-    tmp = dest.with_suffix(dest.suffix + ".tmp")
-    with urllib.request.urlopen(url) as response, tmp.open("wb") as out:
-        shutil.copyfileobj(response, out)
-    actual = hashlib.sha256(tmp.read_bytes()).hexdigest()
-    if actual != sha256:
+    tmp = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
+    try:
+        with urllib.request.urlopen(url) as response, tmp.open("wb") as out:
+            shutil.copyfileobj(response, out)
+        actual = hashlib.sha256(tmp.read_bytes()).hexdigest()
+        if actual != sha256:
+            raise SystemExit(
+                f"error: {dest.name} sha256 mismatch\n  expected {sha256}\n  actual   {actual}"
+            )
+        tmp.replace(dest)
+    finally:
         tmp.unlink(missing_ok=True)
-        raise SystemExit(
-            f"error: {dest.name} sha256 mismatch\n  expected {sha256}\n  actual   {actual}"
-        )
-    tmp.replace(dest)
 
 
 def extract(archive: Path, into: Path, expected_dir: Path) -> None:
@@ -282,7 +286,8 @@ def main() -> int:
         )
 
     started = time.monotonic()
-    for directory in (DOWNLOADS, PREFIX, args.out):
+    downloads = native_download_cache("ceres")
+    for directory in (downloads, PREFIX, args.out):
         directory.mkdir(parents=True, exist_ok=True)
 
     jobs = parallel_jobs(args.jobs)
@@ -293,8 +298,10 @@ def main() -> int:
     )
 
     print("sources")
-    ceres_tarball = DOWNLOADS / f"ceres-{CERES_VERSION}.tar.gz"
-    eigen_tarball = DOWNLOADS / f"eigen-{EIGEN_VERSION}.tar.gz"
+    ceres_tarball = downloads / f"ceres-{CERES_VERSION}.tar.gz"
+    eigen_tarball = downloads / f"eigen-{EIGEN_VERSION}.tar.gz"
+    seed_from_legacy_cache(LEGACY_DOWNLOADS / ceres_tarball.name, ceres_tarball, CERES_SHA256)
+    seed_from_legacy_cache(LEGACY_DOWNLOADS / eigen_tarball.name, eigen_tarball, EIGEN_SHA256)
     fetch(CERES_URL, CERES_SHA256, ceres_tarball)
     fetch(EIGEN_URL, EIGEN_SHA256, eigen_tarball)
     ceres_source = WORK / f"ceres-solver-{CERES_VERSION}"

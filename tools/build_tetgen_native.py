@@ -7,8 +7,9 @@ why it is here rather than a level-set remesher; `dev_docs/TETGEN.md` has the me
 
 Unlike Ceres there is nothing to find_package: TetGen is two source files with no dependencies, so
 this downloads a pinned, checksummed tarball and compiles it straight into the wrapper. Nothing is
-vendored, so the first run needs the network; after that the tarball is cached under
-build/field-tetgen/downloads.
+vendored, so the first run needs the network; after that the tarball is cached in the platform's
+per-user Field cache, shared by clones and preserved by Gradle ``clean``. Override the root with
+``AFIELD_NATIVE_DOWNLOAD_CACHE``.
 
     python3 tools/build_tetgen_native.py
     ./gradlew buildTetgenNative
@@ -31,9 +32,11 @@ import tarfile
 import urllib.request
 from pathlib import Path
 
+from native_download_cache import native_download_cache, seed_from_legacy_cache
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORK = REPO_ROOT / "build" / "field-tetgen"
-DOWNLOADS = WORK / "downloads"
+LEGACY_DOWNLOADS = WORK / "downloads"
 WRAPPER = REPO_ROOT / "native" / "field-tetgen"
 
 # TetGen 1.6.0, from the Weierstrass Institute. AGPL-3 or a commercial licence; Field is AGPL-3, so
@@ -67,12 +70,16 @@ def fetch(url: str, sha256: str, dest: Path) -> None:
         dest.unlink()
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"[field-tetgen] downloading {url}", flush=True)
-    with urllib.request.urlopen(url, timeout=180) as response, dest.open("wb") as out:
-        shutil.copyfileobj(response, out)
-    digest = hashlib.sha256(dest.read_bytes()).hexdigest()
-    if digest != sha256:
-        dest.unlink()
-        raise SystemExit(f"[field-tetgen] checksum mismatch for {url}: got {digest}")
+    temporary = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
+    try:
+        with urllib.request.urlopen(url, timeout=180) as response, temporary.open("wb") as out:
+            shutil.copyfileobj(response, out)
+        digest = hashlib.sha256(temporary.read_bytes()).hexdigest()
+        if digest != sha256:
+            raise SystemExit(f"[field-tetgen] checksum mismatch for {url}: got {digest}")
+        temporary.replace(dest)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def extract(archive: Path, into: Path) -> Path:
@@ -108,7 +115,8 @@ def main() -> int:
     if args.clean and build.exists():
         shutil.rmtree(build)
 
-    archive = DOWNLOADS / "tetgen1.6.0.tar.gz"
+    archive = native_download_cache("tetgen") / "tetgen1.6.0.tar.gz"
+    seed_from_legacy_cache(LEGACY_DOWNLOADS / archive.name, archive, TETGEN_SHA256)
     fetch(TETGEN_URL, TETGEN_SHA256, archive)
     source = extract(archive, WORK / "tetgen-src")
 

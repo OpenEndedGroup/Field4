@@ -3051,8 +3051,11 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
 
     val sourceDir = layout.projectDirectory.dir("native/field-tetgen")
     val script = layout.projectDirectory.file("tools/build_tetgen_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
     inputs.dir(sourceDir)
     inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-tetgen/build"))
 
     doLast {
         val command = listOf("python3", script.asFile.absolutePath)
@@ -3131,9 +3134,11 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
     description = "Builds a self-contained ken_ceres_jvm from pinned Ceres/Eigen source (needs cmake, network on first run)."
 
     val script = layout.projectDirectory.file("tools/build_ceres_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
     val sourceDir = layout.projectDirectory.dir("native/ken-ceres")
     inputs.dir(sourceDir)
     inputs.file(script)
+    inputs.file(cacheHelper)
     outputs.file(ceresRedistributable)
 
     doLast {
@@ -3152,6 +3157,17 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
         }
         out.trim().lines().forEach { logger.lifecycle(it) }
     }
+}
+
+// One callable preparation gate for every native dependency declared by a documentation fence.
+// Ceres and TetGen are built here; Manifold and JEP remain system/interpreter dependencies and the
+// checker reports their exact resolved paths and remedies. The source archives used by the two
+// builds live in the shared per-user cache owned by tools/native_download_cache.py.
+tasks.register<Exec>("buildDocsNativePrerequisites") {
+    group = "documentation"
+    description = "Builds and verifies all native dependencies required by documentation captures."
+    dependsOn(buildCeresRedistributable, buildTetgenNative)
+    commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
 val smokeCeresGeometryPrimitives = tasks.register<JavaExec>("smokeCeresGeometryPrimitives") {
