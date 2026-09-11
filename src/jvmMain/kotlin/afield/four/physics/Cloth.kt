@@ -9,9 +9,11 @@ import kotlin.math.sqrt
 /**
  * A rectangular cloth patch on a [SimdVerlet] simulation.
  *
- * [Cloth] manages a `width * height` grid of particles wired into axis-aligned distance
- * constraints, with an optional curvature-flattening pass and tearing support.
- * Create one with [SimdVerlet.addCloth].
+ * [Cloth.addTo] (or [SimdVerlet.addCloth]) appends `width * height` particles to an existing
+ * simulation, wires their edge springs into the constraint solve, and returns a handle that
+ * knows the grid. The handle drives the whole simulation through [Cloth.step] or the
+ * infinite-sequence [Cloth.frames], and exposes grid coordinates via [Cloth.position],
+ * [Cloth.pin] and [Cloth.grabNearest].
  */
 
 /**

@@ -20,11 +20,19 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Collision shapes for [SimdVerlet]: geometry that particles can bounce off or rest on.
+ * Collision shapes for [SimdVerlet]: the world layer of the particle solver.
  *
- * [PlaneCollider], [SphereCollider], [CapsuleCollider], [BoxCollider] and [SdfCollider] are
- * the concrete shapes; [ColliderSet] batches them into one registered pass. Create a set
- * with [SimdVerlet.addColliders].
+ * A [Collider] is a post-integration position projection registered through
+ * [SimdVerlet.addColliders]: no stiffness to tune, one square root per penetrating particle.
+ * This file provides [PlaneCollider], [SphereCollider], [CapsuleCollider], [BoxCollider],
+ * and [SdfCollider] (for shapes expressed as a signed-distance function), plus [ColliderSet],
+ * which runs several colliders as one registered pass with optional multi-pass relaxation for
+ * particles caught in a crease between two shapes.
+ *
+ * The contact response applies Coulomb friction ([Collider.friction]), optional bounce
+ * ([Collider.restitution]) and viscous tangential damping ([Collider.tangentialDamping]).
+ * Pinned particles (zero inverse mass) are never moved. [PlaneCollider] and [SphereCollider]
+ * carry a JDK Incubator Vector path alongside the scalar one; the rest are scalar.
  */
 
 /**

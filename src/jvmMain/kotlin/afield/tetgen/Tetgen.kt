@@ -46,9 +46,7 @@ import kotlin.io.path.exists
  * in place.
  */
 
-/**
- * Entry point: [tetrahedralize] turns a closed surface into a [TetMesh].
- */
+/** Entry point; use [tetrahedralize] to convert a closed [afield.stdlib.TriMesh] surface into a [TetMesh]. */
 object Tetgen {
 
     /**
