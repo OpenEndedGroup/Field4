@@ -46,10 +46,14 @@ import kotlin.math.sqrt
  *
  * #### Constants
  *
- * [VolumetricNoiseConstants] holds the single source of truth for all numeric literals. The
- * Kotlin reference reads them and the emitted GLSL interpolates them, so the two cannot drift
- * apart. `VolumetricNoiseTest.glsl constants are the Kotlin constants` fails if a literal is
- * ever typed into the shader text by hand.
+ * [VolumetricNoiseConstants] is the single source of truth for the family's shared constants —
+ * the octave defaults, lacunarity, gain, the finite-difference epsilons, the hash multipliers and
+ * the per-octave rotation. The Kotlin reference reads them and the emitted GLSL interpolates
+ * them, so the two cannot drift apart. [VolumetricNoiseTest]'s `every shared constant appears in
+ * the emitted GLSL` fails if one is ever typed into the shader text by hand. The algebraic
+ * coefficients inside [VolumetricNoiseReference] — the `mix` weights, the smoothstep polynomial —
+ * are spelled out at their call sites instead, because they are the definition of the operation
+ * rather than a tunable value.
  */
 
 /** A float triple. Deliberately `Float`, not `Double`: GLSL `float` is what is being mirrored. */

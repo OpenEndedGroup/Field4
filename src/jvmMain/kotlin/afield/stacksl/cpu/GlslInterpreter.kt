@@ -9,11 +9,12 @@ package afield.stacksl.cpu
  *
  * #### Two design choices
  *
- * **Control flow as a return value, not an exception.** `return`/`break`/`continue` are reported
- * as a [Flow] result from `exec`, and the caller unwinds. The tree-walking pattern normally uses a
- * control-flow exception, but at this scale the cost adds up: `_fbm` returns from inside a
- * five-iteration loop, and a 512×512 render evaluates that `return` 1.3 million times per
- * program. A stack-trace-bearing exception on that path is not worth taking.
+ * **Control flow as a return value, not an exception.** Each statement reports what it did to
+ * control flow — normal, break, continue, return or discard — as an ordinary return value, and
+ * the caller unwinds. The tree-walking pattern normally uses a control-flow exception, but the
+ * volumes here are large: `_fbm` returns from inside a five-iteration loop, and a 512×512 render
+ * evaluates that `return` 1.3 million times per program, which is too many to assume a
+ * stack-trace-bearing exception is free.
  *
  * **One flat frame per function call, with block scopes as marks into it.** Entering a block
  * records the current top of the frame and leaving truncates back to it, giving correct GLSL
