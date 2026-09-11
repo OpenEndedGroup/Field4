@@ -1515,4 +1515,7 @@ cannot produce on its own, and the reason is stated in each:
 These examples cover the low-level pieces: modules, meshes, buffers, cameras, compute dispatch,
 textures, offscreen targets, shader includes and templating, and the debugging tools. Once that
 contract is clear, continue with [Fabricate Renderer](fabricate_renderer.md) for the higher-level
-scene harness, material parameters, shadows, and ambient occlusion captures.
+scene harness, material parameters, shadows, and ambient occlusion captures, or
+[Path tracing](path_tracing.md) for the progressive tracer written over the same device. The
+[Renderers](reference/renderers.md) reference page lists all three and the scene, pass and material
+machinery they share, each declaration with the KDoc beside it in the source.

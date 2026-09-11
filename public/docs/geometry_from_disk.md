@@ -42,7 +42,7 @@ Here is the map, because "where is the loader" is a question this tree answers f
 | stdlib mesh I/O | `afield/stdlib/mesh_io.kt` | OBJ, STL | `TriMesh` |
 | PLY | `afield/four/modules/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
 | Assimp / glTF | `afield/four/modules/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
-| Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | `FabricateScene` for the PBR [`StandardRenderer`](fabricate_renderer.md) |
+| Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 
 Against that there are **two** renderers that will put a mesh on screen. `showMesh` sends it to the
 Three.js viewer, where you can orbit it; it is the same viewer `threeLines(...)` draws FLines in, so a
@@ -385,8 +385,10 @@ rather than returning an empty mesh, so at least the failure is loud.
 
 **Textures and materials into a `TriMesh`.** A `TriMesh` has positions, normals, uvs and per-vertex
 colours, and no concept of a texture; `assimpToTriMesh` drops the material Assimp read. Textured PBR
-already exists on the other path (`gltfModelHere`, `FabricateGltfBridge`, the
-[`StandardRenderer`](fabricate_renderer.md)), which is where to go for a *rendered* model. Bringing
+already exists on the other path (`gltfModelHere`,
+[`FabricateGltfBridge`](reference/renderers.md#fabricategltfbridge-kt-fabricategltfbridge), the
+[`StandardRenderer`](fabricate_renderer.md)), which is where to go for a *rendered* model — the
+[Renderers](reference/renderers.md) reference page has that path's declarations in full. Bringing
 textures across to the CPU side would mean sampling a `LoadedTexture` per vertex into vertex colours,
 which is easy and lossy, or teaching `VisionGeometryPreview` to sample a texture, which is a real
 change to the rasterizer.
