@@ -21,7 +21,7 @@ import kotlin.math.abs
  * z-sorted rects composited with per-rect alpha, fill, and material. An SDF is
  * a set, and `min` is union, which has no notion of layering. So the emitted
  * `float` field answers "how far is this point from the nearest visible
- * rectangle" and deliberately drops fill, material, and layer order. What that
+ * rectangle" and drops fill, material, and layer order. What that
  * buys is everything a distance field is good at and a rasterized quad is not:
  * outlines and glows at any width, `smin` blending *between* rectangles,
  * boolean ops, per-pixel normals, and sub-frame motion blur — because time is a
@@ -87,6 +87,8 @@ import kotlin.math.abs
  * regime on the timeline, and `RectSLGlslSdfTest` holds the whole gallery to the
  * bound its own classification implies.
  */
+
+/** Lowering host: compiles a [SceneProgram] to self-contained GLSL and measures what each approximation costs. */
 object RectSLGlsl {
 
     /**

@@ -31,6 +31,12 @@ package afield.rectsl
  * thickness, a contour's spacing, a bevel's depth — are in wall units, because
  * those are properties of the drawing and should zoom with it.
  */
+
+/**
+ * Rendering parameters for one RectSL distance-field presentation: fill, outline, glow,
+ * contours, relief, motion blur, and blending radius. [RectSLSdfShader] turns a `(field, look)`
+ * pair into a complete fragment shader; [PRESETS] is one worked example of every capability.
+ */
 data class RectSLSdfLook(
     /** Short slug; used for asset filenames and as the shader's leading comment. */
     val name: String,

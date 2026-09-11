@@ -226,7 +226,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoGenerator.kt](languages.md#morphogenerator-kt) | Languages | 28 | 11 | Where MorphoHDL programs come from when nobody writes them. |  |
 | [MorphoGenome.kt](languages.md#morphogenome-kt) | Languages | 35 | 22 | The thing a search actually mutates: a MorphoHDL **program, as text**. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoGraal.kt](languages.md#morphograal-kt) | Languages | 17 | 12 |  |  |
-| [MorphoInterface.kt](languages.md#morphointerface-kt) | Languages | 14 | 6 |  | [Somebody else's language, running in Field](../morpho_examples.md) |
+| [MorphoInterface.kt](languages.md#morphointerface-kt) | Languages | 14 | 6 | Field4 language adapter for MorphoHDL, a Python-syntax hardware-description language. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoLayout3D.kt](languages.md#morpholayout3d-kt) | Languages | 10 | 9 |  |  |
 | [MorphoNetlist.kt](languages.md#morphonetlist-kt) | Languages | 31 | 15 |  |  |
 | [MorphoProblems.kt](languages.md#morphoproblems-kt) | Languages | 19 | 14 |  |  |
@@ -237,7 +237,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
 | [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
-| [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 |  | [What a document is on disk](../document_on_disk.md) |
+| [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 | Field4 language adapter for the Nano 8-bit assembly language. | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 3 |  |  |
 | [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 |  |  |
 | [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
@@ -295,10 +295,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 1 |  |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
 | [RectSLFn.kt](languages.md#rectslfn-kt) | Languages | 18 | 18 | RectSL tracks as differentiable `Fn` graphs — the third backend. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [A solid, written down: `afield.solidsl`](../solid_notation.md) |
-| [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
-| [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
+| [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 | What to *do* with a RectSL distance field once you have one. | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. |  |
 | [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |

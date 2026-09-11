@@ -329,7 +329,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `EField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:121` |
 | `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:127` |
 | `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:144` |
-| `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:568` |
+| `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:582` |
 | `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:148` |
 | `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:154` |
 | `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:169` |
