@@ -264,7 +264,7 @@ internal fun pathTraceStatusHtml(s: PathTraceStatus): String {
     val query = if (s.backend == PathTracingRenderer.Backend.RAY_QUERY) "hardware ray queries" else "software BVH traversal"
     return FieldMarkdown.card(
         """
-        {accent:PathTracingRenderer} {good:'${s.name}'} {muted:${s.backend} · $query}
+        {accent:PathTracingRenderer} {ok:'${s.name}'} {muted:${s.backend} · $query}
 
         ${rows.toHTML()}
 

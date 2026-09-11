@@ -140,6 +140,18 @@ class PathTracingRenderer(
     var convergence: PathTraceConvergence? = null
     private val resetVersion = AtomicLong(0)
     @Volatile private var resetReason: String = "not yet rendered"
+    /**
+     * The reason [updateFrame] should give when it notices a new pipeline, set by whoever caused it.
+     *
+     * A shader swap is *observed* a frame later than it is *requested*: [reloadIntegrator] replaces
+     * the module, and [updateFrame] is what compares `pipeline` against `previousPipeline` and
+     * discards accumulation. So the requester cannot name the reset itself — its own `reset` would
+     * be overwritten by `updateFrame`'s a frame later, which is exactly what the first live run of
+     * this reported (`reason='property edit'`, generation bumped twice). Handing the reason forward
+     * keeps the generation count at one per reset and the reason specific.
+     */
+    @Volatile
+    private var pendingPipelineReason: String? = null
     private var seenReset = -1L
     private var previousCamera = FloatArray(0)
     private var sequenceIndex = 0
@@ -392,8 +404,11 @@ class PathTracingRenderer(
      * current then and the superseded one is this method's to release.
      *
      * Accumulation resets itself — [updateFrame] notices the new pipeline and discards history,
-     * which is also where the superseded per-frame uniform buffers are retired. Naming the reason
-     * is the part it cannot do, so that happens here.
+     * which is also where the superseded per-frame uniform buffers are retired. So `samples` does
+     * not fall until the *next* frame is recorded, which is worth knowing if you are about to read
+     * the image back: waiting on a sample count immediately after a reload will be satisfied by the
+     * count the old integrator left behind. This method names the reason for that reset rather than
+     * performing it, so [resetGeneration] advances once, not twice.
      */
     fun reloadIntegrator(source: String = integratorSource()): IntegratorReload {
         check(!closed) { "This tracer is closed" }
@@ -409,7 +424,10 @@ class PathTracingRenderer(
         }
         if (!changed) return IntegratorReload.failed(source, errors)
         renderer.cleanup += Runnable { old.cleanup() }
-        reset("integrator reloaded")
+        // `resetReason` now, so a synchronous read is already right; `pendingPipelineReason` so
+        // `updateFrame`'s own reset a frame later says the same thing instead of "property edit".
+        resetReason = "integrator reloaded"
+        pendingPipelineReason = "integrator reloaded"
         return IntegratorReload.reloaded(source)
     }
 
@@ -433,7 +451,11 @@ class PathTracingRenderer(
         require(values.all { it.isFinite() }) { "Path tracer camera contains non-finite values" }
         val pipeline = materialModule.current.pipeline
         if (pipeline != previousPipeline) {
-            reset(); previousPipeline = pipeline
+            // A `pathTracingHere` material reload arrives here with no reason set; an integrator
+            // reload sets one. Either way this is the single increment for a shader swap.
+            reset(pendingPipelineReason ?: "shader reloaded")
+            pendingPipelineReason = null
+            previousPipeline = pipeline
             // Full reload allocates new UBOs. Retire our superseded allocations after in-flight frames.
             val active = materialModule.current.uniforms.values.filterIsInstance<Module.Uniform>().map { it.buffer }.toSet()
             val unused = ownedUniforms.filter { it.result != null && it.result !in active }
