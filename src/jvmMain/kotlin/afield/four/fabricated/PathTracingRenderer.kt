@@ -20,6 +20,7 @@ import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkBufferCopy
 import org.lwjgl.vulkan.VkDependencyInfo
 import org.lwjgl.vulkan.VkMemoryBarrier2
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
@@ -129,7 +130,16 @@ class PathTracingRenderer(
     var samples: Int = 0
         private set
     @Volatile var paused: Boolean = false
+    /**
+     * Optional per-frame convergence log. Attach one and every [render] appends a
+     * `(wall time, samples)` point plus any reset it observes, which is what a `frames { repeat(n)
+     * { frame() } }` loop with a `println` in it was doing by hand. Detach by setting it to null;
+     * the tracer holds no other reference to it.
+     */
+    @Volatile
+    var convergence: PathTraceConvergence? = null
     private val resetVersion = AtomicLong(0)
+    @Volatile private var resetReason: String = "not yet rendered"
     private var seenReset = -1L
     private var previousCamera = FloatArray(0)
     private var sequenceIndex = 0
@@ -291,6 +301,7 @@ class PathTracingRenderer(
         sequenceIndex += samplesPerFrame
         blit?.enable()
         samples += samplesPerFrame
+        convergence?.record(this)
     }
 
     /** Optional second pass: sample the RTT, apply exposure/Reinhard, and composite on screen. */
@@ -323,7 +334,87 @@ class PathTracingRenderer(
         return pointer
     }
 
-    fun reset() { resetVersion.incrementAndGet() }
+    /**
+     * Discard accumulated samples and start the estimate again.
+     *
+     * [reason] is recorded for [lastResetReason] and is the *only* argument — it has a default, so
+     * the twenty-odd property setters above, which all call a bare `reset()`, keep working and all
+     * report the same honest `"property edit"`. Pass something specific when you know better; a
+     * camera move, a lens edit and an exhausted Sobol sequence are named by [updateFrame], and
+     * [reloadIntegrator] names itself.
+     */
+    fun reset(reason: String = "property edit") {
+        resetReason = reason
+        resetVersion.incrementAndGet()
+    }
+
+    /**
+     * How many times accumulation has been discarded. [samples] counts within one generation, so a
+     * generation that has not advanced is the proof that a sample count is comparable to an earlier
+     * one — which four hand-written printf loops in one live session were trying to establish.
+     */
+    val resetGeneration: Long get() = resetVersion.get()
+
+    /** Why accumulation was last discarded. See [reset]. */
+    val lastResetReason: String get() = resetReason
+
+    /**
+     * The integrator source this tracer compiles: the packaged `trace.comp` with whatever
+     * `HARDWARE_QUERY` state this [backend] needs. The starting point for [reloadIntegrator].
+     */
+    fun integratorSource(): String = withHardwareQuery(packagedIntegrator(), backend == Backend.RAY_QUERY)
+
+    /**
+     * [integratorSource] rebuilt from [file] — the working-copy `trace.comp` you are editing, which
+     * the packaged resource will not reflect until the next Gradle build. The backend define is
+     * applied for you, so a file that already carries one, or lacks one, both come out right.
+     */
+    fun integratorSource(file: File): String = withHardwareQuery(file.readText(), backend == Backend.RAY_QUERY)
+
+    /**
+     * Recompile the **integrator** on this running tracer, keeping the scene, the environment, the
+     * camera pose and every tuning property.
+     *
+     * This is the whole-integrator counterpart of `pathTracingHere`, which puts only the *material*
+     * function in a box's editable `compute` property and reloads it through the ordinary Reload
+     * Compute Shader action. Reach for that one when the material is what you are changing; reach
+     * for this when you are editing `trace.comp` itself.
+     *
+     * Failure semantics are the module layer's, unchanged: a source that does not compile **keeps
+     * the last working pipeline** and the image carries on from where it was. What this adds is
+     * telling you *which* non-success you got — [ComputeModulePointer.reload] answers `false` both
+     * for "identical source, nothing to do" and for "it did not compile", so a caller wrapping it
+     * in `check(...)` throws on a no-op. See [IntegratorReload].
+     *
+     * On success the superseded [ComputeModule] is retired through [Renderer.cleanup], after the
+     * frames still reading it have retired. That is not optional: `init` registers a disposal which
+     * reads `materialModule.current` *at close time*, so `close()` retires the module that is
+     * current then and the superseded one is this method's to release.
+     *
+     * Accumulation resets itself — [updateFrame] notices the new pipeline and discards history,
+     * which is also where the superseded per-frame uniform buffers are retired. Naming the reason
+     * is the part it cannot do, so that happens here.
+     */
+    fun reloadIntegrator(source: String = integratorSource()): IntegratorReload {
+        check(!closed) { "This tracer is closed" }
+        val old = materialModule.current
+        if (old.valid && source == old.parameters.compute) return IntegratorReload.unchanged(source)
+        val errors = mutableListOf<String>()
+        // computeIntrospection = null forces re-reflection. A different integrator can declare
+        // different buffers or push constants, and a retained Introspection would bind the old ABI
+        // to the new shader.
+        val next = old.parameters.copy(compute = source, computeIntrospection = null)
+        val changed = materialModule.reload(next) { message, cause ->
+            errors += if (cause == null) message else "$message (${cause.message ?: cause::class.simpleName})"
+        }
+        if (!changed) return IntegratorReload.failed(source, errors)
+        renderer.cleanup += Runnable { old.cleanup() }
+        reset("integrator reloaded")
+        return IntegratorReload.reloaded(source)
+    }
+
+    /** [reloadIntegrator] from a working-copy `trace.comp`; see [integratorSource]. */
+    fun reloadIntegrator(file: File): IntegratorReload = reloadIntegrator(integratorSource(file))
 
     private fun updateFrame() {
         val forward = camera.forward; val right = camera.right
@@ -364,6 +455,17 @@ class PathTracingRenderer(
             hardReset -> 0
             cameraChanged -> 2
             else -> 1
+        }
+        // Only these three discard samples without going through `reset()`, so they are the only
+        // reasons `lastResetReason` cannot already know. `seenReset != revision` means an explicit
+        // `reset()` is pending and has already named itself — do not overwrite it.
+        if ((hardReset || cameraChanged) && seenReset == revision) {
+            resetReason = when {
+                previousCamera.isEmpty() -> "first frame"
+                focusOnlyChange -> "focus or lens edit"
+                sequenceIndex > 16_000_000 - samplesPerFrame -> "Sobol sequence exhausted"
+                else -> "camera motion"
+            }
         }
         if (hardReset || cameraChanged) samples = 0
         if (hardReset || (cameraChanged && !temporalReuse)) sequenceIndex = 0
@@ -464,9 +566,24 @@ class PathTracingRenderer(
             check(data.size == 100 * 32 * 4)
             IntArray(100 * 32).also { ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(it) }
         }
-        internal fun shader(hardware: Boolean): String {
-            val source = PathTracingRenderer::class.java.getResource("/afield/four/pathtracing/trace.comp")!!.readText()
-            return if (hardware) source.replace("#version 460", "#version 460\n#define HARDWARE_QUERY") else source
+        internal fun shader(hardware: Boolean): String = withHardwareQuery(packagedIntegrator(), hardware)
+
+        /** The integrator as this build packages it: `trace.comp` off the classpath, no define applied. */
+        fun packagedIntegrator(): String =
+            PathTracingRenderer::class.java.getResource("/afield/four/pathtracing/trace.comp")!!.readText()
+
+        /**
+         * Put [source] into the `HARDWARE_QUERY` state a [Backend] needs: defined for
+         * [Backend.RAY_QUERY], absent for [Backend.COMPUTE_BVH]. This is the one step that stood
+         * between a live tracer and its own integrator — it existed only inside two private call
+         * sites, so a box replacing the integrator had to retype it and guess the polarity.
+         *
+         * Any existing define is stripped first, so the transform is idempotent and safe to apply
+         * to source that has already been through it — the order `_pathTracingHere` uses.
+         */
+        fun withHardwareQuery(source: String, hardware: Boolean): String {
+            val bare = source.replace("#define HARDWARE_QUERY\n", "").replace("#define HARDWARE_QUERY", "")
+            return if (hardware) bare.replace("#version 460", "#version 460\n#define HARDWARE_QUERY") else bare
         }
         private fun memoryBarrier(cmd: CommandBuffer, srcStage: Long, srcAccess: Long, dstStage: Long, dstAccess: Long) {
             MemoryStack.stackPush().use { stack ->
