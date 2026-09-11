@@ -136,12 +136,15 @@ class Triangles(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun TrianglesByteSize(): Long = 4L
+fun TrianglesByteSize(): Long = 112L
 fun TrianglesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asTriangles(): Triangles =
     asStructure(Triangles(), TrianglesLayoutMembers())
@@ -157,12 +160,15 @@ class Nodes(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun NodesByteSize(): Long = 4L
+fun NodesByteSize(): Long = 112L
 fun NodesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asNodes(): Nodes =
     asStructure(Nodes(), NodesLayoutMembers())
@@ -178,12 +184,15 @@ class Materials(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun MaterialsByteSize(): Long = 4L
+fun MaterialsByteSize(): Long = 112L
 fun MaterialsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asMaterials(): Materials =
     asStructure(Materials(), MaterialsLayoutMembers())
@@ -199,12 +208,15 @@ class Accumulation(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun AccumulationByteSize(): Long = 4L
+fun AccumulationByteSize(): Long = 112L
 fun AccumulationLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asAccumulation(): Accumulation =
     asStructure(Accumulation(), AccumulationLayoutMembers())
@@ -220,12 +232,15 @@ class Distribution(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun DistributionByteSize(): Long = 4L
+fun DistributionByteSize(): Long = 112L
 fun DistributionLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asDistribution(): Distribution =
     asStructure(Distribution(), DistributionLayoutMembers())
@@ -241,12 +256,15 @@ class Directions(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun DirectionsByteSize(): Long = 4L
+fun DirectionsByteSize(): Long = 112L
 fun DirectionsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asDirections(): Directions =
     asStructure(Directions(), DirectionsLayoutMembers())
@@ -262,12 +280,15 @@ class TextureData(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun TextureDataByteSize(): Long = 4L
+fun TextureDataByteSize(): Long = 112L
 fun TextureDataLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asTextureData(): TextureData =
     asStructure(TextureData(), TextureDataLayoutMembers())
@@ -283,12 +304,15 @@ class History(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<UInt>()
+    val items: Material
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Material(members, baseOffset, pathPrefix, root)
+        }
 }
-fun HistoryByteSize(): Long = 4L
+fun HistoryByteSize(): Long = 112L
 fun HistoryLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.uint.left(), 4, false),
+        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
     )
 fun HasBuffer.asHistory(): History =
     asStructure(History(), HistoryLayoutMembers())
@@ -313,8 +337,10 @@ class SceneBuffers(
     var textures by Structure.FromStructure<afield.four.buffers.HasBuffer>()
     var historyRead by Structure.FromStructure<afield.four.buffers.HasBuffer>()
     var historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+    var emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+    var emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 }
-fun SceneBuffersByteSize(): Long = 72L
+fun SceneBuffersByteSize(): Long = 88L
 fun SceneBuffersLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("triangles", 0, PrimitiveType.deviceptr.left(), 0, true),
@@ -326,6 +352,8 @@ fun SceneBuffersLayoutMembers(): List<Introspected.Member> =
         Introspected.Member("textures", 48, PrimitiveType.deviceptr.left(), 0, true),
         Introspected.Member("historyRead", 56, PrimitiveType.deviceptr.left(), 0, true),
         Introspected.Member("historyWrite", 64, PrimitiveType.deviceptr.left(), 0, true),
+        Introspected.Member("emitterTable", 72, PrimitiveType.deviceptr.left(), 0, true),
+        Introspected.Member("emitterLookup", 80, PrimitiveType.deviceptr.left(), 0, true),
     )
 fun HasBuffer.asSceneBuffers(): SceneBuffers =
     asStructure(SceneBuffers(), SceneBuffersLayoutMembers())
@@ -358,8 +386,9 @@ class Frame(
     var historyPolicy by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
     var fog by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // linear RGB, density per world unit
     var fogOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
+    var emitters by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
 }
-fun FrameByteSize(): Long = 272L
+fun FrameByteSize(): Long = 288L
 fun FrameLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("origin", 0, PrimitiveType.vec4.left(), 0, false),
@@ -379,6 +408,7 @@ fun FrameLayoutMembers(): List<Introspected.Member> =
         Introspected.Member("historyPolicy", 224, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("fog", 240, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("fogOptions", 256, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("emitters", 272, PrimitiveType.vec4.left(), 0, false),
     )
 fun HasBuffer.asFrame(): Frame =
     asStructure(Frame(), FrameLayoutMembers())
@@ -396,6 +426,8 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:SceneBuffers:textures*/ var Structure.textures by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:historyRead*/ var Structure.historyRead by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:historyWrite*/ var Structure.historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:emitterTable*/ var Structure.emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:emitterLookup*/ var Structure.emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo:Frame*/ val ModulePointer.Frame by FromUniform()
 /*compute-ubo-mesh:Frame*/ var Mesh.Frame by Mesh.FromStructure<Structure>()
 /*compute-ubo-member:Frame:origin*/ var Structure.origin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
@@ -415,6 +447,7 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:Frame:historyPolicy*/ var Structure.historyPolicy by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
 /*compute-ubo-member:Frame:fog*/ var Structure.fog by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // linear RGB, density per world unit
 /*compute-ubo-member:Frame:fogOptions*/ var Structure.fogOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
+/*compute-ubo-member:Frame:emitters*/ var Structure.emitters by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/

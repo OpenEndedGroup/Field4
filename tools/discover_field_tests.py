@@ -169,11 +169,10 @@ class AnnotationParser:
             rest = token.text[1:].strip()
             self.index += 1
             if rest:
-                if ":" in rest:
-                    key, sep, value = rest.partition(":")
-                    key = key.strip()
-                    value = value.strip()
-                    if sep and key:
+                mapping_entry = partition_unquoted_colon(rest)
+                if mapping_entry is not None:
+                    key, value = mapping_entry
+                    if key:
                         item: dict[str, Any] = {}
                         item[key] = parse_scalar(value) if value else ""
                         if self.index < len(self.tokens) and self.tokens[self.index].indent > token.indent:
@@ -191,6 +190,27 @@ class AnnotationParser:
                 raise ParseError(f"missing nested list item content on line {token.line_no}")
             items.append(self._parse_block(self.tokens[self.index].indent))
         return items
+
+
+def partition_unquoted_colon(text: str) -> tuple[str, str] | None:
+    """Split a list-item mapping at its first colon outside a quoted scalar."""
+    quote: str | None = None
+    escape = False
+    for index, char in enumerate(text):
+        if quote:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            continue
+        if char == ":":
+            return text[:index].strip(), text[index + 1 :].strip()
+    return None
 
 
 def parse_scalar(value: str) -> Any:
@@ -323,12 +343,18 @@ def find_annotation_blocks(path: Path, text: str) -> list[AnnotationBlock]:
             line_no = scan_text.count("\n", 0, match.start()) + 1 + marker_index
             tokens = build_tokens(metadata_lines, line_no + 1)
             parser = AnnotationParser(tokens)
+            try:
+                annotation = parser.parse()
+            except ParseError as exc:
+                match_line = re.search(r"\bline (\d+)\b", str(exc))
+                error_line = int(match_line.group(1)) if match_line else line_no
+                raise ParseError(f"{path}:{error_line}: {exc}") from exc
             blocks.append(
                 AnnotationBlock(
                     line_no=line_no,
                     start_offset=match.start(),
                     end_offset=match.end(),
-                    annotation=parser.parse(),
+                    annotation=annotation,
                 )
             )
     return blocks

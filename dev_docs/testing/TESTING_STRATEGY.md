@@ -20,6 +20,7 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Complete deterministic repository certification | `./gradlew certify` | Runs the full `check` graph with continuation enabled, so JVM/JS tests, documentation contracts, generated-source drift guards, and Python tool tests all receive a verdict even when an independent task fails. Benchmark/measurement fixtures remain excluded. |
 | Generated artifacts and documentation contracts before commit | `uv run --project . --frozen python tools/check_staged_generated_artifacts.py` | Selects every generated-artifact or citation/documentation guard affected by staged paths and rejects a worktree/index mismatch. Install it as the shared pre-commit and post-merge hooks with `uv run --project . --frozen python tools/install_git_hooks.py`; both hooks use this same pinned interpreter. |
 | All artifact and documentation-contract guards | `uv run --project . --frozen python tools/check_staged_generated_artifacts.py --all` | Runs every registered guard with Gradle `--continue`, so independent failures are reported in one pass. |
+| Tests left the tree clean | `./gradlew jvmTest` | `checkTestTreeWrites` runs automatically after every `Test` task and fails on any write into a tracked path, including a rewrite whose bytes did not change. |
 | Opt-in JVM measurements | `./gradlew jvmMeasurements -i` | Slow, non-asserting measurement fixtures regenerate publishable timing/search evidence. |
 | Backdoor can start/attach Field | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Field server, websocket, scratch setup, and logs are reachable. |
 | One runtime snippet | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'new-box --name Test' --command 'run @last --file path/to/snippet.kt'` | Live-code execution, stdout, display events, and runtime errors. |
@@ -202,6 +203,64 @@ Documentation-contract tests run through `citationGates`, which is a dependency
 of both `check` and `docsGates`. They are excluded from broad `jvmTest` so they run
 once, with their real Markdown, JavaScript, and build-script inputs declared;
 therefore a docs-only edit cannot inherit a stale JVM-test result.
+
+### Tests must not write into the working tree
+
+A test renders into a temp directory and inspects it there. `proofDir()` and
+`docsAssetDir()` in `src/jvmTest/kotlin/afield/TestProofDir.kt` are how; their KDoc
+carries the history.
+
+`checkTestTreeWrites` enforces it. Every `Test` task depends on
+`recordTestTreeBaseline`, which snapshots the tree, and is `finalizedBy` the check,
+which snapshots it again and fails on the difference. `finalizedBy` because a red
+test must not be able to skip the guard.
+
+Three rounds of this bug shipped before the guard existed, each found by a human
+noticing a dirty `git status` and fixed one class at a time:
+
+1. Relative-path proof writes (`File("sparkline-proof")`,
+   `File("chebyshev-proof.svg")`), which resolved against whatever tree the suite ran
+   in and left junk in the checkout and in every nightly agent worktree.
+2. `ArraySparklineVisualizerTest`, the same thing in a class the first fix missed.
+3. `ValueVisualizerDocCaptureTest` and `VectorAlgebraDocCaptureTest`, which wrote
+   their docs-capture PNGs into `public/docs/assets/…` on every `./gradlew jvmTest`.
+   Fixed 2026-09-04.
+
+It is a tree diff, not a scan of the test sources, so it does not care how a test
+names its destination: `File(root, computeName())` is caught as well as a literal.
+A static scan cannot promise that here — `GateInputDeclarationTest` counts
+non-literal `File(root, x)` sites precisely because it cannot see through them.
+
+It reads mtimes as well as `git status`, because a content diff is only half the
+problem. On the third case above, all five `vector_algebra` PNGs were rewritten on
+every run and only two differed in bytes; the other three unconditional writes into
+committed paths produced no diff at all, and would have stayed invisible for as long
+as that renderer stayed deterministic. Such a row is reported as `rewritten with
+identical bytes`.
+
+Regenerating a committed artifact from a test is legitimate, and is an explicit
+request. `tools/check_test_tree_writes.py` holds the register of variables that
+authorize it — `AFIELD_DOCS_ASSETS=1`, `FIELD_CITATIONS_WRITE=1`, the
+directory-valued `AFIELD_PROOF_DIR`, and the six `-Dafield.*` system properties the
+RectSL, tessellation and physics harnesses use — together with the paths each one
+may write. A regenerate run that writes somewhere else still fails, and so does one
+whose variable is not in the register. That is the safe direction: the cost is one
+loud failure in a run somebody deliberately asked for, rather than a hole nobody
+sees. Add the variable to `ESCAPES` when adding such a gate to a test;
+`AFIELD_ALLOW_TREE_WRITES=path,path` is the way through a one-off in the meantime,
+and it still has to name its paths.
+
+The system properties need forwarding because the check runs in its own process:
+`checkTestTreeWrites` passes every `-Dafield.*` on to it, mirroring what
+`build.gradle.kts` already does for the test workers.
+
+Two things the guard does not claim. It cannot tell a test write from an edit you
+made while the suite was running, so it says so in the failure and asks for a
+re-run. And when no `Test` task executed — the ordinary `UP-TO-DATE` case — it
+prints that it observed nothing rather than reporting a pass, because a green there
+would be a verdict about a run that did not happen. That also means the documented
+regenerate commands need `--rerun`: an unchanged classpath leaves `jvmTest`
+`UP-TO-DATE`, and setting an environment variable invalidates nothing.
 
 Add a `FIELD_TEST` when the behavior is primarily code/runtime correctness,
 example health, stdout/event assertions, or a simple capture connected to a

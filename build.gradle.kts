@@ -1605,6 +1605,95 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
+// The generated-artifact guards above all answer "is this committed file still what its generator
+// produces". This one answers the question underneath them: did running the tests *write into the
+// repository at all*.
+//
+// That bug has now shipped three times, each time in a different class, each time found by a human
+// noticing a dirty `git status` and fixed one test at a time:
+//
+//   1. Relative-path proof writes — `File("sparkline-proof")`, `File("chebyshev-proof.svg")` —
+//      which resolved against whatever tree the suite happened to run in, so junk accumulated in
+//      the checkout and in every nightly agent worktree on every run. Fixed by `proofDir()`; its
+//      KDoc in src/jvmTest/kotlin/afield/TestProofDir.kt is the record.
+//   2. `ArraySparklineVisualizerTest`, the same thing again in a class the first fix did not touch.
+//   3. `ValueVisualizerDocCaptureTest` and `VectorAlgebraDocCaptureTest`, which wrote their
+//      docs-capture PNGs straight into `public/docs/assets/…` on every single `./gradlew jvmTest`.
+//      Fixed on 2026-09-04 by `docsAssetDir()`, alongside the two figures the primary checkout had
+//      been carrying as unstaged modifications for who knows how long.
+//
+// A tree diff rather than a scan of the test sources, deliberately. It does not care how a test
+// names its destination, so `File(root, computeName())` and a path assembled at runtime are caught
+// exactly as well as a string literal — and a static scan demonstrably cannot do that here:
+// `GateInputDeclarationTest` counts non-literal `File(root, x)` sites precisely because it cannot
+// see through them.
+//
+// It reads mtimes as well as `git status`, because content diffs are only half of it. Before the
+// 2026-09-04 fix all five `public/docs/assets/vector_algebra` PNGs were rewritten on every run and
+// only two differed in bytes; the other three unconditional writes into committed paths were
+// invisible to `git status`, and would have stayed invisible for exactly as long as that renderer
+// stayed deterministic. The defect is the write, not the diff it sometimes produces.
+//
+// Wired onto every `Test` task rather than onto `check`: the command that has to fail is the one
+// people actually type, `./gradlew jvmTest`. `finalizedBy` so a failing test cannot skip the guard
+// — the 2026-08-12 lesson recorded further down this file, where a red :jvmTest left three gates
+// unexecuted. Regeneration is a real need, so the check honours an explicit opt-in variable
+// (AFIELD_DOCS_ASSETS=1, FIELD_CITATIONS_WRITE=1, AFIELD_PROOF_DIR=…) but only for the paths that
+// variable is registered to rewrite; an unregistered one fails, which is the safe direction.
+val testTreeWriteBaselineFile = layout.buildDirectory.file("test-tree-writes/baseline.json")
+val testTreeWriteRanDir = layout.buildDirectory.dir("test-tree-writes/ran")
+
+val recordTestTreeBaseline = tasks.register<Exec>("recordTestTreeBaseline") {
+    group = "verification"
+    description = "Snapshots the Git working tree before any test task runs. Paired with checkTestTreeWrites; not useful alone."
+    workingDir = rootDir
+    commandLine(rootPythonCommand + listOf(
+        "tools/check_test_tree_writes.py",
+        "--root", rootDir.absolutePath,
+        "--snapshot", testTreeWriteBaselineFile.get().asFile.absolutePath,
+        "--ran-dir", testTreeWriteRanDir.get().asFile.absolutePath,
+    ))
+}
+
+val checkTestTreeWrites = tasks.register<Exec>("checkTestTreeWrites") {
+    group = "verification"
+    description = "Fails when a test task wrote into the Git working tree — a new file, a modified committed file, or a committed file rewritten with identical bytes. Fix by rendering into a temp directory (proofDir/docsAssetDir)."
+    dependsOn(recordTestTreeBaseline)
+    workingDir = rootDir
+    // Some of the committed-artifact rewrites tests offer are gated on a system property rather
+    // than an environment variable (`-Dafield.rectsl.headingfigure=write` and five siblings). The
+    // check runs in its own process and cannot see them, so forward the same `afield.` namespace
+    // the test workers get above — otherwise a documented regeneration recipe fails this guard.
+    val forwardedProperties = System.getProperties()
+        .map { (key, value) -> key.toString() to value.toString() }
+        .filter { (name, _) -> name.startsWith("afield.") }
+        .sortedBy { it.first }
+        .flatMap { (name, value) -> listOf("--property", "$name=$value") }
+    commandLine(
+        rootPythonCommand + listOf(
+            "tools/check_test_tree_writes.py",
+            "--root", rootDir.absolutePath,
+            "--check", testTreeWriteBaselineFile.get().asFile.absolutePath,
+            "--ran-dir", testTreeWriteRanDir.get().asFile.absolutePath,
+        ) + forwardedProperties
+    )
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    dependsOn(recordTestTreeBaseline)
+    finalizedBy(checkTestTreeWrites)
+    // `doFirst`, not `doLast`: the marker records that this task *started*, which is what makes the
+    // difference between "the tests ran and wrote nothing" and "no test ran, so the green is about
+    // nothing". A failing test still ran, and may still have written, so its marker has to exist.
+    // An UP-TO-DATE task executes neither hook, and correctly leaves no marker.
+    val ranMarker = testTreeWriteRanDir.map { it.file(name) }
+    doFirst {
+        val marker = ranMarker.get().asFile
+        marker.parentFile.mkdirs()
+        marker.writeText("")
+    }
+}
+
 tasks.named("compileKotlinJvm") {
     dependsOn(generateLinalgBuildProfile)
 }
@@ -2036,6 +2125,7 @@ tasks.register("docsGates") {
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentDemos")
+    dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
 }
 
