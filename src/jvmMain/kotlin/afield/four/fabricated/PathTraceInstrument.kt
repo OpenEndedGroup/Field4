@@ -1,5 +1,3 @@
-@file:afield.CompletionCategory("Graphics")
-
 package afield.four.fabricated
 
 import afield.Box
