@@ -751,3 +751,111 @@ At roughness 0.35, the frosted slab's mean was 0.97649 and spatial variance fell
 from 0.00640 at about eight samples to 0.0000177 at 2,048 samples. At roughness 0.6,
 the mean fell to 0.81528: the single-scattering approximation loses appreciable
 energy at high roughness. Total internal reflection produced no leaked radiance.
+
+## Reading a running tracer
+
+`print(tracer.h)`, or letting a box's output be the tracer itself, gives a nine-row
+summary of what it is doing:
+
+```diffstatic {data-lang=text}
+PathTracingRenderer 'path-tracer'  COMPUTE_BVH · software BVH traversal
+
+image        640×360 · 6626 triangles
+samples      950 spp in generation 2 · 112.4 spp/s
+last reset   integrator reloaded
+camera       (3.5, 2.4, 7.5) → (0, 0.65, 0) d=8.459
+up           declared (0, 1, 0) ≠ effective (-0.087, 0.978, -0.187) (11.94° apart)
+paths        5 bounces · 1 spp/frame · jitter 1
+recorded     950 points over 8.5 s · 0 resets
+
+21 tuning properties, the camera basis and the convergence log are in .h2
+```
+
+Rows at their default are dropped rather than shown as zeros, so a plain tracer is five
+rows and each of the five optional groups — a non-agreeing up, a lens, temporal reuse,
+fog, an attached convergence log — adds one. Ten is the ceiling.
+
+The `up` row is the one worth knowing about. **The tracer does not use `camera.up`.** It
+builds its own up as `right × forward`: the component of the declared up that is
+perpendicular to the view direction, normalised. So a declared up that is not already
+unit-length and perpendicular gives a different vector from the one the image is made
+with, and the row says how far apart they are. The shipped material study's camera is
+11.94° out. The row appears only when they disagree.
+
+`samples` counts within a **generation**, and `resetGeneration` counts the generations.
+Two sample counts are comparable only if the generation between them has not advanced;
+`lastResetReason` says what ended the previous one — `property edit`, `camera motion`,
+`focus or lens edit`, `Sobol sequence exhausted`, `shader reloaded`, `integrator
+reloaded` or `first frame`.
+
+`tracer.h2` is the drill-down: the same values grouped into `image`, `convergence`,
+`camera`, `tuning` and `objects` rather than flat, with the derived camera basis beside
+them and the `renderer`, `camera`, `output` and `materialModule` sub-objects still
+expandable onto their own renderings.
+
+### Recording convergence
+
+```diffstatic {data-lang=kotlin}
+val log = tracer.recordConvergence()
+// … later, from any box that can see the tracer
+showConvergence(log)
+```
+
+The tracer appends `(wall time, samples)` to an attached log from inside its own `render`,
+so recording costs no frames and sees resets that sampling `samples` at frame boundaries
+would miss — a camera being dragged resets accumulation on *every* frame it moves.
+
+`showConvergence` is one call to `showSignals`, so it is the ordinary dark-mode Plotly line
+plot: samples against wall seconds, with a full-height dashed rule at each reset carrying
+its reason into the legend. Consecutive resets with the same reason collapse to the first
+of the run, or a ten-second camera drag would contribute six hundred identical rules.
+
+Memory is bounded. At `maxPoints` the log drops every other point and doubles its sampling
+stride, so a run of any length keeps the shape of its curve in fixed memory at halving
+resolution. `points` is what is retained, `framesPerPoint` is the current stride.
+
+## Replacing the integrator on a running tracer
+
+`pathTracingHere` above puts the **material function** in a box's editable `compute`
+property. To replace the **integrator** — `trace.comp` itself — on a tracer that is
+already rendering:
+
+```diffstatic {data-lang=kotlin}
+// The packaged integrator, with this device's HARDWARE_QUERY define already applied.
+val directOnly = tracer.integratorSource()
+    .replace("return vec4(radiance+indirect,1);", "return vec4(radiance,1);")
+
+println(tracer.reloadIntegrator(directOnly))
+// integrator reloaded (30326 chars); accumulation restarts, camera and scene preserved
+```
+
+The scene, the environment, the accumulation buffers, the camera pose and every tuning
+property survive; only the compute pipeline is rebuilt. On an M1 Max, swapping the 640 × 360
+material study to direct-light-only changed 155 099 of its 230 400 pixels and dropped mean
+linear radiance from 0.27579 to 0.26030, while `camera.at`, `camera.target` and `camera.up`
+stayed **bitwise** identical.
+
+`integratorSource(file)` takes the source from disk instead, which is what you want while
+editing `src/jvmMain/resources/afield/four/pathtracing/trace.comp` — the packaged resource
+will not reflect your edit until the next build. Either way the backend's `#define
+HARDWARE_QUERY` is applied for you, and applied idempotently: source that already carries
+one, or lacks one, both come out right for this device.
+
+**Three outcomes, not a boolean.** `ComputeModulePointer.reload` answers `false` both for
+"this source is already compiled" and for "this source does not compile", so code wrapping
+it in `check(…)` throws on a no-op:
+
+| `IntegratorReload.status` | meaning | `ok` | `reloaded` |
+| --- | --- | --- | --- |
+| `UNCHANGED` | byte-identical to the live pipeline. Nothing rebuilt, nothing reset | `true` | `false` |
+| `RELOADED` | a new pipeline is live, the superseded one is queued for release, accumulation restarts | `true` | `true` |
+| `FAILED` | it did not compile. **The last working pipeline is still rendering**; `errors` carries the compiler's messages | `false` | `false` |
+
+A failed reload is invisible in the window — the image carries on from where it was — which
+is the same guarantee the material-shader path gives.
+
+One timing note, because it bites the code most likely to check the result. The swap is
+*observed* a frame after it is requested: `reloadIntegrator` replaces the module, and the
+next frame is what notices the new pipeline and discards accumulation. So waiting on a
+sample count immediately after a reload is satisfied by the count the **old** integrator
+left behind. Wait for `samples` to fall first, or for `lastResetReason` to change.

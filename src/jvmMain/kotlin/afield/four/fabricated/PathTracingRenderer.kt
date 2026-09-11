@@ -453,7 +453,11 @@ class PathTracingRenderer(
         if (pipeline != previousPipeline) {
             // A `pathTracingHere` material reload arrives here with no reason set; an integrator
             // reload sets one. Either way this is the single increment for a shader swap.
-            reset(pendingPipelineReason ?: "shader reloaded")
+            //
+            // Except on the very first frame, where `previousPipeline` is still its initial zero
+            // and this branch is the pipeline being *seen*, not swapped. The live demo reported
+            // "last reset: shader reloaded" on a tracer that had never reloaded anything.
+            reset(pendingPipelineReason ?: if (previousPipeline == 0L) "first frame" else "shader reloaded")
             pendingPipelineReason = null
             previousPipeline = pipeline
             // Full reload allocates new UBOs. Retire our superseded allocations after in-flight frames.
