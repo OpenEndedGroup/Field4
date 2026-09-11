@@ -156,6 +156,14 @@ object FieldMLMacroLayer {
                 "model-view/projection pair with gl_ViewIndex",
         ),
         Route(
+            "pathTracingHere", Reach.CALL_SHAPED,
+            "computeModuleHere seeded with the path-tracing preamble/integrator templates and a " +
+                "pass-through shadeMaterial; unlike the splat rows it hands " +
+                "macro_computeModuleHereWithDefaultShader an explicit resolvesToCall, so the rewrite " +
+                "target is a name of its own rather than _moduleHere",
+            "_pathTracingHere", "afield.four.fabricated.PathTraceShaderBoxesKt",
+        ),
+        Route(
             "prop", Reach.NATIVE_FORM,
             "generates `var Box.<name> by Inheritance<T>()` (props.kt:71); the delegate is " +
                 "afield.stdlib.inheritedPropertyRaw, which FieldML calls directly",
