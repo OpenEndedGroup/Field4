@@ -45,8 +45,8 @@
  * override, then a real sample name, then a real synth name, then a note (`c4`, `e2`, `60`), then the
  * drum-machine aliases (`bd`, `sd`, `hh`, `cp`, …). "Real" means *in the installed vocabulary* —
  * `sonicpi-vocabulary.json`, extracted from the app by `tools/generate_sonic_pi_vocabulary.py`. An atom
- * that resolves to nothing is reported in [SonicPiProgram.unresolved] rather than dropped quietly,
- * and a mistyped alias is a test failure rather than silence (`synth.sonic-pi.patterns`).
+ * that resolves to nothing is reported in [SonicPiProgram.unresolved] rather than dropped, and a
+ * mistyped alias is a test failure rather than silence (`synth.sonic-pi.patterns`).
  *
  * **Parameters** come from `PatAlgebra`'s annotations, so `with(gain(sine().range(0.2, 0.8)))` works
  * unchanged. Three of them are not pass-throughs and the difference matters:

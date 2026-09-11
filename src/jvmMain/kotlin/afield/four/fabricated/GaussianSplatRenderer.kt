@@ -51,9 +51,9 @@ import kotlin.math.sqrt
  * all — see `SplatSequence.kt` for the frame cache on the disk side — and it is why a fifteen-source
  * frame is one upload into one pre-sized buffer instead of fifteen allocations.
  *
- * `configureModule` sets the raster state the built-in shaders need and deliberately does not set
- * the shader source, because a box using `moduleHere` owns its vertex and fragment text through its
- * own properties. That is the seam `simpleGaussianSplatSupport.kt` uses to hand a box an editable
+ * `configureModule` sets the raster state the built-in shaders need and does not set the shader
+ * source, because a box using `moduleHere` owns its vertex and fragment text through its own
+ * properties. That is the seam `simpleGaussianSplatSupport.kt` uses to hand a box an editable
  * copy of the shaders.
  */
 

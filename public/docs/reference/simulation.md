@@ -1695,7 +1695,7 @@ Sampling an SDF onto grid nodes destroys a sharp edge before the mesher ever see
 refining only buys a smaller rounded radius. TetGen is handed the Manifold triangulation itself,
 whose edges are exact, and constrains its output to it.
 
-### And why incremental meshing turned out not to matter
+### Why there is no incremental meshing
 
 A full re-tetrahedralization of a realistic body is ~0.2 s here. Against a Kratos structural
 solve that is noise, so a geometry edit simply re-meshes. No part of this tries to update a mesh

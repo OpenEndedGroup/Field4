@@ -24,9 +24,9 @@ import java.util.Locale
  *
  * `SplatTransport` is the play head and holds no data at all: a frame index, a rate, and the
  * playing/looping state. Keeping it separate from the reader is what lets the same transport drive
- * a sequence on disk or a frame set already resident, and its source `fps` is deliberately
- * independent of the display rate, so a 12 fps capture shown at 60 does not become a 60 fps
- * capture. `Box.transportControls` wires it to a control group, and the `ToHTML` rendering puts the
+ * a sequence on disk or a frame set already resident, and its source `fps` is independent of the
+ * display rate, so a 12 fps capture shown at 60 does not become a 60 fps capture.
+ * `Box.transportControls` wires it to a control group, and the `ToHTML` rendering puts the
  * play head in a box's output where it can be read at a glance.
  */
 

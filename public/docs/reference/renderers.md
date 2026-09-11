@@ -468,7 +468,7 @@ an accident. A `FabricateNode` carries a transform and children; a renderable ca
 `FabricateMaterial` and the intent to be drawn; `updateWorldTransforms` composes the hierarchy
 into world matrices. None of that needs a GPU, so the scene graph, the animation sampler and the
 draw-order planning in `FabricateRenderPlan.kt` are all exercisable from a plain `main` — which
-`FabricateSceneGraphTestMain` and `FabricateSceneTestMain` do, deliberately without a device.
+`FabricateSceneGraphTestMain` and `FabricateSceneTestMain` do, without a device.
 
 `FabricateTransform` is a position/rotation/scale triple rather than a matrix, and that asymmetry
 has bitten callers: handing the graph a composed `Matrix4f` is not enough on its own, so
@@ -481,8 +481,8 @@ render unchanged. One shadow-casting directional light is treated as the key lig
 shadow map; the rest reach the deferred lighting pass through a lights buffer.
 
 `FabricateAlphaMode` is the field that decides which of the three draw queues a renderable joins,
-and it is the same OPAQUE/MASK/BLEND distinction glTF makes, carried through deliberately rather
-than collapsed.
+and it is the same OPAQUE/MASK/BLEND distinction glTF makes, carried through rather than
+collapsed.
 
 `src/jvmMain/kotlin/afield/four/fabricated/FabricateScene.kt` — [read the source](source/jvmMain/afield/four/fabricated/FabricateScene/)
 
@@ -742,9 +742,9 @@ rewritten every frame from different files. That is what makes a splat *sequence
 all — see `SplatSequence.kt` for the frame cache on the disk side — and it is why a fifteen-source
 frame is one upload into one pre-sized buffer instead of fifteen allocations.
 
-`configureModule` sets the raster state the built-in shaders need and deliberately does not set
-the shader source, because a box using `moduleHere` owns its vertex and fragment text through its
-own properties. That is the seam `simpleGaussianSplatSupport.kt` uses to hand a box an editable
+`configureModule` sets the raster state the built-in shaders need and does not set the shader
+source, because a box using `moduleHere` owns its vertex and fragment text through its own
+properties. That is the seam `simpleGaussianSplatSupport.kt` uses to hand a box an editable
 copy of the shaders.
 
 `src/jvmMain/kotlin/afield/four/fabricated/GaussianSplatRenderer.kt` — [read the source](source/jvmMain/afield/four/fabricated/GaussianSplatRenderer/)
@@ -1055,7 +1055,7 @@ What `PathTracingRenderer.reloadIntegrator` did: three outcomes, not a boolean.
 What the path tracer traces: triangles, materials, textures and an environment map, all as plain
 Kotlin with no device attached.
 
-Nothing in this file needs a GPU, and that is the point of separating it from
+Nothing in this file needs a GPU, which is why it is separate from
 `PathTracingRenderer.kt`. A scene is assembled by calling `triangle`, `quad`, `mesh` or `sphere`,
 each of which appends to flat lists and returns the scene so calls chain; `material` and
 `texture` intern a value and hand back the integer index the triangles refer to it by. `pack`
@@ -1164,8 +1164,8 @@ material evaluation and accumulation code, so an image should not depend on whic
 `PathTraceGpuSmoke` exists to check that it does not.
 
 The output is a fixed-resolution linear HDR render target rather than something presentable.
-Exposure and Reinhard tone mapping happen in a separate `blitToScreen` pass, deliberately, so
-that the accumulated radiance stays readable — `readLinear` is what the smoke tests measure, and
+Exposure and Reinhard tone mapping happen in a separate `blitToScreen` pass, so that the
+accumulated radiance stays readable — `readLinear` is what the smoke tests measure, and
 a tone-mapped buffer would have nothing useful in it.
 
 For the same material with pictures, see `public/docs/path_tracing.md`.
@@ -1246,9 +1246,9 @@ doing it properly costs a thread and a drop policy.
 
 `SplatTransport` is the play head and holds no data at all: a frame index, a rate, and the
 playing/looping state. Keeping it separate from the reader is what lets the same transport drive
-a sequence on disk or a frame set already resident, and its source `fps` is deliberately
-independent of the display rate, so a 12 fps capture shown at 60 does not become a 60 fps
-capture. `Box.transportControls` wires it to a control group, and the `ToHTML` rendering puts the
+a sequence on disk or a frame set already resident, and its source `fps` is independent of the
+display rate, so a 12 fps capture shown at 60 does not become a 60 fps capture.
+`Box.transportControls` wires it to a control group, and the `ToHTML` rendering puts the
 play head in a box's output where it can be read at a glance.
 
 `src/jvmMain/kotlin/afield/four/fabricated/SplatSequence.kt` — [read the source](source/jvmMain/afield/four/fabricated/SplatSequence/)

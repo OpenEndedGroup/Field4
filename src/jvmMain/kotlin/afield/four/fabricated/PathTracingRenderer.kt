@@ -44,8 +44,8 @@ import kotlin.math.tan
  * `PathTraceGpuSmoke` exists to check that it does not.
  *
  * The output is a fixed-resolution linear HDR render target rather than something presentable.
- * Exposure and Reinhard tone mapping happen in a separate `blitToScreen` pass, deliberately, so
- * that the accumulated radiance stays readable — `readLinear` is what the smoke tests measure, and
+ * Exposure and Reinhard tone mapping happen in a separate `blitToScreen` pass, so that the
+ * accumulated radiance stays readable — `readLinear` is what the smoke tests measure, and
  * a tone-mapped buffer would have nothing useful in it.
  *
  * For the same material with pictures, see `public/docs/path_tracing.md`.

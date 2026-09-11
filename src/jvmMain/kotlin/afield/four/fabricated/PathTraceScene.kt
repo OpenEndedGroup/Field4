@@ -14,7 +14,7 @@ import kotlin.math.*
  * What the path tracer traces: triangles, materials, textures and an environment map, all as plain
  * Kotlin with no device attached.
  *
- * Nothing in this file needs a GPU, and that is the point of separating it from
+ * Nothing in this file needs a GPU, which is why it is separate from
  * `PathTracingRenderer.kt`. A scene is assembled by calling `triangle`, `quad`, `mesh` or `sphere`,
  * each of which appends to flat lists and returns the scene so calls chain; `material` and
  * `texture` intern a value and hand back the integer index the triangles refer to it by. `pack`

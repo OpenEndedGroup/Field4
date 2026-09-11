@@ -21,7 +21,7 @@ import kotlin.math.max
  * `FabricateMaterial` and the intent to be drawn; `updateWorldTransforms` composes the hierarchy
  * into world matrices. None of that needs a GPU, so the scene graph, the animation sampler and the
  * draw-order planning in `FabricateRenderPlan.kt` are all exercisable from a plain `main` — which
- * `FabricateSceneGraphTestMain` and `FabricateSceneTestMain` do, deliberately without a device.
+ * `FabricateSceneGraphTestMain` and `FabricateSceneTestMain` do, without a device.
  *
  * `FabricateTransform` is a position/rotation/scale triple rather than a matrix, and that asymmetry
  * has bitten callers: handing the graph a composed `Matrix4f` is not enough on its own, so
@@ -34,8 +34,8 @@ import kotlin.math.max
  * shadow map; the rest reach the deferred lighting pass through a lights buffer.
  *
  * `FabricateAlphaMode` is the field that decides which of the three draw queues a renderable joins,
- * and it is the same OPAQUE/MASK/BLEND distinction glTF makes, carried through deliberately rather
- * than collapsed.
+ * and it is the same OPAQUE/MASK/BLEND distinction glTF makes, carried through rather than
+ * collapsed.
  */
 
 /**
