@@ -30,9 +30,17 @@ import kotlin.test.fail
  * Together they mean a documentation-shaped edit — adding a `@file:` line to publish a page — can
  * silently change, or delete, rows in a working programmer's autocomplete. So the label lives in
  * `StdlibReferenceGenerator.CATEGORY_BY_PATH`, which is read by the generator and by nothing else,
- * and these tests hold the property that makes that safe: nowhere in `src/` does the word
- * `Languages` appear as a completion category, and nowhere in the packages the generator labels by
- * path does *any* category annotation appear.
+ * and these tests hold the property that makes that safe: no reference-only label appears anywhere
+ * in `src/` as a completion category, and no file under a prefix carrying one of those labels
+ * carries a category annotation at all.
+ *
+ * There are two such labels now — `Languages` and `Renderers`, the latter for
+ * `afield.four.fabricated` — and the class name is a historical accident rather than a scope.
+ * Membership is derived here (a path-assigned category no source file declares) rather than named,
+ * so a third label joins every guard below without editing one. The assertions that do *not* apply
+ * to `Visualization` and `Simulation` are the ones about a label completion cannot see: real files
+ * carry both of those, so the map is extending a label the source chose rather than inventing one,
+ * and a file's own annotation always wins.
  *
  * **Deliberately not covered.** This does not run the completion popup or the AA sidecar; the
  * argument here is structural (the label is not in the input) rather than behavioural. The popup's
@@ -57,11 +65,22 @@ class LanguagesCategoryTest {
         }
 
         val vocabulary = declared + completionSupportCategories()
-        for (category in StdlibReferenceGenerator.pathAssignedCategories()) {
-            // `Visualization` is a real completion category *and* a path-assigned one, which is fine:
-            // the point is not that the two vocabularies are disjoint, it is that a label invented
-            // purely for a page never becomes one.
-            if (category != StdlibReferenceGenerator.LANGUAGES) continue
+        // `Visualization` and `Simulation` are real completion categories *and* path-assigned ones,
+        // which is fine: the point is not that the two vocabularies are disjoint, it is that a label
+        // invented purely for a page never becomes one. So membership is derived — a path-assigned
+        // category is reference-only exactly when no source file declares it — rather than named,
+        // which is how `Renderers` joined this guard without being added to it.
+        val referenceOnly = referenceOnlyPathCategories()
+        for (sentinel in listOf(StdlibReferenceGenerator.LANGUAGES, StdlibReferenceGenerator.RENDERERS)) {
+            assertTrue(
+                sentinel in referenceOnly,
+                "`$sentinel` is supposed to be a label no source file carries, and some file in " +
+                    "`src/` now declares it as a completion category. That is the change this whole " +
+                    "test exists to catch, and it also makes the assertion below stop applying to " +
+                    "`$sentinel` — so fix the annotation rather than this line."
+            )
+        }
+        for (category in referenceOnly) {
             assertFalse(
                 category in vocabulary,
                 "`$category` is a reference-only page label, but it now appears in the completion " +
@@ -72,19 +91,31 @@ class LanguagesCategoryTest {
         }
     }
 
+    /**
+     * Runs over the prefixes of every *reference-only* category, not just `Languages`.
+     *
+     * A `Simulation`-annotated file under a `Simulation` prefix is not a conflict — a file's own
+     * annotation always wins, so that is the map agreeing with the source. A file under the
+     * `Renderers` or `Languages` prefixes is different: no source file anywhere carries either
+     * label, so an annotation appearing there is either a file leaving the page it is published on,
+     * or a documentation label becoming a completion label. Both are the failure this test is for.
+     */
     @Test
     fun `no file the reference labels by path carries a category annotation of its own`() {
         val annotation = Regex("""@(?:file:)?(?:[\w.]+\.)?CompletionCategory\s*\(""")
+        val prefixes = referenceOnlyPathCategories().flatMap {
+            StdlibReferenceGenerator.pathAssignedPrefixesFor(it)
+        }
         val offenders = mutableListOf<String>()
-        for (prefix in languagePrefixes()) {
+        for (prefix in prefixes) {
             filesUnder(prefix).forEach { file ->
                 if (annotation.containsMatchIn(file.readText())) offenders += relative(file)
             }
         }
         assertTrue(
-            languagePrefixes().isNotEmpty(),
-            "CATEGORY_BY_PATH files nothing under `${StdlibReferenceGenerator.LANGUAGES}`, so this " +
-                "guard is checking nothing"
+            prefixes.isNotEmpty(),
+            "CATEGORY_BY_PATH files nothing under any reference-only label, so this guard is " +
+                "checking nothing"
         )
         assertTrue(
             offenders.isEmpty(),
@@ -127,6 +158,34 @@ class LanguagesCategoryTest {
             "the singular no longer collapses onto `Kotlin` — the reason for the plural may be gone, " +
                 "but check KotlinCompletionSupport.normalizedCompletionCategory before relying on it"
         )
+    }
+
+    /**
+     * `Renderers` is the second page label whose spelling is chosen rather than preferred, and the
+     * trap is the same shape as `Languages`' with a different word.
+     *
+     * `normalizedCompletionCategory` maps `"rendering"` onto `"Graphics"`, so the obvious name for
+     * this page would file it under an existing, unrelated category the moment anything normalised
+     * it. The same `when` branch takes `"shader"`, `"drawing"`, `"geometry"` and `"vulkan"`, so the
+     * near misses are worth pinning too: the next person to tidy this label needs to find out from
+     * a test rather than from a reader.
+     */
+    @Test
+    fun `the Renderers label survives normalization and the obvious alternative does not`() {
+        assertEquals(
+            "Renderers",
+            normalize(StdlibReferenceGenerator.RENDERERS),
+            "the reference's page label no longer normalises to itself"
+        )
+        for (collides in listOf("Rendering", "Shader", "Drawing", "Geometry", "Vulkan")) {
+            assertEquals(
+                "Graphics",
+                normalize(collides),
+                "`$collides` no longer collapses onto `Graphics` — the reason `Renderers` is " +
+                    "spelled the way it is may be gone, but check " +
+                    "KotlinCompletionSupport.normalizedCompletionCategory before relying on it"
+            )
+        }
     }
 
     @Test
@@ -175,7 +234,7 @@ class LanguagesCategoryTest {
             ?.map { it.name }
             ?.sorted()
             ?: fail("public/docs/reference is not a directory")
-        assertTrue(pages.size >= 15, "only found ${pages.size} reference pages — the scan has rotted")
+        assertTrue(pages.size >= 18, "only found ${pages.size} reference pages — the scan has rotted")
         val missing = pages.filterNot { "reference/$it" in nav }
         assertTrue(
             missing.isEmpty(),
@@ -195,9 +254,17 @@ class LanguagesCategoryTest {
      * invisible precisely because nothing counts.
      *
      * Two floors, both deliberately a little below the measurement at the time of writing
-     * (16 roots, 306 files, 18 pages) so that ordinary growth does not touch them and a subtraction
-     * does. The per-root half is the one that matters — a corpus can stay large while one package
-     * vanishes from it.
+     * (17 roots, 330 files, 19 pages, measured 2026-09-11 after `afield.four.fabricated` was
+     * published) so that ordinary growth does not touch them and a subtraction does. The per-root
+     * half is the one that matters — a corpus can stay large while one package vanishes from it.
+     *
+     * **These are floors and not pins on purpose, and the reason is operational rather than
+     * stylistic.** Several nightly branches regenerate this corpus independently, and a derived
+     * count can break across two branches whose file sets are *disjoint*: one owns the page that
+     * states the number, another owns the code the number measures, and neither `git merge-tree`
+     * nor a path intersection can see the conflict coming. A floor cannot break that way, because
+     * every branch in flight is adding. Four times in seven nights a published count broke on merge
+     * because someone wrote `assertEquals`.
      */
     @Test
     fun `every documented source root is represented on some committed reference page`() {
@@ -213,15 +280,15 @@ class LanguagesCategoryTest {
         }.toSet()
 
         assertTrue(
-            published.size >= 290,
+            published.size >= 315,
             "only ${published.size} source files are published across ${pages.size} category " +
-                "pages, against a floor of 290. Either a source root was dropped, an " +
+                "pages, against a floor of 315. Either a source root was dropped, an " +
                 "EXCLUDE_PREFIXES entry grew teeth, or this scan has rotted — check which before " +
                 "lowering the number."
         )
 
         val roots = StdlibReferenceGenerator.sourceRoots()
-        assertTrue(roots.size >= 16, "SOURCE_ROOTS has shrunk to ${roots.size}, from 16")
+        assertTrue(roots.size >= 17, "SOURCE_ROOTS has shrunk to ${roots.size}, from 17")
         val unrepresented = roots.filter { root ->
             val names = File(repoRoot(), root).walkTopDown()
                 .filter { it.isFile && it.extension == "kt" }.map { it.name }.toSet()
@@ -238,9 +305,17 @@ class LanguagesCategoryTest {
 
     // ---------------------------------------------------------------------------------------------
 
-    /** The path prefixes the generator files under [StdlibReferenceGenerator.LANGUAGES]. */
-    private fun languagePrefixes(): List<String> =
-        StdlibReferenceGenerator.pathAssignedPrefixesFor(StdlibReferenceGenerator.LANGUAGES)
+    /**
+     * The path-assigned categories that exist *only* to name a page — no source file declares them.
+     *
+     * Derived rather than listed, so a third one joins every guard here on its own. `Visualization`
+     * and `Simulation` are excluded by construction: real files carry both, so the assertions about
+     * a label that completion cannot see do not apply to them and never did.
+     */
+    private fun referenceOnlyPathCategories(): Set<String> {
+        val declared = declaredCompletionCategories()
+        return StdlibReferenceGenerator.pathAssignedCategories().filterNot { it in declared }.toSet()
+    }
 
     private fun filesUnder(prefix: String): List<File> =
         File(repoRoot(), prefix).walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()

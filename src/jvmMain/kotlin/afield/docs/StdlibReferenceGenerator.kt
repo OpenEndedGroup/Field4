@@ -173,12 +173,27 @@ object StdlibReferenceGenerator {
      * whatever. It is deliberately left for its own change rather than folded in here: it is a
      * different subject with a different orientation problem, and two widenings in one diff make
      * neither of them readable against the corpus-global evidence links.
+     *
+     * `afield.four.fabricated` is the seventeenth root, added 2026-09-11, and it is the
+     * `afield.four.physics` argument again with the numbers larger in every term. It carries no
+     * `@file:CompletionCategory` in any of its 35 files — `grep` says so, which is why it appears
+     * in neither of the two gaps recorded above: the 26 are files that *chose* a category and were
+     * not read, and these 35 never chose one. It is 14735 lines, of which 9207 across 23 files are
+     * box-facing API. And where `physics` had one prose page written about symbols this reference
+     * did not know existed, this root has three: `public/docs/fabricate_renderer.md`,
+     * `public/docs/path_tracing.md` and `public/docs/afield_four_graphics.md`. The GPU path tracer
+     * those first two are largely about landed on 2026-09-10 with dense KDoc and, until this
+     * change, no row anywhere in `public/docs/reference/`.
+     *
+     * It is labelled [RENDERERS] by [CATEGORY_BY_PATH], and the spelling of that label is not a
+     * preference — see the constant.
      */
     private val SOURCE_ROOTS = listOf(
         "src/jvmMain/kotlin/afield/stdlib",
         "src/jvmMain/kotlin/afield/visualization",
         "src/jvmMain/kotlin/afield/four/synth",
         "src/jvmMain/kotlin/afield/four/physics",
+        "src/jvmMain/kotlin/afield/four/fabricated",
         "src/jvmMain/kotlin/afield/kratos",
         "src/jvmMain/kotlin/afield/tetgen",
         "src/jvmMain/kotlin/afield/clojure",
@@ -273,6 +288,46 @@ object StdlibReferenceGenerator {
      *   "Example Usage" at the bottom of `CSVReader.kt` sitting under `MotionClip` and `Frame`,
      *   which are real API. Deleting that `main` is a source change and does not belong in a
      *   documentation commit, so it is published, honestly, as a `main` row.
+     *
+     * `afield.four.fabricated` is the largest single contribution to this list — **12 of its 35
+     * files, 5528 of its 14735 lines** — and it is also the root where the *kept* half needed the
+     * most reading, because the file names sort the wrong way round. Three groups go, and the bar
+     * is the one already stated above: a test run, or a picture.
+     *
+     * - The six `*TestMain.kt` files are the cleanest case in the tree. Each is a single `object`
+     *   whose only member is `@JvmStatic fun main`, and whose body is `check(…)` assertions —
+     *   `FabricatePassGraphTestMain` walks an ordered pass list, `FabricateRenderPlanTestMain`
+     *   asserts a back-to-front transparent queue, and so on. Publishing them emits six headings
+     *   whose only row is `main`.
+     * - `PathTraceGltfGpuSmoke.kt` and `PathTraceTemporalGpuSmoke.kt` are the same statement about
+     *   GPU verification: every function in both ends in `check(…)` and a `println("PASS …")`.
+     *   `public/docs/path_tracing.md` does name `PathTraceTemporalGpuSmoke.runFog(renderer)`, but it
+     *   names it the way that page names `PathTraceTestMain` two lines earlier — as a check a reader
+     *   can run, which is the `KratosSmokeTest` case and not the `KratosDemo` one.
+     * - The four harnesses write image files and are driven from Python. `RayTracingDocsHarness.kt`
+     *   imports `javax.imageio` and ends in `targetFile.writeBytes`; `StandardRendererDocsHarness.kt`
+     *   imports `java.awt.image.BufferedImage` and writes into `public/docs/assets/`;
+     *   `RectSLGalleryHarness.kt` and `StackSLGalleryHarness.kt` render one `.png` per workspace
+     *   example and are called by `public/fabricate_docs_scenes.py`. All four are figure generators
+     *   for pages that already exist, which is the one thing this list is for.
+     *
+     * **`PathTraceGpuSmoke.kt` stays, and its name is the reason to say why in full.** It is the
+     * `KratosDemo.kt` carve-out by a wider margin than `KratosDemo` itself. The file declares two
+     * objects, and the second, `PathTraceDemo`, is what three committed operation transcripts in
+     * `dev_docs/agents/transcripts/` reach for: `path_tracing_materials.yaml` and
+     * `path_tracing_hidden_environment.yaml` both `import afield.four.fabricated.PathTraceDemo` and
+     * call `PathTraceDemo.install(renderer, …)`, which is also the first code on
+     * `public/docs/path_tracing.md`. The smoke object itself is not private either —
+     * `path_tracing_material_shader_check.yaml` calls `PathTraceGpuSmoke.awaitSamples(tracer, 8)`,
+     * and `path_tracing.md` uses `PathTraceGpuSmoke.run(renderer)` as a box's `verify` lambda.
+     * Excluding the file on the strength of its name would leave a reader following any of those
+     * three transcripts with nowhere to look the call up.
+     *
+     * `PathTraceGlassDemo.kt` stays for the same reason and needs the same warning in the other
+     * direction: it is 37 lines and looks like a demo, but `path_tracing_glass.yaml` imports it and
+     * `path_tracing.md` documents `PathTraceGlassDemo.install(renderer, environmentPath)`. A file
+     * whose name ends in `Demo` is not automatically either thing; what settles it is whether
+     * anything outside the file calls it.
      */
     private val EXCLUDE_PREFIXES = listOf(
         "src/jvmMain/kotlin/afield/stdlib/linalg/",
@@ -289,6 +344,18 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt",
         "src/jvmMain/kotlin/afield/four/synth/SynthCookbookCompileDemo.kt",
         "src/jvmMain/kotlin/afield/kratos/KratosProtocol.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/FabricatePassGraphTestMain.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlanTestMain.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/FabricateSceneGraphTestMain.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/FabricateSceneTestMain.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/PathTraceGltfTestMain.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/PathTraceTestMain.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/PathTraceGltfGpuSmoke.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/PathTraceTemporalGpuSmoke.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/RayTracingDocsHarness.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/RectSLGalleryHarness.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/StackSLGalleryHarness.kt",
+        "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt",
         "src/jvmMain/kotlin/afield/datalog/DatalogSmokeTest.kt",
         "src/jvmMain/kotlin/afield/rectsl/RectSLFitFigure.kt",
         "src/jvmMain/kotlin/afield/rectsl/RectSLSoftRasterFigure.kt",
@@ -315,6 +382,35 @@ object StdlibReferenceGenerator {
      * `"Kotlin"`, so the tidier-looking spelling would name a different category.
      */
     internal const val LANGUAGES = "Languages"
+
+    /**
+     * The category `afield.four.fabricated` is published under — the second label in this file that
+     * no source file carries, and the second one whose *spelling* is load-bearing rather than
+     * chosen.
+     *
+     * The obvious name is `Rendering`, and it is unusable.
+     * [afield.KotlinCompletionSupport.normalizedCompletionCategory] maps `"rendering"` onto
+     * `"Graphics"`, so a page label spelled that way would be filed under an existing, unrelated
+     * category the moment anything normalised it. This is exactly the `Language` → `Kotlin` trap
+     * that made the plural in [LANGUAGES] load-bearing, arriving through a different word, and the
+     * same `when` branch takes `"shader"`, `"shaders"`, `"drawing"`, `"geometry"` and `"vulkan"`
+     * with it. `"renderers"` matches no branch, so it titlecases to itself.
+     * `LanguagesCategoryTest` pins both directions, as it does for `Languages`.
+     *
+     * The existing `Graphics` page was the other candidate and is the wrong home on two counts.
+     * The kept half of this root is 9207 lines, which would nearly triple `graphics.md` — already
+     * the second largest page here — and drown its hand-written drawing helpers under a GPU frame
+     * graph. And the `Graphics` blurb describes "everything that ends up as an `FLine`, a colour or
+     * a shader", which is a fair description of `afield.stdlib`'s drawing surface and not of a
+     * path tracer, a splat renderer and a pass library. A category is a promise about what a reader
+     * will find; these are two different promises.
+     *
+     * Note that completion already answers `Graphics` for these files by a different route —
+     * [afield.KotlinCompletionSupport] infers it from the path `/afield/four/` — and this label does
+     * not change that. Nothing here is annotated, so the popup's view is untouched; see
+     * [CATEGORY_BY_PATH].
+     */
+    internal const val RENDERERS = "Renderers"
 
     /**
      * The category a file lands in when it carries no `@file:CompletionCategory` — matched on the
@@ -356,6 +452,13 @@ object StdlibReferenceGenerator {
      * always were — so the prefix does real work there, and it does all of it in
      * `afield.four.physics`, where nothing is annotated at all.
      *
+     * **[RENDERERS] is back to the `Languages` shape**, and it is the stronger of the two cases.
+     * No source file anywhere in `src/` carries `Renderers`, and no file under
+     * `afield/four/fabricated/` carries a category annotation of any kind, so the prefix below is
+     * the only thing in the tree that knows the label exists. `LanguagesCategoryTest` holds that
+     * property for every path-assigned category no source file declares, rather than for
+     * `Languages` by name, so this entry joined that guard without being added to it.
+     *
      * The safety argument is the same one and is unchanged by the label being real: this map is
      * still read by the generator and by nothing else, and this branch adds **no** annotation to
      * any file, so [KotlinSourceIndex.fileCompletionCategory] keeps returning exactly what it
@@ -367,6 +470,7 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/visualization/" to "Visualization",
         "src/jvmMain/kotlin/afield/four/physics/" to "Simulation",
         "src/jvmMain/kotlin/afield/kratos/" to "Simulation",
+        "src/jvmMain/kotlin/afield/four/fabricated/" to RENDERERS,
         "src/jvmMain/kotlin/afield/clojure/" to LANGUAGES,
         "src/jvmMain/kotlin/afield/datalog/" to LANGUAGES,
         "src/jvmMain/kotlin/afield/forth/" to LANGUAGES,
@@ -450,6 +554,50 @@ object StdlibReferenceGenerator {
         "Graphics" to "Everything that ends up as an `FLine`, a colour or a shader: drawing " +
             "helpers, contouring, geometry, colour spaces, keyframing and the small shading " +
             "languages' host side.",
+        RENDERERS to "Turning a scene into pixels on a Vulkan device. Three renderers live in " +
+            "`afield.four.fabricated`, they disagree about what a frame costs, and choosing " +
+            "between them is the first decision this page exists to help with.\n\n" +
+            "**`StandardRenderer` is the one that runs at frame rate.** A small deferred " +
+            "renderer — g-buffer, shadow map, ambient occlusion, lighting composite — built on " +
+            "the `afield.four` primitives rather than hiding them, so you feed it meshes and wire " +
+            "a `RenderTarget` around the passes it hands back. `FabricateFrameGraph` is that pass " +
+            "list made ordered and named, and it deliberately does not hide the underlying " +
+            "`Target` objects: inserting a pass and manipulating one directly are both still " +
+            "available. `FabricatePostStack` and `FabricatePassChain` are the two post-processing " +
+            "surfaces, and they are not redundant — a `FabricatePostStack` pass inherits its " +
+            "source's resolution and format, while a `FabricatePassChain` lets every pass declare " +
+            "its own, which is what a half-resolution reduce or a downsample pyramid needs and " +
+            "could not previously get without owning the `RenderToTexture` yourself.\n\n" +
+            "**`PathTracingRenderer` is the one that converges.** A progressive GPU path tracer " +
+            "with a stackless software BVH that works on every Field Vulkan device and KHR ray " +
+            "queries where the device has them. It accumulates: the image improves while nothing " +
+            "moves, camera motion resets or reprojects that history, and a lighting edit always " +
+            "starts again. Its scene and environment are snapshots — `PathTraceScene` and " +
+            "`PathTraceEnvironment` are read once at construction, so editing a material means " +
+            "building a new tracer rather than mutating a live one. Output is a fixed-resolution " +
+            "linear HDR render target, and `blitToScreen` is a separate call because exposure and " +
+            "tone mapping are a presentation decision. `PathTraceGltf` loads glTF into it, " +
+            "sRGB-decoding base colour while leaving metallic-roughness linear.\n\n" +
+            "**`GaussianSplatRenderer` is the one that renders something measured rather than " +
+            "modelled.** Splats from a capture, sixteen floats each, sorted and blended rather " +
+            "than rasterized as triangles; `SplatSequence` reads a directory of " +
+            "`.compressed.ply` frames in any order through a bounded most-recently-used cache, " +
+            "because scrubbing a shot is random access and a forward-only reader would be no use " +
+            "for working.\n\n" +
+            "Underneath all three sits `FabricateScene`, a Three.js-shaped scene graph that owns " +
+            "no Vulkan resources at all: nodes carry transforms, renderables carry material and " +
+            "rendering intent, and `FabricateScenePlanner` turns that into the opaque, " +
+            "alpha-masked and back-to-front transparent draw queues a renderer consumes. That " +
+            "independence is why the scene graph, the pass graph and the render plan can be " +
+            "exercised without a GPU, and they are.\n\n" +
+            "Two constraints apply to everything here. A renderer is constructed, installed and " +
+            "closed on Field's render thread, like any other `afield.four` module — installing " +
+            "under a name already in use retires the previous occupant, so there is no coroutine " +
+            "lifetime bookkeeping to do. And a device is required: nothing on this page draws " +
+            "into an `FLine` or runs in a headless test the way the `Math` page's contents do. " +
+            "For the same ground with pictures, see [The Fabricate renderer](" +
+            "../fabricate_renderer.md), [Path tracing](../path_tracing.md) and " +
+            "[afield.four graphics](../afield_four_graphics.md).",
         "Polytopes" to "Polyhedra as topology first and coordinates second. An abstract incidence " +
             "complex you can build and validate; the Conway operator algebra — `dual`, `ambo`, " +
             "`kis`, `truncate`, `gyro` and the composites written over them — that rewrites it, " +

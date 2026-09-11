@@ -10,6 +10,33 @@ import org.lwjgl.util.tinyexr.TinyEXR
 import java.nio.ByteBuffer
 import kotlin.math.*
 
+/**
+ * What the path tracer traces: triangles, materials, textures and an environment map, all as plain
+ * Kotlin with no device attached.
+ *
+ * Nothing in this file needs a GPU, and that is the point of separating it from
+ * `PathTracingRenderer.kt`. A scene is assembled by calling `triangle`, `quad`, `mesh` or `sphere`,
+ * each of which appends to flat lists and returns the scene so calls chain; `material` and
+ * `texture` intern a value and hand back the integer index the triangles refer to it by. `pack`
+ * then flattens the result into the float and int arrays the shader expects, and building a BVH
+ * over them is the renderer's job, not this file's. The consequence for a test is that scene
+ * construction, indexing and packing are all checkable headlessly, which is what
+ * `PathTraceTestMain` does.
+ *
+ * `PathTraceMaterial` is linear-light throughout — no sRGB anywhere in the struct — and carries
+ * the transmission parameters as well as the metallic-roughness ones, so glass is a material rather
+ * than a separate path. Its one geometric precondition is worth reading before debugging a dark
+ * result: solid (non-thin-walled) glass assumes closed, outward-wound, non-overlapping meshes,
+ * because the attenuation distance is measured between surface crossings.
+ *
+ * `PathTraceEnvironment` is both the sky and, usually, the main light. It builds the importance
+ * distribution the sampler draws from, which is why an environment is a snapshot like the geometry
+ * is: changing it changes a precomputed table. `PathTraceTexture` decodes through stb_image and
+ * TinyEXR and keeps its pixels linear, sRGB-decoding base colour while leaving
+ * metallic-roughness alone — the asymmetry glTF requires, and the one
+ * `PathTraceGltfGpuSmoke` checks against known byte values.
+ */
+
 /** Linear-light surface materials. Solid glass requires closed, outward-wound, non-overlapping meshes. */
 data class PathTraceMaterial(
     val red: Float = 0.8f, val green: Float = 0.8f, val blue: Float = 0.8f,

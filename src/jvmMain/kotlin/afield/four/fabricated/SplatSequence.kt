@@ -10,6 +10,27 @@ import java.io.File
 import java.util.Locale
 
 /**
+ * Playing a splat capture over time: the frame reader, the play head, and the box controls that
+ * drive it.
+ *
+ * A splat sequence is a directory of per-frame `.compressed.ply` files, and the reason this file
+ * exists separately from `GaussianSplatRenderer.kt` is that the interesting problem is on the disk
+ * side rather than the GPU side. `SplatSequence` reads frames on demand into a bounded
+ * most-recently-used cache, sized in frames rather than bytes, because a working session scrubs:
+ * a 124-frame capture is 44 MB and would fit whole, a five-minute one will not, and a
+ * forward-only reader would make the short case pleasant and the long case impossible. Nothing
+ * prefetches, which is a decision and not an omission — read-ahead only pays during playback, and
+ * doing it properly costs a thread and a drop policy.
+ *
+ * `SplatTransport` is the play head and holds no data at all: a frame index, a rate, and the
+ * playing/looping state. Keeping it separate from the reader is what lets the same transport drive
+ * a sequence on disk or a frame set already resident, and its source `fps` is deliberately
+ * independent of the display rate, so a 12 fps capture shown at 60 does not become a 60 fps
+ * capture. `Box.transportControls` wires it to a control group, and the `ToHTML` rendering puts the
+ * play head in a box's output where it can be read at a glance.
+ */
+
+/**
  * A directory of `.compressed.ply` frames, readable in any order.
  *
  * Random access is the point: scrubbing jumps around, so a sequence that could only be read forwards

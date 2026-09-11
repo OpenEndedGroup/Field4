@@ -1,9 +1,13 @@
 # Progressive path tracing
 
-`PathTracingRenderer` is a GPU path tracer for `afield.four`. It runs on ordinary
+[`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) is a GPU
+path tracer for `afield.four`. It runs on ordinary
 Vulkan compute devices, including MoltenVK on macOS. When Field has enabled
 `VK_KHR_ray_query`, `AUTO` selects hardware triangle traversal. Both backends use
-the same lighting, material evaluation and accumulation code.
+the same lighting, material evaluation and accumulation code. Every type this page calls is
+browsable on the [Renderers](reference/renderers.md) reference page, with the KDoc that sits beside
+it in the source, next to the real-time deferred renderer this one is an alternative to and the
+splat renderer that is neither.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by the compute path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_materials.yaml.

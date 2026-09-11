@@ -33,6 +33,30 @@ import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in
+ * splat shaders.
+ *
+ * Splats are not triangles and the differences drive the whole file. Each one is an anisotropic
+ * Gaussian — position, a covariance, colour and opacity, sixteen floats — drawn as a screen-aligned
+ * quad whose falloff the fragment shader evaluates, and the result is only correct if the quads
+ * arrive in depth order, because alpha blending does not commute. So a frame here is a sort
+ * followed by a draw, and most of the machinery below exists to make the sort affordable:
+ * `SortMode.ExactRadix` runs a GPU radix sort over per-splat depth keys, `DepthBuckets` trades
+ * exactness for a cheaper bucketed approximation, and `None` builds none of it, which is the right
+ * answer when the data was written back-to-front already or the blend is order-independent.
+ *
+ * A `Cloud` is sized by capacity rather than by the data it was built from, so one cloud can be
+ * rewritten every frame from different files. That is what makes a splat *sequence* playable at
+ * all — see `SplatSequence.kt` for the frame cache on the disk side — and it is why a fifteen-source
+ * frame is one upload into one pre-sized buffer instead of fifteen allocations.
+ *
+ * `configureModule` sets the raster state the built-in shaders need and deliberately does not set
+ * the shader source, because a box using `moduleHere` owns its vertex and fragment text through its
+ * own properties. That is the seam `simpleGaussianSplatSupport.kt` uses to hand a box an editable
+ * copy of the shaders.
+ */
+
 object GaussianSplatRenderer {
     const val SPLAT_FLOAT_STRIDE = 16
 
