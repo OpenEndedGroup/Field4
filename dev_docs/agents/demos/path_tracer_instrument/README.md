@@ -25,7 +25,7 @@ data class and had no `registerValuePrinter` entry, so `ValueVisualizer` fell al
 | **1 — the tracer, with a log** | the shipped materials scene at 640×360, plus `recordConvergence()` | prints `COMPUTE_BVH: 6626 triangles, 640 x 360` on an M1 Max. The log is the new line: the tracer appends to it from inside its own `render`, so it costs no frames |
 | **2 — the instrument, in one line** | `display("output", tracer)` | nine rows. The one to read is **`up`** — see below. Re-run it any time; it reads the live tracer |
 | **3 — the convergence curve** | `showConvergence(log)` | samples against wall seconds, with a labelled dashed rule at every reset. Run box 4, then re-run this, and the cliff appears with `integrator reloaded` in the legend |
-| **4 — swap the integrator, live** | three `reloadIntegrator` calls | three *different* answers: `UNCHANGED`, `FAILED`, `RELOADED`. The gold sphere loses the bounce light under its equator and goes black. The camera does not move by a single bit |
+| **4 — swap the integrator, live** | three `reloadIntegrator` calls | three *different* answers: `UNCHANGED`, `FAILED`, `RELOADED`. The third multiplies the direct and indirect terms where the integrator adds them, so the sunset drops to black and the three spheres become the only lit things in the frame. The camera does not move by a single bit. This is the line to edit — both terms are `vec3` and in scope, so anything you write over them is in the window a second later |
 | **5 — put the integrator back** | `reloadIntegrator()` again | the same no-argument call that answered `UNCHANGED` in box 4 now `RELOADED`, because the live pipeline is the patched one |
 
 ## The row that is the point
