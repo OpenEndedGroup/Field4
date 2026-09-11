@@ -14,6 +14,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 
 /**
+ * Field4 language adapter for the Nano 8-bit assembly language.
+ *
+ * Nano is a compact virtual machine: 4 registers (r0–r3), 32 bytes of RAM with address
+ * wrap, a small call stack, and an instruction set sized for emergence and artificial-life
+ * grid experiments. [NanoExecution] is the [BoxExecution] implementation; setting a parent
+ * box's `isNanoRoot` to `true` turns its children into Nano assembly boxes.
+ *
+ * [installNano] registers the runtime with Field's language dispatch; [installNanoPlugin]
+ * starts the topology watcher that activates it when the box tree changes. [nanoAssemble]
+ * and [Box.nanoDisassemble] are available to neighbouring Kotlin boxes that need to inspect
+ * or construct the VM's byte representation directly.
+ */
+
+/**
  * Field4 [BoxExecution] implementation for the **Nano** micro-computer language.
  *
  * Nano is a compact 8-bit virtual machine with 4 registers (r0–r3), 32 bytes of
