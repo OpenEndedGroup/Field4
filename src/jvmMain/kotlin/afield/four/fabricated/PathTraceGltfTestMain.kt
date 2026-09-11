@@ -4,15 +4,18 @@ import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import kotlin.math.abs
 
-/**
- * FIELD_TEST
- * id: four.pathtracing.gltf
- * runner: jvm-main
- * main: afield.four.fabricated.PathTraceGltfTestMain
- * timeoutSec: 90
- * tags: smoke, graphics
- * END_FIELD_TEST
- */
+/*
+FIELD_TEST
+id: four.pathtracing.gltf
+runner: jvm-main
+entrypoint: afield.four.fabricated.PathTraceGltfTestMain
+timeoutSec: 90
+tags: [smoke, graphics, pathtracing]
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "PASS glTF"
+*/
 object PathTraceGltfTestMain {
     @JvmStatic fun main(args: Array<String>) {
         val folder="dev_docs/agents/fixtures/path_tracing/"
