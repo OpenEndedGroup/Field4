@@ -13,8 +13,9 @@ import signal
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     from .field_python_env import ensure_repo_python
@@ -270,13 +271,109 @@ def _checkout_scope_prefix(root: Path) -> str:
     return str(root).rstrip(os.sep) + os.sep
 
 
-def _command_belongs_to(command: str, root: Path) -> bool:
-    """Is this ``java`` command line a JVM launched out of the checkout at ``root``?
+def _checkout_build_prefixes(root: Path) -> tuple[str, str]:
+    """The two build-output roots that identify a checkout: its own, and the nested sidecar's.
+
+    The semantic sidecar is a separate Gradle build
+    (``tools/code-use-semantic-sidecar/settings.gradle.kts``), so its classes live under its own
+    ``build/`` directory rather than the root build's.
+    """
+    prefix = _checkout_scope_prefix(root)
+    return (
+        prefix + "build" + os.sep,
+        prefix + "tools" + os.sep + "code-use-semantic-sidecar" + os.sep + "build" + os.sep,
+    )
+
+
+@dataclass(frozen=True)
+class Attribution:
+    """Why a Field JVM was, or was not, attributed to a checkout.
+
+    The reaper used to answer this question with a bare ``bool``. On 2026-09-12 at 02:2x it
+    SIGKILLed pid 654 -- a live Field 16 hours old holding 2.4 GB, whose ``lsof`` cwd was
+    ``/Users/marc/field4/.claude/worktrees/serene-panini-93b3ca``, i.e. another session's nested
+    checkout -- and the attribution signal could not be re-derived afterwards, because the
+    process was gone and the tool had never printed its reason. A kill decision that cannot be
+    audited after the fact is the defect; this record is the fix.
+
+    ``signal`` names the rule that fired -- ``aot-cache-path``, ``classpath-entry``,
+    ``unattributed`` or ``foreign-cwd`` -- and ``detail`` carries the value it fired on, so the
+    evidence survives the process.
+    """
+
+    ours: bool
+    signal: str
+    detail: str
+
+    @property
+    def reason(self) -> str:
+        return f"{self.signal}: {self.detail}" if self.detail else self.signal
+
+
+def _classpath_entries(command: str) -> list[str]:
+    """Every ``-classpath``/``-cp`` entry on a command line, in order.
+
+    Tokenising with ``split()`` is good enough here and not more: ``ps`` prints argument values
+    unquoted (``-Dafield.aot.detail=No AOT cache was requested. ...`` really does arrive as
+    several "arguments"), so this would mis-pair a ``-cp`` whose *value* contained a space.
+    Field's own paths do not.
+    """
+    args = command.split()
+    entries: list[str] = []
+    for index, arg in enumerate(args):
+        if arg in {"-classpath", "-cp", "--class-path"}:
+            classpath = args[index + 1] if index + 1 < len(args) else ""
+        elif arg.startswith(("-classpath=", "-cp=", "--class-path=")):
+            classpath = arg.partition("=")[2]
+        else:
+            continue
+        entries.extend(entry for entry in classpath.split(os.pathsep) if entry)
+    return entries
+
+
+def _aot_cache_path(command: str) -> str | None:
+    """The value of ``-Dafield.aot.cache.path=``, or None when absent or empty.
+
+    ``partition`` rather than ``split()``: ``-PfieldAotCache=false`` emits the property with an
+    empty value, and splitting the remainder would silently return the *next* argument as this
+    one's value.
+    """
+    marker = "-Dafield.aot.cache.path="
+    index = command.find(marker)
+    if index < 0:
+        return None
+    return command[index + len(marker) :].partition(" ")[0] or None
+
+
+def _foreign_checkout_hint(command: str) -> str:
+    """What checkout this command *looks* like it came from, for the sparing message.
+
+    Best effort and advisory only -- nothing is killed on the strength of it. Its job is to make
+    a misattribution legible in the log rather than leave "why is that JVM still there" to be
+    guessed at: a spared pid whose hint reads
+    ``/Users/marc/field4/.claude/worktrees/serene-panini-93b3ca`` explains itself.
+    """
+    candidates = [path for path in (_aot_cache_path(command),) if path]
+    candidates.extend(_classpath_entries(command))
+    sidecar_suffix = os.sep + os.path.join("tools", "code-use-semantic-sidecar")
+    for candidate in candidates:
+        marker = os.sep + "build" + os.sep
+        if marker in candidate:
+            root = candidate[: candidate.index(marker)]
+            # The sidecar is a nested Gradle build, so its build directory sits one level in;
+            # report the checkout rather than the subproject.
+            return f"looks like {root.removesuffix(sidecar_suffix)}"
+    return "no argument names a checkout build directory"
+
+
+def _attribute_command(command: str, root: Path) -> Attribution:
+    """Is this ``java`` command line a JVM launched out of the checkout at ``root``, and why?
 
     Two independent signals, both anchored at the start of an argument rather than matched
-    loosely against the whole line:
+    loosely against the whole line, and both anchored at ``<root>/build/`` rather than
+    ``<root>/``:
 
-    * ``-Dafield.aot.cache.path=<root>/...`` -- ``build.gradle.kts``'s
+    * ``-Dafield.aot.cache.path=<root>/build/...`` -- ``build.gradle.kts``'s
       ``fieldAotStatusJvmArgs`` puts this on the ``runJvm`` server, defaulting to
       ``<root>/build/aot/field.aot``. It is the cheapest and most direct answer.
     * a ``-classpath``/``-cp`` entry under ``<root>/build/`` or the semantic sidecar's
@@ -285,44 +382,40 @@ def _command_belongs_to(command: str, root: Path) -> bool:
       ``afield.examples.DemoTranscriptExecSmokeTest`` carried **no**
       ``-Dafield.aot.cache.path`` argument at all, and its classpath was the only thing naming
       its checkout. The property is also emitted *empty* when ``-PfieldAotCache=false``
-      resolves the cache file to null. The semantic sidecar is a nested Gradle build, so its
-      classes live under its own ``build/`` directory. These exact build roots are used rather
-      than ``<root>/`` on purpose: a checkout's build output is unambiguous, whereas
-      ``<root>/`` would also match incidental paths such as a worktree's
-      ``<primary>/.git/worktrees/<name>`` gitdir.
+      resolves the cache file to null.
 
-    Tokenising with ``split()`` is good enough here and not more: ``ps`` prints argument values
-    unquoted (``-Dafield.aot.detail=No AOT cache was requested. ...`` really does arrive as
-    several "arguments"), so this would mis-pair a ``-cp`` whose *value* contained a space.
-    Field's own paths do not, and the first signal is a plain substring test that does not care.
+    The ``build/`` anchor is what separates a **nested** checkout. ``_checkout_scope_prefix``'s
+    trailing separator separates siblings (``/Users/marc/field4/`` is not a prefix of
+    ``/Users/marc/field4-worktrees/...``) but cannot separate children: a checkout at
+    ``<primary>/.claude/worktrees/<name>/`` is a path *under* ``<primary>/``, so the old
+    substring test ``"-Dafield.aot.cache.path=/Users/marc/field4/" in command`` claimed it. That
+    is the pid-654 kill. The classpath signal was already anchored this way, for the same reason
+    its docstring gave: a checkout's build output is unambiguous, whereas ``<root>/`` also
+    matches incidental paths such as a worktree's ``<primary>/.git/worktrees/<name>`` gitdir.
 
-    A Field JVM that matches neither is *not* attributed to this checkout and is therefore
-    left alone. That is deliberately conservative: failing to reap someone else's orphan
-    costs memory, whereas reaping it destroys their run and reports a false green.
+    The cost of the tighter anchor is that a cache relocated outside the build directory
+    (``-PfieldAotCache=/somewhere/else``) no longer contributes signal 1. That fails safe: the
+    classpath signal still fires for a Gradle-launched JVM, and an unattributable Field JVM is
+    spared. Failing to reap someone else's orphan costs memory; reaping it destroys their run
+    and reports a false green.
     """
-    prefix = _checkout_scope_prefix(root)
-    if f"-Dafield.aot.cache.path={prefix}" in command:
-        return True
+    build_prefixes = _checkout_build_prefixes(root)
 
-    args = command.split()
-    build_prefixes = (
-        prefix + "build" + os.sep,
-        prefix + "tools" + os.sep + "code-use-semantic-sidecar" + os.sep + "build" + os.sep,
-    )
-    for index, arg in enumerate(args):
-        if arg in {"-classpath", "-cp", "--class-path"}:
-            classpath = args[index + 1] if index + 1 < len(args) else ""
-        elif arg.startswith(("-classpath=", "-cp=", "--class-path=")):
-            classpath = arg.partition("=")[2]
-        else:
-            continue
-        if any(
-            entry.startswith(build_prefix)
-            for entry in classpath.split(os.pathsep)
-            for build_prefix in build_prefixes
-        ):
-            return True
-    return False
+    cache_path = _aot_cache_path(command)
+    if cache_path is not None and cache_path.startswith(build_prefixes[0]):
+        return Attribution(True, "aot-cache-path", cache_path)
+
+    for entry in _classpath_entries(command):
+        for build_prefix in build_prefixes:
+            if entry.startswith(build_prefix):
+                return Attribution(True, "classpath-entry", entry)
+
+    return Attribution(False, "unattributed", _foreign_checkout_hint(command))
+
+
+def _command_belongs_to(command: str, root: Path) -> bool:
+    """Boolean form of [_attribute_command], kept for callers that only need the verdict."""
+    return _attribute_command(command, root).ours
 
 
 def _describe_pid(pid: int) -> str:
@@ -361,30 +454,88 @@ def _ancestor_pids() -> set[int]:
     return chain
 
 
-def _classify_field_jvms(*, exclude: set[int], root: Path = REPO_ROOT) -> tuple[list[int], list[int]]:
-    """Every live Field JVM, split into ``(ours, other checkouts')``.
+def _pid_cwd(pid: int) -> str | None:
+    """A process's working directory, or None when it cannot be read.
 
-    ``ours`` is what the reaper may kill; the rest belong to another clone or git worktree --
-    very possibly another agent's run in progress -- and are only ever reported.
+    ``lsof -a -p <pid> -d cwd -Fn`` prints one ``n<path>`` line. Anything unexpected returns
+    None, and every caller treats None as "no opinion" rather than as evidence.
     """
     try:
         out = subprocess.run(
-            ["ps", "-eo", "pid=,command="], capture_output=True, text=True, timeout=15,
+            ["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"],
+            capture_output=True, text=True, timeout=5,
         ).stdout
     except (OSError, subprocess.TimeoutExpired):
-        return [], []
-    protected = exclude | _ancestor_pids()
-    ours: list[int] = []
-    foreign: list[int] = []
+        return None
     for line in out.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        head, _, command = line.partition(" ")
-        try:
-            pid = int(head)
-        except ValueError:
-            continue
+        if line.startswith("n") and len(line) > 1:
+            return line[1:]
+    return None
+
+
+def _nearest_checkout(path: str) -> Path | None:
+    """The innermost directory at or above ``path`` holding a ``.git`` entry.
+
+    A git worktree's ``.git`` is a file rather than a directory, so ``exists()`` and not
+    ``is_dir()``. None when nothing on the way up looks like a checkout.
+    """
+    try:
+        current = Path(path).resolve()
+    except (OSError, ValueError):
+        return None
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _cwd_disagrees(pid: int, root: Path, cwd_lookup: Callable[[int], str | None]) -> Attribution | None:
+    """A second, independent opinion that can only ever SPARE a JVM.
+
+    The command line says which checkout's *bytecode* a JVM loaded; its cwd says which checkout
+    it is *working in*. They normally agree. Where they can disagree is exactly the case that
+    killed pid 654: a checkout nested inside this one. If a future relocation of the AOT cache
+    or the build directory re-opens that hole, this catches it without anyone having to notice.
+
+    Conservative by construction, and that is the whole design: it never promotes a JVM to
+    ours, only demotes it to foreign, and an unreadable cwd or an unrecognisable checkout
+    yields None (no opinion) rather than a verdict. An agent may not have permission to
+    ``lsof`` another user's process, and ``lsof`` may not exist at all.
+
+    Deliberately NOT an age check. A 16-hour-old Field looks nothing like "orphaned by an
+    earlier run", but nothing here knows when this checkout's earlier runs happened, so an age
+    threshold would be a number with no referent -- and the honest fix for the message's claim
+    is to state the evidence instead, which [Attribution] now does.
+    """
+    cwd = cwd_lookup(pid)
+    if cwd is None:
+        return None
+    checkout = _nearest_checkout(cwd)
+    if checkout is None:
+        return None
+    try:
+        if checkout == root.resolve():
+            return None
+    except OSError:
+        return None
+    return Attribution(False, "foreign-cwd", f"{cwd} is inside checkout {checkout}")
+
+
+def classify_field_jvm_lines(
+    lines: list[tuple[int, str]],
+    *,
+    root: Path,
+    protected: set[int],
+    cwd_lookup: Callable[[int], str | None] | None = None,
+) -> tuple[list[tuple[int, Attribution]], list[tuple[int, Attribution]]]:
+    """Split ``(pid, command)`` pairs into ``(ours, other checkouts')`` with a reason each.
+
+    Pure apart from ``cwd_lookup``, so the classification can be tested against real ``ps``
+    output without a process table.
+    """
+    ours: list[tuple[int, Attribution]] = []
+    foreign: list[tuple[int, Attribution]] = []
+    for pid, command in lines:
         if pid in protected:
             continue
         argv0, _, rest = command.partition(" ")
@@ -395,12 +546,59 @@ def _classify_field_jvms(*, exclude: set[int], root: Path = REPO_ROOT) -> tuple[
             continue
         if not any(marker in rest for marker in FIELD_JVM_MARKERS):
             continue
-        (ours if _command_belongs_to(command, root) else foreign).append(pid)
+        attribution = _attribute_command(command, root)
+        if attribution.ours and cwd_lookup is not None:
+            objection = _cwd_disagrees(pid, root, cwd_lookup)
+            if objection is not None:
+                foreign.append((pid, objection))
+                continue
+        (ours if attribution.ours else foreign).append((pid, attribution))
     return ours, foreign
 
 
+def _classify_field_jvms(
+    *, exclude: set[int], root: Path = REPO_ROOT, check_cwd: bool = True
+) -> tuple[list[tuple[int, Attribution]], list[tuple[int, Attribution]]]:
+    """Every live Field JVM, split into ``(ours, other checkouts')``, each with its reason.
+
+    ``ours`` is what the reaper may kill; the rest belong to another clone or git worktree --
+    very possibly another agent's run in progress -- and are only ever reported.
+    """
+    try:
+        out = subprocess.run(
+            ["ps", "-eo", "pid=,command="], capture_output=True, text=True, timeout=15,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return [], []
+    lines: list[tuple[int, str]] = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        head, _, command = line.partition(" ")
+        try:
+            lines.append((int(head), command))
+        except ValueError:
+            continue
+    return classify_field_jvm_lines(
+        lines,
+        root=root,
+        protected=exclude | _ancestor_pids(),
+        cwd_lookup=_pid_cwd if check_cwd else None,
+    )
+
+
 def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
-    return _classify_field_jvms(exclude=exclude)[0]
+    return [pid for pid, _ in _classify_field_jvms(exclude=exclude)[0]]
+
+
+def _describe_candidate(pid: int, attribution: Attribution) -> str:
+    """A pid with its age, memory, and the evidence that classified it.
+
+    The evidence is the point. Printing age and rss alone made a misattribution
+    unreconstructible the moment the process died.
+    """
+    return f"{_describe_pid(pid)} [{attribution.reason}]"
 
 
 def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = False) -> None:
@@ -418,15 +616,23 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
       compile daemons are left alone: they are frequently the larger memory consumers, but
       they are also reusable and killing them makes every run pay a cold start. Use
       ``./gradlew --stop`` only after diagnosing a Gradle-daemon problem.
-    * only JVMs [_command_belongs_to] this checkout. The marker test alone matches every
-      Field JVM on the machine, so parallel agents working in sibling git worktrees used to
-      SIGKILL each other's tests -- the victim's run then died mid-suite, or worse finished
+    * only JVMs [_attribute_command] assigns to this checkout. The marker test alone matches
+      every Field JVM on the machine, so parallel agents working in sibling git worktrees used
+      to SIGKILL each other's tests -- the victim's run then died mid-suite, or worse finished
       against a half-dead server and reported a green. ``--no-reap`` never helped, because it
       protects everyone else from you and nobody from them.
 
       The regression evidence was an in-flight server exiting with SIGINT while a sibling
       checkout started its unscoped preflight sweep. Checkout attribution prevents that
       ownership violation; a later pass is not used to excuse the interrupted one.
+
+    * only JVMs whose cwd does not name a *different* checkout ([_cwd_disagrees]). A second,
+      spare-only opinion for the case the command line got wrong on 2026-09-12: a checkout
+      nested inside this one.
+
+    Every pid printed on either line carries the evidence that classified it
+    ([_describe_candidate]), because a kill decision nobody can reconstruct after the process
+    is dead is how the 2026-09-12 misattribution became unfalsifiable.
 
     Best effort: never fails the run. Pass ``dry_run`` (``--reap-dry-run``) to print the
     classification and kill nothing.
@@ -437,14 +643,15 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
     # Leave the port holder to recycle_field, which SIGINTs it first so it can
     # dispose its GPU/window resources instead of leaking them.
     keep = set(_pids_listening_on(port))
-    pids, foreign = _classify_field_jvms(exclude=keep)
+    mine, foreign = _classify_field_jvms(exclude=keep)
+    pids = [pid for pid, _ in mine]
 
     # Always say what was spared, so a run's log shows the scoping working rather than
     # leaving "why is that JVM still there" to be guessed at.
     if foreign:
         print(
             f"Leaving {len(foreign)} Field JVM(s) from other checkouts alone: "
-            + ", ".join(_describe_pid(pid) for pid in foreign),
+            + ", ".join(_describe_candidate(pid, why) for pid, why in foreign),
             file=sys.stderr, flush=True,
         )
     if not pids:
@@ -455,9 +662,12 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
             )
         return
 
+    # "attributed to" rather than "orphaned by earlier runs": attribution from a command line is
+    # what this actually knows, and the stronger claim is what made a 16-hour-old live Field
+    # from a nested checkout read as this run's own litter. Each pid carries the evidence.
     print(
-        f"Reaping {len(pids)} orphaned Field JVM(s) from earlier runs in {REPO_ROOT}: "
-        + ", ".join(_describe_pid(pid) for pid in pids),
+        f"Reaping {len(pids)} Field JVM(s) attributed to {REPO_ROOT} and presumed orphaned by "
+        "earlier runs: " + ", ".join(_describe_candidate(pid, why) for pid, why in mine),
         file=sys.stderr, flush=True,
     )
     if dry_run:

@@ -18,6 +18,7 @@ Run with:  python -m unittest tools.test_run_field_tests_reaper
 """
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -27,8 +28,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tools.run_field_tests import (  # noqa: E402  (path set up just above)
     FIELD_JVM_MARKERS,
+    _attribute_command,
     _checkout_scope_prefix,
     _command_belongs_to,
+    _describe_candidate,
+    classify_field_jvm_lines,
 )
 
 JAVA = (
@@ -74,6 +78,9 @@ REAL_SIDECAR_COMMAND = (
 PRIMARY = Path("/Users/marc/field4")
 MINE = Path("/Users/marc/field4-worktrees/2026-07-30-2-transcript-race-and-harness-scoping")
 SIBLING = Path("/Users/marc/field4-worktrees/2026-07-30-1-typography-geometry-family")
+# A real nested checkout, observed on 2026-09-12: a Claude session's own worktree, created
+# *inside* the primary checkout rather than beside it. `lsof` gave this as pid 654's cwd.
+NESTED = PRIMARY / ".claude" / "worktrees" / "serene-panini-93b3ca"
 
 
 def command_from(root: Path) -> str:
@@ -193,6 +200,195 @@ class AttributionTests(unittest.TestCase):
         )
         self.assertTrue(_command_belongs_to(gitdir, MINE))
         self.assertFalse(_command_belongs_to(gitdir, PRIMARY))
+
+
+class NestedCheckoutTests(unittest.TestCase):
+    """The family the trailing-separator trick cannot separate: a checkout *inside* this one.
+
+    Measured, not hypothesised. At 02:2x on 2026-09-12 a run from the primary tree printed
+
+        Reaping 2 orphaned Field JVM(s) from earlier runs in /Users/marc/field4:
+          pid 654 (age 16:14:54, rss 2405M), pid 61668 (age 04:55:23, rss 61M)
+          escalated to SIGKILL for 2 JVM(s) that ignored SIGINT
+
+    pid 654 was a live Field 16 hours old holding 2.4 GB whose `lsof` cwd was
+    `/Users/marc/field4/.claude/worktrees/serene-panini-93b3ca` -- another session's nested
+    worktree. `/Users/marc/field4/.claude/...` starts with `/Users/marc/field4/`, separator and
+    all, so the sibling-worktree fix of 2026-07-30 never applied to it.
+    """
+
+    def test_the_primary_checkout_does_not_claim_a_nested_checkouts_jvm(self) -> None:
+        self.assertFalse(_command_belongs_to(command_from(NESTED), PRIMARY))
+        self.assertFalse(_command_belongs_to(sidecar_command_from(NESTED), PRIMARY))
+
+    def test_the_nested_checkout_still_owns_its_own_jvm(self) -> None:
+        # Tightening the anchor must not orphan the nested checkout's own reaper.
+        self.assertTrue(_command_belongs_to(command_from(NESTED), NESTED))
+        self.assertTrue(_command_belongs_to(sidecar_command_from(NESTED), NESTED))
+
+    def test_the_separator_trick_alone_could_not_have_saved_pid_654(self) -> None:
+        # Pins *why* a second fix was needed: the scope prefix is a genuine prefix of the
+        # nested path, which is exactly what the sibling case relied on not being.
+        self.assertTrue(str(NESTED).startswith(_checkout_scope_prefix(PRIMARY)))
+        self.assertIn(f"-Dafield.aot.cache.path={_checkout_scope_prefix(PRIMARY)}", command_from(NESTED))
+
+    def test_the_build_anchor_is_what_separates_them(self) -> None:
+        self.assertFalse(str(NESTED).startswith(str(PRIMARY / "build") + "/"))
+
+
+class AttributionReasonTests(unittest.TestCase):
+    """A kill decision must be reconstructible after the process is gone."""
+
+    def test_the_aot_signal_reports_the_value_it_matched(self) -> None:
+        attribution = _attribute_command(command_from(MINE), MINE)
+        self.assertTrue(attribution.ours)
+        self.assertEqual(attribution.signal, "aot-cache-path")
+        self.assertEqual(attribution.detail, f"{MINE}/build/aot/field.aot")
+
+    def test_the_classpath_signal_reports_the_entry_it_matched(self) -> None:
+        launcher = (
+            f"{JAVA} -Xmx8g "
+            f"-cp {MINE}/build/classes/kotlin/jvm/main:{MINE}/libs/jep-4.3.1.jar "
+            "afield.AgentJvmMainLauncher afield.examples.DemoTranscriptExecSmokeTest"
+        )
+        attribution = _attribute_command(launcher, MINE)
+        self.assertTrue(attribution.ours)
+        self.assertEqual(attribution.signal, "classpath-entry")
+        self.assertEqual(attribution.detail, f"{MINE}/build/classes/kotlin/jvm/main")
+
+    def test_a_spared_jvm_names_the_checkout_it_looks_like(self) -> None:
+        # The line that would have made the 2026-09-12 misattribution obvious on sight.
+        attribution = _attribute_command(command_from(NESTED), PRIMARY)
+        self.assertFalse(attribution.ours)
+        self.assertEqual(attribution.signal, "unattributed")
+        self.assertEqual(attribution.detail, f"looks like {NESTED}")
+
+    def test_a_spared_sidecar_names_the_checkout_not_the_subproject(self) -> None:
+        # Observed on this machine while verifying: the hint for a sibling's leaked sidecar read
+        # `.../2026-09-12-3-profiling-measurement-model/tools/code-use-semantic-sidecar`, which
+        # is a nested Gradle build rather than the checkout anyone would go looking for.
+        attribution = _attribute_command(sidecar_command_from(SIBLING), PRIMARY)
+        self.assertEqual(attribution.detail, f"looks like {SIBLING}")
+
+    def test_an_unattributable_jvm_says_so_rather_than_naming_a_path(self) -> None:
+        stray = f"{JAVA} -Dafield.aot.cache.path= -cp /opt/field/all.jar afield.Server"
+        attribution = _attribute_command(stray, PRIMARY)
+        self.assertFalse(attribution.ours)
+        self.assertIn("no argument names a checkout build directory", attribution.detail)
+
+    def test_an_empty_aot_property_does_not_absorb_the_next_argument(self) -> None:
+        # `-PfieldAotCache=false` emits the property empty; splitting the remainder would have
+        # reported the *following* argument as this one's value.
+        emptied = command_from(MINE).replace(
+            f"-Dafield.aot.cache.path={MINE}/build/aot/field.aot", "-Dafield.aot.cache.path="
+        )
+        attribution = _attribute_command(emptied, MINE)
+        self.assertEqual(attribution.signal, "classpath-entry")
+
+    def test_the_printed_description_carries_the_evidence(self) -> None:
+        described = _describe_candidate(654, _attribute_command(command_from(NESTED), PRIMARY))
+        self.assertIn("pid 654", described)
+        self.assertIn(str(NESTED), described)
+
+
+class CwdCrossCheckTests(unittest.TestCase):
+    """The spare-only second opinion, against a real (temporary) pair of checkouts.
+
+    Built on disk rather than out of string paths because the check asks the filesystem which
+    checkout a directory belongs to: a git worktree's `.git` is a file, the primary's is a
+    directory, and both must count.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.primary = Path(self._tmp.name) / "field4"
+        (self.primary / ".git").mkdir(parents=True)
+        (self.primary / "build").mkdir()
+        self.nested = self.primary / ".claude" / "worktrees" / "serene-panini-93b3ca"
+        self.nested.mkdir(parents=True)
+        (self.nested / ".git").write_text(f"gitdir: {self.primary}/.git/worktrees/serene\n")
+
+    def lines(self, root: Path) -> list[tuple[int, str]]:
+        return [(654, command_from(root))]
+
+    def test_a_foreign_cwd_demotes_an_otherwise_attributed_jvm(self) -> None:
+        # Suppose the command line does say the primary tree -- a relocated AOT cache, a future
+        # build-layout change, any re-opening of the pid-654 hole. The cwd is an independent
+        # witness, and it says nested.
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(self.primary),
+            root=self.primary,
+            protected=set(),
+            cwd_lookup=lambda _pid: str(self.nested),
+        )
+        self.assertEqual(ours, [])
+        self.assertEqual(len(foreign), 1)
+        self.assertEqual(foreign[0][1].signal, "foreign-cwd")
+        self.assertIn(str(self.nested), foreign[0][1].detail)
+
+    def test_our_own_cwd_is_not_an_objection(self) -> None:
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(self.primary),
+            root=self.primary,
+            protected=set(),
+            cwd_lookup=lambda _pid: str(self.primary),
+        )
+        self.assertEqual([pid for pid, _ in ours], [654])
+        self.assertEqual(foreign, [])
+
+    def test_an_unreadable_cwd_is_no_opinion_rather_than_a_veto(self) -> None:
+        # `lsof` may be absent, or refuse another user's process. Abstaining leaves the command
+        # line's verdict standing; it must not silently spare everything.
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(self.primary), root=self.primary, protected=set(), cwd_lookup=lambda _pid: None,
+        )
+        self.assertEqual([pid for pid, _ in ours], [654])
+        self.assertEqual(foreign, [])
+
+    def test_a_deleted_nested_checkout_falls_back_to_the_enclosing_one(self) -> None:
+        # An honest limitation, pinned rather than hidden: once the nested worktree is removed,
+        # walking up from its path finds the primary checkout's `.git` and the cwd stops
+        # objecting. The `<root>/build/` anchor is the load-bearing fix; this is the backstop.
+        import shutil
+
+        shutil.rmtree(self.nested)
+        ours, _ = classify_field_jvm_lines(
+            self.lines(self.primary),
+            root=self.primary,
+            protected=set(),
+            cwd_lookup=lambda _pid: str(self.nested),
+        )
+        self.assertEqual([pid for pid, _ in ours], [654])
+
+    def test_the_cross_check_never_promotes_a_foreign_jvm(self) -> None:
+        # A cwd inside our checkout cannot make a sibling's JVM ours.
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(SIBLING),
+            root=self.primary,
+            protected=set(),
+            cwd_lookup=lambda _pid: str(self.primary),
+        )
+        self.assertEqual(ours, [])
+        self.assertEqual(len(foreign), 1)
+
+    def test_protected_pids_are_never_classified(self) -> None:
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(self.primary),
+            root=self.primary,
+            protected={654},
+            cwd_lookup=lambda _pid: str(self.nested),
+        )
+        self.assertEqual((ours, foreign), ([], []))
+
+    def test_a_non_java_argv0_is_still_ignored(self) -> None:
+        # The guard that once reaped the shell running the reaper.
+        ours, foreign = classify_field_jvm_lines(
+            [(99, f"/bin/zsh -c 'grep afield.Server {self.primary}/build/x'")],
+            root=self.primary,
+            protected=set(),
+        )
+        self.assertEqual((ours, foreign), ([], []))
 
 
 if __name__ == "__main__":
