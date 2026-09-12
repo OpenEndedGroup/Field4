@@ -1333,7 +1333,7 @@ walked through.
 its lineage. Each of the 62 faces descends from exactly one element of the seed, so the rank of that
 element picks gold, thin glass or plastic, and the three groups come out 12, 30 and 20: the
 dodecahedron's own faces, edges and vertices. See
-[the walkthrough](chain_polytope_render.md#lineage-can-choose-the-material).
+[the walkthrough](chain_polytope_render.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn)
 

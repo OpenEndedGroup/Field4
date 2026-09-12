@@ -70,7 +70,7 @@ pale. Spreading the specular lobe averages the map and the gold tint comes back.
 Run this and nothing below is taken on trust. It needs no renderer: everything up to the trace is
 CPU work.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/readout.png" wait="6" capture="box" open-outputs="true" w="1060" h="240" padding="18" name="chain-polytope-readout" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="240" padding="18" timeout="120" name="chain-polytope-readout" embed=true}
 :::static
 import afield.manifold.*
 import afield.stdlib.*
@@ -86,42 +86,68 @@ val geometry = chain.polyhedron.triangulate(normals = NormalPolicy.Flat)
 // unwelded vertices describe the same surface while sharing an edge nowhere.
 val plain = geometry.mesh.weld(1e-6)
 
-:::fold the census, the two independent volumes, and the wall
-println("bD: ${chain.polyhedron.topology.elements(2).size} faces, " +
-    "${geometry.triangleCount} triangles, " +
-    "${geometry.mesh.vertexCount} vertices unwelded, ${plain.vertexCount} welded")
-val census = chain.polyhedron.topology.elements(2)
-    .groupingBy { chain.sourceElements(it.id).single().rank }.eachCount().toSortedMap()
-census.forEach { (rank, count) -> println("  rank $rank of the seed -> $count faces") }
-println("  the dodecahedron has 12 faces, 30 edges and 20 vertices")
+:::fold measure every hop, then lay the numbers out
+val topology = chain.polyhedron.topology
+val byRank = topology.elements(2).groupBy { chain.sourceElements(it.id).single().rank }
+val censusRows = byRank.keys.sortedDescending().joinToString("\n") { rank ->
+    val group = byRank.getValue(rank)
+    val sides = group.map { topology.faceCycle(it.id).size }.distinct().sorted()
+    val seed = listOf("a vertex", "an edge", "a pentagon").getOrElse(rank) { "?" }
+    "| rank $rank, $seed | ${group.size} | ${sides.joinToString(", ")} |"
+}
 
-val report = Solid.scope {
+Solid.scope {
     val solid = plain.toSolid()
-    println()
-    println("Manifold: status ${solid.status}, genus ${solid.genus}, " +
-        "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}")
-    println("Field:    watertight ${plain.isWatertight()}, genus ${plain.genus()}, " +
-        "volume ${"%.4f".format(plain.signedVolume())}, " +
-        "apart by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}")
 
     // Erode by a ball, then subtract. What is left is the set of points within `thickness` of the
     // surface, so the wall is that thick everywhere. Scaling the solid down instead gives a wall
     // thicker at the vertices than at the face centres, which looks similar and is a different shape.
     val ball = Solid.sphere(thickness, segments = 24)
     val wall = solid - solid.minkowskiDifference(ball)
-    println()
-    println("shell:    volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " +
-        "${wall.triangleCount} triangles")
-    println("          area * thickness would be ${"%.4f".format(solid.surfaceArea * thickness)}, " +
-        "so the ratio is ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}")
-    wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
+    val cut = wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
+
+    val volumeGap = kotlin.math.abs(plain.signedVolume() - solid.volume)
+    val ratio = wall.volume / (solid.surfaceArea * thickness)
+
+    // Content at column zero on purpose: `$censusRows` is several lines that begin there, so an
+    // indented block plus trimIndent would leave the rest indented far enough to read as code.
+    markdown("chain", """
+#### `canonicalConway("bD")`, and where each face came from
+
+| the seed element a face descends from | faces | sides each |
+|---|---|---|
+$censusRows
+
+The dodecahedron has 12 faces, 30 edges and 20 vertices. The polytope arrives as
+${geometry.triangleCount} triangles over ${geometry.mesh.vertexCount} vertices as the triangulator
+left them, and ${plain.vertexCount} after welding.
+
+#### The same surface, measured by two implementations that share no code
+
+| | Manifold | Field's own mesh code |
+|---|---|---|
+| closed | `${solid.status}` | `${plain.isWatertight()}` |
+| genus | ${solid.genus} | ${plain.genus()} |
+| volume | ${"%.4f".format(solid.volume)} | ${"%.4f".format(plain.signedVolume())} |
+| surface area | ${"%.4f".format(solid.surfaceArea)} | |
+
+They are ${"%.2e".format(volumeGap)} apart on the volume.
+
+#### Eroded by a ball of radius $thickness, then cut open
+
+| | |
+|---|---|
+| wall volume | ${"%.4f".format(wall.volume)} |
+| area × thickness | ${"%.4f".format(solid.surfaceArea * thickness)}, so the ratio is ${"%.3f".format(ratio)} |
+| wall genus | ${wall.genus} |
+| wall triangles | ${wall.triangleCount} |
+| cut open | genus ${cut.genus}, volume ${"%.4f".format(cut.volume)} |
+""", width = 860)
+    Unit
 }
-println()
-println("cut open: genus ${report.genus}, volume ${"%.4f".format(report.volume)}")
-report.close()
 ```
 
-Four of those lines are cross-checks rather than reports.
+Four of those numbers are cross-checks rather than reports.
 
 * **120 welded vertices.** The truncated icosidodecahedron has 120 vertices, so the weld recovering
   exactly that number says the triangulator's duplicated corners were duplicates and not a shape.
@@ -134,9 +160,9 @@ Four of those lines are cross-checks rather than reports.
   curvature term, so the ratio has to land a little under one. Reading exactly one would mean the
   erosion had not happened; reading far under it would mean the thickness was not constant.
 
-Genus goes to −1 for the shell, which is not an error. Manifold reports genus from the Euler
-characteristic of the whole boundary, a closed shell has two boundary components, and two spheres
-give χ = 4, so *g* = −1. `decompose()` is how you get at components separately.
+The shell's genus is −1. Manifold reports genus from the Euler characteristic of the whole boundary;
+a closed shell has two boundary components, two spheres give χ = 4, and *g* = (2 − χ) / 2 is then
+−1. `decompose()` is how to get at components separately.
 
 ## Through the Booleans, and back out to the tracer
 
