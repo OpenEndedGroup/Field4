@@ -29,10 +29,12 @@ was absolute (see below), and the document you opened is a new empty one.
 ## Why `--workspace` cannot be forwarded to an attached server
 
 The server resolves a document name as `home + "/" + name`
-(`resolveDocumentTarget`, `src/jvmMain/kotlin/afield/agent_backdoor.kt`), where `home` is the
-process-global `--workspace` option fixed when that JVM booted (`Server.kt`). The backdoor's
-`--workspace` becomes `--args=--workspace ...` on the **launch** path only. Attaching, it
-decides nothing. Moving a live server's workspace restarts it
+(`agent_backdoor.kt:135#private fun resolveDocumentTarget(`), where `home` is the
+process-global `--workspace` option fixed when that JVM booted
+(`Server.kt:119#val workspace: String,`). The backdoor's `--workspace` becomes
+`--args=--workspace ...` on the **launch** path only
+(`field_backdoor.py:597#cmd.append(f"--args=--workspace {quoted_workspace}")`, the sole site).
+Attaching, it decides nothing. Moving a live server's workspace restarts it
 (`POST /api/workspace-switch`), so the honest outcomes are *agree* or *refuse*:
 
 - Launching (no `--attach-existing`): pass `--workspace <dir>`; it becomes the server's.

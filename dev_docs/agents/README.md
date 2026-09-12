@@ -41,7 +41,7 @@ detailed reference it points into.
 | **Copy-paste a working example** | [`transcripts/README.md`](./transcripts/README.md) | curated, runnable transcript corpus |
 | **Talk to Field from Claude Code/Desktop** | [`FIELD_MCP.md`](./FIELD_MCP.md) | local stdio MCP server over the backdoor; `uv sync --group backdoor` then approve the `field` server |
 | **Capture examples for the docs site** | [`../DOCS_RUNNER_GPU_CAPTURES.md`](../DOCS_RUNNER_GPU_CAPTURES.md) | `diffstatic_runner` fences, incl. GPU/compute/probe |
-| **Check you are driving the right workspace** | [`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md) | verify `serverWorkspace`, never `requestedWorkspace` — of the old four-field check, only one field could disagree with you |
+| **Check you are driving the right workspace** | [`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md) | verify `serverWorkspace`, never `requestedWorkspace` — of the old four-field check, three fields could disagree with you and the one you were told to trust could not |
 
 ## The core docs
 

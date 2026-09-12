@@ -35,13 +35,14 @@ The same replay through the backdoor, attached to an already running Field:
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --attach-existing --port 9092 \
-  --workspace /path/to/workspace --document my_demo \
+  --attach-existing --port 9092 --document my_demo \
   --command 'macro write profiling_timeline --file dev_docs/agents/transcripts/profiling_timeline.yaml' \
   --command 'macro run profiling_timeline'
 ```
 
-Replace the workspace, document, and port with your running instance's values. This
+Replace the document and port with your running instance's values, and make the document
+name relative to the server's own workspace — an attached server's workspace is fixed at its
+launch, so passing `--workspace` here is a hard error rather than a no-op. This
 attaches to that document and opens the timeline in its connected browser. For an
 isolated automation check, omit `--attach-existing`, use a dedicated port such as
 9477, and add `--with-playwright`; that check uses a disposable session and a headless browser.

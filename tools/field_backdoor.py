@@ -1571,7 +1571,7 @@ class FieldBackdoor:
         # path produces a nonsense session key with the workspace glued in front of it -- an
         # empty new document that will never be the one you meant. Cheap to say out loud here;
         # `status` now also shows it, because `sessionKey` can be read against `serverWorkspace`.
-        if document and not scratch and os.path.isabs(document):
+        if document and not scratch and (os.path.isabs(document) or os.sep in document):
             self.logger.log("open_document_absolute_name", document=document)
             print(
                 f"field_backdoor.py: --document {document} is an absolute path, and document names "
