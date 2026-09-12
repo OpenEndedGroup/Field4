@@ -1,5 +1,29 @@
 package afield.ml.type
 
+/**
+ * The types FieldML infers, and the two ways one is printed back to a reader.
+ *
+ * [Type] is the vocabulary inference works in: five ground types, a unification variable [TVar], an
+ * arrow [TFun], the structural cases [TRecord], [TTuple] and [TList], [TAdt] for a declared data
+ * type applied to its arguments, and [THost] for a JVM type reached over the host bridge, whose
+ * `name` is what `FieldMLHostTypes` reflects on. [TFun] takes one argument at a time, matching the
+ * curried application the parser builds, so a function of two arguments is `TFun(a, TFun(b, c))`.
+ *
+ * A [Scheme] is a type together with the variable ids generalised over it, and it can restrict what
+ * those ids are allowed to become. An id listed in `numeric` only unifies with `Int` or `Float`, and
+ * one listed in `vector` only with `Vec2`, `Vec3` or `Vec4`. That is how the prelude gives `abs`,
+ * `min`, `max` and `clamp` one scheme each rather than one per numeric type, and `dot`, `vlength`,
+ * `normalize` and `mix` one each rather than one per vector width.
+ *
+ * [TypePrinter] renders a type two ways. `print` parenthesises every arrow, and is what diagnostics
+ * and a box's inline result use; `printSignature` drops the parentheses that right associativity
+ * makes redundant, and is what completion shows and what the cheatsheet's coverage guard compares
+ * against. A printer names unification variables `'a`, `'b`, … in order of first appearance and
+ * keeps those names for its own lifetime, so two types printed by one printer agree about which
+ * variable is which, while two printers each start again at `'a`.
+ */
+
+/** An inferred FieldML type. */
 sealed interface Type
 
 data object TInt : Type

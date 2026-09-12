@@ -2,6 +2,32 @@ package afield.ml.ast
 
 import afield.ml.diag.SourceRange
 
+/**
+ * FieldML's surface syntax tree: one node per piece of written syntax, each carrying the source
+ * range it was parsed from.
+ *
+ * [Parser] produces this tree and [Inferencer] reads it. Nothing in it has a type yet. Every node
+ * here has a counterpart in `afield.ml.type` that carries an inferred type, and that typed tree is
+ * lowered again into the `afield.ml.core` form the evaluator runs.
+ *
+ * The tree is narrower than the syntax in two places. [ECall] takes a single argument, so
+ * application is already curried when it is parsed: `add 20 22` is `ECall(ECall(add, 20), 22)`. The
+ * pipe operator builds that same node with its left operand as the argument, so `10 |> add 5` and
+ * `add 5 10` differ only in the ranges they record. And a constructor's argument types are bare
+ * names: [TypeRef] has one case, [TypeRefName], so a run of names in `type Tree a = Node Tree Tree`
+ * reads as a run of separate arguments. Inference resolves each name to a built-in type, to the type
+ * being declared, to one of that type's own parameters, or to a data type with no arguments.
+ *
+ * It is wider than the syntax in one place: [ELet] and [ELambda] keep the parameter list as it was
+ * written, so `let add a b = ...` is one node with two parameters. Folding those into nested arrow
+ * types is inference's job, and turning them into nested one-parameter lambdas is the lowering's.
+ *
+ * [ELet] and [ETypeDecl] both carry a `body`, and for a top-level binding that body is the whole
+ * rest of the program: a box's bindings stack up by nesting inside each other. A `let` with nothing
+ * after it gets `EVar("Unit")` for a body.
+ */
+
+/** A node of the surface tree, positioned by the [SourceRange] it was parsed from. */
 sealed interface Expr {
     val range: SourceRange
 }

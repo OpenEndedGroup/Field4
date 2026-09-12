@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7069 of 13269 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7073 of 13269 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**862 undocumented entry points** (types, top-level functions and values) and 5043 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**858 undocumented entry points** (types, top-level functions and values) and 5043 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -16,7 +16,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [synth.kt](../src/jvmMain/kotlin/afield/four/synth/synth.kt) | Synthesis | sound_paths | 52 | 0 | 25% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 44 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
-| [Expr.kt](../src/jvmMain/kotlin/afield/ml/ast/Expr.kt) | Languages | pattern_rewrite | 33 | 57 | 2% |
+| [Expr.kt](../src/jvmMain/kotlin/afield/ml/ast/Expr.kt) | Languages | pattern_rewrite | 32 | 57 | 3% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 103 | 3% |
@@ -105,14 +105,14 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorphoFLines.kt](../src/jvmMain/kotlin/afield/morpho/MorphoFLines.kt) | Languages | morpho_examples | 0 | 1 | 91% |
 | [keyframer.kt](../src/jvmMain/kotlin/afield/stdlib/keyframer.kt) | Graphics | keyframer_examples, interpolants_examples | 0 | 1 | 98% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 93% |
-| [TypedAst.kt](../src/jvmMain/kotlin/afield/ml/type/TypedAst.kt) | Languages | — | 30 | 60 | 2% |
-| [Core.kt](../src/jvmMain/kotlin/afield/ml/core/Core.kt) | Languages | — | 30 | 45 | 1% |
+| [TypedAst.kt](../src/jvmMain/kotlin/afield/ml/type/TypedAst.kt) | Languages | — | 29 | 60 | 3% |
+| [Core.kt](../src/jvmMain/kotlin/afield/ml/core/Core.kt) | Languages | — | 29 | 45 | 2% |
 | [AbletonSet.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSet.kt) | Audio | — | 26 | 163 | 0% |
 | [PatFunctions.kt](../src/jvmMain/kotlin/afield/four/synth/PatFunctions.kt) | Patterns | — | 21 | 21 | 12% |
 | [RemoteJS.kt](../src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt) | Languages | — | 18 | 8 | 7% |
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
 | [JoltPhysicsWorld.kt](../src/jvmMain/kotlin/afield/four/physics/JoltPhysicsWorld.kt) | Simulation | — | 16 | 99 | 0% |
-| [Types.kt](../src/jvmMain/kotlin/afield/ml/type/Types.kt) | Languages | — | 15 | 12 | 6% |
+| [Types.kt](../src/jvmMain/kotlin/afield/ml/type/Types.kt) | Languages | — | 14 | 12 | 10% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/four/synth/Oscillators.kt) | Synthesis | — | 13 | 42 | 41% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/four/synth/Filters.kt) | Synthesis | — | 11 | 28 | 11% |
@@ -295,39 +295,38 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1004` |
 | `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1869` |
 | `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1894` |
-| `Expr` | interface | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:5` |
-| `EInt` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:9` |
-| `EFloat` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:10` |
-| `EBool` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:11` |
-| `EString` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:12` |
-| `EVar` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:13` |
-| `ETuple` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:14` |
-| `EList` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:15` |
-| `TypeDecl` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:17` |
-| `ConstructorDecl` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:24` |
-| `TypeRef` | interface | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:30` |
-| `TypeRefName` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:35` |
-| `ETypeDecl` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:40` |
-| `ELet` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:46` |
-| `ELambda` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:54` |
-| `ECall` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:60` |
-| `EIf` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:66` |
-| `Pattern` | interface | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:73` |
-| `PWildcard` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:77` |
-| `PVar` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:78` |
-| `PInt` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:79` |
-| `PBool` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:80` |
-| `PString` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:81` |
-| `PTuple` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:82` |
-| `PList` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:83` |
-| `PConstructor` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:85` |
-| `MatchCase` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:98` |
-| `EMatch` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:104` |
-| `RecordField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:110` |
-| `ERecord` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:116` |
-| `EField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:121` |
-| `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:127` |
-| `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:144` |
+| `EInt` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:35` |
+| `EFloat` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:36` |
+| `EBool` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:37` |
+| `EString` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:38` |
+| `EVar` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:39` |
+| `ETuple` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:40` |
+| `EList` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:41` |
+| `TypeDecl` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:43` |
+| `ConstructorDecl` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:50` |
+| `TypeRef` | interface | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:56` |
+| `TypeRefName` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:61` |
+| `ETypeDecl` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:66` |
+| `ELet` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:72` |
+| `ELambda` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:80` |
+| `ECall` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:86` |
+| `EIf` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:92` |
+| `Pattern` | interface | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:99` |
+| `PWildcard` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:103` |
+| `PVar` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:104` |
+| `PInt` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:105` |
+| `PBool` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:106` |
+| `PString` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:107` |
+| `PTuple` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:108` |
+| `PList` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:109` |
+| `PConstructor` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:111` |
+| `MatchCase` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:124` |
+| `EMatch` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:130` |
+| `RecordField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:136` |
+| `ERecord` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:142` |
+| `EField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:147` |
+| `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:153` |
+| `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:170` |
 | `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:582` |
 | `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:148` |
 | `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:154` |
@@ -378,5 +377,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ShaderModuleSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1202` |
 | `MaterialTable` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1211` |
 | `SceneProgram` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1216` |
+| `Transform2d` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1274` |
 
-…and **742 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **738 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
