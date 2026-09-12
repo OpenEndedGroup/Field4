@@ -33,6 +33,7 @@ import afield.server.installDocsAnnotationRoutes
 import afield.server.SEC_FETCH_SITE_HEADER
 import afield.server.docsFlagEnabled
 import afield.server.isSameSiteRequest
+import afield.server.installDocumentGuideRoutes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
@@ -3611,6 +3612,7 @@ class Server {
 
                         installFieldAudioProxyRoutes()
                         installDocsAnnotationRoutes()
+                        installDocumentGuideRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
 

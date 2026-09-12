@@ -665,6 +665,40 @@ Convenience builder for classic FM algorithms.
 
 ## FaustBox.kt { #faustbox-kt }
 
+The box-facing side of Faust: compile a program, play it, show what it declares.
+
+`faust` is the call that matters. It strips the `#faust` marker, compiles, instantiates, and
+returns a [`FaustLaunch`](synthesis.md#faustbox-kt-faustlaunch):
+
+```diffstatic {data-lang=kotlin}
+faust("""
+#faust
+import("stdfaust.lib");
+freq = hslider("freq [unit:Hz]", 220, 50, 1000, 0.01);
+process = os.sawtooth(freq) : fi.lowpass(2, 1200) * 0.2 <: _,_;
+""")
+```
+
+Returning that launch as the box's last expression is what ties the sound to the box: it stays lit
+while the program runs, and stopping the box stops the sound and closes the DSP's GraalVM context.
+`registerFaustLaunchReturnValue` is the handler that does both. It exists because the generic audio
+handler would close the audio patch and leave the context alive, which is one leaked context per
+box run.
+
+Everything else is a separate call, so a box shows only what it wants to:
+
+ * `faustControls` turns the program's own `hslider`, `button` and `hgroup` declarations into a
+   Field control group. Nobody writes the sliders, and a control group is what the phone's Group
+   page publishes, so they are reachable from a phone at no extra cost.
+ * `faustDiagram` displays Faust's own SVG block diagram of the program.
+ * `faustWaveform` renders a program offline and plots it. Nothing there touches the audio engine,
+   so it works where there is no audio device at all.
+ * `faustCompile` compiles without playing, for looking at a program's interface or its diagram.
+
+Every line number the compiler reports is shifted back onto the box's own lines before a marker is
+placed, because the `#faust` line and any blank lines above it are not part of what the compiler
+saw. `stripFaustHeader` removes them and reports how many lines went.
+
 `src/jvmMain/kotlin/afield/four/synth/FaustBox.kt` — [read the source](source/jvmMain/afield/four/synth/FaustBox/)
 
 **Used in:** [Faust](../faust.md)
@@ -673,16 +707,16 @@ Convenience builder for classic FM algorithms.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faust</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">diagram</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">input</span><span class="p">:</span> <span class="nc">StereoRenderable</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controls&quot;</span><span class="p">,</span> <span class="n">lineOffset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustLaunch</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L60) | A box that is a signal processor. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustCompile</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustProgram</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L99) | Compile `source` without running it — for inspecting a program's interface or its diagram. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustControls</span><span class="p">(</span><span class="n">launch</span><span class="p">:</span> <span class="nc">FaustLaunch</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controls&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L212) | Turn a Faust program's own UI declaration into a Field control group. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustDiagram</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;diagram&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L247) | Show Faust's block diagram for a program. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustWaveform</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">maxPoints</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L267) | Render a program offline and plot the result. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerFaustLaunchReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L338) | Teach Field that a [`FaustLaunch`](synthesis.md#faustbox-kt-faustlaunch) is something a box can be running. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faust</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">diagram</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">input</span><span class="p">:</span> <span class="nc">StereoRenderable</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controls&quot;</span><span class="p">,</span> <span class="n">lineOffset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustLaunch</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L96) | A box that is a signal processor. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustCompile</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustProgram</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L135) | Compile `source` without running it — for inspecting a program's interface or its diagram. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustControls</span><span class="p">(</span><span class="n">launch</span><span class="p">:</span> <span class="nc">FaustLaunch</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controls&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L248) | Turn a Faust program's own UI declaration into a Field control group. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustDiagram</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;diagram&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L283) | Show Faust's block diagram for a program. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">faustWaveform</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">maxPoints</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L303) | Render a program offline and plot the result. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerFaustLaunchReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L374) | Teach Field that a [`FaustLaunch`](synthesis.md#faustbox-kt-faustlaunch) is something a box can be running. |
 
 ### FaustLaunch { #faustbox-kt-faustlaunch }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">FaustLaunch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">dsp</span><span class="p">:</span> <span class="nc">FaustDsp</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FaustNode</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L118)
+[<code class="highlight"><span class="k">class</span> <span class="nc">FaustLaunch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">dsp</span><span class="p">:</span> <span class="nc">FaustDsp</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FaustNode</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L154)
 
 A running Faust program, and the handle a box holds it by.
 
@@ -691,50 +725,85 @@ A running Faust program, and the handle a box holds it by.
 | <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">dsp</span><span class="p">:</span> <span class="nc">FaustDsp</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L133) | The controls this program declares. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">meters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L136) | The meters (`hbargraph`/`vbargraph`) this program declares. |
-| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L143) | Set a control by label, address or qualified name. Silently ignores an unknown name. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L148) | Set a control. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">meter</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L151) | Read a meter's most recent value, or 0 for an unknown name. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">meterValues</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L154) | Every meter's most recent value, by label. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">press</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">holdMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L164) | Press and release a `button`, `holdMs` apart. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L178) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L184) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L169) | The controls this program declares. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">meters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L172) | The meters (`hbargraph`/`vbargraph`) this program declares. |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L179) | Set a control by label, address or qualified name. Silently ignores an unknown name. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L184) | Set a control. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">meter</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L187) | Read a meter's most recent value, or 0 for an unknown name. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">meterValues</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L190) | Every meter's most recent value, by label. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">press</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">holdMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L200) | Press and release a `button`, `holdMs` apart. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L214) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustBox/#L220) |  |
 
 ## FaustDsp.kt { #faustdsp-kt }
+
+One compiled Faust program, instantiated and ready to make sound.
+
+A [`FaustProgram`](synthesis.md#faustengine-kt-faustprogram) is bytes; [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp) is the running thing. It holds its own WebAssembly instance
+in its own GraalVM context, and `render` pulls audio out of it a block at a time, which is exactly
+the shape [`StereoRenderable`](synthesis.md#signal-kt-stereorenderable) wants: a Faust program sits in Field's audio graph next to an
+oscillator with no adaptation. [`FaustNode`](synthesis.md#faustdsp-kt-faustnode) is what puts it there.
+
+### It is fast, and the cost is the boundary rather than the DSP
+
+Measured for a sawtooth-through-a-filter voice at 48kHz, where a 128-frame block has 2667µs to
+render in:
+
+ * `compute` on its own: **7.6µs**, about 350 times realtime. Generated Faust is not the
+   bottleneck.
+ * `render`, end to end through [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp): **60.4µs**.
+
+The gap is the JVM↔WebAssembly boundary, and two things keep it as small as that: the output is
+copied with one bulk `Value.readBuffer` per channel rather than a sample at a time, and the JS
+entry points are resolved once at construction rather than per block. What is left is dominated by
+the per-block `Context.enter`, which is where to look next if it ever matters. The figures above
+are one machine's; what `synth.faust.smoke` holds to is a floor of ten times realtime.
+
+The compiler, by contrast, *is* slow: see [`FaustEngine`](synthesis.md#faustengine-kt-faustengine), which keeps it behind a separate context
+for that reason.
+
+### The context is single-threaded, so parameters are queued
+
+A GraalVM context cannot be entered by two threads at once, and `render` runs on the audio thread.
+So `setParam` does not touch WebAssembly at all: it enqueues, and `render` drains the queue before
+computing. That is also the right audio-engineering answer, with no lock on the audio thread and no
+parameter changing halfway through a block.
+
+A queue rather than a last-write-wins map, because a `button` is momentary: collapsing a
+press and its release into one value would silently swallow a note.
 
 `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` — [read the source](source/jvmMain/afield/four/synth/FaustDsp/)
 
 ### FaustDsp { #faustdsp-kt-faustdsp }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">FaustDsp</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L49)
+[<code class="highlight"><span class="k">class</span> <span class="nc">FaustDsp</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L57)
 
-One compiled Faust program, instantiated and ready to make sound.
+One compiled Faust program instantiated in its own GraalVM context, rendering a block at a time.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">numInputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L84) | Channel counts as the compiled module reports them, not as the JSON claimed. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">numOutputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L85) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">setParam</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L174) | Queue a parameter change. Safe from any thread; applied at the start of the next `render`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">setParam</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L180) | Queue a change by control, honouring its declared range. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">meterValue</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L185) | The last sampled value of a meter control, or 0 if it has not been rendered yet. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">meterValues</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L188) | Every meter's last sampled value, by control index. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">inL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">inR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L196) | Render `numFrames` of audio. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L300) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L305) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">numInputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L92) | Channel counts as the compiled module reports them, not as the JSON claimed. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">numOutputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L93) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setParam</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L182) | Queue a parameter change. Safe from any thread; applied at the start of the next `render`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setParam</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L188) | Queue a change by control, honouring its declared range. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">meterValue</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L193) | The last sampled value of a meter control, or 0 if it has not been rendered yet. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">meterValues</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L196) | Every meter's last sampled value, by control index. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">inL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">inR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L204) | Render `numFrames` of audio. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L308) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L313) |  |
 
 ### FaustNode { #faustdsp-kt-faustnode }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FaustNode</span><span class="p">(</span><span class="k">val</span> <span class="n">dsp</span><span class="p">:</span> <span class="nc">FaustDsp</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">input</span><span class="p">:</span> <span class="nc">StereoRenderable</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L327)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FaustNode</span><span class="p">(</span><span class="k">val</span> <span class="n">dsp</span><span class="p">:</span> <span class="nc">FaustDsp</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">input</span><span class="p">:</span> <span class="nc">StereoRenderable</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L335)
 
 A [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp) as a node in Field's audio graph.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">dsp</span><span class="p">:</span> <span class="nc">FaustDsp</span></code> |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L335) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustDsp/#L343) |  |
 
 ## FaustEditorExtension.kt { #fausteditorextension-kt }
 
@@ -760,6 +829,44 @@ The `#faust` editor extension and the vocabulary it completes against.
 
 ## FaustEngine.kt { #faustengine-kt }
 
+The Faust compiler, running inside Field.
+
+Faust (`https://faust.grame.fr`) is a functional language for signal processing that compiles to
+efficient code. Field embeds the compiler itself as WebAssembly, in
+`src/jvmMain/resources/faust/` with a `PROVENANCE.md` beside it, and runs it in the same GraalVM
+runtime that already hosts `dough.wasm`. There is nothing to install on any platform: the build
+that loads is the one committed in the repository, and `synth.faust.smoke` asserts its version
+against `EXPECTED_LIBFAUST_VERSION`.
+
+### Two halves, opposite performance
+
+Measured on an aarch64 Mac under GraalVM CE 25.0.2, and the reason the object is shaped the way it
+is:
+
+ * **Generated DSP is fast.** `compute` on a compiled program takes ~7.6µs of the 2667µs a
+   128-frame block has at 48kHz; end to end through [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp) it is ~60µs, and what separates
+   those two figures is the JVM↔WebAssembly boundary rather than Faust. `synth.faust.smoke`
+   asserts a floor of ten times realtime, so playing is not a performance problem here.
+ * **The compiler is slow.** `compile` settles at ~600ms once Truffle has warmed, against ~30ms
+   for the same call under Node's V8, and the *first* compile of a process pays 13–22s of warm-up.
+
+Three things follow:
+
+ 1. The compiler gets **its own GraalVM context**, never shared with a [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp). A 600ms compile
+    holding a lock the audio thread wants every 2.67ms would be audible as a dropout.
+ 2. `warmInBackground` pays the 13–22s while Field is starting, rather than at the moment someone
+    first runs a box.
+ 3. `compile` is memoised on the hash of (source, arguments), so re-running an unchanged box, or
+    undoing back to a program already seen, costs nothing.
+
+### Errors
+
+The vendored compiler is an Emscripten build with exception catching disabled, so *every* failure
+arrives as an opaque `"Exception catching is disabled"` RuntimeError. The real message is only
+available afterwards, from `getErrorAfterException()`, and it is well formed:
+`"probe:2 : ERROR : undefined symbol : sawtoothX"`. [`FaustCompileError`](synthesis.md#faustengine-kt-faustcompileerror) parses that into something
+an editor marker can use.
+
 `src/jvmMain/kotlin/afield/four/synth/FaustEngine.kt` — [read the source](source/jvmMain/afield/four/synth/FaustEngine/)
 
 **Used in:** [Faust](../faust.md)
@@ -768,28 +875,28 @@ The `#faust` editor extension and the vocabulary it completes against.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stripFaustHeader</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L339) | Remove a leading `#faust` marker line, returning the source and the number of lines removed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stripFaustHeader</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L347) | Remove a leading `#faust` marker line, returning the source and the number of lines removed. |
 
 ### FaustEngine { #faustengine-kt-faustengine }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FaustEngine</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L62)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FaustEngine</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L70)
 
-The Faust compiler, running inside Field.
+Compiles Faust source to a [`FaustProgram`](synthesis.md#faustengine-kt-faustprogram), once per distinct (source, arguments) pair.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">EXPECTED&#95;LIBFAUST&#95;VERSION</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L65) | The libfaust build vendored in `resources/faust`; asserted by the smoke test. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;ARGS</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L73) | Default compiler arguments. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">warmInBackground</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L105) | Start loading and warming the compiler on a background thread. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">libfaustVersion</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L120) | The libfaust version actually loaded, e.g. `2.86.2`. Boots the compiler if needed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;ARGS</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustProgram</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L132) | Compile Faust source to a WebAssembly module plus its metadata. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">blockDiagram</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;ARGS</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L162) | The Faust block diagram for `source`, as SVG. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearCache</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L183) | Drop the memoised programs. Used by tests that need a cold-ish measurement. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L194) | Close the compiler and release its context. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">EXPECTED&#95;LIBFAUST&#95;VERSION</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L73) | The libfaust build vendored in `resources/faust`; asserted by the smoke test. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;ARGS</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L81) | Default compiler arguments. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">warmInBackground</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L113) | Start loading and warming the compiler on a background thread. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">libfaustVersion</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L128) | The libfaust version actually loaded, e.g. `2.86.2`. Boots the compiler if needed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;ARGS</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustProgram</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L140) | Compile Faust source to a WebAssembly module plus its metadata. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">blockDiagram</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;ARGS</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L170) | The Faust block diagram for `source`, as SVG. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearCache</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L191) | Drop the memoised programs. Used by tests that need a cold-ish measurement. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L202) | Close the compiler and release its context. |
 
 ### FaustProgram { #faustengine-kt-faustprogram }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">wasm</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">dspJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">ui</span><span class="p">:</span> <span class="nc">FaustUi</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L351)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">wasm</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">dspJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">ui</span><span class="p">:</span> <span class="nc">FaustUi</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L359)
 
 A compiled Faust program: the WebAssembly module and what the compiler said about it.
 
@@ -800,15 +907,15 @@ A compiled Faust program: the WebAssembly module and what the compiler said abou
 | <code class="highlight"><span class="k">val</span> <span class="n">wasm</span><span class="p">:</span> <span class="nc">ByteArray</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">dspJson</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">ui</span><span class="p">:</span> <span class="nc">FaustUi</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L359) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L360) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L364) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L370) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L372) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L367) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L368) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L372) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L378) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L380) |  |
 
 ### FaustCompileError { #faustengine-kt-faustcompileerror }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FaustCompileError</span><span class="p">(</span><span class="k">val</span> <span class="n">faustMessage</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Exception</span><span class="p">(</span><span class="n">faustMessage</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L389)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FaustCompileError</span><span class="p">(</span><span class="k">val</span> <span class="n">faustMessage</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Exception</span><span class="p">(</span><span class="n">faustMessage</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L397)
 
 A Faust compile error, with the line the compiler blamed.
 
@@ -820,7 +927,7 @@ A Faust compile error, with the line the compiler blamed.
 
 ### FaustUi { #faustengine-kt-faustui }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustUi</span><span class="p">(</span><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L423)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustUi</span><span class="p">(</span><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L431)
 
 What a Faust program declares about its own controls, flattened.
 
@@ -829,12 +936,12 @@ What a Faust program declares about its own controls, flattened.
 | <code class="highlight"><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code> | Every control, groups flattened. Alphabetical within a group — see `writable`. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">writable</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L436) | Controls a person can move. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">meters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L439) | `hbargraph`/`vbargraph`: values the DSP reports back, for meters. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">writable</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L444) | Controls a person can move. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">meters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustControl</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L447) | `hbargraph`/`vbargraph`: values the DSP reports back, for meters. |
 
 ### FaustControlType { #faustengine-kt-faustcontroltype }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">FaustControlType</span><span class="p">(</span><span class="k">val</span> <span class="n">faustName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L511)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">FaustControlType</span><span class="p">(</span><span class="k">val</span> <span class="n">faustName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L519)
 
 The Faust control widgets Field knows how to show.
 
@@ -842,7 +949,7 @@ Constants: `HSLIDER`, `VSLIDER`, `NENTRY`, `BUTTON`, `CHECKBOX`, `HBARGRAPH`, `V
 
 ### FaustScale { #faustengine-kt-faustscale }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FaustScale</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L526)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FaustScale</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L534)
 
 `[scale:...]` metadata — how a slider's travel maps onto its value.
 
@@ -850,7 +957,7 @@ Constants: `LINEAR`, `LOG`, `EXP`.
 
 ### FaustControl { #faustengine-kt-faustcontrol }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustControl</span><span class="p">(</span><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">FaustControlType</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">groupPath</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="k">init</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">unit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">FaustScale</span> <span class="o">=</span> <span class="nc">FaustScale</span><span class="p">.</span><span class="nc">LINEAR</span><span class="p">,</span> <span class="k">val</span> <span class="n">tooltip</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L544)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustControl</span><span class="p">(</span><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">FaustControlType</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">groupPath</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="k">init</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">unit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">FaustScale</span> <span class="o">=</span> <span class="nc">FaustScale</span><span class="p">.</span><span class="nc">LINEAR</span><span class="p">,</span> <span class="k">val</span> <span class="n">tooltip</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L552)
 
 One control declared by a Faust program.
 
@@ -868,11 +975,11 @@ One control declared by a Faust program.
 | <code class="highlight"><span class="k">val</span> <span class="n">unit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">FaustScale</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">tooltip</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isReadOnly</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L559) | A bargraph is the DSP talking to the user, not the other way round. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isMomentary</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L562) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isToggle</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L563) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">qualifiedLabel</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L566) | Label with its groups, e.g. `filter/cutoff`, for a flat control surface. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">displayLabel</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L570) | Label with its unit, e.g. `cutoff (Hz)`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isReadOnly</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L567) | A bargraph is the DSP talking to the user, not the other way round. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isMomentary</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L570) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isToggle</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L571) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">qualifiedLabel</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L574) | Label with its groups, e.g. `filter/cutoff`, for a flat control surface. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">displayLabel</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustEngine/#L578) | Label with its unit, e.g. `cutoff (Hz)`. |
 
 ## FaustPattern.kt { #faustpattern-kt }
 
@@ -1005,15 +1112,55 @@ Turns a pattern into notes for a [`FaustVoiceBank`](synthesis.md#faustpoly-kt-fa
 
 ## FaustPoly.kt { #faustpoly-kt }
 
+A Faust program played polyphonically, by a pattern.
+
+[`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp) is one instance of one program: a drone with knobs. This is the other thing a Faust program
+can be, an *instrument*: N copies of the same compiled DSP allocated to notes, with the notes coming
+from Field's own pattern language. Nothing in Faust is recompiled to make that happen. A Faust factory
+built with internal memory keeps its whole state at offset 0 of its own WebAssembly memory, so N
+`WebAssembly.Instance`s of one module are N independent voices for free.
+
+### One context, N instances
+
+Each [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp) builds its own GraalVM context, and what is left of a block after `compute` is dominated
+by the per-block `Context.enter` (see [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp) for the figures). N voices as N [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp)s would pay
+that entry N times a block, which would make the cost of polyphony a boundary cost rather than a DSP
+cost. [`FaustVoiceBank`](synthesis.md#faustpoly-kt-faustvoicebank) hosts every voice in **one** context instead, one `enter` a block whatever N is.
+That needs a host shim of its own: [`FaustDsp`](synthesis.md#faustdsp-kt-faustdsp)'s keeps its instance in module-level JS globals and can
+hold only one.
+
+Both arrangements are timed against each other by `synth.faust.poly`, which prints the µs-per-block
+curve for each and asserts that the one shipped here renders a block inside the block's own budget at
+1, 2, 4, 8 and 16 voices.
+
+### The notes land on the sample, not on the block
+
+A 128-frame block at 48kHz is 2.67ms, and quantising a note onset to that boundary is audible. So
+`render` does not write parameters once per block. It enters the context once, then walks the block in
+**chunks that end where the next event begins**: apply the writes due at this exact frame, `compute` up
+to the next event, repeat. A note therefore begins on the sample it was scheduled for, and
+`synth.faust.poly` asserts that in samples rather than in milliseconds.
+
+This is also why `FaustDsp.setParam` is not used: that queue is drained once per `render` call, which is
+block granularity by construction.
+
+### The controls are the program's own, and it says so when they are missing
+
+Faust's polyphonic convention is `freq` / `gate` / `gain`, the same three names its `-nvoices`
+architecture looks for, and they are discovered out of the program's declared UI by label rather than by
+index. `gain` is optional; a program missing `freq` or `gate` is refused by [`FaustPolyControls`](synthesis.md#faustpoly-kt-faustpolycontrols), with a
+message naming what is missing, what the program *did* declare, and the line of Faust that would fix it.
+Writing to control index 0 instead would produce silence, which carries no diagnosis at all.
+
 `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` — [read the source](source/jvmMain/afield/four/synth/FaustPoly/)
 
 **Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
 
 ### FaustVoiceBank { #faustpoly-kt-faustvoicebank }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">FaustVoiceBank</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">FaustPolyControls</span><span class="p">,</span> <span class="k">val</span> <span class="n">mixGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">idleThreshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5f</span><span class="p">,</span> <span class="k">val</span> <span class="n">stealReleaseFrames</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="nc">RETRIGGER&#95;FRAMES</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L58)
+[<code class="highlight"><span class="k">class</span> <span class="nc">FaustVoiceBank</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FaustProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">FaustPolyControls</span><span class="p">,</span> <span class="k">val</span> <span class="n">mixGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">idleThreshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5f</span><span class="p">,</span> <span class="k">val</span> <span class="n">stealReleaseFrames</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="nc">RETRIGGER&#95;FRAMES</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L68)
 
-A Faust program played polyphonically, by a pattern.
+N instances of one compiled Faust program, allocated to notes and summed.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1024,34 +1171,34 @@ A Faust program played polyphonically, by a pattern.
 | <code class="highlight"><span class="k">val</span> <span class="n">mixGain</span><span class="p">:</span> <span class="nc">Double</span></code> | Every voice's output is summed and multiplied by this on the way out. |
 | <code class="highlight"><span class="k">val</span> <span class="n">idleThreshold</span><span class="p">:</span> <span class="nc">Float</span></code> | Below this, for a whole chunk and with its gate down, a voice counts as finished and can be reallocated without cutting a tail. |
 | <code class="highlight"><span class="k">val</span> <span class="n">stealReleaseFrames</span><span class="p">:</span> <span class="nc">Long</span></code> | How long a stolen voice holds its gate **down** before raising it for the incoming note, in samples. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">numInputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L175) | Channel counts as the compiled module reports them. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">numOutputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L176) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L248) | Absolute frames rendered so far — the bank's clock, and the only clock a note is timed against. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">steals</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L270) | How many gate-on voices were cut short because every voice was busy. Ideally zero. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">tailCuts</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L275) | How many *released but still ringing* voices were reused. Audible as a shortened tail, not a cut note. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">lateNotes</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L280) | Notes that arrived after the frame they were meant to start on, and were played immediately. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">notesPlayed</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L285) | Notes started. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">peakConcurrency</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L290) | The greatest number of voices sounding at once, so far. The measure of polyphony actually reached. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">notes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">FaustNote</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L367) | Schedule `notes` for their own frames on this bank's clock. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">note</span><span class="p">:</span> <span class="nc">FaustNote</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L373) | Schedule one note. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">play</span><span class="p">(</span><span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">afterSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L380) | Schedule a note starting `afterSeconds` from now, for `seconds`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">automate</span><span class="p">(</span><span class="n">changes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">FaustParamChange</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L392) | Schedule shared-parameter changes for their own frames — a cutoff sweep, a resonance, a detune. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">automationApplied</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L399) | Shared-parameter changes applied so far. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">pendingCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L410) | Notes scheduled but not yet started — those handed over and not yet drained, plus those the audio thread is holding as of its last block. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearSchedule</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L419) | Drop every note and parameter change that has not happened yet. Sounding notes finish. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">allNotesOff</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L426) | Gate every voice down now, and forget the schedule. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">setAll</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L451) | Set a control on **every** voice — a cutoff, a resonance, anything that is not per-note. |
-| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L463) | Set a control by label on every voice. Silently ignores an unknown name. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L477) | Render `numFrames` of the mix, advancing the bank's clock by exactly that many frames. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">activeVoices</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L766) | How many voices are sounding right now (gate up, or still ringing). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">voiceHz</span><span class="p">(</span><span class="n">voice</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L769) | Which pitch a voice was last given, in Hz, or 0 if it has never played. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">paramValue</span><span class="p">(</span><span class="n">voice</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L777) | Read a control back out of one voice's WebAssembly memory. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L788) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L793) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">numInputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L185) | Channel counts as the compiled module reports them. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">numOutputs</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L186) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L258) | Absolute frames rendered so far — the bank's clock, and the only clock a note is timed against. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">steals</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L280) | How many gate-on voices were cut short because every voice was busy. Ideally zero. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">tailCuts</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L285) | How many *released but still ringing* voices were reused. Audible as a shortened tail, not a cut note. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">lateNotes</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L290) | Notes that arrived after the frame they were meant to start on, and were played immediately. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">notesPlayed</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L295) | Notes started. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">peakConcurrency</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L300) | The greatest number of voices sounding at once, so far. The measure of polyphony actually reached. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">notes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">FaustNote</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L377) | Schedule `notes` for their own frames on this bank's clock. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">note</span><span class="p">:</span> <span class="nc">FaustNote</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L383) | Schedule one note. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">play</span><span class="p">(</span><span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">afterSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L390) | Schedule a note starting `afterSeconds` from now, for `seconds`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">automate</span><span class="p">(</span><span class="n">changes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">FaustParamChange</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L402) | Schedule shared-parameter changes for their own frames — a cutoff sweep, a resonance, a detune. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">automationApplied</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L409) | Shared-parameter changes applied so far. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pendingCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L420) | Notes scheduled but not yet started — those handed over and not yet drained, plus those the audio thread is holding as of its last block. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearSchedule</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L429) | Drop every note and parameter change that has not happened yet. Sounding notes finish. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">allNotesOff</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L436) | Gate every voice down now, and forget the schedule. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setAll</span><span class="p">(</span><span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L461) | Set a control on **every** voice — a cutoff, a resonance, anything that is not per-note. |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L473) | Set a control by label on every voice. Silently ignores an unknown name. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L487) | Render `numFrames` of the mix, advancing the bank's clock by exactly that many frames. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">activeVoices</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L776) | How many voices are sounding right now (gate up, or still ringing). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">voiceHz</span><span class="p">(</span><span class="n">voice</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L779) | Which pitch a voice was last given, in Hz, or 0 if it has never played. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">paramValue</span><span class="p">(</span><span class="n">voice</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L787) | Read a control back out of one voice's WebAssembly memory. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L798) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L803) |  |
 
 ### FaustNote { #faustpoly-kt-faustnote }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustNote</span><span class="p">(</span><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">endFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L814)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustNote</span><span class="p">(</span><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">endFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L824)
 
 One note for a [`FaustVoiceBank`](synthesis.md#faustpoly-kt-faustvoicebank): when, for how long, at what pitch.
 
@@ -1062,22 +1209,22 @@ One note for a [`FaustVoiceBank`](synthesis.md#faustpoly-kt-faustvoicebank): whe
 | <code class="highlight"><span class="k">val</span> <span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span></code> | Pitch in Hz, written to the program's declared `freq` control (clamped to its declared range). |
 | <code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> | Written to the program's declared `gain` control, if it declares one. |
 | <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> | What the pattern atom said, carried through for debugging and for plots. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">lengthFrames</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L829) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L831) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">lengthFrames</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L839) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L841) |  |
 
 ### FaustParamChange { #faustpoly-kt-faustparamchange }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustParamChange</span><span class="p">(</span><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L842)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustParamChange</span><span class="p">(</span><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">control</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L852)
 
 One shared-parameter change, on a frame of the bank's clock.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L843) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L853) |  |
 
 ### FaustPolyControls { #faustpoly-kt-faustpolycontrols }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustPolyControls</span><span class="p">(</span><span class="k">val</span> <span class="n">freq</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">val</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L858)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FaustPolyControls</span><span class="p">(</span><span class="k">val</span> <span class="n">freq</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">val</span> <span class="n">gate</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">FaustControl</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L868)
 
 The three controls a polyphonic Faust program has to declare, found by **label**.
 
@@ -1089,13 +1236,13 @@ The three controls a polyphonic Faust program has to declare, found by **label**
 
 ### FaustPolyNode { #faustpoly-kt-faustpolynode }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FaustPolyNode</span><span class="p">(</span><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">FaustVoiceBank</span><span class="p">)</span> <span class="p">:</span> <span class="nc">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L914)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FaustPolyNode</span><span class="p">(</span><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">FaustVoiceBank</span><span class="p">)</span> <span class="p">:</span> <span class="nc">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L924)
 
 A [`FaustVoiceBank`](synthesis.md#faustpoly-kt-faustvoicebank) as a node in Field's audio graph.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L915) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPoly/#L925) |  |
 
 ## FieldAudioEngine.kt { #fieldaudioengine-kt }
 

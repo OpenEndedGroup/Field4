@@ -704,6 +704,10 @@ private fun macroPanelSyncControls() {
         if (nameSaved) "" else "Load or save a macro before running it."
     )
     macroPanelSetControlEnabled(
+        "copy-link", nameSaved,
+        if (nameSaved) "Copy a Markdown link that runs this saved macro" else "Load or save a macro before linking to it."
+    )
+    macroPanelSetControlEnabled(
         "promote", nameSaved && scope != "workspace",
         when {
             !nameSaved -> "Load or save a macro before promoting it."
@@ -884,6 +888,7 @@ private fun ensureMacroPanel(): HTMLElement {
             <button type="button" data-action="start">Start</button>
             <button type="button" data-action="save">Save</button>
             <button type="button" data-action="run">Run</button>
+            <button type="button" data-action="copy-link">Copy link</button>
             <button type="button" data-action="promote" title="Copy this macro to the project (or workspace) so other documents can use it">Promote</button>
             <button type="button" data-action="reveal"></button>
         </div>
@@ -1078,6 +1083,9 @@ private fun ensureMacroPanel(): HTMLElement {
             macroPanelShowRunFeedback(response)
             macroPanelRefresh()
         }
+    })
+    panel.querySelector("[data-action='copy-link']")?.addEventListener("click", {
+        window.asDynamic().copyMarkdownMacroLink(macroPanelName(), macroPanelScope(), macroPanelProjectName())
     })
     panel.querySelector("[data-action='promote']")?.addEventListener("click", {
         val name = macroPanelName()
@@ -2731,6 +2739,16 @@ fun registerBuiltinCommands() {
                 window.switchToDefaultDocs();
             }
         },{
+            id:'show-document-guide',
+            label:"Show Document Guide",
+            detail:"Read this document's Markdown guides beside its boxes",
+            run: () => { window.showDocumentGuide(); }
+        },{
+            id:'copy-box-guide-link',
+            label:"Copy Markdown Link to Box or Line",
+            detail:"Link to the selected box, property and current editor line from Markdown anywhere in Field",
+            run: () => { window.copyDocumentGuideBoxLink(); }
+        },{
             id:'show-document-history',
             label:"Show Document History",
             detail:"Switch to the history view mode",
@@ -2753,9 +2771,9 @@ fun registerBuiltinCommands() {
             }
         },{
             id:'toggle-notes-markdown-preview',
-            label:"Toggle Notes Markdown Preview",
+            label:"Toggle Markdown Preview",
             keys: 'cmd+shift+m',
-            detail:"Switch the notes property between rendered Markdown and editable Markdown source",
+            detail:"Switch notes or a Markdown file proxy between reading and source",
             run: () => {
                 if (typeof window.toggleNotesMarkdownPreview === 'function') {
                     window.toggleNotesMarkdownPreview(window.globalEditor || null);

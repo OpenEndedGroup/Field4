@@ -919,6 +919,7 @@ fun installAi4() {
         val lang = langSpecForName(langName)
         val docName = File(sessionInfo.filename).name
         val docPath = sessionInfo.filename
+        val documentGuides = DocumentGuideTools.forSession(sessionInfo)
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val textProperties = linkedSetOf(
@@ -2339,6 +2340,7 @@ fun installAi4() {
                             semanticRetrievalStatus = semanticRetrievalStatus,
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
+                            documentGuides = documentGuides,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -2404,6 +2406,7 @@ fun installAi4() {
                             semanticRetrievalStatus = semanticRetrievalStatus,
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
+                            documentGuides = documentGuides,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
@@ -2451,6 +2454,7 @@ fun installAi4() {
                             semanticRetrievalStatus = semanticRetrievalStatus,
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
+                            documentGuides = documentGuides,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -2482,6 +2486,7 @@ fun installAi4() {
                             semanticRetrievalStatus = semanticRetrievalStatus,
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
+                            documentGuides = documentGuides,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -2513,6 +2518,7 @@ fun installAi4() {
                             semanticRetrievalStatus = semanticRetrievalStatus,
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
+                            documentGuides = documentGuides,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -2667,7 +2673,10 @@ fun installAi4() {
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
         
-        val fileKey = "chat:${documentName()}"
+        val chatSession = currentSessionInfoOrNull()
+        val chatDocPath = chatSession?.filename.orEmpty()
+        val documentGuides = chatSession?.let { DocumentGuideTools.forSession(it) }
+        val fileKey = "chat:$chatDocPath"
         val state = chatThreadFor(fileKey, "")
         val agentMemory = agentMemoryByKey.computeIfAbsent(fileKey) { AgentMemoryState() }
         
@@ -2692,7 +2701,6 @@ fun installAi4() {
                     wrap = { it.trimEnd() },
                     unwrap = { it.trimEnd() }
                 )
-                val chatDocPath = currentSessionInfoOrNull()?.filename.orEmpty()
                 val codeUseQuery: (CodeUseQueryRequest) -> CodeUseQueryResult = { req ->
                     val kind = req.kind.trim().lowercase().ifBlank { "failures" }
                     val limit = req.limit.coerceIn(1, 50)
@@ -2890,7 +2898,8 @@ fun installAi4() {
                     semanticRetrievalSearch = semanticRetrievalSearch,
                     semanticRetrievalStatus = semanticRetrievalStatus,
                     semanticRetrievalRebuild = semanticRetrievalRebuild,
-                    agentMemory = agentMemory
+                    agentMemory = agentMemory,
+                    documentGuides = documentGuides
                 )
                 
                 chatThreadByKey[fileKey] = result.threadState

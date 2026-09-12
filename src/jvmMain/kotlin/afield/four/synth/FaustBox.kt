@@ -14,6 +14,42 @@ import kotlinx.coroutines.yield
 import java.io.Closeable
 
 /**
+ * The box-facing side of Faust: compile a program, play it, show what it declares.
+ *
+ * `faust` is the call that matters. It strips the `#faust` marker, compiles, instantiates, and
+ * returns a [FaustLaunch]:
+ *
+ * ```kotlin
+ * faust("""
+ * #faust
+ * import("stdfaust.lib");
+ * freq = hslider("freq [unit:Hz]", 220, 50, 1000, 0.01);
+ * process = os.sawtooth(freq) : fi.lowpass(2, 1200) * 0.2 <: _,_;
+ * """)
+ * ```
+ *
+ * Returning that launch as the box's last expression is what ties the sound to the box: it stays lit
+ * while the program runs, and stopping the box stops the sound and closes the DSP's GraalVM context.
+ * `registerFaustLaunchReturnValue` is the handler that does both. It exists because the generic audio
+ * handler would close the audio patch and leave the context alive, which is one leaked context per
+ * box run.
+ *
+ * Everything else is a separate call, so a box shows only what it wants to:
+ *
+ *  * `faustControls` turns the program's own `hslider`, `button` and `hgroup` declarations into a
+ *    Field control group. Nobody writes the sliders, and a control group is what the phone's Group
+ *    page publishes, so they are reachable from a phone at no extra cost.
+ *  * `faustDiagram` displays Faust's own SVG block diagram of the program.
+ *  * `faustWaveform` renders a program offline and plots it. Nothing there touches the audio engine,
+ *    so it works where there is no audio device at all.
+ *  * `faustCompile` compiles without playing, for looking at a program's interface or its diagram.
+ *
+ * Every line number the compiler reports is shifted back onto the box's own lines before a marker is
+ * placed, because the `#faust` line and any blank lines above it are not part of what the compiler
+ * saw. [stripFaustHeader] removes them and reports how many lines went.
+ */
+
+/**
  * A box that is a signal processor.
  *
  * ```kotlin

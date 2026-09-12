@@ -1,4 +1,4 @@
-.profile-timeline { position:fixed; z-index:12020; left:12px; right:12px; bottom:12px; height:min(650px,80vh); display:flex; flex-direction:column; gap:8px; padding:14px; background:#000; color:#ddd; border:5px solid var(--field-border,#333); border-radius:5px; box-shadow:0 8px 36px #0009; font:12px var(--field-font,"Iosevka Web"),Iosevka,monospace; overflow:hidden; user-select:none; -webkit-user-select:none; box-sizing:border-box; }
+.profile-timeline { position:fixed; z-index:12020; left:12px; right:12px; bottom:12px; height:min(650px,80vh); display:flex; flex-direction:column; gap:8px; padding:14px; background:#000; color:#ddd; border:5px solid var(--field-border,#333); border-radius:5px; font:12px var(--field-font,"Iosevka Web"),Iosevka,monospace; overflow:hidden; user-select:none; -webkit-user-select:none; box-sizing:border-box; }
 .profile-timeline[hidden] { display:none; }
 .profile-timeline * { box-sizing:border-box; user-select:none; -webkit-user-select:none; }
 .profile-timeline [hidden] { display:none !important; }
