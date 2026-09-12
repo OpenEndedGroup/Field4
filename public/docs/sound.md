@@ -12,8 +12,8 @@ pattern all the way down the **first two**, and **every audio figure below says 
 produced it.** The third has a page of its own,
 [Faust: a box that is a signal processor](faust.md#a-pattern-plays-it).
 
-Three counts the voices a *pattern* can drive. Six things in Field make samples by one route or
-another, and [Making a sound in Field: every path there is](sound_paths.md) maps all six and helps
+Three counts the voices a *pattern* can drive. Seven things in Field make samples by one route or
+another, and [Making a sound in Field: every path there is](sound_paths.md) maps all seven and helps
 you pick.
 
 A third of the audio published elsewhere in these docs is the first voice below, and the rest is

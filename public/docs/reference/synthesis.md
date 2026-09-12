@@ -56,6 +56,8 @@ SIMD-accelerated buffer operations using the Java Vector API.
 
 `src/jvmMain/kotlin/afield/four/synth/Dough.kt` — [read the source](source/jvmMain/afield/four/synth/Dough/)
 
+**Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
+
 ### Top-level functions { #dough-kt-functions }
 
 | Declaration | Summary |
@@ -1004,6 +1006,8 @@ Turns a pattern into notes for a [`FaustVoiceBank`](synthesis.md#faustpoly-kt-fa
 ## FaustPoly.kt { #faustpoly-kt }
 
 `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` — [read the source](source/jvmMain/afield/four/synth/FaustPoly/)
+
+**Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
 
 ### FaustVoiceBank { #faustpoly-kt-faustvoicebank }
 
