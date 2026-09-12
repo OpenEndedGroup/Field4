@@ -735,6 +735,7 @@ def describe_unmatched_ids(
     filtered: set[str] | None = None,
     tags: set[str] | None = None,
     runner_names: set[str] | None = None,
+    skipped: list[dict[str, Any]] | None = None,
 ) -> str:
     known = sorted(str(test.get("id") or "") for test in tests)
     lines: list[str] = []
@@ -748,6 +749,19 @@ def describe_unmatched_ids(
             "The catalog was refreshed before this check, so these ids are absent from the "
             "FIELD_TEST blocks in the scanned roots, not merely stale."
         )
+        if skipped:
+            # The third reason an id can be absent, and the one that used to be invisible:
+            # discovery read the annotation and could not parse it. Before discovery failed open,
+            # that state took the entire catalog down instead, so nobody had to be told which
+            # annotation it was.
+            lines.append(
+                f"{len(skipped)} FIELD_TEST annotation(s) were skipped as unreadable, so an id "
+                "declared in one of these is absent for that reason rather than never written:"
+            )
+            lines.extend(
+                f"  - {item.get('sourceFile')}:{item.get('sourceLine')}: {item.get('error')}"
+                for item in skipped
+            )
     if filtered:
         narrowed = ", ".join(
             part
@@ -1740,6 +1754,7 @@ def run(args: argparse.Namespace) -> int:
                 filtered=filtered,
                 tags=set(args.tags or []),
                 runner_names=set(args.runners or []),
+                skipped=list(catalog.get("skipped") or []),
             )
         )
 
