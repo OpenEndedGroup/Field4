@@ -6068,7 +6068,7 @@ throws away everything except the source, which is usually the wrong trade.
 
 ### Where StackSL sits relative to its neighbours
 
-`afield.stdlib/stacksl.kt` — on the `Graphics`(graphics.md) page, because it is host API rather
+`afield.stdlib/stacksl.kt` — on the [Graphics](graphics.md) page, because it is host API rather
 than language — is how a box actually reaches a StackSL string. `afield.rectsl` compiles through
 this file: RectSL decides where rectangles are, StackSL decides how their materials shade, and
 `RectSLGlsl.kt` is the join. `VolumetricNoise.kt` beside this file is the noise vocabulary the

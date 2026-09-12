@@ -831,7 +831,7 @@ The `#faust` editor extension and the vocabulary it completes against.
 
 The Faust compiler, running inside Field.
 
-Faust (`https://faust.grame.fr`) is a functional language for signal processing that compiles to
+[Faust](https://faust.grame.fr) is a functional language for signal processing that compiles to
 efficient code. Field embeds the compiler itself as WebAssembly, in
 `src/jvmMain/resources/faust/` with a `PROVENANCE.md` beside it, and runs it in the same GraalVM
 runtime that already hosts `dough.wasm`. There is nothing to install on any platform: the build
