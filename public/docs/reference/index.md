@@ -123,12 +123,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FabricateRenderPlan.kt](renderers.md#fabricaterenderplan-kt) | Renderers | 21 | 2 | Render queue data structures and the `FabricateScenePlanner` that builds them from a `FabricateScene`. | [Fabricate Renderer](../fabricate_renderer.md) |
 | [FabricateScene.kt](renderers.md#fabricatescene-kt) | Renderers | 127 | 5 | The scene graph: nodes, transforms, materials, lights, animation playback, and the glTF import that fills them. | [Fabricate Renderer](../fabricate_renderer.md), [Geometry from disk](../geometry_from_disk.md) |
 | [FabricateShaderBoxes.kt](renderers.md#fabricateshaderboxes-kt) | Renderers | 4 | 4 | Expose Fabricate's built-in shaders the same way user-authored shaders work: each pass becomes an editable box with `vertex`/`fragment` GLSL tabs, live introspection, and `alt r` hot reload. | [Fabricate Renderer](../fabricate_renderer.md) |
-| [FaustBox.kt](synthesis.md#faustbox-kt) | Synthesis | 19 | 14 |  | [Faust](../faust.md) |
-| [FaustDsp.kt](synthesis.md#faustdsp-kt) | Synthesis | 15 | 8 |  |  |
+| [FaustBox.kt](synthesis.md#faustbox-kt) | Synthesis | 19 | 14 | The box-facing side of Faust: compile a program, play it, show what it declares. | [Faust](../faust.md) |
+| [FaustDsp.kt](synthesis.md#faustdsp-kt) | Synthesis | 15 | 8 | One compiled Faust program, instantiated and ready to make sound. |  |
 | [FaustEditorExtension.kt](synthesis.md#fausteditorextension-kt) | Synthesis | 5 | 1 |  |  |
-| [FaustEngine.kt](synthesis.md#faustengine-kt) | Synthesis | 51 | 23 |  | [Faust](../faust.md) |
+| [FaustEngine.kt](synthesis.md#faustengine-kt) | Synthesis | 51 | 23 | The Faust compiler, running inside Field. | [Faust](../faust.md) |
 | [FaustPattern.kt](synthesis.md#faustpattern-kt) | Synthesis | 62 | 35 | A pattern plays a Faust program. | [Faust](../faust.md) |
-| [FaustPoly.kt](synthesis.md#faustpoly-kt) | Synthesis | 48 | 34 |  |  |
+| [FaustPoly.kt](synthesis.md#faustpoly-kt) | Synthesis | 48 | 34 | A Faust program played polyphonically, by a pattern. |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 0 |  |  |
