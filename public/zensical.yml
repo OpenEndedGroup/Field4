@@ -70,6 +70,11 @@ nav:
       - Differentiating Functions: autodiff_examples.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      # Directly after the interpolants page, which is the other half of the same subject: that
+      # page is a value eased once to a target that stays put, this one is springs and a steering
+      # model for a target that keeps moving. Filed under Time & Signals rather than beside
+      # physics.md because nothing here is a solve — it is arithmetic on a value over time.
+      - Springs & Character Movement: movement_examples.md
       - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
       - Timeseries Examples: timeseries_examples.md
       - State Estimation Examples: state_estimation_examples.md
