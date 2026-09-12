@@ -16,22 +16,38 @@ import java.io.File
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-// The bridge between the pattern algebra and [MidiClip], plus a piano roll drawn as FLines.
-//
-// Two vocabulary mismatches have to be resolved here, and both are resolved in favour of the
-// existing pattern stack rather than by inventing a parallel model:
-//
-//  1. **Cycles versus beats.** A `PatPattern` is a function of *cycles* (`PatQ`, exact rationals);
-//     a MIDI file is quarter notes and ticks. `beatsPerCycle` bridges them, defaulting to 4 so one
-//     cycle is one bar of 4/4 — which is what the mini-notation reads like. It is an `Int` on
-//     purpose, so the conversion stays an exact rational and never rounds through a Double.
-//
-//  2. **Velocity and channel do not exist in the Pat vocabulary.** `PatAlgebra.kt` defines `gain`
-//     (0..1 amplitude) and reserves `note` for MIDI pitch, but there is no `velocity` and no
-//     `channel` key — I grepped for both. Rather than add two more named parameters that only this
-//     file would ever set, export reads velocity from `gain` when it is present, and accepts an
-//     explicit `velocity` annotation (0..127) when a caller wants wire-level control. Import writes
-//     both, so a round trip through the algebra keeps its dynamics either way.
+/**
+ * The bridge between the pattern algebra and [MidiClip], plus a piano roll drawn as FLines.
+ *
+ * Two vocabularies have to be reconciled, and the pattern stack's spelling wins both times.
+ *
+ * **Cycles against beats.** A `PatPattern` is a function of *cycles*, measured in [PatQ]: a
+ * rational over `BigInteger`, so a subdivision is exact however fine it gets. A MIDI file is
+ * quarter notes and ticks. `beatsPerCycle` bridges the two, defaulting to 4 so that one cycle is
+ * one bar of 4/4, which is what the mini-notation reads like. It is an `Int` because the import
+ * direction divides by `ppq * beatsPerCycle`: an integer denominator is what lets [MidiClip.toPat]
+ * rebuild every onset as an exact [PatQ] rather than a truncated one. Export does not keep that
+ * guarantee and cannot — [MidiNote] holds its position as `Double` quarter notes.
+ *
+ * **Velocity and channel are not in the Pat vocabulary.** `PatAlgebra.kt` names the parameters the
+ * rest of the stack reads — `gain` for amplitude, conventionally 0..1, and `note` for MIDI pitch —
+ * and there is no `velocity` parameter and no `channel`. Rather than add two more that only MIDI
+ * would ever set, export reads velocity from `gain` when it is present, and from an explicit
+ * `velocity` annotation (0..127) when a caller wants wire-level control. Import writes both, so a
+ * round trip through the algebra keeps its dynamics either way; `MidiRoundTripTest.a pattern
+ * exports to MIDI and comes back as a pattern` is where that is pinned.
+ *
+ * A clip read back in becomes a *finite* pattern. Querying past the last note yields nothing
+ * rather than looping, so reach for `slow`, `fast` or `cat` to place a clip inside a longer
+ * structure.
+ *
+ * **The piano roll** is FLine geometry rather than an SVG string: one filled rectangle per note
+ * over a beat-and-bar grid, with a horizontal rule at every C to give the eye an octave reference
+ * the way a real roll's keyboard gutter does. Each note line carries its pitch, velocity, start
+ * beat and track index in `properties`, so a caller can hit-test a click back to the note it
+ * landed on. Field's y axis grows *downward*, so a higher pitch draws at a smaller y; reversing
+ * that yields an upside-down roll that still looks plausible.
+ */
 
 /** Beats per cycle used by [MidiClip.toPat] and [PatPattern.toMidiClip] when none is given. */
 const val MIDI_DEFAULT_BEATS_PER_CYCLE: Int = 4

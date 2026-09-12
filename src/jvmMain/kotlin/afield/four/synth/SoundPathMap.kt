@@ -24,43 +24,42 @@ expect:
 /**
  * Every route Field has from code to something audible, declared — and re-derived from the code.
  *
- * `public/docs/sound.md` opened with a bolded claim that Field has "**two**" things that turn a
- * pattern's events into samples. That was true of *patterns* when it was written and it was never
- * true of *sound*: on the day this file was added the tree had **six** ways to make samples and
- * **five** ways to get them out of the process, and the page's framing reached two of each. The
- * count is the deliverable, so it lives here as data rather than in a sentence somebody has to
- * remember to update.
+ * The counts are the deliverable, so they live here as data rather than in a sentence somebody has
+ * to remember to update: [SOURCE_COUNT] ways to make samples, [SINK_COUNT] ways to get them out of
+ * the process, [INPUT_COUNT] ways to bring them in. Each is one [SoundPath] in [PATHS], carrying
+ * its role, whether it can run offline, what has to be installed, the symbol it starts at, and the
+ * page that documents it — or `null`, when nothing does. Running this object as a program re-counts
+ * [PATHS] against all four declared totals and fails on disagreement.
  *
- * The shape that makes the map worth having is not the list, it is [SoundPath.onSeam]. There is
- * exactly one signature everything realtime meets at —
- * `AudioPatchSpec.Renderer.render(outL, outR, numFrames, ctx)`, character-for-character
- * [StereoRenderable.render] — and only three of the six sample sources sit on it. [FaustNode] is
- * the newest arrival and it needed no new plumbing at all, which is the strongest single argument
- * for the seam existing. [patRenderStereo], [DoughEngine] and [SonicPi] are each off it, for three
- * different and legible reasons.
+ * The column that decides whether two paths can be used together is [SoundPath.onSeam]. Everything
+ * realtime meets at one signature, [StereoRenderable.render], which `AudioPatchSpec.Renderer`
+ * repeats character for character. Two paths that both implement it compose for free; a path that
+ * does not implement it composes with nothing. [patRenderStereo], [DoughEngine] and [SonicPi] are
+ * each outside it, for their own reasons.
  *
- * ## Why this is built like [DocsAudioProvenance] and not beside it
+ * #### Why this is built like [DocsAudioProvenance] and not beside it
  *
  * [DocsAudioProvenance] guards *published assets*: it scans the docs for `audio=` fences and
  * re-renders each one. That is the right mechanism for "did a figure rot" and the wrong one for
  * "did somebody add a path", because a new render path is invisible to it until a page publishes a
- * clip from it. So this file uses the same three-step shape — declare, derive from the code,
- * fail on disagreement — against a different derivation: [MARKERS] are literals that can only mean
- * "a new way in or out of this process", and every file carrying one has to be attributed to a
- * declared [SoundPath].
+ * clip from it. So this file takes the same three-step shape — declare, derive from the code, fail
+ * on disagreement — and points it at a different derivation: the [MARKERS] are literals that can
+ * only mean "a new way in or out of this process", and every file carrying one has to be
+ * attributed to a declared [SoundPath].
  *
- * The markers were chosen by measuring, not by taste. `alcOpenDevice(` appears in exactly three
- * files and each is a genuinely separate OpenAL context — which is itself a finding nobody had
- * written down. `WavFloatArrayWriter.encode` appears in five and three of those are *users* of the
- * sink rather than the sink, which is why a marker declares a file-to-path map instead of a bare
- * allowlist.
+ * A marker declares a file-to-path map rather than a bare allowlist because a literal turns up in
+ * the files that *use* a surface as well as in the one that *is* it: `WavFloatArrayWriter.encode`
+ * reaches both the inline-audio sink and its callers, and they belong to different paths. [SELF] is
+ * the sweep's one blind spot, and the audit turns it back into a check by requiring this file to
+ * spell every marker literal, so a literal that has drifted out of the tree cannot sit here
+ * matching nothing.
+ */
+
+/**
+ * The declared map, and the audit that re-derives it from the tree.
  *
- * ## When branch 1 lands
- *
- * A sibling nightly branch adds a polyphonic, pattern-driven Faust path. It does not exist at this
- * file's base, so this guard will not know it: after the merge, add one [SoundPath] to [PATHS] with
- * `onSeam = true`, bump [SOURCE_COUNT], and name its `entryPoint` in [PAGE]. The failure message
- * says so too, so the merge conflict resolves itself.
+ * [PATHS] and [MARKERS] are the data. Running this object as a program prints the map as a table,
+ * then checks it.
  */
 object SoundPathMap {
 
