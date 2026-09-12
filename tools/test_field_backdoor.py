@@ -1,5 +1,7 @@
 import argparse
 import asyncio
+import contextlib
+import io
 import re
 import shlex
 import sys
@@ -107,18 +109,74 @@ class BoxReferenceTests(unittest.TestCase):
         )
         self.assertIn(str(REPO_ROOT), self.client.workspace)
 
-    def test_status_exposes_the_resolved_workspace(self) -> None:
+    def status(self) -> dict:
         from tools.field_backdoor import dispatch_command
 
-        result = asyncio.run(
-            dispatch_command(
-                self.client,
-                parse_command("status"),
-                "status",
-            )
-        )
+        result = asyncio.run(dispatch_command(self.client, parse_command("status"), "status"))
         self.assertTrue(result["ok"])
-        self.assertEqual(result["data"]["workspace"], self.client.workspace)
+        return result["data"]
+
+    def test_status_separates_the_request_from_what_the_server_reported(self) -> None:
+        """The replacement for a test that could not fail.
+
+        Until 2026-09-12 this asserted `status["workspace"] == client.workspace` -- the tool
+        echoing its own field back, which is true however wrong the workspace is. `AGENTS.md`
+        prescribed verifying that same value before editing a real document, and on 2026-09-11
+        an agent wrote five documents into a different checkout's `dev_docs/agents/demos/`
+        across four runs while believing it had done so.
+        """
+        data = self.status()
+        self.assertNotIn("workspace", data)
+        self.assertEqual(data["requestedWorkspace"], None)
+        # Nothing has been read back from a server in this fixture, so there is no server fact
+        # to report -- and the request must not be substituted for one.
+        self.assertIsNone(data["serverWorkspace"])
+
+    def test_status_reports_a_server_workspace_that_can_disagree(self) -> None:
+        self.client.requested_workspace = "/tmp/what-the-caller-asked-for"
+        self.client.server_workspace = "/tmp/where-the-server-actually-writes"
+
+        data = self.status()
+
+        self.assertEqual(data["serverWorkspace"], "/tmp/where-the-server-actually-writes")
+        self.assertEqual(data["requestedWorkspace"], "/tmp/what-the-caller-asked-for")
+        self.assertNotEqual(data["serverWorkspace"], data["requestedWorkspace"])
+
+    def open_capturing_stderr(self, document: str, *, scratch: bool = False) -> str:
+        async def reply(_name: str, payload: dict, *, timeout: float, **_kwargs) -> dict:
+            return {"payload": {"documentName": payload["documentName"], "sessionKey": "k", "boxes": []}}
+
+        self.client.call_for_single_reply = reply  # type: ignore[assignment]
+        captured = io.StringIO()
+        with contextlib.redirect_stderr(captured):
+            asyncio.run(self.client.open_document(document, scratch=scratch, timeout=1.0))
+        return captured.getvalue()
+
+    def test_an_absolute_document_name_is_called_out(self) -> None:
+        """The third known cause of an unexplained `boxes: []`.
+
+        The server resolves a name as `workspace + "/" + name` unconditionally, so an absolute
+        path yields a session key with the workspace glued in front of it and an empty new
+        document. Measured on a live Field on port 19542: `--document <ws>/demo_doc` produced
+        `sessionKey` = `<ws>//Users/.../<ws>/demo_doc`.
+        """
+        warning = self.open_capturing_stderr("/Users/marc/Documents/AFieldWorkspace/dust_three")
+
+        self.assertIn("is an absolute path", warning)
+        # The remedy, spelled out with this caller's own paths rather than in the abstract.
+        self.assertIn("--workspace /Users/marc/Documents/AFieldWorkspace --document dust_three", warning)
+
+    def test_a_relative_document_name_says_nothing(self) -> None:
+        self.assertEqual(self.open_capturing_stderr("dust_three"), "")
+
+    def test_a_scratch_open_says_nothing_about_paths(self) -> None:
+        # `scratch` throws the name away, so there is nothing to warn about.
+        self.assertEqual(self.open_capturing_stderr("/tmp/anything", scratch=True), "")
+
+    def test_status_says_whether_the_request_reached_a_server_at_all(self) -> None:
+        # False for an attached server: `--workspace` only ever becomes
+        # `--args=--workspace ...` on the launch path, so on this path it decided nothing.
+        self.assertFalse(self.status()["workspaceAppliedToServer"])
 
     def test_set_command_uses_acknowledged_persistent_property_path(self) -> None:
         from tools.field_backdoor import dispatch_command
@@ -189,6 +247,71 @@ class BoxReferenceTests(unittest.TestCase):
             asyncio.run(client.ensure_server())
         self.assertTrue(client.reused_existing_server)
         self.assertIsNone(client.managed_process)
+
+    def attach(self, *, requested: str | None, server: str | None) -> FieldBackdoor:
+        """Attach to a live server that reports ``server`` as its workspace."""
+        client = FieldBackdoor(
+            port=9092,
+            workspace=requested,
+            default_timeout=0.01,
+            logger=_Logger(),
+            attach_existing=True,
+        )
+        instance: dict[str, object] = {
+            "repoRoot": str(REPO_ROOT),
+            "startedAtEpochMs": 1,
+            "pid": 123,
+        }
+        if server is not None:
+            instance["workspace"] = server
+        with (
+            mock.patch("tools.field_backdoor.health_check", return_value=True),
+            mock.patch("tools.field_backdoor.field_instance_info", return_value=instance),
+        ):
+            asyncio.run(client.ensure_server())
+        return client
+
+    def test_an_attached_server_donates_its_own_workspace_to_the_client(self) -> None:
+        client = self.attach(requested=None, server="/Users/marc/Documents/AFieldWorkspace")
+        self.assertEqual(client.server_workspace, "/Users/marc/Documents/AFieldWorkspace")
+        self.assertIsNone(client.requested_workspace)
+
+    def test_a_workspace_that_the_attached_server_will_ignore_is_refused(self) -> None:
+        """The 2026-09-11 incident, turned into a hard error.
+
+        `--workspace` reaches exactly one place: the `--args=--workspace ...` of a server this
+        process launches. Attached, it decided nothing, `status` echoed it back as fact, and
+        five documents landed in a different checkout's `dev_docs/agents/demos/` while the agent
+        believed it had verified the workspace.
+        """
+        with self.assertRaises(BackdoorError) as raised:
+            self.attach(
+                requested="/Users/marc/field4-worktrees/mine/dev_docs/agents/demos",
+                server="/Users/marc/field4/build/field-automation-workspace",
+            )
+
+        message = str(raised.exception)
+        # Both values, so the diagnosis needs no second command.
+        self.assertIn("/Users/marc/field4-worktrees/mine/dev_docs/agents/demos", message)
+        self.assertIn("/Users/marc/field4/build/field-automation-workspace", message)
+        self.assertIn("used to be ignored in silence", message)
+
+    def test_the_servers_own_workspace_is_accepted_however_it_is_spelled(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            nested = Path(root) / "AFieldWorkspace"
+            nested.mkdir()
+            # macOS resolves /tmp through /private/tmp, so a caller typing the path they were
+            # given must not be refused for a symlink they cannot see.
+            client = self.attach(requested=str(nested), server=str(nested.resolve()))
+        self.assertTrue(client.reused_existing_server)
+
+    def test_a_server_too_old_to_report_a_workspace_is_attachable_but_unverified(self) -> None:
+        # Fail open: refusing would make the new client unable to attach to a Field started
+        # before this change, which is a worse failure than an unverifiable one. `status` says
+        # `serverWorkspace: null`, which is the honest answer.
+        client = self.attach(requested="/tmp/AFieldWorkspace", server=None)
+        self.assertTrue(client.reused_existing_server)
+        self.assertIsNone(client.server_workspace)
 
     def test_explicit_live_attachment_never_starts_a_missing_server(self) -> None:
         client = FieldBackdoor(

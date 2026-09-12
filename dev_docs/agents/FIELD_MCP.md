@@ -73,6 +73,12 @@ Native bridge tools (always present):
 
 - `field_status`, `field_list_open_documents`, `field_open_document` — connection and
   document targeting (auto-attaches to the single open document if unspecified).
+  `field_status` also reports `serverWorkspace`: the directory the running Field resolves
+  document names against, read back from `GET /api/instance-info` rather than assumed. It
+  comes from a machine-global preference by default and has been observed pointing into an
+  unrelated checkout, so check it before `field_open_document` on anything you care about
+  ([`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md)). `null` means the
+  server predates that field.
 - `field_snapshot` (full document; `include_code=false` for a graph overview),
   `field_read_box` — read the attached document.
 - `field_create_box`, `field_run_transcript` (inline operation-transcript YAML),

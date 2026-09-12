@@ -63,12 +63,21 @@ first, make semantic edits through the backdoor, and let the user supply immedia
 visual judgment from the native renderer. Never attach this way to an unidentified
 session.
 
-**Name both halves of a real document.** The backdoor does not inherit the workspace
-that launched an already-running Field. Omitting `--workspace` still selects the
-checkout-local `build/field-automation-workspace`, even on port 9092; therefore
-`--document dust_three` alone opens or creates
-`build/field-automation-workspace/dust_three`, not the document visible in the user's
-window. Start a live collaboration with a read-only preflight such as:
+**Name both halves of a real document, and get the workspace half from the server.** An
+already-running Field resolves a document name against *its own* workspace — by default a
+machine-global preference (`~/.afield/last-workspace.txt`) that has been observed pointing
+into an unrelated checkout. The backdoor's `--workspace` cannot change that: it only ever
+configures a server this process launches. So on an attach it must either **match** the
+server's workspace or be omitted, and a disagreeing value is now a hard error rather than
+silently ignored.
+
+This paragraph used to claim the opposite — that omitting `--workspace` made
+`--document dust_three` open `build/field-automation-workspace/dust_three` even on port
+9092. It does not: with no `--workspace`, the session key is
+`<the server's workspace>/dust_three`, measured on a live Field. Read the server's real
+value from `serverWorkspace` in `status`, or directly from
+`curl -sk https://localhost:9092/api/instance-info`. Start a live collaboration with a
+read-only preflight such as:
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py \
@@ -78,11 +87,18 @@ uv run --project . --group backdoor python tools/field_backdoor.py \
   --command status
 ```
 
-Before sending `set`, `launch`, or `launch-batch`, inspect `workspace`, `documentName`,
-`sessionKey`, and `boxCount` in the status result. The workspace and document must name
-the intended on-disk document and a mature document should not unexpectedly report zero
-boxes. `reusedExistingServer: true` confirms attachment, but does **not** prove that the
-document namespace is correct.
+Before sending `set`, `launch`, or `launch-batch`, inspect `serverWorkspace`,
+`documentName`, `sessionKey`, and `boxCount` in the status result — the four fields that
+can disagree with you. `sessionKey` should read as `serverWorkspace` + `/` +
+`documentName` and must name the intended on-disk document; a mature document should not
+unexpectedly report zero boxes. Do **not** read `requestedWorkspace` as verification: it
+is your own `--workspace` argument echoed back, it was the field called `workspace` until
+2026-09-12, and an agent following that older instruction wrote five documents into a
+different checkout while believing it had checked. `serverWorkspace: null` means the
+server predates the field and you have verified nothing.
+`reusedExistingServer: true` confirms attachment, but does **not** prove that the document
+namespace is correct. Full contract:
+[`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md).
 
 `set <uid> <property> --file <path>` is the durable live-coding edit. It waits for the
 backend's `agent-set-property` acknowledgement, which applies Field's ordinary metadata
