@@ -1635,6 +1635,8 @@ What a `flow.embedded` session returns. See [`SimulationResult`](simulation.md#s
 
 `src/jvmMain/kotlin/afield/stdlib/movement.kt` — [read the source](source/jvmMain/afield/stdlib/movement/)
 
+**Used in:** [Springs, dampers, and a character with mass](../movement_examples.md)
+
 ### Springs { #movement-kt-springs }
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">Springs</span></code>](source/jvmMain/afield/stdlib/movement/#L35)

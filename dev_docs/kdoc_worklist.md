@@ -76,6 +76,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatCondense.kt](../src/jvmMain/kotlin/afield/four/synth/PatCondense.kt) | Patterns | pattern_language | 0 | 10 | 57% |
 | [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples, wfc_examples, onnx | 0 | 10 | 85% |
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers, agent_transcripts | 0 | 10 | 77% |
+| [movement.kt](../src/jvmMain/kotlin/afield/stdlib/movement.kt) | Simulation | movement_examples | 0 | 10 | 75% |
 | [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt) | Patterns | sound | 0 | 9 | 70% |
 | [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, datalog, kotlin_overview | 0 | 9 | 89% |
 | [FieldAdapters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt) | Polytopes | polytope_examples, agent_transcripts | 0 | 9 | 70% |
@@ -216,7 +217,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | — | 0 | 11 | 70% |
 | [MorphoSearch.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSearch.kt) | Languages | — | 0 | 11 | 61% |
 | [RectSLPattern.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPattern.kt) | Languages | — | 0 | 11 | 50% |
-| [movement.kt](../src/jvmMain/kotlin/afield/stdlib/movement.kt) | Simulation | — | 0 | 10 | 75% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [SimdVerletTearing.kt](../src/jvmMain/kotlin/afield/four/physics/SimdVerletTearing.kt) | Simulation | — | 0 | 7 | 61% |
