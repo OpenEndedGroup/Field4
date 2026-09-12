@@ -94,7 +94,8 @@ private fun replaceLinks(text: String): String {
         sb.append(text.substring(index, open))
         sb.append("<a href=\"")
         sb.append(url)
-        sb.append("\" target=\"_blank\" rel=\"noopener noreferrer\">")
+        if (url.startsWith("field:", ignoreCase = true)) sb.append("\">")
+        else sb.append("\" target=\"_blank\" rel=\"noopener noreferrer\">")
         sb.append(label)
         sb.append("</a>")
         index = end + 1
@@ -134,7 +135,7 @@ private fun renderTextBlock(text: String): String {
             continue
         }
 
-        val headingMatch = Regex("^(#{1,3})\\s+(.*)$").find(line)
+        val headingMatch = Regex("^(#{1,6})\\s+(.*)$").find(line)
         if (headingMatch != null) {
             flushParagraph()
             closeList()

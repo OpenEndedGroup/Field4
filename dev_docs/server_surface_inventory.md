@@ -30,10 +30,10 @@ What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 36 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 37 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 107 | nothing |
+| `/ws` **command** names (`handlers`) | 108 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -62,7 +62,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-36 routes, 33 of them with no route-specific guard. `guard` is computed from the handler
+37 routes, 34 of them with no route-specific guard. `guard` is computed from the handler
 body by the same three-name vocabulary the mutating census uses
 (`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
@@ -91,6 +91,7 @@ mutation; it is a different one.
 | `GET /api/completion-doc-polish` | `Server.kt` | none |
 | `GET /api/docs-annotations` | `docsAnnotations.kt` | loopback + same-site |
 | `GET /api/docs-improvement` | `docsAnnotations.kt` | loopback + same-site |
+| `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
 | `GET /api/maven-classpath` | `Server.kt` | none |
@@ -117,10 +118,11 @@ mutation; it is a different one.
 | `GET /min/{...}` | `Server.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
 
-### The four that serve files off disk, which deserve reading twice
+### The five that serve files off disk, which deserve reading twice
 
-`/project/{...}`, `/min/{...}`, `/local/{...}` and `/field-docs/{...}` turn a URL into a
-path on your machine. Three of them are careful in the same way and one is not:
+`/project/{...}`, `/min/{...}`, `/local/{...}`, `/field-docs/{...}` and
+`/api/document-guide-asset` turn a URL into a path on your machine. Four enforce path
+boundaries and one does not:
 
 - `Server.kt#project file not found or outside project directory` canonicalises the
   resolved file and requires `Path.startsWith` against the canonical workspace. The comment
@@ -128,9 +130,13 @@ path on your machine. Three of them are careful in the same way and one is not:
   `/tmp/workspace-evil` for workspace `/tmp/workspace`;
 - `Server.kt#Monaco asset not found` does the same for `/min/`, against the Monaco
   directory;
-- `docsAnnotations.kt#Two independent checks now` is the strongest of the four: after a
+- `docsAnnotations.kt#Two independent checks now` checks both encodings: after a
   percent-encoding bug let `%2e%2e` through a textual `..` check, it now checks the
   *decoded* path textually **and** re-checks the assembled URI after `URI.normalize`;
+- `/api/document-guide-asset` resolves only inside an already-open document, using canonical
+  path containment, an image-extension allowlist, and a 20 MiB limit. Responses include a
+  sandbox Content Security Policy and `nosniff`; these are content restrictions, not an
+  origin guard;
 - **`/local/{...}` has no containment check at all.** It takes the longest matching prefix
   from `dynamicRoutes`, joins the remainder onto the mapped directory with `File(parent,
   child)`, and calls `respondFile` if the result exists. No canonicalisation, and
@@ -236,7 +242,7 @@ than a second `/local`.
 
 ## The `/ws` command surface
 
-107 command names, in the `handlers` table. This is the real command API, it is roughly twice
+108 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -264,6 +270,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `ButtonControlHandler.kt` | 1 |
 | `CoroutineProfiling.kt` | 1 |
 | `DocsSearchInstaller.kt` | 1 |
+| `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
@@ -282,6 +289,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `ButtonControlHandler.kt` | one control-widget callback |
 | `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
+| `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
 
 `executing.kt` is the row that decides how seriously to read the rest. A command that reaches
@@ -331,6 +339,7 @@ no sandbox between a `/ws` frame and that.
 | `debug-source-probe` | `Server.kt` |
 | `diff-history-version` | `history.kt` |
 | `docs_search_input` | `DocsSearchInstaller.kt` |
+| `document-guide` | `documentGuides.kt` |
 | `execute-all` | `executing.kt` |
 | `execute-fragment` | `executing.kt` |
 | `execute-symbol` | `executing.kt` |
@@ -443,7 +452,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 107 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 108 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

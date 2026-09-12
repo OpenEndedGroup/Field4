@@ -15,6 +15,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         // directly, and moving that cluster into src/personal made the compiler reject the reference.
         // Inverting it was the right fix independent of the move; see AgentToolExtensions.
         AgentToolExtensions.applyTo(tools)
+        registerDocumentGuideTools(tools)
 
 
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.

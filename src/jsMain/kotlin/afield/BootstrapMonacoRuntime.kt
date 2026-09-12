@@ -270,7 +270,7 @@ private fun monitorSelection() {
                 payloadState.value = vs
                 send("set-string", payloadState)
 
-                if (currentSelectedProperty == "notes") {
+                if (currentSelectedProperty == "notes" || currentSelectedProperty == "contents") {
                     syncNotesMarkdownPreview()
                 }
             }
@@ -408,7 +408,7 @@ private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, edit
     currentValueAtOrigination = normalized
     recentChangeCache.add(normalized)
     if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
-    if (property == "notes") {
+    if (property == "notes" || property == "contents") {
         syncNotesMarkdownPreview()
     }
 }
@@ -445,7 +445,7 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
     editor.setSelection(selection)
     currentValueAtOrigination = result
     selected[0][property] = result
-    if (property == "notes") {
+    if (property == "notes" || property == "contents") {
         syncNotesMarkdownPreview()
     }
 }
