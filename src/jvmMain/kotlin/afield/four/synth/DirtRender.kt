@@ -11,37 +11,36 @@ import kotlin.math.sqrt
 /**
  * Offline rendering of a pattern through the **real** Dirt sample library.
  *
- * [patRenderStereo] renders through [patVoice] — a sine for `bd` and filtered white noise for
- * `sd` and `hh`. That is a deliberate stand-in: it needs no assets, so it works in CI and on a
- * clean checkout. It also sounds like bursts of white noise, because it *is* bursts of white
- * noise.
+ * The other renderer in this package, [patRenderStereo], goes through [patVoice]: a sine for `bd`,
+ * filtered white noise for `sd` and `hh`. That stand-in needs no assets, so it works in CI and on
+ * a clean checkout. It also sounds like bursts of white noise, because it *is* bursts of white
+ * noise. It is not the voice behind most of the published audio figures either:
+ * [DocsAudioProvenance] resolves each published clip to the producer that rendered it,
+ * `DocsAudioProvenanceGuardTest` pins the resulting corpus by count and by family, and
+ * `public/docs/sound.md` states the mix in prose. The largest family comes from
+ * [DoughDspSoundDocs], which never reaches the stand-in voice at all.
  *
- * This used to read "and every audio figure in the documentation uses it". [DocsAudioProvenance]
- * swept the published corpus and measured each clip, and it is not true: a *minority* of the
- * published clips are [patVoice], and the largest family comes from [DoughDspSoundDocs], which
- * never reaches this voice at all.
+ * The genuine Tidal sample set was already playable, but only *live*: [playDirt] drives a
+ * polyphonic [DirtSamplePlayer] through `respondAhead`, a clock and an audio device, none of which
+ * exist inside a docs build or a headless box run. Here the same library, loaded by [libraryOrNull]
+ * from wherever [dirtSampleRoot] finds it, is mixed straight into a buffer, so a transcript, a docs
+ * capture or a `println`-and-listen box can sound like actual drums with no audio device anywhere.
  *
- * The counts no longer appear in that sentence. They did — "of the twelve, four
- * are `patVoice` and six come from `DoughDspSoundDocs`" — and two of the three had gone stale by
- * the time this package entered the generated codebase reference, which publishes this block
- * verbatim. The corpus grew a Faust clip and a DoughDSP scene; the places that hold the numbers as
- * *data* were updated (`DocsAudioProvenanceGuardTest`'s pinned per-family map, and the table on
- * `public/docs/sound.md`) and this paragraph was not. Read those, not this.
- *
- * This file is the other half. [DirtSamples] could already play the genuine Tidal sample set, but
- * only *live* — [playDirt] drives a polyphonic player through `respondAhead`, a clock and an audio
- * device, none of which exist inside a docs build or a headless box run. Here the same library is
- * mixed straight into a buffer, so a transcript, a docs capture or a `println`-and-listen box can
- * sound like actual drums without an audio device anywhere.
- *
- * Two fallbacks, at different granularities, and the distinction matters:
+ * Fallback happens at two different granularities:
  *
  *  * **No library on this machine** — the whole render falls back to [patRenderStereo]. Nothing
- *    breaks, the figures still generate, and [DirtRenderResult.usedSamples] says `false` so a
+ *    breaks, the figures still generate, and [DirtRenderResult.usedSamples] is `false`, so a
  *    caller can say which one you are hearing.
  *  * **Library present, token missing from it** — only *that event* falls back to the synth voice.
  *    A pattern of note numbers, or one naming a drum Dirt has never heard of, must not go silent
  *    just because the library loaded.
+ */
+
+/**
+ * Where the Dirt sample library is, whether it loaded, and what a finished render was made of.
+ *
+ * Discovery is [dirtSampleRoot] and [libraryOrNull]; [DirtRenderResult] carries the bookkeeping
+ * back to the caller.
  */
 object DirtRender {
 
