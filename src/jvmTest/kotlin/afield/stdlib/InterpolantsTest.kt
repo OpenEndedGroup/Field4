@@ -1,6 +1,7 @@
 package afield.stdlib
 
 import afield.stdlib.linalg.Vector3f
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -225,6 +226,47 @@ class InterpolantsTest {
         assertEquals(5.0f, eased(), 0.0f, "no starting value means no journey to make")
         target = 6.0f
         assertEquals(5.15625f, eased(), 1e-6f, "and it eases from there when the target moves")
+    }
+
+    /**
+     * The claim the `inertial_movement` transcript prints before it starts animating: `inertialTo` is
+     * the hand-driven solve, packaged. Driven off the same clock at the same blend time the two are
+     * the same arithmetic, so any disagreement at all is a bug in one of them.
+     */
+    @Test
+    fun theHandDrivenSolveIsExactlyWhatInertialToPackages() {
+        val blend = 0.35
+        val dt = 1.0 / 60.0
+
+        var seconds = 0.0
+        var goal = 0.0
+        val packaged = inertialTo<Double>(time = blend, steps = null, clock = { seconds }) { goal }
+
+        var t = 0.0
+        var s = 0.0
+        var offset = 0.0
+        var value = 0.0
+        var aimedAt = 0.0
+        var worst = 0.0
+
+        packaged()                                     // prime its clock; nothing has moved yet
+        repeat(180) { i ->
+            goal = if (i < 30) 0.0 else if (i < 90) 1.0 else -0.5
+            if (goal != aimedAt) {
+                val solved = InertialEasing.solve(goal - value, InertialEasing.smoothstepDt(t, s))
+                t = solved.t
+                s = solved.s
+                offset = value - InertialEasing.smoothstep(t, s)
+                aimedAt = goal
+            }
+            seconds += dt
+            t += dt / blend
+            value = offset + InertialEasing.smoothstep(t, s)
+            worst = maxOf(worst, abs(packaged() - value))
+        }
+
+        assertTrue(value > 0.0 || value < 0.0, "the fixture has to actually move something")
+        assertEquals(0.0, worst, 1e-12, "worst disagreement over 180 frames was $worst")
     }
 
     @Test

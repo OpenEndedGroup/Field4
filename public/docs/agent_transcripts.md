@@ -38,8 +38,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 101 transcripts on every build, at three
-depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 102 transcripts on every build, at three
+depths. 63 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -90,7 +90,7 @@ it with `sim.addCloth(...)`, an explicit `loop { }` that runs the physics, and
 whisker per velocity) through `showPlane`, so the whole scene is CPU physics and Skia SVG with no
 Window and no Renderer. Its comments record what the numbers do: the constraint solve
 is force-based, so `stiffness * iterations` is the spring constant that decides everything, and on
-this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. It is also the one
+this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. It is also the first
 `execute` transcript that *launches* rather than executes (a frame loop cannot run to completion),
 so CI launches it, advances 90 real runloop frames, and stops it.
 [Particles, Cloth & Constraints](physics.md) is the explainer behind it, and re-derives that ladder
@@ -108,6 +108,21 @@ sphere and the floor, and both ends of that sentence are asserted by
 `SimdVerletTearingTest.theWholeWorldLayerInOneSceneBehavesAsTheDemoSaysItWill`. Like the cloth, it
 `launch`es rather than executes.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/simdverlet_world/metadata.edn)
+
+**inertial_movement** — Two playgrounds for motion that gets interrupted. The first draws one target
+and two blends of it that differ in a single argument: both ask `InertialEasing.solve` for the
+smoothstep that is a given distance from the target *and* travelling at a given speed, and one
+passes the speed the value already has while the other passes zero, which is what a one-shot
+interpolant does every time it restarts. Tick `target keeps moving` and the second arm never gets
+going, because it is asked to start from a standstill sixty times a second. Before it animates, the
+box checks its own claim: `inertialTo { }` against the three-line hand-driven solve it packages, 180
+frames, worst disagreement printed. The second box is a character chasing an XY pad — the pad is a
+target position and the model takes a desired *velocity*, so the three lines that convert one to the
+other are the ones to read first. Its grey ghost is the same model with the smoothing half-lives at
+zero, so the distance between the two characters is what the smoothing is adding, and `compensation`
+takes most of that lag back without taking the smoothing off. Both boxes are `loop { }`s over
+`showPlane`, so CI launches them, advances 90 frames, and stops them.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/inertial_movement/metadata.edn)
 
 **shared_types_demo** — A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
 `shared.Particle` as ordinary Kotlin onto the shared classloader; box 2 shows the metadata survived
