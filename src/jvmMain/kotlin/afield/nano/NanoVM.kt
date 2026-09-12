@@ -25,7 +25,8 @@ import kotlin.random.Random
  *      JMP, JZ, JNZ, JGT, JLT, JGE, JLE, JC, JNC, CALL  (0xE0–0xE9)
  *  - Absolute branch (2 bytes: opcode + absolute address):
  *      JMPA, CALLA  (0xEA–0xEB)
- *  - Two-reg DIV  (0xEC–0xFF)
+ *  - Two-reg DIV  (0xEC–0xFB)
+ *  - Unassigned: 0x03, 0xFC–0xFF — decoding one reports an error and halts
  *
  * Assembly syntax quick reference:
  * ```
@@ -429,8 +430,10 @@ class NanoVM(
                 }
             }
 
-            // ── DIV (two-reg, 0xEC–0xFF) ──────────────────────────────────────
-            opcode in 0xEC..0xFF -> { // DIV rD, rS  rD = rD / rS (rS==0 → rD=0xFF)
+            // ── DIV (two-reg, 0xEC–0xFB) ──────────────────────────────────────
+            // Sixteen encodings, not twenty: 0xFC–0xFF are past the last (dst,src) pair and fall
+            // through to the unknown-opcode arm below. A mutated program will contain them.
+            opcode in 0xEC..0xFB -> { // DIV rD, rS  rD = rD / rS (rS==0 → rD=0xFF)
                 val d = (opcode - 0xEC) shr 2; val s = (opcode - 0xEC) and 3
                 reg[d] = if (reg[s] == 0) 0xFF else (reg[d] / reg[s]) and 0xFF
                 setArithFlags(reg[d])
