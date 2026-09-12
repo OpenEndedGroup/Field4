@@ -4,7 +4,7 @@ import kotlin.random.Random
 
 /**
  * Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations:
- * four registers, 32 bytes of RAM, and all but one of the 256 possible opcode bytes decoding to an
+ * four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an
  * instruction.
  *
  * The whole machine is:
@@ -32,9 +32,13 @@ import kotlin.random.Random
  * | register and immediate or address | two bytes, 4 per op | `LDI`, `LDA`, `STA`, `ADDI`, `LDRR`, `STRR`, `SHL`, `SHR` | `0xC0`–`0xDF` |
  * | relative branch | two bytes, signed offset | `JMP`, `JZ`, `JNZ`, `JGT`, `JLT`, `JGE`, `JLE`, `JC`, `JNC`, `CALL` | `0xE0`–`0xE9` |
  * | absolute branch | two bytes, absolute address | `JMPA`, `CALLA` | `0xEA`–`0xEB` |
- * | two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFF` |
+ * | two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFB` |
  *
- * `0x03` is the one byte that decodes to nothing; it reports an unknown opcode and halts.
+ * Five bytes decode to nothing — `0x03`, and `0xFC`–`0xFF` past `DIV`'s last `(dst, src)` pair.
+ * Each reports an unknown opcode and halts. That path matters here more than it would in a VM with
+ * a fixed program: artificial-life work mutates programs, and `NanoAssembler`'s raw-byte directive
+ * puts an arbitrary byte in front of the decoder too, so every one of the 256 has to either execute
+ * or report. The GPU port in `nano_compute.glsl` decodes the same map.
  *
  * #### A program
  *
@@ -450,8 +454,10 @@ class NanoVM(
                 }
             }
 
-            // ── DIV (two-reg, 0xEC–0xFF) ──────────────────────────────────────
-            opcode in 0xEC..0xFF -> { // DIV rD, rS  rD = rD / rS (rS==0 → rD=0xFF)
+            // ── DIV (two-reg, 0xEC–0xFB) ──────────────────────────────────────
+            // Sixteen encodings, not twenty: 0xFC–0xFF are past the last (dst,src) pair and fall
+            // through to the unknown-opcode arm below. A mutated program will contain them.
+            opcode in 0xEC..0xFB -> { // DIV rD, rS  rD = rD / rS (rS==0 → rD=0xFF)
                 val d = (opcode - 0xEC) shr 2; val s = (opcode - 0xEC) and 3
                 reg[d] = if (reg[s] == 0) 0xFF else (reg[d] / reg[s]) and 0xFF
                 setArithFlags(reg[d])

@@ -240,7 +240,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
 | [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 | Field4 language adapter for the Nano 8-bit assembly language. | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 3 |  |  |
-| [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 | Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations: four registers, 32 bytes of RAM, and all but one of the 256 possible opcode bytes decoding to an instruction. |  |
+| [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 | Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations: four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an instruction. |  |
 | [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
 | [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
 | [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 1 |  |  |

@@ -1181,8 +1181,8 @@ object PathTraceMediumGpuSmoke {
     /**
      * Every arm, on every backend this device exposes.
      *
-     * Drives every check and writes the captures under [outputDirectory]. Call it from a suspend
-     * body in a box below a live renderer, as with the other path-trace smokes.
+     * Drives every check and writes the captures under [outputDirectory]. Call from a suspend body
+     * in a box below a live renderer, as with the other path-trace smokes.
      *
      * `COMPUTE_BVH` always runs; `RAY_QUERY` runs as well wherever `device.supportsRayQuery`, which
      * is the same condition `PathTraceGpuSmoke` uses to decide the base tracer's backend coverage.
