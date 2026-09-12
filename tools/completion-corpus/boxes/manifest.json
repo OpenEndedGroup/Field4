@@ -248,6 +248,8 @@
   {"doc": "rectsl_plot_axes", "box": "plot_renderer", "codeSha256": "b9d26cbe221e2a65", "codeLines": 14, "receivers": ["afield.Box"], "preamble": "rectsl_plot_axes__plot_renderer.preamble.kt"},
   {"doc": "rectsl_sdf_live", "box": "rectsl_sdf_live", "codeSha256": "0826886c0560a809", "codeLines": 100, "receivers": ["afield.Box"], "preamble": "rectsl_sdf_live__rectsl_sdf_live.preamble.kt"},
   {"doc": "rectsl_sdf_live", "box": "rectsl_sdf_renderer", "codeSha256": "68fd20a8f0463c31", "codeLines": 15, "receivers": ["afield.Box"], "preamble": "rectsl_sdf_live__rectsl_sdf_renderer.preamble.kt"},
+  {"doc": "rectsl_spacetime_path_trace", "box": "chain_renderer", "codeSha256": "945f2df63ef695f6", "codeLines": 9, "receivers": ["afield.Box"], "preamble": "rectsl_spacetime_path_trace__chain_renderer.preamble.kt"},
+  {"doc": "rectsl_spacetime_path_trace", "box": "rectsl_spacetime_trace", "codeSha256": "5c60c16ad741935e", "codeLines": 210, "receivers": ["afield.Box"], "preamble": "rectsl_spacetime_path_trace__rectsl_spacetime_trace.preamble.kt"},
   {"doc": "remotear_start", "box": "agent_remotear_start", "codeSha256": "75bef5e6eda06997", "codeLines": 19, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rewrite_strategies_demo", "box": "rw_baseline", "codeSha256": "98f7f51f54259e9f", "codeLines": 6, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rewrite_strategies_demo", "box": "rw_bottomup", "codeSha256": "1b3cb228d055f9a9", "codeLines": 7, "receivers": ["afield.Box"], "preamble": ""},

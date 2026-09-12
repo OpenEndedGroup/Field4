@@ -70,6 +70,89 @@ import kotlin.math.sqrt
 typealias ScalarField3D = (Vec3) -> Float
 
 /**
+ * A grid of samples as a [ScalarField3D], read back by trilinear interpolation.
+ *
+ * The bridge for a field that is expensive, stateful or not thread-safe to evaluate: sample it once
+ * into an array in whatever order suits it, then hand the array to [marchingCubes] or
+ * [afield.manifold.Solid.levelSetOf], which sample in an order of their own choosing and, in
+ * Manifold's case, from several threads at once.
+ *
+ * ```kotlin
+ * // A RectSL scene's signed distance over (x, y, time), one autodiff frame per time slice.
+ * val grid = FloatArray(nx * ny * nt)
+ * for (k in 0 until nt) {
+ *     val frame = field.frameAt(duration * k / (nt - 1.0))
+ *     for (j in 0 until ny) for (i in 0 until nx) {
+ *         grid[(k * ny + j) * nx + i] = frame.distanceAt(x(i), y(j)).value.toFloat()
+ *     }
+ * }
+ * val solid = Solid.levelSetOf(sampledField3D(grid, nx, ny, nt, bounds), bounds, edgeLength = 0.1)
+ * ```
+ *
+ * Indexing is `(k * ny + j) * nx + i`, which is [IntVolume]'s convention, so a volume and a sample
+ * grid over the same lattice are laid out the same way.
+ *
+ * Two limits, both of which reach a measurement taken off the result. Interpolating a sampled signed
+ * distance is not the same function as the distance itself: it is exact at the grid corners and an
+ * approximation between them, largest where the true field has a crease. And outside [bounds] this
+ * returns [outside] rather than extrapolating, so a surface that reaches the wall comes out cut off
+ * there, the same way a march does.
+ *
+ * @param values one sample per lattice point, `nx * ny * nz` of them.
+ * @param bounds the box the lattice spans, corner sample to corner sample.
+ * @param outside what to return for a point outside [bounds]. The default is far-outside for a
+ *   negative-inside field; pass a negative value for a positive-inside one.
+ */
+fun sampledField3D(
+    values: FloatArray,
+    nx: Int,
+    ny: Int,
+    nz: Int,
+    bounds: AxisAlignedBoundingBox3D,
+    outside: Float = 1e6f,
+): ScalarField3D {
+    require(nx >= 2 && ny >= 2 && nz >= 2) { "a sampled field needs at least 2 samples per axis, got ${nx}x${ny}x$nz" }
+    require(values.size == nx * ny * nz) {
+        "values must be ${nx * ny * nz} samples for a ${nx}x${ny}x$nz lattice, got ${values.size}"
+    }
+    val size = bounds.size
+    require(size.x > 0f && size.y > 0f && size.z > 0f) { "sampled-field bounds must have positive extent, got $size" }
+    val minX = bounds.min.x
+    val minY = bounds.min.y
+    val minZ = bounds.min.z
+    val stepX = size.x / (nx - 1)
+    val stepY = size.y / (ny - 1)
+    val stepZ = size.z / (nz - 1)
+
+    fun at(i: Int, j: Int, k: Int): Float = values[(k * ny + j) * nx + i]
+
+    return { p ->
+        val gx = (p.x - minX) / stepX
+        val gy = (p.y - minY) / stepY
+        val gz = (p.z - minZ) / stepZ
+        if (gx < 0f || gy < 0f || gz < 0f || gx > nx - 1f || gy > ny - 1f || gz > nz - 1f) {
+            outside
+        } else {
+            // Truncation is floor here, because the branch above has already established that all
+            // three are non-negative.
+            val i0 = gx.toInt().coerceAtMost(nx - 2)
+            val j0 = gy.toInt().coerceAtMost(ny - 2)
+            val k0 = gz.toInt().coerceAtMost(nz - 2)
+            val tx = gx - i0
+            val ty = gy - j0
+            val tz = gz - k0
+            val c00 = at(i0, j0, k0) + (at(i0 + 1, j0, k0) - at(i0, j0, k0)) * tx
+            val c10 = at(i0, j0 + 1, k0) + (at(i0 + 1, j0 + 1, k0) - at(i0, j0 + 1, k0)) * tx
+            val c01 = at(i0, j0, k0 + 1) + (at(i0 + 1, j0, k0 + 1) - at(i0, j0, k0 + 1)) * tx
+            val c11 = at(i0, j0 + 1, k0 + 1) + (at(i0 + 1, j0 + 1, k0 + 1) - at(i0, j0 + 1, k0 + 1)) * tx
+            val c0 = c00 + (c10 - c00) * ty
+            val c1 = c01 + (c11 - c01) * ty
+            c0 + (c1 - c0) * tz
+        }
+    }
+}
+
+/**
  * How far a marched crossing is kept from a grid corner, as a fraction of the cell edge.
  *
  * See the comment at the interpolation site in [marchingCubes]: a corner sample that is exactly at the

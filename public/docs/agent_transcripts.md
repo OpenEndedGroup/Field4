@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 106 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 107 transcripts on every build, at three
 depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-37 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+38 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1371,6 +1371,15 @@ each way, because the count is a property of the surface and not only of the aut
 [the walkthrough](chain_life3d_render.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn)
+
+**rectsl_spacetime_path_trace** — A RectSL animation read as a solid object. The scene's signed
+distance over (x, y, time) is sampled slice by slice, one autodiff tape each, handed to both marchers
+through `sampledField3D`, and traced: the swept bar becomes a twisted ribbon and the growing square a
+wedge, coloured along the time axis. It also measures what each marcher does where the volume runs
+into the sampling window, which `marchingCubes` leaves open with two boundary loops and `levelSetOf`
+closes. See [the walkthrough](chain_rectsl_spacetime.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn)
 
 ## Graphics building blocks
 
