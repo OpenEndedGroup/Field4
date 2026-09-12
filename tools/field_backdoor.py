@@ -126,6 +126,25 @@ def health_check(port: int, ssl_context: ssl.SSLContext, timeout: float = 1.5) -
         return False
 
 
+def _same_directory(left: str, right: str) -> bool:
+    """Do two workspace paths name the same directory?
+
+    `~` is expanded and symlinks are resolved, because the server reports a canonical path
+    (`displayWorkspacePath`) while a caller types whatever is convenient -- on macOS
+    `/tmp/x` and `/private/tmp/x` are the same directory. A path that does not exist cannot be
+    resolved, so that case falls back to a normalised string comparison rather than declaring a
+    mismatch on a technicality.
+    """
+    def normalize(path: str) -> str:
+        expanded = Path(path).expanduser()
+        try:
+            return str(expanded.resolve())
+        except OSError:
+            return os.path.normpath(str(expanded.absolute()))
+
+    return normalize(left) == normalize(right)
+
+
 def jdwp_port_is_bindable(port: int, host: str = "127.0.0.1") -> bool:
     """True if the JDWP agent could bind ``host:port`` right now.
 
@@ -425,6 +444,13 @@ class FieldBackdoor:
         # --workspace. Never let it inherit the machine-global interactive
         # preference, which may name a deleted sibling worktree.
         self.workspace = workspace or str(automation_workspace(REPO_ROOT))
+        # Kept apart from the effective value above, because "the caller asked for this" and
+        # "a server is using this" are different claims and `status` used to make only the
+        # first while looking like it made the second. None means the caller said nothing.
+        self.requested_workspace = workspace
+        # Read back from GET /api/instance-info, never echoed from the request. None when the
+        # server is older than that field, which is a reason to distrust rather than to assume.
+        self.server_workspace: str | None = None
         self.default_timeout = default_timeout
         self.attach_existing = attach_existing
         self.logger = logger
@@ -467,6 +493,62 @@ class FieldBackdoor:
             attachExisting=self.attach_existing,
         )
 
+    def adopt_server_workspace(self, info: dict[str, Any] | None) -> None:
+        """Record the workspace the SERVER reports, which is the one documents resolve against.
+
+        `GET /api/instance-info` grew a `workspace` field for this. A server older than that
+        change reports nothing, and nothing is what gets recorded: an absent fact must not be
+        replaced by the request, which is the whole bug being fixed here.
+        """
+        workspace = (info or {}).get("workspace")
+        self.server_workspace = workspace if isinstance(workspace, str) and workspace else None
+
+    def refuse_ignored_workspace(self) -> None:
+        """Hard-error when an explicit `--workspace` disagrees with the attached server's.
+
+        `--workspace` reaches exactly one place: the `--args=--workspace ...` of a server this
+        process LAUNCHES. Attaching to a server someone else started, it decided nothing, and
+        `status` reported it anyway. On 2026-09-11 an agent wrote five documents into a
+        *different checkout's* `dev_docs/agents/demos/` across four runs while believing it had
+        verified the workspace, because the value it verified was its own argument.
+
+        Forwarding it instead of refusing is not available: the server's workspace is the
+        process-global `home` option, fixed when the JVM booted, and moving a live server's
+        workspace restarts it (`POST /api/workspace-switch`). So the honest outcomes are "agree"
+        or "refuse", and refusing early costs one command instead of five misplaced documents.
+
+        Silent when the caller passed no `--workspace` (nothing was claimed), and when the
+        server does not report one (nothing to compare); `status` reports both cases as
+        `serverWorkspace: null`, which is a fact rather than a guess.
+        """
+        if self.requested_workspace is None or not self.reused_existing_server:
+            return
+        if self.server_workspace is None:
+            self.logger.log(
+                "workspace_unverifiable",
+                port=self.port,
+                requestedWorkspace=self.requested_workspace,
+                reason="server does not report a workspace (older than /api/instance-info workspace)",
+            )
+            return
+        if _same_directory(self.requested_workspace, self.server_workspace):
+            return
+        self.logger.log(
+            "workspace_mismatch_refused",
+            port=self.port,
+            requestedWorkspace=self.requested_workspace,
+            serverWorkspace=self.server_workspace,
+        )
+        raise BackdoorError(
+            f"--workspace {self.requested_workspace} disagrees with the Field already running on "
+            f"port {self.port}, whose workspace is {self.server_workspace}. An attached server's "
+            "workspace is fixed at its launch, so --workspace cannot be applied to it and used to "
+            "be ignored in silence -- documents then resolved under the SERVER's workspace while "
+            "status echoed yours back. Either pass --workspace "
+            f"{self.server_workspace} with a --document path relative to it, drop --workspace "
+            "entirely, or use a --port where this session starts its own Field."
+        )
+
     async def ensure_server(self) -> None:
         self.logger.log("ensure_server_start", port=self.port, workspace=self.workspace)
         initial_health = health_check(self.port, self.ssl_context)
@@ -485,17 +567,21 @@ class FieldBackdoor:
                     "Choose a fresh --port or stop that server explicitly."
                 )
             self.reused_existing_server = True
+            self.adopt_server_workspace(info)
             self.logger.log(
                 "server_reused",
                 port=self.port,
                 instance=info,
                 attachExisting=self.attach_existing,
+                serverWorkspace=self.server_workspace,
+                requestedWorkspace=self.requested_workspace,
                 ignoredFreshnessProblem=(
                     field_instance_problem(info, REPO_ROOT)
                     if self.attach_existing
                     else None
                 ),
             )
+            self.refuse_ignored_workspace()
             return
 
         if self.attach_existing:
@@ -563,7 +649,17 @@ class FieldBackdoor:
                 elapsedSeconds=round(120.0 - (deadline - time.monotonic()), 3),
             )
             if healthy:
-                self.logger.log("managed_server_ready", attempt=attempt, managedLog=str(self.managed_log_path))
+                # Read the workspace back even on the path that supplied it. `--args=--workspace`
+                # can be overridden or normalised server-side, and a fact worth verifying is
+                # worth verifying in the one case where the answer is expected.
+                self.adopt_server_workspace(field_instance_info(self.port, self.ssl_context))
+                self.logger.log(
+                    "managed_server_ready",
+                    attempt=attempt,
+                    managedLog=str(self.managed_log_path),
+                    serverWorkspace=self.server_workspace,
+                    requestedWorkspace=self.requested_workspace,
+                )
                 return
             await asyncio.sleep(0.5)
 
@@ -1470,6 +1566,22 @@ class FieldBackdoor:
         self.logger.log(
             "open_document_start", document=document, scratch=scratch, readOnly=read_only, timeout=timeout
         )
+        # The third known cause of an inexplicable `boxes: []` / `boxCount: 0`. The server
+        # resolves a document name as `workspace + "/" + name` unconditionally, so an absolute
+        # path produces a nonsense session key with the workspace glued in front of it -- an
+        # empty new document that will never be the one you meant. Cheap to say out loud here;
+        # `status` now also shows it, because `sessionKey` can be read against `serverWorkspace`.
+        if document and not scratch and os.path.isabs(document):
+            self.logger.log("open_document_absolute_name", document=document)
+            print(
+                f"field_backdoor.py: --document {document} is an absolute path, and document names "
+                "are resolved relative to the server's workspace. Split it: --workspace "
+                f"{os.path.dirname(document)} --document {os.path.basename(document)} when this "
+                "session starts the server, or make --document relative to serverWorkspace when "
+                "attaching.",
+                file=sys.stderr,
+                flush=True,
+            )
         event = await self.call_for_single_reply(
             "agent-open-document",
             {
@@ -3060,7 +3172,21 @@ async def dispatch_command(
             "managedServer": client.managed_process is not None,
             "reusedExistingServer": client.reused_existing_server,
             "attachExisting": client.attach_existing,
-            "workspace": client.workspace,
+            # Three keys where there was one called `workspace`, because one of them was a fact
+            # about the world and the other two are facts about this invocation, and the old
+            # single key silently answered the first question with the third answer. `AGENTS.md`
+            # told an agent to "verify workspace ... before editing", and the value it verified
+            # was its own `--workspace` argument, so the check could not fail. Renamed rather
+            # than redefined: nothing reads this key programmatically (0 hits for
+            # `.get("workspace")` across tools/), and a loud rename beats a quiet lie.
+            #
+            # serverWorkspace is the only one that decides where documents resolve
+            # (`agent_backdoor.kt` builds a session key as `home + "/" + documentName`), and it
+            # is read back from GET /api/instance-info. null means the server predates that
+            # field -- distrust it, do not substitute the request.
+            "serverWorkspace": client.server_workspace,
+            "requestedWorkspace": client.requested_workspace,
+            "workspaceAppliedToServer": client.managed_process is not None,
             "sessionId": client.session_id,
             "logFile": str(client.logger.path),
             "managedLog": str(client.managed_log_path) if client.managed_log_path else None,
@@ -3949,6 +4075,12 @@ def main() -> int:
         return code
     except Exception as exc:
         logger.exception("fatal_error", exc)
+        # A refusal nobody can see is not a refusal. Every failure out of `ensure_server` or
+        # `connect` -- the foreign-checkout refusal, the workspace-mismatch refusal, a dropped
+        # websocket -- used to exit 1 with empty stdout AND empty stderr, leaving the reason
+        # only in `.field-backdoor/logs/<session>.jsonl` for whoever thought to look.
+        print(f"field_backdoor.py failed: {exception_message(exc)}", file=sys.stderr)
+        print(f"  session log: {logger.path}", file=sys.stderr, flush=True)
         return 1
     finally:
         logger.close()

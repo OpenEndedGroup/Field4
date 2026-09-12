@@ -106,6 +106,17 @@ private data class FieldInstanceInfo(
     val repoRoot: String,
     val startedAtEpochMs: Long,
     val pid: Long,
+    /**
+     * The workspace directory *this server* resolves document names against — [home], canonicalised.
+     *
+     * Reported because no client could previously find it out. An agent client passes its own
+     * `--workspace` argument, but that argument only ever reaches a server the client **launched**;
+     * when it attaches to a server someone else started, its `--workspace` decides nothing and this
+     * `home` decides everything (`resolveDocumentTarget` in `agent_backdoor.kt` builds a session key
+     * as `home + "/" + documentName`). Without this field `field_backdoor.py status` could only echo
+     * the request back, which made "verify the workspace before editing" a check that could not fail.
+     */
+    val workspace: String,
 )
 
 private object GcPauseMonitor {
@@ -3581,13 +3592,19 @@ class Server {
 
                         // `/health` only says that some Field owns the port. Agent/test clients need
                         // this identity before reuse, or a sibling worktree's healthy JVM can execute
-                        // the wrong bytecode and report a false green.
+                        // the wrong bytecode and report a false green. The workspace is here for the
+                        // same reason one step further out: which checkout is answering does not say
+                        // where this server's documents live.
                         get("/api/instance-info") {
                             call.respond(
                                 FieldInstanceInfo(
                                     repoRoot = File(".").canonicalFile.absolutePath,
                                     startedAtEpochMs = serverStartedAtEpochMs,
                                     pid = ProcessHandle.current().pid(),
+                                    // Same idiom as `/api/workspace-switch` below: canonical when the
+                                    // directory exists, absolute when it does not, never the raw
+                                    // option string, so a client can compare it with its own path.
+                                    workspace = displayWorkspacePath(home),
                                 )
                             )
                         }

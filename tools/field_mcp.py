@@ -64,6 +64,7 @@ from field_backdoor import (  # noqa: E402
     http_get_json,
     make_unverified_ssl_context,
 )
+from verification_runtime import field_instance_info  # noqa: E402
 
 SERVER_NAME = "field"
 SERVER_VERSION = "0.1.0"
@@ -338,6 +339,15 @@ class FieldMcpServer:
         result: dict[str, Any] = {"port": self.port, "fieldRunning": healthy}
         if healthy:
             result["openDocuments"] = self._discover_open_documents()
+            # Where a document name passed to field_open_document will resolve. This bridge has
+            # no workspace argument to confuse with the server's, but it also gave an agent no
+            # way to ask -- the same blind spot from the other side. The running Field's
+            # workspace comes from a machine-global preference by default, and has been observed
+            # pointing into an unrelated checkout. null means the server predates the
+            # `workspace` field of GET /api/instance-info, so nothing has been verified.
+            instance = field_instance_info(self.port, self.ssl_context)
+            workspace = (instance or {}).get("workspace")
+            result["serverWorkspace"] = workspace if isinstance(workspace, str) and workspace else None
         result["attachedDocument"] = self.attached_document
         return result
 
@@ -670,7 +680,7 @@ class FieldMcpServer:
     TOOLS: list[dict[str, Any]] = [
         {
             "name": "field_status",
-            "description": "Check whether Field4 is running, which documents are open, and which one this bridge is attached to. Safe to call anytime; does not attach.",
+            "description": "Check whether Field4 is running, which documents are open, which one this bridge is attached to, and the server's own workspace directory (serverWorkspace) that document names resolve against. Safe to call anytime; does not attach.",
             "inputSchema": {"type": "object", "properties": {}},
         },
         {
