@@ -136,15 +136,12 @@ class Triangles(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun TrianglesByteSize(): Long = 112L
+fun TrianglesByteSize(): Long = 16L
 fun TrianglesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asTriangles(): Triangles =
     asStructure(Triangles(), TrianglesLayoutMembers())
@@ -160,15 +157,12 @@ class Nodes(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun NodesByteSize(): Long = 112L
+fun NodesByteSize(): Long = 16L
 fun NodesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asNodes(): Nodes =
     asStructure(Nodes(), NodesLayoutMembers())
@@ -184,15 +178,12 @@ class Materials(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun MaterialsByteSize(): Long = 112L
+fun MaterialsByteSize(): Long = 16L
 fun MaterialsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asMaterials(): Materials =
     asStructure(Materials(), MaterialsLayoutMembers())
@@ -208,15 +199,12 @@ class Accumulation(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun AccumulationByteSize(): Long = 112L
+fun AccumulationByteSize(): Long = 16L
 fun AccumulationLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asAccumulation(): Accumulation =
     asStructure(Accumulation(), AccumulationLayoutMembers())
@@ -232,15 +220,12 @@ class Distribution(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun DistributionByteSize(): Long = 112L
+fun DistributionByteSize(): Long = 16L
 fun DistributionLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asDistribution(): Distribution =
     asStructure(Distribution(), DistributionLayoutMembers())
@@ -256,15 +241,12 @@ class Directions(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun DirectionsByteSize(): Long = 112L
+fun DirectionsByteSize(): Long = 16L
 fun DirectionsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asDirections(): Directions =
     asStructure(Directions(), DirectionsLayoutMembers())
@@ -280,15 +262,12 @@ class TextureData(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun TextureDataByteSize(): Long = 112L
+fun TextureDataByteSize(): Long = 16L
 fun TextureDataLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asTextureData(): TextureData =
     asStructure(TextureData(), TextureDataLayoutMembers())
@@ -304,15 +283,12 @@ class History(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Material
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Material(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 }
-fun HistoryByteSize(): Long = 112L
+fun HistoryByteSize(): Long = 16L
 fun HistoryLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, MaterialLayoutMembers().right(), 0, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asHistory(): History =
     asStructure(History(), HistoryLayoutMembers())
@@ -387,8 +363,12 @@ class Frame(
     var fog by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // linear RGB, density per world unit
     var fogOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
     var emitters by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
+    var medium by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // single-scattering albedo RGB, extinction per world unit in w (zero disables)
+    var mediumOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
+    var mediumLow by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds minimum when bounded, w unused
+    var mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
 }
-fun FrameByteSize(): Long = 288L
+fun FrameByteSize(): Long = 352L
 fun FrameLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("origin", 0, PrimitiveType.vec4.left(), 0, false),
@@ -409,6 +389,10 @@ fun FrameLayoutMembers(): List<Introspected.Member> =
         Introspected.Member("fog", 240, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("fogOptions", 256, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("emitters", 272, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("medium", 288, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("mediumOptions", 304, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("mediumLow", 320, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("mediumHigh", 336, PrimitiveType.vec4.left(), 0, false),
     )
 fun HasBuffer.asFrame(): Frame =
     asStructure(Frame(), FrameLayoutMembers())
@@ -448,6 +432,10 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:Frame:fog*/ var Structure.fog by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // linear RGB, density per world unit
 /*compute-ubo-member:Frame:fogOptions*/ var Structure.fogOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
 /*compute-ubo-member:Frame:emitters*/ var Structure.emitters by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
+/*compute-ubo-member:Frame:medium*/ var Structure.medium by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // single-scattering albedo RGB, extinction per world unit in w (zero disables)
+/*compute-ubo-member:Frame:mediumOptions*/ var Structure.mediumOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
+/*compute-ubo-member:Frame:mediumLow*/ var Structure.mediumLow by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds minimum when bounded, w unused
+/*compute-ubo-member:Frame:mediumHigh*/ var Structure.mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
