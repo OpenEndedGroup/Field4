@@ -12,28 +12,37 @@ import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
- * What a `THost` *is*, and what reflection can therefore say about it at type-check time.
+ * The reflection behind FieldML's host types: what a [THost] names, and what can therefore be said
+ * at type-check time about a member's type, a resolved overload's result, the parameter slots a
+ * call's arguments land in, and the members a receiver actually has.
  *
- * Before this, every host value in FieldML had the single type `THost("Host")`: the moment a program
- * touched the JVM the type checker went blind, nothing downstream could be inferred, a misspelled
- * member name was a runtime crash, and completion had nothing to offer. The fix is small in
- * principle — let `THost.name` be a real JVM class name — and this object is the reflection that
- * makes it pay off: the type of a member, the result type of a resolved overload, and the list of
- * members a receiver actually has.
+ * A [THost]'s name is a real JVM class name, which is what keeps a program typed once it reaches
+ * into the JVM: a member access is inferred rather than left dynamic, a misspelled member name is
+ * reported where it is written instead of crashing on the first run, and completion has a class to
+ * enumerate.
  *
- * Two rules keep it honest.
+ * Two rules bound what this file will claim.
  *
- * *`Host` stays the dynamic type.* [OPAQUE] is what a host type degrades to whenever reflection
- * cannot justify anything better — a generic erased to `Object`, an array, a `Map`, a `CharSequence`
- * that may or may not be a `String`. It unifies with everything (see `Inferencer.unify`), which is
- * exactly the statement "unknown, checked at run time". Inventing a type here would be worse than
- * saying nothing.
+ * *`Host` stays the dynamic type.* `OPAQUE`, the name `Host` itself, is what a host type degrades to
+ * whenever reflection cannot justify anything better: a generic erased to `Object`, an array, a
+ * `Map`, a nullable return, an overload set whose best candidates disagree about what they return.
+ * `Inferencer.unifyHosts` lets it stand for any class, which is the statement "unknown, checked at
+ * run time". It is a *bounded* dynamic type rather than a universal one, though:
+ * `Inferencer.requireDynamicallyReachable` refuses a `Host` where a function, a list, a tuple or a
+ * record is wanted, and names what to reach for instead.
  *
- * *A mapping only claims what the runtime actually does.* [fieldMLTypeOf] mirrors
- * `afield.ml.core.hostToFieldMLValue` case for case. If reflection says `int` then the runtime
- * really will hand back a `FieldMLValue.IntValue`; if it says `List<Double>` the runtime really will
- * hand back a list of floats. Anything the conversion would not turn into a FieldML value of a known
- * shape maps to [OPAQUE] rather than to something plausible.
+ * *A mapping only claims what the runtime actually does.* `fieldMLTypeOf` answers with the type
+ * `afield.ml.core.hostToFieldMLValue` will really produce, so reflection saying `int` means an
+ * `IntValue` arrives, and `List<Double>` means a list of floats. Where the declared type does not
+ * determine the converted one the answer is `Host` rather than something plausible: a `Map` really
+ * does convert to a record, but its field names are nowhere in the declared type, so the type side
+ * says `Host` and the program reads the fields with `hostGet`.
+ */
+
+/**
+ * Reflection over a host type: the JVM class a [THost] names, the FieldML type a JVM type converts
+ * to, and the member, overload, constructor and parameter-slot lookups the type checker and
+ * completion ask for.
  */
 object FieldMLHostTypes {
     /** The dynamic host type: unknown JVM class, or a class whose shape reflection cannot pin down. */
@@ -85,7 +94,7 @@ object FieldMLHostTypes {
 
     fun loadClass(className: String): Class<*>? = runCatching { Class.forName(className) }.getOrNull()
 
-    /** How a host type reads in a signature: the simple name, since the package is rarely the point. */
+    /** How a host type reads in a signature: the simple name, with the package and any outer class dropped. */
     fun display(name: String): String =
         when {
             name.startsWith(CLASS_PREFIX) && name.endsWith(">") ->
