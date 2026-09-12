@@ -672,78 +672,393 @@ BoxExecution implementation for the FORTH microlanguage.
 
 ## ForthInterpreter.kt { #forthinterpreter-kt }
 
+A compact, extensible FORTH interpreter used by Field4 for live coding.
+
+It is host-driven:
+- it executes FORTH source and keeps its own data stack/dictionary
+- it ships with creative-coding oriented builtins (vectors + `FLine`)
+- it can be extended at runtime from Kotlin via `defineWord`
+- it can interoperate with host objects using `@?` / `@?!` reflection calls
+
+### The host loop
+
+Typical host loop:
+1. Construct an interpreter once (`val forth = ForthInterpreter()`).
+2. Register host bridge words with `defineWord` as needed.
+3. Push host objects (buffers, context values, services) onto `stack`.
+4. Run `eval(...)`.
+5. Pop resulting values (for example an `FLine`) and hand them to rendering/output code.
+
+Example: basic execution and stack access:
+```diffstatic {data-lang=kotlin}
+val forth = ForthInterpreter()
+val diagnostics = forth.eval("2 3 +")
+check(diagnostics.isEmpty())
+println(forth.popNum()) // 5.0
+```
+
+Example: defining words in FORTH:
+```diffstatic {data-lang=forth}
+: sqr ( n -- n2 ) dup * ;
+: hypot2 ( x y -- d2 ) sqr swap sqr + ;
+3 4 hypot2 .
+```
+
+Example: create an `FLine` shape in FORTH:
+```diffstatic {data-lang=forth}
+: stroke-ribbon ( -- f )
+  fline
+  0   0   moveto
+  120 20  lineto
+  160 90  210 90  260 20 cubicto
+  320 0   lineto
+  true  fline-stroked
+  false fline-filled
+  1.0 0.55 0.2 1.0 fline-color
+  2.5 fline-thickness ;
+
+stroke-ribbon
+```
+
+Host-side consumption of the resulting `FLine`:
+```diffstatic {data-lang=kotlin}
+val forth = ForthInterpreter()
+val source = """
+  : stroke-ribbon ( -- f )
+    fline
+    0 0 moveto
+    120 20 lineto
+    160 90 210 90 260 20 cubicto
+    true fline-stroked
+    1 0.55 0.2 1 fline-color
+    2.5 fline-thickness ;
+  stroke-ribbon
+""".trimIndent()
+
+val diagnostics = forth.eval(source)
+if (diagnostics.isEmpty()) {
+  val line = forth.pop() as FLine
+  // Forward `line` into your output channel / renderer.
+}
+```
+
+Example: use vector helpers with FLine convenience words:
+```diffstatic {data-lang=forth}
+: zig ( -- f )
+  fline
+  0   0   vec2 fline-moveto-v2
+  40  20  vec2 fline-lineto-v2
+  80 -10  vec2 fline-lineto-v2
+  120 25  vec2 fline-lineto-v2
+  1 0 0 1 fline-node-color ;
+zig
+```
+
+### The reflection bridge
+
+Example: resolve classes without full FQNs.
+`class-for` consults Field's class cache (`importHelp.kt`) so short names usually work.
+
+```diffstatic {data-lang=forth}
+s"FLine" class-for @? getName println
+s"Vec3"  class-for @? getName println
+
+s"Fli" class-matches print   \ returns a list of FQNs
+s"Fli" class-help            \ prints one-per-line suggestions
+```
+
+Example: reflection bridge (`@?` / `@?!`) with `FLine`, built entirely by class lookup.
+This demonstrates construction + method calls without using the `fline` helper.
+
+```diffstatic {data-lang=forth}
+variable f
+s"FLine" class-for @? newInstance f !
+
+\ Explicit arity call: f.moveTo(Number, Number, Number)
+f @ 0   0   0   3 @?! moveTo drop
+
+\ Explicit arity call: f.lineTo(Number, Number, Number)
+f @ 120 30  0   3 @?! lineTo drop
+f @ 220 10  0   3 @?! lineTo drop
+f @ 260 80 0  320 80 0  380 20 0  9 @?! cubicTo drop
+
+\ Properties are just a map on FLine
+f @ @? properties  s"thickness" 2.5 2 @?! put
+f @ @? properties  s"stroked" true 2 @?! put
+
+\ Heuristic call for zero-arg methods works well with @?
+f @ @? close drop
+
+\ Leave the final FLine on the stack
+f @
+```
+
+Example: `@?` reads data too (field/getter/method fallback):
+```diffstatic {data-lang=forth}
+f @ @? nodes   \ push internal node list
+@? size .      \ call size() on that list and print node count
+```
+
+Example: constructor with explicit args via `@?! new`:
+```diffstatic {data-lang=forth}
+variable sb
+s"StringBuilder" class-for s"hello" 1 @?! new sb !
+sb @ @? toString println
+```
+
+Example: extending FORTH with Kotlin bridge words.
+Here we expose a helper that appends a `vec4` worth of floats into any
+`DynamicallyWriteable` buffer (for example `VulkanBuffer` or `FrameBufferGroup`).
+
+```diffstatic {data-lang=kotlin}
+import afield.four.buffers.DynamicallyWriteable
+import afield.stdlib.Vec4
+
+val forth = ForthInterpreter()
+forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
+  val w = popNum().toFloat()
+  val z = popNum().toFloat()
+  val y = popNum().toFloat()
+  val x = popNum().toFloat()
+  val buf = pop() as DynamicallyWriteable
+
+  buf.append {
+    put(Vec4(x, y, z, w))
+  }
+  push(buf)
+}
+```
+
+Example: call that bridge word from FORTH after pushing a host buffer:
+```diffstatic {data-lang=kotlin}
+forth.push(myDynamicBuffer) // host object: VulkanBuffer / FrameBufferGroup / similar
+forth.eval("""
+  0.0 1.0 0.0 1.0 append-vec4
+  1.0 0.0 0.0 1.0 append-vec4
+  0.0 0.0 1.0 1.0 append-vec4
+""".trimIndent())
+```
+
+Example: long-form output areas from FORTH:
+```diffstatic {data-lang=forth}
+s"<b>Inline-ish output area content</b>" display
+s"<pre>Detailed log text...</pre>" s"debug" display-channel
+```
+
+Example: launchable animation with cooperative yielding via `frame`.
+Run this in Launch mode (or call `begin("default")` on the box), so `spinner` executes
+every RunLoop tick. `frame` yields immediately, letting the rest of Field proceed.
+Store evolving state in variables, because each strand tick re-enters the word from the top.
+
+```diffstatic {data-lang=forth}
+variable tick
+variable line
+0 tick !
+
+: spinner ( -- )
+  s"FLine" class-for @? newInstance line !
+
+  \ center point
+  line @ 0 0 0 3 @?! moveTo drop
+
+  \ animated endpoint (simple circular motion)
+  line @
+  tick @ 0.05 * dup cos 120 *          ( x )
+             swap sin 120 *            ( x y )
+  0 3 @?! lineTo drop
+
+  \ style via reflected property map
+  line @ @? properties s"thickness" 2.0 2 @?! put
+  line @ @? properties s"stroked" true 2 @?! put
+  line @ s"geom" display-channel
+
+  \ show a debug line in output area
+  s"tick=" tick @ str str+ s"debug" display-channel
+
+  1 tick +!
+  frame
+;
+
+spinner
+```
+
+Example: same pattern with an explicit FORTH loop.
+`frame` exits the current tick immediately; on next tick the word starts again.
+
+```diffstatic {data-lang=forth}
+variable phase
+0 phase !
+
+: pulse-loop ( -- )
+  begin
+    s"phase=" phase @ str str+ println
+    1 phase +!
+    frame
+  again ;
+
+pulse-loop
+```
+
+Example: full overwrite of float data each tick, since `write` replaces the payload rather than
+adding to it:
+```diffstatic {data-lang=kotlin}
+import afield.four.buffers.DynamicallyWriteable
+
+forth.defineWord("write-triangle", "( buf -- buf )") {
+  val buf = pop() as DynamicallyWriteable
+  buf.write {
+    // XYZW packed per vertex (3 vertices)
+    put(-0.5f); put(-0.5f); put(0f); put(1f)
+    put( 0.5f); put(-0.5f); put(0f); put(1f)
+    put( 0.0f); put( 0.5f); put(0f); put(1f)
+  }
+  push(buf)
+}
+```
+
+Notes for dynamic-buffer bridging:
+- `defineWord` closures execute on the interpreter thread/context used by your host.
+- Prefer `write { ... }` when replacing the payload; `append { ... }` when accumulating.
+- `DynamicBuffer.put(Vec4)` follows std430-friendly alignment rules used by Field's buffer code.
+- If you need explicit control, call `putScalar(...)` repeatedly instead of vector helpers.
+
+### Builtins
+
+Builtins included by default:
+- stack ops (`dup`, `swap`, `over`, `pick`, `roll`, ...)
+- math/logic/control flow (`if/else/then`, `begin/until`, `do/loop`, ...)
+- variables/constants (`variable`, `!`, `@`, `constant`)
+- strings/output (`."..."`, `s"..."`, `.`, `println`, ...)
+- dictionary tools (`words`, `see`, `forget`, `recurse`)
+- return-stack transfer (`>r`, `r>`, `r@`)
+- vectors (`vec2`, `vec3`, `vec4` + arithmetic helpers)
+- `FLine` primitives (`fline`, `moveto`, `lineto`, `cubicto`, styling words)
+- small visualization words (`html`, `watch`, `stack-display`, `bar`, `plot-stack`)
+- frame/yield primitive (`frame`) for cooperative launch-mode animations
+- host reflection hooks (`@?`, `@?!`, `class-for`, `class-matches`, `class-help`)
+
+### Dictionary, recursion and the return stack
+
+Dictionary / debugging examples:
+```diffstatic {data-lang=forth}
+: sqr dup * ;
+words              \ print all currently known words
+see sqr            \ print ": sqr dup * ;"
+forget sqr         \ remove the user-defined word
+```
+
+Recursion example:
+```diffstatic {data-lang=forth}
+: countdown ( n -- )
+  dup 0> if
+    dup println
+    1- recurse
+  else
+    drop
+  then ;
+5 countdown
+```
+
+Infinite loop example. Use `again` mainly in launched words where `frame`
+yields back to Field each tick:
+```diffstatic {data-lang=forth}
+variable tick
+: ticker begin tick @ println 1 tick +! frame again ;
+ticker
+```
+
+Return-stack examples. `>r` moves a temporary value away from the data stack,
+`r@` copies it back, and `r>` restores/removes it:
+```diffstatic {data-lang=forth}
+: add-twice ( a b -- a+b+b )
+  >r        \ return stack: b ; data stack: a
+  r@ +      \ data stack: a+b, b is still saved
+  r> + ;    \ data stack: a+b+b
+```
+
+### Visualization words
+
+Visualization examples:
+```diffstatic {data-lang=forth}
+s"<b>Hello from Forth</b>" html
+0.72 1.0 s"progress" bar
+42 s"answer" watch
+stack-display
+1 4 9 16 plot-stack
+```
+
 `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` — [read the source](source/jvmMain/afield/forth/ForthInterpreter/)
 
 ### ForthInterpreter { #forthinterpreter-kt-forthinterpreter }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ForthInterpreter</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L319)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ForthInterpreter</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L338)
 
-A compact, extensible FORTH interpreter used by Field4 for live coding.
+The interpreter: the data stack, the dictionary, the tokenizer and `eval`.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L321) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CallFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L322) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">currentLine</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L324) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">currentToken</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L326) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">stack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L330) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">returnStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L333) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">callStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L336) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">dictionary</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L340) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">variables</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L343) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L346) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onDisplay</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L347) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onFrame</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L348) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">strands</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L351) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">push</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L361) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">pop</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L363) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">peek</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L365) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">popNum</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L367) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">popInt</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L369) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToDouble</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L371) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToBool</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L381) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">eval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L428) | Evaluate a string of FORTH code. Returns a list of diagnostics (empty = success). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">diagnosticFor</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">ForthError</span><span class="p">)</span><span class="p">:</span> <span class="nc">ForthDiagnostic</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L451) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tokenize</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L480) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">execTokens</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L539) | Execute tokens[start..end) — the core interpreter loop. Returns the index one past the last token consumed (= end, normally). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">execWord</span><span class="p">(</span><span class="n">fw</span><span class="p">:</span> <span class="nc">ForthWord</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L684) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthCompletion</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L919) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describeWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L949) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">forgetWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L961) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">defineWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L975) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">addStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wordName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L979) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">removeStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L983) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tickStrands</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L987) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectMember</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1009) | `@?` implementation: access a field, property, or method on `obj` by name. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectCallN</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1077) | `@?!` implementation: call a method on `obj` with an explicit argument list. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L340) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CallFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L341) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">currentLine</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L343) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">currentToken</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L345) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L349) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">returnStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L352) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">callStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L355) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">dictionary</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L359) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">variables</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L362) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L365) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onDisplay</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L366) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onFrame</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L367) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">strands</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L370) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">push</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L380) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pop</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L382) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">peek</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L384) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">popNum</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L386) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">popInt</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L388) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToDouble</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L390) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToBool</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L400) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">eval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L447) | Evaluate a string of FORTH code. Returns a list of diagnostics (empty = success). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">diagnosticFor</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">ForthError</span><span class="p">)</span><span class="p">:</span> <span class="nc">ForthDiagnostic</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L470) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tokenize</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L499) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">execTokens</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L558) | Execute tokens[start..end) — the core interpreter loop. Returns the index one past the last token consumed (= end, normally). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">execWord</span><span class="p">(</span><span class="n">fw</span><span class="p">:</span> <span class="nc">ForthWord</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L703) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthCompletion</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L938) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describeWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L968) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">forgetWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L980) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">defineWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L994) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">addStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wordName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L998) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">removeStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1002) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tickStrands</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1006) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectMember</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1028) | `@?` implementation: access a field, property, or method on `obj` by name. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectCallN</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1096) | `@?!` implementation: call a method on `obj` with an explicit argument list. |
 
 ### ForthWord { #forthinterpreter-kt-forthword }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">ForthWord</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1552)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">ForthWord</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1571)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Builtin</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1553) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Compiled</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthInterpreter</span><span class="p">.</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceLine</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1554) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Variable</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1555) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Constant</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1556) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lambda</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1557) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Builtin</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1572) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Compiled</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthInterpreter</span><span class="p">.</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceLine</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1573) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Variable</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1574) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Constant</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1575) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lambda</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1576) |  |
 
 ### ForthError { #forthinterpreter-kt-fortherror }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">ForthError</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1560)
+[<code class="highlight"><span class="k">class</span> <span class="nf">ForthError</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1579)
 
 ### ForthFrameYield { #forthinterpreter-kt-forthframeyield }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ForthFrameYield</span> <span class="p">:</span> <span class="nf">Throwable</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1561)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ForthFrameYield</span> <span class="p">:</span> <span class="nf">Throwable</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1580)
 
 ### ForthDiagnostic { #forthinterpreter-kt-forthdiagnostic }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthDiagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1563)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthDiagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1582)
 
 ### ForthCompletion { #forthinterpreter-kt-forthcompletion }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthCompletion</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">documentation</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1565)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthCompletion</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">documentation</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1584)
 
 | Declaration | Summary |
 | --- | --- |
@@ -2950,87 +3265,143 @@ Field4 `BoxExecution` implementation for the **Nano** micro-computer language.
 
 ## NanoVM.kt { #nanovm-kt }
 
+Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations:
+four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an
+instruction.
+
+The whole machine is:
+
+ - `r0`–`r3`, 8-bit unsigned, so 0–255
+ - 32 bytes of RAM, addressed modulo 32, so no address is out of range
+ - flags `Z` (zero), `C` (carry), `S` (sign) and `O` (overflow)
+ - a call stack eight deep, for `CALL` and `RET`
+ - unsigned-byte arithmetic throughout, wrapping mod 256
+
+Instructions are fetched from the program byte array passed to `NanoVM.run`, and `ram` is
+separate data. `NanoVM.load` also mirrors the program's first 32 bytes into RAM, which is what
+lets a program read its own text. `NanoInterface`'s launch mode calls `NanoVM.resetRegisters`
+instead, leaving RAM alone so it carries state from one per-tick run to the next.
+
+### Opcode map
+
+[`Opcode`](languages.md#nanovm-kt-opcode) is the constant table, and `Opcode.twoReg` and `Opcode.oneReg` are the encoders.
+
+| form | encoding | instructions | opcodes |
+| --- | --- | --- | --- |
+| no operand | one byte | `NOP`, `HLT`, `RET` | `0x00`–`0x02` |
+| one register | `base + reg`, 4 per op | `INC`, `DEC`, `NOT`, `NEG`, `CLR`, `OUT`, `RNG` | `0x04`–`0x1F` |
+| two registers | `base + (dst shl 2) + src`, 16 per op | `MOV`, `ADD`, `SUB`, `MUL`, `AND`, `OR`, `XOR`, `CMP`, `LDR`, `STR` | `0x20`–`0xBF` |
+| register and immediate or address | two bytes, 4 per op | `LDI`, `LDA`, `STA`, `ADDI`, `LDRR`, `STRR`, `SHL`, `SHR` | `0xC0`–`0xDF` |
+| relative branch | two bytes, signed offset | `JMP`, `JZ`, `JNZ`, `JGT`, `JLT`, `JGE`, `JLE`, `JC`, `JNC`, `CALL` | `0xE0`–`0xE9` |
+| absolute branch | two bytes, absolute address | `JMPA`, `CALLA` | `0xEA`–`0xEB` |
+| two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFB` |
+
+Five bytes decode to nothing — `0x03`, and `0xFC`–`0xFF` past `DIV`'s last `(dst, src)` pair.
+Each reports an unknown opcode and halts. That path matters here more than it would in a VM with
+a fixed program: artificial-life work mutates programs, and `NanoAssembler`'s raw-byte directive
+puts an arbitrary byte in front of the decoder too, so every one of the 256 has to either execute
+or report. The GPU port in `nano_compute.glsl` decodes the same map.
+
+### A program
+
+```diffstatic {data-lang=nano}
+; comment
+start:
+    ldi r0, 10     ; r0 = 10
+    ldi r1, 0      ; r1 = 0
+loop:
+    add r1, r0     ; r1 += r0
+    dec r0         ; r0--  (sets Z when r0 reaches 0)
+    jnz loop       ; jump back if not zero
+    out r1         ; print r1
+    hlt
+```
+
+`NanoAssembler.kt` has the rest of the syntax, including the directive that places raw bytes in
+the program stream and the fact that a label resolves to an offset for a relative branch and to
+an address for `JMPA` and `CALLA`.
+
 `src/jvmMain/kotlin/afield/nano/NanoVM.kt` — [read the source](source/jvmMain/afield/nano/NanoVM/)
 
 ### NanoVM { #nanovm-kt-nanovm }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">NanoVM</span><span class="p">(</span><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Random</span><span class="p">.</span><span class="nf">nextInt</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L45)
+[<code class="highlight"><span class="k">class</span> <span class="nf">NanoVM</span><span class="p">(</span><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Random</span><span class="p">.</span><span class="nf">nextInt</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L69)
 
-Nano – a minimal 8-bit virtual machine designed for emergence and artificial-life simulations.
+The machine itself: the register file, RAM, the flags and the fetch-decode-execute step.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">reg</span></code>](source/jvmMain/afield/nano/NanoVM/#L57) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">ram</span></code>](source/jvmMain/afield/nano/NanoVM/#L58) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">pc</span></code>](source/jvmMain/afield/nano/NanoVM/#L59) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L60) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagC</span></code>](source/jvmMain/afield/nano/NanoVM/#L61) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagS</span></code>](source/jvmMain/afield/nano/NanoVM/#L62) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagO</span></code>](source/jvmMain/afield/nano/NanoVM/#L63) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">halted</span></code>](source/jvmMain/afield/nano/NanoVM/#L64) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L69) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onError</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L70) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StepResult</span><span class="p">(</span><span class="k">val</span> <span class="n">executedPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">currentPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">executed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L72) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L81) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">resetRegisters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L96) | Reset only registers and execution state, preserving RAM contents. Used in `NanoInterface` launch mode so RAM acts as persistent working memory that survives across per-tick executions (important for ALife state machines). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L106) | Load a program into a fresh machine (resets full state including RAM). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/nano/NanoVM/#L117) | Run up to `maxSteps` instructions from current `pc`. Returns the number of steps executed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stepOnce</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StepResult</span></code>](source/jvmMain/afield/nano/NanoVM/#L131) | Execute exactly one instruction at the current `pc`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoVM/#L449) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">reg</span></code>](source/jvmMain/afield/nano/NanoVM/#L81) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">ram</span></code>](source/jvmMain/afield/nano/NanoVM/#L82) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">pc</span></code>](source/jvmMain/afield/nano/NanoVM/#L83) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L84) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagC</span></code>](source/jvmMain/afield/nano/NanoVM/#L85) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagS</span></code>](source/jvmMain/afield/nano/NanoVM/#L86) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagO</span></code>](source/jvmMain/afield/nano/NanoVM/#L87) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">halted</span></code>](source/jvmMain/afield/nano/NanoVM/#L88) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L93) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onError</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L94) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StepResult</span><span class="p">(</span><span class="k">val</span> <span class="n">executedPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">currentPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">executed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L96) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L105) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resetRegisters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L120) | Reset only registers and execution state, preserving RAM contents. Used in `NanoInterface` launch mode so RAM acts as persistent working memory that survives across per-tick executions (important for ALife state machines). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L130) | Load a program into a fresh machine (resets full state including RAM). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/nano/NanoVM/#L141) | Run up to `maxSteps` instructions from current `pc`. Returns the number of steps executed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stepOnce</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StepResult</span></code>](source/jvmMain/afield/nano/NanoVM/#L155) | Execute exactly one instruction at the current `pc`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoVM/#L473) |  |
 
 ### Opcode { #nanovm-kt-opcode }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">Opcode</span></code>](source/jvmMain/afield/nano/NanoVM/#L466)
+[<code class="highlight"><span class="k">object</span> <span class="nc">Opcode</span></code>](source/jvmMain/afield/nano/NanoVM/#L490)
 
-Opcode constants for the Nano VM. These mirror the ranges used in `NanoVM.step`.
+Opcode constants for the Nano VM, with the two encoders that build a byte out of a base and a register index. These are the ranges `NanoVM.stepOnce` decodes.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOP</span></code>](source/jvmMain/afield/nano/NanoVM/#L467) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L468) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RET</span></code>](source/jvmMain/afield/nano/NanoVM/#L469) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L471) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L472) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L473) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NEG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L474) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L475) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L476) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RNG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L477) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MOV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L479) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADD&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L480) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUB&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L481) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MUL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L482) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AND&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L483) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L484) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">XOR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L485) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CMP&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L486) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L487) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L488) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L490) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L491) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L492) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L493) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L494) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L495) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L496) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L497) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMP</span></code>](source/jvmMain/afield/nano/NanoVM/#L499) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L500) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L501) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGT</span></code>](source/jvmMain/afield/nano/NanoVM/#L502) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L503) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGE</span></code>](source/jvmMain/afield/nano/NanoVM/#L504) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLE</span></code>](source/jvmMain/afield/nano/NanoVM/#L505) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JC</span></code>](source/jvmMain/afield/nano/NanoVM/#L506) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNC</span></code>](source/jvmMain/afield/nano/NanoVM/#L507) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALL</span></code>](source/jvmMain/afield/nano/NanoVM/#L508) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMPA</span></code>](source/jvmMain/afield/nano/NanoVM/#L509) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALLA</span></code>](source/jvmMain/afield/nano/NanoVM/#L510) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L512) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">twoReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L515) | Encode a two-register opcode: op_base + (dst << 2) + src |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">oneReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L518) | Encode a single-register opcode: op_base + regIndex |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOP</span></code>](source/jvmMain/afield/nano/NanoVM/#L491) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L492) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RET</span></code>](source/jvmMain/afield/nano/NanoVM/#L493) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L495) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L496) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L497) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NEG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L498) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L499) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L500) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RNG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L501) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MOV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L503) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADD&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L504) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUB&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L505) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MUL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L506) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AND&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L507) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L508) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">XOR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L509) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CMP&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L510) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L511) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L512) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L514) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L515) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L516) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L517) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L518) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L519) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L520) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L521) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMP</span></code>](source/jvmMain/afield/nano/NanoVM/#L523) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L524) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L525) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGT</span></code>](source/jvmMain/afield/nano/NanoVM/#L526) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L527) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGE</span></code>](source/jvmMain/afield/nano/NanoVM/#L528) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLE</span></code>](source/jvmMain/afield/nano/NanoVM/#L529) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JC</span></code>](source/jvmMain/afield/nano/NanoVM/#L530) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNC</span></code>](source/jvmMain/afield/nano/NanoVM/#L531) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALL</span></code>](source/jvmMain/afield/nano/NanoVM/#L532) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMPA</span></code>](source/jvmMain/afield/nano/NanoVM/#L533) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALLA</span></code>](source/jvmMain/afield/nano/NanoVM/#L534) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L536) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">twoReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L539) | Encode a two-register opcode: op_base + (dst << 2) + src |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">oneReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L542) | Encode a single-register opcode: op_base + regIndex |
 
 ## NanoVisualization.kt { #nanovisualization-kt }
 

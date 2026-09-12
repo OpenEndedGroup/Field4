@@ -3,44 +3,68 @@ package afield.nano
 import kotlin.random.Random
 
 /**
- * Nano – a minimal 8-bit virtual machine designed for emergence and artificial-life simulations.
+ * Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations:
+ * four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an
+ * instruction.
  *
- * Specification:
- *  - 4 registers: r0, r1, r2, r3  (8-bit unsigned, i.e. 0–255)
- *  - 32 bytes of RAM (addresses wrap modulo 32)
- *  - Flags: Z (zero), C (carry), S (sign/negative), O (overflow)
- *  - Small call stack (8 levels deep) for CALL/RET
- *  - All values are unsigned bytes; arithmetic wraps mod 256
- *  - Programs and RAM data together fit comfortably in 64 bytes
+ * The whole machine is:
  *
- * Opcode encoding (see [Opcode] companion for full table):
- *  - Single-byte no-operand instructions: NOP (0x00), HLT (0x01), RET (0x02)
- *  - Single-reg instructions (4 per op, one per register):
- *      INC, DEC, NOT, NEG, CLR, OUT, RNG  (0x04–0x1F)
- *  - Two-reg instructions (16 per op, encoded as OP_BASE + (dst<<2) + src):
- *      MOV, ADD, SUB, MUL, AND, OR, XOR, CMP, LDR, STR  (0x20–0xBF)
- *  - Reg + immediate/address (2 bytes each, 4 per op, one per register):
- *      LDI, LDA, STA, ADDI, LDRR, STRR, SHL, SHR  (0xC0–0xDF)
- *  - Branch instructions (2 bytes: opcode + signed offset):
- *      JMP, JZ, JNZ, JGT, JLT, JGE, JLE, JC, JNC, CALL  (0xE0–0xE9)
- *  - Absolute branch (2 bytes: opcode + absolute address):
- *      JMPA, CALLA  (0xEA–0xEB)
- *  - Two-reg DIV  (0xEC–0xFB)
- *  - Unassigned: 0x03, 0xFC–0xFF — decoding one reports an error and halts
+ *  - `r0`–`r3`, 8-bit unsigned, so 0–255
+ *  - 32 bytes of RAM, addressed modulo 32, so no address is out of range
+ *  - flags `Z` (zero), `C` (carry), `S` (sign) and `O` (overflow)
+ *  - a call stack eight deep, for `CALL` and `RET`
+ *  - unsigned-byte arithmetic throughout, wrapping mod 256
  *
- * Assembly syntax quick reference:
- * ```
+ * Instructions are fetched from the program byte array passed to `NanoVM.run`, and `ram` is
+ * separate data. `NanoVM.load` also mirrors the program's first 32 bytes into RAM, which is what
+ * lets a program read its own text. `NanoInterface`'s launch mode calls `NanoVM.resetRegisters`
+ * instead, leaving RAM alone so it carries state from one per-tick run to the next.
+ *
+ * #### Opcode map
+ *
+ * [Opcode] is the constant table, and `Opcode.twoReg` and `Opcode.oneReg` are the encoders.
+ *
+ * | form | encoding | instructions | opcodes |
+ * | --- | --- | --- | --- |
+ * | no operand | one byte | `NOP`, `HLT`, `RET` | `0x00`–`0x02` |
+ * | one register | `base + reg`, 4 per op | `INC`, `DEC`, `NOT`, `NEG`, `CLR`, `OUT`, `RNG` | `0x04`–`0x1F` |
+ * | two registers | `base + (dst shl 2) + src`, 16 per op | `MOV`, `ADD`, `SUB`, `MUL`, `AND`, `OR`, `XOR`, `CMP`, `LDR`, `STR` | `0x20`–`0xBF` |
+ * | register and immediate or address | two bytes, 4 per op | `LDI`, `LDA`, `STA`, `ADDI`, `LDRR`, `STRR`, `SHL`, `SHR` | `0xC0`–`0xDF` |
+ * | relative branch | two bytes, signed offset | `JMP`, `JZ`, `JNZ`, `JGT`, `JLT`, `JGE`, `JLE`, `JC`, `JNC`, `CALL` | `0xE0`–`0xE9` |
+ * | absolute branch | two bytes, absolute address | `JMPA`, `CALLA` | `0xEA`–`0xEB` |
+ * | two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFB` |
+ *
+ * Five bytes decode to nothing — `0x03`, and `0xFC`–`0xFF` past `DIV`'s last `(dst, src)` pair.
+ * Each reports an unknown opcode and halts. That path matters here more than it would in a VM with
+ * a fixed program: artificial-life work mutates programs, and `NanoAssembler`'s raw-byte directive
+ * puts an arbitrary byte in front of the decoder too, so every one of the 256 has to either execute
+ * or report. The GPU port in `nano_compute.glsl` decodes the same map.
+ *
+ * #### A program
+ *
+ * ```nano
  * ; comment
  * start:
  *     ldi r0, 10     ; r0 = 10
  *     ldi r1, 0      ; r1 = 0
  * loop:
  *     add r1, r0     ; r1 += r0
- *     dec r0         ; r0--  (sets Z flag when r0 reaches 0)
+ *     dec r0         ; r0--  (sets Z when r0 reaches 0)
  *     jnz loop       ; jump back if not zero
  *     out r1         ; print r1
  *     hlt
  * ```
+ *
+ * `NanoAssembler.kt` has the rest of the syntax, including the directive that places raw bytes in
+ * the program stream and the fact that a label resolves to an offset for a relative branch and to
+ * an address for `JMPA` and `CALLA`.
+ */
+
+/**
+ * The machine itself: the register file, RAM, the flags and the fetch-decode-execute step.
+ *
+ * [maxSteps] bounds one `run`, so a program that never reaches `HLT` still returns. [rng] is what
+ * `RNG` draws from, injectable so that a run can be made repeatable.
  */
 class NanoVM(
     val maxSteps: Int = 100_000,
@@ -460,8 +484,8 @@ class NanoVM(
 }
 
 /**
- * Opcode constants for the Nano VM.
- * These mirror the ranges used in [NanoVM.step].
+ * Opcode constants for the Nano VM, with the two encoders that build a byte out of a base and a
+ * register index. These are the ranges `NanoVM.stepOnce` decodes.
  */
 object Opcode {
     const val NOP  = 0x00

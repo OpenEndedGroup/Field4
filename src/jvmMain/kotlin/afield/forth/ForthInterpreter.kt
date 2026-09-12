@@ -14,11 +14,13 @@ import afield.CellRole
 /**
  * A compact, extensible FORTH interpreter used by Field4 for live coding.
  *
- * This class is intentionally small and host-driven:
+ * It is host-driven:
  * - it executes FORTH source and keeps its own data stack/dictionary
  * - it ships with creative-coding oriented builtins (vectors + [FLine])
  * - it can be extended at runtime from Kotlin via [defineWord]
  * - it can interoperate with host objects using `@?` / `@?!` reflection calls
+ *
+ * #### The host loop
  *
  * Typical host loop:
  * 1. Construct an interpreter once (`val forth = ForthInterpreter()`).
@@ -91,6 +93,8 @@ import afield.CellRole
  *   1 0 0 1 fline-node-color ;
  * zig
  * ```
+ *
+ * #### The reflection bridge
  *
  * Example: resolve classes without full FQNs.
  * `class-for` consults Field's class cache (`importHelp.kt`) so short names usually work.
@@ -235,7 +239,8 @@ import afield.CellRole
  * pulse-loop
  * ```
  *
- * Example: full overwrite of float data each tick (`write` resets payload intentionally):
+ * Example: full overwrite of float data each tick, since `write` replaces the payload rather than
+ * adding to it:
  * ```kotlin
  * import afield.four.buffers.DynamicallyWriteable
  *
@@ -257,6 +262,8 @@ import afield.CellRole
  * - `DynamicBuffer.put(Vec4)` follows std430-friendly alignment rules used by Field's buffer code.
  * - If you need explicit control, call `putScalar(...)` repeatedly instead of vector helpers.
  *
+ * #### Builtins
+ *
  * Builtins included by default:
  * - stack ops (`dup`, `swap`, `over`, `pick`, `roll`, ...)
  * - math/logic/control flow (`if/else/then`, `begin/until`, `do/loop`, ...)
@@ -269,6 +276,8 @@ import afield.CellRole
  * - small visualization words (`html`, `watch`, `stack-display`, `bar`, `plot-stack`)
  * - frame/yield primitive (`frame`) for cooperative launch-mode animations
  * - host reflection hooks (`@?`, `@?!`, `class-for`, `class-matches`, `class-help`)
+ *
+ * #### Dictionary, recursion and the return stack
  *
  * Dictionary / debugging examples:
  * ```forth
@@ -307,6 +316,8 @@ import afield.CellRole
  *   r> + ;    \ data stack: a+b+b
  * ```
  *
+ * #### Visualization words
+ *
  * Visualization examples:
  * ```forth
  * s"<b>Hello from Forth</b>" html
@@ -315,6 +326,14 @@ import afield.CellRole
  * stack-display
  * 1 4 9 16 plot-stack
  * ```
+ */
+
+/**
+ * The interpreter: the data stack, the dictionary, the tokenizer and `eval`.
+ *
+ * One instance is one FORTH environment. `eval` returns a list of [ForthDiagnostic] rather than
+ * throwing, so a live-coding host can report a bad word and keep the environment; the stack and
+ * the dictionary survive an `eval` that failed.
  */
 class ForthInterpreter {
 

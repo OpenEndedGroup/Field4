@@ -98,9 +98,9 @@ object DemoTranscriptExecSmokeTest {
     internal val EXECUTE = setOf(
         // Three bounded CPU/allocation workloads, one real recording, then stop and assert samples.
         "profiling_timeline",
-        // The one EXECUTE demo that *launches* rather than executes: its box is a `loop { }`, so the
-        // transcript launches it, runs 90 real runloop frames (startRunloopDaemon above is what
-        // advances them) and stops it. Safe here because the whole scene is CPU physics plus
+        // The first of the EXECUTE demos that *launch* rather than execute: its box is a `loop { }`,
+        // so the transcript launches it, runs 90 real runloop frames (startRunloopDaemon above is
+        // what advances them) and stops it. Safe here because the whole scene is CPU physics plus
         // showPlane — Skia SVG -> display — so there is no Window and no Renderer to spin up.
         "cloth_simdverlet_start",
         // The world cloth_simdverlet_start hangs in: colliders, tearing, wind and a rope. Also a
@@ -109,6 +109,13 @@ object DemoTranscriptExecSmokeTest {
         // SimdVerlet worlds stepping in one runloop. Same no-Window, no-Renderer argument as the
         // cloth — CPU physics plus showPlane, Skia SVG -> display.
         "simdverlet_world",
+        // Inertial easing and the movement model built on it, as two `loop { }` playgrounds —
+        // launched, 90 frames, stopped, on the same no-Window argument as the cloth. The easing box
+        // additionally checks its own claim before it starts animating: `inertialTo` against the
+        // three-line hand-driven solve it packages, over 180 frames, and prints the worst
+        // disagreement. That assertion-shaped print is the reason this is EXECUTE and not
+        // COMPILE_ONLY — nothing else runs the packaged interpolant against its own arithmetic.
+        "inertial_movement",
         "fn_differentiable_fit_demo",
         // The two ways to run a `@{...}` Kotlin right-hand side, side by side; all three boxes execute.
         // `fnrw_broken` is the one-box form, which used to re-enter its own box 172 levels deep and
