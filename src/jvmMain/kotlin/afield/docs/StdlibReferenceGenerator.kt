@@ -779,6 +779,10 @@ object StdlibReferenceGenerator {
             "[Forth](../forth_examples.md) and [Python](../python.md).",
         "Workspace" to "The box's own surroundings: properties, persistence, and the handful of " +
             "names every box already has in scope.",
+        "Machine learning" to "Models small enough to train inside a box, in plain Kotlin, while " +
+            "you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back " +
+            "the deformation between them; the multi-output regression head it trains is usable " +
+            "on its own. See [Flow Matching](../flow_matching.md).",
     )
 
     /** Docs pages that are not worked examples and would only add noise as "see also" targets. */
