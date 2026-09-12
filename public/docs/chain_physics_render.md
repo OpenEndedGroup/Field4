@@ -72,8 +72,8 @@ is a thirtieth of the frame.
 
 For an *n* × *n* sheet the distance constraints run along the grid, so there are 2*n*(*n* − 1) of
 them, and the grid graph has (*n* − 1)² independent cycles. Every cycle is a hole through the welded
-solid. So the genus of the union has to equal the sheet's quad count, and the box says so in as many
-words rather than printing two numbers and leaving the reader to multiply:
+solid. So the genus of the union has to equal the sheet's quad count, and the box compares the two
+itself rather than printing both and leaving you to:
 
 ```diffstatic {data-lang=kotlin}
 println("genus $netGenus against $quads quads in the sheet; " +
@@ -86,9 +86,8 @@ another welds two rods that were not neighbours, closes a cycle, and drops the g
 `settleFrames` or shrink the collider until the sheet crumples and the message changes.
 
 Field's own `isWatertight()` and `genus()` read the returned mesh's indices, and Manifold's `genus`
-reads its own half-edge structure. Both appear in the readout for the same reason they do on
-[the polytope page](chain_polytope_render.md): two implementations that share no code agreeing about
-a surface is evidence about the bridge between them.
+reads its own half-edge structure. Both are in the readout because two implementations that share no
+code, agreeing about a surface, is evidence about the bridge between them.
 
 ## What the tracer refuses, and what the bridge does about it
 

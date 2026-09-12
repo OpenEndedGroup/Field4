@@ -109,8 +109,8 @@ Solid.scope {
     val volumeGap = kotlin.math.abs(plain.signedVolume() - solid.volume)
     val ratio = wall.volume / (solid.surfaceArea * thickness)
 
-    // Content at column zero on purpose: `$censusRows` is several lines that begin there, so an
-    // indented block plus trimIndent would leave the rest indented far enough to read as code.
+    // Content at column zero, because `$censusRows` is several lines that begin there: an indented
+    // block plus trimIndent would leave the rest indented far enough to read as code.
     markdown("chain", """
 #### `canonicalConway("bD")`, and where each face came from
 
