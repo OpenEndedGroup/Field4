@@ -187,15 +187,25 @@ Found while driving this code for the documentation branch. None is urgent; all 
 source-level readings with the site named, deliberately left alone rather than fixed on a
 docs branch.
 
-1. **`CPUSpan.notifyListeners` copies the listener list on every timed span.** `time` ends
-   in `notifyListeners`, which takes the lock and copies
-   (`Renderer.kt:92#val targets = synchronized(lock) { listeners.toList() }`) — one list
-   allocation per call, on whichever thread was timed. The *push* it guards is throttled to
-   once a second (`rendererBrowsing.kt:824#private fun maybePushCpuChanged(intervalMs: Long = 1000) {`),
-   but the copy is not: with six labelled spans per window context per frame, that is about
-   360 short-lived lists a second on the render thread, whether or not anyone is listening.
-   An early return when the list is empty would be one line, and the reason not to write it
-   here is that this is a documentation branch.
+1. **`CPUSpan.notifyListeners` takes the lock a second time on every timed span.** `time`
+   already holds `lock` to record the sample, then ends in `notifyListeners`, which takes it
+   again to copy the listener list
+   (`Renderer.kt:92#val targets = synchronized(lock) { listeners.toList() }`). With six
+   labelled spans per window context per frame that is a second uncontended monitor
+   acquisition roughly 360 times a second on the render thread. The *push* it guards is
+   throttled to once a second
+   (`rendererBrowsing.kt:824#private fun maybePushCpuChanged(intervalMs: Long = 1000) {`);
+   the lock acquisition is not.
+
+   **What this is *not*, because the obvious reading is wrong:** it is not an allocation per
+   span when nobody is listening. `Iterable<T>.toList()` is
+   `if (this is Collection) return when (size) { 0 -> emptyList(); 1 -> listOf(…); else -> toMutableList() }`,
+   and `emptyList()` returns the `EmptyList` singleton — so with no listeners attached the
+   copy allocates **nothing**, and with one listener it allocates a `SingletonList` rather
+   than an `ArrayList`. An "early return when the list is empty" would therefore save the
+   monitor acquisition and no garbage, and it would still need the lock to read `listeners`
+   safely. Left alone because this is a documentation branch, and worth a good deal less
+   than the shape of the code suggests.
 2. **Interpolated labels allocate a string per span.** Every renderer call site builds its
    label by interpolation, as at `Renderer.kt:1248#CPUSpan.time("present[$ctxIndex]") {`, so
    each timed span allocates a `String` and hashes it to find its deque

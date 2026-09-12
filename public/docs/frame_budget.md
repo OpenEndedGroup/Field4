@@ -217,9 +217,10 @@ allocation stacks come from `jdk.ObjectAllocationSample` throttled to **150 a se
 (`JvmProfileCapture.kt:23#enable("jdk.ObjectAllocationSample").with("throttle", "150/s").withStackTrace()`).
 
 A 10 millisecond period means a sampler that fires 100 times a second per running thread.
-At 60 fps that is roughly 0.6 chances per frame, so **a 2 millisecond hitch has about a one
-in five chance of appearing in any sample at all**, and a single hitch that shows up in no
-sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
+At 60 fps a frame is 16.7 milliseconds long, so about **1.7** firings land in each frame —
+but a firing only records your work if your work is what is running when it arrives, so **a
+2 millisecond hitch has about a one in five chance of appearing in any sample at all**, and
+a single hitch that shows up in no sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
 work in proportion to how much of *wall* time your work occupies. That is not a
 hand-waving claim; it is checkable, and it was checked for this page. The three-second
 recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13%
