@@ -340,6 +340,81 @@ distance, rather than distances along subsequent reflected or refracted rays.
 Temporal history stores unfogged colour, then applies the current camera distance
 when reprojecting it; moving out of dense fog can reveal retained surface detail.
 
+For the physical version — which does create light shafts, and which dims the light
+arriving at a surface as well as the light leaving it — see the next section. The two
+mechanisms are independent and both still work; they are not two spellings of one
+thing, and enabling both attenuates whatever the camera sees first twice over.
+
+## A participating medium
+
+`mediumDensity` puts a real, homogeneous participating medium in the scene. It is a
+different mechanism from `fogDensity` above, not a better-tuned version of it:
+
+| | `fogDensity` | `mediumDensity` |
+| --- | --- | --- |
+| what it does | blends the finished radiance of a sample toward `fogColor` | samples a collision distance along every ray segment |
+| what it knows | the primary hit distance | the whole path, and every light connection along it |
+| light *reaching* a surface | unchanged | attenuated over its own length |
+| a lamp inside it | unchanged | glows |
+| a slat between a lamp and the haze | nothing | casts a shadow *into the haze* |
+| cost | a multiply | one distance sample per segment, two shadow rays per collision |
+
+![A slatted strip light over a hazed room: shafts of lit haze fan out between four dark wedges where the slats block the lamp, the lamp carries a halo, and the sphere on the floor casts a shadow into the air as well as onto the floor](assets/path_tracing/medium_shafts.png)
+
+![The same room with fogDensity instead: the air is a flat, featureless grey everywhere, the slats' shadows appear only on the wall and floor, and there are no shafts](assets/path_tracing/medium_depthfog.png)
+
+The same geometry twice: `mediumDensity = 0.16` above, `fogDensity = 0.16` with a grey
+`fogColor` below, both at 1536 samples per pixel. The slats' shadows reach the wall and the
+floor in both — shadows on *surfaces* are not what separates them. What separates them is
+the air. Over the 100920 pixels of that frame whose primary ray hits no geometry at all,
+the medium puts a mean radiance of 0.91 with a spatial standard deviation of **2.02**;
+`fogDensity` puts a constant 0.34 with a deviation of **0.0000015**, because a background
+miss has no depth for a depth curve to act on. Both images come from
+`PathTraceMediumGpuSmoke.godRays`, which asserts that gap.
+
+```diffstatic {data-lang=kotlin}
+// The room is the medium's extent. Bounds are not decoration: an unbounded medium has
+// zero transmittance to infinity, so an environment map becomes unreachable and an
+// environment-lit scene renders black.
+tracer.mediumBounds = Vector3f(-6f, 0f, -3.9f) to Vector3f(6f, 5.2f, 3.9f)
+tracer.mediumDensity = 0.16f                           // extinction per world unit
+tracer.mediumAlbedo = Vector3f(0.96f, 0.95f, 0.93f)    // how much of that scatters
+tracer.mediumAnisotropy = 0.4f                         // forward-scattering, in (-1, 1)
+tracer.maxBounces = 8                                  // a collision spends one of these
+```
+
+| Control | Default | Meaning |
+| --- | --- | --- |
+| `mediumDensity` | `0f` | Extinction — scattering plus absorption — per world unit. Zero disables the medium. Achromatic, so a distance sample stays one decision; colour comes from the albedo. |
+| `mediumAlbedo` | `Vector3f(1f, 1f, 1f)` | The fraction of extinction that scatters rather than absorbs, per channel. One conserves energy exactly; zero is pure Beer–Lambert absorption with no glow at all. The getter returns a copy. |
+| `mediumAnisotropy` | `0f` | Henyey–Greenstein `g`, in (-1, 1). Zero is isotropic, positive forward-scatters into a halo, negative throws light back toward the camera. |
+| `mediumBounds` | `null` | The axis-aligned box the medium fills, as `low to high`. `null` fills all space, with the consequence above. |
+
+Changing any of them resets accumulation.
+
+**The bounce budget is the one that will surprise you.** A collision in the medium is
+an interaction like a surface hit, and it spends one of `maxBounces`. A medium dense
+enough to scatter a path three or four times therefore has that many fewer bounces
+left for surfaces, and past roughly two optical depths the image starts to *darken*
+rather than brighten — that is energy the bounce cap is discarding. Raise `maxBounces`
+(the cap is twelve) or lower the density. The size of it is measured rather than
+guessed: in a box two and a half optical depths across, a medium that conserves energy
+exactly reads `0.463` of its true value at one bounce, `0.852` at four, and `0.9968`
+at twelve.
+
+Light connections carry transmittance, and that is what makes the medium compose with
+`emitterSampling` rather than merely coexist with it: a lamp seen through haze is
+dimmed on the way to the eye *and* on the way to every surface it lights. Both
+estimators — the phase function's own sampling, and the connection to a light — are
+combined with the same power heuristic the surface arms use, so they do not
+double-count.
+
+A loadable document is at
+[`dev_docs/agents/demos/path_tracing_medium/`](../../dev_docs/agents/demos/path_tracing_medium/README.md):
+a slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
+shafts arrive. How the medium is verified, and against what, is in
+[`dev_docs/PARTICIPATING_MEDIA.md`](../../dev_docs/PARTICIPATING_MEDIA.md).
+
 ## Material shaders in a Field box
 
 Use `pathTracingHere` instead of the plain constructor to put material evaluation
