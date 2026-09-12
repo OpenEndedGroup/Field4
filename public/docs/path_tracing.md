@@ -269,7 +269,11 @@ art-direction/compositing control; it does not change the environment's radiance
 
 ## Depth fog
 
-Blend distant surfaces toward a colour, with a clear region around the camera:
+Blend distant surfaces toward a colour, with a clear region around the camera. This is a
+curve applied to a finished sample, not a medium light travels through — if you want shafts,
+a lamp that glows, or shadows cast into the air, you want [a participating
+medium](#a-participating-medium) below, and the table there compares the two directly.
+`fogDensity` remains the cheaper choice when you only need distance haze.
 
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.linalg.Vector3f
@@ -367,10 +371,16 @@ The same geometry twice: `mediumDensity = 0.16` above, `fogDensity = 0.16` with 
 `fogColor` below, both at 1536 samples per pixel. The slats' shadows reach the wall and the
 floor in both — shadows on *surfaces* are not what separates them. What separates them is
 the air. Over the 100920 pixels of that frame whose primary ray hits no geometry at all,
-the medium puts a mean radiance of 0.91 with a spatial standard deviation of **2.02**;
-`fogDensity` puts a constant 0.34 with a deviation of **0.0000015**, because a background
-miss has no depth for a depth curve to act on. Both images come from
-`PathTraceMediumGpuSmoke.godRays`, which asserts that gap.
+the medium puts a mean radiance of **0.91481** with a spatial standard deviation of
+**2.02372**; `fogDensity` puts **0.34068** with a deviation that prints as **0.00000**,
+because a background miss has no depth for a depth curve to act on — that population is
+constant for `fogDensity` *by construction*, not merely nearly so. With neither, both
+figures are exactly zero. Both images come from `PathTraceMediumGpuSmoke.godRays`, which
+asserts the gap in the form that survives re-running: the medium's deviation against a floor
+(`mediumSpread > 0.5`) and `fogDensity`'s variation **relative to its own mean**
+(`fogSpread / fogMean < 1e-4`). The residue behind that relative test is float32
+accumulation over 100 000 pixels, which is a claim about arithmetic rather than about
+rendering, so it is deliberately not quoted here as an absolute.
 
 ```diffstatic {data-lang=kotlin}
 // The room is the medium's extent. Bounds are not decoration: an unbounded medium has
@@ -395,12 +405,22 @@ Changing any of them resets accumulation.
 **The bounce budget is the one that will surprise you.** A collision in the medium is
 an interaction like a surface hit, and it spends one of `maxBounces`. A medium dense
 enough to scatter a path three or four times therefore has that many fewer bounces
-left for surfaces, and past roughly two optical depths the image starts to *darken*
-rather than brighten — that is energy the bounce cap is discarding. Raise `maxBounces`
-(the cap is twelve) or lower the density. The size of it is measured rather than
-guessed: in a box two and a half optical depths across, a medium that conserves energy
-exactly reads `0.463` of its true value at one bounce, `0.852` at four, and `0.9968`
-at twelve.
+left for surfaces, and a dense enough medium makes the image *darken* rather than
+brighten — that is energy the bounce cap is discarding. Raise `maxBounces` (the cap is
+twelve) or lower the density.
+
+What is measured is how much energy a given budget loses at a fixed density, and it is
+worth knowing precisely. In a box **2.4** optical depths across, a medium that conserves
+energy exactly — albedo 1, where the true answer is a whole number — reads `0.46337` of
+its value at one bounce, `0.64054` at two, `0.85178` at four, `0.97776` at eight and
+`0.99680` at twelve. Monotone, and never above 1.0, which is what tells you the deficit
+is truncation rather than a leak. `PathTraceMediumGpuSmoke` runs that sweep.
+
+Note what that does *not* establish: it is a sweep over the bounce budget at one density,
+so it does not locate a density at which darkening sets in. Treat "raise `maxBounces` when
+you raise the density" as the rule and the sweep as its cost, and if you need the
+threshold for your own scene, measure it there — the demo below cycles four densities for
+exactly that reason.
 
 Light connections carry transmittance, and that is what makes the medium compose with
 `emitterSampling` rather than merely coexist with it: a lamp seen through haze is
@@ -409,11 +429,91 @@ estimators — the phase function's own sampling, and the connection to a light 
 combined with the same power heuristic the surface arms use, so they do not
 double-count.
 
+### Writing your own phase function
+
+The four properties above tune a medium; they do not let you change what scattering *is*.
+For that, reload the integrator (see [Replacing the integrator on a running
+tracer](#replacing-the-integrator-on-a-running-tracer)) and replace the phase function
+itself. This is the customisation point that stays unbiased, for a specific reason: the
+distance sample and the transmittance depend only on extinction, so swapping the
+*directional* distribution leaves them untouched.
+
+Two functions have to change together. `phase(mu, g)` is the density, used both to weight a
+scattering event and as the pdf in the MIS weight; `samplePhase(rd, g, xi)` draws from it.
+**They are a matched pair, and nothing in the shader checks that they still match.** Here
+is a two-term Henyey–Greenstein — a forward lobe plus a weaker backward one, which is how
+atmospheric and cloud media actually behave, and which single-term HG cannot express at any
+`g`:
+
+```diffstatic {data-lang=kotlin}
+val twoLobe = tracer.integratorSource()
+    .replace("""
+        float phase(float mu,float g) {
+            if (abs(g)<1e-4) return 1.0/(4.0*PI);
+            float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+            return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+        }
+    """.trimIndent(), """
+        const float BACK_G=-0.55;   // the backward lobe
+        const float BACK_W=0.3;     // its share of the mixture
+        float hg(float mu,float g) {
+            if (abs(g)<1e-4) return 1.0/(4.0*PI);
+            float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+            return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+        }
+        // The MIXTURE is the density. Evaluating one lobe while sampling two is the
+        // classic way to bias this, and it looks plausible on screen.
+        float phase(float mu,float g) {
+            return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
+        }
+    """.trimIndent())
+    .replace("float mu;\n    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;", """
+        float mu;
+        // Pick a lobe with xi.x, then remap it back to uniform for phi — conditional on
+        // each branch the remapped value is exactly uniform, the same argument
+        // sampleMediumDistance uses to share its dimension.
+        float g2=g;
+        if (xi.x<BACK_W) { g2=BACK_G; xi.x=xi.x/BACK_W; }
+        else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
+        g=g2;
+        if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
+    """.trimIndent())
+
+println(tracer.reloadIntegrator(twoLobe))   // RELOADED; accumulation restarts
+```
+
+**The check for this already exists, and it is the reason to trust the result.**
+`PathTraceMediumGpuSmoke`'s white furnace puts an albedo-one medium in a uniform unit
+radiance field with no geometry at all, where the answer is an analytic **1.0** for *any*
+correctly normalised phase function. It runs at six anisotropies precisely because that
+makes it a test of whether `phase` and `samplePhase` are the same distribution, rather than
+only of whether one of them integrates to one. Change one and not the other and the furnace
+moves off 1.0; the packaged pair holds it to within 0.00001. So after editing a phase
+function, run that arm — it is the cheapest arm in the harness and the only one that can
+catch this class of mistake.
+
+Two things this does **not** extend to. A phase function that is not normalised over the
+sphere breaks energy conservation silently, and the furnace is how you find out. And a
+**heterogeneous** medium is not a phase-function change: `sampleMediumDistance` inverts the
+closed-form CDF for a *constant* extinction and `mediumTransmittance` is `exp(-σt · span)`,
+so substituting a `density(p)` lookup into the shader leaves both of them wrong in a way no
+image will show you. Varying density needs delta or ratio tracking in place of both, which
+is not shipped — see the limits in
+`dev_docs/PARTICIPATING_MEDIA.md`.
+
+### Opening it
+
 A loadable document is at
-[`dev_docs/agents/demos/path_tracing_medium/`](../../dev_docs/agents/demos/path_tracing_medium/README.md):
+`dev_docs/agents/demos/path_tracing_medium/`:
 a slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
 shafts arrive. How the medium is verified, and against what, is in
-[`dev_docs/PARTICIPATING_MEDIA.md`](../../dev_docs/PARTICIPATING_MEDIA.md).
+`dev_docs/PARTICIPATING_MEDIA.md`.
+
+One interaction worth knowing before you combine features: **a medium and `temporalReuse`
+are effectively exclusive.** A collision on the camera ray leaves the history guide's
+surface normal unset, so reprojection rejects that pixel — correct and safe, but it means a
+dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
+of reaching for reuse.
 
 ## Material shaders in a Field box
 
