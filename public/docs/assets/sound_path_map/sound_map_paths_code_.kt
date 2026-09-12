@@ -1,5 +1,5 @@
-// The map, printed from the code rather than from a page. Six ways to make samples, five ways
-// out, four ways in — and 7 of the 15 on the one seam that matters.
+// The map, printed from the code rather than from a page. Seven ways to make samples, five ways
+// out, four ways in — and 9 of the 16 on the one seam that matters.
 SoundPathMap.Role.values().forEach { role ->
     println("${role.label}:")
     SoundPathMap.PATHS.filter { it.role == role }.forEach { p ->

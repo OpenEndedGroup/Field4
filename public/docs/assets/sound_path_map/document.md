@@ -22,16 +22,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-The map, printed from the code rather than from a page. Six ways to make samples, five ways
-out, four ways in — and 7 of the 15 on the one seam that matters.
+The map, printed from the code rather than from a page. Seven ways to make samples, five ways
+out, four ways in — and 9 of the 16 on the one seam that matters.
 
 ```edn [field-box id="sound_map_paths" role="properties"]
-{"id" "sound_map_paths" "index" 1 "name" "1 · The map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · The map" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 150.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_map_paths_code_.kt" "lines" 14 "characters" 876 "sha256" "7ab7fd4f3a7158e246cb422c85d011b0b751203ecd4d7571f709e7828852e327"}]}
+{"id" "sound_map_paths" "index" 1 "name" "1 · The map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · The map" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 150.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_map_paths_code_.kt" "lines" 14 "characters" 878 "sha256" "57d03177d65f9848c31b17b000bbba97e2e5afb4202dcc8fb99e648d36d85273"}]}
 ```
 
 ```kotlin [field-property box="sound_map_paths" name="code" path="sound_map_paths_code_.kt"]
-// The map, printed from the code rather than from a page. Six ways to make samples, five ways
-// out, four ways in — and 7 of the 15 on the one seam that matters.
+// The map, printed from the code rather than from a page. Seven ways to make samples, five ways
+// out, four ways in — and 9 of the 16 on the one seam that matters.
 SoundPathMap.Role.values().forEach { role ->
     println("${role.label}:")
     SoundPathMap.PATHS.filter { it.role == role }.forEach { p ->

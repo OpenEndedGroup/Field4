@@ -28,6 +28,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 7 | 42 | 6% |
+| [Dough.kt](../src/jvmMain/kotlin/afield/four/synth/Dough.kt) | Synthesis | sound_paths | 5 | 15 | 0% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
 | [FabricateRenderPlan.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt) | Renderers | fabricate_renderer | 4 | 15 | 9% |
 | [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Audio AI | audio_ai_gesture_board | 4 | 5 | 25% |
@@ -71,6 +72,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
 | [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
 | [MorphoGenome.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGenome.kt) | Languages | morpho_examples | 0 | 13 | 62% |
+| [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | sound_paths | 0 | 11 | 70% |
 | [alife.kt](../src/jvmMain/kotlin/afield/stdlib/alife.kt) | ALife | alife_examples | 0 | 11 | 76% |
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
 | [PatCondense.kt](../src/jvmMain/kotlin/afield/four/synth/PatCondense.kt) | Patterns | pattern_language | 0 | 10 | 57% |
@@ -128,7 +130,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 10% |
 | [Spectral.kt](../src/jvmMain/kotlin/afield/four/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
-| [Dough.kt](../src/jvmMain/kotlin/afield/four/synth/Dough.kt) | Synthesis | — | 5 | 15 | 0% |
 | [FieldMLInterface.kt](../src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt) | Languages | — | 5 | 8 | 0% |
 | [Diagnostics.kt](../src/jvmMain/kotlin/afield/ml/diag/Diagnostics.kt) | Languages | — | 5 | 8 | 0% |
 | [KotlinJs.kt](../src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt) | Languages | — | 5 | 7 | 0% |
@@ -214,7 +215,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [HostTypes.kt](../src/jvmMain/kotlin/afield/ml/type/HostTypes.kt) | Languages | — | 0 | 12 | 60% |
 | [Datalog.kt](../src/jvmMain/kotlin/afield/datalog/Datalog.kt) | Languages | — | 0 | 11 | 60% |
 | [FabricateFrameGraph.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateFrameGraph.kt) | Renderers | — | 0 | 11 | 8% |
-| [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | — | 0 | 11 | 70% |
 | [MorphoSearch.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSearch.kt) | Languages | — | 0 | 11 | 61% |
 | [RectSLPattern.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPattern.kt) | Languages | — | 0 | 11 | 50% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
@@ -283,6 +283,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleFamily` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:194` |
 | `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:216` |
 | `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:354` |
+| `DoughEngine` | class | `src/jvmMain/kotlin/afield/four/synth/Dough.kt:11` |
+| `DoughAudioSink` | class | `src/jvmMain/kotlin/afield/four/synth/Dough.kt:375` |
+| `ParkedDough` | class | `src/jvmMain/kotlin/afield/four/synth/Dough.kt:434` |
 | `ParamModulationMode` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:42` |
 | `ParamPath` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:110` |
 | `ParamSet` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:163` |
@@ -377,8 +380,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RectNode` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1174` |
 | `GroupNode` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1190` |
 | `ShaderModuleSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1202` |
-| `MaterialTable` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1211` |
-| `SceneProgram` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1216` |
-| `Transform2d` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1274` |
 
 …and **738 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
