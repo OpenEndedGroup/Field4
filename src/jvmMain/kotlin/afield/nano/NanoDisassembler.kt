@@ -209,7 +209,10 @@ class NanoDisassembler {
                 Pair("calla ${labelFor(a)}  ; abs 0x${a.toString(16)}", listOf(op, a))
             }
 
-            op in 0xEC..0xFF -> {
+            // 0xEC–0xFB only: 0xFC–0xFF decode no (dst,src) pair the VM will execute, so they
+            // belong in the `???` arm rather than rendering as a div against a register r4 that
+            // does not exist.
+            op in 0xEC..0xFB -> {
                 val (d, s) = twoRegs(0xEC)
                 Pair("div  $d, $s", listOf(op))
             }

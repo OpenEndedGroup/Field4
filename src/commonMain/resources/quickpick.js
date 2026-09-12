@@ -364,6 +364,34 @@ function bootstrapAnywhereProviders() {
                 return results
         })
 
+        registerAnywhereProvider("guide", async (query) => {
+                if (typeof window.showDocumentGuide !== "function") return []
+                const q = String(query || "").trim().toLowerCase()
+                let guides = []
+                try { guides = await window.documentGuidePaletteList?.() || [] }
+                catch (error) { console.warn("document guide list failed", error) }
+                return [{
+                        id: "document-viewer",
+                        label: "Document Viewer",
+                        description: "Browse this document’s Markdown guides and notes",
+                        detail: "Open the guide reader at the last page you were reading.",
+                        score: 36,
+                        exactMatch: q === "document viewer",
+                        run: () => window.showDocumentGuide(),
+                }, ...guides.map(guide => ({
+                        id: `document-guide-${guide.path}`,
+                        label: guide.title || guide.path,
+                        description: guide.path,
+                        detail: "Read this Markdown file in the document viewer.",
+                        path: guide.path,
+                        score: 36,
+                        exactMatch: !!q && [guide.title, guide.path, guide.path.split('/').pop()]
+                                .some(value => String(value || '').toLowerCase() === q),
+                        run: () => window.showDocumentGuide(guide.path),
+                }))].filter(item => Number.isFinite(paletteFuzzyScore(query,
+                        `${item.label} ${item.description} ${item.detail} Document Guides`)))
+        })
+
         let macroCache = null
         let macroCacheAt = 0
         const macroCacheTtlMs = 750
@@ -545,7 +573,7 @@ function rerank(results) {
                 const recency = u.last ? 100000 / (now - u.last + 1000) : 0
                 const base = r.score || 0
                 return { ...r, score: base + freq + recency, usageKey: key }
-        }).sort((a, b) => b.score - a.score)
+        }).sort((a, b) => Number(!!b.exactMatch) - Number(!!a.exactMatch) || b.score - a.score)
         if (scored.length > ANYWHERE_RESULT_LIMIT) {
             qpLog(`[anywhere] limiting results ${scored.length} -> ${ANYWHERE_RESULT_LIMIT}`)
         }
@@ -569,6 +597,7 @@ const paletteProviderTitle = (provider) => {
                 "field": "Field",
                 "editor": "Editor",
                 "macro": "Macros",
+                "guide": "Document Guides",
                 "option": "Options",
         }
         return titles[provider] || String(provider || "Other").replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
@@ -577,6 +606,7 @@ const paletteProviderTitle = (provider) => {
 const paletteIconFor = (item) => {
         if (item.icon) return item.icon
         if (item.provider === "macro") return "ma"
+        if (item.provider === "guide") return "md"
         if (item.property) return "pr"
         if (item.boxId) return "bx"
         if (item.category === "Editor") return "ed"
@@ -1201,6 +1231,12 @@ const paletteBoxLabel = (uid) => {
 
 const palettePreviewForAnywhere = (item) => {
         if (!item) return ""
+        if (item.provider === "guide") return [
+                `<div class="afield-palette-doc-title">${paletteEscapeHtml(item.label)}</div>`,
+                `<div class="afield-palette-doc-meta">${paletteEscapeHtml(item.path || "Current document")}</div>`,
+                `<p>${paletteEscapeHtml(item.detail)}</p>`,
+                `<p class="afield-palette-doc-muted">Press Enter to open the document viewer.</p>`,
+        ].join("")
         if (item.provider === "semantic" || item.provider === "semantic-current" || item.semanticHit) {
                 return paletteSemanticPreview(item)
         }
@@ -1453,6 +1489,11 @@ class FieldPaletteController {
         async refresh() {
                 const generation = ++this.generation
                 const query = this.input().value || ""
+                // Providers can be asynchronous. Enter must never accept a result from the
+                // previous query while the new catalogue/semantic results are arriving.
+                this.items = []
+                this.activeIndex = -1
+                this.renderLoading()
                 const source = this.options.getItems
                         ? await Promise.resolve(this.options.getItems(query))
                         : (this.options.items || [])
@@ -1484,7 +1525,7 @@ class FieldPaletteController {
                                 return { item, score, fuzzy, index }
                         })
                         .filter((entry) => !q || Number.isFinite(entry.fuzzy))
-                        .sort((a, b) => b.score - a.score || a.index - b.index)
+                        .sort((a, b) => Number(!!b.item.exactMatch) - Number(!!a.item.exactMatch) || b.score - a.score || a.index - b.index)
                         .map((entry) => entry.item)
         }
 
@@ -1652,6 +1693,9 @@ class FieldPaletteController {
                         this.move(-8)
                 } else if (event.key === "Enter" || event.key === "Tab") {
                         event.preventDefault()
+                        // Accept hides and blurs the palette synchronously. Keep this same key
+                        // from then reaching canvas shortcuts with document.body as the focus.
+                        event.stopPropagation()
                         this.accept()
                 } else if (event.key === "Escape") {
                         this.closeFromKeyboard(event)
@@ -1676,7 +1720,7 @@ function openAnywherePalette() {
         ensureEditor()
         fieldPalette().open({
                 title: "Open Anything",
-                placeholder: "Search boxes, properties, or text...",
+                placeholder: "Search boxes, properties, guides, macros, or text...",
                 getItems: async (value) => {
                         const query = (value || "").trim()
                         qpLog("[anywhere] query", query, "providers", anywhereProviders.length)
@@ -1705,6 +1749,7 @@ function openAnywherePalette() {
                                                         macroName: it.macroName || "",
                                                         operationCount: it.operationCount || 0,
                                                         score: it.score || 0,
+                                                        exactMatch: !!it.exactMatch,
                                                         runSource: it.run,
                                                 }))
                                         }))

@@ -6,6 +6,11 @@ resume scheduled through the Runloop: its elapsed execution time, thread CPU tim
 and allocated heap bytes. Recording ends automatically, or you can press **Latch**.
 Your boxes keep running while you explore the capture.
 
+This page is the panel: what every control does, and what each number in it is a number
+*of*. For the model underneath — which of Field's three profiling instruments to reach for,
+what each one structurally cannot see, and the route from "it stutters" to a named line of
+your own box source — see [Holding a Frame Budget](frame_budget.md).
+
 Enable **JVM stacks** before recording to add sampled CPU and allocation stacks.
 After latching, **Hot code** groups the selected time interval by class, method, or
 line. This includes background workers and renderer CPU work, alongside the exact
@@ -30,13 +35,14 @@ The same replay through the backdoor, attached to an already running Field:
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --attach-existing --port 9092 \
-  --workspace /path/to/workspace --document my_demo \
+  --attach-existing --port 9092 --document my_demo \
   --command 'macro write profiling_timeline --file dev_docs/agents/transcripts/profiling_timeline.yaml' \
   --command 'macro run profiling_timeline'
 ```
 
-Replace the workspace, document, and port with your running instance's values. This
+Replace the document and port with your running instance's values, and make the document
+name relative to the server's own workspace — an attached server's workspace is fixed at its
+launch, so passing `--workspace` here is a hard error rather than a no-op. This
 attaches to that document and opens the timeline in its connected browser. For an
 isolated automation check, omit `--attach-existing`, use a dedicated port such as
 9477, and add `--with-playwright`; that check uses a disposable session and a headless browser.
@@ -221,5 +227,9 @@ Recording is opt-in. With no capture active, dispatch does not read timing or
 allocation counters or create sample objects. Recording adds counter reads and
 bounded bookkeeping; live viewing also requests and draws snapshots. For close
 performance comparisons, use the same capture settings and workload in each run.
+
+GPU execution remains outside all of this, and so does the renderer's own always-on span
+timer — [Holding a Frame Budget](frame_budget.md) covers both, and says which of the three
+instruments answers which question.
 
 For document versions and restoration, see [Document History](document_history.md).

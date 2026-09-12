@@ -169,6 +169,196 @@ see the same time, and each rendered frame advances exactly 1/24 second. Use the
 step form when the world is discrete and counted, the time form when it is
 musical, animated, or otherwise measured in seconds.
 
+## Inertia: re-aiming a blend that is already moving
+
+Every `smoothTo` above is re-aimed by a call to `startAt`, and `startAt` restarts.
+That is the right behaviour for a value that animates once, and the wrong
+behaviour for a value that is being *dragged*: the current velocity is discarded,
+so each new target puts the motion back at a standstill. Bind a `smoothTo` to a
+mouse position, so that whatever owns it re-aims on every move, and the result
+stutters once per move.
+
+`inertialTo` takes the same target lambda and re-solves instead of restarting. It
+compares the target against the one it was last aimed at, and when they differ it
+finds the blend that passes through the value's current position *at its current
+velocity*. Nobody has to call `startAt`, because noticing is the interpolant's
+job, which is why the third interpolant below is the only one with no bookkeeping
+around it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/inertial_family.png" wait="1.5" capture="box" open-outputs="true" name="interpolants-inertial"}
+:::static
+import afield.stdlib.NeedsStartingValue
+
+val n = 320
+// The set-point jumps every 45 evaluations, which is less than the 64-evaluation blend,
+// so every jump interrupts a blend that is still running.
+val setPoints = floatArrayOf(0.20f, 0.90f, 0.35f, 0.78f, 0.15f)
+fun targetAt(i: Int) = setPoints[(i / 45).coerceAtMost(setPoints.size - 1)]
+
+var goal = setPoints[0]
+val linear = smoothTo<Float>(steps = 64) { goal }
+(linear as NeedsStartingValue<Float>).startAt(goal)
+val restarted = inertialTo<Float>(steps = 64) { goal }
+val carried = inertialTo<Float>(steps = 64) { goal }
+
+val tgt = FloatArray(n)
+val a = FloatArray(n)
+val b = FloatArray(n)
+val c = FloatArray(n)
+var previous = goal
+for (i in 0 until n) {
+    goal = targetAt(i)
+    if (goal != previous) {
+        (linear as NeedsStartingValue<Float>).startAt(a[i - 1])
+        (restarted as NeedsStartingValue<Float>).startAt(b[i - 1])
+        previous = goal
+    }
+    tgt[i] = goal
+    a[i] = linear()
+    b[i] = restarted()
+    c[i] = carried()
+}
+
+// The step-to-step change is the velocity, up to the constant factor of one evaluation.
+fun change(v: FloatArray) = List(v.size) { if (it == 0) 0.0 else (v[it] - v[it - 1]).toDouble() }
+
+showSignals(
+    "smoothTo, re-aimed" to a.toList(),
+    "inertialTo, restarted by startAt" to b.toList(),
+    "inertialTo, left to re-solve" to c.toList(),
+    "target" to tgt.toList(),
+    channel = "value",
+    title = "One jumping set-point, three ways of re-aiming at it",
+    xTitle = "evaluation",
+)
+showSignals(
+    "smoothTo, re-aimed" to change(a),
+    "inertialTo, restarted by startAt" to change(b),
+    "inertialTo, left to re-solve" to change(c),
+    channel = "change",
+    title = "The same three, differenced — how fast each one is travelling",
+    xTitle = "evaluation",
+)
+```
+
+![Three re-aiming strategies against a jumping set-point, with their velocities underneath](assets/interpolants_examples/inertial_family.png)
+
+The value panel separates the three at the corners; the change panel is where the
+claim is. `smoothTo` is a straight line between two numbers, so its speed is a
+plateau, and re-aiming steps that plateau to a new level between one evaluation
+and the next. Restarting `inertialTo` replaces the step with a zero: the new blend
+begins at rest, so whatever speed the value had is thrown away and built again
+from nothing. Left to re-solve, it is the only one of the three whose speed after
+a jump is the speed it had before — it carries on in the old direction for a
+moment, turns around, and has no corner in it anywhere. That is the difference
+between a drag that stutters and one that does not.
+
+Two consequences of re-solving worth knowing before you bind one:
+
+- `inertialTo` **never reports itself complete**, even while sitting on its
+  target. A uniform that reports completion stops being written, and an
+  interpolant that has to be read to notice its target has moved cannot afford
+  that. So it keeps costing an evaluation for as long as it is bound; reach for
+  `smoothTo` for a value that animates once and settles.
+- It starts at rest on whatever the target first reads as, so it works standalone
+  and not only as a bound uniform. `startAt` is available but optional.
+
+### Entering the curve part-way
+
+`InertialEasing` is the arithmetic underneath, exposed for driving a blend by hand
+in a game loop, or on something the interpolant cannot carry — a quaternion, say.
+`smoothstep(t, s)` is the scaled cubic `s · (3t² − 2t³)` indexed by its own time
+rather than the GLSL function of the same name, `smoothstepDt` is its derivative,
+and `solve(x, v)` is the interesting one: it returns the `t` and `s` whose curve
+is `x` away from its destination *and* moving at velocity `v`. Advance `t` to 1
+from there and the gap closes, arriving at rest. A restart is the `v = 0` case of
+that, and the top panel below asks for the same distance at five different
+incoming speeds instead:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/inertial_solve.png" wait="1.0" capture="box" open-outputs="true" name="interpolants-solve"}
+:::static
+// One unit of distance still to go, five different speeds of arrival at it. Velocity is
+// per blend time, not per second: a 0.4s blend on something moving 5 units/second is v = 2.
+val speeds = listOf(0.0, 1.0, 3.0, 8.0, 20.0)
+val shades = listOf(
+    vec(0.48, 0.85, 1.0, 0.95),
+    vec(0.55, 0.95, 0.80, 0.95),
+    vec(0.75, 1.00, 0.55, 0.95),
+    vec(1.00, 0.85, 0.40, 0.95),
+    vec(1.00, 0.62, 0.42, 0.95)
+)
+
+fun x(u: Double, from: Double) = 40.0 + (u - from) / (1.3 - from) * 1000.0
+fun y(v: Double, span: Double) = 560.0 - v / span * 400.0
+
+fun curve(v: Double, overshoot: Double, rgba: Vec4, from: Double, span: Double, width: Double): FLine {
+    val solved = InertialEasing.solve(x = 1.0, v = v, overshoot = overshoot)
+    val base = InertialEasing.smoothstep(solved.t, solved.s)
+    return fline {
+        for (i in 0..600) {
+            val u = solved.t + (1.3 - solved.t) * i / 600.0
+            val value = InertialEasing.smoothstep(u, solved.s) - base
+            if (i == 0) moveTo(x(u, from), y(value, span)) else lineTo(x(u, from), y(value, span))
+        }
+        color = rgba
+        thickness = width
+    }
+}
+
+fun guides(from: Double, span: Double, at: List<Double>) = at.map { v ->
+    fline {
+        moveTo(x(from, from), y(v, span)); lineTo(x(1.3, from), y(v, span))
+        color = vec(1, 1, 1, if (v == 0.0 || v == 1.0) 0.22 else 0.10); thickness = 1.2
+    }
+} + listOf(
+    fline {
+        moveTo(x(0.0, from), y(-0.06 * span, span)); lineTo(x(0.0, from), y(span * 1.04, span))
+        color = vec(1, 1, 1, 0.16); thickness = 1.0
+    },
+    fline {
+        moveTo(x(1.0, from), y(-0.06 * span, span)); lineTo(x(1.0, from), y(span * 1.04, span))
+        color = vec(1, 1, 1, 0.16); thickness = 1.0
+    }
+)
+
+val family = speeds.mapIndexed { i, v -> curve(v, 0.05, shades[i], -0.05, 1.1, 2.6) }
+lines(guides(-0.05, 1.1, listOf(0.0, 1.0)) + family, channel = "family", w = 1080.0, h = 540.0, fitToSize = true)
+
+// Past v = 21.3 × the distance left, `solve` prefers the negative root: the curve is entered
+// before its own zero crossing, which flies past the target and comes back.
+val jolt = curve(26.0, 0.0, vec(0.55, 0.72, 0.95, 0.9), -0.6, 6.4, 2.2)
+val past = curve(26.0, 0.05, vec(1.00, 0.62, 0.42, 0.95), -0.6, 6.4, 2.8)
+lines(guides(-0.6, 6.4, listOf(0.0, 1.0)) + jolt + past, channel = "overshoot", w = 1080.0, h = 540.0, fitToSize = true)
+:::fold render the colour key
+markdown("legend", """
+    top, incoming speed per blend time:
+    <span style='color:#7ad9ff'>0</span>,
+    <span style='color:#8cf2cc'>1</span>,
+    <span style='color:#bfff8c'>3</span>,
+    <span style='color:#ffd966'>8</span>,
+    <span style='color:#ff9e6b'>20</span>;
+    guides at t = 0 and t = 1.
+    bottom, v = 26: <span style='color:#8cb8f2'>overshoot = 0.0</span> stops inside the blend,
+    <span style='color:#ff9e6b'>the default 0.05</span> flies past and returns.
+""")
+:::endfold
+```
+
+![The solved smoothstep entered at five different incoming speeds, and the overshooting branch below it](assets/interpolants_examples/inertial_solve.png)
+
+In the top panel every curve covers the same unit of distance and arrives at rest
+at `t = 1`; the faster it is already going, the further along the curve it starts,
+so `v = 20` enters at `t = 0.903` and has a tenth of a blend time left to do the
+whole job. The bottom panel is the second root. `solve` returns two, and it picks
+the negative one — the curve entered *before* its own zero crossing — when the
+incoming speed exceeds about 21.3 times the distance remaining, which for
+`overshoot = 0.05` is the whole of that branch. Stopping cleanly from there would
+mean a deceleration nothing in the world could have produced, so it flies past
+instead, by roughly two-ninths of a blend time's travel, and comes back over about
+1.5 blend times. `overshoot = 0.0` refuses, and the blue sliver at the right of
+that panel is what refusing costs: the same unit of distance, covered inside the
+last 7% of the blend.
+
 ## Keyframes: morphing a whole parameter state — including code
 
 An interpolant moves one number. A `KeyframeScope` moves a whole named *state*

@@ -151,17 +151,20 @@ Full contract + the "no JDWP" error in [`FIELD_MCP.md`](./FIELD_MCP.md#runtime-d
 
 ## Sharp edges
 
-- For a real document, pass **both** `--workspace <parent>` and the relative
-  `--document <name>`. An attached server does not donate its launcher workspace to the
-  backdoor; `--document dust_three` alone still targets
-  `build/field-automation-workspace/dust_three`.
+- When this session **starts** the server, pass `--workspace <parent>` with the relative
+  `--document <name>`: it becomes that server's workspace. When you **attach**, the
+  workspace is already fixed and `--workspace` cannot change it — pass exactly the
+  `serverWorkspace` that `status` reports, or nothing at all. A disagreeing `--workspace`
+  is a hard error (it used to be ignored in silence while `status` echoed it back as fact).
 - For user-authorized live coding against an already-running Field, add
   `--attach-existing`. It bypasses source freshness only; checkout identity is still
   required, and it will not start a missing server.
-- `--document <name>` is resolved **relative to the workspace root** — an absolute path loads an empty doc. Save into a workspace dir and open by relative name.
+- `--document <name>` is resolved **relative to the workspace root** — an absolute path loads an empty doc, because the server glues it onto the workspace anyway (`sessionKey` shows `/ws//abs/path`). The backdoor now warns and prints the `--workspace <dir> --document <name>` split.
 - Prefer `--file -`/`--file <path>` over `--value` for anything nontrivial (no shell escaping).
 - Fresh scratch session / fresh port per final asset so stale boxes don't ghost into captures.
-- Every run writes `.field-backdoor/logs/<session>.jsonl`; `status` reports the paths.
+- Every run writes `.field-backdoor/logs/<session>.jsonl`; `status` reports the paths. A
+  fatal from `ensure_server`/`connect` also prints to stderr now — it used to exit 1 with
+  nothing on either stream.
 
 ## First command to run
 
@@ -170,7 +173,12 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 ```
 
 Tells you whether Field was already running, whether this session started its own server,
-the resolved workspace, the log paths, and whether you're in scratch mode. For live work
-in a user's document, add `--workspace <parent> --document <name>` to this first command
-plus `--attach-existing`, then verify `workspace`, `documentName`, `sessionKey`, and
-`boxCount` before editing.
+the log paths, and whether you're in scratch mode. For live work in a user's document, add
+`--attach-existing --document <name>`, then check the fields that **can disagree with
+you**: `serverWorkspace` (read back from the server; `null` means you have verified
+nothing), `sessionKey` (the absolute path it will write — should be `serverWorkspace` + `/`
++ your document name), `documentName`, and a plausible `boxCount`. `requestedWorkspace` is
+your own argument echoed back and is never verification — it was called `workspace` until
+2026-09-12, which is why an agent once wrote five documents into a different checkout while
+believing it had checked. Full contract:
+[`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md).

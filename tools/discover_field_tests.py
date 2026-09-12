@@ -106,6 +106,59 @@ class ParseError(ValueError):
     pass
 
 
+# Distinguishes "caller said nothing" from an explicit ``warn_stream=None`` (silence).
+_UNSET_STREAM = object()
+
+
+def _unprefixed(exc: ParseError, path: Path) -> str:
+    """A parse error's message without the ``<path>:<line>: `` that most of them already carry.
+
+    [SkippedAnnotation.message] re-adds the location from structured fields, so leaving the
+    embedded copy in produces ``file.kt:12: file.kt:12: ...``.
+    """
+    text = str(exc)
+    prefix = f"{path}:"
+    if not text.startswith(prefix):
+        return text
+    remainder = text[len(prefix) :]
+    line_part, sep, rest = remainder.partition(": ")
+    return rest if sep and line_part.isdigit() else text
+
+
+@dataclass
+class SkippedAnnotation:
+    """One FIELD_TEST annotation that could not be read, and why.
+
+    Discovery reports these instead of aborting. The path and line are what a human needs to fix
+    the annotation; ``reason`` is the parser's own message, unwrapped.
+    """
+
+    path: Path
+    line_no: int
+    reason: str
+
+    @property
+    def message(self) -> str:
+        return f"{self.path}:{self.line_no}: {self.reason}"
+
+    def as_dict(self, repo_root: Path | None = None) -> dict[str, Any]:
+        source = _relative_source(self.path, repo_root) if repo_root is not None else str(self.path)
+        return {"sourceFile": source, "sourceLine": self.line_no, "error": self.reason}
+
+
+def _relative_source(path: Path, repo_root: Path) -> str:
+    """``path`` relative to the checkout, or absolute when it is outside it.
+
+    ``--root`` accepts an absolute directory, and a bare ``relative_to`` raises ``ValueError``
+    for anything outside the checkout — which crashed discovery with a non-``ParseError`` rather
+    than cataloguing the test.
+    """
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
+
+
 class AnnotationParser:
     def __init__(self, tokens: list[Token]) -> None:
         self.tokens = tokens
@@ -323,11 +376,19 @@ def mask_markdown_code_fences(text: str) -> str:
     return "".join(masked)
 
 
-def find_annotation_blocks(path: Path, text: str) -> list[AnnotationBlock]:
+def scan_annotation_blocks(path: Path, text: str) -> tuple[list[AnnotationBlock], list[SkippedAnnotation]]:
+    """Every parseable FIELD_TEST block in ``text``, plus one skip record per unparseable one.
+
+    Split out of [find_annotation_blocks] so that discovery can fail open: a malformed block is
+    reported and stepped over, and the *other* blocks in the same file still reach the catalog.
+    Raising on the first one made a single bad annotation hide every later annotation in its file
+    as well as, via [discover], every test in the repository.
+    """
     is_markdown = path.suffix.lower() in {".md", ".markdown"}
     scan_text = mask_markdown_code_fences(text) if is_markdown else text
     patterns = [HTML_COMMENT_PATTERN] if is_markdown else COMMENT_PATTERNS
     blocks: list[AnnotationBlock] = []
+    skipped: list[SkippedAnnotation] = []
     for pattern in patterns:
         for match in pattern.finditer(scan_text):
             body_lines = normalize_comment_body(match.group(1))
@@ -348,7 +409,8 @@ def find_annotation_blocks(path: Path, text: str) -> list[AnnotationBlock]:
             except ParseError as exc:
                 match_line = re.search(r"\bline (\d+)\b", str(exc))
                 error_line = int(match_line.group(1)) if match_line else line_no
-                raise ParseError(f"{path}:{error_line}: {exc}") from exc
+                skipped.append(SkippedAnnotation(path=path, line_no=error_line, reason=str(exc)))
+                continue
             blocks.append(
                 AnnotationBlock(
                     line_no=line_no,
@@ -357,6 +419,14 @@ def find_annotation_blocks(path: Path, text: str) -> list[AnnotationBlock]:
                     annotation=annotation,
                 )
             )
+    return blocks, skipped
+
+
+def find_annotation_blocks(path: Path, text: str) -> list[AnnotationBlock]:
+    """Strict form of [scan_annotation_blocks]: the first malformed block raises."""
+    blocks, skipped = scan_annotation_blocks(path, text)
+    if skipped:
+        raise ParseError(skipped[0].message)
     return blocks
 
 
@@ -641,10 +711,30 @@ def bind_annotation(path: Path, text: str, block: AnnotationBlock, annotation: d
     return bind_kotlin_snippet(path, text, block, annotation)
 
 
-def discover(repo_root: Path, roots: list[str]) -> dict[str, Any]:
+def discover(
+    repo_root: Path,
+    roots: list[str],
+    *,
+    strict: bool = False,
+    warn_stream: Any | None = _UNSET_STREAM,
+) -> dict[str, Any]:
+    """The FIELD_TEST catalog, with unreadable annotations skipped rather than fatal.
+
+    Fails **open per annotation** on purpose. Discovery used to accumulate every parse error and
+    raise at the end, which meant one malformed annotation anywhere in the tree made
+    ``run_field_tests.py --id <anything>`` dead for *every* test — the failure that kept the
+    canonical smoke runner broken for twelve hours, with the only fallback an untracked
+    ``build/field-tests/catalog.json`` that a fresh worktree does not have. A test whose own
+    annotation is broken cannot run either way; the other 251 can.
+
+    Each skip is printed to ``warn_stream`` (stderr by default, ``None`` to silence) and recorded
+    under ``skipped`` in the returned catalog, so the loss is visible in the run log and
+    machine-readable afterwards. Pass ``strict=True`` (CI, ``--strict``) to restore the raise.
+    """
+    stream = sys.stderr if warn_stream is _UNSET_STREAM else warn_stream
     validate_scenes_against_harness(repo_root)
     tests: list[dict[str, Any]] = []
-    errors: list[str] = []
+    skipped: list[SkippedAnnotation] = []
     seen_ids: dict[str, str] = {}
     for root_name in roots:
         root = (repo_root / root_name).resolve() if not Path(root_name).is_absolute() else Path(root_name)
@@ -656,13 +746,15 @@ def discover(repo_root: Path, roots: list[str]) -> dict[str, Any]:
             except UnicodeDecodeError:
                 continue
             except OSError as exc:
-                errors.append(f"{path}: failed to read file: {exc}")
+                skipped.append(SkippedAnnotation(path=path, line_no=0, reason=f"failed to read file: {exc}"))
                 continue
             if "FIELD_TEST" not in text:
                 continue
-            try:
-                blocks = find_annotation_blocks(path, text)
-                for block in blocks:
+            blocks, unparseable = scan_annotation_blocks(path, text)
+            skipped.extend(unparseable)
+            for block in blocks:
+                # Per block, not per file: a bad annotation must not take its neighbours with it.
+                try:
                     annotation = validate_annotation(path, block.line_no, block.annotation)
                     annotation_id = str(annotation["id"])
                     previous = seen_ids.get(annotation_id)
@@ -670,21 +762,32 @@ def discover(repo_root: Path, roots: list[str]) -> dict[str, Any]:
                         raise ParseError(
                             f"{path}:{block.line_no}: duplicate test id '{annotation_id}' already declared at {previous}"
                         )
-                    seen_ids[annotation_id] = f"{path}:{block.line_no}"
                     record = dict(annotation)
                     record.update(bind_annotation(path, text, block, annotation))
-                    record["sourceFile"] = str(path.relative_to(repo_root))
-                    record["sourceLine"] = block.line_no
-                    tests.append(record)
-            except ParseError as exc:
-                errors.append(str(exc))
-    if errors:
-        raise ParseError("\n".join(errors))
+                except ParseError as exc:
+                    skipped.append(SkippedAnnotation(path=path, line_no=block.line_no, reason=_unprefixed(exc, path)))
+                    continue
+                seen_ids[annotation_id] = f"{path}:{block.line_no}"
+                record["sourceFile"] = _relative_source(path, repo_root)
+                record["sourceLine"] = block.line_no
+                tests.append(record)
+    if skipped and strict:
+        raise ParseError("\n".join(item.message for item in skipped))
+    if skipped and stream is not None:
+        for item in skipped:
+            print(f"FIELD_TEST discovery: SKIPPED unreadable annotation {item.message}", file=stream)
+        print(
+            f"FIELD_TEST discovery: {len(tests)} test(s) usable, {len(skipped)} annotation(s) skipped. "
+            "Fix the annotation(s) above; the skipped tests cannot be selected until you do.",
+            file=stream,
+            flush=True,
+        )
     tests.sort(key=lambda item: str(item["id"]))
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "repoRoot": str(repo_root),
         "tests": tests,
+        "skipped": [item.as_dict(repo_root) for item in skipped],
     }
 
 
@@ -705,6 +808,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Pretty-print JSON output.",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Fail on the first unreadable FIELD_TEST annotation instead of skipping it. "
+            "For CI, which wants a malformed annotation to be somebody's problem today; "
+            "interactive and smoke-runner discovery skips and warns so that one bad "
+            "annotation cannot make every other test unselectable."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -713,7 +826,7 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parent.parent
     roots = args.roots or DEFAULT_ROOTS
     try:
-        catalog = discover(repo_root, roots)
+        catalog = discover(repo_root, roots, strict=args.strict)
     except ParseError as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -724,9 +837,13 @@ def main() -> int:
             output_path = repo_root / output_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json_text + "\n", encoding="utf-8")
-        return 0
-    print(json_text)
-    return 0
+    else:
+        print(json_text)
+    # Three outcomes rather than two, because "the catalog is complete" and "the catalog is usable
+    # but one annotation is broken" are different facts and the second used to be reported as the
+    # first being impossible. 1 stays fatal (nothing written), 2 means the JSON above is good and
+    # incomplete, and the skipped entries name what is missing.
+    return 2 if catalog["skipped"] else 0
 
 
 if __name__ == "__main__":

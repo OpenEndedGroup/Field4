@@ -13,46 +13,58 @@ import kotlin.random.Random
 /**
  * Run one Kratos session many times over a declared design space, and compare the answers.
  *
- * Everything below `KratosSession` answers exactly one question: *given this geometry and these
- * coefficients, what is the field?* That is a simulator. A **study** is the layer that turns it
- * into a design tool — it varies the question, reduces each answer to one number, and reports the
+ * [KratosSession] and the worker below it answer exactly one question: *given this geometry and
+ * these coefficients, what is the field?* That is a simulator. A **study** is the layer that turns
+ * it into a design tool. It varies the question, reduces each answer to one number, and reports the
  * shape of the resulting landscape and where its optimum lies.
  *
- * The three pieces a caller supplies are deliberately separate:
+ * A caller supplies three pieces:
  *
  * - a [StudySpace] — a base design object of any type `D` and the [StudyVariable]s that move it;
  * - a `plan`, mapping a design to the [StudyCase] the solver runs (geometry and coefficients);
  * - a `measure`, reducing a [SimulationResult] to the scalar being optimised.
  *
  * Keeping `plan` separate from `measure` is what lets **geometry be an ordinary axis**. For an
- * embedded formulation a geometric change is a reclassification of the same background grid — no
- * remesh, no new session, `buildCount` still 1 — so a sweep over an arm length costs exactly what a
- * sweep over a conductivity costs, and the two can be axes of the same grid.
+ * embedded formulation a geometric change is a reclassification of the same background grid, with
+ * no remesh and no new session, so a sweep over an arm length costs what a sweep over a
+ * conductivity costs and the two can be axes of one grid. The domain's `buildCount` stays 1 across
+ * a whole sweep, and `KratosStudySmokeTest` fails if it does not. A body-fitted formulation has no
+ * reclassification to do instead: [evaluate] refuses a [StudyCase] that carries a geometry there,
+ * and a geometric axis needs a session per point rather than a study.
  *
- * # This is sequential, and it has to be
+ * # One session solves one design at a time
  *
  * [KratosSession] is a newest-wins preview engine: a second `solveAsync` increments the simulation
  * revision and the first future then completes `null` rather than with a stale field. That is right
  * for a slider and wrong for a study, which needs *every* answer. So [evaluate] awaits each solve
- * before submitting the next, and the study's wall time is the sum of its solves. Do not "speed it
- * up" by submitting in parallel against one session; you would get one result and n−1 nulls.
+ * before submitting the next, and the study's wall time is the sum of its solves. Submitting in
+ * parallel against one session does not shorten it: the session obsoletes all but the last, and
+ * each obsoleted solve arrives back here as a failed sample.
  *
- * Two sessions would genuinely run two solves at once, at the cost of two workers and two
- * background grids. Nothing here stops you doing that; it is just not what one study does.
+ * Two sessions do run two solves at once, at the cost of two workers and two background grids.
  *
  * # Memoisation
  *
- * Every evaluation is cached on a quantised coordinate signature, so re-running an overlapping grid
- * — a refinement around the optimum, say — re-solves only the points it has not seen. The cache is
- * shared with [optimise], and the search's own budget accounting agrees with it, because
- * [GenomeOps.signature] hands `PopulationSearch` the same key.
+ * Every evaluation is cached on a quantised coordinate signature, twelve significant figures per
+ * coordinate, so re-running an overlapping grid (a refinement around the optimum, say) re-solves
+ * only the points it has not seen. The cache is shared with [optimise], and the search's own budget
+ * accounting agrees with it because the [GenomeOps] implementation hands `PopulationSearch` that
+ * same key.
  *
- * # A failed point is a data point
+ * # An infeasible design is a sample, not an exception
  *
  * A design whose solve throws, or whose `measure` returns null because the probe fell outside the
- * solved region, becomes an **infeasible sample** carrying the reason — not an exception that
- * abandons the other 120 points. A landscape with a hole in it is information; a sweep that died at
- * point 37 is not.
+ * solved region, becomes an **infeasible sample** carrying the reason instead of abandoning the
+ * rest of the sweep. The [StudySample] holds that message in its `failure`, and [fitnessOf] scores
+ * such a sample as negative infinity, so a search treats it as the worst design it has seen rather
+ * than stopping at it.
+ */
+
+/**
+ * Holds a session, a [StudySpace], and the `plan`/`measure` pair that turns a design into a scalar.
+ *
+ * One instance is one question. The sample cache lives here, so [grid] and [optimise] on the same
+ * study share their solves, and [solveCount] against [cacheHits] says how many the cache saved.
  */
 class KratosStudy<D>(
     val session: KratosSession,

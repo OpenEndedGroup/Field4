@@ -342,6 +342,83 @@ class CitationContractTest {
             // a comment on someone else's entry and nothing asserts it — but recomputed here
             // rather than incremented, for exactly that reason.
             "public/docs/logging.md" to 7,
+            // Added 2026-09-12 with the page it guards. The measurement model behind Field's three
+            // profiling instruments: `CPUSpan`'s always-on rolling window, the exact per-resume
+            // coroutine counters, and the optional JFR sampler — what each one measures, and what
+            // each one structurally cannot see.
+            //
+            // It is here because of the population, not for symmetry. `public/docs/profiling_timeline.md`
+            // documents the same subsystem in 225 lines and carries **zero** `path:line` citations of
+            // any kind, anchored or bare — measured with `grep -cE '\.(kt|js|css|py):[0-9]+'`. Over
+            // the corpus as it stood that morning — 445 tracked `public/docs/*.md` and 174 tracked
+            // `dev_docs/**.md`, the latter now 175 — excluding
+            // `assets/`, `transcripts/` and `reference/`, `grep -lE` for
+            // `CPUSpan|CoroutineProfile|profilingTimeline|JvmProfileCapture|ProfileStackSample`
+            // selected **no prose page at all** before this one; a control predicate over the same
+            // population selected 53 files for `renderer`, so the zero was the corpus and not the
+            // instrument. A subsystem whose types are named nowhere cannot have a citation rot,
+            // which is a bad reason for a page to pass a gate.
+            //
+            // Guarded from its first day because the page's load-bearing claims are three numeric
+            // constants that a reader is invited to reason *arithmetically* from, and any of the
+            // three can be changed in one token while leaving every sentence around it resolvable:
+            // `WINDOW = 500` in `Renderer.kt` (from which the page derives "eight and a third
+            // seconds at 60 Hz" and "p99 is the sixth worst sample"), the 10 ms `jdk.ExecutionSample`
+            // period (from which it derives "a 2 ms hitch has about a one in five chance of being
+            // sampled"), and the `150/s` allocation throttle (from which it derives why a per-frame
+            // byte budget is a guide rather than a guarantee). Halve `WINDOW` and the page is wrong
+            // about a piece's whole recent history while pointing at a line that still exists.
+            //
+            // 43 anchored citations as written, all prose `path:line#anchor`, across eight files:
+            // 12 in `CoroutineProfiling.kt`, 11 in `JvmProfileCapture.kt`, 8 in `Renderer.kt`, 5 in
+            // `profiling.kt`, 2 each in `Phased.kt`, `rendererBrowsing.kt` and
+            // `profileTimelineModel.js`, and one in `lineHeatmap.js`. Every anchor was checked
+            // unique-in-file by counting containments across the whole file rather than by trusting
+            // the choice, so all 43 report unbounded headroom and [MAX_FRAGILE] is unaffected. No
+            // bare citation remains, and the advisory line was correct on all 43 at the time of
+            // writing.
+            //
+            // Note what is *not* cited: `CoroutineProfilingTest.kt` exists and asserts several of
+            // the properties the page describes, and the `MIDI.md` and `private_boundary.md`
+            // entries above would suggest citing it for them. This page does not, because it makes
+            // no claim of the form "this is verified by a test" — every measured number on it names
+            // the replay that produced it and the population it came from, which is a claim a
+            // reader can re-run rather than one they have to take on the gate's word.
+            //
+            // Every path is abbreviated, which is safe here and was checked rather than assumed:
+            // all nine basenames are unique in this checkout, so `CitationGuard.locate` resolves
+            // each to exactly one file. That also feeds [MIN_ABBREVIATED_CITATIONS], which wants
+            // this population non-empty.
+            //
+            // Floored at 21, about half, on the DATAFRAME_PLUGIN convention.
+            "public/docs/frame_budget.md" to 21,
+            // The internals companion to the page above, added the same night and guarded for the
+            // same reason it exists: its whole argument is a list of four constants and two
+            // allocation sites that are load-bearing *for the published page*, and a page making
+            // that argument while unable to report one of them being renamed would be the same
+            // defect in prose form.
+            //
+            // 21 anchored citations as written, all prose `path:line#anchor`, across eight files:
+            // 8 in `Renderer.kt`, 5 in `JvmProfileCapture.kt`, 3 in `CoroutineProfilingTest.kt`,
+            // and one each in `CoroutineProfiling.kt`, `rendererBrowsing.kt`,
+            // `profileTimelineModel.js`, `DemoTranscriptExecSmokeTest.kt` and
+            // `tools/ui_regressions/profiling-stacks.js`. All 21 were checked unique-in-file by
+            // counting containments, so [MAX_FRAGILE] is unaffected; no bare citation remains.
+            //
+            // That last path is the first citation on this list to point into `tools/ui_regressions`,
+            // and it earns its place by being the *only* coverage the Monaco gutter stripes have —
+            // the page says so, and says what that regression does not check.
+            //
+            // Floored at 10, about half, on the same convention. This entry and the one above take
+            // the floor sum from 414 to **445**, still under [MIN_UNIQUE_ANCHORS] = 500, so no
+            // ratchet is needed. Recomputed by summing the 35 literals in this map rather than
+            // incremented off the `logging.md` comment above, which is what that comment asks the
+            // next author to do — and note that adding two pages moved
+            // `DerivedCountGuard`'s `guardedCitationPages` from 33 to 35, which
+            // `ProseNumeralContractTest` correctly failed on until `dev_docs/citation_contracts.md`
+            // was updated in the same commit. That is the mechanism working, and is worth recording
+            // as the cost of adding a page: it is two edits, not one.
+            "dev_docs/profiling_stack.md" to 10,
         )
 
         /**

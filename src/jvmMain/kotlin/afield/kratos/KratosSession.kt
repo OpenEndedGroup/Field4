@@ -16,6 +16,52 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
+ * The JVM side of the Kratos link: finding a worker, opening a session on it, and asking for solves.
+ *
+ * The physics does not run in this process. A Kratos solve runs in a Python worker reached over one
+ * authenticated socket, and nothing in this file imports native solver code, so a checkout with no
+ * Kratos installed still starts and still compiles. Whether a solve can actually happen is a
+ * runtime question, and [Kratos] is where it is asked: `probe` starts one worker, `probeAny` tries
+ * each launch this machine could plausibly use and reports which one answered, and `howToInstall`
+ * says what is missing in terms of the platform asking. Kratos publishes Linux and Windows wheels
+ * only, so on macOS there is nothing a `uv sync` could install and the container launch is the only
+ * route to a solve; advice that did not know the platform would be advice to run a command that
+ * cannot succeed.
+ *
+ * # The formulation is the only thing that knows any physics
+ *
+ * [SimulationParameters] is the physics half of a request: a registry name the worker recognises,
+ * and the coefficients that go with it. [ThermalParameters], [FlowParameters] and
+ * [StructuralParameters] are the three implemented here. Everything else in the file (the launch,
+ * the framing, the binary arrays, revisions, cancellation) never looks at which formulation is
+ * running, and [SimulationResult] decodes whatever field list the worker declares. Adding a physics
+ * is therefore one more implementation of this interface beside one more worker-side formulation,
+ * and no change to the transport.
+ *
+ * # Two ways to open a session, and they are not interchangeable
+ *
+ * `KratosSession.openAsync` gives the worker bounds and a resolution and lets it build a structured
+ * background grid; geometry is then classified against that grid, which is what makes a geometric
+ * change cheap. `KratosSession.openMeshAsync` sends a tetrahedral mesh Field has already made with
+ * `afield.tetgen.Tetgen`, for a formulation that solves the mesh it was given. `isBodyFitted`
+ * reports which kind a session is, and it decides which `solveAsync` overload is legal: the
+ * embedded one takes a [SimulationGeometry] per solve, the body-fitted one refuses a geometry
+ * because changing the mesh means opening a new session.
+ *
+ * # Newest wins
+ *
+ * A session is built for a slider. A new request immediately obsoletes the ones before it: the
+ * simulation half of [SimulationRevision] increments, and an obsoleted future completes `null`
+ * rather than handing back a field that answers a superseded question. In-flight native
+ * solves are left to finish and their results are dropped, since there is no way to interrupt
+ * Kratos mid-solve. All of it runs off Field's runloop on one thread, so `withLatest` is how a draw
+ * gets a result and the revision it belongs to without racing the next solve.
+ *
+ * That policy is wrong for anything that needs every answer rather than the latest one, which is
+ * why [KratosStudy] drives a session strictly one solve at a time.
+ */
+
+/**
  * Optional environment; neither construction nor Field startup imports any native Kratos code.
  *
  * [python] and [worker] describe the default [KratosLaunch.LocalProcess] launch. Set [launch]

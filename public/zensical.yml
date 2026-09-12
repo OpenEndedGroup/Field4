@@ -46,6 +46,11 @@ nav:
     - Your History with Field: history_overview.md
     - Document History: document_history.md
     - Profiling Timeline: profiling_timeline.md
+    # Beside profiling_timeline.md rather than under Internals, and the split between the two is
+    # audience: that page is the panel's controls, this one is what the numbers under them mean and
+    # what each of the three instruments structurally cannot see. Somebody whose piece is dropping
+    # frames needs this one, and may never need to open the other.
+    - Holding a Frame Budget: frame_budget.md
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
   # "What happens when a box ends on a value" is a faculty of its own, and these five were spread
@@ -65,6 +70,11 @@ nav:
       - Differentiating Functions: autodiff_examples.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      # Directly after the interpolants page, which is the other half of the same subject: that
+      # page is a value eased once to a target that stays put, this one is springs and a steering
+      # model for a target that keeps moving. Filed under Time & Signals rather than beside
+      # physics.md because nothing here is a solve — it is arithmetic on a value over time.
+      - Springs & Character Movement: movement_examples.md
       - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
       - Timeseries Examples: timeseries_examples.md
       - State Estimation Examples: state_estimation_examples.md
@@ -75,6 +85,11 @@ nav:
     # worked examples are words under an edit distance and curve samples under a graph distance.
     - Distances & Projections:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
+    # Beside the projections rather than under Functions & Derivatives: the input is an unordered
+    # cloud and the output is a deformation of it, which is a shape problem rather than a calculus
+    # one. The network it trains is incidental to what the page is for.
+    - Clouds & Deformations:
+      - Flow Matching: flow_matching.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Imaging & Computer Vision: imaging_examples.md
@@ -197,6 +212,7 @@ nav:
       - Audio AI: reference/audio-ai.md
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
+      - Machine learning: reference/machine-learning.md
     - Libraries & APIs:
       - Linear Algebra: linear_algebra.md
       - Generated Vector API: linear_algebra_api.md

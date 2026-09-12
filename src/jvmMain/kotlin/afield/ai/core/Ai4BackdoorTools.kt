@@ -52,6 +52,7 @@ internal object Ai4BackdoorTools {
         // applyTo also *subscribes* this registry, so a tool a box registers later shows up on the next
         // agent-ai-tools-list without the backdoor being restarted.
         AgentToolExtensions.applyTo(this)
+        registerDocumentGuideTools(this)
 
         register(MacroListRequest::class.java, { it.listMacros != null }) { ctx, req ->
             ctx.listMacros!!.invoke(req)
@@ -257,6 +258,7 @@ internal object Ai4BackdoorTools {
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
+            documentGuides = DocumentGuideTools.forSession(sessionInfo),
             compileKotlin = codeTools.compileKotlin,
             evaluateKotlinExpression = codeTools.evaluateKotlinExpression
         )

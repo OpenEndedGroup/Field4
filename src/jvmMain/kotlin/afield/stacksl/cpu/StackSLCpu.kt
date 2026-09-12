@@ -7,22 +7,31 @@ import afield.stacksl.StackSLSeverity
 import afield.util.PngEncoder
 import java.util.stream.IntStream
 
-// ---------------------------------------------------------------------------------------------
-// StackSL's CPU backend: the public surface.
-//
-// WHAT THIS IS FOR. Until now StackSL could only be *run* on a GPU. Every claim about what a
-// StackSL word does was therefore either checked by eye against a screenshot, or checked against
-// a hand-transliteration of the emitted GLSL — and a hand-transliteration is how a committed
-// volumetric-noise figure came to illustrate GLSL behaviour without any GLSL having run. This
-// backend closes that: it takes the emitter's real output and evaluates it, so a StackSL program
-// can be rendered, unit-tested, diffed and documented with no graphics context at all.
-//
-// WHAT IT IS NOT. It is not a fast renderer and it is not bit-exact with a GPU. It is a
-// *reference*: roughly 10^5 pixel-shader invocations per second per core against a GPU's 10^9,
-// and agreement bounded by GLSL's own promises (see `GlslValue.kt` for why `sin` cannot agree
-// even in principle). What it is exact about is the *program*: it reads the same text the GPU
-// reads, so it cannot disagree with the emitter about what a word compiles to.
-// ---------------------------------------------------------------------------------------------
+/**
+ * StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM,
+ * so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context
+ * at all.
+ *
+ * [StackSLCpu] is the entry point and [CpuRaster] is what comes back: RGBA floats with row 0 at the
+ * top, quantised the way a `VK_FORMAT_R8G8B8A8_UNORM` attachment does, and encodable straight to
+ * PNG. `StackSLCpu.renderStill` is the one-liner a box wants.
+ *
+ * What the backend is exact about is the *program*. `StackSLCpu.renderFragment` takes a complete
+ * fragment shader as text and knows nothing about StackSL; the StackSL half compiles a program with
+ * `StackSLCompiler` and substitutes the result into a `{{ stack.auto.<slot> }}` template, which is
+ * the same tag the production expansion path in `afield.stdlib.shaders` fills. Both paths therefore
+ * receive the same string, and nothing about a word's behaviour is restated here: change what the
+ * emitter makes of `fbm` and this backend changes with it on the next call, with no edit. Tests pin
+ * the two copies that make that true: `StackSLCpuExpansionTest` compares the compile options against
+ * the production path's, and `StackSLCpuStillTemplateTest` compares the gallery's fragment template
+ * against the committed one in the gallery workspace.
+ *
+ * It is a reference, not a renderer. It is an interpreter, so it is orders of magnitude short of a
+ * GPU, and `StackSLCpu.renderStill` states a cost for one program at one size. It is not bit-exact
+ * either: GLSL leaves `sin`, `cos`, `exp`, `log`, `pow` and `atan` implementation-defined, so a
+ * program that reaches one of them can only be compared under a tolerance. [GlslValue] has that
+ * argument in full, including the case where operations that *are* exact still diverge visibly.
+ */
 
 /**
  * A rendered raster: RGBA floats in row-major order, row 0 at the **top**, matching both a PNG

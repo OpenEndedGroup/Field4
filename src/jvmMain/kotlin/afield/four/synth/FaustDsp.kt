@@ -14,37 +14,45 @@ import kotlin.math.min
 /**
  * One compiled Faust program, instantiated and ready to make sound.
  *
- * A [FaustProgram] is bytes; this is the running thing. It holds its own WebAssembly instance in its
- * own GraalVM context, and [render] pulls audio out of it a block at a time — which is exactly the
- * shape [StereoRenderable] wants, so a Faust program drops into Field's audio graph next to an
- * oscillator with no adaptation.
+ * A [FaustProgram] is bytes; [FaustDsp] is the running thing. It holds its own WebAssembly instance
+ * in its own GraalVM context, and `render` pulls audio out of it a block at a time, which is exactly
+ * the shape [StereoRenderable] wants: a Faust program sits in Field's audio graph next to an
+ * oscillator with no adaptation. [FaustNode] is what puts it there.
  *
  * ## It is fast, and the cost is the boundary rather than the DSP
  *
  * Measured for a sawtooth-through-a-filter voice at 48kHz, where a 128-frame block has 2667µs to
  * render in:
  *
- *  * `compute` on its own: **7.6µs** (353× realtime). Generated Faust is not the bottleneck.
- *  * [render], end to end through this class: **60.4µs** (44× realtime).
+ *  * `compute` on its own: **7.6µs**, about 350 times realtime. Generated Faust is not the
+ *    bottleneck.
+ *  * `render`, end to end through [FaustDsp]: **60.4µs**.
  *
- * The gap is entirely the JVM↔WebAssembly boundary, and shrinking it was three changes, each measured
- * by `synth.faust.smoke`: copying the output a sample at a time cost 148µs a block; one bulk
- * [Value.readBuffer] per channel brought that to 94µs; resolving the JS entry points once at
- * construction rather than per block brought it to 60µs. What is left is dominated by the per-block
- * [Context.enter], which is where to look next if it ever matters.
+ * The gap is the JVM↔WebAssembly boundary, and two things keep it as small as that: the output is
+ * copied with one bulk `Value.readBuffer` per channel rather than a sample at a time, and the JS
+ * entry points are resolved once at construction rather than per block. What is left is dominated by
+ * the per-block `Context.enter`, which is where to look next if it ever matters. The figures above
+ * are one machine's; what `synth.faust.smoke` holds to is a floor of ten times realtime.
  *
- * The compiler, by contrast, *is* slow — see [FaustEngine], which keeps it behind a separate context
- * for exactly that reason.
+ * The compiler, by contrast, *is* slow: see [FaustEngine], which keeps it behind a separate context
+ * for that reason.
  *
  * ## The context is single-threaded, so parameters are queued
  *
- * A GraalVM [Context] cannot be entered by two threads at once, and [render] runs on the audio
- * thread. So [setParam] does not touch WebAssembly at all: it enqueues, and [render] drains the queue
- * before computing. That is also the right audio-engineering answer — no lock on the audio thread,
- * and no parameter changing halfway through a block.
+ * A GraalVM context cannot be entered by two threads at once, and `render` runs on the audio thread.
+ * So `setParam` does not touch WebAssembly at all: it enqueues, and `render` drains the queue before
+ * computing. That is also the right audio-engineering answer, with no lock on the audio thread and no
+ * parameter changing halfway through a block.
  *
  * A queue rather than a last-write-wins map, because a `button` is momentary: collapsing a
  * press and its release into one value would silently swallow a note.
+ */
+
+/**
+ * One compiled Faust program instantiated in its own GraalVM context, rendering a block at a time.
+ *
+ * `faust` builds one of these per box run and hands back the [FaustLaunch] that owns it. `close`
+ * releases the context, and a context that is never closed holds the JVM open.
  */
 class FaustDsp internal constructor(
     val program: FaustProgram,

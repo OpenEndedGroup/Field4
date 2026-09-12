@@ -2,8 +2,8 @@
 
 You want to hear something. There is more than one way, and this page maps all of them.
 
-**Six things in Field make samples. Five things carry samples out of the process. Four bring them
-in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6` and
+**Seven things in Field make samples. Five things carry samples out of the process. Four bring them
+in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `7` and
 [the build fails](#how-the-map-is-checked) if `PATHS` disagrees.
 
 ---
@@ -18,6 +18,8 @@ in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6
 * **"I want to build a synth out of parts."** → `signal-graph`. Oscillators, filters, envelopes,
   Kotlin operators. [DoughDSP Sound Examples](dough_dsp_sound.md).
 * **"I want to write the DSP itself, properly."** → `faust`. [Faust](faust.md).
+* **"I want a pattern to play that DSP as an instrument, in chords."** → `faust-poly`.
+  [Faust](faust.md).
 * **"I want to write music, not DSP."** → `sonic-pi`. [Sonic Pi](sonic_pi.md).
 * **"I want it in a file, or in a docs page."** → the `wav-file` sink. Offline, deterministic.
 * **"I want a player in the box's output."** → the `box-output-player` sink.
@@ -26,7 +28,7 @@ in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6
 
 ---
 
-## The six that make samples
+## The seven that make samples
 
 | path | what it is | needs | offline? | on the seam? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -34,16 +36,18 @@ in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6
 | `dirt-samples` | the same events as real Tidal one-shots. `fun patRenderStereoDirt` in `src/jvmMain/kotlin/afield/four/synth/DirtRender.kt` offline; `DirtSamplePlayer` live | the Dirt-Samples quark | both | live half only | [Sound](sound.md) |
 | `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/four/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
-| `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt` | the dough wasm build | both | no | — |
+| `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
+| `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt`, wrapped onto the seam by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 
-Two of those six are pattern voices, and those two are what [Sound](sound.md) covers, with the
-fallback behaviour and the provenance audit. Read it once you have picked; this page only helps you
-pick.
+Three of those seven are pattern voices: `pat-stand-in`, `dirt-samples` and `faust-poly`. The first
+two are what [Sound](sound.md) covers, with the fallback behaviour and the provenance audit; the
+third is on [Faust](faust.md), because what it needs explaining is the voice allocator rather than
+the pattern. Read whichever you have picked; this page only helps you pick.
 
 `sonic-pi` is the exception: it is the only path where **no sample ever enters this process**.
 Field sends text and receives log lines; the audio exists entirely inside another program's
-synthesiser. Everything you can do to samples in the other five — filter them, plot them, write
+synthesiser. Everything you can do to samples in the other six — filter them, plot them, write
 them to a file — you cannot do to those. The way back in is `link-audio-in`, below.
 
 ## The five that carry samples out
@@ -78,7 +82,7 @@ this tree exercises it.
 
 ---
 
-## One seam, and eight of fifteen paths on it
+## One seam, and ten of sixteen paths on it
 
 There is exactly one signature everything realtime meets at:
 
@@ -87,29 +91,39 @@ fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext
 ```
 
 `AudioPatchSpec.Renderer` declares it. `StereoRenderable` declares it, character for character. So
-does every node in the graph, `DirtSamplePlayer`, `FaustNode` and `PatSynthBank`. Eight of the fifteen paths above
-sit on it. **A path on the seam composes with every other path on the seam; a path off it composes
-with nothing.**
+does every node in the graph, `DirtSamplePlayer`, `FaustNode`, `FaustPolyNode`, `DoughAudioSink` and
+`PatSynthBank`. Ten of the sixteen paths above sit on it. **A path on the seam composes with every
+other path on the seam; a path off it composes with nothing.**
 
-Faust is the clearest case of what that buys. `class FaustNode` is 23 lines that fill an input
-buffer and call `dsp.render`, and being on the seam is what gets it the speakers, the engine's
-visualisers, the Link output and the box lifecycle, with no adapter written for any of them.
+Faust is the clearest case of what that buys, twice over. `class FaustNode` is 23 lines that fill an
+input buffer and call `dsp.render`. `class FaustPolyNode` is five lines, and behind them is an event
+scheduler, a voice allocator and N WebAssembly instances in one GraalVM context — none of which the
+seam has to know about. Being on it is what gets both of them the speakers, the engine's visualisers,
+the Link output and the box lifecycle, with no adapter written for any of them.
 
 The two paths off the seam are off it for two different reasons:
 
-* **`dough-engine`** is a wasm module with its own fixed 128-frame block size and its own event
-  queue. It could be wrapped, and has not been.
-* **`sonic-pi`** is a different process.
+`sonic-pi` is the one path off the seam, and no wrapper reaches it: it is a different process, and
+no sample ever enters this one.
 
-What it takes to get a pattern onto the seam is worth reading as the general case, because a pattern
-has to be *queried* over an arc and there is no "next 128 frames" to ask one for. The answer is a
-scheduler in two halves: a thread that queries a cycle at a time and converts events into notes
-stamped with the absolute frame they start on, and an audio-thread voice bank whose only remaining
-job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` split the work the same
-way. Being early costs nothing, because what crosses between the halves is frames; see
-[A pattern that moves particles](chain_pattern_particles.md).
+Two of the sixteen used to be off it. `dough-engine` was described here as something that "could be
+wrapped, and has not been", and it is wrapped: `class DoughAudioSink` is a `StereoNode` in the same
+file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine. Nothing noticed for a
+month, because the guard's markers were all device calls and WAV encodes and a node on the seam
+contains neither; the marker that now catches this, `override fun generateStereo(`, reported it and
+`faust-poly` together on its first run. (`DoughAudioSink` renders in whole 128-frame blocks and
+copies out only what was asked for, so it drops samples at any engine buffer size that is not a
+multiple of 128. The default is 512.)
 
-`AudioPatchSpec` is what every box that makes a noise returns. Five of the fifteen paths above have
+`pat-stand-in` was the other, and getting a pattern onto the seam is worth reading as the general
+case, because a pattern has to be *queried* over an arc and there is no "next 128 frames" to ask one
+for. The answer is a scheduler in two halves: a thread that queries a cycle at a time and turns
+events into notes stamped with the absolute frame they start on, and an audio-thread voice bank whose
+only remaining job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` divide the
+work the same way, and being early costs nothing because what crosses between the halves is frames.
+See [A pattern that moves particles](chain_pattern_particles.md).
+
+`AudioPatchSpec` is what every box that makes a noise returns. Five of the sixteen paths above have
 no page of their own — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`,
 `wav-file-in` — and the em-dash in those table cells means absent, not merely unlisted. For those
 five, this map and [`afield.four.synth` in the generated reference](reference/synthesis.md) are what
@@ -198,20 +212,29 @@ uses: declare, re-derive from the tree, fail on disagreement.
 
 `SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke then asserts five things:
 
-1. **The counts.** `SOURCE_COUNT = 6`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 7`. If a
+1. **The counts.** `SOURCE_COUNT = 7`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 9`. If a
    change adds a path beside the seam instead of on it, `PATHS` grows while `SEAM_COUNT` does not.
    Read that failure before editing the number.
-2. **Undeclared paths, derived from markers.** Four literals in the tree can only mean "a new way in
+2. **Undeclared paths, derived from markers.** Five literals in the tree can only mean "a new way in
    or out of this process": `alcOpenDevice(` (three files, three genuinely separate OpenAL
    contexts), `alcCaptureOpenDevice(` (one), `fun renderWav(name: String, outPath: String)` (four —
-   the docs-audio producer contract) and `WavFloatArrayWriter.encode` (five). Every file carrying
-   one is attributed to a declared path, and a new hit names itself in the failure.
+   the docs-audio producer contract), `WavFloatArrayWriter.encode` (six) and
+   `override fun generateStereo(` (eight — every node on the seam). Every file carrying one is
+   attributed to a declared path, and a new hit names itself in the failure.
+
+    The fifth was added on 2026-09-12, because the first four missed a whole sample source. A
+    pattern-driven Faust instrument opens no device and writes no WAV, so `FaustPoly.kt` sat in the
+    tree carrying none of these literals: the counts above stayed at six and seven, every check
+    stayed green, and this page under-reported what Field can do. The seam is the one thing a new
+    realtime source cannot avoid, which is why the marker that closes the hole greps for the seam.
+    It still cannot see a source that is off the seam entirely — another `sonic-pi`, another
+    whole-buffer free function — and `SoundPathMap`'s own KDoc says so.
 3. **Stale declarations.** The same check in reverse: a declared file that no longer carries its
    marker is a citation that has rotted, and fails the same way.
 4. **Every citation on this page resolves.** Each path declares an entry-point *symbol*, not a line
    number, and the guard greps the file for it. So a rename fails the build instead of leaving a
    dead symbol in the tables above.
-5. **This page names every path.** Both file and symbol, verbatim, for all fifteen. An omitted row
+5. **This page names every path.** Both file and symbol, verbatim, for all sixteen. An omitted row
    fails.
 
 The comparison figures are checked too: both filters must take the centroid below 0.6× the dry

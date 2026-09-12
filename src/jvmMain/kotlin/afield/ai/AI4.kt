@@ -102,3 +102,13 @@ fun ai4_install() = installAi4()
 
 @RunsAt(installHandlers)
 fun docs_search_install() = installDocsSearch()
+
+// Durable document guide tools, shared with the viewer and MCP.
+typealias DocumentGuideTools = afield.ai.core.DocumentGuideTools
+typealias DocumentGuideListRequest = afield.ai.core.DocumentGuideListRequest
+typealias DocumentGuideReadRequest = afield.ai.core.DocumentGuideReadRequest
+typealias DocumentGuideSearchRequest = afield.ai.core.DocumentGuideSearchRequest
+typealias DocumentGuideCreateRequest = afield.ai.core.DocumentGuideCreateRequest
+typealias DocumentGuidePatchRequest = afield.ai.core.DocumentGuidePatchRequest
+typealias DocumentGuideAppendRequest = afield.ai.core.DocumentGuideAppendRequest
+typealias DocumentGuideToolResult = afield.ai.core.DocumentGuideToolResult

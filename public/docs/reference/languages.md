@@ -672,78 +672,393 @@ BoxExecution implementation for the FORTH microlanguage.
 
 ## ForthInterpreter.kt { #forthinterpreter-kt }
 
+A compact, extensible FORTH interpreter used by Field4 for live coding.
+
+It is host-driven:
+- it executes FORTH source and keeps its own data stack/dictionary
+- it ships with creative-coding oriented builtins (vectors + `FLine`)
+- it can be extended at runtime from Kotlin via `defineWord`
+- it can interoperate with host objects using `@?` / `@?!` reflection calls
+
+### The host loop
+
+Typical host loop:
+1. Construct an interpreter once (`val forth = ForthInterpreter()`).
+2. Register host bridge words with `defineWord` as needed.
+3. Push host objects (buffers, context values, services) onto `stack`.
+4. Run `eval(...)`.
+5. Pop resulting values (for example an `FLine`) and hand them to rendering/output code.
+
+Example: basic execution and stack access:
+```diffstatic {data-lang=kotlin}
+val forth = ForthInterpreter()
+val diagnostics = forth.eval("2 3 +")
+check(diagnostics.isEmpty())
+println(forth.popNum()) // 5.0
+```
+
+Example: defining words in FORTH:
+```diffstatic {data-lang=forth}
+: sqr ( n -- n2 ) dup * ;
+: hypot2 ( x y -- d2 ) sqr swap sqr + ;
+3 4 hypot2 .
+```
+
+Example: create an `FLine` shape in FORTH:
+```diffstatic {data-lang=forth}
+: stroke-ribbon ( -- f )
+  fline
+  0   0   moveto
+  120 20  lineto
+  160 90  210 90  260 20 cubicto
+  320 0   lineto
+  true  fline-stroked
+  false fline-filled
+  1.0 0.55 0.2 1.0 fline-color
+  2.5 fline-thickness ;
+
+stroke-ribbon
+```
+
+Host-side consumption of the resulting `FLine`:
+```diffstatic {data-lang=kotlin}
+val forth = ForthInterpreter()
+val source = """
+  : stroke-ribbon ( -- f )
+    fline
+    0 0 moveto
+    120 20 lineto
+    160 90 210 90 260 20 cubicto
+    true fline-stroked
+    1 0.55 0.2 1 fline-color
+    2.5 fline-thickness ;
+  stroke-ribbon
+""".trimIndent()
+
+val diagnostics = forth.eval(source)
+if (diagnostics.isEmpty()) {
+  val line = forth.pop() as FLine
+  // Forward `line` into your output channel / renderer.
+}
+```
+
+Example: use vector helpers with FLine convenience words:
+```diffstatic {data-lang=forth}
+: zig ( -- f )
+  fline
+  0   0   vec2 fline-moveto-v2
+  40  20  vec2 fline-lineto-v2
+  80 -10  vec2 fline-lineto-v2
+  120 25  vec2 fline-lineto-v2
+  1 0 0 1 fline-node-color ;
+zig
+```
+
+### The reflection bridge
+
+Example: resolve classes without full FQNs.
+`class-for` consults Field's class cache (`importHelp.kt`) so short names usually work.
+
+```diffstatic {data-lang=forth}
+s"FLine" class-for @? getName println
+s"Vec3"  class-for @? getName println
+
+s"Fli" class-matches print   \ returns a list of FQNs
+s"Fli" class-help            \ prints one-per-line suggestions
+```
+
+Example: reflection bridge (`@?` / `@?!`) with `FLine`, built entirely by class lookup.
+This demonstrates construction + method calls without using the `fline` helper.
+
+```diffstatic {data-lang=forth}
+variable f
+s"FLine" class-for @? newInstance f !
+
+\ Explicit arity call: f.moveTo(Number, Number, Number)
+f @ 0   0   0   3 @?! moveTo drop
+
+\ Explicit arity call: f.lineTo(Number, Number, Number)
+f @ 120 30  0   3 @?! lineTo drop
+f @ 220 10  0   3 @?! lineTo drop
+f @ 260 80 0  320 80 0  380 20 0  9 @?! cubicTo drop
+
+\ Properties are just a map on FLine
+f @ @? properties  s"thickness" 2.5 2 @?! put
+f @ @? properties  s"stroked" true 2 @?! put
+
+\ Heuristic call for zero-arg methods works well with @?
+f @ @? close drop
+
+\ Leave the final FLine on the stack
+f @
+```
+
+Example: `@?` reads data too (field/getter/method fallback):
+```diffstatic {data-lang=forth}
+f @ @? nodes   \ push internal node list
+@? size .      \ call size() on that list and print node count
+```
+
+Example: constructor with explicit args via `@?! new`:
+```diffstatic {data-lang=forth}
+variable sb
+s"StringBuilder" class-for s"hello" 1 @?! new sb !
+sb @ @? toString println
+```
+
+Example: extending FORTH with Kotlin bridge words.
+Here we expose a helper that appends a `vec4` worth of floats into any
+`DynamicallyWriteable` buffer (for example `VulkanBuffer` or `FrameBufferGroup`).
+
+```diffstatic {data-lang=kotlin}
+import afield.four.buffers.DynamicallyWriteable
+import afield.stdlib.Vec4
+
+val forth = ForthInterpreter()
+forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
+  val w = popNum().toFloat()
+  val z = popNum().toFloat()
+  val y = popNum().toFloat()
+  val x = popNum().toFloat()
+  val buf = pop() as DynamicallyWriteable
+
+  buf.append {
+    put(Vec4(x, y, z, w))
+  }
+  push(buf)
+}
+```
+
+Example: call that bridge word from FORTH after pushing a host buffer:
+```diffstatic {data-lang=kotlin}
+forth.push(myDynamicBuffer) // host object: VulkanBuffer / FrameBufferGroup / similar
+forth.eval("""
+  0.0 1.0 0.0 1.0 append-vec4
+  1.0 0.0 0.0 1.0 append-vec4
+  0.0 0.0 1.0 1.0 append-vec4
+""".trimIndent())
+```
+
+Example: long-form output areas from FORTH:
+```diffstatic {data-lang=forth}
+s"<b>Inline-ish output area content</b>" display
+s"<pre>Detailed log text...</pre>" s"debug" display-channel
+```
+
+Example: launchable animation with cooperative yielding via `frame`.
+Run this in Launch mode (or call `begin("default")` on the box), so `spinner` executes
+every RunLoop tick. `frame` yields immediately, letting the rest of Field proceed.
+Store evolving state in variables, because each strand tick re-enters the word from the top.
+
+```diffstatic {data-lang=forth}
+variable tick
+variable line
+0 tick !
+
+: spinner ( -- )
+  s"FLine" class-for @? newInstance line !
+
+  \ center point
+  line @ 0 0 0 3 @?! moveTo drop
+
+  \ animated endpoint (simple circular motion)
+  line @
+  tick @ 0.05 * dup cos 120 *          ( x )
+             swap sin 120 *            ( x y )
+  0 3 @?! lineTo drop
+
+  \ style via reflected property map
+  line @ @? properties s"thickness" 2.0 2 @?! put
+  line @ @? properties s"stroked" true 2 @?! put
+  line @ s"geom" display-channel
+
+  \ show a debug line in output area
+  s"tick=" tick @ str str+ s"debug" display-channel
+
+  1 tick +!
+  frame
+;
+
+spinner
+```
+
+Example: same pattern with an explicit FORTH loop.
+`frame` exits the current tick immediately; on next tick the word starts again.
+
+```diffstatic {data-lang=forth}
+variable phase
+0 phase !
+
+: pulse-loop ( -- )
+  begin
+    s"phase=" phase @ str str+ println
+    1 phase +!
+    frame
+  again ;
+
+pulse-loop
+```
+
+Example: full overwrite of float data each tick, since `write` replaces the payload rather than
+adding to it:
+```diffstatic {data-lang=kotlin}
+import afield.four.buffers.DynamicallyWriteable
+
+forth.defineWord("write-triangle", "( buf -- buf )") {
+  val buf = pop() as DynamicallyWriteable
+  buf.write {
+    // XYZW packed per vertex (3 vertices)
+    put(-0.5f); put(-0.5f); put(0f); put(1f)
+    put( 0.5f); put(-0.5f); put(0f); put(1f)
+    put( 0.0f); put( 0.5f); put(0f); put(1f)
+  }
+  push(buf)
+}
+```
+
+Notes for dynamic-buffer bridging:
+- `defineWord` closures execute on the interpreter thread/context used by your host.
+- Prefer `write { ... }` when replacing the payload; `append { ... }` when accumulating.
+- `DynamicBuffer.put(Vec4)` follows std430-friendly alignment rules used by Field's buffer code.
+- If you need explicit control, call `putScalar(...)` repeatedly instead of vector helpers.
+
+### Builtins
+
+Builtins included by default:
+- stack ops (`dup`, `swap`, `over`, `pick`, `roll`, ...)
+- math/logic/control flow (`if/else/then`, `begin/until`, `do/loop`, ...)
+- variables/constants (`variable`, `!`, `@`, `constant`)
+- strings/output (`."..."`, `s"..."`, `.`, `println`, ...)
+- dictionary tools (`words`, `see`, `forget`, `recurse`)
+- return-stack transfer (`>r`, `r>`, `r@`)
+- vectors (`vec2`, `vec3`, `vec4` + arithmetic helpers)
+- `FLine` primitives (`fline`, `moveto`, `lineto`, `cubicto`, styling words)
+- small visualization words (`html`, `watch`, `stack-display`, `bar`, `plot-stack`)
+- frame/yield primitive (`frame`) for cooperative launch-mode animations
+- host reflection hooks (`@?`, `@?!`, `class-for`, `class-matches`, `class-help`)
+
+### Dictionary, recursion and the return stack
+
+Dictionary / debugging examples:
+```diffstatic {data-lang=forth}
+: sqr dup * ;
+words              \ print all currently known words
+see sqr            \ print ": sqr dup * ;"
+forget sqr         \ remove the user-defined word
+```
+
+Recursion example:
+```diffstatic {data-lang=forth}
+: countdown ( n -- )
+  dup 0> if
+    dup println
+    1- recurse
+  else
+    drop
+  then ;
+5 countdown
+```
+
+Infinite loop example. Use `again` mainly in launched words where `frame`
+yields back to Field each tick:
+```diffstatic {data-lang=forth}
+variable tick
+: ticker begin tick @ println 1 tick +! frame again ;
+ticker
+```
+
+Return-stack examples. `>r` moves a temporary value away from the data stack,
+`r@` copies it back, and `r>` restores/removes it:
+```diffstatic {data-lang=forth}
+: add-twice ( a b -- a+b+b )
+  >r        \ return stack: b ; data stack: a
+  r@ +      \ data stack: a+b, b is still saved
+  r> + ;    \ data stack: a+b+b
+```
+
+### Visualization words
+
+Visualization examples:
+```diffstatic {data-lang=forth}
+s"<b>Hello from Forth</b>" html
+0.72 1.0 s"progress" bar
+42 s"answer" watch
+stack-display
+1 4 9 16 plot-stack
+```
+
 `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` — [read the source](source/jvmMain/afield/forth/ForthInterpreter/)
 
 ### ForthInterpreter { #forthinterpreter-kt-forthinterpreter }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ForthInterpreter</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L319)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ForthInterpreter</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L338)
 
-A compact, extensible FORTH interpreter used by Field4 for live coding.
+The interpreter: the data stack, the dictionary, the tokenizer and `eval`.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L321) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CallFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L322) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">currentLine</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L324) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">currentToken</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L326) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">stack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L330) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">returnStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L333) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">callStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L336) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">dictionary</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L340) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">variables</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L343) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L346) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onDisplay</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L347) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onFrame</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L348) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">strands</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L351) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">push</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L361) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">pop</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L363) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">peek</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L365) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">popNum</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L367) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">popInt</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L369) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToDouble</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L371) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToBool</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L381) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">eval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L428) | Evaluate a string of FORTH code. Returns a list of diagnostics (empty = success). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">diagnosticFor</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">ForthError</span><span class="p">)</span><span class="p">:</span> <span class="nc">ForthDiagnostic</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L451) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tokenize</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L480) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">execTokens</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L539) | Execute tokens[start..end) — the core interpreter loop. Returns the index one past the last token consumed (= end, normally). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">execWord</span><span class="p">(</span><span class="n">fw</span><span class="p">:</span> <span class="nc">ForthWord</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L684) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthCompletion</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L919) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describeWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L949) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">forgetWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L961) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">defineWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L975) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">addStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wordName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L979) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">removeStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L983) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tickStrands</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L987) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectMember</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1009) | `@?` implementation: access a field, property, or method on `obj` by name. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectCallN</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1077) | `@?!` implementation: call a method on `obj` with an explicit argument list. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L340) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CallFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L341) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">currentLine</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L343) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">currentToken</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L345) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L349) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">returnStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L352) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">callStack</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L355) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">dictionary</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L359) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">variables</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L362) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L365) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onDisplay</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L366) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onFrame</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L367) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">strands</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L370) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">push</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L380) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pop</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L382) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">peek</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L384) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">popNum</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L386) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">popInt</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L388) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToDouble</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L390) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToBool</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L400) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">eval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L447) | Evaluate a string of FORTH code. Returns a list of diagnostics (empty = success). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">diagnosticFor</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">ForthError</span><span class="p">)</span><span class="p">:</span> <span class="nc">ForthDiagnostic</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L470) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tokenize</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L499) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">execTokens</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L558) | Execute tokens[start..end) — the core interpreter loop. Returns the index one past the last token consumed (= end, normally). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">execWord</span><span class="p">(</span><span class="n">fw</span><span class="p">:</span> <span class="nc">ForthWord</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L703) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthCompletion</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L938) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describeWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L968) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">forgetWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L980) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">defineWord</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L994) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">addStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wordName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L998) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">removeStrand</span><span class="p">(</span><span class="n">strandName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1002) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tickStrands</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1006) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectMember</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1028) | `@?` implementation: access a field, property, or method on `obj` by name. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reflectCallN</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">memberName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1096) | `@?!` implementation: call a method on `obj` with an explicit argument list. |
 
 ### ForthWord { #forthinterpreter-kt-forthword }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">ForthWord</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1552)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">ForthWord</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1571)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Builtin</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1553) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Compiled</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthInterpreter</span><span class="p">.</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceLine</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1554) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Variable</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1555) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Constant</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1556) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lambda</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1557) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Builtin</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1572) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Compiled</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthInterpreter</span><span class="p">.</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceLine</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1573) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Variable</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1574) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Constant</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1575) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lambda</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">impl</span><span class="p">:</span> <span class="nc">ForthInterpreter</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ForthWord</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1576) |  |
 
 ### ForthError { #forthinterpreter-kt-fortherror }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">ForthError</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1560)
+[<code class="highlight"><span class="k">class</span> <span class="nf">ForthError</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1579)
 
 ### ForthFrameYield { #forthinterpreter-kt-forthframeyield }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ForthFrameYield</span> <span class="p">:</span> <span class="nf">Throwable</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1561)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ForthFrameYield</span> <span class="p">:</span> <span class="nf">Throwable</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1580)
 
 ### ForthDiagnostic { #forthinterpreter-kt-forthdiagnostic }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthDiagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1563)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthDiagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1582)
 
 ### ForthCompletion { #forthinterpreter-kt-forthcompletion }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthCompletion</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">documentation</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1565)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ForthCompletion</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">documentation</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L1584)
 
 | Declaration | Summary |
 | --- | --- |
@@ -1618,45 +1933,71 @@ Constants: `LET`, `TYPE`, `IN`, `IF`, `THEN`, `ELSE`, `FUN`, `MATCH`, `WITH`, `T
 
 ## HostTypes.kt { #hosttypes-kt }
 
+The reflection behind FieldML's host types: what a [`THost`](languages.md#types-kt-thost) names, and what can therefore be said
+at type-check time about a member's type, a resolved overload's result, the parameter slots a
+call's arguments land in, and the members a receiver actually has.
+
+A [`THost`](languages.md#types-kt-thost)'s name is a real JVM class name, which is what keeps a program typed once it reaches
+into the JVM: a member access is inferred rather than left dynamic, a misspelled member name is
+reported where it is written instead of crashing on the first run, and completion has a class to
+enumerate.
+
+Two rules bound what this file will claim.
+
+*`Host` stays the dynamic type.* `OPAQUE`, the name `Host` itself, is what a host type degrades to
+whenever reflection cannot justify anything better: a generic erased to `Object`, an array, a
+`Map`, a nullable return, an overload set whose best candidates disagree about what they return.
+`Inferencer.unifyHosts` lets it stand for any class, which is the statement "unknown, checked at
+run time". It is a *bounded* dynamic type rather than a universal one, though:
+`Inferencer.requireDynamicallyReachable` refuses a `Host` where a function, a list, a tuple or a
+record is wanted, and names what to reach for instead.
+
+*A mapping only claims what the runtime actually does.* `fieldMLTypeOf` answers with the type
+`afield.ml.core.hostToFieldMLValue` will really produce, so reflection saying `int` means an
+`IntValue` arrives, and `List<Double>` means a list of floats. Where the declared type does not
+determine the converted one the answer is `Host` rather than something plausible: a `Map` really
+does convert to a record, but its field names are nowhere in the declared type, so the type side
+says `Host` and the program reads the fields with `hostGet`.
+
 `src/jvmMain/kotlin/afield/ml/type/HostTypes.kt` — [read the source](source/jvmMain/afield/ml/type/HostTypes/)
 
 ### FieldMLHostTypes { #hosttypes-kt-fieldmlhosttypes }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLHostTypes</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L38)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLHostTypes</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L47)
 
-What a `THost` *is*, and what reflection can therefore say about it at type-check time.
+Reflection over a host type: the JVM class a [`THost`](languages.md#types-kt-thost) names, the FieldML type a JVM type converts to, and the member, overload, constructor and parameter-slot lookups the type checker and completion ask for.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OPAQUE</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L40) | The dynamic host type: unknown JVM class, or a class whose shape reflection cannot pin down. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">curatedTypeNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L58) | The short names FieldML understands in `hostAs` and `hostClass`, for completion. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueType</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">THost</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L61) | The type of a host *value* of `className`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueType</span><span class="p">(</span><span class="n">owner</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">THost</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L64) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">classHandleType</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">THost</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L67) | The type of the class handle `hostClass "…"` returns, distinct from a value of that class. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">classHandleName</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L70) | The class named by a `Class<…>` handle type, or null when `type` is not one. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">jvmClassOf</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L80) | The JVM class behind a host *value* type, or null when there is none to reflect on — either because the type is `OPAQUE`, because it is a class handle rather than a value, or because the class is not on this classpath (a `hostClass` name that was checked when it was written and is being re-checked in a different build, say). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">loadClass</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L86) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">display</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L89) | How a host type reads in a signature: the simple name, since the package is rarely the point. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fieldMLTypeOf</span><span class="p">(</span><span class="n">jvm</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">lang</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="nc">Type</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L102) | The FieldML type a value of the JVM type `jvm` will have once it has been through `hostToFieldMLValue`. `OPAQUE` whenever that cannot be said for certain. |
-| [<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L152) | The outcome of asking reflection about a member. `Unknown` is not a failure: it means the receiver's class is not known, so the call has to stay dynamic and must *not* be reported as an error. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">memberType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L158) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">methodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L171) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">staticMethodResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L179) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">constructorResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L187) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">namedMethodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L214) | The type-level twin of `FieldMLHostBridge.callMethodNamed`, and deliberately weaker than its positional counterpart in one respect: it resolves on the argument *names* alone and ignores their types. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">namedStaticMethodResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">wantsExtensionReceiver</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L223) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">namedConstructorResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L240) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostParameter</span><span class="p">(</span><span class="k">val</span> <span class="n">jvmClass</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">generic</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">lang</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="nc">Type</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">nullableFunctionArguments</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L338) | One parameter slot of a resolved overload: the erased class the JVM will check, the generic type written at the use site — the only place a functional interface's type arguments survive — and, when the slot is a Kotlin function type, which of *its* arguments are nullable. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">instanceParameters</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L352) | The parameter slots a call's arguments will land in, one per argument, or an empty list when nothing can be said. This is what lets a lambda literal be checked *against* the JVM signature instead of being inferred blind — see `Inferencer.preInferHostSpine`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">staticParameters</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L357) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">constructorParameters</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L362) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parameterSlot</span><span class="p">(</span><span class="n">owner</span><span class="p">:</span> <span class="nc">Executable</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">HostParameter</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L401) | The parameter slot at `index` of `owner`, for a caller that already knows which member it means. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">samParameterTypes</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L448) | The FieldML types the JVM will hand a lambda that satisfies `parameter`, or null when `parameter` is not a functional interface. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">samResultAcceptsFunction</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L482) | Whether a lambda satisfying `parameter` may legitimately have *more* parameters than the interface takes. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">readableMembers</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMember</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L541) | Members `hostGet` can read, for completion. Static members when `receiver` is a class handle. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">callableMethods</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMethod</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L555) | Methods `hostCall` can reach, for completion. Static methods when `receiver` is a class handle. |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMember</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L580) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMethod</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">resultType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L582) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OPAQUE</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L49) | The dynamic host type: unknown JVM class, or a class whose shape reflection cannot pin down. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">curatedTypeNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L67) | The short names FieldML understands in `hostAs` and `hostClass`, for completion. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueType</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">THost</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L70) | The type of a host *value* of `className`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueType</span><span class="p">(</span><span class="n">owner</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">THost</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L73) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">classHandleType</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">THost</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L76) | The type of the class handle `hostClass "…"` returns, distinct from a value of that class. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">classHandleName</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L79) | The class named by a `Class<…>` handle type, or null when `type` is not one. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">jvmClassOf</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L89) | The JVM class behind a host *value* type, or null when there is none to reflect on — either because the type is `OPAQUE`, because it is a class handle rather than a value, or because the class is not on this classpath (a `hostClass` name that was checked when it was written and is being re-checked in a different build, say). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">loadClass</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L95) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">display</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L98) | How a host type reads in a signature: the simple name, with the package and any outer class dropped. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fieldMLTypeOf</span><span class="p">(</span><span class="n">jvm</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">lang</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="nc">Type</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L111) | The FieldML type a value of the JVM type `jvm` will have once it has been through `hostToFieldMLValue`. `OPAQUE` whenever that cannot be said for certain. |
+| [<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L161) | The outcome of asking reflection about a member. `Unknown` is not a failure: it means the receiver's class is not known, so the call has to stay dynamic and must *not* be reported as an error. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">memberType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L167) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">methodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L180) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">staticMethodResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L188) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">constructorResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L196) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">namedMethodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L223) | The type-level twin of `FieldMLHostBridge.callMethodNamed`, and deliberately weaker than its positional counterpart in one respect: it resolves on the argument *names* alone and ignores their types. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">namedStaticMethodResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">wantsExtensionReceiver</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L232) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">namedConstructorResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L249) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostParameter</span><span class="p">(</span><span class="k">val</span> <span class="n">jvmClass</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">generic</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">lang</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="nc">Type</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">nullableFunctionArguments</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L347) | One parameter slot of a resolved overload: the erased class the JVM will check, the generic type written at the use site — the only place a functional interface's type arguments survive — and, when the slot is a Kotlin function type, which of *its* arguments are nullable. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">instanceParameters</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L361) | The parameter slots a call's arguments will land in, one per argument, or an empty list when nothing can be said. This is what lets a lambda literal be checked *against* the JVM signature instead of being inferred blind — see `Inferencer.preInferHostSpine`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">staticParameters</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L366) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">constructorParameters</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L371) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parameterSlot</span><span class="p">(</span><span class="n">owner</span><span class="p">:</span> <span class="nc">Executable</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">HostParameter</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L410) | The parameter slot at `index` of `owner`, for a caller that already knows which member it means. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">samParameterTypes</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L457) | The FieldML types the JVM will hand a lambda that satisfies `parameter`, or null when `parameter` is not a functional interface. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">samResultAcceptsFunction</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L491) | Whether a lambda satisfying `parameter` may legitimately have *more* parameters than the interface takes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">readableMembers</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMember</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L550) | Members `hostGet` can read, for completion. Static members when `receiver` is a class handle. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">callableMethods</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMethod</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L564) | Methods `hostCall` can reach, for completion. Static methods when `receiver` is a class handle. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMember</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L589) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMethod</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">resultType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/HostTypes/#L591) |  |
 
 ## Inferencer.kt { #inferencer-kt }
 
@@ -2924,87 +3265,143 @@ Field4 `BoxExecution` implementation for the **Nano** micro-computer language.
 
 ## NanoVM.kt { #nanovm-kt }
 
+Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations:
+four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an
+instruction.
+
+The whole machine is:
+
+ - `r0`–`r3`, 8-bit unsigned, so 0–255
+ - 32 bytes of RAM, addressed modulo 32, so no address is out of range
+ - flags `Z` (zero), `C` (carry), `S` (sign) and `O` (overflow)
+ - a call stack eight deep, for `CALL` and `RET`
+ - unsigned-byte arithmetic throughout, wrapping mod 256
+
+Instructions are fetched from the program byte array passed to `NanoVM.run`, and `ram` is
+separate data. `NanoVM.load` also mirrors the program's first 32 bytes into RAM, which is what
+lets a program read its own text. `NanoInterface`'s launch mode calls `NanoVM.resetRegisters`
+instead, leaving RAM alone so it carries state from one per-tick run to the next.
+
+### Opcode map
+
+[`Opcode`](languages.md#nanovm-kt-opcode) is the constant table, and `Opcode.twoReg` and `Opcode.oneReg` are the encoders.
+
+| form | encoding | instructions | opcodes |
+| --- | --- | --- | --- |
+| no operand | one byte | `NOP`, `HLT`, `RET` | `0x00`–`0x02` |
+| one register | `base + reg`, 4 per op | `INC`, `DEC`, `NOT`, `NEG`, `CLR`, `OUT`, `RNG` | `0x04`–`0x1F` |
+| two registers | `base + (dst shl 2) + src`, 16 per op | `MOV`, `ADD`, `SUB`, `MUL`, `AND`, `OR`, `XOR`, `CMP`, `LDR`, `STR` | `0x20`–`0xBF` |
+| register and immediate or address | two bytes, 4 per op | `LDI`, `LDA`, `STA`, `ADDI`, `LDRR`, `STRR`, `SHL`, `SHR` | `0xC0`–`0xDF` |
+| relative branch | two bytes, signed offset | `JMP`, `JZ`, `JNZ`, `JGT`, `JLT`, `JGE`, `JLE`, `JC`, `JNC`, `CALL` | `0xE0`–`0xE9` |
+| absolute branch | two bytes, absolute address | `JMPA`, `CALLA` | `0xEA`–`0xEB` |
+| two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFB` |
+
+Five bytes decode to nothing — `0x03`, and `0xFC`–`0xFF` past `DIV`'s last `(dst, src)` pair.
+Each reports an unknown opcode and halts. That path matters here more than it would in a VM with
+a fixed program: artificial-life work mutates programs, and `NanoAssembler`'s raw-byte directive
+puts an arbitrary byte in front of the decoder too, so every one of the 256 has to either execute
+or report. The GPU port in `nano_compute.glsl` decodes the same map.
+
+### A program
+
+```diffstatic {data-lang=nano}
+; comment
+start:
+    ldi r0, 10     ; r0 = 10
+    ldi r1, 0      ; r1 = 0
+loop:
+    add r1, r0     ; r1 += r0
+    dec r0         ; r0--  (sets Z when r0 reaches 0)
+    jnz loop       ; jump back if not zero
+    out r1         ; print r1
+    hlt
+```
+
+`NanoAssembler.kt` has the rest of the syntax, including the directive that places raw bytes in
+the program stream and the fact that a label resolves to an offset for a relative branch and to
+an address for `JMPA` and `CALLA`.
+
 `src/jvmMain/kotlin/afield/nano/NanoVM.kt` — [read the source](source/jvmMain/afield/nano/NanoVM/)
 
 ### NanoVM { #nanovm-kt-nanovm }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">NanoVM</span><span class="p">(</span><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Random</span><span class="p">.</span><span class="nf">nextInt</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L44)
+[<code class="highlight"><span class="k">class</span> <span class="nf">NanoVM</span><span class="p">(</span><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Random</span><span class="p">.</span><span class="nf">nextInt</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L69)
 
-Nano – a minimal 8-bit virtual machine designed for emergence and artificial-life simulations.
+The machine itself: the register file, RAM, the flags and the fetch-decode-execute step.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">reg</span></code>](source/jvmMain/afield/nano/NanoVM/#L56) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">ram</span></code>](source/jvmMain/afield/nano/NanoVM/#L57) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">pc</span></code>](source/jvmMain/afield/nano/NanoVM/#L58) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L59) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagC</span></code>](source/jvmMain/afield/nano/NanoVM/#L60) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagS</span></code>](source/jvmMain/afield/nano/NanoVM/#L61) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagO</span></code>](source/jvmMain/afield/nano/NanoVM/#L62) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">halted</span></code>](source/jvmMain/afield/nano/NanoVM/#L63) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L68) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onError</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L69) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StepResult</span><span class="p">(</span><span class="k">val</span> <span class="n">executedPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">currentPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">executed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L71) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L80) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">resetRegisters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L95) | Reset only registers and execution state, preserving RAM contents. Used in `NanoInterface` launch mode so RAM acts as persistent working memory that survives across per-tick executions (important for ALife state machines). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L105) | Load a program into a fresh machine (resets full state including RAM). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/nano/NanoVM/#L116) | Run up to `maxSteps` instructions from current `pc`. Returns the number of steps executed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stepOnce</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StepResult</span></code>](source/jvmMain/afield/nano/NanoVM/#L130) | Execute exactly one instruction at the current `pc`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoVM/#L446) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">reg</span></code>](source/jvmMain/afield/nano/NanoVM/#L81) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">ram</span></code>](source/jvmMain/afield/nano/NanoVM/#L82) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">pc</span></code>](source/jvmMain/afield/nano/NanoVM/#L83) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L84) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagC</span></code>](source/jvmMain/afield/nano/NanoVM/#L85) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagS</span></code>](source/jvmMain/afield/nano/NanoVM/#L86) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagO</span></code>](source/jvmMain/afield/nano/NanoVM/#L87) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">halted</span></code>](source/jvmMain/afield/nano/NanoVM/#L88) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L93) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onError</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L94) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StepResult</span><span class="p">(</span><span class="k">val</span> <span class="n">executedPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">currentPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">executed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L96) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L105) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resetRegisters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L120) | Reset only registers and execution state, preserving RAM contents. Used in `NanoInterface` launch mode so RAM acts as persistent working memory that survives across per-tick executions (important for ALife state machines). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L130) | Load a program into a fresh machine (resets full state including RAM). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/nano/NanoVM/#L141) | Run up to `maxSteps` instructions from current `pc`. Returns the number of steps executed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stepOnce</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StepResult</span></code>](source/jvmMain/afield/nano/NanoVM/#L155) | Execute exactly one instruction at the current `pc`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoVM/#L473) |  |
 
 ### Opcode { #nanovm-kt-opcode }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">Opcode</span></code>](source/jvmMain/afield/nano/NanoVM/#L463)
+[<code class="highlight"><span class="k">object</span> <span class="nc">Opcode</span></code>](source/jvmMain/afield/nano/NanoVM/#L490)
 
-Opcode constants for the Nano VM. These mirror the ranges used in `NanoVM.step`.
+Opcode constants for the Nano VM, with the two encoders that build a byte out of a base and a register index. These are the ranges `NanoVM.stepOnce` decodes.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOP</span></code>](source/jvmMain/afield/nano/NanoVM/#L464) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L465) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RET</span></code>](source/jvmMain/afield/nano/NanoVM/#L466) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L468) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L469) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L470) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NEG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L471) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L472) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L473) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RNG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L474) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MOV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L476) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADD&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L477) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUB&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L478) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MUL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L479) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AND&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L480) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L481) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">XOR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L482) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CMP&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L483) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L484) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L485) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L487) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L488) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L489) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L490) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L491) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L492) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L493) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L494) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMP</span></code>](source/jvmMain/afield/nano/NanoVM/#L496) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L497) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L498) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGT</span></code>](source/jvmMain/afield/nano/NanoVM/#L499) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L500) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGE</span></code>](source/jvmMain/afield/nano/NanoVM/#L501) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLE</span></code>](source/jvmMain/afield/nano/NanoVM/#L502) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JC</span></code>](source/jvmMain/afield/nano/NanoVM/#L503) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNC</span></code>](source/jvmMain/afield/nano/NanoVM/#L504) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALL</span></code>](source/jvmMain/afield/nano/NanoVM/#L505) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMPA</span></code>](source/jvmMain/afield/nano/NanoVM/#L506) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALLA</span></code>](source/jvmMain/afield/nano/NanoVM/#L507) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L509) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">twoReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L512) | Encode a two-register opcode: op_base + (dst << 2) + src |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">oneReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L515) | Encode a single-register opcode: op_base + regIndex |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOP</span></code>](source/jvmMain/afield/nano/NanoVM/#L491) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L492) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RET</span></code>](source/jvmMain/afield/nano/NanoVM/#L493) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L495) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L496) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L497) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NEG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L498) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L499) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L500) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RNG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L501) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MOV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L503) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADD&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L504) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUB&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L505) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MUL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L506) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AND&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L507) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L508) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">XOR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L509) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CMP&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L510) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L511) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L512) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L514) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L515) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L516) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L517) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L518) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L519) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L520) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L521) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMP</span></code>](source/jvmMain/afield/nano/NanoVM/#L523) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L524) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L525) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGT</span></code>](source/jvmMain/afield/nano/NanoVM/#L526) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L527) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGE</span></code>](source/jvmMain/afield/nano/NanoVM/#L528) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLE</span></code>](source/jvmMain/afield/nano/NanoVM/#L529) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JC</span></code>](source/jvmMain/afield/nano/NanoVM/#L530) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNC</span></code>](source/jvmMain/afield/nano/NanoVM/#L531) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALL</span></code>](source/jvmMain/afield/nano/NanoVM/#L532) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMPA</span></code>](source/jvmMain/afield/nano/NanoVM/#L533) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALLA</span></code>](source/jvmMain/afield/nano/NanoVM/#L534) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L536) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">twoReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L539) | Encode a two-register opcode: op_base + (dst << 2) + src |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">oneReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L542) | Encode a single-register opcode: op_base + regIndex |
 
 ## NanoVisualization.kt { #nanovisualization-kt }
 
@@ -5673,7 +6070,7 @@ throws away everything except the source, which is usually the wrong trade.
 
 ### Where StackSL sits relative to its neighbours
 
-`afield.stdlib/stacksl.kt` — on the `Graphics`(graphics.md) page, because it is host API rather
+`afield.stdlib/stacksl.kt` — on the [Graphics](graphics.md) page, because it is host API rather
 than language — is how a box actually reaches a StackSL string. `afield.rectsl` compiles through
 this file: RectSL decides where rectangles are, StackSL decides how their materials shade, and
 `RectSLGlsl.kt` is the join. `VolumetricNoise.kt` beside this file is the noise vocabulary the
@@ -6133,35 +6530,59 @@ A CPU texture a StackSL feedback program can read: RGBA floats, bilinear, clamp-
 
 ## StackSLCpu.kt { #stackslcpu-kt }
 
+StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM,
+so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context
+at all.
+
+[`StackSLCpu`](languages.md#stackslcpu-kt-stackslcpu) is the entry point and [`CpuRaster`](languages.md#stackslcpu-kt-cpuraster) is what comes back: RGBA floats with row 0 at the
+top, quantised the way a `VK_FORMAT_R8G8B8A8_UNORM` attachment does, and encodable straight to
+PNG. `StackSLCpu.renderStill` is the one-liner a box wants.
+
+What the backend is exact about is the *program*. `StackSLCpu.renderFragment` takes a complete
+fragment shader as text and knows nothing about StackSL; the StackSL half compiles a program with
+`StackSLCompiler` and substitutes the result into a `{{ stack.auto.<slot> }}` template, which is
+the same tag the production expansion path in `afield.stdlib.shaders` fills. Both paths therefore
+receive the same string, and nothing about a word's behaviour is restated here: change what the
+emitter makes of `fbm` and this backend changes with it on the next call, with no edit. Tests pin
+the two copies that make that true: `StackSLCpuExpansionTest` compares the compile options against
+the production path's, and `StackSLCpuStillTemplateTest` compares the gallery's fragment template
+against the committed one in the gallery workspace.
+
+It is a reference, not a renderer. It is an interpreter, so it is orders of magnitude short of a
+GPU, and `StackSLCpu.renderStill` states a cost for one program at one size. It is not bit-exact
+either: GLSL leaves `sin`, `cos`, `exp`, `log`, `pow` and `atan` implementation-defined, so a
+program that reaches one of them can only be compared under a tolerance. [`GlslValue`](languages.md#glslvalue-kt-glslvalue) has that
+argument in full, including the case where operations that *are* exact still diverge visibly.
+
 `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLCpu.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/StackSLCpu/)
 
 ### CpuRaster { #stackslcpu-kt-cpuraster }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">CpuRaster</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rgba</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L32)
+[<code class="highlight"><span class="k">class</span> <span class="nf">CpuRaster</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rgba</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L41)
 
 A rendered raster: RGBA floats in row-major order, row 0 at the **top**, matching both a PNG and the framebuffer convention the gallery harness reads back under (see `StackSLCpu.FRAG_UV_ORIGIN_IS_TOP_LEFT`).
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L38) | Component `channel` (0..3) of the pixel at `x`, `y`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">toArgb</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L46) | Quantise to 8-bit ARGB the way a `VK_FORMAT_R8G8B8A8_UNORM` attachment does: clamp to `[0,1]` then **round** to nearest, which is what the Vulkan spec requires for a float to unorm conversion. Truncating instead would bias every channel down by half a level and turn an exact match into a one-level miss across the whole image. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">toPngBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L54) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L47) | Component `channel` (0..3) of the pixel at `x`, `y`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">toArgb</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L55) | Quantise to 8-bit ARGB the way a `VK_FORMAT_R8G8B8A8_UNORM` attachment does: clamp to `[0,1]` then **round** to nearest, which is what the Vulkan spec requires for a float to unorm conversion. Truncating instead would bias every channel down by half a level and turn an exact match into a one-level miss across the whole image. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">toPngBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L63) |  |
 
 ### StackSLCpu { #stackslcpu-kt-stackslcpu }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLCpu</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L74)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLCpu</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L83)
 
 Render StackSL on the CPU.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FRAG&#95;UV&#95;ORIGIN&#95;IS&#95;TOP&#95;LEFT</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L97) | Which framebuffer row `fragUV.y == 0` lands on, for the gallery harness's fullscreen triangle. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stackAutoOptions</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileOptions</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L114) | The compile options a `{{ stack.auto.<slot> }}` expansion uses. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileResult</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L127) | Compile `program` exactly as a `stack.auto` slot named `slot` would. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">expandStackAuto</span><span class="p">(</span><span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L137) | Substitute `program`'s compiled GLSL into `template` at `{{ stack.auto.<slot> }}`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderFragment</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">uniforms</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">,</span> <span class="n">outName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;outColor&quot;</span><span class="p">,</span> <span class="n">fragUvName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fragUV&quot;</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">perPixel</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">invocation</span><span class="p">:</span> <span class="nc">GlslInvocation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">onDiscard</span><span class="p">:</span> <span class="nc">FloatArray</span> <span class="o">=</span> <span class="nf">floatArrayOf</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L175) | Run a whole fragment shader over a `width` by `height` raster. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stillTemplate</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L229) | The still template the docs gallery renders through, with `time` baked into `input.w`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderStill</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L260) | Render a StackSL program on the CPU, at `dim` square, exactly as the docs gallery renders it. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderProgram</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">,</span> <span class="n">pushParams</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L269) | The one-call path: compile `program`, substitute it into `template`, render it. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FRAG&#95;UV&#95;ORIGIN&#95;IS&#95;TOP&#95;LEFT</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L106) | Which framebuffer row `fragUV.y == 0` lands on, for the gallery harness's fullscreen triangle. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stackAutoOptions</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileOptions</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L123) | The compile options a `{{ stack.auto.<slot> }}` expansion uses. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileResult</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L136) | Compile `program` exactly as a `stack.auto` slot named `slot` would. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">expandStackAuto</span><span class="p">(</span><span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L146) | Substitute `program`'s compiled GLSL into `template` at `{{ stack.auto.<slot> }}`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderFragment</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">uniforms</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">,</span> <span class="n">outName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;outColor&quot;</span><span class="p">,</span> <span class="n">fragUvName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fragUV&quot;</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">perPixel</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">invocation</span><span class="p">:</span> <span class="nc">GlslInvocation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">onDiscard</span><span class="p">:</span> <span class="nc">FloatArray</span> <span class="o">=</span> <span class="nf">floatArrayOf</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L184) | Run a whole fragment shader over a `width` by `height` raster. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stillTemplate</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L238) | The still template the docs gallery renders through, with `time` baked into `input.w`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderStill</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L269) | Render a StackSL program on the CPU, at `dim` square, exactly as the docs gallery renders it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderProgram</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">,</span> <span class="n">pushParams</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLCpu/#L278) | The one-call path: compile `program`, substitute it into `template`, render it. |
 
 </div>

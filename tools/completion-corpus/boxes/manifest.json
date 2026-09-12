@@ -123,6 +123,8 @@
   {"doc": "imaging_visualizers_demo", "box": "viz_signed", "codeSha256": "b66f635387583f21", "codeLines": 8, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "imgui_vr_panel", "box": "imgui_vr_panel", "codeSha256": "16f23d69ee99b70c", "codeLines": 24, "receivers": ["afield.Box"], "preamble": "imgui_vr_panel__imgui_vr_panel.preamble.kt"},
   {"doc": "imgui_vr_panel", "box": "imgui_vr_renderer", "codeSha256": "e9f88d172b31077c", "codeLines": 14, "receivers": ["afield.Box"], "preamble": "imgui_vr_panel__imgui_vr_renderer.preamble.kt"},
+  {"doc": "inertial_movement", "box": "inertial_easing", "codeSha256": "8749816f413ebfd4", "codeLines": 156, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "inertial_movement", "box": "movement_playground", "codeSha256": "de9a7e7f212c509e", "codeLines": 142, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_code_blend", "box": "kfb_breakdown", "codeSha256": "9bb9fc9b16034871", "codeLines": 30, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_code_blend", "box": "kfb_kotlin", "codeSha256": "7d26a0e065919d82", "codeLines": 36, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_code_blend", "box": "kfb_kotlin_run", "codeSha256": "61d95c582ca54a36", "codeLines": 27, "receivers": ["afield.Box"], "preamble": ""},

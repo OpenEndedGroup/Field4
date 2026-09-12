@@ -163,6 +163,11 @@ browser) that you can attach DevTools to for profiling. It's an isolated
 Playwright profile, separate from your own Chrome. Server logs for a stuck
 capture are under `.field-backdoor/logs/`.
 
+That is DevTools profiling a capture browser, which is a different subject from
+profiling a piece you are writing. For the second one — the renderer's span
+timer, the exact per-resume counters, and the JFR sampler — see
+[Holding a Frame Budget](frame_budget.md).
+
 ## Running the tests
 
 **Smoke catalog.** Exercises the annotated `FIELD_TEST` examples through the

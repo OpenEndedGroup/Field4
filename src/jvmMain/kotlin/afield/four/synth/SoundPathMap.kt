@@ -24,44 +24,63 @@ expect:
 /**
  * Every route Field has from code to something audible, declared — and re-derived from the code.
  *
- * `public/docs/sound.md` opened with a bolded claim that Field has "**two**" things that turn a
- * pattern's events into samples. That was true of *patterns* when it was written and it was never
- * true of *sound*: on the day this file was added the tree had **six** ways to make samples and
- * **five** ways to get them out of the process, and the page's framing reached two of each. The
- * count is the deliverable, so it lives here as data rather than in a sentence somebody has to
- * remember to update.
+ * The counts are the deliverable, so they live here as data rather than in a sentence somebody has
+ * to remember to update: [SOURCE_COUNT] ways to make samples, [SINK_COUNT] ways to get them out of
+ * the process, [INPUT_COUNT] ways to bring them in. Each is one [SoundPath] in [PATHS], carrying
+ * its role, whether it can run offline, what has to be installed, the symbol it starts at, and the
+ * page that documents it — or `null`, when nothing does. Running this object as a program re-counts
+ * [PATHS] against all four declared totals and fails on disagreement.
  *
- * The shape that makes the map worth having is not the list, it is [SoundPath.onSeam]. There is
- * exactly one signature everything realtime meets at —
- * `AudioPatchSpec.Renderer.render(outL, outR, numFrames, ctx)`, character-for-character
- * [StereoRenderable.render] — and four of the six sample sources sit on it. [FaustNode] needed no
- * new plumbing at all to get there, which is the strongest single argument for the seam existing,
- * and [PatSynthBank] is the pattern voice arriving the same way: a scheduler in front of the voice
- * that already existed, and nothing else. [DoughEngine] and [SonicPi] are off it, for two different
- * and legible reasons.
+ * The column that decides whether two paths can be used together is [SoundPath.onSeam]. Everything
+ * realtime meets at one signature, [StereoRenderable.render], which `AudioPatchSpec.Renderer`
+ * repeats character for character. Two paths that both implement it compose for free; a path that
+ * does not implement it composes with nothing. [SonicPi] is the only one outside it, for a reason no
+ * wrapper reaches: it is a different process, and no sample ever enters this one. What the seam buys
+ * is clearest in the two newest arrivals. Behind [FaustVoiceBank] are an event scheduler, a voice
+ * allocator and N WebAssembly instances in one GraalVM context, and reaching the speakers, the
+ * visualisers, the Link output and the box lifecycle cost it the five lines of [FaustPolyNode].
+ * [PatSynthBank] is the pattern voice arriving the same way: a scheduler in front of the voice that
+ * already existed, and nothing else.
  *
- * ## Why this is built like [DocsAudioProvenance] and not beside it
+ * #### Why this is built like [DocsAudioProvenance] and not beside it
  *
  * [DocsAudioProvenance] guards *published assets*: it scans the docs for `audio=` fences and
  * re-renders each one. That is the right mechanism for "did a figure rot" and the wrong one for
  * "did somebody add a path", because a new render path is invisible to it until a page publishes a
- * clip from it. So this file uses the same three-step shape — declare, derive from the code,
- * fail on disagreement — against a different derivation: [MARKERS] are literals that can only mean
- * "a new way in or out of this process", and every file carrying one has to be attributed to a
- * declared [SoundPath].
+ * clip from it. So this file takes the same three-step shape — declare, derive from the code, fail
+ * on disagreement — and points it at a different derivation: the [MARKERS] are literals that can
+ * only mean "a new way in or out of this process", and every file carrying one has to be
+ * attributed to a declared [SoundPath].
  *
- * The markers were chosen by measuring, not by taste. `alcOpenDevice(` appears in exactly three
- * files and each is a genuinely separate OpenAL context — which is itself a finding nobody had
- * written down. `WavFloatArrayWriter.encode` appears in five and three of those are *users* of the
- * sink rather than the sink, which is why a marker declares a file-to-path map instead of a bare
- * allowlist.
+ * A marker declares a file-to-path map rather than a bare allowlist because a literal turns up in
+ * the files that *use* a surface as well as in the one that *is* it: `WavFloatArrayWriter.encode`
+ * reaches both the inline-audio sink and its callers, and they belong to different paths. [SELF] is
+ * the sweep's one blind spot, and the audit turns it back into a check by requiring this file to
+ * spell every marker literal, so a literal that has drifted out of the tree cannot sit here
+ * matching nothing.
  *
- * ## When branch 1 lands
+ * #### What four markers missed, and the fifth that was added because of it
  *
- * A sibling nightly branch adds a polyphonic, pattern-driven Faust path. It does not exist at this
- * file's base, so this guard will not know it: after the merge, add one [SoundPath] to [PATHS] with
- * `onSeam = true`, bump [SOURCE_COUNT], and name its `entryPoint` in [PAGE]. The failure message
- * says so too, so the merge conflict resolves itself.
+ * The first four markers are all device calls or file writes, and a sample source need be neither.
+ * [FaustVoiceBank] — a Faust program played as an instrument by a pattern — carried none of them, so
+ * it sat in the tree undeclared for a month with [SOURCE_COUNT] reading six and the audit green,
+ * which is the one failure this file exists to prevent. The fifth marker is therefore the seam
+ * itself, `override fun generateStereo(`, which every [StereoNode] has to spell: a new realtime
+ * stereo source cannot arrive without a hit. It reported two findings on its first run —
+ * [FaustVoiceBank], and [DoughAudioSink], which is [DoughEngine] wrapped onto the seam by
+ * [parkDough] and had been declared *off* it since the day this file was written.
+ *
+ * What it still cannot see is a source that is off the seam entirely: another [SonicPi] in another
+ * process, or another whole-buffer free function like [patRenderStereo]. A mono [Signal] is far too
+ * common a literal to mean anything. Named, because a derivation whose blind spots are not written
+ * down is a derivation nobody can trust.
+ */
+
+/**
+ * The declared map, and the audit that re-derives it from the tree.
+ *
+ * [PATHS] and [MARKERS] are the data. Running this object as a program prints the map as a table,
+ * then checks it.
  */
 object SoundPathMap {
 
@@ -150,7 +169,7 @@ object SoundPathMap {
     }
 
     /**
-     * The map. Six sample sources, five ways out, four ways in.
+     * The map. Seven sample sources, five ways out, four ways in.
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
@@ -212,12 +231,32 @@ object SoundPathMap {
         ),
 
         SoundPath(
+            id = "faust-poly",
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
+            needs = "nothing (libfaust is vendored as WebAssembly)",
+            channels = "whatever the program declares; mono fans out to both",
+            what = "the same Faust program played as an *instrument*: N instances of one compiled " +
+                "module allocated to notes by a pattern, with the notes landing on the sample they " +
+                "were scheduled for rather than on the block boundary",
+            file = "src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt",
+            entryPoint = "class FaustVoiceBank",
+            page = "public/docs/faust.md",
+        ),
+
+        SoundPath(
             id = "dough-engine",
-            role = Role.MAKES, timing = Timing.BOTH, onSeam = false,
+            // onSeam was `false` here, and `sound_paths.md` said this path "could be wrapped, and has
+            // not been". It is wrapped: `DoughAudioSink : StereoNode()` is in this same file and
+            // `parkDough` registers `audio(sink)` with the engine. Found by the `seam-stereo-node`
+            // marker on its first run, not by reading — the claim had been false since the day the
+            // map was written. `DoughEngine` is still the entry point, because the wasm module is
+            // what this path *is*; the wrapper is how it reaches the seam.
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
             needs = "the dough WebAssembly build",
             channels = "stereo",
             what = "the whole dough/Strudel synthesis engine as a wasm module, driven by events and " +
-                "rendered in fixed 128-frame blocks of its own",
+                "rendered in fixed 128-frame blocks of its own, reaching the seam through " +
+                "DoughAudioSink",
             file = "src/jvmMain/kotlin/afield/four/synth/Dough.kt",
             entryPoint = "class DoughEngine",
             page = null,
@@ -356,13 +395,14 @@ object SoundPathMap {
     // ── the ratchets: counts, pinned near the measurement ──────────────────────────────────
 
     /**
-     * How many distinct ways there are to make samples. **Six**, replacing a bolded "two".
+     * How many distinct ways there are to make samples. **Seven**, replacing a bolded "two".
      *
-     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other four are the
-     * `Signal` graph, Faust, the dough wasm engine and Sonic Pi. Branch 1's polyphonic Faust path
-     * will make seven — see this object's KDoc for the one-line merge instruction.
+     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other five are the
+     * `Signal` graph, Faust as an effect, Faust as a polyphonic instrument, the dough wasm engine
+     * and Sonic Pi. Three of the seven are pattern voices, which is the number `sound.md` counts;
+     * this one counts routes, so it is always the larger.
      */
-    const val SOURCE_COUNT = 6
+    const val SOURCE_COUNT = 7
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -371,13 +411,19 @@ object SoundPathMap {
     const val INPUT_COUNT = 4
 
     /**
-     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Eight of fifteen.
+     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Ten of sixteen.
      *
      * A floor here is the assertion that matters most: the seam is the reason Faust cost no new
      * plumbing, and if a later change adds a path *beside* it rather than *on* it, this number
      * stops growing while [PATHS] does. That is exactly the drift worth catching.
+     *
+     * It went from seven to ten on 2026-09-12 for three different reasons, and only one of them is a
+     * new path: `faust-poly` arrived on the seam, `dough-engine` turned out to have been on it all
+     * along, and `pat-stand-in` was put on it by [patSynth], which is the scheduler a pattern needed
+     * in order to be asked for a block at a time. A number that moves for three reasons is worth
+     * saying so.
      */
-    const val SEAM_COUNT = 8
+    const val SEAM_COUNT = 10
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -400,7 +446,15 @@ object SoundPathMap {
         val declaredIn: Map<String, String>,
     )
 
-    /** Every marker, with the file-to-path attribution measured on the day this file was written. */
+    /**
+     * Every marker, with the file-to-path attribution measured on the day each one was added.
+     *
+     * The judgement a hit calls for is always the same one: a file that is a *node of* an
+     * already-declared path is declared against that path, and a file that is a new *route from code
+     * to sound* gets a new [SoundPath]. `Sampling.kt`'s granulators are the first kind — they are
+     * nodes in the `Signal` graph and compose through it. `FaustPoly.kt` is the second, and getting
+     * that call wrong once already cost this map a whole sample source; see this object's KDoc.
+     */
     val MARKERS: List<Marker> = listOf(
         Marker(
             id = "openal-output",
@@ -451,6 +505,30 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/DirtRender.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt" to "faust",
+            ),
+        ),
+        Marker(
+            id = "seam-stereo-node",
+            literal = "override fun generateStereo(",
+            meaning = "a new node on the seam. This is the marker the other four did not have: a " +
+                "sample source that opens no device and encodes no WAV carries none of them, which " +
+                "is how a whole polyphonic Faust instrument sat in the tree undeclared for a month. " +
+                "Every StereoNode has to spell this literal, so a new realtime stereo source cannot " +
+                "arrive without a hit — and a hit is only sometimes a new path",
+            roots = listOf("src/jvmMain/kotlin"),
+            declaredIn = mapOf(
+                // Nodes of the graph, not routes of their own: the seam's own base class and its
+                // combinators, the granulators, the stereo scope tap, and the DoughDSP ports.
+                "src/jvmMain/kotlin/afield/four/synth/Signal.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/four/synth/Sampling.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/four/synth/Visualizers.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/four/synth/DoughDsp.kt" to "signal-graph",
+                // One file per path, for the four sources that reach the seam through a node.
+                "src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/four/synth/Dough.kt" to "dough-engine",
+                "src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt" to "faust",
+                "src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt" to "faust-poly",
+                "src/jvmMain/kotlin/afield/four/synth/PatSynth.kt" to "pat-stand-in",
             ),
         ),
     )
@@ -909,7 +987,7 @@ object SoundPathMap {
  *
  * Three players and a brightness plot, so the difference between the paths can be heard *and*
  * seen without leaving the box. Routed through `displayAudioSamples`, which is the
- * `box-output-player` path from the map — so running this exercises four of the fifteen declared
+ * `box-output-player` path from the map — so running this exercises four of the sixteen declared
  * paths at once (`pat-stand-in`, `signal-graph`, `faust`, `box-output-player`).
  *
  * The Faust compile costs 13–22s the first time in a process and is nearly free afterwards, so

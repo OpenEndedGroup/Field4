@@ -719,8 +719,12 @@ operator fun DualQuat.remAssign(a: DualQuat) {
 infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
 
 
-/** Scales the vector by a number, into a new [Vec3]. Neither operand is touched. */
-operator fun Vector3fc.times(s: Number): Vector3f = mul(s.toFloat(), Vector3f())
+// `v * 2` for a Vec3 is NOT declared here. The generated `Vector3fc.times(scalar: Number)` in
+// afield.stdlib.linalg.CompatTypes covers it, with the same body, and a second copy in this package
+// made `v * 2` an overload resolution ambiguity in every box: box code star-imports both
+// afield.stdlib and afield.stdlib.linalg, so neither candidate wins. Code inside this package saw
+// the same-package declaration win and compiled, which is why it went unnoticed. Vec2 and Vec4 have
+// only the generated declaration and always worked.
 
 /** `2 * v` — scalar on the left, so the arithmetic reads the way it does on paper. New [Vec3]. */
 operator fun Number.times(s: Vector3fc): Vector3f = s.mul(this.toFloat(), Vector3f())

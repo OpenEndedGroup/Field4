@@ -25,39 +25,47 @@ import kotlin.concurrent.thread
  * The Faust compiler, running inside Field.
  *
  * [Faust](https://faust.grame.fr) is a functional language for signal processing that compiles to
- * efficient code. Field embeds the compiler itself — `src/jvmMain/resources/faust/`, see
- * `PROVENANCE.md` there — as WebAssembly, and runs it in the same GraalVM runtime that already hosts
- * `dough.wasm`. Nothing is installed, on any platform: see [libfaustVersion] for what that buys and
- * `PROVENANCE.md` for what it costs.
+ * efficient code. Field embeds the compiler itself as WebAssembly, in
+ * `src/jvmMain/resources/faust/` with a `PROVENANCE.md` beside it, and runs it in the same GraalVM
+ * runtime that already hosts `dough.wasm`. There is nothing to install on any platform: the build
+ * that loads is the one committed in the repository, and `synth.faust.smoke` asserts its version
+ * against `EXPECTED_LIBFAUST_VERSION`.
  *
  * ## Two halves, opposite performance
  *
- * Measured on this machine (GraalVM CE 25.0.2, aarch64), and the reason the class is shaped the way
- * it is:
+ * Measured on an aarch64 Mac under GraalVM CE 25.0.2, and the reason the object is shaped the way it
+ * is:
  *
- *  * **Generated DSP is fast.** `compute` on a compiled program takes ~7.6µs for a 128-frame block
- *    against a 2667µs budget at 48kHz; end to end through [FaustDsp.render] it is ~60µs, i.e. **44×
- *    realtime**, and the difference is the JVM↔WebAssembly boundary rather than Faust. Playing is not
- *    a performance problem here.
- *  * **The compiler is slow.** [compile] converges to ~600ms once Truffle has warmed, against ~30ms
+ *  * **Generated DSP is fast.** `compute` on a compiled program takes ~7.6µs of the 2667µs a
+ *    128-frame block has at 48kHz; end to end through [FaustDsp] it is ~60µs, and what separates
+ *    those two figures is the JVM↔WebAssembly boundary rather than Faust. `synth.faust.smoke`
+ *    asserts a floor of ten times realtime, so playing is not a performance problem here.
+ *  * **The compiler is slow.** `compile` settles at ~600ms once Truffle has warmed, against ~30ms
  *    for the same call under Node's V8, and the *first* compile of a process pays 13–22s of warm-up.
  *
- * Three things follow, and they are the whole design:
+ * Three things follow:
  *
- *  1. The compiler gets **its own [Context]**, never shared with a [FaustDsp]. A 600ms compile
+ *  1. The compiler gets **its own GraalVM context**, never shared with a [FaustDsp]. A 600ms compile
  *     holding a lock the audio thread wants every 2.67ms would be audible as a dropout.
- *  2. [warmInBackground] exists so the 13–22s is paid while Field is starting rather than at the
- *     moment someone first runs a box.
- *  3. [compile] is memoised on the hash of (source, arguments), so re-running an unchanged box — or
- *     undoing back to a program already seen — costs nothing.
+ *  2. `warmInBackground` pays the 13–22s while Field is starting, rather than at the moment someone
+ *     first runs a box.
+ *  3. `compile` is memoised on the hash of (source, arguments), so re-running an unchanged box, or
+ *     undoing back to a program already seen, costs nothing.
  *
  * ## Errors
  *
  * The vendored compiler is an Emscripten build with exception catching disabled, so *every* failure
  * arrives as an opaque `"Exception catching is disabled"` RuntimeError. The real message is only
- * available afterwards, from `getErrorAfterException()`, and it is well formed —
+ * available afterwards, from `getErrorAfterException()`, and it is well formed:
  * `"probe:2 : ERROR : undefined symbol : sawtoothX"`. [FaustCompileError] parses that into something
  * an editor marker can use.
+ */
+
+/**
+ * Compiles Faust source to a [FaustProgram], once per distinct (source, arguments) pair.
+ *
+ * Process-wide, and boots the compiler on first use. `warmInBackground` moves that cost to startup;
+ * `shutdown` releases the context so a headless run can exit.
  */
 object FaustEngine {
 

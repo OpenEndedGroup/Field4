@@ -9,6 +9,46 @@ import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.floor
 
+/**
+ * What a session is told about shape, and the discretisation that shape gets solved on.
+ *
+ * Every [SimulationGeometry] answers two questions, for two different readers.
+ * `surface()` returns a [TriMesh] for Field to draw, and Manifold builds that in every case.
+ * `workerData(domain)` returns what goes over the wire, and the implementations answer it in two
+ * different currencies.
+ *
+ * # Symbolic, or sampled
+ *
+ * A [PrimitiveGeometry] sends `expression()`: a small tree of boxes, spheres, cylinders and boolean
+ * operations that the worker evaluates as an exact distance at each node it cares about. A
+ * [ManifoldGeometry] sends the distances themselves, one double per node of the domain, measured
+ * against Field's own BVH over the triangulated solid and negated on the way out because Kratos
+ * counts distance positive inside.
+ *
+ * That difference decides what a display setting can and cannot affect. A primitive's tessellation
+ * is a property of the picture only: refining a sphere's `segments` changes no node's
+ * classification, because the worker never sees the triangles. For a [ManifoldGeometry] the
+ * triangles are the input, so its payload is both sized to one particular domain's node count and
+ * only as good as the mesh it was snapshotted from.
+ *
+ * # Identity is authored, not derived
+ *
+ * The `id` on a geometry is chosen by whoever built it and is independent of the triangle indices
+ * Manifold happens to produce, which is what lets a boundary condition or a material keep naming
+ * the same region across a re-solve: a formulation derives its region keys from that id.
+ * [SimulationGroup] requires its operands' ids to be distinct for the same reason. Bounds are
+ * metres, and coefficients are SI throughout, kelvin included.
+ *
+ * # The domain is two different things behind one type
+ *
+ * [BackgroundDomain] is the node and cell arrays a result is indexed against, and its `resolution`
+ * tells its two kinds apart. Positive means the worker built a structured Freudenthal grid from
+ * [SimulationBounds], six tetrahedra to a cube, which is what makes sampling a closed-form index
+ * calculation and what lets an embedded formulation reclassify new geometry without remeshing.
+ * Zero means Field meshed a body itself and sent it, in which case there is no (i, j, k) to compute
+ * from and the index-based views are unavailable.
+ */
+
 /** Bounds are metres in schema 1; all simulation coefficients use SI, including kelvin. */
 data class SimulationBounds(val minX: Double, val minY: Double, val minZ: Double, val maxX: Double, val maxY: Double, val maxZ: Double) {
     init { require(wire().all(Double::isFinite) && minX < maxX && minY < maxY && minZ < maxZ) }

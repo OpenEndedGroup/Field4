@@ -20,40 +20,50 @@ import kotlin.math.roundToLong
  * A Faust program played polyphonically, by a pattern.
  *
  * [FaustDsp] is one instance of one program: a drone with knobs. This is the other thing a Faust program
- * can be — an *instrument*, N copies of the same compiled DSP allocated to notes, with the notes coming
- * from Field's own pattern language. Nothing in Faust is recompiled to make that happen; a Faust factory
+ * can be, an *instrument*: N copies of the same compiled DSP allocated to notes, with the notes coming
+ * from Field's own pattern language. Nothing in Faust is recompiled to make that happen. A Faust factory
  * built with internal memory keeps its whole state at offset 0 of its own WebAssembly memory, so N
  * `WebAssembly.Instance`s of one module are N independent voices for free.
  *
- * ## One context, N instances — and the measurement that decided it
+ * ## One context, N instances
  *
- * Each [FaustDsp] builds **its own GraalVM [Context]**, and its KDoc records that the remaining 60.4µs of a
- * 128-frame block (against 7.6µs inside `compute`) is dominated by the per-block [Context.enter]. So N
- * voices as N [FaustDsp]s pays that entry N times per block, and the cost of polyphony would be a boundary
- * cost rather than a DSP cost. This class instead hosts every voice in **one** context — one `enter` per
- * block regardless of N — which required a new shim, because [FaustDsp]'s keeps its instance in
- * module-level JS globals and can therefore only ever hold one.
+ * Each [FaustDsp] builds its own GraalVM context, and what is left of a block after `compute` is dominated
+ * by the per-block `Context.enter` (see [FaustDsp] for the figures). N voices as N [FaustDsp]s would pay
+ * that entry N times a block, which would make the cost of polyphony a boundary cost rather than a DSP
+ * cost. [FaustVoiceBank] hosts every voice in **one** context instead, one `enter` a block whatever N is.
+ * That needs a host shim of its own: [FaustDsp]'s keeps its instance in module-level JS globals and can
+ * hold only one.
  *
- * The two arrangements are measured against each other by `synth.faust.poly`, which prints the µs-per-block
- * curve for both and asserts a realtime floor on the one shipped here. See `public/docs/faust.md`.
+ * Both arrangements are timed against each other by `synth.faust.poly`, which prints the µs-per-block
+ * curve for each and asserts that the one shipped here renders a block inside the block's own budget at
+ * 1, 2, 4, 8 and 16 voices.
  *
  * ## The notes land on the sample, not on the block
  *
- * A 128-frame block at 48kHz is 2.67ms. Quantising a note onset to the block boundary is audible — it is the
- * difference between a groove and a grid — so [render] does not write parameters once per block. It enters
- * the context once, then walks the block in **chunks that end where the next event begins**: apply the
- * writes due at this exact frame, `compute` up to the next event, repeat. A note therefore begins on the
- * sample it was scheduled for, and `synth.faust.poly` asserts that in samples rather than in milliseconds.
+ * A 128-frame block at 48kHz is 2.67ms, and quantising a note onset to that boundary is audible. So
+ * `render` does not write parameters once per block. It enters the context once, then walks the block in
+ * **chunks that end where the next event begins**: apply the writes due at this exact frame, `compute` up
+ * to the next event, repeat. A note therefore begins on the sample it was scheduled for, and
+ * `synth.faust.poly` asserts that in samples rather than in milliseconds.
  *
- * This is also why [FaustDsp.setParam] is not used: that queue is drained once per `render` call, which is a
- * block-granularity path by construction and exactly the thing being got around here.
+ * This is also why `FaustDsp.setParam` is not used: that queue is drained once per `render` call, which is
+ * block granularity by construction.
  *
- * ## The controls are the program's own, and it will say so if they are missing
+ * ## The controls are the program's own, and it says so when they are missing
  *
- * Faust's polyphonic convention is `freq` / `gate` / `gain` — the same three names `-nvoices` looks for —
- * and they are discovered out of the program's declared UI by label, never by index. A program that does not
- * declare them is refused by [FaustPolyControls.of] with a message naming what it *did* declare, because the
- * alternative (writing to control 0 and hoping) produces silence, and silence is the hardest bug to read.
+ * Faust's polyphonic convention is `freq` / `gate` / `gain`, the same three names its `-nvoices`
+ * architecture looks for, and they are discovered out of the program's declared UI by label rather than by
+ * index. `gain` is optional; a program missing `freq` or `gate` is refused by [FaustPolyControls], with a
+ * message naming what is missing, what the program *did* declare, and the line of Faust that would fix it.
+ * Writing to control index 0 instead would produce silence, which carries no diagnosis at all.
+ */
+
+/**
+ * N instances of one compiled Faust program, allocated to notes and summed.
+ *
+ * Notes are scheduled by frame and take a free voice where there is one, the oldest tail where there is
+ * not, and the oldest sounding note after that. Every voice renders through one GraalVM context, which
+ * `close` releases.
  */
 class FaustVoiceBank internal constructor(
     val program: FaustProgram,

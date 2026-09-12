@@ -779,6 +779,10 @@ object StdlibReferenceGenerator {
             "[Forth](../forth_examples.md) and [Python](../python.md).",
         "Workspace" to "The box's own surroundings: properties, persistence, and the handful of " +
             "names every box already has in scope.",
+        "Machine learning" to "Models small enough to train inside a box, in plain Kotlin, while " +
+            "you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back " +
+            "the deformation between them; the multi-output regression head it trains is usable " +
+            "on its own. See [Flow Matching](../flow_matching.md).",
     )
 
     /** Docs pages that are not worked examples and would only add noise as "see also" targets. */
@@ -2415,11 +2419,15 @@ object StdlibReferenceGenerator {
      * [doc] is the file the text was read from, and it is what makes a reference to a type declared
      * in that same file resolve even when the name is ambiguous elsewhere. Null only where the text
      * has no one declaring file. See [TypeAnchors].
+     *
+     * An ordinary markdown link written in a KDoc is left alone: the lookahead for `(` is what stops
+     * `[Lygia](https://lygia.xyz)` becoming `` `Lygia` ``(https://lygia.xyz) with the URL dangling as
+     * prose. `SourcePageGenerator.linkifySymbols` draws the same line for the same reason.
      */
     private fun linkify(text: String, typeAnchors: TypeAnchors, doc: SourceDocument?): String {
         if (text.isBlank()) return text
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
-        val simple = Regex("""\[([A-Za-z_][\w.]*)]""")
+        val simple = Regex("""\[([A-Za-z_][\w.]*)](?!\()""")
         var out = alternate.replace(text) { m ->
             val target = typeAnchors.resolveReference(m.groupValues[2], doc)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"

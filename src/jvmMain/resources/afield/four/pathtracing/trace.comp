@@ -41,6 +41,12 @@ layout(set=0,binding=0) uniform Frame {
     vec4 fog; // linear RGB, density per world unit
     vec4 fogOptions; // clear start distance, fog background misses, reserved, reserved
     ivec4 emitters; // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
+    // The participating medium, which is a different thing from fog above: fog attenuates a
+    // finished radiance by the primary hit distance, this one is sampled along every segment.
+    vec4 medium; // single-scattering albedo RGB, extinction per world unit in w (zero disables)
+    vec4 mediumOptions; // Henyey-Greenstein g, bounded flag, reserved, reserved
+    vec4 mediumLow; // bounds minimum when bounded, w unused
+    vec4 mediumHigh; // bounds maximum when bounded, w unused
 } frame;
 layout(set=0,binding=1) uniform sampler2D environmentMap;
 
@@ -236,6 +242,86 @@ float powerWeight(float a,float b) {
     float scale=max(a,b); if (scale<=0.0) return 0.0;
     a/=scale; b/=scale; return a*a/(a*a+b*b);
 }
+// ----------------------------------------------------------- participating medium
+// One homogeneous medium: a scalar extinction, an RGB single-scattering albedo and a
+// Henyey-Greenstein phase function, optionally confined to an axis-aligned box. Extinction is
+// deliberately achromatic, so a distance sample is one scalar decision and nothing here needs a
+// per-channel pdf; colour comes from the albedo instead.
+
+/**
+ * The part of [0,limit] along a unit rd that lies inside the medium, as (near,far). An empty
+ * overlap returns far<near, which is how every caller spells "this segment misses the medium".
+ * An unbounded medium is the whole segment.
+ */
+vec2 mediumSpan(vec3 ro,vec3 rd,float limit) {
+    if (frame.mediumOptions.y<0.5) return vec2(0.0,limit);
+    float nearT=0.0,farT=limit;
+    for (int axis=0; axis<3; axis++) {
+        if (abs(rd[axis])<1e-20) {
+            if (ro[axis]<frame.mediumLow[axis] || ro[axis]>frame.mediumHigh[axis]) return vec2(0.0,-1.0);
+        } else {
+            float a=(frame.mediumLow[axis]-ro[axis])/rd[axis], b=(frame.mediumHigh[axis]-ro[axis])/rd[axis];
+            nearT=max(nearT,min(a,b)); farT=min(farT,max(a,b));
+        }
+    }
+    return nearT<=farT ? vec2(nearT,farT) : vec2(0.0,-1.0);
+}
+/**
+ * Analytic transmittance over [0,limit]. This is what a light connection is multiplied by, and it
+ * is the only place transmittance is *evaluated* rather than estimated: along a scattering
+ * segment the distance sampler estimates it with a binary event instead, so the two never both
+ * apply to the same interval.
+ */
+float mediumTransmittance(vec3 ro,vec3 rd,float limit) {
+    if (frame.medium.w<=0.0) return 1.0;
+    vec2 span=mediumSpan(ro,rd,limit);
+    return span.y<=span.x ? 1.0 : exp(-frame.medium.w*(span.y-span.x));
+}
+/**
+ * Distance to a real scattering event along rd, or a negative value for "nothing before limit".
+ *
+ * [u] is in/out on purpose. There is no spare Sobol dimension for this decision -- the existing
+ * four-per-bounce layout already reaches dimension 97 at twelve bounces, with the lens pair at
+ * 98/99 -- so the distance sample shares the BSDF-lobe selector's dimension and, on the escape
+ * branch, is remapped back to uniform. Conditional on no scatter, u is uniform on [1-T,1), so
+ * (u-(1-T))/T is exactly uniform on [0,1): the caller's later use of u is undisturbed, not
+ * approximately undisturbed. With extinction zero, T is one and u comes back unchanged, which is
+ * why a medium-disabled render is bit-for-bit what this integrator produced before media existed.
+ */
+float sampleMediumDistance(vec3 ro,vec3 rd,float limit,inout float u) {
+    float extinction=frame.medium.w;
+    if (extinction<=0.0) return -1.0;
+    vec2 span=mediumSpan(ro,rd,limit);
+    if (span.y<=span.x) return -1.0;
+    float escape=exp(-extinction*(span.y-span.x));
+    if (u>=1.0-escape) { u=(u-(1.0-escape))/max(escape,1e-30); return -1.0; }
+    // The decision above and the distance below agree in exact arithmetic; min() is the guard
+    // against them disagreeing in the last bit and placing the event past the surface.
+    return min(span.x-log(max(1.0-u,1e-30))/extinction,span.y);
+}
+/**
+ * Henyey-Greenstein, as a density over solid angle, of scattering an arrival direction into an
+ * outgoing one. [mu] is the cosine between the two *directions of travel*, so mu near one is
+ * forward scattering and positive g concentrates there. Integrates to one over the sphere, which
+ * is what makes it its own importance-sampling pdf and leaves the phase-sampled weight at one.
+ */
+float phase(float mu,float g) {
+    if (abs(g)<1e-4) return 1.0/(4.0*PI);
+    float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+    return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+}
+/** Exact inverse-CDF sample of [phase] about the arrival direction rd. */
+vec3 samplePhase(vec3 rd,float g,vec2 xi) {
+    float mu;
+    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
+    else {
+        float s=(1.0-g*g)/(1.0-g+2.0*g*xi.y);
+        mu=clamp((1.0+g*g-s*s)/(2.0*g),-1.0,1.0);
+    }
+    float radius=sqrt(max(0.0,1.0-mu*mu)),phi=2.0*PI*xi.x;
+    return basis(rd)*vec3(radius*cos(phi),radius*sin(phi),mu);
+}
+
 struct EmitterSample { vec3 direction; vec3 radiance; float pdf; float distance; };
 // Probability this triangle's own area sampling would have produced a hit arriving along
 // direction after travelling dist, as a solid-angle density. Zero whenever the emitter strategy
@@ -358,6 +444,18 @@ vec4 depthFog(vec4 color,float depth) {
     float transmission=depth<0.0 ? 0.0 : exp(-frame.fog.w*max(depth-frame.fogOptions.x,0.0));
     return vec4(color.rgb*transmission+frame.fog.rgb*color.a*(1.0-transmission),color.a);
 }
+/**
+ * Russian roulette on path importance, shared by the surface and medium continuations so there is
+ * one survival rule and one sample dimension rather than a copy per interaction kind.
+ * Refraction changes radiance units, not path importance, which is what [etaScale] undoes.
+ */
+bool survives(inout vec3 throughput,float etaScale,uint domain,int bounce) {
+    if (bounce<2) return true;
+    float survive=clamp(max(throughput.r,max(throughput.g,throughput.b))*etaScale,0.05,0.95);
+    if (sample2(domain+3u).x>=survive) return false;
+    throughput/=survive;
+    return true;
+}
 vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
     primaryDepth=-1.0;
     guide=HistoryPixel(vec4(0),vec4(0,0,0,-1),vec4(0,0,0,-1),vec4(0));
@@ -370,6 +468,64 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
     bool previousDelta=true;
     for (int bounce=0; bounce<frame.scene.w; bounce++) {
         Hit hit=intersectScene(ro,rd,false);
+        // Hoisted above the interaction: the medium's distance sample decides *which* interaction
+        // this bounce is, so its dimensions have to be drawn before either branch is taken.
+        uint domain=uint(bounce)*4u+1u;
+        vec2 extra=sample2(domain+2u);
+        // The emitter point shares the environment arm's stratified pair: one sample serving two
+        // estimators of two different integrals biases neither. Only the discrete triangle choice
+        // needs a dimension of its own, and domain+3's second component is the one nothing reads.
+        vec2 lightXi=sample2(domain);
+        float emitterSelector=sampleDimension((domain+3u)*2u+1u);
+        // extra.y is in/out: it is the distance sample first and the lobe selector afterwards.
+        // See sampleMediumDistance for why that is exact rather than merely cheap.
+        float scattered=sampleMediumDistance(ro,rd,hit.triangle<0 ? 1e30 : hit.t,extra.y);
+        if (scattered>=0.0) {
+            vec3 point=ro+rd*scattered;
+            if (bounce==0) primaryDepth=distance(point,frame.origin.xyz);
+            // Any glass absorption this segment was subject to stops at the scattering event.
+            throughput*=exp(-sigma*scattered);
+            // The distance pdf cancels the transmittance it estimated: sigma_t*T/(sigma_t*T) = 1,
+            // leaving sigma_s/sigma_t, which is the albedo. Nothing else is owed for the segment.
+            throughput*=frame.medium.rgb;
+            float g=frame.mediumOptions.x;
+            bool last=bounce+1==frame.scene.w;
+            if (max(throughput.r,max(throughput.g,throughput.b))>0.0) {
+                // In-scattering from the environment, weighted against the phase function the same
+                // way a surface weights it against a BSDF. The connection carries transmittance,
+                // which the phase arm does not: there the binary no-scatter event supplies it.
+                float lightPdf; vec3 light=sampleEnvironment(lightXi,extra.x,lightPdf);
+                vec3 sky=environment(light);
+                float lightPhase=phase(dot(rd,light),g);
+                float weight=last ? 1.0 : powerWeight(lightPdf,lightPhase);
+                if (max(sky.r,max(sky.g,sky.b))>0.0 && intersectScene(point,light,true).triangle<0) {
+                    vec3 contribution=throughput*lightPhase*sky*mediumTransmittance(point,light,1e30)*
+                        weight/max(lightPdf,1e-20);
+                    if (bounce==0) radiance+=contribution; else indirect+=contribution;
+                }
+                // And from emissive geometry. A scattering point is in free space, so unlike the
+                // surface arms this shadow ray needs no offset off a face it is already on.
+                EmitterSample lamp=sampleEmitter(point,emitterSelector,lightXi);
+                if (lamp.pdf>0.0) {
+                    float lampPhase=phase(dot(rd,lamp.direction),g);
+                    float lampWeight=last ? 1.0 : powerWeight(lamp.pdf,lampPhase);
+                    if (intersectScene(point,lamp.direction,true,lamp.distance*(1.0-1e-3)).triangle<0) {
+                        vec3 contribution=throughput*lampPhase*lamp.radiance*
+                            mediumTransmittance(point,lamp.direction,lamp.distance)*lampWeight/lamp.pdf;
+                        if (bounce==0) radiance+=contribution; else indirect+=contribution;
+                    }
+                }
+            }
+            if (last || max(throughput.r,max(throughput.g,throughput.b))<=0.0) break;
+            if (!survives(throughput,etaScale,domain,bounce)) break;
+            vec3 next=samplePhase(rd,g,sample2(domain+1u));
+            // The phase function is its own pdf, so the direction weight is exactly one. Recording
+            // it as previousPdf is what lets the next vertex's emission arm weight itself against
+            // the emitter sampler, exactly as a BSDF pdf does.
+            previousPoint=point; previousPdf=phase(dot(rd,next),g); previousDelta=false;
+            ro=point; rd=normalize(next);
+            continue;
+        }
         if (hit.triangle<0) {
             if (bounce==0 && frame.lighting.w<0.5) return frame.background;
             float weight=previousDelta ? 1.0 : powerWeight(previousPdf,environmentPdf(rd));
@@ -406,13 +562,6 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
             powerWeight(previousPdf,emitterPdf(hit.triangle,toHit/hitDistance,hitDistance));
         vec3 emitted=throughput*m.emission.rgb*emissionWeight;
         if (bounce<2) radiance+=emitted; else indirect+=emitted;
-        uint domain=uint(bounce)*4u+1u;
-        vec2 extra=sample2(domain+2u);
-        // The emitter point shares the environment arm's stratified pair: one sample serving two
-        // estimators of two different integrals biases neither. Only the discrete triangle choice
-        // needs a dimension of its own, and domain+3's second component is the one nothing reads.
-        vec2 lightXi=sample2(domain);
-        float emitterSelector=sampleDimension((domain+3u)*2u+1u);
         float bsdfPdf=0.0; vec3 next;
         if (glass) {
             bool thin=m.optical.z>0.5;
@@ -426,7 +575,8 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
                 if (dot(n,light)*side>0.0 && f.r>0.0 &&
                     intersectScene(point+geometric*(side*frame.lighting.z),light,true).triangle<0)
                 {
-                    vec3 contribution=throughput*f*abs(dot(n,light))*environment(light)*weight/max(lightPdf,1e-20);
+                    vec3 contribution=throughput*f*abs(dot(n,light))*environment(light)*
+                        mediumTransmittance(point,light,1e30)*weight/max(lightPdf,1e-20);
                     if (bounce==0) radiance+=contribution; else indirect+=contribution;
                 }
                 EmitterSample lamp=sampleEmitter(point,emitterSelector,lightXi);
@@ -438,7 +588,8 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
                         intersectScene(point+geometric*(lampSide*frame.lighting.z),lamp.direction,true,
                             lamp.distance*(1.0-1e-3)).triangle<0)
                     {
-                        vec3 contribution=throughput*lampF*abs(dot(n,lamp.direction))*lamp.radiance*lampWeight/lamp.pdf;
+                        vec3 contribution=throughput*lampF*abs(dot(n,lamp.direction))*lamp.radiance*
+                            mediumTransmittance(point,lamp.direction,lamp.distance)*lampWeight/lamp.pdf;
                         if (bounce==0) radiance+=contribution; else indirect+=contribution;
                     }
                 }
@@ -473,7 +624,8 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
             if (dot(geometric,light)>0.0 && max(f.r,max(f.g,f.b))>0.0 &&
                 intersectScene(point+geometric*frame.lighting.z,light,true).triangle<0)
             {
-                vec3 contribution=throughput*f*max(dot(n,light),0.0)*environment(light)*weight/max(lightPdf,1e-20);
+                vec3 contribution=throughput*f*max(dot(n,light),0.0)*environment(light)*
+                    mediumTransmittance(point,light,1e30)*weight/max(lightPdf,1e-20);
                 if (bounce==0) radiance+=contribution; else indirect+=contribution;
             }
             EmitterSample lamp=sampleEmitter(point,emitterSelector,lightXi);
@@ -484,7 +636,8 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
                     intersectScene(point+geometric*frame.lighting.z,lamp.direction,true,
                         lamp.distance*(1.0-1e-3)).triangle<0)
                 {
-                    vec3 contribution=throughput*lampF*max(dot(n,lamp.direction),0.0)*lamp.radiance*lampWeight/lamp.pdf;
+                    vec3 contribution=throughput*lampF*max(dot(n,lamp.direction),0.0)*lamp.radiance*
+                        mediumTransmittance(point,lamp.direction,lamp.distance)*lampWeight/lamp.pdf;
                     if (bounce==0) radiance+=contribution; else indirect+=contribution;
                 }
             }
@@ -497,12 +650,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
             previousDelta=false;
         }
         if (max(throughput.r,max(throughput.g,throughput.b))<=0.0) break;
-        if (bounce>=2) {
-            // Refraction changes radiance units, not path importance for Russian roulette.
-            float survive=clamp(max(throughput.r,max(throughput.g,throughput.b))*etaScale,0.05,0.95);
-            if (sample2(domain+3u).x>=survive) break;
-            throughput/=survive;
-        }
+        if (!survives(throughput,etaScale,domain,bounce)) break;
         ro=point+geometric*(dot(geometric,next)>0.0 ? frame.lighting.z : -frame.lighting.z);
         previousPoint=point; previousPdf=bsdfPdf; rd=normalize(next);
     }
