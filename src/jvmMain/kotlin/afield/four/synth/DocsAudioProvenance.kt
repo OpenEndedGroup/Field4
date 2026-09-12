@@ -87,6 +87,10 @@ object DocsAudioProvenance {
      */
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
+        // Both drive patVoice, so both are the stand-in: CaSoundDocs through patRenderStereo, and
+        // PatSynthDocs through a PatSynthBank rendered block by block.
+        "afield.four.synth.CaSoundDocs" to Origin.STAND_IN_SYNTH,
+        "afield.four.synth.PatSynthDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
     )
 

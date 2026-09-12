@@ -34,8 +34,8 @@ class DocsAudioProvenanceGuardTest {
     /**
      * The corpus as it stands, pinned by count and by family.
      *
-     * These numbers are the audit's headline and the reason this file exists. Seven of fifteen are a
-     * DoughDSP primitive, and six of those come from [DoughDspSoundDocs], which never calls
+     * These numbers are the audit's headline and the reason this file exists. Seven of twenty-one
+     * are a DoughDSP primitive, and six of those come from [DoughDspSoundDocs], which never calls
      * [patVoice] at all; that is the measurement that refutes the "every audio figure" claim. One is
      * Faust, which no producer in this package could have made before `sound_paths.md`.
      */
@@ -51,7 +51,7 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 5,
+            Origin.STAND_IN_SYNTH to 11,
             Origin.DIRT_SAMPLES to 1,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 7,
@@ -180,14 +180,17 @@ class DocsAudioProvenanceGuardTest {
         /**
          * How many `audio="…"` fences the docs publish.
          *
-         * Fifteen, across four pages: three on `pattern_language.md`, six on `dough_dsp_sound.md`,
-         * three on `sound.md` and three on `sound_paths.md`. Pinned so a new clip cannot ship
-         * without a stated provenance.
+         * Twenty-one, across six pages: three on `pattern_language.md`, six on
+         * `dough_dsp_sound.md`, three on `sound.md`, three on `sound_paths.md`, three on
+         * `chain_ca_sound.md` and three on `chain_pattern_particles.md`. Pinned so a new clip
+         * cannot ship without a stated provenance.
          *
-         * It was twelve until `sound_paths.md` published its one-buffer-three-paths comparison,
-         * which is also where [Origin.FAUST] came from: a Faust program compiled at runtime is a
-         * fourth family, and before that page existed no published clip had ever been one.
+         * [Origin.FAUST] arrived with `sound_paths.md`'s one-buffer-three-paths comparison: a Faust
+         * program compiled at runtime is a fourth family, and no published clip had been one before.
+         * The two chain pages added no new family — both drive [patVoice], one through
+         * [patRenderStereo] and one through a [PatSynthBank] rendered block by block — which is why
+         * [Origin.STAND_IN_SYNTH] is now the largest group.
          */
-        const val EXPECTED_FENCE_COUNT = 15
+        const val EXPECTED_FENCE_COUNT = 21
     }
 }

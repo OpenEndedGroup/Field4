@@ -4,7 +4,7 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it, so it is queried rather than stored, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-20 source file(s), 797 public symbol(s), 353 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 852 public symbol(s), 382 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1116,6 +1116,164 @@ A tiny deterministic synth voice: one oscillator, one exponential-decay envelope
 | <code class="highlight"><span class="k">val</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">sustain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">attack</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+## PatSynth.kt { #patsynth-kt }
+
+A pattern on the audio seam: `pat(...)` driving Field's own voices in realtime.
+
+[Making a sound in Field](../../../../../public/docs/sound_paths.md) divides everything that makes
+samples by one signature, `render(outL, outR, numFrames, ctx)`, and a path on that seam composes
+with every other path on it. `patRenderStereo` is not on it: it is a free function that returns a
+whole buffer, because a pattern has to be *queried* over an arc and there is no "next 128 frames"
+to ask it for without a scheduler. This file is that scheduler, for Field's own voices.
+
+Three parts, and the division between them is the whole design:
+
+| | where it runs | what it does |
+| --- | --- | --- |
+| [`PatSynthFeeder`](patterns.md#patsynth-kt-patsynthfeeder) | a daemon thread | queries the pattern a cycle at a time and turns events into frame-stamped [`PatSynthNote`](patterns.md#patsynth-kt-patsynthnote)s |
+| [`PatSynthBank`](patterns.md#patsynth-kt-patsynthbank) | the audio thread | starts a note on the frame it was given, and synthesises |
+| [`PatSynthLaunch`](patterns.md#patsynth-kt-patsynthlaunch) | neither | owns both, and closes both |
+
+Querying a pattern allocates, and a cycle of a large composed pattern is not a 2.67 ms job, so the
+query cannot be on the audio thread. It does not have to be: what it produces is *frames*, and
+being 400 ms early is the same sound as being exactly on time. The audio thread's remaining job is
+an integer comparison. [`FaustPatternFeeder`](synthesis.md#faustpattern-kt-faustpatternfeeder) splits the work the same way for a Faust voice bank,
+and the two are deliberate siblings.
+
+### The voice, and why the `.wav` is the same thing you hear
+
+One oscillator, one exponential-decay envelope, one one-pole lowpass, reading the same `gain`,
+`pan`, `cutoff`, `sustain`, `note` and `speed` annotations off each event and using the same
+`patDrumHz` map for unpitched atoms as `patRenderStereo` does.
+
+What makes a `.wav` on a documentation page a record of the realtime path rather than a second
+implementation of it is `patSynthRenderStereo`: it drives *this* bank through a [`SynthContext`](synthesis.md#signal-kt-synthcontext)
+block by block, the way [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine) does, and returns what came out. No audio device is
+involved and nothing is re-derived.
+
+### Block size does not change the output
+
+A scheduler that rounded each note to a block boundary would sound fine and be wrong, and the
+symptom is that its output changes when the engine's buffer size does. `patSynthRenderStereo` takes
+`blockFrames`, and `PatSynthDocs` renders three bars at 64, 128, 512 and 1024 and asserts the four
+buffers are bit-identical. That is the property that makes this a scheduler rather than a
+quantiser.
+
+The mixing loop runs samples outside and voices inside, and that is what makes the property exact
+rather than close. The other way round, every note due in a block starts before any voice in that
+block has finished, so which slot a note lands in moves with the block boundaries and so does the
+order its samples are summed in; float addition is not associative, and a sixteen-voice bar reads
+one ULP apart at two buffer sizes. Deciding starts and ends per sample costs one branch per voice
+per sample.
+
+`src/jvmMain/kotlin/afield/four/synth/PatSynth.kt` — [read the source](source/jvmMain/afield/four/synth/PatSynth/)
+
+**Used in:** [A pattern that moves particles](../chain_pattern_particles.md)
+
+### Top-level functions { #patsynth-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSynthNotesForArc</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">arc</span><span class="p">:</span> <span class="nc">PatArc</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span> <span class="o">=</span> <span class="nf">patVoice</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">originFrame</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSynthNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L104) | The events of `pattern` over `arc`, as notes stamped on `originFrame`'s clock. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSynth</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span> <span class="o">=</span> <span class="nf">patVoice</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">aheadSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.4</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSynthLaunch</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L463) | Play `pattern` through Field's own voices, in realtime. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSynthRenderStereo</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span> <span class="o">=</span> <span class="nf">patVoice</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">PatSoundDocs</span><span class="p">.</span><span class="nc">SR</span><span class="p">,</span> <span class="n">blockFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSoundDocs</span><span class="p">.</span><span class="nc">Stereo</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L485) | Render `pattern` through a [`PatSynthBank`](patterns.md#patsynth-kt-patsynthbank) offline, block by block, exactly as the engine would. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPatSynthReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L539) | Teach Field that a [`PatSynthLaunch`](patterns.md#patsynth-kt-patsynthlaunch) is something a box can be running. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showPatSynth</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span> <span class="o">=</span> <span class="nf">patVoice</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSynthLaunch</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L575) | Play `pattern` and put a live waveform and spectrum in this box's output. |
+
+### PatSynthNote { #patsynth-kt-patsynthnote }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatSynthNote</span><span class="p">(</span><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">holdFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tailFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">wave</span><span class="p">:</span> <span class="nc">PatWave</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pan</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">cutoffHz</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L78)
+
+One note, stamped with the absolute frame it starts on.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span></code> | Absolute frame, on `PatSynthBank.frame`'s clock. |
+| <code class="highlight"><span class="k">val</span> <span class="n">holdFrames</span><span class="p">:</span> <span class="nc">Int</span></code> | Frames to hold at full before the decay starts. |
+| <code class="highlight"><span class="k">val</span> <span class="n">tailFrames</span><span class="p">:</span> <span class="nc">Int</span></code> | Frames of decay tail to keep rendering after the hold. |
+| <code class="highlight"><span class="k">val</span> <span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">wave</span><span class="p">:</span> <span class="nc">PatWave</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pan</span><span class="p">:</span> <span class="nc">Double</span></code> | Zero is hard left, one is hard right, matching the `pan` annotation. |
+| <code class="highlight"><span class="k">val</span> <span class="n">cutoffHz</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | One-pole lowpass corner, or null for no filter. |
+| <code class="highlight"><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L95) | Total frames this note occupies, which is what a voice is reserved for. |
+
+### PatSynthBank { #patsynth-kt-patsynthbank }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PatSynthBank</span><span class="p">(</span><span class="k">val</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span> <span class="o">=</span> <span class="nf">patVoice</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">val</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L166)
+
+A fixed bank of `patVoice` voices on the audio seam, played by frame-stamped [`PatSynthNote`](patterns.md#patsynth-kt-patsynthnote)s.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L194) | Frames rendered so far. The clock a [`PatSynthNote`](patterns.md#patsynth-kt-patsynthnote)'s `startFrame` is on. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">queued</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L198) | Notes handed over but not yet started. Read it to see whether the feeder is keeping up. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">stolen</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L203) | Notes that started on a voice still sounding, because every voice was busy. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">notes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">PatSynthNote</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L207) | Hand `notes` to the audio thread. Safe from any thread; allocates nothing on the audio side. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">note</span><span class="p">:</span> <span class="nc">PatSynthNote</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L211) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">allNotesOff</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L216) | Silence everything sounding and forget everything scheduled, at the top of the next block. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L220) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L294) |  |
+
+### PatSynthFeeder { #patsynth-kt-patsynthfeeder }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSynthFeeder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSynthBank</span><span class="p">,</span> <span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">aheadSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.4</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L313)
+
+Feeds `pattern` into `bank` a cycle at a time, `aheadSeconds` ahead of the audio thread.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">aheadSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">cyclesFed</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L326) | Cycles queried so far. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L361) | Stop querying. Notes already scheduled still play; `PatSynthBank.allNotesOff` silences those. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isRunning</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L367) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L369) |  |
+
+### PatSynthLaunch { #patsynth-kt-patsynthlaunch }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSynthLaunch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSynthBank</span><span class="p">,</span> <span class="k">val</span> <span class="n">feeder</span><span class="p">:</span> <span class="nc">PatSynthFeeder</span><span class="p">)</span> <span class="p">:</span> <span class="nf">StereoNode</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L390)
+
+A pattern playing through a [`PatSynthBank`](patterns.md#patsynth-kt-patsynthbank), as one thing a box can return.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSynthBank</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">feeder</span><span class="p">:</span> <span class="nc">PatSynthFeeder</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">tap</span><span class="p">:</span> <span class="nc">StereoScope</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L396) | A tap on this launch's own output, fed from the audio thread. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L398) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">advanceOffline</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L420) | Pull `frames` through the bank and into `tap`, for when nothing else is pulling it. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L434) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSynth/#L439) |  |
+
+## PatSynthDocs.kt { #patsynthdocs-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt` — [read the source](source/jvmMain/afield/four/synth/PatSynthDocs/)
+
+### PatSynthDocs { #patsynthdocs-kt-patsynthdocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSynthDocs</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L46)
+
+The scenes and the checks for `patSynth`, the pattern scheduler that sits on the audio seam.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L48) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">BLOCK&#95;SIZES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L51) | Block sizes the invariance check sweeps. 64 is smaller than any engine buffer, 1024 larger. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Scene</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">blurb</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">voice</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span><span class="p">,</span> <span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedOnsets</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">onsetThreshold</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L54) | One scene: a pattern, a tempo, a voice, and what it is for. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">SCENES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Scene</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L78) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L129) | Offline-render scene `name` and write a stereo 16-bit PCM WAV to `outPath`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">bandSeries</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="nc">PatSoundDocs</span><span class="p">.</span><span class="nc">Stereo</span><span class="p">,</span> <span class="n">split</span><span class="p">:</span> <span class="nc">BandSplit</span><span class="p">,</span> <span class="n">windowFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2048</span><span class="p">,</span> <span class="n">hopFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L144) | The per-band reading for a whole render, as the docs page plots it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSynthDocs/#L161) |  |
 
 ## PatTranscription.kt { #pattranscription-kt }
 

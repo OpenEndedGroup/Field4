@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 104 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 105 transcripts on every build, at three
 depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-35 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+36 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1352,6 +1352,15 @@ has to equal the sheet's 169 quads, which the box checks and says in words. See
 [the walkthrough](chain_physics_render.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/physics_manifold_path_trace/metadata.edn)
+
+**pattern_particles** — Four boxes and the whole chain from a rhythm to a GPU push constant.
+`patSynth` schedules `pat("bd*4, ~ 52 ~ 52, hh*16")` block by block on the audio seam, a `BandSplit`
+of four `Biquad` band-passes measures what comes out, the four numbers become four push-constant
+floats, and 24,000 particles in four rings follow them, one band each. The audio box pulls the bank
+itself rather than handing it to the engine, so the figure comes out the same on a machine with no
+output device. See [the walkthrough](chain_pattern_particles.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_particles/metadata.edn)
 
 ## Graphics building blocks
 

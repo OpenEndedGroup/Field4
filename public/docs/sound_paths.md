@@ -10,7 +10,8 @@ in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6
 
 ## Thirty seconds
 
-* **"I have a rhythm and I want to hear it."** → `pat-stand-in`. Nothing to install, works headless.
+* **"I have a rhythm and I want to hear it."** → `pat-stand-in`. Nothing to install; `patSynth` for
+  the speakers, `patRenderStereo` for a file, and the same voice either way.
   [Patterns & Rhythm](pattern_language.md), then [Sound](sound.md).
 * **"I want it to sound like actual drums."** → `dirt-samples`, if you have the Tidal quark.
   [Sound](sound.md).
@@ -29,7 +30,7 @@ in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6
 
 | path | what it is | needs | offline? | on the seam? | page |
 | --- | --- | --- | --- | --- | --- |
-| `pat-stand-in` | a pattern's events through a very small voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` | nothing | offline only | no | [Sound](sound.md) |
+| `pat-stand-in` | a pattern's events through a very small voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` offline; `patSynth` live | nothing | both | **yes** | [Sound](sound.md) |
 | `dirt-samples` | the same events as real Tidal one-shots. `fun patRenderStereoDirt` in `src/jvmMain/kotlin/afield/four/synth/DirtRender.kt` offline; `DirtSamplePlayer` live | the Dirt-Samples quark | both | live half only | [Sound](sound.md) |
 | `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/four/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
@@ -77,7 +78,7 @@ this tree exercises it.
 
 ---
 
-## One seam, and seven of fifteen paths on it
+## One seam, and eight of fifteen paths on it
 
 There is exactly one signature everything realtime meets at:
 
@@ -86,7 +87,7 @@ fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext
 ```
 
 `AudioPatchSpec.Renderer` declares it. `StereoRenderable` declares it, character for character. So
-does every node in the graph, `DirtSamplePlayer`, and `FaustNode`. Seven of the fifteen paths above
+does every node in the graph, `DirtSamplePlayer`, `FaustNode` and `PatSynthBank`. Eight of the fifteen paths above
 sit on it. **A path on the seam composes with every other path on the seam; a path off it composes
 with nothing.**
 
@@ -94,15 +95,19 @@ Faust is the clearest case of what that buys. `class FaustNode` is 23 lines that
 buffer and call `dsp.render`, and being on the seam is what gets it the speakers, the engine's
 visualisers, the Link output and the box lifecycle, with no adapter written for any of them.
 
-The three paths off the seam are off it for three different reasons:
+The two paths off the seam are off it for two different reasons:
 
-* **`pat-stand-in`** is a free function that returns a whole buffer. A pattern has to be *queried*
-  over an arc, so there is no "next 128 frames" to ask it for without a scheduler — which is what
-  `DirtSamplePlayer` is, and why the sampled half of `dirt-samples` is on the seam and the offline
-  half is not.
 * **`dough-engine`** is a wasm module with its own fixed 128-frame block size and its own event
   queue. It could be wrapped, and has not been.
 * **`sonic-pi`** is a different process.
+
+What it takes to get a pattern onto the seam is worth reading as the general case, because a pattern
+has to be *queried* over an arc and there is no "next 128 frames" to ask one for. The answer is a
+scheduler in two halves: a thread that queries a cycle at a time and converts events into notes
+stamped with the absolute frame they start on, and an audio-thread voice bank whose only remaining
+job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` split the work the same
+way. Being early costs nothing, because what crosses between the halves is frames; see
+[A pattern that moves particles](chain_pattern_particles.md).
 
 `AudioPatchSpec` is what every box that makes a noise returns. Five of the fifteen paths above have
 no page of their own — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`,

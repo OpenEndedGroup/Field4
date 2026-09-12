@@ -34,10 +34,11 @@ expect:
  * The shape that makes the map worth having is not the list, it is [SoundPath.onSeam]. There is
  * exactly one signature everything realtime meets at —
  * `AudioPatchSpec.Renderer.render(outL, outR, numFrames, ctx)`, character-for-character
- * [StereoRenderable.render] — and only three of the six sample sources sit on it. [FaustNode] is
- * the newest arrival and it needed no new plumbing at all, which is the strongest single argument
- * for the seam existing. [patRenderStereo], [DoughEngine] and [SonicPi] are each off it, for three
- * different and legible reasons.
+ * [StereoRenderable.render] — and four of the six sample sources sit on it. [FaustNode] needed no
+ * new plumbing at all to get there, which is the strongest single argument for the seam existing,
+ * and [PatSynthBank] is the pattern voice arriving the same way: a scheduler in front of the voice
+ * that already existed, and nothing else. [DoughEngine] and [SonicPi] are off it, for two different
+ * and legible reasons.
  *
  * ## Why this is built like [DocsAudioProvenance] and not beside it
  *
@@ -162,11 +163,13 @@ object SoundPathMap {
 
         SoundPath(
             id = "pat-stand-in",
-            role = Role.MAKES, timing = Timing.OFFLINE, onSeam = false,
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
             needs = "nothing",
             channels = "stereo",
             what = "a pattern's events through a deliberately tiny synth voice — one oscillator, " +
-                "one one-pole lowpass, one decay envelope, per event",
+                "one one-pole lowpass, one decay envelope, per event. Offline in one pass through " +
+                "patRenderStereo, or live through patSynth, whose PatSynthBank is a StereoNode fed " +
+                "frame-stamped notes by a PatSynthFeeder off the audio thread",
             file = "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt",
             entryPoint = "fun patRenderStereo",
             page = "public/docs/sound.md",
@@ -368,13 +371,13 @@ object SoundPathMap {
     const val INPUT_COUNT = 4
 
     /**
-     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Seven of fifteen.
+     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Eight of fifteen.
      *
      * A floor here is the assertion that matters most: the seam is the reason Faust cost no new
      * plumbing, and if a later change adds a path *beside* it rather than *on* it, this number
      * stops growing while [PATHS] does. That is exactly the drift worth catching.
      */
-    const val SEAM_COUNT = 7
+    const val SEAM_COUNT = 8
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -429,6 +432,8 @@ object SoundPathMap {
             roots = listOf("src/jvmMain/kotlin"),
             declaredIn = mapOf(
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
             ),

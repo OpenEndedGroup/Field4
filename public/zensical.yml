@@ -165,6 +165,7 @@ nav:
     - A Polytope, Cut Open and Traced: chain_polytope_render.md
     - Particles, Welded and Traced: chain_physics_render.md
     - A Cellular Automaton You Can Hear: chain_ca_sound.md
+    - A Pattern That Moves Particles: chain_pattern_particles.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - AI Tool-Use History: ai_tool_use_history.md

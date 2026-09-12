@@ -754,7 +754,7 @@ fun patVoice(
 ): PatVoiceSpec = PatVoiceSpec(wave, baseHz, decay.coerceAtLeast(1e-4), sustain.coerceIn(0.0, 1.0), attack.coerceAtLeast(1e-5))
 
 /** The drum map behind unpitched atoms — crude, just enough to be recognisable. */
-private fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = when (atom.substringBefore(':')) {
+internal fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = when (atom.substringBefore(':')) {
     "bd", "kick" -> 62.0 to PatWave.SINE
     "sd", "snare" -> 190.0 to PatWave.NOISE
     "cp", "clap" -> 900.0 to PatWave.NOISE
@@ -901,7 +901,7 @@ fun afield.Box.showPatSound(name: String, channel: String = "main"): PatSoundDoc
 fun patMidiToHz(midi: Double): Double = 440.0 * Math.pow(2.0, (midi - 69.0) / 12.0)
 
 /** Attack ramp, hold at full, then exponential decay — the whole envelope, in one expression. */
-private fun patVoiceEnvelope(t: Double, holdSec: Double, attack: Double, decay: Double): Double = when {
+internal fun patVoiceEnvelope(t: Double, holdSec: Double, attack: Double, decay: Double): Double = when {
     t < attack -> t / attack
     t <= holdSec -> 1.0
     else -> exp(-(t - holdSec) / decay)

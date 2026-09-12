@@ -340,6 +340,10 @@ object DemoTranscriptExecSmokeTest {
         "polytope_path_trace_lineage",
         "polytope_manifold_path_trace",
         "physics_manifold_path_trace",
+        // Also a window, and additionally a compute dispatch whose push constants are bound to
+        // lambdas; the pattern scheduler and the band analysis in front of it are covered by
+        // synth.pat.seam, which needs no device at all.
+        "pattern_particles",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",

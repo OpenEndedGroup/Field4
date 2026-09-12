@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13291 public symbols across 334 source files**, 7093 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13356 public symbols across 337 source files**, 7129 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -23,8 +23,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
-| [Patterns](patterns.md) | 20 | 797 | 353 (44%) | Musical time, as a value. |
-| [Audio](audio.md) | 16 | 841 | 232 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Patterns](patterns.md) | 22 | 852 | 382 (44%) | Musical time, as a value. |
+| [Audio](audio.md) | 17 | 851 | 239 (28%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2204 | 653 (29%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -61,6 +61,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [autodiff_forward.kt](math.md#autodiff-forward-kt) | Math | 68 | 67 | Forward-mode automatic differentiation to **second order** — the other half of `autodiff.kt`. | [Differentiating Functions](../autodiff_examples.md) |
 | [autodiff_geometry.kt](math.md#autodiff-geometry-kt) | Math | 78 | 72 | Differentiable geometry: tracked vectors, planar inverse kinematics on an `FLine` chain, and a differentiable circle packing — the part of the AD layer whose results are drawable. | [Differentiating Functions](../autodiff_examples.md) |
 | [autodiff_optimize.kt](math.md#autodiff-optimize-kt) | Math | 45 | 44 | Gradient-descent optimizers that consume the exact gradients from `autodiff.kt` — `sgd`, `adam` and `lbfgs`, behind one `minimize` front door. | [Differentiating Functions](../autodiff_examples.md) |
+| [BandAnalysis.kt](audio.md#bandanalysis-kt) | Audio | 10 | 7 |  | [A pattern that moves particles](../chain_pattern_particles.md) |
 | [BeatLaunch.kt](patterns.md#beatlaunch-kt) | Patterns | 8 | 0 |  |  |
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 1 |  | [Boolean network music examples](../boolean_network_music_examples.md) |
@@ -271,6 +272,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatPitchDetection.kt](patterns.md#patpitchdetection-kt) | Patterns | 49 | 25 | What pitch a rendered pattern is actually sounding, measured from the audio. |  |
 | [PatSignals.kt](patterns.md#patsignals-kt) | Patterns | 29 | 29 | Continuous (signal) patterns, and the discretisers that turn them back into events. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md) |
 | [PatSoundDocs.kt](patterns.md#patsounddocs-kt) | Patterns | 31 | 22 |  | [Sound: from a pattern to something you can hear](../sound.md) |
+| [PatSynth.kt](patterns.md#patsynth-kt) | Patterns | 47 | 24 | A pattern on the audio seam: `pat(...)` driving Field's own voices in realtime. | [A pattern that moves particles](../chain_pattern_particles.md) |
+| [PatSynthDocs.kt](patterns.md#patsynthdocs-kt) | Patterns | 8 | 5 |  |  |
 | [PatTranscription.kt](patterns.md#pattranscription-kt) | Patterns | 74 | 25 | Recovered audio, written back out as notation Field can re-render. |  |
 | [PatTranscriptionCorpus.kt](patterns.md#pattranscriptioncorpus-kt) | Patterns | 78 | 28 | A corpus that scores a transcription against the notation that generated the audio. |  |
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 | The figure that makes the round trip something you look at rather than read about. |  |
@@ -310,7 +313,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 4 | Notes with times on them, and a lazy player for a stream of them. | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [shaders.kt](graphics.md#shaders-kt) | Graphics | 180 | 180 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
-| [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 28 | The value types the rest of the synthesis category is written in, and the per-block contract they render under. | [Making a sound in Field: every path there is](../sound_paths.md), [Faust](../faust.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 28 | The value types the rest of the synthesis category is written in, and the per-block contract they render under. | [Making a sound in Field: every path there is](../sound_paths.md), [A pattern that moves particles](../chain_pattern_particles.md), [Faust](../faust.md) |
 | [SimdVerlet.kt](simulation.md#simdverlet-kt) | Simulation | 31 | 18 |  |  |
 | [SimdVerletColliders.kt](simulation.md#simdverletcolliders-kt) | Simulation | 60 | 32 | Collision shapes for `SimdVerlet`: the world layer of the particle solver. | [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints, and the one number that decides everything](../physics.md) |
 | [SimdVerletDebugLines.kt](simulation.md#simdverletdebuglines-kt) | Simulation | 1 | 1 |  |  |
