@@ -3266,7 +3266,7 @@ Field4 `BoxExecution` implementation for the **Nano** micro-computer language.
 ## NanoVM.kt { #nanovm-kt }
 
 Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations:
-four registers, 32 bytes of RAM, and all but one of the 256 possible opcode bytes decoding to an
+four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an
 instruction.
 
 The whole machine is:
@@ -3294,9 +3294,13 @@ instead, leaving RAM alone so it carries state from one per-tick run to the next
 | register and immediate or address | two bytes, 4 per op | `LDI`, `LDA`, `STA`, `ADDI`, `LDRR`, `STRR`, `SHL`, `SHR` | `0xC0`–`0xDF` |
 | relative branch | two bytes, signed offset | `JMP`, `JZ`, `JNZ`, `JGT`, `JLT`, `JGE`, `JLE`, `JC`, `JNC`, `CALL` | `0xE0`–`0xE9` |
 | absolute branch | two bytes, absolute address | `JMPA`, `CALLA` | `0xEA`–`0xEB` |
-| two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFF` |
+| two registers | `base + (dst shl 2) + src` | `DIV` | `0xEC`–`0xFB` |
 
-`0x03` is the one byte that decodes to nothing; it reports an unknown opcode and halts.
+Five bytes decode to nothing — `0x03`, and `0xFC`–`0xFF` past `DIV`'s last `(dst, src)` pair.
+Each reports an unknown opcode and halts. That path matters here more than it would in a VM with
+a fixed program: artificial-life work mutates programs, and `NanoAssembler`'s raw-byte directive
+puts an arbitrary byte in front of the decoder too, so every one of the 256 has to either execute
+or report. The GPU port in `nano_compute.glsl` decodes the same map.
 
 ### A program
 
@@ -3321,7 +3325,7 @@ an address for `JMPA` and `CALLA`.
 
 ### NanoVM { #nanovm-kt-nanovm }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">NanoVM</span><span class="p">(</span><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Random</span><span class="p">.</span><span class="nf">nextInt</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L65)
+[<code class="highlight"><span class="k">class</span> <span class="nf">NanoVM</span><span class="p">(</span><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Random</span><span class="p">.</span><span class="nf">nextInt</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L69)
 
 The machine itself: the register file, RAM, the flags and the fetch-decode-execute step.
 
@@ -3329,75 +3333,75 @@ The machine itself: the register file, RAM, the flags and the fetch-decode-execu
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">var</span> <span class="n">rng</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">reg</span></code>](source/jvmMain/afield/nano/NanoVM/#L77) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">ram</span></code>](source/jvmMain/afield/nano/NanoVM/#L78) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">pc</span></code>](source/jvmMain/afield/nano/NanoVM/#L79) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L80) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagC</span></code>](source/jvmMain/afield/nano/NanoVM/#L81) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagS</span></code>](source/jvmMain/afield/nano/NanoVM/#L82) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">flagO</span></code>](source/jvmMain/afield/nano/NanoVM/#L83) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">halted</span></code>](source/jvmMain/afield/nano/NanoVM/#L84) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L89) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">onError</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L90) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StepResult</span><span class="p">(</span><span class="k">val</span> <span class="n">executedPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">currentPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">executed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L92) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L101) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">resetRegisters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L116) | Reset only registers and execution state, preserving RAM contents. Used in `NanoInterface` launch mode so RAM acts as persistent working memory that survives across per-tick executions (important for ALife state machines). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L126) | Load a program into a fresh machine (resets full state including RAM). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/nano/NanoVM/#L137) | Run up to `maxSteps` instructions from current `pc`. Returns the number of steps executed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stepOnce</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StepResult</span></code>](source/jvmMain/afield/nano/NanoVM/#L151) | Execute exactly one instruction at the current `pc`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoVM/#L467) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">reg</span></code>](source/jvmMain/afield/nano/NanoVM/#L81) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">ram</span></code>](source/jvmMain/afield/nano/NanoVM/#L82) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">pc</span></code>](source/jvmMain/afield/nano/NanoVM/#L83) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L84) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagC</span></code>](source/jvmMain/afield/nano/NanoVM/#L85) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagS</span></code>](source/jvmMain/afield/nano/NanoVM/#L86) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">flagO</span></code>](source/jvmMain/afield/nano/NanoVM/#L87) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">halted</span></code>](source/jvmMain/afield/nano/NanoVM/#L88) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onOutput</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L93) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onError</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/nano/NanoVM/#L94) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StepResult</span><span class="p">(</span><span class="k">val</span> <span class="n">executedPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">currentPc</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">executed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L96) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L105) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resetRegisters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L120) | Reset only registers and execution state, preserving RAM contents. Used in `NanoInterface` launch mode so RAM acts as persistent working memory that survives across per-tick executions (important for ALife state machines). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L130) | Load a program into a fresh machine (resets full state including RAM). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/nano/NanoVM/#L141) | Run up to `maxSteps` instructions from current `pc`. Returns the number of steps executed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stepOnce</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StepResult</span></code>](source/jvmMain/afield/nano/NanoVM/#L155) | Execute exactly one instruction at the current `pc`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoVM/#L473) |  |
 
 ### Opcode { #nanovm-kt-opcode }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">Opcode</span></code>](source/jvmMain/afield/nano/NanoVM/#L484)
+[<code class="highlight"><span class="k">object</span> <span class="nc">Opcode</span></code>](source/jvmMain/afield/nano/NanoVM/#L490)
 
 Opcode constants for the Nano VM, with the two encoders that build a byte out of a base and a register index. These are the ranges `NanoVM.stepOnce` decodes.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOP</span></code>](source/jvmMain/afield/nano/NanoVM/#L485) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L486) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RET</span></code>](source/jvmMain/afield/nano/NanoVM/#L487) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L489) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L490) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L491) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NEG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L492) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L493) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L494) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RNG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L495) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MOV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L497) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADD&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L498) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUB&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L499) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MUL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L500) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AND&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L501) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L502) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">XOR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L503) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CMP&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L504) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L505) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L506) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L508) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L509) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L510) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L511) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L512) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L513) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L514) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L515) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMP</span></code>](source/jvmMain/afield/nano/NanoVM/#L517) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L518) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L519) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGT</span></code>](source/jvmMain/afield/nano/NanoVM/#L520) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L521) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGE</span></code>](source/jvmMain/afield/nano/NanoVM/#L522) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLE</span></code>](source/jvmMain/afield/nano/NanoVM/#L523) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JC</span></code>](source/jvmMain/afield/nano/NanoVM/#L524) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNC</span></code>](source/jvmMain/afield/nano/NanoVM/#L525) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALL</span></code>](source/jvmMain/afield/nano/NanoVM/#L526) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMPA</span></code>](source/jvmMain/afield/nano/NanoVM/#L527) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALLA</span></code>](source/jvmMain/afield/nano/NanoVM/#L528) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L530) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">twoReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L533) | Encode a two-register opcode: op_base + (dst << 2) + src |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">oneReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L536) | Encode a single-register opcode: op_base + regIndex |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOP</span></code>](source/jvmMain/afield/nano/NanoVM/#L491) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L492) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RET</span></code>](source/jvmMain/afield/nano/NanoVM/#L493) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L495) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEC&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L496) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L497) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NEG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L498) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L499) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUT&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L500) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RNG&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L501) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MOV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L503) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADD&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L504) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUB&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L505) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MUL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L506) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AND&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L507) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L508) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">XOR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L509) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CMP&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L510) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L511) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L512) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L514) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L515) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STA&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L516) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ADDI&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L517) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LDRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L518) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">STRR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L519) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHL&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L520) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SHR&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L521) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMP</span></code>](source/jvmMain/afield/nano/NanoVM/#L523) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L524) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNZ</span></code>](source/jvmMain/afield/nano/NanoVM/#L525) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGT</span></code>](source/jvmMain/afield/nano/NanoVM/#L526) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLT</span></code>](source/jvmMain/afield/nano/NanoVM/#L527) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JGE</span></code>](source/jvmMain/afield/nano/NanoVM/#L528) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JLE</span></code>](source/jvmMain/afield/nano/NanoVM/#L529) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JC</span></code>](source/jvmMain/afield/nano/NanoVM/#L530) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JNC</span></code>](source/jvmMain/afield/nano/NanoVM/#L531) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALL</span></code>](source/jvmMain/afield/nano/NanoVM/#L532) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">JMPA</span></code>](source/jvmMain/afield/nano/NanoVM/#L533) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CALLA</span></code>](source/jvmMain/afield/nano/NanoVM/#L534) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIV&#95;BASE</span></code>](source/jvmMain/afield/nano/NanoVM/#L536) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">twoReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L539) | Encode a two-register opcode: op_base + (dst << 2) + src |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">oneReg</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoVM/#L542) | Encode a single-register opcode: op_base + regIndex |
 
 ## NanoVisualization.kt { #nanovisualization-kt }
 
