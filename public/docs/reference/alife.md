@@ -333,7 +333,7 @@ where the two must agree.
 
 `src/jvmMain/kotlin/afield/stdlib/alife_ca.kt` — [read the source](source/jvmMain/afield/stdlib/alife_ca/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Three-dimensional Life, counted and traced](../chain_life3d_render.md)
 
 ### Top-level functions { #alife-ca-kt-functions }
 

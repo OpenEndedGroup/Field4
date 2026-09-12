@@ -821,6 +821,15 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
          * An exception thrown by [field] cannot unwind through Manifold's C++ frames, so it is caught,
          * the sample reads as far-outside, and the exception is rethrown from this call.
          *
+         * # `parallel = true` is not reproducible
+         *
+         * The same field marched four times at `edgeLength = 0.7` came back with 5376, 5376, 5374
+         * and 5376 triangles, volumes differing in the third decimal place, and **47 or 48**
+         * connected components. `parallel = false` on the identical field returned 5374 triangles,
+         * 48 components and a volume identical to the last digit every time. So a figure or a test
+         * that publishes a count off a level set wants the sequential path, and the speedup above is
+         * for when the output goes to a screen rather than into a number somebody reads.
+         *
          * @param bounds the window to march; a shape touching the wall comes out cut off there.
          * @param edgeLength target triangle edge length. Cost grows as its cube — halving it is 8x.
          * @param level the iso-level to extract.

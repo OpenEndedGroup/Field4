@@ -344,6 +344,7 @@ object DemoTranscriptExecSmokeTest {
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.
         "pattern_particles",
+        "life3d_manifold_path_trace",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",

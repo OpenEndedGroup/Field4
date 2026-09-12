@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 105 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 106 transcripts on every build, at three
 depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-36 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+37 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1361,6 +1361,16 @@ itself rather than handing it to the engine, so the figure comes out the same on
 output device. See [the walkthrough](chain_pattern_particles.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_particles/metadata.edn)
+
+**life3d_manifold_path_trace** — `LIFE3D_BLOB` for eight generations, then the question a volume of
+ones and zeros cannot answer for itself: how many separate things are left. Field's marching cubes
+and Manifold's level set both march the same density field, disagree about the genus, and the
+disagreement is the finding — `decompose()` returns 48 independent solids whose volumes sum exactly
+to the whole, and `1 - 48` is the negative genus. The box also marches the field at three spacings
+each way, because the count is a property of the surface and not only of the automaton. See
+[the walkthrough](chain_life3d_render.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn)
 
 ## Graphics building blocks
 

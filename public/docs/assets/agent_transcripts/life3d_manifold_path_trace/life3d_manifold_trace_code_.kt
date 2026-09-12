@@ -1,0 +1,179 @@
+import afield.four.fabricated.PathTraceEnvironment
+import afield.four.fabricated.PathTraceMaterial
+import afield.four.fabricated.PathTraceScene
+import afield.four.fabricated.PathTracingRenderer
+import afield.four.fabricated.importTriMesh
+import afield.four.modules.fromContext
+import afield.four.util.Camera
+import afield.manifold.ManifoldLibrary
+import afield.manifold.Solid
+import afield.stdlib.IntVolume
+import afield.stdlib.LIFE3D_BLOB
+import afield.stdlib.asDensityField
+import afield.stdlib.genus
+import afield.stdlib.isWatertight
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.marchBounds
+import afield.stdlib.step
+import afield.stdlib.toMesh
+import java.io.File
+import kotlin.random.Random
+
+val renderer: Renderer = fromContext()
+prop<PathTracingRenderer>(tracer)
+
+require(ManifoldLibrary.isAvailable) {
+    ManifoldLibrary.describe() + "\nOn macOS: brew install manifold, then run this box again."
+}
+
+// ---- the three parameters ------------------------------------------------------
+val generations = 8
+val edgeLength = 0.7    // level-set triangle size, in voxels
+val iso = 0.5           // occupancy level taken as the surface
+// --------------------------------------------------------------------------------
+
+// ---- stage one: the automaton --------------------------------------------------
+// A fixed seed, so the census below is the same number every time this runs.
+val n = 36
+val rng = Random(11)
+val volume0 = IntVolume(n, n, n, IntArray(n * n * n), wrap = false)
+val half = 8
+val lo = n / 2 - half
+for (z in lo until lo + 2 * half) for (y in lo until lo + 2 * half) for (x in lo until lo + 2 * half) {
+    volume0[x, y, z] = if (rng.nextDouble() < 0.45) 1 else 0
+}
+
+var volume = volume0
+val populations = mutableListOf(volume.population())
+repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
+println("LIFE3D_BLOB populations: ${populations.joinToString(" -> ")}")
+
+// smoothRadius = 0 marches the raw occupancy. A radius-1 blur is the usual choice and is
+// the wrong one here: this rule leaves filaments and isolated cells, and a 27-voxel
+// average over those never reaches an iso of 0.5, so the surface comes back empty.
+val field = volume.asDensityField(smoothRadius = 0, iso = iso)
+val bounds = volume.marchBounds()
+
+// ---- stage two: two marchers on one field --------------------------------------
+val marched = volume.toMesh(resolution = 110, smoothRadius = 0, iso = iso)
+println("Field's marchingCubes: ${marched.triangleCount} triangles, " +
+    "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
+
+// Manifold's convention is positive inside, which is what asDensityField already gives, so
+// this is levelSet rather than levelSetOf: the latter negates for Field's SDF family.
+// A fresh Vec3 per sample, because `field` is called from Manifold's own worker threads.
+//
+// parallel = false, and that is the whole reason the census below is a number worth
+// printing: the parallel path is faster and not reproducible. The two runs underneath say
+// so rather than the comment doing it alone.
+fun march(parallel: Boolean): Pair<Solid, Double> {
+    val t0 = System.nanoTime()
+    val solid = Solid.levelSet(bounds, edgeLength = edgeLength, parallel = parallel) { x, y, z ->
+        field(vec(x, y, z)).toDouble()
+    }
+    return solid to (System.nanoTime() - t0) / 1e6
+}
+
+val (whole, sequentialMs) = march(parallel = false)
+println("Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
+    "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
+    "${"%.0f".format(sequentialMs)} ms sequential")
+repeat(2) { attempt ->
+    val (parallelSolid, ms) = march(parallel = true)
+    val components = Solid.scope { parallelSolid.decompose().size }
+    println("  the same field with parallel = true, run ${attempt + 1}: " +
+        "${parallelSolid.triangleCount} triangles, ${components} components, " +
+        "volume ${"%.4f".format(parallelSolid.volume)}, ${"%.0f".format(ms)} ms")
+    parallelSolid.close()
+}
+
+// ---- stage three: the census ---------------------------------------------------
+// The two genus numbers disagree, and the reason is components rather than holes: Field's
+// genus() reads one Euler characteristic and solves 2 - 2g for g, which is the genus of a
+// connected surface. decompose() is the operation that says how many surfaces there are.
+val parts = whole.decompose()
+val volumes = parts.map { it.volume }
+println()
+println("${parts.size} separate clusters survived ${generations} generations")
+println("  largest ${"%.2f".format(volumes.first())}, smallest ${"%.3f".format(volumes.last())}, " +
+    "median ${"%.3f".format(volumes[volumes.size / 2])}")
+println("  they sum to ${"%.2f".format(volumes.sum())} against the whole solid's " +
+    "${"%.2f".format(whole.volume)}")
+println("  and each one on its own has genus ${parts.take(6).map { it.genus }} ...")
+
+// ---- stage four: the render ----------------------------------------------------
+val scene = PathTraceScene()
+val gold = scene.material(PathTraceMaterial.metal(1.0f, 0.74f, 0.33f, 0.22f))
+// Plastic rather than glass for the other forty-seven. At a tenth of a unit across, a
+// transparent fragment over a pale floor is a fragment you cannot see.
+val body = scene.material(PathTraceMaterial.plastic(0.06f, 0.13f, 0.42f, 0.28f))
+val floor = scene.material(PathTraceMaterial.plastic(0.30f, 0.31f, 0.33f, 0.5f))
+
+// Centre the volume on the origin and scale it into view: the field is in voxels.
+val centre = Vector3f(n / 2f, n / 2f, n / 2f)
+val scale = 2.4f / n
+val placement = afield.stdlib.linalg.Matrix4f()
+    .scale(scale, scale, scale)
+    .translate(-centre.x, -centre.y, -centre.z)
+
+var appended = 0
+var dropped = 0
+val sceneLo = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
+val sceneHi = Vector3f(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
+parts.forEachIndexed { index, part ->
+    val added = scene.importTriMesh(
+        part.toTriMesh(normals = true, minSharpAngle = 25.0),
+        if (index == 0) gold else body,
+        transform = placement,
+        warning = {},
+    )
+    appended += added.triangleCount
+    dropped += added.degenerateCount
+    if (added.triangleCount > 0) { sceneLo.min(added.boundsMin); sceneHi.max(added.boundsMax) }
+}
+println()
+println("scene: $appended triangles from ${parts.size} clusters, $dropped dropped")
+println("  occupying ${"%.2f".format(sceneHi.x - sceneLo.x)} x " +
+    "${"%.2f".format(sceneHi.y - sceneLo.y)} x ${"%.2f".format(sceneHi.z - sceneLo.z)} " +
+    "of the 2.40-unit cube the volume was scaled into")
+parts.forEach { it.close() }
+whole.close()
+
+// The frame comes off the import reports rather than off the voxel grid: eight
+// generations of a decaying rule leave a cloud much smaller than the volume it started
+// in, and a camera placed for the grid puts it in the middle distance.
+val middle = Vector3f(sceneLo).add(sceneHi).mul(0.5f)
+val span = maxOf(sceneHi.x - sceneLo.x, sceneHi.y - sceneLo.y, sceneHi.z - sceneLo.z)
+val reach = span * 3f
+scene.quad(
+    Vector3f(middle.x - reach, sceneLo.y - 0.30f, middle.z - reach),
+    Vector3f(middle.x + reach, sceneLo.y - 0.30f, middle.z - reach),
+    Vector3f(middle.x + reach, sceneLo.y - 0.30f, middle.z + reach),
+    Vector3f(middle.x - reach, sceneLo.y - 0.30f, middle.z + reach),
+    floor,
+)
+
+val environment = PathTraceEnvironment.fromFile(
+    File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+)
+val camera = Camera(renderer).also {
+    it.at.set(
+        middle.x + span * 1.25f,
+        middle.y + span * 0.75f,
+        middle.z + span * 1.75f,
+    )
+    it.target.set(middle.x, middle.y, middle.z)
+    it.p.fov = 0.58
+}
+tracer = PathTracingRenderer(renderer, scene, environment, 1000, 614, camera).install()
+tracer.samplesPerFrame = 2
+tracer.maxBounces = 8
+tracer.exposure = 1.3f
+tracer.environmentRotation = 2.1f
+tracer.indirectClamp = 10f
+tracer.blitToScreen()
+println("${tracer.backend}: ${tracer.triangleCount} triangles")
+frames {
+    while (tracer.samples < 700) { frame() }
+    println("life3d study converged: ${tracer.samples} samples")
+}
