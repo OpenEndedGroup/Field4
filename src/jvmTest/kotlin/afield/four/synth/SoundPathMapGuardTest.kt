@@ -24,7 +24,7 @@ class SoundPathMapGuardTest {
     /**
      * The headline numbers, pinned.
      *
-     * `sound_paths.md` prints "**Six things in Field make samples**" in bold in its first sentence.
+     * `sound_paths.md` prints "**Seven things in Field make samples**" in bold in its first sentence.
      * A number in bold prose with nothing holding it is exactly the drift this whole branch exists
      * to fix, so it is held here as well as in the smoke.
      */
@@ -87,7 +87,7 @@ class SoundPathMapGuardTest {
     /**
      * Every path a `page` claims is a page that exists, and every path with no page is a real gap.
      *
-     * The `null`s are the finding, so they are pinned: five of the fifteen paths have no published
+     * The `null`s are the finding, so they are pinned: five of the sixteen paths have no published
      * page, `audio-patch-seam` — the seam the whole realtime stack is built on — among them.
      */
     @Test
@@ -130,6 +130,46 @@ class SoundPathMapGuardTest {
             "the negative control did not actually remove the declaration",
         )
         println("negative control: $victim carries `${real.literal}` and would be reported undeclared")
+    }
+
+    /**
+     * The fifth marker really does cover the file the first four missed.
+     *
+     * `FaustPoly.kt` — a polyphonic, pattern-driven Faust instrument — was in the tree undeclared
+     * for a month and every one of these tests passed, because it opens no device and encodes no
+     * WAV. That is the failure the `seam-stereo-node` marker was added for, so the claim is pinned
+     * the same way the OpenAL control is: drop the file from the declaration and assert that the
+     * sweep still finds it. If this ever stops holding, the hole is open again.
+     */
+    @Test
+    fun `the seam marker sees the source that slipped through`() {
+        val marker = SoundPathMap.MARKERS.first { it.id == "seam-stereo-node" }
+        val victim = "src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt"
+        val crippled = SoundPathMap.Marker(
+            id = marker.id,
+            literal = marker.literal,
+            meaning = marker.meaning,
+            roots = marker.roots,
+            declaredIn = marker.declaredIn - victim,
+        )
+        assertTrue(
+            victim in SoundPathMap.filesCarrying(crippled, repoRoot),
+            "$victim does not carry `${marker.literal}`, so the marker that exists because of it " +
+                "is not actually watching it",
+        )
+        val none = SoundPathMap.MARKERS.filter { other ->
+            other.id != marker.id && victim in SoundPathMap.filesCarrying(other, repoRoot)
+        }
+        assertTrue(
+            none.isEmpty(),
+            "$victim now carries ${none.map { it.id }} as well, so this control no longer " +
+                "demonstrates that the seam marker is the only thing covering it",
+        )
+        assertEquals(
+            "faust-poly", marker.declaredIn[victim],
+            "$victim is the polyphonic path's own file and must be attributed to it, not to `faust`",
+        )
+        println("negative control: `${marker.literal}` is the only marker that can see $victim")
     }
 
     /** A renamed entry point is caught, so the page's symbols cannot rot. */
