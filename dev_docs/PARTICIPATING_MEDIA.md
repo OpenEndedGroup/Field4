@@ -79,7 +79,23 @@ uv run --project . --group backdoor python tools/field_backdoor.py \
   --command 'wait-output pt_medium_check --contains "MEDIUM CHECK DONE" --timeout 6900'
 ```
 
-About thirty minutes on an M1 Max. Captures land in `build/medium-check/`.
+About thirty minutes per backend on an M1 Max.
+
+**Every arm runs on every backend the device exposes.** `COMPUTE_BVH` always; `RAY_QUERY` as
+well wherever `device.supportsRayQuery`, which is the condition `PathTraceGpuSmoke` already
+uses for the base tracer. Artifacts go to `build/medium-check/<backend>/` — one
+subdirectory per pass, because these figures are per-backend renders and a figure that does
+not say which backend produced it is evidence about neither. The cumulative `report.txt` is
+written at `build/medium-check/` as well as inside each pass, so there is still one file
+with the whole run in it, and its first line names the backends that ran.
+
+This is worth doing rather than assuming precisely *because* the medium touches no
+traversal code: the analytic anchors — `exp(-σt · d)` and the furnace's absolute 1.0 — are
+backend-independent, so a backend that misses them while the other does not has a
+traversal problem, not an estimator problem, and the arm that fails localises it.
+
+**On a device with no ray queries this is one pass and behaves exactly as it did before**,
+and the report says so in its first line rather than leaving you to infer it.
 
 **Read `build/medium-check/report.txt`, not the server log.** A box's `println` reaches
 the server log through a buffer that a `--scratch` teardown does not wait for: the first
@@ -90,7 +106,12 @@ because the arm that fails is the arm whose numbers matter.
 
 ## The measurements, with their populations
 
-All at 96×72 = **6912 pixels**, software-BVH backend, pixel jitter off, on an M1 Max.
+All at 96×72 = **6912 pixels**, pixel jitter off, on an M1 Max — and therefore all on
+`COMPUTE_BVH`, because `supportsRayQuery` is false on this device. The harness runs every
+arm on every backend the device exposes, so these are the numbers from the only pass this
+machine can make. **No number below has been measured on `RAY_QUERY`, and nothing here
+should be read as a claim about it** until the suite runs on a device with ray queries
+enabled, where it will produce a second, separately labelled set.
 
 | arm | what it pins | measured |
 | --- | --- | --- |
@@ -260,3 +281,13 @@ density, no nested or per-object media. A collision spends one of `maxBounces`, 
 and bounce budget are coupled; the bounce sweep above is how large that coupling is.
 `fogDensity` is unchanged and still works, and enabling both attenuates whatever the
 camera sees first twice over.
+
+**And the gap that is a matter of hardware rather than scope: `RAY_QUERY` has never
+rendered a medium pixel.** The shader's ray-query variant compiles
+(`glslangValidator --target-env vulkan1.3`) and the medium code touches no traversal, so
+there is a good argument that it works — but an argument is not a measurement, and this is
+the largest open item on this page. The harness is now parameterised over backends
+specifically so that running it once on a device with ray queries closes it with numbers
+instead of reasoning. A medium and `temporalReuse` are also effectively exclusive: a
+bounce-0 collision leaves the history guide's `normal.w` unset, so reprojection rejects
+that pixel — traced in the code, not measured.

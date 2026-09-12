@@ -99,6 +99,23 @@ object PathTraceMediumGpuSmoke {
      */
     private val report = StringBuilder()
     private fun say(line: String) { println(line); report.appendLine(line) }
+
+    /**
+     * The backend every tracer in this suite is built on, set once per pass by [run].
+     *
+     * It is a `var` rather than a parameter threaded through [converge] because every arm calls
+     * [converge] and none of them has any business choosing a backend: the whole point is that the
+     * same arm runs unchanged on each backend the device exposes, and the only correct value is
+     * whichever pass is currently executing. Threading it would put a parameter on ten call sites
+     * that must never disagree. The harness is a single sequential suspend function, so there is no
+     * concurrent reader.
+     *
+     * The medium touches no traversal code, which is exactly why comparing backends is worth doing
+     * rather than assumed: the analytic anchors — `exp(-sigma_t * d)` and the furnace's absolute
+     * 1.0 — are backend-independent, so if one backend misses them and the other does not, the
+     * disagreement is in traversal and not in the estimator.
+     */
+    private var activeBackend = PathTracingRenderer.Backend.COMPUTE_BVH
     private fun flushReport(out: File) {
         out.mkdirs()
         File(out, "report.txt").writeText(report.toString())
@@ -278,7 +295,7 @@ object PathTraceMediumGpuSmoke {
                                  fogDensity: Float = 0f,
                                  fogColor: Vector3f = Vector3f(0f)): Shot {
         val tracer = PathTracingRenderer(renderer, scene, environment, width, height, camera,
-            PathTracingRenderer.Backend.COMPUTE_BVH, name = "medium-check")
+            activeBackend, name = "medium-check")
         return tracer.use {
             tracer.mediumDensity = medium.density
             tracer.mediumAlbedo = medium.albedo
@@ -1165,24 +1182,57 @@ object PathTraceMediumGpuSmoke {
      * Drives every check and writes the captures under [outputDirectory].
      * Call from a suspend body in a box below a live renderer, as with the other path-trace smokes.
      */
+    /**
+     * Every arm, on every backend this device exposes.
+     *
+     * `COMPUTE_BVH` always runs; `RAY_QUERY` runs as well wherever `device.supportsRayQuery`, which
+     * is the same condition `PathTraceGpuSmoke` uses to decide the base tracer's backend coverage.
+     * A device without ray queries therefore behaves exactly as before, one pass, and says so.
+     *
+     * Artifacts go to `<outputDirectory>/<backend>/` — a subdirectory per pass, because the figures
+     * are per-backend renders and a figure that does not say which backend produced it is not
+     * evidence about either. The cumulative `report.txt` is written at `<outputDirectory>` as well
+     * as per pass, so there is still one file with the whole run in it.
+     */
     suspend fun run(renderer: Renderer, outputDirectory: String) {
-        val out = File(outputDirectory)
-        val arms = listOf<Pair<String, suspend () -> Unit>>(
-            "inert without extinction" to { inertWithoutExtinction(renderer) },
-            "closed form through depthFog" to { absorptionAgainstDepthFog(renderer) },
-            "absorption against the closed form" to { absorptionAgainstClosedForm(renderer) },
-            "energy conservation" to { scatteringFurnace(renderer) },
-            "bounce truncation" to { furnaceBounceSweep(renderer) },
-            "single scattering against a quadrature" to { singleScatteringAgainstQuadrature(renderer) },
-            "the emitter connection" to { emitterConnectionIsInvisible(renderer) },
-            "lamp in fog" to { lampInFog(renderer) },
-            "captures" to { captures(renderer, out) },
-            "god rays" to { godRaysCapture(renderer, out) }
-        )
-        for ((name, arm) in arms) {
-            try { arm() } finally { report.appendLine("-- after: $name"); flushReport(out) }
+        val root = File(outputDirectory)
+        val backends = buildList {
+            add(PathTracingRenderer.Backend.COMPUTE_BVH)
+            if (renderer.device.supportsRayQuery) add(PathTracingRenderer.Backend.RAY_QUERY)
         }
-        say("PASS path-tracing participating-medium GPU smoke")
-        flushReport(out)
+        say("backends on this device: ${backends.joinToString { it.name }}" +
+            if (backends.size == 1) " (no enabled KHR ray queries, so one pass)" else "")
+
+        for (backend in backends) {
+            activeBackend = backend
+            val out = File(root, backend.name.lowercase())
+            say("== backend $backend: artifacts in ${out.absolutePath}")
+            val arms = listOf<Pair<String, suspend () -> Unit>>(
+                "inert without extinction" to { inertWithoutExtinction(renderer) },
+                "closed form through depthFog" to { absorptionAgainstDepthFog(renderer) },
+                "absorption against the closed form" to { absorptionAgainstClosedForm(renderer) },
+                "energy conservation" to { scatteringFurnace(renderer) },
+                "bounce truncation" to { furnaceBounceSweep(renderer) },
+                "single scattering against a quadrature" to { singleScatteringAgainstQuadrature(renderer) },
+                "the emitter connection" to { emitterConnectionIsInvisible(renderer) },
+                "lamp in fog" to { lampInFog(renderer) },
+                "captures" to { captures(renderer, out) },
+                "god rays" to { godRaysCapture(renderer, out) }
+            )
+            for ((name, arm) in arms) {
+                try {
+                    arm()
+                } finally {
+                    report.appendLine("-- after: $backend / $name")
+                    flushReport(out)
+                    flushReport(root)
+                }
+            }
+            say("PASS backend $backend: every arm")
+        }
+
+        say("PASS path-tracing participating-medium GPU smoke on " +
+            backends.joinToString { it.name })
+        flushReport(root)
     }
 }
