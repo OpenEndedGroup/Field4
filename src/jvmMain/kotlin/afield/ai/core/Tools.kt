@@ -502,10 +502,10 @@ data class SemanticRetrievalToolResult(
 
 /** Long-running task tools -------------------------------------------------- */
 
-@JsonClassDescription("Read the persistent scratchpad for this chat. Use it to recover durable notes, decisions, constraints, and handoff context from earlier turns.")
+@JsonClassDescription("Read this chat's in-memory scratchpad across turns. It does not survive a server restart; use document guide tools for durable handoff notes.")
 data class ScratchpadReadRequest(val unused: Int = 0)
 
-@JsonClassDescription("Update the persistent scratchpad for this chat. Use append to add durable notes, replace to rewrite the whole scratchpad, or clear to erase it.")
+@JsonClassDescription("Update this chat's in-memory scratchpad. Use append, replace or clear. Use document guide tools for notes that must survive a restart.")
 data class ScratchpadUpdateRequest(
     val operation: String = "append",
     val text: String = ""
@@ -518,10 +518,10 @@ data class ScratchpadResult(
     val charCount: Int = 0
 )
 
-@JsonClassDescription("Read the persistent checklist for this chat. Use it to track long-running tasks across turns.")
+@JsonClassDescription("Read the in-memory checklist for this chat. Use it to track long-running tasks across turns.")
 data class ChecklistReadRequest(val unused: Int = 0)
 
-@JsonClassDescription("Update the persistent checklist for this chat. Use operation add, update, complete, reopen, remove, replace, or clear. For update/complete/reopen/remove, itemId identifies the item.")
+@JsonClassDescription("Update the in-memory checklist for this chat. Use operation add, update, complete, reopen, remove, replace, or clear. For update/complete/reopen/remove, itemId identifies the item.")
 data class ChecklistUpdateRequest(
     val operation: String,
     val itemId: String = "",
@@ -823,6 +823,7 @@ data class ToolExecutionContext(
     val semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
 
     val agentMemory: AgentMemoryState? = null,
+    val documentGuides: DocumentGuideTools? = null,
 
     // Optional extra tools
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null

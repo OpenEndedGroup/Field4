@@ -299,44 +299,41 @@ internal fun createProxyTarget(request: CreateFileProxyBox): CreatedProxy {
     }
 }
 
+internal fun createFileProxyBox(request: CreateFileProxyBox): CreateFileProxyBoxResponse {
+    val createdProxy = createProxyTarget(request)
+    val info = thisSessionInfo.get()
+    val uid = UUID.randomUUID().toString()
+    val created = box(uid, createIfMissing = true, initIfCreated = true, root = info)
+
+    created.name = sanitizeDroppedFileName(request.fileName)
+    created.frame = Rect(request.x, request.y, FILE_PROXY_DEFAULT_WIDTH, FILE_PROXY_DEFAULT_HEIGHT)
+    created.setPropertyRaw("file_proxy_mode", createdProxy.mode)
+    created.setPropertyRaw("file_proxy_path", createdProxy.storedPath)
+    createdProxy.originalPath?.let { created.setPropertyRaw("file_proxy_original_path", it) }
+    request.mimeType?.takeIf { it.isNotBlank() }?.let { created.setPropertyRaw("file_proxy_mime", it) }
+    created.setPropertyRaw("default_property", "contents")
+    created.setPropertyRaw("customization", FILE_PROXY_CUSTOMIZATION)
+    refreshFileProxyBox(created, notifyMissing = true)
+
+    needsResync.add(info.root to "children")
+    needsResync.add(created to "parents")
+    needsResync.add(created to "actions")
+    created.resyncAll()
+    info.markSidecarPending(uid, "file_proxy_path")
+    info.topologyGeneration++
+    doResync()
+    return CreateFileProxyBoxResponse(ok = true, uid = uid, message = "Created file proxy for ${createdProxy.target.path}", mode = createdProxy.mode, path = createdProxy.storedPath)
+}
+
 @RunsAt(installHandlers)
 fun fileProxyHandlers() {
     handlers["create-file-proxy-box"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<CreateFileProxyBox>(message.payload!!)
         try {
-            val createdProxy = createProxyTarget(request)
-            val info = thisSessionInfo.get()
-            val uid = UUID.randomUUID().toString()
-            val created = box(uid, createIfMissing = true, initIfCreated = true, root = info)
-
-            created.name = sanitizeDroppedFileName(request.fileName)
-            created.frame = Rect(request.x, request.y, FILE_PROXY_DEFAULT_WIDTH, FILE_PROXY_DEFAULT_HEIGHT)
-            created.setPropertyRaw("file_proxy_mode", createdProxy.mode)
-            created.setPropertyRaw("file_proxy_path", createdProxy.storedPath)
-            createdProxy.originalPath?.let { created.setPropertyRaw("file_proxy_original_path", it) }
-            request.mimeType?.takeIf { it.isNotBlank() }?.let { created.setPropertyRaw("file_proxy_mime", it) }
-            created.setPropertyRaw("default_property", "contents")
-            created.setPropertyRaw("customization", FILE_PROXY_CUSTOMIZATION)
-            refreshFileProxyBox(created, notifyMissing = true)
-
-            needsResync.add(info.root to "children")
-            needsResync.add(created to "parents")
-            needsResync.add(created to "actions")
-            created.resyncAll()
-            info.markSidecarPending(uid, "file_proxy_path")
-            info.topologyGeneration++
-            doResync()
-
+            val response = createFileProxyBox(request)
             reply(
                 Message(message.replyTo ?: "create-file-proxy-box").payload(
-                    CreateFileProxyBoxResponse(
-                        ok = true,
-                        uid = uid,
-                        message = "Created file proxy for ${createdProxy.target.path}",
-                        mode = createdProxy.mode,
-                        path = createdProxy.storedPath,
-                        defaultProperty = "contents"
-                    )
+                    response
                 )
             )
             Handled.yes

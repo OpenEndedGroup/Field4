@@ -58,6 +58,7 @@ class IdeChatHelpers(
         semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
+        documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -85,6 +86,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
+            documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch
         )
 
@@ -145,6 +147,7 @@ class IdeChatHelpers(
         semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
+        documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -175,6 +178,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
+            documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch
         )
 
@@ -236,6 +240,7 @@ class IdeChatHelpers(
         semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
+        documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -263,6 +268,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
+            documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch
         )
 
@@ -326,6 +332,7 @@ class IdeChatHelpers(
         semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
+        documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -353,6 +360,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
+            documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch
         )
 

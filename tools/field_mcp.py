@@ -940,8 +940,11 @@ class FieldMcpServer:
             if not payload.get("ok", False):
                 msg = payload.get("error") or "unknown error"
                 return self._ok(msg_id, {"content": [{"type": "text", "text": f"{flat_name} failed: {msg}"}], "isError": True})
-            text = json.dumps(payload.get("result"), indent=2, default=str)
-            return self._ok(msg_id, {"content": [{"type": "text", "text": text}], "isError": False})
+            result = payload.get("result")
+            text = json.dumps(result, indent=2, default=str)
+            # The RPC can succeed while the tool refuses a stale revision or a read-only write.
+            failed = isinstance(result, dict) and (result.get("success") is False or result.get("ok") is False)
+            return self._ok(msg_id, {"content": [{"type": "text", "text": text}], "isError": failed})
         except McpToolError as exc:
             return self._ok(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
         except Exception as exc:  # noqa: BLE001

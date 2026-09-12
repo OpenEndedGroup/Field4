@@ -1911,7 +1911,8 @@ private fun navigateToBoxProperty(
     property: String = "code",
     scrollToLine: Int? = null,
     highlightLine: Int? = null,
-    syncEditor: Boolean = true
+    syncEditor: Boolean = true,
+    center: Boolean = false
 ): Boolean {
     val box = findBoxElementByUid(uid) ?: return false
     openNestedDisclosuresForNavigation(box)
@@ -1920,7 +1921,7 @@ private fun navigateToBoxProperty(
 
     setTimeout({
         runCatching {
-            ensureBoxVisibleForNavigation(box)
+            if (center) centerBoxForMarkdownNavigation(box) else ensureBoxVisibleForNavigation(box)
         }.onFailure {
             console.info("[nav] failed to scroll to box", it)
         }
@@ -2206,6 +2207,35 @@ internal fun ensureBoxVisibleForNavigation(target: HTMLElement) {
     animateViewportTranslation(
         nextX = mainTranslation[0] + dx,
         nextY = mainTranslation[1] + dy,
+        durationMs = 420.0,
+        refreshSpatialDuringAnimation = spatialNavActive
+    )
+}
+
+/** Center a linked box in the exposed canvas, accounting for the guide and editor together. */
+private fun centerBoxForMarkdownNavigation(target: HTMLElement) {
+    val rect = target.getBoundingClientRect()
+    if (rect.width <= 0.0 || rect.height <= 0.0) return
+    var spaces = listOf(Rect(16.0, 16.0, window.innerWidth - 32.0, window.innerHeight - 32.0))
+    for (selector in listOf(".docs-iframe-container", ".monaco-editor-container", "#document-guide")) {
+        val overlay = document.querySelector(selector) ?: continue
+        if (!isOverlayVisible(overlay)) continue
+        val r = overlay.getBoundingClientRect()
+        val obstacle = Rect(r.left - 14, r.top - 14, r.width + 28, r.height + 28)
+        spaces = spaces.flatMap { area ->
+            if (obstacle.x >= area.right || obstacle.right <= area.x || obstacle.y >= area.bottom || obstacle.bottom <= area.y) listOf(area)
+            else listOf(
+                Rect(area.x, area.y, (obstacle.x - area.x).coerceAtLeast(0.0), area.h),
+                Rect(obstacle.right, area.y, (area.right - obstacle.right).coerceAtLeast(0.0), area.h),
+                Rect(area.x, area.y, area.w, (obstacle.y - area.y).coerceAtLeast(0.0)),
+                Rect(area.x, obstacle.bottom, area.w, (area.bottom - obstacle.bottom).coerceAtLeast(0.0))
+            ).filter { it.w >= 96 && it.h >= 96 }
+        }
+    }
+    val safe = spaces.maxByOrNull { it.w * it.h } ?: navigationSafeViewportRect()
+    animateViewportTranslation(
+        nextX = mainTranslation[0] + safe.x + safe.w / 2 - rect.left - rect.width / 2,
+        nextY = mainTranslation[1] + safe.y + safe.h / 2 - rect.top - rect.height / 2,
         durationMs = 420.0,
         refreshSpatialDuringAnimation = spatialNavActive
     )
@@ -4822,6 +4852,10 @@ suspend fun main() {
     window.unsafeCast<dynamic>().navigateToBoxProperty =
         { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
             navigateToBoxProperty(uid, property, scrollToLine, highlightLine)
+        }
+    window.unsafeCast<dynamic>().navigateToBoxFromLink =
+        { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
+            navigateToBoxProperty(uid, property, scrollToLine, highlightLine, center = true)
         }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox

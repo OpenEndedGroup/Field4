@@ -7,9 +7,9 @@ import {
 	monacoHandleOutput,
 	monacoLaunchAll,
 	monacoContinueAll,
-	monacoGetEnclosingScope,
-	aiChatMarkdownToHtml
+	monacoGetEnclosingScope
 } from "./afield.mjs"
+import { renderFieldMarkdown } from "./markdownView.js"
 import { installFieldSuggest } from "./fieldSuggest.js"
 
 if (!window.require || typeof window.require.config !== "function") {
@@ -893,7 +893,8 @@ const writeNotesMarkdownMode = (mode) => {
 
 const notesSelectionIsActive = () => {
         const selected = window.currentSelectedCode
-        return window.currentSelectedProperty === "notes" && selected && selected.length === 1
+        return selected && selected.length === 1 && (window.currentSelectedProperty === "notes" ||
+                (window.currentSelectedProperty === "contents" && selected[0].contents_language === "markdown"))
 }
 
 const selectedNotesMarkdown = () => {
@@ -903,7 +904,7 @@ const selectedNotesMarkdown = () => {
         }
         const selected = window.currentSelectedCode
         if (selected && selected.length === 1 && selected[0]) {
-                return selected[0].notes || ""
+                return selected[0][window.currentSelectedProperty] || ""
         }
         return ""
 }
@@ -943,230 +944,19 @@ const ensureNotesPreviewElement = () => {
         return preview
 }
 
-const safeMarkdownUrl = (url, allowImageData = false) => {
-        const raw = String(url || "").trim()
-        if (!raw) return ""
-        try {
-                const parsed = new URL(raw, window.location.href)
-                const protocol = parsed.protocol.toLowerCase()
-                if (protocol === "http:" || protocol === "https:" || protocol === "mailto:" || protocol === "blob:") {
-                        return raw
-                }
-                if (allowImageData && protocol === "data:" && raw.toLowerCase().startsWith("data:image/")) {
-                        return raw
-                }
-                if (protocol === window.location.protocol && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
-                        return raw
-                }
-        } catch (_) {
-                if (raw.startsWith("#") || raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../")) {
-                        return raw
-                }
-        }
-        return ""
-}
-
-const sanitizeNotesMarkdown = (root) => {
-        root.querySelectorAll("a[href]").forEach((link) => {
-                const safe = safeMarkdownUrl(link.getAttribute("href"))
-                if (safe) {
-                        link.setAttribute("href", safe)
-                        link.setAttribute("rel", "noopener noreferrer")
-                } else {
-                        link.removeAttribute("href")
-                }
-        })
-        root.querySelectorAll("img[src]").forEach((img) => {
-                const safe = safeMarkdownUrl(img.getAttribute("src"), true)
-                if (safe) {
-                        img.setAttribute("src", safe)
-                        img.setAttribute("loading", "lazy")
-                } else {
-                        img.remove()
-                }
-        })
-}
-
-const escapeCodeHtml = (value) => String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;")
-
-const normalizeCodeFenceLanguage = (language) => {
-        const raw = String(language || "").trim().toLowerCase().replace(/^language-/, "")
-        if (!raw) return ""
-        const aliases = {
-                kt: "kotlin",
-                kts: "kotlin",
-                glsl: "glsl",
-                frag: "glsl",
-                fragment: "glsl",
-                vert: "glsl",
-                vertex: "glsl",
-                comp: "glsl",
-                compute: "glsl",
-                shader: "glsl",
-                metal: "msl",
-                msl: "msl",
-                bend: "bend",
-                js: "javascript",
-                ts: "typescript",
-                sh: "bash",
-                shell: "bash"
-        }
-        return aliases[raw] || raw
-}
-
-const glslKeywordSet = new Set([
-        "attribute", "break", "buffer", "case", "centroid", "coherent", "const", "continue", "default",
-        "discard", "do", "else", "flat", "for", "highp", "if", "in", "inout", "invariant", "layout",
-        "lowp", "mediump", "noperspective", "out", "patch", "precision", "readonly", "restrict",
-        "return", "sample", "shared", "smooth", "struct", "subroutine", "switch", "uniform", "varying",
-        "volatile", "while", "writeonly"
-])
-
-const glslTypeSet = new Set([
-        "void", "bool", "int", "uint", "float", "double",
-        "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "bvec2", "bvec3", "bvec4",
-        "dvec2", "dvec3", "dvec4", "mat2", "mat3", "mat4", "mat2x2", "mat2x3", "mat2x4", "mat3x2", "mat3x3",
-        "mat3x4", "mat4x2", "mat4x3", "mat4x4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D",
-        "sampler3D", "samplerCube", "sampler2DArray", "samplerCubeArray", "isampler2D", "usampler2D",
-        "image1D", "image2D", "image3D", "imageCube", "atomic_uint"
-])
-
-const glslLiteralSet = new Set(["true", "false"])
-
-const glslBuiltinSet = new Set([
-        "abs", "acos", "all", "any", "asin", "atan", "ceil", "clamp", "cos", "cross", "degrees", "determinant",
-        "distance", "dot", "dFdx", "dFdy", "equal", "exp", "exp2", "faceforward", "floor", "fract", "fwidth",
-        "greaterThan", "greaterThanEqual", "inversesqrt", "length", "lessThan", "lessThanEqual", "log", "log2",
-        "max", "min", "mix", "mod", "normalize", "not", "notEqual", "pow", "radians", "reflect", "refract",
-        "round", "sign", "sin", "smoothstep", "sqrt", "step", "tan", "texture", "textureGrad", "textureLod",
-        "transpose", "gl_FragCoord", "gl_FragDepth", "gl_GlobalInvocationID", "gl_InstanceIndex",
-        "gl_LocalInvocationID", "gl_Position", "gl_VertexIndex"
-])
-
-const highlightGlslCode = (source) => {
-        let out = ""
-        let i = 0
-        let lineStart = true
-        const text = String(source || "")
-
-        const push = (className, value) => {
-                out += `<span class="${className}">${escapeCodeHtml(value)}</span>`
-        }
-
-        while (i < text.length) {
-                const ch = text[i]
-                const next = text[i + 1]
-
-                if (lineStart && ch === "#") {
-                        const end = text.indexOf("\n", i)
-                        const stop = end === -1 ? text.length : end
-                        push("hljs-meta", text.slice(i, stop))
-                        i = stop
-                        lineStart = false
-                        continue
-                }
-
-                if (ch === "/" && next === "/") {
-                        const end = text.indexOf("\n", i)
-                        const stop = end === -1 ? text.length : end
-                        push("hljs-comment", text.slice(i, stop))
-                        i = stop
-                        lineStart = false
-                        continue
-                }
-
-                if (ch === "/" && next === "*") {
-                        const end = text.indexOf("*/", i + 2)
-                        const stop = end === -1 ? text.length : end + 2
-                        push("hljs-comment", text.slice(i, stop))
-                        lineStart = text.slice(i, stop).endsWith("\n")
-                        i = stop
-                        continue
-                }
-
-                if (ch === "\"" || ch === "'") {
-                        const quote = ch
-                        let j = i + 1
-                        while (j < text.length) {
-                                if (text[j] === "\\" && j + 1 < text.length) {
-                                        j += 2
-                                        continue
-                                }
-                                if (text[j] === quote) {
-                                        j++
-                                        break
-                                }
-                                j++
-                        }
-                        push("hljs-string", text.slice(i, j))
-                        lineStart = false
-                        i = j
-                        continue
-                }
-
-                const number = text.slice(i).match(/^(?:0x[0-9a-fA-F]+|(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?)[uUlLfF]?/)
-                if (number) {
-                        push("hljs-number", number[0])
-                        i += number[0].length
-                        lineStart = false
-                        continue
-                }
-
-                const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/)
-                if (ident) {
-                        const word = ident[0]
-                        if (glslKeywordSet.has(word)) push("hljs-keyword", word)
-                        else if (glslTypeSet.has(word)) push("hljs-type", word)
-                        else if (glslLiteralSet.has(word)) push("hljs-literal", word)
-                        else if (glslBuiltinSet.has(word)) push("hljs-built_in", word)
-                        else out += escapeCodeHtml(word)
-                        i += word.length
-                        lineStart = false
-                        continue
-                }
-
-                out += escapeCodeHtml(ch)
-                lineStart = ch === "\n" || (lineStart && /\s/.test(ch))
-                i++
-        }
-
-        return out
-}
-
-const highlightNotesMarkdown = (root) => {
-        root.querySelectorAll("pre code").forEach((block) => {
-                const rawLanguage = block.className.match(/(?:^|\s)language-([A-Za-z0-9_+-]+)/)?.[1] || block.closest(".ai-chat-code-block")?.dataset?.lang || ""
-                const language = normalizeCodeFenceLanguage(rawLanguage)
-                block.className = language ? `language-${language}` : ""
-                if (language === "glsl") {
-                        block.innerHTML = highlightGlslCode(block.textContent || "")
-                        block.classList.add("hljs", "language-glsl")
-                        return
-                }
-                if (!window.hljs || typeof window.hljs.highlightElement !== "function") return
-                try {
-                        if (language && window.hljs.getLanguage && !window.hljs.getLanguage(language)) {
-                                block.className = "language-plaintext"
-                        }
-                        window.hljs.highlightElement(block)
-                } catch (_) {
-                }
-        })
-}
-
 const renderNotesMarkdownPreview = () => {
         const preview = ensureNotesPreviewElement()
         if (!preview) return false
         const body = preview.querySelector(".afield-notes-preview-body")
         if (!body) return false
-        body.innerHTML = aiChatMarkdownToHtml(selectedNotesMarkdown())
-        sanitizeNotesMarkdown(body)
-        highlightNotesMarkdown(body)
+        const selected = window.currentSelectedCode?.[0]
+        const options = selected?.file_proxy_mode === "document" ? {
+                documentKey: window.documentGuideSessionKey || window.currentDocumentSessionKey, path: selected.file_proxy_path,
+                onLink: (link) => window.openDocumentGuideLink?.(link, selected.file_proxy_path)
+        } : {
+                onGuide: (link) => window.openDocumentGuideLink?.(link)
+        }
+        renderFieldMarkdown(body, selectedNotesMarkdown(), options)
         return true
 }
 
