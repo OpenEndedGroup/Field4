@@ -1,0 +1,169 @@
+name: physics_manifold_path_trace
+description: >
+  A cloth simulation becomes a solid you could print. A 14 x 14 SimdVerlet sheet drapes over a
+  sphere and a floor, and then each of its 364 distance constraints is turned into a rod: the convex
+  hull of a small sphere at each end, which is a capsule with no orientation arithmetic anywhere.
+  One batched Manifold union welds the 364 rods into a single closed solid, whose genus is a count of
+  the net's independent cycles and so can be checked against the cloth's own quad count. The solid
+  goes to the GPU path tracer as brushed metal. Needs a live renderer parent and Manifold
+  (`brew install manifold`).
+operations:
+  - create:
+      box: chain_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · Cloth through Manifold")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: physics_manifold_trace
+      name: "a draped cloth, welded into one solid, traced"
+      frame: { x: 320.0, y: 140.0, w: 300.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.PathTraceEnvironment
+          import afield.four.fabricated.PathTraceMaterial
+          import afield.four.fabricated.PathTraceScene
+          import afield.four.fabricated.PathTracingRenderer
+          import afield.four.fabricated.importTriMesh
+          import afield.four.modules.fromContext
+          import afield.four.physics.PlaneCollider
+          import afield.four.physics.SimdVerlet
+          import afield.four.physics.SphereCollider
+          import afield.four.physics.addCloth
+          import afield.four.physics.addColliders
+          import afield.four.util.Camera
+          import afield.manifold.ManifoldLibrary
+          import afield.manifold.Solid
+          import afield.stdlib.genus
+          import afield.stdlib.isWatertight
+          import afield.stdlib.linalg.Vector3f
+          import java.io.File
+
+          val renderer: Renderer = fromContext()
+          prop<PathTracingRenderer>(tracer)
+
+          require(ManifoldLibrary.isAvailable) {
+              ManifoldLibrary.describe() + "\nOn macOS: brew install manifold, then run this box again."
+          }
+
+          // ---- the knobs ------------------------------------------------------------------
+          val side = 14           // particles per side; struts go as 2*side*(side-1)
+          val spacing = 0.17f     // rest length between neighbours
+          val rod = 0.035         // radius of the rod each strut becomes
+          val settleFrames = 300  // physics frames before the geometry is taken
+          // ---------------------------------------------------------------------------------
+
+          // ---- stage one: the physics ----------------------------------------------------
+          // Gravity is +y in SimdVerlet, which is why the sphere sits BELOW the sheet at y = 0.8
+          // and the floor's legal side is above a plane whose normal is -y.
+          val sim = SimdVerlet(SimdVerlet.State3.empty())
+          val cloth = sim.addCloth(
+              width = side,
+              height = side,
+              spacing = spacing,
+              stiffness = 60f,
+              curvatureStrength = 20f,
+              position = { c, r -> vec((c - (side - 1) * 0.5f) * spacing, 0f, (r - (side - 1) * 0.5f) * spacing) },
+              pinned = { _, _ -> false },
+          )
+          val world = sim.addColliders(
+              SphereCollider(0f, 0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
+              PlaneCollider(0f, -1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
+          )
+          repeat(settleFrames) {
+              cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16)
+          }
+          println("${cloth.count} particles, ${world.contacts} contacts on the last frame")
+
+          // ---- stage two: 364 rods, one batched union ------------------------------------
+          // The path tracer has +y up and SimdVerlet has +y down, so read the physics out with y
+          // negated once, here, rather than flipping the camera and the floor to match it.
+          fun at(col: Int, row: Int): Triple<Double, Double, Double> {
+              val p = cloth.position(col, row)
+              return Triple(p.x.toDouble(), -p.y.toDouble(), p.z.toDouble())
+          }
+
+          val struts = buildList {
+              for (row in 0 until side) for (col in 0 until side) {
+                  if (col + 1 < side) add(at(col, row) to at(col + 1, row))
+                  if (row + 1 < side) add(at(col, row) to at(col, row + 1))
+              }
+          }
+          val quads = (side - 1) * (side - 1)
+          println("${struts.size} struts, ${quads} quads")
+
+          val (net, netGenus) = Solid.scope {
+              // A capsule is the convex hull of two balls, so `hullOf` does the orientation and
+              // there is no basis to build. `segments = 10` keeps the triangle count of 364 of these
+              // in six figures rather than seven.
+              val rods = struts.map { (a, b) ->
+                  Solid.hullOf(
+                      Solid.sphere(rod, segments = 10).translated(a.first, a.second, a.third),
+                      Solid.sphere(rod, segments = 10).translated(b.first, b.second, b.third),
+                  )
+              }
+              // One batched union rather than 363 nested ones: Manifold plans the whole set.
+              val start = System.nanoTime()
+              val welded = Solid.union(rods).checked("cloth net")
+              println("union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
+                  "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}")
+              // A Pair's Solid is exempted from the scope's release, same as a bare one.
+              welded to welded.genus
+          }
+          val shaded = net.toTriMesh(normals = true, minSharpAngle = 30.0)
+          val plain = net.toTriMesh()
+          println("genus $netGenus against $quads quads in the sheet; " +
+              if (netGenus == quads) "they agree, so no two rods have been welded by contact"
+              else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching")
+          println("Field's own reckoning: watertight ${plain.isWatertight()}, genus ${plain.genus()}")
+
+          // ---- stage three: the render ---------------------------------------------------
+          val scene = PathTraceScene()
+          val metal = scene.material(PathTraceMaterial.metal(0.95f, 0.78f, 0.42f, 0.22f))
+          val floor = scene.material(PathTraceMaterial.plastic(0.5f, 0.51f, 0.53f, 0.5f))
+          val added = scene.importTriMesh(shaded, metal)
+          println("scene: ${added.triangleCount} triangles appended, ${added.degenerateCount} dropped")
+
+          val reach = 6f
+          scene.quad(
+              Vector3f(-reach, -1.30f, -reach), Vector3f(reach, -1.30f, -reach),
+              Vector3f(reach, -1.30f, reach), Vector3f(-reach, -1.30f, reach),
+              floor,
+          )
+
+          val environment = PathTraceEnvironment.fromFile(
+              File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+          )
+          val camera = Camera(renderer).also {
+              it.at.set(1.75f, 0.4f, 2.25f)
+              it.target.set(0f, -0.8f, 0f)
+              it.p.fov = 0.62
+          }
+          tracer = PathTracingRenderer(renderer, scene, environment, 1000, 614, camera).install()
+          tracer.samplesPerFrame = 2
+          tracer.maxBounces = 6
+          tracer.exposure = 1.3f
+          tracer.environmentRotation = 2.1f
+          tracer.indirectClamp = 10f
+          tracer.blitToScreen()
+          println("${tracer.backend}: ${tracer.triangleCount} triangles")
+          net.close()
+          frames {
+              while (tracer.samples < 700) { frame() }
+              println("cloth study converged: ${tracer.samples} samples")
+          }
+  - connect: { parent: chain_renderer, child: physics_manifold_trace }
+  - launch: { box: chain_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: physics_manifold_trace, property: code }
+  - await: { wait: pending }

@@ -155,6 +155,15 @@ nav:
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
       - ImGui as a VR Panel: imgui_vr_panel.md
+  # Every other section here is a subsystem, and a reader who has finished one of them still has no
+  # picture of how two of them meet. These pages are that picture: one object carried across three
+  # or four subsystems, with each hop's output checked against the next stage's arithmetic. They sit
+  # after the sections they draw on rather than inside any one of them, because no one of them owns
+  # a chain — putting the polytope page under "Geometry & Solids" would file it away from the tracer
+  # it ends at, and under "Rendering & GPU" away from the algebra it starts from.
+  - Chains Across Subsystems:
+    - A Polytope, Cut Open and Traced: chain_polytope_render.md
+    - Particles, Welded and Traced: chain_physics_render.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - AI Tool-Use History: ai_tool_use_history.md

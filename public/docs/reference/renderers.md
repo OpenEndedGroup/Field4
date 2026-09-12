@@ -14,7 +14,7 @@ Underneath all three sits `FabricateScene`, a Three.js-shaped scene graph that o
 
 Two constraints apply to the renderers themselves. A renderer is constructed, installed and closed on Field's render thread, like any other `afield.four` module — installing under a name already in use retires the previous occupant, so there is no coroutine lifetime bookkeeping to do. And a device is required: nothing here that draws does so into an `FLine`, or in a headless test, the way the `Math` page's contents do. For the same ground with pictures, see [The Fabricate renderer](../fabricate_renderer.md), [Path tracing](../path_tracing.md) and [afield.four graphics](../afield_four_graphics.md).
 
-25 source file(s), 523 public symbol(s), 184 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+26 source file(s), 532 public symbol(s), 193 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1072,7 +1072,7 @@ metallic-roughness alone — the asymmetry glTF requires, and the one
 
 `src/jvmMain/kotlin/afield/four/fabricated/PathTraceScene.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceScene/)
 
-**Used in:** [Progressive path tracing](../path_tracing.md)
+**Used in:** [Progressive path tracing](../path_tracing.md), [A polytope, cut open, and traced](../chain_polytope_render.md)
 
 ### PathTraceMaterial { #pathtracescene-kt-pathtracematerial }
 
@@ -1137,6 +1137,74 @@ CPU-owned linear RGBA texture. Wrap modes: 0 repeat, 1 clamp, 2 mirrored repeat.
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">pathTracingHere</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PathTraceScene</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">PathTraceEnvironment</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;path-tracer&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span> <span class="o">=</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L18) | A named tracer whose material function lives in this box's normal compute shader property. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;pathTracingHere</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PathTraceScene</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">PathTraceEnvironment</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;path-tracer&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span> <span class="o">=</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L32) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPathTraceShaderBoxes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L54) |  |
+
+## PathTraceTriMesh.kt { #pathtracetrimesh-kt }
+
+[`TriMesh`](graphics.md#mesh-kt-trimesh) into [`PathTraceScene`](renderers.md#pathtracescene-kt-pathtracescene), so that anything in Field which produces a mesh can be traced.
+
+`PathTraceScene.mesh` already takes indexed positions, so the arithmetic here is small. The
+difference is what it does with the triangles a real producer emits and
+`PathTraceScene.triangle` rejects: zero-area slivers where two vertices coincide, and vertex
+normals that came out of a degenerate face as zero-length. A Conway operator chain, a
+marching-cubes surface, a Manifold Boolean and a cloth simulation all produce some, and one of
+them aborts the whole append. Here they are counted and skipped, and the count comes back in
+`PathTraceTriMeshImport.degenerateCount`.
+
+The producers whose output lands here:
+
+| source | route |
+| --- | --- |
+| a polytope, including Conway chains | `afield.stdlib.polytope.triangulate` `.mesh` |
+| a Manifold solid, after Booleans | `afield.manifold.Solid.toTriMesh` |
+| a scalar field | `afield.stdlib.marchingCubes`, or `afield.manifold.Solid.levelSet` |
+| a mesh off disk | `afield.stdlib.readObj` and the rest of `mesh_io.kt` |
+| a heightfield, a tube, a revolve | `mesh_generate.kt` |
+
+### Normals decide whether it reads as faceted or smooth
+
+`TriMesh.normals` is optional, and when it is absent every triangle gets its own face normal, so
+the surface reads faceted. That is the right look for a polyhedron and the wrong one for a
+sphere. Both Manifold and Field's polytope triangulator can supply either: `toTriMesh(normals =
+true)` and `triangulate(normals = NormalPolicy.Crease(30.0))` split a vertex per face at a hard
+edge and average across a soft one.
+
+Splitting vertices for shading also breaks index-sharing, so the mesh that shades well is not the
+one to measure topology on. Take two: the split mesh for the scene, the plain one for
+`afield.stdlib.genus` and `afield.stdlib.isWatertight`.
+
+### A material per triangle
+
+The overload taking a `(triangle: Int) -> Int` selector is handed each triangle's index in `mesh`.
+That numbering does not close up over a skipped triangle, so it stays lined up with the
+per-triangle side tables a producer hands
+out: `afield.stdlib.polytope.TriangulatedGeometry.sourceFace` names the polygon a triangle came
+from, and its `triangleAttributes` carry whatever the triangulator was asked to record. So a
+Conway chain's lineage can pick the material, and a face's provenance becomes something you can
+see in the render.
+
+`src/jvmMain/kotlin/afield/four/fabricated/PathTraceTriMesh.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceTriMesh/)
+
+### Top-level functions { #pathtracetrimesh-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PathTraceScene</span><span class="p">.</span><span class="nf">importTriMesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="n">material</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">transform</span><span class="p">:</span> <span class="nc">Matrix4f</span> <span class="o">=</span> <span class="nc">Matrix4f</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">vertexColors</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">warning</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="nf">println</span><span class="p">(</span><span class="s">&quot;TriMesh: $it&quot;</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTraceTriMeshImport</span></code>](source/jvmMain/afield/four/fabricated/PathTraceTriMesh/#L89) | Append `mesh` to this scene under `material`, baking `transform` into world-space coordinates. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PathTraceScene</span><span class="p">.</span><span class="nf">importTriMesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="n">material</span><span class="p">:</span> <span class="p">(</span><span class="n">triangle</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">transform</span><span class="p">:</span> <span class="nc">Matrix4f</span> <span class="o">=</span> <span class="nc">Matrix4f</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">vertexColors</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">warning</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="nf">println</span><span class="p">(</span><span class="s">&quot;TriMesh: $it&quot;</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTraceTriMeshImport</span></code>](source/jvmMain/afield/four/fabricated/PathTraceTriMesh/#L113) | `importTriMesh` with the material chosen per triangle. |
+
+### PathTraceTriMeshImport { #pathtracetrimesh-kt-pathtracetrimeshimport }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PathTraceTriMeshImport</span><span class="p">(</span><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">degenerateCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundsMin</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundsMax</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="k">val</span> <span class="n">warnings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceTriMesh/#L53)
+
+What one `importTriMesh` call did: the triangles that reached the scene, and the ones that did not.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Triangles appended to the scene. |
+| <code class="highlight"><span class="k">val</span> <span class="n">degenerateCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Triangles skipped for zero area or a non-finite coordinate. |
+| <code class="highlight"><span class="k">val</span> <span class="n">boundsMin</span><span class="p">:</span> <span class="nc">Vector3f</span></code> | Corner of the appended geometry's world-space bounding box. Both corners are zero when nothing was appended. |
+| <code class="highlight"><span class="k">val</span> <span class="n">boundsMax</span><span class="p">:</span> <span class="nc">Vector3f</span></code> | The opposite corner. |
+| <code class="highlight"><span class="k">val</span> <span class="n">warnings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | One line per distinct reason something was skipped or substituted. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Vector3f</span></code>](source/jvmMain/afield/four/fabricated/PathTraceTriMesh/#L66) | Extent of the appended geometry, which is what a camera distance is usually derived from. |
 
 ## PathTracingRenderer.kt { #pathtracingrenderer-kt }
 

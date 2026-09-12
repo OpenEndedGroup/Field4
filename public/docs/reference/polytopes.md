@@ -596,7 +596,7 @@ output changes: same vertices, same triangles, same provenance arrays.
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt` — [read the source](source/jvmMain/afield/stdlib/polytope/FieldAdapters/)
 
-**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md), [Agent transcript gallery](../agent_transcripts.md)
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #fieldadapters-kt-functions }
 

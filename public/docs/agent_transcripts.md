@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 101 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 104 transcripts on every build, at three
 depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-32 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+35 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1324,6 +1324,34 @@ push constants. An intentional shader error preserves the last valid pipeline; a
 resets accumulation and produces a PASS marker during live execution.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_material_shader_check/metadata.edn)
+
+The three below end at the same tracer and start somewhere else in Field, so each one carries two
+subsystems the others do not; [Chains Across Subsystems](chain_polytope_render.md) is where they are
+walked through.
+
+**polytope_path_trace_lineage** — Bevel of the dodecahedron, traced with its materials read out of
+its lineage. Each of the 62 faces descends from exactly one element of the seed, so the rank of that
+element picks gold, thin glass or plastic, and the three groups come out 12, 30 and 20: the
+dodecahedron's own faces, edges and vertices. See
+[the walkthrough](chain_polytope_render.md#lineage-can-choose-the-material).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn)
+
+**polytope_manifold_path_trace** — The same polytope through the Boolean layer: welded into a
+Manifold solid, eroded by a ball and subtracted from itself into a wall of constant thickness, cut
+open by a plane, then traced. Genus, volume and watertightness are each measured twice, once by
+Manifold and once by Field's own mesh code, and the shell's volume is checked against area times
+thickness.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn)
+
+**physics_manifold_path_trace** — A 14 × 14 SimdVerlet cloth drapes over a sphere collider, and each
+of its 364 distance constraints becomes a rod: the convex hull of a ball at each end, which is a
+capsule needing no orientation arithmetic. One batched union welds them, and the genus of the result
+has to equal the sheet's 169 quads, which the box checks and says in words. See
+[the walkthrough](chain_physics_render.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/physics_manifold_path_trace/metadata.edn)
 
 ## Graphics building blocks
 

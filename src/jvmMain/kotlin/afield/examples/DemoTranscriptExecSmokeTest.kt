@@ -334,6 +334,12 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_gltf",
         "path_tracing_hidden_environment",
         "path_tracing_material_shader_check",
+        // The cross-subsystem chains that end at the same tracer. Each one's CPU half — the Conway
+        // operators, the Manifold Booleans, the cloth solve — is covered by its own tests; what is
+        // left here is the window, so they classify with the rest of the tracer group.
+        "polytope_path_trace_lineage",
+        "polytope_manifold_path_trace",
+        "physics_manifold_path_trace",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",

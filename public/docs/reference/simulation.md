@@ -661,7 +661,7 @@ carry a JDK Incubator Vector path alongside the scalar one; the rest are scalar.
 
 `src/jvmMain/kotlin/afield/four/physics/SimdVerletColliders.kt` — [read the source](source/jvmMain/afield/four/physics/SimdVerletColliders/)
 
-**Used in:** [Physics: particles, constraints, and the one number that decides everything](../physics.md)
+**Used in:** [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints, and the one number that decides everything](../physics.md)
 
 ### Top-level functions { #simdverletcolliders-kt-functions }
 
