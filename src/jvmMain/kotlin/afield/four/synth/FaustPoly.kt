@@ -704,12 +704,11 @@ class FaustVoiceBank internal constructor(
      * The next frame at which anything must happen, strictly after [now]; [Long.MAX_VALUE] when nothing
      * does.
      *
-     * A sentinel rather than a `Long?`: this runs once per chunk on the audio thread, and a
-     * nullable `Long` boxes. That boxing was real and removing it was worth doing — but do not read this
-     * as a claim that [render] is allocation-free, because it is not. `synth.faust.poly`'s allocation
-     * check asserts a *bound* on what a block costs, not zero, and what remains is the polyglot buffer
-     * read rather than anything in this class. See "`render` is not allocation-free" in
-     * `public/docs/faust.md`.
+     * A sentinel rather than a `Long?`: this runs once per chunk on the audio thread, where a
+     * nullable `Long` boxes. [render] is still not allocation-free — `synth.faust.poly`'s allocation
+     * check asserts a *bound* on what a block costs, not zero — and what remains is the polyglot
+     * buffer read rather than anything in this class. `dev_docs/FAUST_MEASUREMENTS.md` has the
+     * per-block figures.
      */
     private fun nextEventFrame(now: Long): Long {
         var next = Long.MAX_VALUE
