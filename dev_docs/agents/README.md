@@ -41,6 +41,7 @@ detailed reference it points into.
 | **Copy-paste a working example** | [`transcripts/README.md`](./transcripts/README.md) | curated, runnable transcript corpus |
 | **Talk to Field from Claude Code/Desktop** | [`FIELD_MCP.md`](./FIELD_MCP.md) | local stdio MCP server over the backdoor; `uv sync --group backdoor` then approve the `field` server |
 | **Capture examples for the docs site** | [`../DOCS_RUNNER_GPU_CAPTURES.md`](../DOCS_RUNNER_GPU_CAPTURES.md) | `diffstatic_runner` fences, incl. GPU/compute/probe |
+| **Check you are driving the right workspace** | [`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md) | verify `serverWorkspace`, never `requestedWorkspace` — of the old four-field check, only one field could disagree with you |
 
 ## The core docs
 
@@ -50,6 +51,7 @@ detailed reference it points into.
 - **[`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md)** — the backdoor CLI: server lifecycle,
   batch/interactive modes, `--graphics-context`, screenshots, video, `page-eval`, logs.
 - **[`AGENT_QUICK_REF.md`](./AGENT_QUICK_REF.md)** — a one-page cheat-sheet of the most-used commands.
+- **[`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md)** — which `status` fields are facts about the server and which are your own arguments echoed back, why an attached server's workspace cannot be changed, the three causes of `boxes: []`, and how the smoke runner's JVM reaper now prints its attribution evidence.
 - **[`FIELD_MCP.md`](./FIELD_MCP.md)** — expose Field to Claude Code/Desktop as a local stdio MCP server (`tools/field_mcp.py` + `.mcp.json`), including the `uv sync --group backdoor` prerequisite.
 - **[`transcripts/README.md`](./transcripts/README.md)** — the runnable example corpus.
 
