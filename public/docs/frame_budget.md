@@ -18,9 +18,9 @@ named line of your own box source.
 |---|---|---|---|
 | what it measures | wall time of a named renderer span | wall time, thread CPU time and thread allocated bytes for one scheduled continuation | that a thread was here, or allocated here |
 | clock | `System.nanoTime()` — wall only | wall, plus `ThreadMXBean` CPU and allocation counters | the JFR event clock, realigned to the capture |
-| population | the last 500 samples per label, whole JVM | every Runloop resume of every box in **one** document | every thread in the JVM, sampled |
+| population | the last 500 samples per label, whole JVM | every Runloop or simulation-clock resume of every box in **one** document | every thread in the JVM, sampled |
 | opt-in | **no** — always on | yes, 1–30 seconds | yes, with the capture |
-| where you read it | the `perf` log line, the Inspector | the **Coroutines** tab | the **Hot code** tab |
+| where you read it | the `perf` log line, the Inspector | the **Coroutines & scopes** tab | the **Hot code** tab |
 | exact or estimated | exact per sample, but the window forgets | exact | estimated |
 
 They are three answers to three different questions. `CPUSpan` answers *is the renderer
@@ -131,8 +131,8 @@ registered at `rendererBrowsing.kt:32#CPUSpan.addListener { maybePushCpuChanged(
 ## One coroutine resume: exact, and blind between them
 
 This is the instrument for *your* code, and it is the only exact one. A capture wraps the
-Runloop's single dispatch site (`Phased.kt:360#CoroutineProfiles.resume(n.first, n.second)`)
-and, for each resume it owns, reads a thread CPU counter and a thread allocated-bytes
+Runloop's dispatch site (`Phased.kt:360#CoroutineProfiles.resume(n.first, n.second)`)
+and the simulation clock uses the same instrumentation. For each resume it owns, it reads a thread CPU counter and a thread allocated-bytes
 counter either side of the call. Its unit is one scheduled continuation, which the type
 says outright:
 
@@ -161,7 +161,7 @@ The instrument cannot distinguish those, because it only ever ran at the dispatc
 `wallMs` encloses everything that happened during the resume, `cpuMs` counts only scheduled
 CPU, and the two are bracketed so that the wall interval contains the counter reads and
 cannot come out narrower than them
-(`CoroutineProfiling.kt:50#// The wall interval encloses the counter reads too. Otherwise the wider CPU interval can`).
+(`CoroutineProfiling.kt:50#// Wall encloses the CPU/heap counter reads. Self totals subtract nested measured children.`).
 So a resume that blocks for eight milliseconds on a file read reports `wallMs` ≈ 8 and
 `cpuMs` ≈ 0. That gap between the two numbers *is* the diagnosis, and it is the reason the
 panel draws CPU time as a strip inside the full-width wall bar rather than as a second bar.
@@ -175,12 +175,13 @@ second and hold nothing at all, which is exactly what the demo's vector box does
 
 What it structurally cannot see:
 
-- **Anything not dispatched through the Runloop carrying a `ProfileOrigin`.** The origin is
+- **Anything outside the instrumented dispatchers and scopes.** Runloop and
+  `SimulationClock` continuations carry a `ProfileOrigin`. The origin is
   attached at launch (`Phased.kt:238#val launchJob = inMain(Box.boxContextElement(box) + ProfileOrigin(box, strand))`)
   and inherited by child coroutines. Work on a renderer thread, a background compile, a
   `DefaultDispatcher` worker — none of it reaches the counters.
 - **Any other document.** A resume whose origin belongs elsewhere is run untouched
-  (`CoroutineProfiling.kt:43#if (origin == null || origin.document != capture.document) { task.run(); return }`),
+  (`CoroutineProfiling.kt:43#if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }`),
   which is a privacy property as much as a scoping one, and only one capture may be live in
   the process at a time (`CoroutineProfiling.kt:70#check(active == null || active?.document == document)`).
 - **Anything past its bounds.** Captures run 1 to 30 seconds
@@ -192,14 +193,48 @@ What it structurally cannot see:
   Both losses are reported rather than hidden, in one counter
   (`profiling.kt:63#val droppedSpans: Long = 0,`) — check it before trusting a total.
 
-Arming a capture is not free, and the size of it is knowable: seven primitive arrays sized
-to the ring (`CoroutineProfiling.kt:119#private val frames = LongArray(capacity)` and its
-six siblings) come to a little over 3 MiB, allocated once at the start. With no capture
+Arming a capture is not free: eleven primitive arrays sized
+to the span ring (`CoroutineProfiling.kt:119#private val frames = LongArray(capacity)` and its
+ten siblings) occupy 5 MiB, plus about 416 KiB for the independent frame ring,
+allocated once at the start. Named scope tokens and snapshot exports also allocate during
+a capture; compare like-for-like recordings. With no capture
 active the dispatch path is one volatile read (`CoroutineProfiling.kt:40#val capture = active`)
-and nothing else. Note also that the latch deliberately drops its references to your live
+and an origin lookup; no counters are read and no measurement token is allocated.
+Note also that the latch deliberately drops its references to your live
 objects (`CoroutineProfiling.kt:176#origins.clear() // do not retain live object graphs in a saved capture`),
 and only four documents' captures are kept
 (`CoroutineProfiling.kt:77#while (captures.size > 4) captures.remove(captures.keys.first())`).
+
+## Explicit application frames and nested work
+
+Add `val budget = frameProfile("Game", targetFps = 60.0, allocationKiB = 128.0)` inside
+an ordinary `frames` body, call `budget.beginFrame()` once per iteration, and close it in
+`finally`. These boundaries feed **Frame budgets** in the existing panel; they do not arm
+another capture. See the complete [simulation example](simulation_clock.md).
+
+A completed interval runs from one boundary to the next. Its wall time includes suspension,
+waits, and scheduling gaps. Its CPU and allocated-byte deltas cover the same thread over
+that interval, including other work sharing it. Keep the instrument on one thread. This
+makes allocations between your boxes visible, but does not assign them to one stage.
+An initial boundary has no preceding frame; a final partial interval is discarded.
+
+The panel reports p50, p95, p99 **and maximum**, alongside counts exceeding your interval
+budget and allocation guide. Selecting a worst interval keeps the same time brush when
+you move to scopes or stacks. A single hitch therefore remains directly selectable even
+when it cannot move p99. The independent frame ring retains 8,192 complete intervals and
+reports overwritten history.
+
+`budget.measure("Collision") { … }` and `profileScope("name") { … }` bracket synchronous
+stages. Inclusive costs contain nested children; self costs subtract them. All-lane sums
+use self costs, while selecting one lane shows its inclusive cost. Adding inclusive parent
+and child values would double-count work. Do not suspend or change threads inside a scope.
+Frame totals and scope totals are different populations and must not be added together.
+
+GC collection counts and collector time cover the whole JVM over the capture. With stacks
+enabled, JFR `jdk.GCPhasePause` adds up to 2,048 stop-the-world event intervals as amber ticks.
+Collector time can include work outside those pauses; neither measure identifies the box
+whose allocation caused the collection. An absence of recorded pauses does not prove
+that heap allocation is free. Compare bytes per frame and allocation stacks alongside them.
 
 ## A JFR sample: statistical, and honest about it
 
@@ -210,7 +245,7 @@ and its type carries the warning the other two do not need:
 > Samples are statistical evidence, independent of the exact continuation counters.
 > — `profiling.kt:40#/** Samples are statistical evidence, independent of the exact continuation counters. */`
 
-Two event kinds are enabled. CPU stacks come from `jdk.ExecutionSample` at a **10
+Two stack event kinds are enabled, alongside GC pause events. CPU stacks come from `jdk.ExecutionSample` at a **10
 millisecond** period
 (`JvmProfileCapture.kt:22#enable("jdk.ExecutionSample").withPeriod(Duration.ofMillis(10)).withStackTrace()`);
 allocation stacks come from `jdk.ObjectAllocationSample` throttled to **150 a second**

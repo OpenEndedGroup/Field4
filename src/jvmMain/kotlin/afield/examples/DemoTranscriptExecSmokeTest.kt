@@ -98,6 +98,7 @@ object DemoTranscriptExecSmokeTest {
     internal val EXECUTE = setOf(
         // Three bounded CPU/allocation workloads, one real recording, then stop and assert samples.
         "profiling_timeline",
+        "simulation_clock",
         // The first of the EXECUTE demos that *launch* rather than execute: its box is a `loop { }`,
         // so the transcript launches it, runs 90 real runloop frames (startRunloopDaemon above is
         // what advances them) and stops it. Safe here because the whole scene is CPU physics plus
@@ -322,6 +323,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        "aperture_playground",
         // Persistent optional Kratos worker; exercised separately by the live playground check.
         "kratos_thermal_playground",
         "kratos_flow_playground",

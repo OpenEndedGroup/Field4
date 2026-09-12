@@ -107,6 +107,35 @@ class NestingConnectsTest {
     }
 
     @Test
+    fun nestingFromABoxContinuationUsesItsOwningDocumentWithoutAnAmbientSession() {
+        val owner = session("continuation-owner")
+        val container = boxIn(owner, "container")
+        val child = boxIn(owner, "child")
+        thisSessionInfo.remove()
+        val generation = owner.topologyGeneration
+        child.nestedIn = container
+        assertTrue(container in child.parents)
+        assertEquals(generation + 1, owner.topologyGeneration)
+        child.nestedIn = null
+        assertFalse(container in child.parents)
+        assertEquals(generation + 2, owner.topologyGeneration)
+    }
+
+    @Test
+    fun connectingABoxDoesNotInvalidateAnUnrelatedAmbientDocument() {
+        val owner = session("graph-owner")
+        val parent = boxIn(owner, "parent")
+        val child = boxIn(owner, "child")
+        val unrelated = session("ambient-document")
+        val ownerGeneration = owner.topologyGeneration
+        val unrelatedGeneration = unrelated.topologyGeneration
+        parent.connect(child)
+        parent.disconnect(child)
+        assertEquals(ownerGeneration + 2, owner.topologyGeneration)
+        assertEquals(unrelatedGeneration, unrelated.topologyGeneration)
+    }
+
+    @Test
     fun nestIntoConnectsTheContainerToTheBox() {
         val s = session("nest-connects")
         val container = boxIn(s, "container")

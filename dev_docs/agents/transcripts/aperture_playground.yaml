@@ -1,0 +1,577 @@
+name: aperture_playground
+description: 'Editable lines and point defocus: a source RTT, two reductions, circular
+  aperture filters, and a composite. One shader pair and one optional resource per
+  box; no personal code. Run the macro to wire the graph, then edit individual shaders
+  and re-execute their boxes.'
+operations:
+- create:
+    box: agent_graphics_context
+    name: 1. Renderer
+    frame:
+      x: 60.0
+      y: 70.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.util.Options
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+        Options.enableHDR = false
+        once.renderer {
+            window = Window("Field — aperture playground", initialDimensions = Rect(80.0,80.0,960.0,720.0))
+            Renderer(window)
+        }
+        start(renderer::run)
+- create:
+    box: aperture_source
+    name: 2. Source RTT — lines and points
+    frame:
+      x: 360.0
+      y: 70.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.targets.RenderToTexture
+        import afield.four.modules.fromContextWithNameOrNull
+        import org.lwjgl.vulkan.VK10.*
+
+        // Full-resolution RGBA16F source. RGBA hold light at radii 0, 4, 10, 24 px.
+        // Alpha is the fourth light band, so every intermediate filter must use blend=false.
+        // Re-run the downstream boxes after changing the dimensions.
+        prop<RenderToTexture>(paintSource)
+        thisBox.paintSource = RenderToTexture {
+            width = window.width
+            height = window.height
+            format = VK_FORMAT_R16G16B16A16_SFLOAT
+            useDepth = false
+            clearFirst = true
+            clearColor = vec(0,0,0,0)
+            debugName = "paint-source"
+        }
+        thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
+        renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
+        prop<afield.stdlib.Vec4>(apertureControl)
+        thisBox.apertureControl = vec(1.5,0,0,0)
+        println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
+
+        var module = moduleHere {
+            paintSource.apply()
+            blend = false
+            depthTest = false
+            depthWrite = false
+        }
+        var mesh = Mesh()
+        module += "source" to mesh
+        mesh.resize(3)
+        paintSource += "source" to module
+        // x = defocus radius in framebuffer pixels, y = energy, z = sprite radius, w = guide mix.
+        mesh.look = { vec(24.0,1.0,0.0,0.0) }
+        mesh.size = { vec(paintSource.width,paintSource.height,0,0) }
+
+        // Nest the two editable reduction helpers without hiding their shaders.
+        thisBox.frame = Rect(360.0,70.0,260.0,270.0)
+        thisBox.inside.boxes.getValue("aperture_half").nestedIn = thisBox
+        thisBox.inside.boxes.getValue("aperture_half").frame = Rect(15.0,70.0,240.0,55.0)
+        thisBox.inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
+        thisBox.inside.boxes.getValue("aperture_quarter").frame = Rect(15.0,150.0,240.0,55.0)
+      vertex: |
+        #version 450
+        layout(location=0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+            // Field uses a negative-height Vulkan viewport.
+            uv = vec2(p.x, 1.0-p.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 result;
+        layout(push_constant) uniform Source { vec4 look; vec4 size; } pc;
+        float capsule(vec2 p, vec2 a, vec2 b) {
+            vec2 d=b-a;
+            return length(p-a-d*clamp(dot(p-a,d)/dot(d,d),0.0,1.0));
+        }
+        vec4 bands(float radius) {
+            if(radius<4.0) return mix(vec4(1,0,0,0),vec4(0,1,0,0),radius/4.0);
+            if(radius<10.0) return mix(vec4(0,1,0,0),vec4(0,0,1,0),(radius-4.0)/6.0);
+            return mix(vec4(0,0,1,0),vec4(0,0,0,1),clamp((radius-10.0)/14.0,0.0,1.0));
+        }
+        void main() {
+            vec2 p=uv*pc.size.xy;
+            float row=floor(uv.y*4.0);
+            float y=(row+.5)*pc.size.y/4.0;
+            float d=capsule(p,vec2(pc.size.x*.12,y-32),vec2(pc.size.x*.70,y+32));
+            float line=1.0-smoothstep(.3,1.3,d);
+            float dots=1.0-smoothstep(7.0,8.0,length(p-vec2(pc.size.x*.82,y)));
+            float radius=clamp(pc.look.x*row/3.0,0.0,24.0);
+            result=bands(radius)*(line+dots)*pc.look.y;
+        }
+- create:
+    box: aperture_half
+    name: 3. Reduce ½
+    frame:
+      x: 360.0
+      y: 210.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.targets.RenderToTexture
+        import afield.four.modules.fromContextWithNameOrNull
+        import org.lwjgl.vulkan.VK10.*
+
+        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        prop<RenderToTexture>(paintHalf) = RenderToTexture {
+            width = (source.width/2).coerceAtLeast(1)
+            height = (source.height/2).coerceAtLeast(1)
+            format = VK_FORMAT_R16G16B16A16_SFLOAT
+            useDepth = false
+            clearFirst = true
+            clearColor = vec(0,0,0,0)
+            debugName = "paintHalf"
+        }
+        paintHalf.setDefaultSampler(anisotropyEnable = false)
+        val input = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        var module = moduleHere {
+            textures("paintSource" to input)
+            paintHalf.apply()
+            blend = false
+            depthTest = false
+            depthWrite = false
+        }
+        var mesh = Mesh()
+        module += "filter" to mesh
+        mesh.resize(3)
+        paintHalf += "filter" to module
+        // Ordered before the screen pass, after the parent texture's producer.
+        renderer.renderList.preTargets["paintHalf"] = paintHalf
+      vertex: |
+        #version 450
+        layout(location=0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+            // Field uses a negative-height Vulkan viewport.
+            uv = vec2(p.x, 1.0-p.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 result;
+        layout(set=0,binding=0) uniform sampler2D paintSource;
+        void main() {
+            // Average a pixel footprint. RGBA remain independent energy bands.
+            vec2 d = 0.25 * vec2(dFdx(uv.x), dFdy(uv.y));
+            result = 0.25 * (texture(paintSource,uv+vec2(-d.x,-d.y))
+                + texture(paintSource,uv+vec2(d.x,-d.y))
+                + texture(paintSource,uv+vec2(-d.x,d.y)) + texture(paintSource,uv+d));
+        }
+- create:
+    box: aperture_quarter
+    name: 4. Reduce ¼
+    frame:
+      x: 360.0
+      y: 340.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.targets.RenderToTexture
+        import afield.four.modules.fromContextWithNameOrNull
+        import org.lwjgl.vulkan.VK10.*
+
+        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        prop<RenderToTexture>(paintQuarter) = RenderToTexture {
+            width = (source.width/4).coerceAtLeast(1)
+            height = (source.height/4).coerceAtLeast(1)
+            format = VK_FORMAT_R16G16B16A16_SFLOAT
+            useDepth = false
+            clearFirst = true
+            clearColor = vec(0,0,0,0)
+            debugName = "paintQuarter"
+        }
+        paintQuarter.setDefaultSampler(anisotropyEnable = false)
+        val input = fromContextWithNameOrNull<RenderToTexture>("paintHalf")!!
+        var module = moduleHere {
+            textures("paintHalf" to input)
+            paintQuarter.apply()
+            blend = false
+            depthTest = false
+            depthWrite = false
+        }
+        var mesh = Mesh()
+        module += "filter" to mesh
+        mesh.resize(3)
+        paintQuarter += "filter" to module
+        // Ordered before the screen pass, after the parent texture's producer.
+        renderer.renderList.preTargets["paintQuarter"] = paintQuarter
+      vertex: |
+        #version 450
+        layout(location=0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+            // Field uses a negative-height Vulkan viewport.
+            uv = vec2(p.x, 1.0-p.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 result;
+        layout(set=0,binding=0) uniform sampler2D paintHalf;
+        void main() {
+            // Average a pixel footprint. RGBA remain independent energy bands.
+            vec2 d = 0.25 * vec2(dFdx(uv.x), dFdy(uv.y));
+            result = 0.25 * (texture(paintHalf,uv+vec2(-d.x,-d.y))
+                + texture(paintHalf,uv+vec2(d.x,-d.y))
+                + texture(paintHalf,uv+vec2(-d.x,d.y)) + texture(paintHalf,uv+d));
+        }
+- create:
+    box: aperture_medium
+    name: 5. Aperture 4 / 10 px
+    frame:
+      x: 690.0
+      y: 210.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.targets.RenderToTexture
+        import afield.four.modules.fromContextWithNameOrNull
+        import org.lwjgl.vulkan.VK10.*
+
+        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        prop<RenderToTexture>(paintMedium) = RenderToTexture {
+            width = (source.width/2).coerceAtLeast(1)
+            height = (source.height/2).coerceAtLeast(1)
+            format = VK_FORMAT_R16G16B16A16_SFLOAT
+            useDepth = false
+            clearFirst = true
+            clearColor = vec(0,0,0,0)
+            debugName = "paintMedium"
+        }
+        paintMedium.setDefaultSampler(anisotropyEnable = false)
+        val input = fromContextWithNameOrNull<RenderToTexture>("paintHalf")!!
+        var module = moduleHere {
+            textures("paintHalf" to input)
+            paintMedium.apply()
+            blend = false
+            depthTest = false
+            depthWrite = false
+        }
+        var mesh = Mesh()
+        module += "filter" to mesh
+        mesh.resize(3)
+        paintMedium += "filter" to module
+        // Ordered before the screen pass, after the parent texture's producer.
+        renderer.renderList.preTargets["paintMedium"] = paintMedium
+
+        // x/y stretch the aperture; z changes its rim softness; w is gain.
+        mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
+      vertex: |
+        #version 450
+        layout(location=0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+            // Field uses a negative-height Vulkan viewport.
+            uv = vec2(p.x, 1.0-p.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 result;
+        layout(set=0,binding=0) uniform sampler2D paintHalf;
+        layout(push_constant) uniform Aperture { vec4 aperture; } pc;
+        vec4 sampleBlack(vec2 p) {
+            if (any(lessThan(p,vec2(0))) || any(greaterThan(p,vec2(1)))) return vec4(0);
+            return texture(paintHalf,p);
+        }
+        void main() {
+            vec2 texel = 1.0/vec2(textureSize(paintHalf,0));
+            float rim = clamp(pc.aperture.z,0.05,1.0);
+            result = vec4(0);
+            vec4 weights = vec4(0);
+            // A finite circular aperture with a one-texel soft rim. No random samples.
+            // Half-resolution G/B radii 2/5 represent 4/10 screen pixels;
+            // quarter-resolution A radius 6 represents 24 screen pixels.
+            for (int y=-6;y<=6;y++) for (int x=-6;x<=6;x++) {
+                float distance = length(vec2(x,y));
+                vec2 w = clamp((vec2(2.0,5.0)+0.5*rim-distance)/rim,0.0,1.0);
+                if (w.y <= 0.0) continue;
+                vec4 c = sampleBlack(uv+texel*vec2(x,y)*pc.aperture.xy);
+                result.gb += w*c.gb;
+                weights.gb += w;
+            }
+            result = pc.aperture.w * result / max(weights,vec4(0.000001));
+        }
+- create:
+    box: aperture_broad
+    name: 6. Aperture 24 px
+    frame:
+      x: 690.0
+      y: 340.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.targets.RenderToTexture
+        import afield.four.modules.fromContextWithNameOrNull
+        import org.lwjgl.vulkan.VK10.*
+
+        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        prop<RenderToTexture>(paintBroad) = RenderToTexture {
+            width = (source.width/4).coerceAtLeast(1)
+            height = (source.height/4).coerceAtLeast(1)
+            format = VK_FORMAT_R16G16B16A16_SFLOAT
+            useDepth = false
+            clearFirst = true
+            clearColor = vec(0,0,0,0)
+            debugName = "paintBroad"
+        }
+        paintBroad.setDefaultSampler(anisotropyEnable = false)
+        val input = fromContextWithNameOrNull<RenderToTexture>("paintQuarter")!!
+        var module = moduleHere {
+            textures("paintQuarter" to input)
+            paintBroad.apply()
+            blend = false
+            depthTest = false
+            depthWrite = false
+        }
+        var mesh = Mesh()
+        module += "filter" to mesh
+        mesh.resize(3)
+        paintBroad += "filter" to module
+        // Ordered before the screen pass, after the parent texture's producer.
+        renderer.renderList.preTargets["paintBroad"] = paintBroad
+
+        // x/y stretch the aperture; z changes its rim softness; w is gain.
+        mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
+      vertex: |
+        #version 450
+        layout(location=0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+            // Field uses a negative-height Vulkan viewport.
+            uv = vec2(p.x, 1.0-p.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 result;
+        layout(set=0,binding=0) uniform sampler2D paintQuarter;
+        layout(push_constant) uniform Aperture { vec4 aperture; } pc;
+        vec4 sampleBlack(vec2 p) {
+            if (any(lessThan(p,vec2(0))) || any(greaterThan(p,vec2(1)))) return vec4(0);
+            return texture(paintQuarter,p);
+        }
+        void main() {
+            vec2 texel = 1.0/vec2(textureSize(paintQuarter,0));
+            float rim = clamp(pc.aperture.z,0.05,1.0);
+            result = vec4(0);
+            vec4 weights = vec4(0);
+            // A finite circular aperture with a one-texel soft rim. No random samples.
+            // Half-resolution G/B radii 2/5 represent 4/10 screen pixels;
+            // quarter-resolution A radius 6 represents 24 screen pixels.
+            for (int y=-6;y<=6;y++) for (int x=-6;x<=6;x++) {
+                float w = clamp((6.0+0.5*rim-length(vec2(x,y)))/rim,0.0,1.0);
+                if (w <= 0.0) continue;
+                result.a += w * sampleBlack(uv+texel*vec2(x,y)*pc.aperture.xy).a;
+                weights.a += w;
+            }
+            result = pc.aperture.w * result / max(weights,vec4(0.000001));
+        }
+- create:
+    box: aperture_composite
+    name: 7. Composite — sharp / blur / guide
+    frame:
+      x: 1020.0
+      y: 210.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        import afield.four.targets.RenderToTexture
+        import afield.four.modules.fromContextWithNameOrNull
+        import org.lwjgl.vulkan.VK10.*
+
+        // Screen composite. B and G in the paint box control this shared vector.
+        val controls = fromContextWithNameOrNull<afield.stdlib.Vec4>("apertureControl")!!
+        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        val medium = fromContextWithNameOrNull<RenderToTexture>("paintMedium")!!
+        val broad = fromContextWithNameOrNull<RenderToTexture>("paintBroad")!!
+        var module = moduleHere {
+            textures("paintSource" to source, "paintMedium" to medium, "paintBroad" to broad)
+            depthTest = false
+            depthWrite = false
+            blend = true
+            srcColor = VK_BLEND_FACTOR_ONE
+            dstColor = VK_BLEND_FACTOR_ONE
+            srcAlpha = VK_BLEND_FACTOR_ZERO
+            dstAlpha = VK_BLEND_FACTOR_ONE
+        }
+        var mesh = Mesh()
+        module += "composite" to mesh
+        mesh.resize(3)
+        mesh.displayControl = { controls }
+        renderer.renderList += "paint-composite" to module
+        println("paint composite ready")
+
+        // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
+        controls.set(1.0f,0.0f,0.0f,0.0f)
+      vertex: |
+        #version 450
+        layout(location=0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+            // Field uses a negative-height Vulkan viewport.
+            uv = vec2(p.x, 1.0-p.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 result;
+        layout(set=0,binding=0) uniform sampler2D paintSource;
+        layout(set=0,binding=1) uniform sampler2D paintMedium;
+        layout(set=0,binding=2) uniform sampler2D paintBroad;
+        layout(push_constant) uniform Display { vec4 displayControl; } pc;
+        void main() {
+            vec4 sharp = texture(paintSource,uv);
+            vec4 mid = texture(paintMedium,uv);
+            float energy = dot(sharp,vec4(1));
+            float c = sharp.r + mid.g + mid.b + texture(paintBroad,uv).a;
+            if (pc.displayControl.y > 1.5)
+                c = energy>0.000001 ? dot(sharp,vec4(0,4,10,24))/(24.0*energy) : 0.0;
+            else if (pc.displayControl.y > 0.5) c = energy;
+            result = vec4(vec3(c*pc.displayControl.x),0);
+        }
+- create:
+    box: aperture_sprites
+    name: 8. Analytic point sprites
+    frame:
+      x: 1020.0
+      y: 340.0
+      w: 260.0
+      h: 65.0
+    properties:
+      code: |
+        // Exact disc/aperture overlap: no texture or blur pass for this column.
+        var module = moduleHere {
+            blend = true
+            srcColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+            dstColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+            depthTest = false
+            depthWrite = false
+        }
+        var mesh = Mesh()
+        module += "sprites" to mesh
+        mesh.resize(24)
+        mesh.size = { vec(window.width,window.height,0,0) }
+        // x: maximum aperture pixels; y: outline; z: intensity; w: solid fill.
+        mesh.look = { vec(24.0,0.0,1.0,1.0) }
+        renderer.renderList += "aperture-sprites" to module
+      vertex: |
+        #version 450
+        layout(push_constant) uniform Sprite { vec4 size; vec4 look; } pc;
+        layout(location=0) out vec2 local;
+        layout(location=1) flat out vec2 appearance;
+        const vec2 corners[6] = vec2[6](vec2(-1,-1),vec2(1,-1),vec2(1,1),vec2(-1,-1),vec2(1,1),vec2(-1,1));
+        void main() {
+            float row=float(gl_VertexIndex/6);
+            appearance=vec2(1.0,pc.look.x*row/3.0/8.0);
+            local=corners[gl_VertexIndex%6]*(1.0+appearance.y);
+            vec2 p=vec2(pc.size.x*.93,pc.size.y*(row+.5)/4.0)+local*8.0;
+            vec2 ndc=p/pc.size.xy*2.0-1.0;
+            gl_Position=vec4(ndc.x,-ndc.y,0,1);
+        }
+      fragment: |
+        #version 450
+        layout(push_constant) uniform push { vec4 size; vec4 look; } pc;
+        layout(location=0) in vec2 local;
+        layout(location=1) flat in vec2 appearance; // visible energy, aperture radius
+        layout(location=0) out vec4 color;
+
+        // A disc convolved with a uniform circular aperture: overlap area / aperture area.
+        // This spreads the sprite's energy rather than inflating an equally bright soft circle.
+        float apertureDisc(float d, float body, float aperture, float aa) {
+            if (aperture < aa) return 1.0-smoothstep(body-aa, body+aa, d);
+            if (d >= body+aperture) return 0.0;
+            if (d <= abs(body-aperture)) return min(1.0, body*body/(aperture*aperture));
+            float d2 = d*d, r2 = body*body, b2 = aperture*aperture;
+            float u = clamp((d2+r2-b2)/(2.0*d*body), -1.0, 1.0);
+            float v = clamp((d2+b2-r2)/(2.0*d*aperture), -1.0, 1.0);
+            float h = max(0.0, (-d+body+aperture)*(d+body-aperture)*(d-body+aperture)*(d+body+aperture));
+            return clamp((r2*acos(u)+b2*acos(v)-0.5*sqrt(h))/(3.14159265*b2), 0.0, 1.0);
+        }
+
+        void main() {
+            float r = length(local);
+            float aa = max(fwidth(r), 0.002);
+            float aperture = appearance.y;
+            float disc = apertureDisc(r, 1.0, aperture, aa);
+            float ring = max(0.0, disc-apertureDisc(r, 0.66, aperture, aa));
+            // Independent outline, intensity and fill controls.
+            float energy = pc.look.y*ring + pc.look.z*appearance.x*mix(ring,disc,pc.look.w);
+            color = vec4(vec3(energy), 0.0);
+        }
+- connect:
+    parent: agent_graphics_context
+    child: aperture_sprites
+- connect:
+    parent: agent_graphics_context
+    child: aperture_source
+- connect:
+    parent: aperture_source
+    child: aperture_half
+- connect:
+    parent: aperture_half
+    child: aperture_quarter
+- connect:
+    parent: aperture_half
+    child: aperture_medium
+- connect:
+    parent: aperture_quarter
+    child: aperture_broad
+- connect:
+    parent: aperture_medium
+    child: aperture_composite
+- connect:
+    parent: aperture_broad
+    child: aperture_composite
+- stop:
+    box: agent_graphics_context
+- launch:
+    box: agent_graphics_context
+    property: code
+- await:
+    wait: pending
+- wait:
+    frames: 3
+- execute:
+    box: aperture_source
+    property: code
+- execute:
+    box: aperture_half
+    property: code
+- execute:
+    box: aperture_quarter
+    property: code
+- execute:
+    box: aperture_medium
+    property: code
+- execute:
+    box: aperture_broad
+    property: code
+- execute:
+    box: aperture_composite
+    property: code
+- wait:
+    frames: 5
+- execute:
+    box: aperture_sprites
+    property: code

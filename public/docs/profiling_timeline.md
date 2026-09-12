@@ -2,7 +2,7 @@
 
 Run **Show Profiling Timeline** from the command palette while your boxes are running.
 Choose a capture length, then **Record**. Field records each box-owned coroutine
-resume scheduled through the Runloop: its elapsed execution time, thread CPU time,
+resume scheduled through the Runloop or a box-owned simulation clock: its elapsed execution time, thread CPU time,
 and allocated heap bytes. Recording ends automatically, or you can press **Latch**.
 Your boxes keep running while you explore the capture.
 
@@ -14,7 +14,7 @@ your own box source — see [Holding a Frame Budget](frame_budget.md).
 Enable **JVM stacks** before recording to add sampled CPU and allocation stacks.
 After latching, **Hot code** groups the selected time interval by class, method, or
 line. This includes background workers and renderer CPU work, alongside the exact
-Runloop measurements in **Coroutines**. The panel resizes from its edges and corners.
+Runloop measurements in **Coroutines & scopes**. The panel resizes from its edges and corners.
 
 ## Try the demo
 
@@ -89,6 +89,56 @@ ui.eval("""
 """)
 ui.pause(300)
 ```
+
+## Complete frames and named scopes
+
+The [simulation_clock starting point](simulation_clock.md) adds explicit application frame
+boundaries and named children. Its first box launches and stops with Field's ordinary
+controls. The second starts a capture in this same panel.
+
+Inside your running `frames` body, create the instrument once, then mark each iteration:
+
+```diffstatic {data-lang=kotlin}
+:::static
+frames {
+    val budget = frameProfile("Game", targetFps = 60.0, allocationKiB = 128.0)
+    try {
+        while (frame()) {
+            budget.beginFrame()
+            budget.measure("Update") { /* synchronous update */ }
+            budget.measure("Sprites") { /* fill reusable buffers */ }
+        }
+    } finally { budget.close() }
+}
+```
+
+This does not start another recorder. Use **Record** and **Latch** as before. When recording
+is off, these calls read no CPU or allocation counters and retain no samples. The first
+boundary establishes a baseline; subsequent boundaries complete intervals. Stopping a box
+discards its unfinished final interval.
+
+Choose **Frame budgets** to see mean, p50, p95, p99 and maximum interval, mean thread CPU,
+allocated bytes per frame, and counts exceeding your interval or allocation guide. Select
+one of the slowest intervals, then switch to **Coroutines & scopes** or **Hot code**: the
+brush stays on that interval. **Frame interval** and **Bytes per frame** also work as
+overview metrics; each time bin shows its largest frame value so a rare hitch stays
+visible. A frame interval includes suspension, waits, and other work between its
+boundaries; CPU and heap counters cover its thread, including other boxes on that thread.
+These are application intervals, not GPU presentation measurements. If your update loop
+already skips repeated renderer frames, place `beginFrame()` after that guard so each
+record corresponds to one actual update.
+
+`measure` and `profileScope("name") { … }` label synchronous work. Do not suspend or move
+threads inside these scopes. Standard `launch(CoroutineName("Orbit")) { … }` labels child
+lanes, including children dispatched by `SimulationClock`. A selected lane reports
+inclusive costs. All-lane totals and the overview use self costs, subtracting measured
+children so nested scopes are counted once. Parent bars still enclose child work.
+
+Collector counts and collection time cover the whole JVM during the recording. With
+**JVM stacks** enabled, amber ticks mark recorded GC pause events. Collector time and
+stop-the-world pause duration are different quantities; neither belongs exclusively to
+one box. Up to 8,192 frame intervals are retained separately from the span ring; overwritten
+frame history is reported in the frame tab. Saved capture JSON includes both streams.
 
 ## Explore a capture
 

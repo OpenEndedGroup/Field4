@@ -3895,6 +3895,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot="macro run guide_capture",
         ),
         UiRegression(
+            id="simulation-clock",
+            description="Ordinary editor launch/stop/relaunch owns simulation children; frame budgets share the profiling brush.",
+            document=f"ui-regression-simulation-{int(time.time())}",
+            commands=[
+                "new-box --name SimulationOwner --x 40 --y 40",
+                shell_join(["set", "@last", "code", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.kt")]),
+                "editor-open @last --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="profiling-timeline",
             description="Record real box coroutines, brush CPU/allocation samples, navigate to code, and retain or replace a latched capture.",
             document=f"ui-regression-profile-{int(time.time())}",

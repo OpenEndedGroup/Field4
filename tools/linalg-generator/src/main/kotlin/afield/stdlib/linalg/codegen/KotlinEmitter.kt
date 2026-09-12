@@ -22,6 +22,8 @@ class KotlinEmitter(
         model.heapVectors.forEachIndexed { index, type ->
             emitReadInterface(type)
             appendLine()
+            emitNormalizedExtensions(type)
+            appendLine()
             emitMutableClass(type)
             if (index != model.heapVectors.lastIndex) appendLine()
         }
@@ -290,6 +292,7 @@ class KotlinEmitter(
         appendLine("| Operator | Meaning |")
         appendLine("| --- | --- |")
         appendLine("| `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |")
+        appendLine("| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Zero remains zero; optional epsilon sets the zero threshold. Finite inputs only. |")
         appendLine("| `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |")
         appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
         appendLine("| `v len 10` | Returns a copy rescaled to the given length, keeping direction. |")
@@ -444,6 +447,28 @@ class KotlinEmitter(
         documentation.parameters.forEach { (name, description) -> appendLine("$indent * @param $name $description") }
         documentation.returns?.let { appendLine("$indent * @return $it") }
         appendLine("$indent */")
+    }
+
+    // Keep these as extensions: a library member would silently override a document's
+    // existing normalized() extension and its chosen near-zero policy.
+    private fun StringBuilder.emitNormalizedExtensions(type: VectorType) {
+        val scalar = type.scalar.kotlinType
+        emitKDoc(ApiDocumentation("Returns a normalized copy, or zero when its length is at most epsilon.",
+            listOf("Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.")), "")
+        appendLine("fun ${type.readName}.normalized(epsilon: $scalar = ${type.scalar.zero}): ${type.heapName} = normalized(${type.heapName}(), epsilon)")
+        emitKDoc(ApiDocumentation("Writes a normalized value into dest without allocating; dest may alias this vector."), "")
+        appendLine("fun ${type.readName}.normalized(dest: ${type.heapName}, epsilon: $scalar = ${type.scalar.zero}): ${type.heapName} {")
+        appendLine("    require(epsilon.isFinite() && epsilon >= ${type.scalar.zero}) { \"epsilon must be finite and non-negative\" }")
+        type.components.forEach { appendLine("    val n${it.sourceName} = ${it.sourceName}()") }
+        appendLine("    require(${type.components.joinToString(" && ") { "n${it.sourceName}.isFinite()" }}) { \"Cannot normalize non-finite components\" }")
+        appendLine("    val scale = maxOf(${type.components.joinToString { "abs(n${it.sourceName})" }})")
+        appendLine("    if (scale == ${type.scalar.zero}) return dest.set(${type.components.joinToString { type.scalar.zero }})")
+        type.components.forEach { appendLine("    val s${it.sourceName} = n${it.sourceName} / scale") }
+        appendLine("    val norm = sqrt(${type.components.joinToString(" + ") { "s${it.sourceName} * s${it.sourceName}" }})")
+        appendLine("    if (scale <= epsilon / norm) return dest.set(${type.components.joinToString { type.scalar.zero }})")
+        appendLine("    return dest.set(${type.components.joinToString { "s${it.sourceName} / norm" }})")
+        appendLine("}")
+        appendLine()
     }
 
     private fun StringBuilder.emitReadInterface(type: VectorType) {
