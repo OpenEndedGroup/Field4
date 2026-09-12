@@ -119,7 +119,36 @@ two-million-sample Monte Carlo of the same physics, written in Python from the t
 equation rather than from the shader (agreement within the Monte Carlo's own 3e-4 noise).
 A floor much below 1e-4 on this arm would be measuring the reference.
 
-## The four things that went wrong
+The **lamp in fog** is one 0.16-square-unit lamp at radiance 90 in a black environment,
+behind a 0.22-per-unit medium at albedo ~0.9 and g 0.45, six bounces, over the **6907 lit
+pixels** of 96×72 (everything but the five pixels of directly visible lamp). Its two
+numbers:
+
+- **Bias, at two reference budgets.** The RMS difference between the two references is
+  **0.02611** at 4096 samples and **0.00603** at 65536: a **4.33x** decay, *observed*. The
+  budget grew **16x**, and a residual that is the reference's own noise decays as the root
+  of that, so the *predicted* decay is **4.00x**. Those are two different numbers and the
+  harness prints them on one line with both words in capitals, because a previous branch in
+  this loop published a 16x budget growth as a 4x one and called `sqrt(16)` the ratio.
+  Closing it a second way: the off arm's own standard error at 65536 samples, extrapolated
+  from its measured error at 256, predicts **0.00645**, and the references differ by
+  **0.00603** — a ratio of **0.93**. The whole-image *relative* residual is **0.00003**.
+- **Variance.** RMSE against the converged reference at a matched **256** samples per
+  pixel: **0.10327** with phase and BSDF sampling alone, **0.02091** with the light
+  connections on. Ratio **4.94**, floor asserted at **4.0**. That is far below the **35x**
+  `PathTraceEmitterGpuSmoke` reports for surfaces, and not because the medium's connections
+  work less well: a scattering medium spreads one small lamp's light over the whole frame,
+  which gives the arm *without* connections far more chance of finding it than the same
+  lamp in clear air would. Quoting the surface figure here would be quoting a different
+  measurement.
+
+One methodological note that cost a wrong number before it was caught: the lamp arm
+compares **on at six bounces against off at seven**. `maxBounces` limits path *length* and
+next-event estimation reaches one segment past it, so equal budgets are not an equal
+comparison — at equal bounces the whole-image difference is **0.02564** against the matched
+pair's **0.00003**, and the harness asserts that matching reduces it.
+
+## The five things that went wrong
 
 **1. The enclosure premise was subtly false, and the sign is what showed it.** The plan
 was: a uniformly emissive enclosure is a radiance field in which an albedo-one medium is
@@ -189,7 +218,31 @@ per-pixel p95 came out `Infinity` without any other complaint. Those pixels are 
 skipped and counted, so the population a percentile covers is the population it reports,
 and the lamp arm's own population requires all four of its renders to be positive.
 
-And two smaller traps, for the next person:
+And three smaller traps, for the next person:
+
+- **`--document <path>` alone loads nothing, and says so only as `boxes: []`.** Opening the
+  demo with `field_backdoor.py --document dev_docs/agents/demos/path_tracing_medium`
+  returns `ok: true` with an empty box list, because the backdoor prefixes its automation
+  workspace root onto the name — the returned `sessionKey` shows it:
+  `.../build/field-automation-workspace//Users/.../path_tracing_medium`. The shipped
+  emitter demo behaves identically, which is the control worth running before believing
+  the document is broken. What works is naming the workspace and the document separately:
+
+  ```bash
+  uv run --project . --group backdoor python tools/field_backdoor.py --json --port 19541 \
+    --workspace "$PWD/dev_docs/agents/demos" --document path_tracing_medium --read-only \
+    --graphics-context \
+    --command 'launch pt_renderer --property code' \
+    --command 'wait-native-renderer --timeout 180' \
+    --command 'launch pt_medium --property code' \
+    --command 'wait-output pt_medium --contains "mediumDensity = 0.16" --timeout 600' \
+    --command 'sleep 40' --command 'native-screenshot build/demo-proof.png'
+  ```
+
+  That is also how the demo was verified rather than assumed: both boxes launch, the
+  window comes up, the sweep loop reaches its third density, and the screenshot has shafts
+  in it. `sleep` takes a bare positional argument, not `--seconds`.
+
 
 - `glslangValidator -S comp <file>` writes **`comp.spv` into the current directory**. Run
   it from a scratch directory or pass `-o`, or it lands in the working tree and
