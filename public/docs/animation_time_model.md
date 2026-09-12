@@ -8,6 +8,9 @@ generator layer that sits beside it.
 
 This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
 last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
+When the question turns from *what a frame is* to *why mine takes longer than 16 milliseconds*,
+[Holding a Frame Budget](frame_budget.md) is the page for it — a resume of the loop below is the
+unit all of Field's exact profiling counters are measured over.
 
 One property of the loop sets up everything else here:
 
