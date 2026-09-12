@@ -198,8 +198,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KotlinToJsCompiler.kt](languages.md#kotlintojscompiler-kt) | Languages | 7 | 4 |  |  |
 | [KratosDemo.kt](simulation.md#kratosdemo-kt) | Simulation | 6 | 2 |  |  |
 | [KratosLaunch.kt](simulation.md#kratoslaunch-kt) | Simulation | 10 | 7 |  |  |
-| [KratosSession.kt](simulation.md#kratossession-kt) | Simulation | 68 | 20 |  |  |
-| [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 |  |  |
+| [KratosSession.kt](simulation.md#kratossession-kt) | Simulation | 68 | 20 | The JVM side of the Kratos link: finding a worker, opening a session on it, and asking for solves. |  |
+| [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
 | [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 |  |  |
 | [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 |  |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 0 |  |  |
@@ -320,8 +320,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 |  |  |
 | [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 |  |  |
 | [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 2 |  |  |
-| [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 12 |  |  |
-| [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 |  |  |
+| [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 12 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
+| [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 | One solved revision: the raw fields exactly as Kratos produced them, and the views Field draws. |  |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 9 |  | [Where do these things sit, relative to each other?](../projection_examples.md) |
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
