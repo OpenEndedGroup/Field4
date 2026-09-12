@@ -383,8 +383,11 @@ class FLineSideways(
 
 /**
  * Small O(n^3) Hungarian solver for square cost matrices.
+ *
+ * Internal rather than private because `afield.stdlib.flowMatch` needs the same solve for its
+ * minibatch optimal-transport coupling, and a third copy in this repository would be one too many.
  */
-private object HungarianAssignment {
+internal object HungarianAssignment {
     fun solve(cost: Array<DoubleArray>): IntArray {
         val n = cost.size
         if (n == 0) return IntArray(0)

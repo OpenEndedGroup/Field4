@@ -85,6 +85,11 @@ nav:
     # worked examples are words under an edit distance and curve samples under a graph distance.
     - Distances & Projections:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
+    # Beside the projections rather than under Functions & Derivatives: the input is an unordered
+    # cloud and the output is a deformation of it, which is a shape problem rather than a calculus
+    # one. The network it trains is incidental to what the page is for.
+    - Clouds & Deformations:
+      - Flow Matching: flow_matching.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Imaging & Computer Vision: imaging_examples.md
@@ -194,6 +199,7 @@ nav:
       - Audio AI: reference/audio-ai.md
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
+      - Machine learning: reference/machine-learning.md
     - Libraries & APIs:
       - Linear Algebra: linear_algebra.md
       - Generated Vector API: linear_algebra_api.md
