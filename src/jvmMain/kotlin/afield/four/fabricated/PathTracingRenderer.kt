@@ -118,6 +118,89 @@ class PathTracingRenderer(
     /** Treat background misses as infinitely distant when fog is enabled; transparent backgrounds stay transparent. */
     var fogBackground: Boolean = true
         set(value) { if (value != field) reset(); field = value }
+    /**
+     * Extinction of the participating medium, per world unit. Zero disables it, and is the default.
+     *
+     * **This is not [fogDensity], and it does not replace it.** [fogDensity] blends the *finished*
+     * radiance of a sample toward [fogColor] using the primary hit distance alone: a screen effect
+     * with a depth term, which cannot lighten anything, and through which light travelling to a
+     * surface is never attenuated. This property is the physical thing. Extinction is sampled
+     * along every ray segment; a real collision scatters into a new direction drawn from
+     * [mediumAnisotropy]'s phase function; light connections from surfaces *and* from scattering
+     * points are attenuated over their own length; and the two estimators are combined with the
+     * same power heuristic [emitterSampling] uses. So a lamp inside it gets a volumetric glow, a
+     * beam through it is visible from the side, and geometry between a lamp and the camera casts a
+     * shadow into the haze instead of only onto the floor.
+     *
+     * Both mechanisms still work, independently and unchanged. Enabling both attenuates whatever
+     * the camera sees first twice over, which is almost certainly not what you want; pick one.
+     *
+     * Extinction is achromatic on purpose — one scalar, so a distance sample stays a single
+     * decision and no per-channel distance pdf exists anywhere. Colour comes from [mediumAlbedo].
+     *
+     * Cost is one distance sample per segment, plus at each real collision the same two shadow
+     * rays a surface interaction costs. A collision spends one of [maxBounces], so a medium dense
+     * enough to scatter several times along a path needs the bounce budget raised to match or it
+     * will darken. Changing this value resets accumulation.
+     */
+    var mediumDensity: Float = 0f
+        set(value) { require(value.isFinite() && value >= 0f); if (value != field) reset(); field = value }
+    private var mediumAlbedoValue = Vector3f(1f, 1f, 1f)
+    /**
+     * Single-scattering albedo: the fraction of [mediumDensity] that scatters rather than absorbs,
+     * per channel. Returned by copy.
+     *
+     * One is purely scattering and conserves energy exactly — cloud, milk, marble. Zero is pure
+     * absorption, and reduces the medium to Beer–Lambert attenuation along every path, with no
+     * glow and no in-scattering at all. In between, a channel that absorbs more than its
+     * neighbours tints both what is seen *through* the medium and the light scattered *out* of it,
+     * and those two tints are complementary — which is the whole reason this is per channel.
+     */
+    var mediumAlbedo: Vector3f
+        get() = Vector3f(mediumAlbedoValue)
+        set(value) {
+            require(value.x.isFinite() && value.y.isFinite() && value.z.isFinite())
+            require(value.x in 0f..1f && value.y in 0f..1f && value.z in 0f..1f)
+            if (value != mediumAlbedoValue) reset()
+            mediumAlbedoValue = Vector3f(value)
+        }
+    /**
+     * Henyey–Greenstein anisotropy of the phase function, in (-1, 1). Zero scatters isotropically;
+     * positive is forward scattering, which is what turns a light source in haze into a halo
+     * rather than an even glow; negative is backscattering, which is what a headlight in fog does
+     * to the driver behind it.
+     *
+     * This is the parameter to move when you want to change the medium's *character* rather than
+     * how much of it there is. Changing this value resets accumulation.
+     */
+    var mediumAnisotropy: Float = 0f
+        set(value) { require(value.isFinite() && value > -1f && value < 1f); if (value != field) reset(); field = value }
+    private var mediumBoundsValue: Pair<Vector3f, Vector3f>? = null
+    /**
+     * The axis-aligned box the medium occupies, as `low to high`, or null to fill all space.
+     * Returned by copy.
+     *
+     * Null is not the harmless default it looks like. A medium filling all space has zero
+     * transmittance to infinity, so an environment map becomes unreachable: every connection to
+     * the sky returns nothing, and every ray is certain to collide before it escapes. That is
+     * correct physics for an infinite medium, and it renders as a black void. Give the medium
+     * bounds unless the only lights in the scene are emissive geometry inside them.
+     */
+    var mediumBounds: Pair<Vector3f, Vector3f>?
+        get() = mediumBoundsValue?.let { Vector3f(it.first) to Vector3f(it.second) }
+        set(value) {
+            if (value != null) {
+                require(listOf(value.first, value.second).all { it.x.isFinite() && it.y.isFinite() && it.z.isFinite() }) {
+                    "Medium bounds must be finite"
+                }
+                require(value.second.x > value.first.x && value.second.y > value.first.y &&
+                    value.second.z > value.first.z) {
+                    "Medium bounds must enclose a positive volume: ${value.first} to ${value.second}"
+                }
+            }
+            if (value != mediumBoundsValue) reset()
+            mediumBoundsValue = value?.let { Vector3f(it.first) to Vector3f(it.second) }
+        }
     var maxBounces: Int = 5
         set(value) { require(value in 1..12); if (value != field) reset(); field = value }
     var environmentIntensity: Float = 1f
@@ -565,6 +648,13 @@ class PathTracingRenderer(
         frame["historyPolicy"] = Vector4f(temporalMotionSensitivity, temporalRoughnessSensitivity, temporalMaxBlurRadius, 0f)
         frame["fog"] = Vector4f(fogColorValue, fogDensity)
         frame["fogOptions"] = Vector4f(fogStartDistance, if (fogBackground) 1f else 0f, 0f, 0f)
+        frame["medium"] = Vector4f(mediumAlbedoValue, mediumDensity)
+        val bounds = mediumBoundsValue
+        frame["mediumOptions"] = Vector4f(mediumAnisotropy, if (bounds != null) 1f else 0f, 0f, 0f)
+        // The shader reads these only when the bounded flag is set; a placeholder keeps the
+        // uniform initialised rather than carrying whatever the previous frame left there.
+        frame["mediumLow"] = Vector4f(bounds?.first ?: Vector3f(0f), 0f)
+        frame["mediumHigh"] = Vector4f(bounds?.second ?: Vector3f(0f), 0f)
         frame["image"] = Int4(width, height, samples, samplesPerFrame)
         frame["scene"] = Int4(packed.nodes.size, envWidth, envHeight, maxBounces)
         frame["lighting"] = Vector4f(environmentIntensity, environmentRotation, rayEpsilon, if (showEnvironment) 1f else 0f)
