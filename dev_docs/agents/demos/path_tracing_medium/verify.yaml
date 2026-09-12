@@ -1,0 +1,49 @@
+name: medium_verify
+description: |
+  Drives PathTraceMediumGpuSmoke against real GPU pixels: the closed-form absorption anchor,
+  the energy-conservation furnace across six anisotropies, the CPU quadrature of the transport
+  equation, the emitter-connection cross-check, the two-budget bias residual, the variance
+  floor, and the captures.
+
+  Output goes to `build/medium-check/`, relative to the checkout root, which is the
+  backdoor-managed server's working directory. `println` from a box lands in the box's
+  output, not the server's stdout, so the numbers are in
+  `.field-backdoor/logs/*.managed-server.log`.
+
+  The invocation is in `dev_docs/PARTICIPATING_MEDIA.md`.
+operations:
+  - create:
+      box: pt_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · medium check")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: pt_medium_check
+      name: participating medium check
+      frame: { x: 320.0, y: 140.0, w: 260.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.PathTraceMediumGpuSmoke
+          import afield.four.modules.fromContext
+          val renderer: Renderer = fromContext()
+          val verify: suspend () -> Unit = {
+              PathTraceMediumGpuSmoke.run(renderer, "build/medium-check")
+              println("MEDIUM CHECK DONE")
+          }
+          start(verify)
+  - connect: { parent: pt_renderer, child: pt_medium_check }
+  - launch: { box: pt_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: pt_medium_check, property: code }
+  - await: { wait: pending }
