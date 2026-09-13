@@ -169,6 +169,78 @@ context.
 Note the second pattern. `Pat` is a rhythm of *anything*, so the filter is patterned exactly as the
 notes are, and both go through the same event timeline.
 
+### What it sounds like, and the one comparison that proves it
+
+Here is that example, rendered offline. Then the same notation with `voices = 1`.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-eight-voices.wav" audio-spec="poly-chord-eight-voices" audio-renderer="afield.four.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-eight-voices"}
+// FaustPolySoundDocs.render("poly-chord-eight-voices")
+// faustPatternRender(program, pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]"),
+//                    cycles = 2, cps = 0.5, voices = 8, automation = cutoff steps)
+```
+
+**Eight voices.** Four triads, one per cycle. Three notes of each chord sound together, which is three fundamentals in a band that can hold nothing else.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-one-voice.wav" audio-spec="poly-chord-one-voice" audio-renderer="afield.four.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-one-voice"}
+// FaustPolySoundDocs.render("poly-chord-one-voice")
+// the identical call with voices = 1
+```
+
+**The same notation, one voice.** Identical pattern, program and gain. The three notes of a chord arrive on the same frame, so two of them steal the only voice there is — and what you hear is the last of the three, with a click where the voice turned over.
+
+A single clip could not have shown you this. A chord and an arpeggio sound different for reasons that
+have nothing to do with voice allocation, so one recording proves nothing about voices — whereas two
+renders of one notation differ **only** in how many voices there were to put the notes on.
+
+And it is measurable, not just audible. During the first chord the band 100–230 Hz can hold nothing
+but fundamentals: `[c4,ef4,g4]` is 130.81, 155.56 and 196.00 Hz, and the chord's lowest second
+harmonic is 261.6 Hz. So a spectral peak in that band *is* a note sounding, and counting them
+distinguishes polyphony from a voice stealing itself — which counting attacks cannot do, because both
+produce exactly the same number of attacks:
+
+| | peaks in 100–230 Hz | measured | voices sounding at once | voice steals |
+|---|---|---|---|---|
+| `voices = 8` | **3** | 127.3, 160.7, 190.9 Hz | 3 | 0 |
+| `voices = 1` | **1** | 190.9 Hz | 1 | 16 |
+
+The measured frequencies are one FFT bin's worth off the notated ones — 5.9 Hz at this window length
+— which is the resolution, not the tuning.
+
+**Sixteen steals, not twenty-three,** and the difference is the allocator being specific. Twenty-four
+notes on one voice would be twenty-three steals if every note had to take the voice from the one
+before it. But `sustain` is 0.9, so the gate falls a tenth of a beat before the next chord and the
+30 ms release finishes inside that gap: a voice that has stopped moving air is *finished*, and a
+finished voice is reused rather than stolen. What is left is two steals per chord — the second and
+third notes, which arrive on the very same frame as the first and cannot wait for anything — times
+eight chords. The one-voice clip is holding the last note of each chord as notated, which is why its
+single peak is `g4`'s 190.9 Hz and not `c4`'s.
+
+Both clips, both counts and the gap between them are asserted by `synth.faust.poly.sound`; the
+instrument there is one sawtooth per voice rather than the detuned pair, because two sawtooths 0.5%
+apart put a beating pair into the band and the count stops meaning anything.
+
+### Play it yourself: the `faust_polyphony` starting point
+
+Everything on this page ships as a loadable document — six boxes, on the welcome screen under
+**Starting points**, or straight from here:
+
+[Open the starting point](/offline.html?file=/field4/assets/agent_transcripts/faust_polyphony/metadata.edn)
+
+*Faust instrument* is the live one and the only box that opens an audio device: `faustPoly(…, voices = 8)`
+playing the pattern above, returned as the box's last expression so the box stays lit while it plays
+and stopping it stops the sound, the feeder thread and the GraalVM context. *Offline, with a plot* is
+the path the clips above came from, safe on any machine. *Three notes at once* is the peak count you
+just read, printed live at four voices and at one. *Onsets, in samples* puts every notated frame
+beside the frame the audio attacks on. *What it refuses* is a program with no `gate`. *When it runs
+out of voices* renders the same over-subscribed passage at `stealReleaseFrames = 1` and at `1440`,
+with both WAVs playable and the line to edit marked — the knob whose two ends are measured
+[below](#a-steal-clicks-and-by-how-much).
+
+Five of the six are replayed on every CI run by `examples.demo-transcript.exec`, so the boxes cannot
+rot silently; the document itself is regenerated from the transcript by
+`examples.agent-transcripts.materialize`, which fails if the committed copy has drifted. See the
+[gallery entry](agent_transcripts.md) for what each box prints.
+
 ### The notes land on the sample, not on the block
 
 A 128-frame block at 48 kHz is 2.67 ms. Quantising a note onset to it is audible: it is the difference
