@@ -266,7 +266,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `CompileOnlyResult` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:102` |
 | `EvalValue` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:107` |
 | `EvalResult` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:120` |
-| `ClojureExecution` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:849` |
+| `ClojureExecution` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:883` |
 | `FabricateRenderPlan` | class | `src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt:28` |
 | `FabricateRenderQueue` | class | `src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt:39` |
 | `FabricateNode` | class | `src/jvmMain/kotlin/afield/four/fabricated/FabricateScene.kt:196` |
