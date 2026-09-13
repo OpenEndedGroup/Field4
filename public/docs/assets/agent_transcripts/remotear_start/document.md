@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_remotear_start_root" index="0" -->
 
 ```edn [field-box id="agent_remotear_start_root" role="properties"]
-{"id" "agent_remotear_start_root" "index" 0 "name" "KotlinJS → RemoteAR" "parents" ["root"] "children" ["agent_remotear_start"] "properties" {"children" #{#afield/box "agent_remotear_start"} "parents" #{#afield/box "root"} "name" "KotlinJS → RemoteAR" "_tombstone" false "frame" #afield/rect [50.0 50.0 200.0 50.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
+{"id" "agent_remotear_start_root" "index" 0 "name" "KotlinJS → RemoteAR" "parents" ["root"] "children" ["agent_remotear_start"] "properties" {"children" #{#afield/box "agent_remotear_start"} "parents" #{#afield/box "root"} "name" "KotlinJS → RemoteAR" "_tombstone" false "frame" #afield/rect [50.0 50.0 300.0 100.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
 ```
 
 ## 2. RemoteAR Starter
@@ -27,7 +27,7 @@ Open /extensions/remote_ar/index.html?debug=1 on the browser or headset.
 Edit this box and Launch it again to replace the running scene.
 
 ```edn [field-box id="agent_remotear_start" role="properties"]
-{"id" "agent_remotear_start" "index" 1 "name" "RemoteAR Starter" "parents" ["root" "agent_remotear_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_remotear_start_root"} "name" "RemoteAR Starter" "_tombstone" false "frame" #afield/rect [90.0 100.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_remotear_start_code_.kt" "lines" 19 "characters" 502 "sha256" "bcc8d399b77056d05f4a2d309d8fb22b274c6be89bc140c3c5ff3510f2afc35e"}]}
+{"id" "agent_remotear_start" "index" 1 "name" "RemoteAR Starter" "parents" ["root" "agent_remotear_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_remotear_start_root"} "name" "RemoteAR Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_remotear_start_code_.kt" "lines" 19 "characters" 502 "sha256" "bcc8d399b77056d05f4a2d309d8fb22b274c6be89bc140c3c5ff3510f2afc35e"}]}
 ```
 
 ```kotlin [field-property box="agent_remotear_start" name="code" path="agent_remotear_start_code_.kt"]

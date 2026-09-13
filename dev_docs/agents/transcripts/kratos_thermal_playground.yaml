@@ -8,7 +8,7 @@ operations:
   - create:
       box: kratos_thermal
       name: Kratos thermal playground
-      frame: { x: 60.0, y: 60.0, w: 280.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 380.0, h: 100.0 }
       properties:
         code: |
           import afield.frames

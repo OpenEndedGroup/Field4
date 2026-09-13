@@ -26,8 +26,9 @@ showImgGrid(
     "on a cubic" to rasterizeText(onWave, 900, 420),
     columns = 2, cellSide = 430
 )
+displayOpen("paths")
 showPlaneGrid(
     "the paths, and the letters as outlines" to
         (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.5); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
-    columns = 1, cellWidth = 420, cellHeight = 420
+    channel = "paths", columns = 1, cellWidth = 420, cellHeight = 420
 )

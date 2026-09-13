@@ -11,6 +11,15 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
+/** One bound for every Markdown the viewer carries, whether it comes from a file or a box property. */
+private const val MAX_BYTES = 1024 * 1024
+
+private fun revision(bytes: ByteArray) = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+
+/** The title shown in the viewer's list: the first level-one heading, if the Markdown offers one. */
+private fun headingTitle(lines: Sequence<String>): String? =
+    lines.take(128).firstOrNull { it.startsWith("# ") }?.removePrefix("# ")?.trim()?.take(160)?.ifBlank { null }
+
 /** Files remain authoritative: no copied Markdown property or hidden box is needed to read a guide. */
 internal class DocumentGuideFiles(root: File) {
     private val root = root.canonicalFile
@@ -36,10 +45,8 @@ internal class DocumentGuideFiles(root: File) {
                 val path = root.toPath().relativize(file.toPath()).toString()
                 val target = resolve(path)
                 require(target.length() <= MAX_BYTES)
-                val title = target.bufferedReader().use { reader ->
-                    reader.lineSequence().take(128).firstOrNull { it.startsWith("# ") }
-                        ?.removePrefix("# ")?.trim()?.take(160)
-                } ?: file.nameWithoutExtension.replace('_', ' ')
+                val title = target.bufferedReader().use { headingTitle(it.lineSequence()) }
+                    ?: file.nameWithoutExtension.replace('_', ' ')
                 DocumentGuideEntry(path, title)
             }.getOrNull()
         }.sortedWith(compareBy<DocumentGuideEntry> { !it.path.equals("README.md", true) }.thenBy { it.path.lowercase() })
@@ -130,9 +137,7 @@ internal class DocumentGuideFiles(root: File) {
     }
 
     companion object {
-        private const val MAX_BYTES = 1024 * 1024
         private val writeLock = Any()
-        private fun revision(bytes: ByteArray) = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
         internal fun isGuideName(name: String): Boolean =
             name.substringAfterLast('.', "").lowercase() in setOf("md", "markdown") &&
                 !name.startsWith('.') && !name.substringBeforeLast('.').endsWith('_') &&
@@ -142,6 +147,41 @@ internal class DocumentGuideFiles(root: File) {
 
 internal class GuideConflict : IllegalStateException("The file changed on disk. Your draft is preserved; reload the disk version or copy your draft before merging.")
 
+/**
+ * A document's `notes` properties, collected as read-only companions to the Markdown files.
+ *
+ * `notes` is already Markdown — it persists as a `_notes_.md` sidecar and has its own preview in
+ * the box editor — and it is where humans and agents leave intent in prose, so the viewer is the
+ * natural place to read all of a document's notes at once. Writing them stays with the box, which
+ * keeps one write path (and one transcript entry) for the property.
+ */
+internal class DocumentGuideNotes(private val boxes: Collection<Box>) {
+    fun list(): List<DocumentGuideEntry> = boxes.asSequence()
+        .mapNotNull { box -> text(box)?.let { box to it } }
+        .map { (box, notes) ->
+            DocumentGuideEntry(documentGuideNotePath(box.id), title(box, notes), kind = "note", uid = box.id)
+        }
+        .sortedBy { it.title.lowercase() }
+        .take(128).toList()
+
+    fun read(path: String): DocumentGuideFile {
+        val uid = documentGuideNoteUid(path) ?: error("Expected a box note path")
+        val box = boxes.firstOrNull { it.id == uid } ?: error("Box '$uid' is not in this document")
+        val notes = text(box) ?: error("Box '${box.name.ifBlank { uid }}' has no notes")
+        return DocumentGuideFile(path, notes, revision(notes.toByteArray(Charsets.UTF_8)), kind = "note", uid = uid)
+    }
+
+    private fun text(box: Box): String? {
+        if (box.getPropertyRaw("_tombstone").isTrue()) return null
+        val notes = box.getPropertyRaw("notes") as? String ?: return null
+        // The bound the files honour, for the same reason: past a megabyte this is a document, not a note.
+        return notes.takeIf { it.isNotBlank() && it.toByteArray(Charsets.UTF_8).size <= MAX_BYTES }
+    }
+
+    private fun title(box: Box, notes: String): String =
+        headingTitle(notes.lineSequence()) ?: box.name.ifBlank { null } ?: box.id
+}
+
 @RunsAt(installHandlers)
 fun documentGuideHandlers() {
     handlers["document-guide"] = mutableSetOf({ message, reply ->
@@ -150,16 +190,27 @@ fun documentGuideHandlers() {
         val result = try {
             val request = Json.decodeFromJsonElement<DocumentGuideRequest>(message.payload!!)
             val files = DocumentGuideFiles(File(info.filename))
+            val notes = DocumentGuideNotes(info.boxes.values.toList())
+            // Notes are read here and written on their box, so every writing action refuses one.
+            val isNote = documentGuideNoteUid(request.path) != null
+            val onTheBox = "Box notes are edited on the box itself"
             when (request.action) {
-                "list" -> DocumentGuideResponse(entries = files.list())
-                "read" -> DocumentGuideResponse(file = files.read(request.path))
+                "list" -> DocumentGuideResponse(entries = files.list() + notes.list())
+                "read" -> DocumentGuideResponse(file = if (isNote) notes.read(request.path) else files.read(request.path))
                 "save" -> {
+                    check(!isNote) { onTheBox }
                     val saved = files.save(request.path, request.revision, request.contents, readOnly)
                     refreshFileProxyBoxes(info)
                     DocumentGuideResponse(file = saved)
                 }
+                "create" -> {
+                    check(!isNote) { onTheBox }
+                    val created = files.create(request.path, request.contents, readOnly)
+                    DocumentGuideResponse(file = created, entries = files.list() + notes.list())
+                }
                 "pin" -> {
                     check(!readOnly) { "This document is read-only" }
+                    check(!isNote) { "$onTheBox; it is already on the canvas" }
                     files.read(request.path)
                     val target = files.resolve(request.path)
                     val existing = info.boxes.values.firstOrNull {

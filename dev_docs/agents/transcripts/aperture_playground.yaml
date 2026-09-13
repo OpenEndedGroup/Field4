@@ -10,8 +10,8 @@ operations:
     frame:
       x: 60.0
       y: 70.0
-      w: 260.0
-      h: 65.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.util.Options
@@ -27,10 +27,10 @@ operations:
     box: aperture_source
     name: 2. Source RTT — lines and points
     frame:
-      x: 360.0
+      x: 460.0
       y: 70.0
-      w: 260.0
-      h: 65.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.targets.RenderToTexture
@@ -113,10 +113,10 @@ operations:
     box: aperture_half
     name: 3. Reduce ½
     frame:
-      x: 360.0
-      y: 210.0
-      w: 260.0
-      h: 65.0
+      x: 460.0
+      y: 260.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.targets.RenderToTexture
@@ -173,10 +173,10 @@ operations:
     box: aperture_quarter
     name: 4. Reduce ¼
     frame:
-      x: 360.0
-      y: 340.0
-      w: 260.0
-      h: 65.0
+      x: 460.0
+      y: 440.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.targets.RenderToTexture
@@ -233,10 +233,10 @@ operations:
     box: aperture_medium
     name: 5. Aperture 4 / 10 px
     frame:
-      x: 690.0
-      y: 210.0
-      w: 260.0
-      h: 65.0
+      x: 890.0
+      y: 260.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.targets.RenderToTexture
@@ -312,10 +312,10 @@ operations:
     box: aperture_broad
     name: 6. Aperture 24 px
     frame:
-      x: 690.0
-      y: 340.0
-      w: 260.0
-      h: 65.0
+      x: 890.0
+      y: 440.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.targets.RenderToTexture
@@ -389,10 +389,10 @@ operations:
     box: aperture_composite
     name: 7. Composite — sharp / blur / guide
     frame:
-      x: 1020.0
-      y: 210.0
-      w: 260.0
-      h: 65.0
+      x: 1320.0
+      y: 260.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import afield.four.targets.RenderToTexture
@@ -454,10 +454,10 @@ operations:
     box: aperture_sprites
     name: 8. Analytic point sprites
     frame:
-      x: 1020.0
-      y: 340.0
-      w: 260.0
-      h: 65.0
+      x: 1320.0
+      y: 440.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         // Exact disc/aperture overlap: no texture or blur pass for this column.

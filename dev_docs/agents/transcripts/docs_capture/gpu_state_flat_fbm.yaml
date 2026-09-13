@@ -18,7 +18,7 @@ operations:
   - create:
       box: gs_renderer
       name: renderer
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -36,7 +36,7 @@ operations:
   - create:
       box: gs_sim
       name: simulate
-      frame: { x: 240.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         compute: |
           #version 450
@@ -185,7 +185,7 @@ operations:
   - create:
       box: gs_draw
       name: draw
-      frame: { x: 440.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 640.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         vertex: |
           #version 450

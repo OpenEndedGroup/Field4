@@ -33,7 +33,7 @@ operations:
   - create:
       box: mesh_primitives
       name: Primitives — welded, watertight, and χ = 2
-      frame: { x: 80.0, y: 80.0, w: 290.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 390.0, h: 100.0 }
       properties:
         code: |
           // A TriMesh is flat FloatArray attribute storage plus an IntArray of triangle indices.
@@ -88,7 +88,7 @@ operations:
   - create:
       box: mesh_marching
       name: Marching cubes — a watertight surface from a field
-      frame: { x: 80.0, y: 520.0, w: 340.0, h: 50.0 }
+      frame: { x: 80.0, y: 520.0, w: 440.0, h: 100.0 }
       properties:
         code: |
           // A ScalarField3D is just (Vec3) -> Float. marchingCubes samples it once per grid corner,
@@ -136,7 +136,7 @@ operations:
   - create:
       box: mesh_modelling
       name: SDF modelling — a shape as an expression
-      frame: { x: 1020.0, y: 80.0, w: 280.0, h: 50.0 }
+      frame: { x: 1020.0, y: 80.0, w: 380.0, h: 100.0 }
       properties:
         code: |
           // The point of writing shapes as expressions: every combinator is one line, and the
@@ -186,7 +186,7 @@ operations:
   - create:
       box: mesh_process
       name: Subdivide, smooth, decimate
-      frame: { x: 1020.0, y: 520.0, w: 200.0, h: 50.0 }
+      frame: { x: 1020.0, y: 520.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Loop subdivision quadruples the triangles and preserves the Euler characteristic
@@ -256,7 +256,7 @@ operations:
   - create:
       box: mesh_measure
       name: Curvature, rays, closest points, inside
-      frame: { x: 80.0, y: 960.0, w: 270.0, h: 50.0 }
+      frame: { x: 80.0, y: 960.0, w: 370.0, h: 100.0 }
       properties:
         code: |
           // Discrete curvature: the angle deficit for Gaussian, the cotangent Laplacian's magnitude
@@ -321,7 +321,7 @@ operations:
   - create:
       box: mesh_bridges
       name: Bridges — Voronoi, FLines, OBJ and STL
-      frame: { x: 1020.0, y: 960.0, w: 270.0, h: 50.0 }
+      frame: { x: 1020.0, y: 960.0, w: 370.0, h: 100.0 }
       properties:
         code: |
           // Field already computed a real 3D Voronoi diagram by half-space clipping (voronoi.kt);
@@ -405,7 +405,7 @@ operations:
   - create:
       box: mesh_inline_view
       name: The inline view — evaluate a mesh, look at it
-      frame: { x: 80.0, y: 1400.0, w: 310.0, h: 50.0 }
+      frame: { x: 80.0, y: 1400.0, w: 410.0, h: 100.0 }
       properties:
         code: |
           // Every other box here pushes a picture to its output on purpose, with showMeshGrid. This one

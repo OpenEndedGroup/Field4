@@ -14,7 +14,7 @@ operations:
   - create:
       box: rectsl_heading_lowering
       name: a heading, and the half turn it avoids
-      frame: { x: 80.0, y: 60.0, w: 280.0, h: 50.0 }
+      frame: { x: 80.0, y: 60.0, w: 380.0, h: 100.0 }
       properties:
         code: |
           import afield.rectsl.*
@@ -164,7 +164,7 @@ operations:
   - create:
       box: rectsl_heading_solve
       name: solve for where it points
-      frame: { x: 80.0, y: 900.0, w: 280.0, h: 50.0 }
+      frame: { x: 80.0, y: 900.0, w: 380.0, h: 100.0 }
       properties:
         code: |
           import afield.rectsl.*

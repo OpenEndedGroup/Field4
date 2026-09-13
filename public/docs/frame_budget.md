@@ -1,6 +1,6 @@
 # Holding a frame budget
 
-Sixty frames a second is 16.67 milliseconds a frame, and a real-time piece either fits in
+Sixty frames a second is 16.67<!--derive: 1000/60--> milliseconds a frame, and a real-time piece either fits in
 that or it does not. When it stops fitting, Field will show you three different sets of
 numbers, on three different clocks, over three different populations. They do not agree,
 they are not supposed to agree, and the most expensive mistake available here is to read
@@ -38,7 +38,7 @@ Twenty-three label literals exist in the tree today — six in the renderer prop
 with a window or context index, as at `Renderer.kt:1248#CPUSpan.time("present[$ctxIndex]") {`),
 fourteen under OpenXR and three in the virtual-texture system.
 
-Two things about it are load-bearing and neither is obvious from the name.
+Two things about it are not obvious from the name.
 
 **It is wall time, not CPU time.** `time` reads `System.nanoTime()` and nothing else. A
 `present` span that spends four milliseconds waiting on a fence reports four milliseconds,
@@ -106,7 +106,7 @@ display("main", Table(
 
 Six hundred spans in, `n` is 500 rather than 600 and the hitch is sitting in `max` — at
 48.91 ms in the run above rather than the 40 asked for, because `Thread.sleep` is a lower
-bound and the span honestly reports the time that actually passed. Meanwhile `p99` reads
+bound and the span reports the time that actually passed. Meanwhile `p99` reads
 0.33 ms, because one bad sample out of 500 cannot reach element 494. Five hundred spans
 later `max` has fallen to 0.42 ms — and `p99` is still 0.33, having moved by **0.00 ms**
 across the entire episode. **A hitch that happens once a minute is invisible to every
@@ -200,7 +200,7 @@ allocated once at the start. Named scope tokens and snapshot exports also alloca
 a capture; compare like-for-like recordings. With no capture
 active the dispatch path is one volatile read (`CoroutineProfiling.kt:40#val capture = active`)
 and an origin lookup; no counters are read and no measurement token is allocated.
-Note also that the latch deliberately drops its references to your live
+Note also that the latch drops its references to your live
 objects (`CoroutineProfiling.kt:176#origins.clear() // do not retain live object graphs in a saved capture`),
 and only four documents' captures are kept
 (`CoroutineProfiling.kt:77#while (captures.size > 4) captures.remove(captures.keys.first())`).
@@ -251,19 +251,19 @@ millisecond** period
 allocation stacks come from `jdk.ObjectAllocationSample` throttled to **150 a second**
 (`JvmProfileCapture.kt:23#enable("jdk.ObjectAllocationSample").with("throttle", "150/s").withStackTrace()`).
 
-A 10 millisecond period means a sampler that fires 100 times a second per running thread.
-At 60 fps a frame is 16.7 milliseconds long, so about **1.7** firings land in each frame —
+A 10 millisecond period means a sampler that fires 100<!--derive: 1000/10--> times a second per running thread.
+At 60 fps a frame is 16.7 milliseconds long, so about **1.7**<!--derive: 16.7/10--> firings land in each frame —
 but a firing only records your work if your work is what is running when it arrives, so **a
 2 millisecond hitch has about a one in five chance of appearing in any sample at all**, and
 a single hitch that shows up in no sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
 work in proportion to how much of *wall* time your work occupies. That is not a
 hand-waving claim; it is checkable, and it was checked for this page. The three-second
-recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13%
-busy. Three seconds at a 10 ms period is 300 possible firings, so about six CPU samples
+recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13<!--derive: 63.9/3002.6*100-->%
+busy. Three seconds at a 10 ms period is 300<!--derive: 3000/10--> possible firings, so about six CPU samples
 should have landed in the workload. **Nine arrived.** Out of 207 total sampled events,
 exactly **9 were CPU samples and 198 were allocation samples.**
 
-Nine. In three seconds, with three boxes deliberately burning CPU. If you want CPU stacks
+Nine. In three seconds, with three boxes burning CPU. If you want CPU stacks
 worth grouping, the work has to be *happening* while you record: a piece genuinely spending
 half its frame budget in box code will yield a couple of hundred samples in three seconds,
 and a piece that is mostly waiting will yield a handful however long you record it.
@@ -286,7 +286,7 @@ recording started (`JvmProfileCapture.kt:125#// recording. Establish its baselin
 That discard is visible: the measured recording reported three dropped events across
 exactly three sampled threads, which is one per thread and nothing else.
 
-At 150 events a second, ten seconds of a 60 fps piece gives at most 1,500 events spread
+At 150 events a second, ten seconds of a 60 fps piece gives at most 1,500<!--derive: 150*10--> events spread
 across the whole JVM — about two and a half per frame. A per-frame allocation budget read
 off that is an estimate from a couple of samples. So if you are setting yourself a budget
 in kilobytes a frame, it is a working guide rather than a number the JVM owes you, and the
@@ -380,7 +380,7 @@ Notice that the two groupings are consistent rather than contradictory — `vec`
 callee and line 12 is the caller, which is exactly the difference between **Top frame only**
 and **Including callees**, and exactly why the two columns must not be added.
 
-Notice also the honest half. In the same capture the *periodic burst* box — the one costing
+In the same capture the *periodic burst* box — the one costing
 2.2 ms every 240 ms, which is by far the largest single cost in the recording — was
 represented by **one** sample, on its line 7, with no measurable allocation. Sampling found
 the allocation problem immediately and very nearly missed the CPU problem entirely. The

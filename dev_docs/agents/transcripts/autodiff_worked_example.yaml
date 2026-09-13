@@ -44,7 +44,7 @@ operations:
   - create:
       box: autodiff_basics
       name: reverse mode, forward mode, and the oracle
-      frame: { x: 60.0, y: 60.0, w: 290.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 390.0, h: 100.0 }
       properties:
         code: |
           // AD is not a new numeric tower you have to learn — it is ordinary Kotlin arithmetic on a
@@ -88,7 +88,7 @@ operations:
   - create:
       box: autodiff_optimizers
       name: three descents, one valley
-      frame: { x: 60.0, y: 1800.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 1800.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Rosenbrock's curved valley is the classic separator: a first-order method zig-zags
@@ -127,7 +127,7 @@ operations:
   - create:
       box: autodiff_fn_fit
       name: exact gradients through the Fn graph
-      frame: { x: 60.0, y: 3600.0, w: 250.0, h: 50.0 }
+      frame: { x: 60.0, y: 3600.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.Functions
@@ -172,7 +172,7 @@ operations:
   - create:
       box: autodiff_ik
       name: inverse kinematics on an FLine chain
-      frame: { x: 1400.0, y: 60.0, w: 250.0, h: 50.0 }
+      frame: { x: 1400.0, y: 60.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           // Forward kinematics is a cumulative sum of joint angles and a running position, which is
@@ -241,7 +241,7 @@ operations:
   - create:
       box: autodiff_pack
       name: a differentiable circle packing
-      frame: { x: 1400.0, y: 1800.0, w: 220.0, h: 50.0 }
+      frame: { x: 1400.0, y: 1800.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           // Overlap is a hinge: relu(r1 + r2 - distance)^2, zero when the discs are disjoint and

@@ -16,7 +16,7 @@ operations:
   - create:
       box: ceres_free_variables_planes
       name: "Ceres — a plane per face, solved as a free variable"
-      frame: { x: 80.0, y: 80.0, w: 350.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 450.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.FLine
@@ -226,7 +226,7 @@ operations:
   - create:
       box: ceres_free_variables_sphere
       name: "Ceres — unknowns that are not points"
-      frame: { x: 580.0, y: 80.0, w: 250.0, h: 50.0 }
+      frame: { x: 580.0, y: 80.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.FLine

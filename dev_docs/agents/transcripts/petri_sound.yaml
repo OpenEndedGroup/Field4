@@ -34,7 +34,7 @@ operations:
   - create:
       box: petri_demo_loop
       name: 1 — the smallest loop
-      frame: { x: 60.0, y: 60.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -69,7 +69,7 @@ operations:
   - create:
       box: petri_demo_polyrhythm
       name: 2 — five against three
-      frame: { x: 60.0, y: 160.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 210.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -107,7 +107,7 @@ operations:
   - create:
       box: petri_demo_structure
       name: 3 — song structure
-      frame: { x: 60.0, y: 260.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 360.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -142,7 +142,7 @@ operations:
   - create:
       box: petri_demo_tokens
       name: 4 — tokens that are rhythms
-      frame: { x: 60.0, y: 360.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 510.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -174,7 +174,7 @@ operations:
   - create:
       box: petri_demo_philosophers
       name: 5 — dining philosophers (silent)
-      frame: { x: 60.0, y: 460.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 660.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -216,7 +216,7 @@ operations:
   - create:
       box: petri_demo_playground
       name: 6 — playground
-      frame: { x: 60.0, y: 560.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 810.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -256,7 +256,7 @@ operations:
   - create:
       box: petri_demo_live
       name: 7 — play it live
-      frame: { x: 60.0, y: 660.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 960.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*

@@ -329,6 +329,35 @@ class GeneratedFiles:
         del file
 
 
+# The three markdown files Field itself writes into a workspace directory: the onboarding pair
+# `ensureAgentGuides` copies verbatim into every document folder, and the narrative mirror of
+# `metadata.edn` that `saving.kt` keeps beside it for code and AI tools. Matched by name rather
+# than by "any markdown under assets/", because a few asset folders also hold hand-written prose
+# that *is* a page and *is* linked from one -- `canonical_graphics/LESSONS.md` from
+# `afield_four_graphics.md`, `fabricate_demo/ATTRIBUTION.md` from `path_tracing.md`. Excluding
+# those broke both links and cost the build two `page does not exist` warnings, which is what a
+# `--strict` CI build fails on.
+WORKSPACE_MARKDOWN_FILENAMES = frozenset({"README.md", "AGENTS.md", "document.md"})
+
+
+def is_workspace_markdown(relative: Path) -> bool:
+    """True for a markdown file that belongs to a downloadable workspace, not to the site.
+
+    Every `assets/<name>/` folder under the docs root is a *Field workspace* -- a document the
+    gallery offers as a starting point -- and none of the three files Field writes into one is a
+    page: 96 transcripts means 96 byte-identical copies of the same two guides, and a rendered
+    `document.md` is a wall of EDN. Built as pages they were 312 orphans that nothing on the site
+    linked to, reachable only by turning up in search -- 1265 of 6673 index entries, 2.3 MB of a
+    10.2 MB `search.json`, mostly 96-fold duplicates crowding out real hits.
+
+    So they are copied verbatim into the built site by `copy_workspace_markdown` instead of being
+    rendered, which keeps the raw file at its own URL (`assets/<name>/document.md`) for whoever
+    wants to read the workspace on disk, and keeps the thing the gallery actually links --
+    `metadata.edn`, opened in the offline viewer -- untouched.
+    """
+    return relative.name in WORKSPACE_MARKDOWN_FILENAMES and relative.parts[:1] == ("assets",)
+
+
 def copy_non_markdown_files(source: Path, target: Path) -> None:
     for path in source.rglob("*"):
         if not path.is_file() or path.suffix == ".md":
@@ -464,6 +493,9 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     try:
         for path in sorted(source_docs.rglob("*.md")):
             relative = path.relative_to(source_docs)
+            if is_workspace_markdown(relative):
+                # Copied verbatim below rather than rendered; see is_workspace_markdown.
+                continue
             destination = generated_docs / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             markdown = path.read_text(encoding="utf-8")
@@ -496,6 +528,51 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
         print(f"Processed {matched_pages}/{total_pages} docs page(s) with runner mode {runner_mode}; non-matching pages used runner mode never.")
 
     copy_non_markdown_files(source_docs, generated_docs)
+
+
+def copy_workspace_markdown(*, source_docs: Path, site_dir: Path) -> int:
+    """Emit the workspace markdown the page pipeline skipped, as raw files in the built site.
+
+    Runs after the Zensical build rather than into the generated docs tree, because Zensical
+    renders every markdown file it finds under `docs_dir` -- a copy there would be the page again.
+    Landing them in the site dir instead means `assets/<name>/document.md` serves its own text and
+    nothing indexes a 96-fold duplicate of a workspace guide. See `is_workspace_markdown`.
+    """
+    copied = 0
+    for path in sorted(source_docs.rglob("*.md")):
+        relative = path.relative_to(source_docs)
+        if not is_workspace_markdown(relative):
+            continue
+        destination = site_dir / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, destination)
+        copied += 1
+        prune_stale_page(source_docs=source_docs, site_dir=site_dir, relative=relative)
+    return copied
+
+
+def prune_stale_page(*, source_docs: Path, site_dir: Path, relative: Path) -> None:
+    """Delete the page an earlier build rendered from this file, so an incremental build drops it.
+
+    `zensical build` without `--clean` leaves whatever it wrote last time in place, and the site dir
+    is git-ignored, so a tree that built these as pages keeps serving them (and keeps them in the
+    stale `search.json`) until someone cleans. Two output shapes to undo, from `use_directory_urls`:
+    `document.md` became `document/index.html`, and `README.md` became the folder's own
+    `index.html` -- which is only removed when the source folder has no static `index.html` of its
+    own to be confused with (`assets/mode/**` has several).
+    """
+    if relative.name == "README.md":
+        if (source_docs / relative.parent / "index.html").exists():
+            return
+        rendered = site_dir / relative.parent / "index.html"
+    else:
+        rendered = site_dir / relative.parent / relative.stem / "index.html"
+    if not rendered.is_file():
+        return
+    rendered.unlink()
+    parent = rendered.parent
+    if parent != site_dir / relative.parent and not any(parent.iterdir()):
+        parent.rmdir()
 
 
 def emit_offline_viewer(*, site_dir: Path) -> None:
@@ -626,7 +703,10 @@ def run(args: argparse.Namespace) -> int:
         command.append("--strict")
     returncode = subprocess.run(command, cwd=public_dir, check=False).returncode
     if returncode == 0:
-        emit_offline_viewer(site_dir=public_dir / "field4")
+        site_dir = public_dir / "field4"
+        emit_offline_viewer(site_dir=site_dir)
+        copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)
+        print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
     return returncode
 
 

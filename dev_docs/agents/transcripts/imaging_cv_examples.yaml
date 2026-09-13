@@ -26,7 +26,7 @@ operations:
   - create:
       box: imaging_basics
       name: Img basics — build, resample, luma, HSV, threshold
-      frame: { x: 80.0, y: 80.0, w: 340.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 440.0, h: 100.0 }
       properties:
         code: |
           // An Img is width x height x channels floats, interleaved, origin top-left. This one is
@@ -70,7 +70,7 @@ operations:
   - create:
       box: imaging_filters
       name: filters — gaussian / median / bilateral / unsharp
-      frame: { x: 80.0, y: 500.0, w: 330.0, h: 50.0 }
+      frame: { x: 80.0, y: 500.0, w: 430.0, h: 100.0 }
       properties:
         code: |
           // A clean synthetic source, and the same source with 4% salt-and-pepper corruption.
@@ -116,7 +116,7 @@ operations:
   - create:
       box: imaging_edges
       name: gradients + Canny + the FLines the edges become
-      frame: { x: 80.0, y: 920.0, w: 320.0, h: 50.0 }
+      frame: { x: 80.0, y: 920.0, w: 420.0, h: 100.0 }
       properties:
         code: |
           val src = Img.generate(2400, 1800) { x, y ->
@@ -159,7 +159,7 @@ operations:
   - create:
       box: imaging_features
       name: features — Harris / FAST corners and Hough lines
-      frame: { x: 80.0, y: 1340.0, w: 330.0, h: 50.0 }
+      frame: { x: 80.0, y: 1340.0, w: 430.0, h: 100.0 }
       properties:
         code: |
           // A square whose corners are at exactly known coordinates.
@@ -212,7 +212,7 @@ operations:
   - create:
       box: imaging_morphology
       name: morphology, connected components, distance transform
-      frame: { x: 80.0, y: 1760.0, w: 350.0, h: 50.0 }
+      frame: { x: 80.0, y: 1760.0, w: 450.0, h: 100.0 }
       properties:
         code: |
           // Three disjoint discs of known radius, then noise on top of them.
@@ -254,7 +254,7 @@ operations:
   - create:
       box: imaging_motion
       name: motion — Lucas–Kanade flow and the homography RANSAC fits to it
-      frame: { x: 80.0, y: 2180.0, w: 420.0, h: 50.0 }
+      frame: { x: 80.0, y: 2180.0, w: 520.0, h: 100.0 }
       properties:
         code: |
           // Two frames related by a transform we choose, so the answer is known in advance.

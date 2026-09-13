@@ -380,7 +380,7 @@ asserts the gap in the form that survives re-running: the medium's deviation aga
 (`mediumSpread > 0.5`) and `fogDensity`'s variation **relative to its own mean**
 (`fogSpread / fogMean < 1e-4`). The residue behind that relative test is float32
 accumulation over 100 000 pixels, which is a claim about arithmetic rather than about
-rendering, so it is deliberately not quoted here as an absolute.
+rendering, so it is not quoted here as an absolute.
 
 ```diffstatic {data-lang=kotlin}
 // The room is the medium's extent. Bounds are not decoration: an unbounded medium has
@@ -409,8 +409,7 @@ left for surfaces, and a dense enough medium makes the image *darken* rather tha
 brighten — that is energy the bounce cap is discarding. Raise `maxBounces` (the cap is
 twelve) or lower the density.
 
-What is measured is how much energy a given budget loses at a fixed density, and it is
-worth knowing precisely. In a box **2.4** optical depths across, a medium that conserves
+The energy a given budget loses at a fixed density is measurable. In a box **2.4** optical depths across, a medium that conserves
 energy exactly — albedo 1, where the true answer is a whole number — reads `0.46337` of
 its value at one bounce, `0.64054` at two, `0.85178` at four, `0.97776` at eight and
 `0.99680` at twelve. Monotone, and never above 1.0, which is what tells you the deficit
@@ -509,8 +508,7 @@ a slatted strip light over a hazed room, cycling `mediumDensity` so you can watc
 shafts arrive. How the medium is verified, and against what, is in
 `dev_docs/PARTICIPATING_MEDIA.md`.
 
-One interaction worth knowing before you combine features: **a medium and `temporalReuse`
-are effectively exclusive.** A collision on the camera ray leaves the history guide's
+**A medium and `temporalReuse` are effectively exclusive.** A collision on the camera ray leaves the history guide's
 surface normal unset, so reprojection rejects that pixel — correct and safe, but it means a
 dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
 of reaching for reuse.
@@ -745,7 +743,7 @@ the sensitivity controls below let you change the motion and roughness policies.
 
 ### More persistence, including artifacts
 
-For a more persistent, deliberately less accurate moving image:
+For a more persistent, lower-accuracy moving image:
 
 ```diffstatic {data-lang=kotlin}
 tracer.temporalReuse = true
@@ -784,7 +782,7 @@ explicit reset. Scene geometry remains a static snapshot; object motion vectors 
 a spatial denoiser are not part of this implementation.
 
 The two history buffers are allocated on first use and retained until the tracer
-closes. They add 128 bytes per pixel: about 28 MiB at 640 × 360, or 253 MiB at
+closes. They add 128 bytes per pixel: about 28<!--derive: 640*360*128/1048576--> MiB at 640 × 360, or 253<!--derive: 1920*1080*128/1048576--> MiB at
 1920 × 1080. `samples` continues to count fresh samples for the current view, so it
 may stay at `samplesPerFrame` while moving even though valid pixels carry history.
 
@@ -899,7 +897,7 @@ for the off reference at that budget.
 The extra shadow ray costs one traversal per surface interaction. A scene with no
 emissive triangle is bit-for-bit identical with the control on or off.
 
-Four things stay deliberately outside the table, and in each case the consequence is
+Four things are excluded from the table, and in each case the consequence is
 that emission from them is found by BSDF sampling alone, exactly as before:
 
 - **Emitters behind stochastic alpha coverage** (`AlphaMode.MASK` or `BLEND`). The
@@ -913,8 +911,7 @@ that emission from them is found by BSDF sampling alone, exactly as before:
   those two disagreed about one point, their combination would be biased.
 - **Zero-area triangles**, which cannot be sampled by area at all.
 
-One asymmetry is worth knowing before comparing images. `maxBounces` is a path
-length limit, and a shadow ray reaches one segment past it: the connection from the
+`maxBounces` is a path length limit, and a shadow ray reaches one segment past it: the connection from the
 last path vertex to a light is a scattering event that a BSDF hit would have needed
 another bounce to make. So `emitterSampling = true` at three bounces transports what
 `false` transports at four. That is more light for the same budget, not a brightness
@@ -1054,7 +1051,7 @@ Rows at their default are dropped rather than shown as zeros, so a plain tracer 
 rows and each of the five optional groups — a non-agreeing up, a lens, temporal reuse,
 fog, an attached convergence log — adds one. Ten is the ceiling.
 
-The `up` row is the one worth knowing about. **The tracer does not use `camera.up`.** It
+**The tracer does not use `camera.up`.** It
 builds its own up as `right × forward`: the component of the declared up that is
 perpendicular to the view direction, normalised. So a declared up that is not already
 unit-length and perpendicular gives a different vector from the one the image is made

@@ -7,8 +7,8 @@ operations:
       frame:
         x: 320.0
         y: 80.0
-        w: 220.0
-        h: 50.0
+        w: 320.0
+        h: 100.0
       properties:
         vertex: |
           #version 450

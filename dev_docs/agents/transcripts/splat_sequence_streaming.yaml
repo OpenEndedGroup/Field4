@@ -30,8 +30,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 320.0
-        h: 60.0
+        w: 420.0
+        h: 110.0
       properties:
         code: |
           import afield.four.Renderer

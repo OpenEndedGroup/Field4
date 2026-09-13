@@ -53,7 +53,7 @@ operations:
   - create:
       box: hello
       name: Hello
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           println("hello from a transcript")
@@ -64,24 +64,30 @@ operations:
       wait: pending
 ```
 
-### Keep frames small: `200 x 50`, widened only to fit the name
+### Keep frames small: `300 x 100`, widened only to fit the name
 
 A box's frame is a **labelled rectangle**, nothing more. The code lives in the shared
 Monaco pane, not inside the box, and output is drawn in a panel anchored *below* the box
 whose width is a fixed 520px and whose height comes from its content. So a tall box buys
 no extra code and no extra output — it only spends canvas.
 
-Start at `w: 200.0, h: 50.0`. Widen `w` only enough for the box's `name` to fit
-(~6.2px per character at the title's 10px monospace, plus ~26px of padding and slack,
-rounded up to 10) and cap it at `520.0` to match the output panel beneath. Never grow `h`.
+Start at `w: 300.0, h: 100.0`. Widen `w` only enough for the box's `name` to fit
+(~6.2px per character at the title's 10px monospace, plus ~126px of padding and slack,
+rounded up to 10) and cap it at `620.0`. Never grow `h`.
+
+The default was `200 x 50` until 2026-09-13. That was 100px too narrow and 50px too short
+in practice — small enough that a box read as a sliver against its own output — so the whole
+corpus, the demo documents and the ceiling all grew by `+100 w` / `+50 h` together. Note
+that a box past 520 wide now overhangs the output panel beneath it, which is why `620.0` is
+a cap and not a target.
 
 Leave real vertical room between boxes: an *expanded* output panel is often 150–350px
-tall, so boxes stacked 140px apart will have their outputs land on the next box's title.
+tall, so boxes stacked 190px apart will have their outputs land on the next box's title.
 Space a column by what its boxes actually render, not by `frame.h`.
 
 `./gradlew checkAgentTranscriptLayouts` enforces the repository corpus: every created box
 has a numeric, positive frame; `x` and `y` are non-negative; and ordinary frames stay at or
-below `520 x 120`. A deliberately composed visual card or docs-capture subject may be larger,
+below `620 x 170`. A deliberately composed visual card or docs-capture subject may be larger,
 but its exact `file#box` key needs a concrete reason in
 `dev_docs/agents/transcript_layout_exceptions.yaml`. The guard rejects stale and orphaned
 exceptions, so shrinking or deleting the box also removes its exemption.
@@ -176,7 +182,7 @@ quick-stubs. (Base and AI completions both render without the other blocking the
 - create:
     box: particles              # stable id — reuse it in later ops
     name: Particle Sim          # display name (also `title`)
-    frame: { x: 300.0, y: 40.0, w: 200.0, h: 50.0 }
+    frame: { x: 300.0, y: 40.0, w: 300.0, h: 100.0 }
     properties:                 # any box property, incl. sidecar-backed text
       code: |
         println("built")
@@ -382,7 +388,7 @@ operations:
   - create:
       box: sv_box
       name: save probe
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           prop<Int>(savemarker) = 12321

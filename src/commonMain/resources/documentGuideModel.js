@@ -42,6 +42,32 @@ export function classifyGuideLink(href, currentPath = "README.md") {
     } catch (_) { return { kind: "invalid" }; }
 }
 
+// Box `notes` share the guide list, under a path the file namespace cannot produce: `guideTarget`
+// rejects `box/…` because it has no Markdown extension and its directory is neither docs nor guides.
+export const notePrefix = "box/";
+
+export function notePath(uid) { return notePrefix + uid; }
+
+export function noteUid(path) {
+    const raw = String(path || "");
+    return raw.startsWith(notePrefix) ? raw.slice(notePrefix.length) || null : null;
+}
+
+/**
+ * The file a typed note name becomes. One optional `docs/` or `guides/` directory is honoured;
+ * everything else collapses to a single slug the server's `isGuideName` will accept.
+ */
+export function noteFilePath(name) {
+    const typed = String(name || "").trim().replace(/\.(md|markdown)$/i, "");
+    const parts = typed.split("/");
+    const directory = parts.length > 1 && /^(docs|guides)$/i.test(parts[0].trim())
+        ? parts.shift().trim().toLowerCase() + "/" : "";
+    const slug = parts.join(" ").replace(/[^\p{L}\p{N} ._-]/gu, "").trim()
+        .replace(/\s+/g, "-").replace(/^[.\-_]+/, "").slice(0, 80)
+        .replace(/_+$/, ""); // `name_.md` is the sidecar convention, and the server rejects it.
+    return `${directory}${slug || "note"}.md`;
+}
+
 export function guideAssetUrl(documentKey, path) {
     return `/api/document-guide-asset?${new URLSearchParams({document: documentKey, path})}`;
 }

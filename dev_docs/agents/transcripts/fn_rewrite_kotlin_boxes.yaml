@@ -11,8 +11,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 300.0
-        h: 100.0
+        w: 400.0
+        h: 150.0
       properties:
         code: |
           // An ordinary, idle box. Its only job is to own a live Kotlin engine that somebody else
@@ -33,9 +33,9 @@ operations:
       name: Two boxes - works
       frame:
         x: 60.0
-        y: 200.0
-        w: 460.0
-        h: 120.0
+        y: 250.0
+        w: 560.0
+        h: 170.0
       properties:
         code: |
           // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
@@ -115,9 +115,9 @@ operations:
       name: One box - does not work
       frame:
         x: 60.0
-        y: 360.0
-        w: 460.0
-        h: 120.0
+        y: 460.0
+        w: 560.0
+        h: 170.0
       properties:
         code: |
           // THE WRONG WAY, kept runnable so you can watch it refuse. `rewriteKotlin` takes its box

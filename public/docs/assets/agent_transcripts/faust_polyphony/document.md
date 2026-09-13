@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="faust_polyphony_offline" index="0" -->
 
 ```edn [field-box id="faust_polyphony_offline" role="properties"]
-{"id" "faust_polyphony_offline" "index" 0 "name" "offline, with a plot" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, with a plot" "_tombstone" false "frame" #afield/rect [660.0 80.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_offline_code_.kt" "lines" 34 "characters" 1461 "sha256" "460fe59546df6a6787a804d33eeb6c2bf4887a51b1515b7b82345baa6d160a97"}]}
+{"id" "faust_polyphony_offline" "index" 0 "name" "offline, with a plot" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, with a plot" "_tombstone" false "frame" #afield/rect [660.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_offline_code_.kt" "lines" 34 "characters" 1461 "sha256" "460fe59546df6a6787a804d33eeb6c2bf4887a51b1515b7b82345baa6d160a97"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_offline" name="code" path="faust_polyphony_offline_code_.kt"]
@@ -56,7 +56,7 @@ println(
 <!-- field-box id="faust_polyphony_steal" index="1" -->
 
 ```edn [field-box id="faust_polyphony_steal" role="properties"]
-{"id" "faust_polyphony_steal" "index" 1 "name" "when it runs out of voices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "when it runs out of voices" "_tombstone" false "frame" #afield/rect [660.0 830.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_steal_code_.kt" "lines" 60 "characters" 3347 "sha256" "08e04448b97c271da6f45f6fc8ed1ff9e7a94d366e844d647ad2680e66d924f4"}]}
+{"id" "faust_polyphony_steal" "index" 1 "name" "when it runs out of voices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "when it runs out of voices" "_tombstone" false "frame" #afield/rect [660.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_steal_code_.kt" "lines" 60 "characters" 3347 "sha256" "08e04448b97c271da6f45f6fc8ed1ff9e7a94d366e844d647ad2680e66d924f4"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_steal" name="code" path="faust_polyphony_steal_code_.kt"]
@@ -127,7 +127,7 @@ println("default prefers the note being on time. See FaustVoiceBank.stealRelease
 <!-- field-box id="faust_polyphony_play" index="2" -->
 
 ```edn [field-box id="faust_polyphony_play" role="properties"]
-{"id" "faust_polyphony_play" "index" 2 "name" "Faust instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust instrument" "_tombstone" false "frame" #afield/rect [80.0 80.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_play_code_.kt" "lines" 41 "characters" 1943 "sha256" "a3abc66d845087f6db07c18901ab08b0662a0ca9211c91d39be457a6a64a2b9f"}]}
+{"id" "faust_polyphony_play" "index" 2 "name" "Faust instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust instrument" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_play_code_.kt" "lines" 41 "characters" 1943 "sha256" "a3abc66d845087f6db07c18901ab08b0662a0ca9211c91d39be457a6a64a2b9f"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_play" name="code" path="faust_polyphony_play_code_.kt"]
@@ -179,7 +179,7 @@ inst
 <!-- field-box id="faust_polyphony_timing" index="3" -->
 
 ```edn [field-box id="faust_polyphony_timing" role="properties"]
-{"id" "faust_polyphony_timing" "index" 3 "name" "onsets, in samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "onsets, in samples" "_tombstone" false "frame" #afield/rect [660.0 470.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_timing_code_.kt" "lines" 67 "characters" 3717 "sha256" "e8c8b6ccd0e0f59274fc196f0c17812da63fabb41e0b85e315702e1eb80a6e39"}]}
+{"id" "faust_polyphony_timing" "index" 3 "name" "onsets, in samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "onsets, in samples" "_tombstone" false "frame" #afield/rect [660.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_timing_code_.kt" "lines" 70 "characters" 3888 "sha256" "e15a7d3f8ab464c247b6e0301471ee484ed4678eb7fabad3e6ac8d8ce9268467"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_timing" name="code" path="faust_polyphony_timing_code_.kt"]
@@ -244,7 +244,10 @@ if (onsets.size == notated.size) {
     println("              threshold-free line above is the one to believe.")
 }
 
-display("waveform", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
+// Player and plot on SEPARATE channels: display() replaces a channel rather than appending,
+// so both on "waveform" left only whichever went out last.
+displayOpen("audio")
+display("audio", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
 showSignals(
     "mono" to (0 until render.frames step 24).map { mono[it] },
     x = (0 until render.frames step 24).map { it.toDouble() / render.sampleRate },
@@ -257,7 +260,7 @@ showSignals(
 <!-- field-box id="faust_polyphony_refusal" index="4" -->
 
 ```edn [field-box id="faust_polyphony_refusal" role="properties"]
-{"id" "faust_polyphony_refusal" "index" 4 "name" "what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what it refuses" "_tombstone" false "frame" #afield/rect [80.0 830.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_refusal_code_.kt" "lines" 20 "characters" 1027 "sha256" "c0e4831a2519b757a4d77e367ee9d031ba0cf4486df940cb8a0b4732a044f2c1"}]}
+{"id" "faust_polyphony_refusal" "index" 4 "name" "what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what it refuses" "_tombstone" false "frame" #afield/rect [80.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_refusal_code_.kt" "lines" 20 "characters" 1027 "sha256" "c0e4831a2519b757a4d77e367ee9d031ba0cf4486df940cb8a0b4732a044f2c1"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_refusal" name="code" path="faust_polyphony_refusal_code_.kt"]
@@ -288,7 +291,7 @@ println(runCatching { FaustPolyControls.of(program) }.exceptionOrNull()?.message
 <!-- field-box id="faust_polyphony_chord" index="5" -->
 
 ```edn [field-box id="faust_polyphony_chord" role="properties"]
-{"id" "faust_polyphony_chord" "index" 5 "name" "three notes at once" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "three notes at once" "_tombstone" false "frame" #afield/rect [80.0 470.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_chord_code_.kt" "lines" 39 "characters" 2312 "sha256" "5b71950d50a1e17f806484a7a2fd4cbb64571c7a822a8dd8523cf51a4e373166"}]}
+{"id" "faust_polyphony_chord" "index" 5 "name" "three notes at once" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "three notes at once" "_tombstone" false "frame" #afield/rect [80.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_chord_code_.kt" "lines" 39 "characters" 2312 "sha256" "5b71950d50a1e17f806484a7a2fd4cbb64571c7a822a8dd8523cf51a4e373166"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_chord" name="code" path="faust_polyphony_chord_code_.kt"]

@@ -20,7 +20,7 @@ Open current box code returns you to the code behind a measured coroutine.
 Hot code adds sampled classes, methods and box lines, including background threads.
 
 ```edn [field-box id="profile_capture" role="properties"]
-{"id" "profile_capture" "index" 0 "name" "4. Record and explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Record and explore" "_tombstone" false "frame" #afield/rect [420.0 200.0 250.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_capture_code_.kt" "lines" 7 "characters" 567 "sha256" "dbe699abfb5eb962f26b41b4911d42cb4a1cedd163cbe133b20b1ed226f858df"}]}
+{"id" "profile_capture" "index" 0 "name" "4. Record and explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Record and explore" "_tombstone" false "frame" #afield/rect [520.0 250.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_capture_code_.kt" "lines" 7 "characters" 567 "sha256" "dbe699abfb5eb962f26b41b4911d42cb4a1cedd163cbe133b20b1ed226f858df"}]}
 ```
 
 ```kotlin [field-property box="profile_capture" name="code" path="profile_capture_code_.kt"]
@@ -44,7 +44,7 @@ From `code`
 A small amount of CPU work at roughly 60 Hz. Increase iterations to widen the bars.
 
 ```edn [field-box id="profile_steady" role="properties"]
-{"id" "profile_steady" "index" 1 "name" "1. Steady work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Steady work" "_tombstone" false "frame" #afield/rect [80.0 80.0 220.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_steady_code_.kt" "lines" 7 "characters" 274 "sha256" "c200dfbf7054e1a67240e3f96fc33578a2b288ac26a088db32e5e1d80ac236d6"}]}
+{"id" "profile_steady" "index" 1 "name" "1. Steady work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Steady work" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_steady_code_.kt" "lines" 7 "characters" 274 "sha256" "c200dfbf7054e1a67240e3f96fc33578a2b288ac26a088db32e5e1d80ac236d6"}]}
 ```
 
 ```kotlin [field-property box="profile_steady" name="code" path="profile_steady_code_.kt"]
@@ -68,7 +68,7 @@ From `code`
 Sparse, longer CPU bars. Try 800000 iterations, or shorten the quiet interval.
 
 ```edn [field-box id="profile_bursts" role="properties"]
-{"id" "profile_bursts" "index" 2 "name" "2. Periodic bursts" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Periodic bursts" "_tombstone" false "frame" #afield/rect [80.0 200.0 220.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_bursts_code_.kt" "lines" 10 "characters" 287 "sha256" "fbcf3e2cab0dd6a8ff8abff6838408249c138618fa9f053d395975bc73dccf32"}]}
+{"id" "profile_bursts" "index" 2 "name" "2. Periodic bursts" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Periodic bursts" "_tombstone" false "frame" #afield/rect [80.0 250.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_bursts_code_.kt" "lines" 10 "characters" 287 "sha256" "fbcf3e2cab0dd6a8ff8abff6838408249c138618fa9f053d395975bc73dccf32"}]}
 ```
 
 ```kotlin [field-property box="profile_bursts" name="code" path="profile_bursts_code_.kt"]
@@ -96,7 +96,7 @@ Flip reuse to true, relaunch, and record again. Both paths update the same vecto
 vec is Field's linalg constructor; set writes into an existing vector.
 
 ```edn [field-box id="profile_vectors" role="properties"]
-{"id" "profile_vectors" "index" 3 "name" "3. Allocate or reuse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Allocate or reuse" "_tombstone" false "frame" #afield/rect [80.0 320.0 220.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_vectors_code_.kt" "lines" 15 "characters" 482 "sha256" "71cbec7b4eacd445e7afc6616165adfdf344d4a3b2e32b87fecd66912b17e0f4"}]}
+{"id" "profile_vectors" "index" 3 "name" "3. Allocate or reuse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Allocate or reuse" "_tombstone" false "frame" #afield/rect [80.0 420.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_vectors_code_.kt" "lines" 15 "characters" 482 "sha256" "71cbec7b4eacd445e7afc6616165adfdf344d4a3b2e32b87fecd66912b17e0f4"}]}
 ```
 
 ```kotlin [field-property box="profile_vectors" name="code" path="profile_vectors_code_.kt"]

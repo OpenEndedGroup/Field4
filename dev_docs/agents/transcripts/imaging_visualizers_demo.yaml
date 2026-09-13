@@ -35,7 +35,7 @@ operations:
   - create:
       box: viz_scene
       name: Img — thumbnail, channels, histogram
-      frame: { x: 60.0, y: 60.0, w: 250.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           // A synthetic scene with something for every detector: a bright rectangle (corners), a
@@ -58,7 +58,7 @@ operations:
   - create:
       box: viz_signed
       name: signed dx — diverging, zero fixed
-      frame: { x: 430.0, y: 60.0, w: 240.0, h: 50.0 }
+      frame: { x: 530.0, y: 60.0, w: 340.0, h: 100.0 }
       properties:
         code: |
           // sobel().dx is two-signed: positive on a dark->bright edge, negative on bright->dark.
@@ -74,7 +74,7 @@ operations:
   - create:
       box: viz_autoranged
       name: auto-ranged — the true range printed
-      frame: { x: 800.0, y: 60.0, w: 250.0, h: 50.0 }
+      frame: { x: 1000.0, y: 60.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           // Edge magnitude x25 lands far outside 0..1. Clamping would show a flat white rectangle;
@@ -90,7 +90,7 @@ operations:
   - create:
       box: viz_non_finite
       name: NaN + infinity — counted and magenta
-      frame: { x: 60.0, y: 400.0, w: 250.0, h: 50.0 }
+      frame: { x: 60.0, y: 400.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           // Non-finite samples are excluded from the range and the statistics, and painted magenta.
@@ -108,7 +108,7 @@ operations:
   - create:
       box: viz_gradient
       name: Gradient — dx, dy, magnitude, direction
-      frame: { x: 430.0, y: 400.0, w: 270.0, h: 50.0 }
+      frame: { x: 530.0, y: 400.0, w: 370.0, h: 100.0 }
       properties:
         code: |
           val src = Img.generate(240, 180) { x, y ->
@@ -122,7 +122,7 @@ operations:
   - create:
       box: viz_pyramid
       name: GaussianPyramid — rungs at true scale
-      frame: { x: 800.0, y: 400.0, w: 260.0, h: 50.0 }
+      frame: { x: 1000.0, y: 400.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           // Each rung is drawn at its real fraction of the base resolution, bottom-aligned, so the
@@ -141,7 +141,7 @@ operations:
   - create:
       box: viz_corners
       name: List<Corner> — scatter by strength
-      frame: { x: 60.0, y: 740.0, w: 240.0, h: 50.0 }
+      frame: { x: 60.0, y: 740.0, w: 340.0, h: 100.0 }
       properties:
         code: |
           // The rectangle is x 30..90, y 26..76, so the four strongest corners should read back as
@@ -157,7 +157,7 @@ operations:
   - create:
       box: viz_hough
       name: List<HoughLine> — geometry + accumulator
-      frame: { x: 430.0, y: 740.0, w: 280.0, h: 50.0 }
+      frame: { x: 530.0, y: 740.0, w: 380.0, h: 100.0 }
       properties:
         code: |
           // Two rulings planted at x=151 and y=141; the peaks should come back as rho~149 theta=0
@@ -174,7 +174,7 @@ operations:
   - create:
       box: viz_flow
       name: FlowField — quiver, failures included
-      frame: { x: 800.0, y: 740.0, w: 260.0, h: 50.0 }
+      frame: { x: 1000.0, y: 740.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           // The second frame is the first rotated 0.06 rad about its centre, so the arrows should
@@ -190,7 +190,7 @@ operations:
   - create:
       box: viz_components
       name: ComponentLabelling — one hue per blob
-      frame: { x: 60.0, y: 1080.0, w: 260.0, h: 50.0 }
+      frame: { x: 60.0, y: 1080.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           // Adjacent label ids get unrelated hues (golden-ratio rotation), which is what makes two

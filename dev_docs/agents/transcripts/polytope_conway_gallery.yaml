@@ -13,7 +13,7 @@ operations:
   - create:
       box: polytope_expression_gallery
       name: "1 — Conway expressions, retype the list"
-      frame: { x: 80.0, y: 80.0, w: 270.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 370.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*
@@ -55,7 +55,7 @@ operations:
   - create:
       box: polytope_abstract_dual
       name: "2 — a dual with no coordinates"
-      frame: { x: 1120.0, y: 80.0, w: 220.0, h: 50.0 }
+      frame: { x: 1120.0, y: 80.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*
@@ -97,7 +97,7 @@ operations:
   - create:
       box: polytope_parameter_field
       name: "3 — a non-uniform parameter field on the faces"
-      frame: { x: 80.0, y: 1000.0, w: 320.0, h: 50.0 }
+      frame: { x: 80.0, y: 1000.0, w: 420.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*
@@ -180,7 +180,7 @@ operations:
   - create:
       box: polytope_realization_relax
       name: "4 — realization before and after, with diagnostics"
-      frame: { x: 1120.0, y: 1000.0, w: 340.0, h: 50.0 }
+      frame: { x: 1120.0, y: 1000.0, w: 440.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*

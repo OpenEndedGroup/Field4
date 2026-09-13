@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="spectral_embedding_guide" index="0" -->
 
 ```edn [field-box id="spectral_embedding_guide" role="properties"]
-{"id" "spectral_embedding_guide" "index" 0 "name" "1 · spectral spaces guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · spectral spaces guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_guide_code_.kt" "lines" 10 "characters" 1016 "sha256" "2aae92af36f2e5b776749a07b17f205019924637ff3219b81a3f814e6839ef02"}]}
+{"id" "spectral_embedding_guide" "index" 0 "name" "1 · spectral spaces guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · spectral spaces guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_guide_code_.kt" "lines" 10 "characters" 1016 "sha256" "2aae92af36f2e5b776749a07b17f205019924637ff3219b81a3f814e6839ef02"}]}
 ```
 
 ```kotlin [field-property box="spectral_embedding_guide" name="code" path="spectral_embedding_guide_code_.kt"]
@@ -32,7 +32,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_spectral" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_spectral" role="properties"]
-{"id" "analyse_near_drowning_spectral" "index" 1 "name" "3 · import, submit, monitor, project near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, project near_drowning" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_spectral_code_.kt" "lines" 83 "characters" 3890 "sha256" "803ffebbe0701d17f8a9bb221e28b30fdbf77818dc086e1483aecf0e2e2cc1e3"}]}
+{"id" "analyse_near_drowning_spectral" "index" 1 "name" "3 · import, submit, monitor, project near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, project near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_spectral_code_.kt" "lines" 83 "characters" 3890 "sha256" "803ffebbe0701d17f8a9bb221e28b30fdbf77818dc086e1483aecf0e2e2cc1e3"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_spectral" name="code" path="analyse_near_drowning_spectral_code_.kt"]
@@ -126,7 +126,7 @@ client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
 <!-- field-box id="spectral_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="spectral_embedding_visualizer_gallery" role="properties"]
-{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · model-free synchronized spectral gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · model-free synchronized spectral gallery" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 48 "characters" 2174 "sha256" "bd5627fa13901b883caa567f04a4aed1599e50a368577d0a5ecaadb0048ea151"}]}
+{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · model-free synchronized spectral gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · model-free synchronized spectral gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 48 "characters" 2174 "sha256" "bd5627fa13901b883caa567f04a4aed1599e50a368577d0a5ecaadb0048ea151"}]}
 ```
 
 ```kotlin [field-property box="spectral_embedding_visualizer_gallery" name="code" path="spectral_embedding_visualizer_gallery_code_.kt"]

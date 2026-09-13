@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gs_renderer" index="0" -->
 
 ```edn [field-box id="gs_renderer" role="properties"]
-{"id" "gs_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gs_sim"] "properties" {"children" #{#afield/box "gs_sim"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gs_renderer_code_.kt" "lines" 11 "characters" 249 "sha256" "cb663790768b9b9d82b5859aa0d6a9178d777df8c51f8b6ba93017b50cf3c29b"}]}
+{"id" "gs_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gs_sim"] "properties" {"children" #{#afield/box "gs_sim"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gs_renderer_code_.kt" "lines" 11 "characters" 249 "sha256" "cb663790768b9b9d82b5859aa0d6a9178d777df8c51f8b6ba93017b50cf3c29b"}]}
 ```
 
 ```kotlin [field-property box="gs_renderer" name="code" path="gs_renderer_code_.kt"]
@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [240.0 40.0 200.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2045 "sha256" "2bb3bf4bc9c01e071f28cc2ef3c884a32f5d331d62a0d0f1b8ce56a803e009fb"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2045 "sha256" "2bb3bf4bc9c01e071f28cc2ef3c884a32f5d331d62a0d0f1b8ce56a803e009fb"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -207,7 +207,7 @@ println("simulation launched, N=" + N)
 <!-- field-box id="gs_draw" index="2" -->
 
 ```edn [field-box id="gs_draw" role="properties"]
-{"id" "gs_draw" "index" 2 "name" "draw" "parents" ["root" "gs_sim"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "gs_sim"} "name" "draw" "_tombstone" false "frame" #afield/rect [440.0 40.0 200.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "gs_draw_vertex_.glsl" "lines" 32 "characters" 852 "sha256" "9070f90741b585315a0d6434434d612aa719f91ebe440a279ad96af673217865"} {"name" "fragment" "language" "glsl" "path" "gs_draw_fragment_.glsl" "lines" 14 "characters" 424 "sha256" "b75dc03bd68870d1d195ed7ed012d29b65775b3abcd6524b196b1c7b7b679564"} {"name" "code" "language" "kotlin" "path" "gs_draw_code_.kt" "lines" 19 "characters" 824 "sha256" "18a82d744a6c7ee27107c75ef23b448878cd0d3ac568ebd6a319762ca3cb8439"}]}
+{"id" "gs_draw" "index" 2 "name" "draw" "parents" ["root" "gs_sim"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "gs_sim"} "name" "draw" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "gs_draw_vertex_.glsl" "lines" 32 "characters" 852 "sha256" "9070f90741b585315a0d6434434d612aa719f91ebe440a279ad96af673217865"} {"name" "fragment" "language" "glsl" "path" "gs_draw_fragment_.glsl" "lines" 14 "characters" 424 "sha256" "b75dc03bd68870d1d195ed7ed012d29b65775b3abcd6524b196b1c7b7b679564"} {"name" "code" "language" "kotlin" "path" "gs_draw_code_.kt" "lines" 19 "characters" 824 "sha256" "18a82d744a6c7ee27107c75ef23b448878cd0d3ac568ebd6a319762ca3cb8439"}]}
 ```
 
 ```glsl [field-property box="gs_draw" name="vertex" path="gs_draw_vertex_.glsl"]

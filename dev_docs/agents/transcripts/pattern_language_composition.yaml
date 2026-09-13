@@ -35,7 +35,7 @@ operations:
   - create:
       box: pat_demo_signals
       name: 1 — continuous signals
-      frame: { x: 60.0, y: 60.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A signal is not a new type: it is a PatPattern<Double> that answers EVERY arc with
@@ -66,7 +66,7 @@ operations:
   - create:
       box: pat_demo_structure
       name: 2 — whose rhythm survives
-      frame: { x: 820.0, y: 60.0, w: 200.0, h: 50.0 }
+      frame: { x: 820.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // When two patterns meet, one of three things happens to the rhythm. The bars say where
@@ -98,7 +98,7 @@ operations:
   - create:
       box: pat_demo_parameter
       name: 3 — a parameter, not a staircase
-      frame: { x: 60.0, y: 520.0, w: 230.0, h: 50.0 }
+      frame: { x: 60.0, y: 520.0, w: 330.0, h: 100.0 }
       properties:
         code: |
           // Before tonight the only way to attach a value to an atom was zip(...) with a string
@@ -131,7 +131,7 @@ operations:
   - create:
       box: pat_demo_gain
       name: 4 — hear the difference
-      frame: { x: 820.0, y: 520.0, w: 200.0, h: 50.0 }
+      frame: { x: 820.0, y: 520.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
@@ -167,7 +167,7 @@ operations:
   - create:
       box: pat_demo_voice_leading
       name: 5 — voice leading
-      frame: { x: 60.0, y: 1020.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 1020.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Spelled from each chord's own root, a progression makes the hand leap. voiceLead()
@@ -203,7 +203,7 @@ operations:
   - create:
       box: pat_demo_playground
       name: 6 — playground (edit me)
-      frame: { x: 820.0, y: 1020.0, w: 200.0, h: 50.0 }
+      frame: { x: 820.0, y: 1020.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A little piece. Change any string or any number and re-run this box: the roll and the
@@ -245,7 +245,7 @@ operations:
   - create:
       box: pat_demo_groove
       name: 7 — groove and substitution
-      frame: { x: 60.0, y: 1560.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 1560.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // swing() is exact rational time, not a nudge in milliseconds: every off-beat lands a
@@ -285,7 +285,7 @@ operations:
   - create:
       box: pat_demo_mini_notation
       name: 8 — mini-notation markers
-      frame: { x: 820.0, y: 1560.0, w: 200.0, h: 50.0 }
+      frame: { x: 820.0, y: 1560.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Three standalone step markers. Each is shorthand for a bracketed form, so each pair

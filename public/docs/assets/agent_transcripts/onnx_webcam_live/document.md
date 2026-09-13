@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="onnx_webcam" index="0" -->
 
 ```edn [field-box id="onnx_webcam" role="properties"]
-{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 114 "characters" 5308 "sha256" "390065f4d018fd10e8759f1c3db2db0d46dabcbcc9fc7d3049cb290d6433ff5e"}]}
+{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 114 "characters" 5308 "sha256" "390065f4d018fd10e8759f1c3db2db0d46dabcbcc9fc7d3049cb290d6433ff5e"}]}
 ```
 
 ```kotlin [field-property box="onnx_webcam" name="code" path="onnx_webcam_code_.kt"]

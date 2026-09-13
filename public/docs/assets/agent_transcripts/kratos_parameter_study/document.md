@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_study" index="0" -->
 
 ```edn [field-box id="kratos_study" role="properties"]
-{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 201 "characters" 10155 "sha256" "9d39eb0c1dd1af4c57d4b7d9d7d6781d28b306a70e08eaf51fae918791a5094a"}]}
+{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 201 "characters" 10155 "sha256" "9d39eb0c1dd1af4c57d4b7d9d7d6781d28b306a70e08eaf51fae918791a5094a"}]}
 ```
 
 ```kotlin [field-property box="kratos_study" name="code" path="kratos_study_code_.kt"]
