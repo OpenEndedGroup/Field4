@@ -38,14 +38,18 @@ you configure anything:
     below uses `0.075` for a rest length of 0.05 at a typical weight of 1.5.
 
     **`PruneIsolatedPointsProcess(minDegree = 0)` is a provable no-op**: `degree < 0` cannot hold and
-    `resource < -Double.MAX_VALUE` cannot hold, so it marks nothing. `exampleDynamicMorphogenesisStep`
-    pairs an uncapped growth rule with this death rule precisely because it cannot fire.
-    `DirectedTipGrowthProcess.maxPointCount` is the ceiling that makes an uncapped growth rule bounded.
+    `resource < -Double.MAX_VALUE` cannot hold, so it marks nothing. That is how
+    `exampleDynamicMorphogenesisStep` configures it, so the pipeline it demonstrates pairs an uncapped
+    growth rule with a death rule that cannot fire, and the population compounds once growth starts.
+    `DirectedTipGrowthProcess.maxPointCount` is the ceiling that bounds it.
 
     **`Vec3AlphaEventHypergraphCollapseSystem`'s reinforcement is scaled by triangle area.** Its
     increment is multiplied by `min(1, area)`, and a triangle in a cloud one unit across has an area of
-    a few thousandths, so give this one a `reinforce` two orders of magnitude larger than its neighbours
-    or its edges will be invisible next to theirs.
+    a few thousandths, so it reaches **0.3 %** of the shared ceiling where the other five reach at
+    least a sixth of it. Give this one a `reinforce` two orders of magnitude larger than its
+    neighbours or its edges will be invisible next to theirs.
+
+    The measurements behind both are in `dev_docs/DYNAMIC_GRAPH_SYSTEMS_MEASUREMENTS.md`.
 
 ## 1. Six ways to propose an edge
 
@@ -211,8 +215,8 @@ showSignals(
 
 Both laws agree with their closed forms to nine decimal places at one step, four steps and 120 steps
 (`0.496585304` for the exponential and `0.300000000` for the linear), and `ln 2 / λ = 1.9804 s` halves
-the weight exactly. The linear one **terminates**: it reaches zero
-at `1/0.35 ≈ 2.86 s` and the edge is *removed* at that point, not merely faint. That is the practical
+the weight exactly. The linear one **terminates**: it reaches zero at `1/0.35 ≈ 2.86 s` and the
+edge is *removed* at that point, not merely faint. That is the practical
 difference between the two: exponential decay gives a graph with a soft memory in which nothing is
 ever quite gone, linear decay gives one with a hard horizon. `ttl` is orthogonal to both, and it is
 what stops an edge that a saturating system keeps proposing from becoming immortal.
