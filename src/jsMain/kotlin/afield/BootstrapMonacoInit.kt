@@ -245,7 +245,14 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
 
     val globalEditor = w.globalEditor ?: editor
     if (globalEditor != null) {
-        monaco.editor.setModelLanguage(globalEditor.getModel(), lang)
+        // Lower-cased, like the other two callers (`Main.kt`'s editor-open path and
+        // `BootstrapMonacoRuntime.modelLanguageFor`). A box's `code_language` is a display label —
+        // "Kotlin", "Clojure", "MorphoHDL" — and `setModelLanguage` resolves ids, never aliases or
+        // spellings, falling back silently to plaintext. Passing the label through here dropped
+        // both the grammar *and* fieldSuggest (which gates on `model.getLanguageId()`) for any box
+        // whose property tab was switched by hand. See the comment at the top of
+        // `src/commonMain/resources/morpho.js`.
+        monaco.editor.setModelLanguage(globalEditor.getModel(), lang.lowercase())
         monacoUpdateLanguageExtensionSurfaces(globalEditor)
         globalEditor._domElement
             .querySelectorAll(".hoverlay")[0]

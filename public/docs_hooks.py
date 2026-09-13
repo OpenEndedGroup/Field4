@@ -36,6 +36,7 @@ from verification_runtime import (
     run_with_watchdog,
     select_automation_port,
 )
+from field_languages import MAIN_LANGUAGE_ROOT_LANGUAGES
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
 # public/ is already on sys.path when the Zensical build imports this module, so
@@ -481,6 +482,10 @@ class RunnerOptions:
     audio_renderer: str  # object providing renderWav(name, path) — DoughDspSoundDocs by default
     hidden: bool
     language_key: str
+    # `expect-error=true`: the box is *supposed* to fail, because the error is what the figure
+    # shows. Asserted in both directions -- a fence carrying it whose box runs cleanly fails too,
+    # so it cannot become a way of muting a capture that quietly stopped demonstrating anything.
+    expects_error: bool
 
 
 def derive_sidecar_port(repo_root: Path) -> int:
@@ -1894,7 +1899,11 @@ class RunnerState:
                 restart_reason=f"timeout while recording {page_path.name} -> {video_path}",
             ) from exc
         deterministic = deterministic_execution_error(
-            completed, page_path=page_path, output_path=video_path, command=command
+            completed,
+            page_path=page_path,
+            output_path=video_path,
+            command=command,
+            expects_error=options.expects_error,
         )
         if deterministic is not None:
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
@@ -2140,7 +2149,11 @@ class RunnerState:
                 restart_reason=f"timeout ui drive {primary}",
             ) from exc
         deterministic = deterministic_execution_error(
-            completed, page_path=page_path, output_path=primary, command=command
+            completed,
+            page_path=page_path,
+            output_path=primary,
+            command=command,
+            expects_error=options.expects_error,
         )
         if deterministic is not None:
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
@@ -2324,7 +2337,11 @@ class RunnerState:
                     restart_reason=f"timeout while capturing {page_path.name} -> {screenshot_path}",
                 ) from exc
         deterministic = deterministic_execution_error(
-            completed, page_path=page_path, output_path=screenshot_path, command=command
+            completed,
+            page_path=page_path,
+            output_path=screenshot_path,
+            command=command,
+            expects_error=options.expects_error,
         )
         if deterministic is not None:
             # Diagnose BEFORE restarting: the restart reopens shared_log_path in
@@ -2349,7 +2366,17 @@ class RunnerState:
                 f"{details}\n\n{diagnosis}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
-        if execution_error is not None:
+        if options.expects_error:
+            # The other half of `expect-error=true`. A fence that claims to photograph a diagnostic
+            # and photographs a clean run instead is a page making a promise its figure does not
+            # keep, which is the failure mode this option would otherwise introduce.
+            if execution_error is None:
+                raise RuntimeError(
+                    f"Field docs runner expected an execution error for {page_path.name} -> "
+                    f"{screenshot_path} (the fence carries expect-error), but the box ran cleanly.\n"
+                    f"Command: {shlex.join(command)}"
+                )
+        elif execution_error is not None:
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
             raise RuntimeError(
                 f"Field docs runner execution error for {page_path.name} -> {screenshot_path}.\n"
@@ -2770,6 +2797,10 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         audio_renderer=audio_renderer,
         hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
         language_key=fence_language_key(open_line=open_line, fence_name=runner_name),
+        expects_error=parse_bool(
+            first_attr(attrs, "expect-error", "expects-error", "expect_error", "expects_error"),
+            default=False,
+        ),
     )
 
 
@@ -3684,13 +3715,20 @@ def deterministic_execution_error(
     page_path: Path,
     output_path: Path,
     command: list[str],
+    expects_error: bool = False,
 ) -> RuntimeError | None:
     """A clean error to raise when a capture failed on a box compile/runtime error.
 
     When backdoor stdout carries a diagnosed execution error, return the more useful
     RuntimeError immediately. Opaque failures still fail the same invocation; they use
     the general capture diagnostic assembled by the caller.
+
+    [expects_error] is the `expect-error=true` fence, whose whole subject is the diagnostic: a page
+    that says "an error is reported against the form that threw" needs a picture of one. The caller
+    asserts the other direction (that an error did in fact arrive), so this only declines to elevate.
     """
+    if expects_error:
+        return None
     if completed.returncode == 0:
         return None
     # Only a *diagnosed* failure is deterministic: an error output/notify event, or a real
@@ -4177,10 +4215,10 @@ def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
 
 
 # Languages whose boxes only execute as that language when they are a *child* of a box carrying
-# `mainLanguage`. See src/jvmMain/kotlin/afield/runtime/LanguageRuntimeSupport.kt:54-69: the toggle
-# walks `root.children`, so the root itself stays Kotlin and the fence body has to live one level
-# down. `fieldml` predates this set and produces byte-identical commands through it.
-MAIN_LANGUAGE_ROOT_LANGUAGES = ("fieldml", "python", "datalog")
+# `mainLanguage`: the fence body has to live one level down, so a fence in one of them builds two
+# boxes. The list itself lives in `tools/field_languages.py`, shared with `tools/run_field_tests.py`
+# so that a docs example and the FIELD_TEST that guards it cannot disagree about whether its
+# language needs a root. `fieldml` predates the set and produces byte-identical commands through it.
 
 
 def docs_runner_language_root_alias(*, target_uid: str, language: str) -> str:
