@@ -3,6 +3,7 @@
   let highlightPromise = null;
   let forthRegistered = false;
   let morphoRegistered = false;
+  let clojureRegistered = false;
 
   // A declared `data-lang` that highlight.js does not know is rendered PLAIN, never guessed.
   //
@@ -33,8 +34,9 @@
   // worse than not colouring them: unhighlighted code is obviously unhighlighted, whereas confidently
   // mis-highlighted code puts keywords inside comments and gives the reader no way to tell.
   //
-  // To add a language, either register a grammar (see forth and morpho below) or alias it here to a
-  // built-in whose lexical shape genuinely matches -- same comment syntax above all.
+  // To add a language, either register a grammar (see forth, morpho and clojure below, all three
+  // wired up in `registerFieldLanguages`) or alias it here to a built-in whose lexical shape
+  // genuinely matches -- same comment syntax above all.
   const LANGUAGE_ALIASES = {
     // GLSL is C's lexical family: `//` and `/* */` comments, braces, semicolons, C numeric literals.
     // cpp also carries `uniform`/`layout`/`vec4`-shaped identifiers as plain identifiers rather than
@@ -175,10 +177,110 @@
     morphoRegistered = true;
   }
 
+  // Clojure, for `data-lang=clojure` fences. highlight.js's common build does not carry it -- the
+  // list in the comment at the top of this file is the measured one -- so without this a Clojure
+  // fence renders as plain text, and `resolveLanguage` would be right to refuse to guess.
+  //
+  // Written rather than aliased because nothing in the common build is lexically a Lisp: `;` to end
+  // of line is a comment in none of them, `:keyword` is a label or a ternary in most, and the two
+  // shapes a Clojure box in Field is *full* of -- `(.moveTo f 0 0 0)` and `ClojureInterface/thisBox`
+  // -- are punctuation everywhere else. Those two get their own rules below, which is the part a
+  // stock Clojure grammar would not have.
+  //
+  // Deliberately not attempted: rainbow parens. `highlightLine` colours one line at a time, so
+  // nesting depth at the start of a line is not knowable here. The editor does do it (Monaco's
+  // `bracketPairColorization`, on in BootstrapMonacoInit.kt), which is why the Clojure page shows
+  // an editor capture rather than claiming it for the fences.
+  function registerClojureLanguage() {
+    if (!window.hljs || clojureRegistered || hljs.getLanguage("clojure")) {
+      clojureRegistered = true;
+      return;
+    }
+
+    hljs.registerLanguage("clojure", function(hljs) {
+      // Clojure symbol characters, minus `/` so that `str/join` reads as one token that is then not
+      // a keyword -- which is the correct outcome, since `join` is not a core name.
+      const SYMBOL = "[a-zA-Z_!<>*?+=$%&|.-][a-zA-Z0-9_!<>*?+=$%&|.'#-]*";
+      return {
+        name: "Clojure",
+        aliases: ["clj", "edn"],
+        keywords: {
+          $pattern: SYMBOL,
+          keyword:
+            "def defn defn- defmacro defmulti defmethod defrecord defprotocol deftype defonce " +
+            "fn let letfn loop recur if if-not if-let when when-not when-let cond condp case do " +
+            "doseq dotimes for while ns require import refer in-ns var quote try catch finally " +
+            "throw set! new reify extend-type extend-protocol binding with-open doto " +
+            "-> ->> as-> some-> some->> cond-> cond->> and or not",
+          literal: "true false nil",
+          built_in:
+            "map mapv mapcat filter remove reduce reductions into conj cons assoc assoc-in dissoc " +
+            "update update-in get get-in first second last rest next take take-while drop " +
+            "drop-while range repeat repeatedly iterate cycle count sort sort-by group-by " +
+            "frequencies partition partition-all interleave interpose concat reverse distinct " +
+            "apply comp partial juxt identity constantly str format pr-str print println prn " +
+            "keys vals seq vec set list hash-map zipmap empty? some every? contains? " +
+            "inc dec min max mod rem quot abs even? odd? nil? instance? type class"
+        },
+        contains: [
+          // `#!` only as a first line, which is why it is anchored; `;` anywhere.
+          { scope: "comment", begin: "(^#!|;)", end: "$", relevance: 0 },
+          // `#_` elides the form after it. Only the reader macro is marked: colouring the elided
+          // form needs paren matching, which a line-at-a-time highlighter does not have.
+          { scope: "meta", begin: "#_", relevance: 10 },
+          { scope: "regexp", begin: '#"', end: '"', contains: [hljs.BACKSLASH_ESCAPE], relevance: 10 },
+          hljs.QUOTE_STRING_MODE,
+          // `:keyword`, `::auto-resolved`, `:ns/qualified`. hljs's own Lisp grammars scope these
+          // `symbol`, and the docs theme colours that distinctly from `keyword`.
+          { scope: "symbol", begin: "::?" + SYMBOL + "(?:/" + SYMBOL + ")?", relevance: 0 },
+          // Character literals, including the named ones. Before the number rule: `\1` is a char.
+          {
+            scope: "string",
+            begin: "\\\\(?:newline|space|tab|formfeed|backspace|return|u[0-9a-fA-F]{4}|.)",
+            relevance: 0
+          },
+          // Ratios (1/2), bigints (42N), bigdecimals (1.5M) and hex, none of which a C-family
+          // number rule gets right.
+          {
+            scope: "number",
+            begin: "\\b-?(?:0[xX][0-9a-fA-F]+|\\d+/\\d+|\\d+(?:\\.\\d*)?(?:[eE][-+]?\\d+)?[MN]?)\\b",
+            relevance: 0
+          },
+          // `^:private`, `^String`, `#^{:doc "…"}`.
+          { scope: "meta", begin: "#?\\^:?" + SYMBOL, relevance: 0 },
+          // The name a `def*` form defines, rather than the definer: `(defn polyline [pts] …)`
+          // should read as a definition of `polyline`. hljs 11's multi-class `begin` array.
+          {
+            begin: [/\(/, /def[a-z-]*|fn/, /\s+/, new RegExp(SYMBOL)],
+            beginScope: { 2: "keyword", 4: "title.function" },
+            relevance: 0
+          },
+          // Interop, which is most of what a Field box does: `(.moveTo f …)`, `(.getChildren b)`.
+          { scope: "built_in", begin: "\\.[a-zA-Z][a-zA-Z0-9_]*\\b", relevance: 0 },
+          // A capitalised name used as a class: `FLine.`, `ClojureInterface/thisBox`, `Math/PI`.
+          { scope: "title.class", begin: "\\b[A-Z][a-zA-Z0-9_]*(?=[./])", relevance: 0 }
+        ]
+      };
+    });
+    clojureRegistered = true;
+  }
+
+  /**
+   * Register every grammar this repo adds to highlight.js.
+   *
+   * One function because there are three call sites and they used to disagree: `highlightLine`
+   * registered Forth only, so a `data-lang=morpho` fence rendered plain unless `ensureHighlight`
+   * had run first. Adding a language should be one edit, not three.
+   */
+  function registerFieldLanguages() {
+    registerForthLanguage();
+    registerMorphoLanguage();
+    registerClojureLanguage();
+  }
+
   function ensureHighlight() {
     if (window.hljs) {
-      registerForthLanguage();
-      registerMorphoLanguage();
+      registerFieldLanguages();
       return Promise.resolve();
     }
     if (highlightPromise) return highlightPromise;
@@ -188,8 +290,7 @@
       script.crossOrigin = "anonymous";
       script.referrerPolicy = "no-referrer";
       script.onload = () => {
-        registerForthLanguage();
-        registerMorphoLanguage();
+        registerFieldLanguages();
         resolve();
       };
       script.onerror = (err) => reject(err);
@@ -436,7 +537,7 @@
 
   function highlightLine(line, language) {
     if (!window.hljs) return escapeHtml(line === "" ? "\u00a0" : line);
-    registerForthLanguage();
+    registerFieldLanguages();
     const source = line === "" ? " " : line;
     const resolved = resolveLanguage(language);
     // No guessing: an unknown declared language renders as escaped plain text. See LANGUAGE_ALIASES.
