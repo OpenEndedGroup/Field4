@@ -20,6 +20,66 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * The particle solver: structure-of-arrays Verlet integration, directed distance constraints, and
+ * the vector kernels that run both.
+ *
+ * [SimdVerlet] holds some thousands of particles in flat float arrays, pulls them toward each
+ * other along up to four constraints each, and integrates them with Verlet. It is a CPU solver
+ * with no renderer of its own and no geometry of its own: it deals in particle *indices*, and the
+ * sibling files in this package are what turn those into things. [Cloth] wires a rectangular grid
+ * of constraints, [Strand] a chain, [Collider] the world to hit, [Tearing] the edges that give
+ * way, [Wind] the air.
+ *
+ * Three of its nested types carry the state:
+ *
+ * - `State3` is structure-of-arrays: `x/y/z`, the previous positions `px/py/pz`, the force
+ *   accumulators `ax/ay/az`, and an optional `invMass`. A particle is an index into all of those
+ *   at once rather than an object, `invMass == 0` is how one is pinned, and the accumulators are
+ *   scratch that [step] zeroes at the top of every frame.
+ * - `DirectedConstraints4` gives every particle four outgoing distance constraints: four neighbour
+ *   indices, four rest lengths, four stiffnesses, in parallel arrays. Four is the
+ *   up/down/left/right neighbourhood of an interior grid particle, so a cloth's whole topology
+ *   fits with nothing spare. `DirectedConstraints3` is the same with three.
+ * - `ConstraintScratch` is the gather buffer the 4-slot solve needs, one per worker thread.
+ *
+ * *Directed* is literal. A constraint `i -> j` writes its correction only
+ * to `i` and never scatters back to `j`, so disjoint particle ranges can be solved on separate
+ * threads with a scratch each and the inner loop vectorises. The price is that a symmetric spring
+ * is two constraints, and that it is possible to wire only one of them.
+ *
+ * #### The frame
+ *
+ * [step] runs, in this order: queued removals, zero the accumulators, gravity, the per-particle
+ * force generators, the registered [bulkForces], the caller's `accumulateForces`, `iterations`
+ * passes of the constraint solve, Verlet integration, the registered [positionProjections], and
+ * the registered [constraintEdits]. Everything up to integration is force space; those last two
+ * stages are the only places in a frame where positions are written directly.
+ *
+ * Those three maps are how a layer in another file joins the frame without `step` knowing about
+ * it: a whole-state force goes in `bulkForces`, a collider in `positionProjections`, tearing in
+ * `constraintEdits`. Each is named and iterated in registration order, and each property's own
+ * KDoc has why its stage sits where it does.
+ *
+ * #### The kernels
+ *
+ * The companion carries the passes themselves as functions over arrays, each in a whole-state form
+ * and a `...Range` form taking `start` and `endExclusive`: zeroing, Verlet integration, the 3- and
+ * 4-slot constraint solves, a velocity readback, and a spring toward a target point. The range
+ * forms are what let `ForceExecutor` hand contiguous chunks to a fixed thread pool. That chunking
+ * is coarse, two tasks per worker over a 256-particle minimum, because the target here is
+ * thousands of particles rather than millions.
+ *
+ * The solves and the bulk passes use the JDK Incubator Vector API, so a JVM that runs them needs
+ * `--add-modules jdk.incubator.vector`. Field's own launches pass it already.
+ *
+ * The number to know before tuning anything is the product `stiffness * iterations`. These are not
+ * two independent knobs: the solve adds `iterations` corrections into the same accumulator with
+ * nothing moving in between, so stiffness and iteration count multiply, and the product has a
+ * ceiling past which an explicit integrator diverges.
+ * `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` has the measurements.
+ */
+
+/**
  * SIMD Verlet kernels and coarse chunk-parallel utilities for small/medium particle counts.
  *
  * Runtime requirement:
