@@ -12,10 +12,10 @@ import afield.Table
 import afield.CellRole
 
 /**
- * A compact, extensible FORTH interpreter used by Field4 for live coding.
+ * ForthField — a compact, extensible Forth used by Field4 for live coding.
  *
  * It is host-driven:
- * - it executes FORTH source and keeps its own data stack/dictionary
+ * - it executes ForthField source and keeps its own data stack/dictionary
  * - it ships with creative-coding oriented builtins (vectors + [FLine])
  * - it can be extended at runtime from Kotlin via [defineWord]
  * - it can interoperate with host objects using `@?` / `@?!` reflection calls
@@ -37,14 +37,14 @@ import afield.CellRole
  * println(forth.popNum()) // 5.0
  * ```
  *
- * Example: defining words in FORTH:
+ * Example: defining words in ForthField:
  * ```forth
  * : sqr ( n -- n2 ) dup * ;
  * : hypot2 ( x y -- d2 ) sqr swap sqr + ;
  * 3 4 hypot2 .
  * ```
  *
- * Example: create an [FLine] shape in FORTH:
+ * Example: create an [FLine] shape in ForthField:
  * ```forth
  * : stroke-ribbon ( -- f )
  *   fline
@@ -146,7 +146,7 @@ import afield.CellRole
  * sb @ @? toString println
  * ```
  *
- * Example: extending FORTH with Kotlin bridge words.
+ * Example: extending ForthField with Kotlin bridge words.
  * Here we expose a helper that appends a `vec4` worth of floats into any
  * `DynamicallyWriteable` buffer (for example `VulkanBuffer` or `FrameBufferGroup`).
  *
@@ -169,7 +169,7 @@ import afield.CellRole
  * }
  * ```
  *
- * Example: call that bridge word from FORTH after pushing a host buffer:
+ * Example: call that bridge word from ForthField after pushing a host buffer:
  * ```kotlin
  * forth.push(myDynamicBuffer) // host object: VulkanBuffer / FrameBufferGroup / similar
  * forth.eval("""
@@ -179,7 +179,7 @@ import afield.CellRole
  * """.trimIndent())
  * ```
  *
- * Example: long-form output areas from FORTH:
+ * Example: long-form output areas from ForthField:
  * ```forth
  * s"<b>Inline-ish output area content</b>" html
  * s"<pre>Detailed log text...</pre>" s"debug" html-channel
@@ -222,7 +222,7 @@ import afield.CellRole
  * spinner
  * ```
  *
- * Example: same pattern with an explicit FORTH loop.
+ * Example: same pattern with an explicit ForthField loop.
  * `frame` exits the current tick immediately; on next tick the word starts again.
  *
  * ```forth
@@ -331,7 +331,7 @@ import afield.CellRole
 /**
  * The interpreter: the data stack, the dictionary, the tokenizer and `eval`.
  *
- * One instance is one FORTH environment. `eval` returns a list of [ForthDiagnostic] rather than
+ * One instance is one ForthField environment. `eval` returns a list of [ForthDiagnostic] rather than
  * throwing, so a live-coding host can report a bad word and keep the environment; the stack and
  * the dictionary survive an `eval` that failed.
  */
@@ -364,7 +364,7 @@ class ForthInterpreter {
     // Output callback
     var onOutput: (String) -> Unit = { print(it) }
     var onDisplay: (String, Any?) -> Unit = { _, _ -> }
-    var onFrame: () -> Unit = { throw ForthError("'frame' is only available while a FORTH strand is running") }
+    var onFrame: () -> Unit = { throw ForthError("'frame' is only available while a ForthField strand is running") }
 
     // Per-box run-loop strands: strandName -> word name to execute each frame
     val strands = HashMap<String, String>()
@@ -441,7 +441,7 @@ class ForthInterpreter {
     // -------------------------------------------------------------------------
 
     /**
-     * Evaluate a string of FORTH code.
+     * Evaluate a string of ForthField code.
      * Returns a list of diagnostics (empty = success).
      */
     fun eval(source: String): List<ForthDiagnostic> {

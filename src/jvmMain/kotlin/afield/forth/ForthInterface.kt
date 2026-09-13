@@ -11,13 +11,13 @@ import afield.stdlib.Delegation
 import io.ktor.websocket.WebSocketSession
 
 /**
- * BoxExecution implementation for the FORTH microlanguage.
+ * BoxExecution implementation for the ForthField microlanguage.
  *
- * Integrates the FORTH interpreter with Field4's execution model:
- * - executeFragment / executeAll: run FORTH code once, report errors/output
- * - launchAll: register a FORTH word as a run-loop strand (executes every frame)
+ * Integrates the ForthField interpreter with Field4's execution model:
+ * - executeFragment / executeAll: run ForthField code once, report errors/output
+ * - launchAll: register a ForthField word as a run-loop strand (executes every frame)
  * - stop: remove all strands
- * - complete: word completion from the FORTH dictionary
+ * - complete: word completion from the ForthField dictionary
  * - executeSymbol: run a named word
  */
 class ForthExecution(val inside: Box) : BoxExecution {
@@ -262,7 +262,7 @@ fun installForth() {
     registerMainLanguageRuntime(
         MainLanguageRuntime(
             id = "forth",
-            label = "Forth",
+            label = "ForthField",
             runtimeClass = ForthExecution::class,
             setLegacyRoot = { box, enabled -> box.isForthRoot = enabled },
             applyTopology = ::forthTopologyNeedsUpdating,

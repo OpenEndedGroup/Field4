@@ -692,7 +692,7 @@ One step of a why-not walk: a literal, and how many answers the conjunction had 
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">ForthExecution</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/forth/ForthInterface/#L23)
 
-BoxExecution implementation for the FORTH microlanguage.
+BoxExecution implementation for the ForthField microlanguage.
 
 | Declaration | Summary |
 | --- | --- |
@@ -707,10 +707,10 @@ BoxExecution implementation for the FORTH microlanguage.
 
 ## ForthInterpreter.kt { #forthinterpreter-kt }
 
-A compact, extensible FORTH interpreter used by Field4 for live coding.
+ForthField — a compact, extensible Forth used by Field4 for live coding.
 
 It is host-driven:
-- it executes FORTH source and keeps its own data stack/dictionary
+- it executes ForthField source and keeps its own data stack/dictionary
 - it ships with creative-coding oriented builtins (vectors + `FLine`)
 - it can be extended at runtime from Kotlin via `defineWord`
 - it can interoperate with host objects using `@?` / `@?!` reflection calls
@@ -732,14 +732,14 @@ check(diagnostics.isEmpty())
 println(forth.popNum()) // 5.0
 ```
 
-Example: defining words in FORTH:
+Example: defining words in ForthField:
 ```diffstatic {data-lang=forth}
 : sqr ( n -- n2 ) dup * ;
 : hypot2 ( x y -- d2 ) sqr swap sqr + ;
 3 4 hypot2 .
 ```
 
-Example: create an `FLine` shape in FORTH:
+Example: create an `FLine` shape in ForthField:
 ```diffstatic {data-lang=forth}
 : stroke-ribbon ( -- f )
   fline
@@ -841,7 +841,7 @@ s"StringBuilder" class-for s"hello" 1 @?! new sb !
 sb @ @? toString println
 ```
 
-Example: extending FORTH with Kotlin bridge words.
+Example: extending ForthField with Kotlin bridge words.
 Here we expose a helper that appends a `vec4` worth of floats into any
 `DynamicallyWriteable` buffer (for example `VulkanBuffer` or `FrameBufferGroup`).
 
@@ -864,7 +864,7 @@ forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
 }
 ```
 
-Example: call that bridge word from FORTH after pushing a host buffer:
+Example: call that bridge word from ForthField after pushing a host buffer:
 ```diffstatic {data-lang=kotlin}
 forth.push(myDynamicBuffer) // host object: VulkanBuffer / FrameBufferGroup / similar
 forth.eval("""
@@ -874,7 +874,7 @@ forth.eval("""
 """.trimIndent())
 ```
 
-Example: long-form output areas from FORTH:
+Example: long-form output areas from ForthField:
 ```diffstatic {data-lang=forth}
 s"<b>Inline-ish output area content</b>" html
 s"<pre>Detailed log text...</pre>" s"debug" html-channel
@@ -917,7 +917,7 @@ variable line
 spinner
 ```
 
-Example: same pattern with an explicit FORTH loop.
+Example: same pattern with an explicit ForthField loop.
 `frame` exits the current tick immediately; on next tick the word starts again.
 
 ```diffstatic {data-lang=forth}
@@ -1052,7 +1052,7 @@ The interpreter: the data stack, the dictionary, the tokenizer and `eval`.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">popInt</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L388) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToDouble</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L390) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">anyToBool</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L400) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">eval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L447) | Evaluate a string of FORTH code. Returns a list of diagnostics (empty = success). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">eval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ForthDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L447) | Evaluate a string of ForthField code. Returns a list of diagnostics (empty = success). |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">diagnosticFor</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">ForthError</span><span class="p">)</span><span class="p">:</span> <span class="nc">ForthDiagnostic</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L470) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">tokenize</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L499) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">execTokens</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/forth/ForthInterpreter/#L558) | Execute tokens[start..end) — the core interpreter loop. Returns the index one past the last token consumed (= end, normally). |

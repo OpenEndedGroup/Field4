@@ -72,7 +72,7 @@ being informative, the arrival time takes over.
 Two facts about Field made this a weekend's work instead of a port.
 
 **Field already runs other people's runtimes.** `afield.runtime.MainLanguageRegistry` is a
-five-field data class and a map. Registering a language is one call, and Forth, Clojure, Python,
+five-field data class and a map. Registering a language is one call, and ForthField, Clojure, Python,
 Nano and RemoteJS were all in there already, so there was a shape to copy rather than a design to
 invent.
 
