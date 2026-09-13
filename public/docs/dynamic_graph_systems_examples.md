@@ -30,27 +30,22 @@ badly-set one looks like the system misbehaving rather than like a units error. 
 truth that would let them be renamed or re-scaled, so they are documented instead. Read them before
 you configure anything:
 
-!!! warning "Three parameters that do not mean what they read"
+??? warning "Three parameters that do not mean what they read"
     **`SpringMotionProcess.restLengthScale` is not a length.** An edge's rest length is
     `restLengthScale / weight`, so the units are length × weight. The weights these systems produce
     per frame are of order 0.02, so the default `1.0` asks for a rest length of **50 world units** in
-    a cloud one unit across. Every spring is then a saturated repulsion. Set it to
-    `desiredRestLength × typicalWeight`; the morphogenesis clip below uses `0.075` for a rest length
-    of 0.05 at a typical weight of 1.5.
+    a cloud one unit across. Set it to `desiredRestLength × typicalWeight`; the morphogenesis clip
+    below uses `0.075` for a rest length of 0.05 at a typical weight of 1.5.
 
     **`PruneIsolatedPointsProcess(minDegree = 0)` is a provable no-op**: `degree < 0` cannot hold and
-    `resource < -Double.MAX_VALUE` cannot hold, so it marks nothing. That is exactly how
-    `exampleDynamicMorphogenesisStep` configures it, which is why the pipeline it demonstrates pairs
-    an uncapped growth rule with a death rule that cannot fire. Measured on a 40-point ring: 40 points
-    for 109 frames, then ×1.05 **per frame**, reaching 3603 points and 78 360 edges by frame 199.
-    `DirectedTipGrowthProcess.maxPointCount` is the ceiling that makes it bounded.
+    `resource < -Double.MAX_VALUE` cannot hold, so it marks nothing. `exampleDynamicMorphogenesisStep`
+    pairs an uncapped growth rule with this death rule precisely because it cannot fire.
+    `DirectedTipGrowthProcess.maxPointCount` is the ceiling that makes an uncapped growth rule bounded.
 
     **`Vec3AlphaEventHypergraphCollapseSystem`'s reinforcement is scaled by triangle area.** Its
     increment is multiplied by `min(1, area)`, and a triangle in a cloud one unit across has an area of
-    a few thousandths, so measured on the figure below it reached a maximum weight of **0.0137**,
-    which is 0.3 % of the shared ceiling. The other five all reach at least a sixth of that ceiling
-    and two of them sit on it, so give this one a `reinforce` two orders of magnitude larger than its
-    neighbours or its edges will be invisible next to theirs.
+    a few thousandths, so give this one a `reinforce` two orders of magnitude larger than its neighbours
+    or its edges will be invisible next to theirs.
 
 ## 1. Six ways to propose an edge
 
@@ -216,7 +211,7 @@ showSignals(
 
 Both laws agree with their closed forms to nine decimal places at one step, four steps and 120 steps
 (`0.496585304` for the exponential and `0.300000000` for the linear), and `ln 2 / λ = 1.9804 s` halves
-the weight exactly. The curves are the interesting part. The linear one **terminates**: it reaches zero
+the weight exactly. The linear one **terminates**: it reaches zero
 at `1/0.35 ≈ 2.86 s` and the edge is *removed* at that point, not merely faint. That is the practical
 difference between the two: exponential decay gives a graph with a soft memory in which nothing is
 ever quite gone, linear decay gives one with a hard horizon. `ttl` is orthogonal to both, and it is
