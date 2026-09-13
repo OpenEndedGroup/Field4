@@ -265,7 +265,7 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 ## What this means for the audio elsewhere in these docs
 
 The audit described at the bottom of this page sweeps every published clip and measures each one.
-The corpus is forty-one clips across four pages, and it breaks down like this:
+The corpus is forty-three clips across five pages, and it breaks down like this:
 
 <div class="field-data-table" markdown>
 
@@ -275,7 +275,7 @@ The corpus is forty-one clips across four pages, and it breaks down like this:
 | 1 | real Dirt-Samples one-shots | here |
 | 1 | real samples + the stand-in per unmatched event | here |
 | 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
-| 1 | a **Faust** program compiled at runtime | [Sound paths](sound_paths.md) |
+| 3 | a **Faust** program compiled at runtime | 1 on [Sound paths](sound_paths.md), 2 on [Faust](faust.md) |
 
 </div>
 
@@ -283,6 +283,12 @@ That first row used to read 5, and this section used to open by saying the stand
 you are hearing on most of the site. It no longer can: twenty-six of those thirty-one are the
 mini-notation cards on [Patterns & Rhythm](pattern_language.md), one clip per form of the notation,
 and they arrived in a single commit. The stand-in is now most of the audio here by a wide margin.
+
+The twelve that are not still carry the point the audit was built to make. `DoughDspSoundDocs`
+runs a plate reverb, a phaser, a resonant lowpass and a soft clipper on real signals, and a plate
+reverb ringing down *is* the thing that page is about; the three Faust clips are a program
+compiled at runtime, two of them a pattern playing it as a polyphonic instrument on
+[Faust](faust.md#what-it-sounds-like-and-the-one-comparison-that-proves-it).
 
 The reason is the one given above, and adding twenty-six clips is the clearest case for it: a
 primer that plays `bd*4` and `bd(3,8)` and `{bd hh cp}%8` needs a voice that renders identically
