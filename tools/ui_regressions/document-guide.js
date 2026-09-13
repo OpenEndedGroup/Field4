@@ -83,8 +83,48 @@ try {
     const uid=window.currentSelectedCode[0].uid;
     const again=await request({action:'pin',path:'README.md'});
     check(again.uid===uid,'placing again reuses the same proxy');
+
+    // Box notes are collected beside the files: readable here, with editing handed back to the box.
+    await window.showDocumentGuide();
+    await wait(()=>[...get('guide-notes').querySelectorAll('button')].length>0,'box notes collected');
+    check(!get('guide-notes').hidden,'the notes section appears when a box carries notes');
+    const noteButton=[...get('guide-notes').querySelectorAll('button')].find(b=>b.textContent==='Links in box notes');
+    check(noteButton,`a note is titled by its own H1; got ${[...get('guide-notes').querySelectorAll('button')].map(b=>b.textContent)}`);
+    const notePath=noteButton.dataset.path;
+    check(notePath.startsWith('box/'),`notes keep their own path namespace: ${notePath}`);
+    check(![...get('guide-files').querySelectorAll('button')].some(b=>b.dataset.path===notePath),'a note must not appear among the files');
+    noteButton.click();
+    await wait(()=>panel.dataset.path===notePath,'note opens in the reader');
+    await wait(()=>get('guide-reader').textContent.includes('Links in box notes'),'note Markdown rendered');
+    check(get('guide-pin').disabled,'a note cannot be placed on the canvas as a file');
+    check(!get('guide-open-box').hidden,'Open box is offered for a note');
+    get('guide-source').click();
+    await wait(()=>!get('guide-source-editor').hidden,'note source view');
+    const noteEditor=window.globalMonaco.editor.getEditors().find(e=>get('guide-source-editor').contains(e.getDomNode()));
+    check(noteEditor?.getRawOptions().readOnly===true,'note source is read-only in the viewer');
+    // And the server refuses a write to a note even when one is asked for directly.
+    const refused=await request({action:'save',path:notePath,revision:'',contents:'# Not from here'});
+    check(!refused.ok&&/on the box/.test(refused.error||''),`note save should be refused: ${JSON.stringify(refused)}`);
+    get('guide-open-box').click();
+    const noteBoxUid=notePath.slice('box/'.length);
+    await wait(()=>window.currentSelectedCode?.[0]?.uid===noteBoxUid&&window.currentSelectedProperty==='notes','Open box hands editing to the box');
+
+    // Add note publishes a real Markdown file and opens it for editing.
+    await window.showDocumentGuide();
+    const originalPrompt=window.prompt; window.prompt=()=>'A new note';
+    try { await window.addDocumentGuideNote(); } finally { window.prompt=originalPrompt; }
+    await wait(()=>panel.dataset.path==='A-new-note.md','the new note opens');
+    await wait(()=>!get('guide-source-editor').hidden,'the new note opens ready to edit');
+    check(!get('guide-pin').disabled,'a new note is an ordinary file guide');
+    const created=(await request({action:'read',path:'A-new-note.md'})).file;
+    check(created?.contents==='# A new note\n\n',`Add note reached disk: ${JSON.stringify(created)}`);
+    await wait(()=>[...get('guide-files').querySelectorAll('button')].some(b=>b.dataset.path==='A-new-note.md'),'the new note is listed');
+    const clash=await request({action:'create',path:'A-new-note.md',contents:'# Different'});
+    check(!clash.ok&&clash.conflict,'a second note of the same name is refused, not overwritten');
+    check((await request({action:'read',path:'A-new-note.md'})).file.contents==='# A new note\n\n','the refused create left the file alone');
+    get('guide-read').click();
     // Leave the guide and the code both visible in the retained screenshot.
     await window.showDocumentGuide('docs/Details.md');
     get('guide-reader').querySelector('a[href^="field://box/"]').click();
-    return {ok:true,files,proxyUid:uid,sourceLine:window.globalEditor.getPosition().lineNumber};
+    return {ok:true,files,notePath,proxyUid:uid,sourceLine:window.globalEditor.getPosition().lineNumber};
 } catch(error) { return {ok:false,reason:String(error),status:get('guide-status')?.textContent}; }

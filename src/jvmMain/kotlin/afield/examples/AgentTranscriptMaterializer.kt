@@ -65,10 +65,14 @@ object AgentTranscriptMaterializer {
      * corpus for agents composing scenes (and in DemoTranscriptExecSmokeTest); they are only excluded
      * from the welcome/gallery starting points.
      *
-     * `tone_synth_sequence` stays agent-only because WebAudio requires a browser-head user gesture;
-     * opening it as a generic welcome starting point cannot make sound without that extra interaction.
-     * `remotear_scene_motion` demonstrates the richer asset API but deliberately refers to an external
-     * `/abs/assets/robot.glb`, so the smaller asset-free RemoteAR starter is the loadable starting point.
+     * Two transcripts were excluded here until `2026-09-13` and are not any more, which is worth
+     * recording because both reasons were the wrong shape. `tone_synth_sequence` was held back
+     * because WebAudio needs a user gesture before it makes sound — but the scene is otherwise
+     * completely self-contained (it embeds the head in the document and the Tone.js it uses is
+     * vendored), and "you have to click it once" is a thing a starting point can say, not a reason to
+     * withhold the code. `remotear_scene_motion` was held back because it referred to an external
+     * `/abs/assets/robot.glb` that no checkout has; it now loads the committed CC0 Khronos ToyCar
+     * over the `/sample-assets` mount, so there is nothing left to half-load.
      *
      * `internal` rather than private because [afield.docs.AgentTranscriptIndexGuard] reads it: the
      * public index page must carry an `Open ↗` starting-point link for a transcript exactly when that
@@ -81,8 +85,6 @@ object AgentTranscriptMaterializer {
         // The Linux/dma-buf receiver integration smoke, likewise.
         "external_browser_surface_linux_smoke",
         "graphics_renderer_launch",
-        "remotear_scene_motion",
-        "tone_synth_sequence",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin (mirrors the smoke test). */

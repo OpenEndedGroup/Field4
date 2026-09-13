@@ -45,7 +45,7 @@ operations:
   - create:
       box: pc_renderer
       name: renderer
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -63,7 +63,7 @@ operations:
   - create:
       box: pc_scene
       name: scene
-      frame: { x: 240.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
@@ -114,7 +114,7 @@ operations:
   - create:
       box: pc_chain
       name: pass chain
-      frame: { x: 440.0, y: 40.0, w: 220.0, h: 50.0 }
+      frame: { x: 640.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.fabricated.FabricatePassLibrary

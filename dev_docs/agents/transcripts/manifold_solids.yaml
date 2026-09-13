@@ -14,7 +14,7 @@ operations:
   - create:
       box: manifold_bracket
       name: "Manifold — a part, and whether it is manufacturable"
-      frame: { x: 80.0, y: 80.0, w: 360.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 460.0, h: 100.0 }
       properties:
         code: |
           import afield.manifold.JoinType
@@ -164,7 +164,7 @@ operations:
   - create:
       box: manifold_levelset_slices
       name: "Manifold — a Kotlin lambda as a level set, then sliced"
-      frame: { x: 80.0, y: 180.0, w: 360.0, h: 50.0 }
+      frame: { x: 80.0, y: 230.0, w: 460.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.FLine

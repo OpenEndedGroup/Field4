@@ -4,15 +4,20 @@ description: >
   surface. First line `// {{ remoteAR }}` selects the RemoteAR head; the body is Kotlin compiled to
   JavaScript and shipped to a connected browser/visionOS head (which installs THREE + the Field
   globals). It builds a lit torus-knot rig (richer geometry/materials/lights + Object3D props), an
-  orbit ring drawn with an FLine transformed by the new `+`/`*` transform operators, and loads +
-  animates a glTF asset whose `play()` drives the auto AnimationMixer. Every name is bound by
-  afield.graphics.RemoteArKotlinJs and grounded against extensions/remote_ar/*. Replay compiles the
-  box Kotlin -> JS through the real KotlinToJsCompiler (examples.demo-transcript.exec).
+  orbit ring drawn with an FLine transformed by the new `+`/`*` transform operators, and loads a
+  glTF asset through the auto AnimationMixer's `play()`. The asset is the CC0 Khronos ToyCar
+  committed at public/docs/assets/fabricate_demo/ToyCar.glb and served to the head at
+  /sample-assets/ToyCar.glb (Server.kt), so this file needs nothing you do not already have. That
+  model carries three meshes, three PBR materials and eight textures and *no* animation clips, so
+  `play()` here is a no-op and says so — point it at a model with clips to see the mixer move.
+  Every name is bound by afield.graphics.RemoteArKotlinJs and grounded against
+  extensions/remote_ar/*. Replay compiles the box Kotlin -> JS through the real KotlinToJsCompiler
+  (examples.demo-transcript.exec).
 operations:
   - create:
       box: agent_remotear_scene_motion
       name: RemoteAR Scene + Motion
-      frame: { x: 80.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         mainLanguage: kotlinjs
         code: |
@@ -57,12 +62,20 @@ operations:
               stage.orbit = orbit
 
               // --- assets + animation (roadmap item 2): load a glTF and drive the mixer via play() ---
-              mapDirectory("/abs/assets", "/assets")
-              loadGLTF("/assets/robot.glb", "robot") { g ->
-                  g.scene.position.set(0.0, 0.0, -1.5)
-                  g.scene.scale.set(0.5, 0.5, 0.5)
-                  log("robot loaded: meshes " + g.meshes + ", anims " + g.animations)
-                  g.play()          // clipAction(clip).play() on every clip, updated by the XR AnimationMixer
+              // A head can only fetch over http, so the asset is a URL and not a path. This one is
+              // the CC0 Khronos ToyCar committed at public/docs/assets/fabricate_demo/ToyCar.glb,
+              // which Field's server mounts at /sample-assets — so nothing here needs a download or
+              // a directory of your own. (`mapDirectory` looks like the way to serve a folder of
+              // your own and is not: it sends a message the server does not handle. Copy the model
+              // next to ToyCar.glb, or add a static mount beside that one in Server.kt.)
+              loadGLTF("/sample-assets/ToyCar.glb", "toycar") { g ->
+                  g.scene.position.set(0.0, 0.9, -1.2)
+                  g.scene.scale.set(6.0, 6.0, 6.0)          // the file is in metres and it is a 7cm toy
+                  log("toy car loaded: meshes " + g.meshes + ", anims " + g.animations)
+                  // clipAction(clip).play() on every clip, updated by the XR AnimationMixer. The
+                  // ToyCar ships no clips, so this does nothing you can see — swap in a model that
+                  // has some (the log line above prints how many arrived) and it animates.
+                  g.play()
               }
 
               // gently spin the rig on the head's own render clock

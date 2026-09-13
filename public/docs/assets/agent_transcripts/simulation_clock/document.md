@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="simulation_owner" index="0" -->
 
 ```edn [field-box id="simulation_owner" role="properties"]
-{"id" "simulation_owner" "index" 0 "name" "1. Simulation — launch / stop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Simulation — launch / stop" "_tombstone" false "frame" #afield/rect [80.0 100.0 260.0 65.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "simulation_owner_code_.kt" "lines" 46 "characters" 2399 "sha256" "052429c90753674987e3d10f13b78a692338f12e0c5eed6a872380ba0e0710ec"}]}
+{"id" "simulation_owner" "index" 0 "name" "1. Simulation — launch / stop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Simulation — launch / stop" "_tombstone" false "frame" #afield/rect [80.0 100.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "simulation_owner_code_.kt" "lines" 46 "characters" 2399 "sha256" "052429c90753674987e3d10f13b78a692338f12e0c5eed6a872380ba0e0710ec"}]}
 ```
 
 ```kotlin [field-property box="simulation_owner" name="code" path="simulation_owner_code_.kt"]
@@ -68,7 +68,7 @@ frames {
 <!-- field-box id="simulation_capture" index="1" -->
 
 ```edn [field-box id="simulation_capture" role="properties"]
-{"id" "simulation_capture" "index" 1 "name" "2. Record and explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Record and explore" "_tombstone" false "frame" #afield/rect [450.0 100.0 260.0 65.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "simulation_capture_code_.kt" "lines" 3 "characters" 276 "sha256" "5d803e31e5041ca640ef9726f0fa9d8ecc67bb82f6cdc66a7979e0a1389f1da3"}]}
+{"id" "simulation_capture" "index" 1 "name" "2. Record and explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Record and explore" "_tombstone" false "frame" #afield/rect [550.0 100.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "simulation_capture_code_.kt" "lines" 3 "characters" 276 "sha256" "5d803e31e5041ca640ef9726f0fa9d8ecc67bb82f6cdc66a7979e0a1389f1da3"}]}
 ```
 
 ```kotlin [field-property box="simulation_capture" name="code" path="simulation_capture_code_.kt"]

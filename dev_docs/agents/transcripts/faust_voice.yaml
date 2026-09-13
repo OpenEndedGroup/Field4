@@ -28,7 +28,7 @@ operations:
   - create:
       box: faust_voice_play
       name: Faust voice
-      frame: { x: 80.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -51,7 +51,7 @@ operations:
   - create:
       box: faust_voice_diagram
       name: block diagram
-      frame: { x: 680.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 680.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -73,7 +73,7 @@ operations:
   - create:
       box: faust_voice_waveform
       name: waveform
-      frame: { x: 680.0, y: 620.0, w: 200.0, h: 50.0 }
+      frame: { x: 680.0, y: 620.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -96,7 +96,7 @@ operations:
   - create:
       box: faust_voice_interface
       name: the interface it declares
-      frame: { x: 80.0, y: 420.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 420.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -133,7 +133,7 @@ operations:
   - create:
       box: faust_voice_error
       name: an error, on the line
-      frame: { x: 80.0, y: 780.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 780.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*

@@ -1875,6 +1875,14 @@ tasks.register<JavaExec>("checkAgentTranscriptLayouts") {
     mainClass.set("afield.docs.AgentTranscriptLayoutGuard")
 }
 
+tasks.register<JavaExec>("checkBoxOutputChannels") {
+    group = "verification"
+    description = "Fails when one box writes two figures to the same output channel — display(channel, …) replaces rather than appends, so the first figure is never seen."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.BoxOutputChannelGuard")
+}
+
 tasks.register<JavaExec>("checkCompletionCorpusFixtures") {
     group = "verification"
     description = "Fails if tools/completion-corpus/boxes no longer matches the transcript and template corpus after real macro expansion."
@@ -2085,6 +2093,7 @@ tasks.named("check") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkAgentTranscriptLayouts")
+    dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
     dependsOn(checkExpectedTestFailures)
@@ -2122,6 +2131,7 @@ tasks.register("docsGates") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkAgentTranscriptLayouts")
+    dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentDemos")
@@ -2138,6 +2148,7 @@ citationGates.configure {
         "checkAgentTranscripts",
         "checkAgentTranscriptIndex",
         "checkAgentTranscriptLayouts",
+        "checkBoxOutputChannels",
         "checkCompletionCorpusFixtures",
         "checkPythonTools",
         "checkAgentDemos",

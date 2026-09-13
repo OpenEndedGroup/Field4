@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_demo_tokens" index="0" -->
 
 ```edn [field-box id="petri_demo_tokens" role="properties"]
-{"id" "petri_demo_tokens" "index" 0 "name" "4 — tokens that are rhythms" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — tokens that are rhythms" "_tombstone" false "frame" #afield/rect [60.0 360.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_tokens_code_.kt" "lines" 24 "characters" 1031 "sha256" "ae573d42b95d9e433812d7057a710ffd194ea0bb7ed4b8892ba447926ffdf632"}]}
+{"id" "petri_demo_tokens" "index" 0 "name" "4 — tokens that are rhythms" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — tokens that are rhythms" "_tombstone" false "frame" #afield/rect [60.0 510.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_tokens_code_.kt" "lines" 24 "characters" 1031 "sha256" "ae573d42b95d9e433812d7057a710ffd194ea0bb7ed4b8892ba447926ffdf632"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_tokens" name="code" path="petri_demo_tokens_code_.kt"]
@@ -46,7 +46,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_structure" index="1" -->
 
 ```edn [field-box id="petri_demo_structure" role="properties"]
-{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 260.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 27 "characters" 927 "sha256" "73a94dc5c2c4b9a7ab6e5d85d1a10e71b4046ba9b709632e89a1101d22ceeace"}]}
+{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 27 "characters" 927 "sha256" "73a94dc5c2c4b9a7ab6e5d85d1a10e71b4046ba9b709632e89a1101d22ceeace"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_structure" name="code" path="petri_demo_structure_code_.kt"]
@@ -84,7 +84,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_live" index="2" -->
 
 ```edn [field-box id="petri_demo_live" role="properties"]
-{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 660.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 39 "characters" 1390 "sha256" "c030dee76371a9a8fc30917216b01560e84ecaab9812ca91e8cff61877aa9ecb"}]}
+{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 39 "characters" 1390 "sha256" "c030dee76371a9a8fc30917216b01560e84ecaab9812ca91e8cff61877aa9ecb"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_live" name="code" path="petri_demo_live_code_.kt"]
@@ -134,7 +134,7 @@ if (live && root != null) {
 <!-- field-box id="petri_demo_playground" index="3" -->
 
 ```edn [field-box id="petri_demo_playground" role="properties"]
-{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 560.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 32 "characters" 1150 "sha256" "f8442412fbc695a5c7c9501e9fa32b1d6021af4de548cad338dc625e73df6322"}]}
+{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 32 "characters" 1150 "sha256" "f8442412fbc695a5c7c9501e9fa32b1d6021af4de548cad338dc625e73df6322"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_playground" name="code" path="petri_demo_playground_code_.kt"]
@@ -177,7 +177,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_philosophers" index="4" -->
 
 ```edn [field-box id="petri_demo_philosophers" role="properties"]
-{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 460.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1540 "sha256" "77468310251981b0718d86d6aef989ac206a53b071e15ecf31debb639d624fb3"}]}
+{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1540 "sha256" "77468310251981b0718d86d6aef989ac206a53b071e15ecf31debb639d624fb3"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_philosophers" name="code" path="petri_demo_philosophers_code_.kt"]
@@ -222,7 +222,7 @@ for ((label, net) in listOf(
 <!-- field-box id="petri_demo_polyrhythm" index="5" -->
 
 ```edn [field-box id="petri_demo_polyrhythm" role="properties"]
-{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 160.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 30 "characters" 909 "sha256" "c0ab8ff98f80a3865e630c5f31b991fb5fab9dcae4ffb76dd2844e4138d9479a"}]}
+{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 30 "characters" 909 "sha256" "c0ab8ff98f80a3865e630c5f31b991fb5fab9dcae4ffb76dd2844e4138d9479a"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_polyrhythm" name="code" path="petri_demo_polyrhythm_code_.kt"]
@@ -263,7 +263,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_loop" index="6" -->
 
 ```edn [field-box id="petri_demo_loop" role="properties"]
-{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 27 "characters" 919 "sha256" "e3f48bbfcf0b028ac84a6ba29585933f11adfa80b27201b0115a6f6c6734dffc"}]}
+{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 27 "characters" 919 "sha256" "e3f48bbfcf0b028ac84a6ba29585933f11adfa80b27201b0115a6f6c6734dffc"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_loop" name="code" path="petri_demo_loop_code_.kt"]

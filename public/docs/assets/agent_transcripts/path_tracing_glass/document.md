@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_glass"] "properties" {"children" #{#afield/box "path_trace_glass"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 208 "sha256" "b6c2bd22807c33e2c2e4d8717a315d29f7748bf5fc921acfae8e2aad2e0a0ec1"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_glass"] "properties" {"children" #{#afield/box "path_trace_glass"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 208 "sha256" "b6c2bd22807c33e2c2e4d8717a315d29f7748bf5fc921acfae8e2aad2e0a0ec1"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_glass" index="1" -->
 
 ```edn [field-box id="path_trace_glass" role="properties"]
-{"id" "path_trace_glass" "index" 1 "name" "glass material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "glass material study" "_tombstone" false "frame" #afield/rect [320.0 140.0 250.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_glass_code_.kt" "lines" 18 "characters" 759 "sha256" "308dcaed51ef4be2428f4abb2d9bad1f24b7148b0b995a2309d79f391fc44155"}]}
+{"id" "path_trace_glass" "index" 1 "name" "glass material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "glass material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_glass_code_.kt" "lines" 18 "characters" 759 "sha256" "308dcaed51ef4be2428f4abb2d9bad1f24b7148b0b995a2309d79f391fc44155"}]}
 ```
 
 ```kotlin [field-property box="path_trace_glass" name="code" path="path_trace_glass_code_.kt"]

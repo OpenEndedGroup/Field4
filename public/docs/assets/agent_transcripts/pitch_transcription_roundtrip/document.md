@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pitch_roundtrip_register" index="0" -->
 
 ```edn [field-box id="pitch_roundtrip_register" role="properties"]
-{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [420.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 44 "characters" 2020 "sha256" "17fa53d18ac885c9d3a111ff9d2b559374cbfa3f03028380d595a767e5a108a4"}]}
+{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 44 "characters" 2020 "sha256" "17fa53d18ac885c9d3a111ff9d2b559374cbfa3f03028380d595a767e5a108a4"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_register" name="code" path="pitch_roundtrip_register_code_.kt"]
@@ -66,7 +66,7 @@ display("recovered", "pat(\"${heard.miniNotation}\")")
 <!-- field-box id="pitch_roundtrip_legato" index="1" -->
 
 ```edn [field-box id="pitch_roundtrip_legato" role="properties"]
-{"id" "pitch_roundtrip_legato" "index" 1 "name" "3 · a line with no attacks in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · a line with no attacks in it" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_legato_code_.kt" "lines" 48 "characters" 2029 "sha256" "4fdcb49d630e1aca8b2a90f49ee3d61e187e26ffe52f9754369d74c3df45d4b2"}]}
+{"id" "pitch_roundtrip_legato" "index" 1 "name" "3 · a line with no attacks in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · a line with no attacks in it" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_legato_code_.kt" "lines" 48 "characters" 2029 "sha256" "4fdcb49d630e1aca8b2a90f49ee3d61e187e26ffe52f9754369d74c3df45d4b2"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_legato" name="code" path="pitch_roundtrip_legato_code_.kt"]
@@ -125,7 +125,7 @@ showPatTranscriptionOf(
 <!-- field-box id="pitch_roundtrip_refusal" index="2" -->
 
 ```edn [field-box id="pitch_roundtrip_refusal" role="properties"]
-{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 240.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 33 "characters" 1475 "sha256" "fe456d90d306982ac860dfb3d5a010203e22f86a74184987c8fd1c8089e3a63e"}]}
+{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 33 "characters" 1475 "sha256" "fe456d90d306982ac860dfb3d5a010203e22f86a74184987c8fd1c8089e3a63e"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_refusal" name="code" path="pitch_roundtrip_refusal_code_.kt"]
@@ -169,7 +169,7 @@ display("how it knows", """
 <!-- field-box id="pitch_roundtrip_clean" index="3" -->
 
 ```edn [field-box id="pitch_roundtrip_clean" role="properties"]
-{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 27 "characters" 1047 "sha256" "609817c917fd0e210762ab4a79da7f49f56bf0bb9805794d0bb30ec20b89761c"}]}
+{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 27 "characters" 1047 "sha256" "609817c917fd0e210762ab4a79da7f49f56bf0bb9805794d0bb30ec20b89761c"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_clean" name="code" path="pitch_roundtrip_clean_code_.kt"]
@@ -207,7 +207,7 @@ display("summary", heard.describe())
 <!-- field-box id="pitch_roundtrip_guide" index="4" -->
 
 ```edn [field-box id="pitch_roundtrip_guide" role="properties"]
-{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 30 "characters" 2278 "sha256" "6b451564758a17816713b0b76091d4e0cb32429f9aecea891b451ff78f82cd6d"}]}
+{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 30 "characters" 2278 "sha256" "6b451564758a17816713b0b76091d4e0cb32429f9aecea891b451ff78f82cd6d"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_guide" name="code" path="pitch_roundtrip_guide_code_.kt"]

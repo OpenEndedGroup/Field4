@@ -16,7 +16,7 @@ operations:
   - create:
       box: clip_on
       name: 1 - The corner, clipped
-      frame: { x: 60.0, y: 60.0, w: 340.0, h: 86.0 }
+      frame: { x: 60.0, y: 60.0, w: 440.0, h: 136.0 }
       properties:
         code: |
           // A magnified corner of a body far larger than the window — the shape of figure that
@@ -44,7 +44,7 @@ operations:
   - create:
       box: clip_off
       name: 2 - The same figure, unclipped
-      frame: { x: 900.0, y: 60.0, w: 340.0, h: 86.0 }
+      frame: { x: 900.0, y: 60.0, w: 440.0, h: 136.0 }
       properties:
         code: |
           // One word different from box 1, and it is the behaviour that shipped sharp_edge.png.
@@ -71,7 +71,7 @@ operations:
   - create:
       box: note_wrap
       name: 3 - A note, wrapped and not
-      frame: { x: 60.0, y: 640.0, w: 400.0, h: 86.0 }
+      frame: { x: 60.0, y: 640.0, w: 500.0, h: 136.0 }
       properties:
         code: |
           // The other half of the same property. A note used to be one unwrapped line; this one
@@ -98,7 +98,7 @@ operations:
   - create:
       box: clip_marks
       name: 4 - Every mark kind, at the edge
-      frame: { x: 900.0, y: 640.0, w: 400.0, h: 86.0 }
+      frame: { x: 900.0, y: 640.0, w: 500.0, h: 136.0 }
       properties:
         code: |
           // Clipping is not only about lines. Every mark kind is cut against plotRect, and the

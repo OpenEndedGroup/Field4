@@ -40,8 +40,9 @@ showMeshGrid(
     columns = 2, cellWidth = 400,
     view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2)
 )
+displayOpen("word")
 showMesh(
-    word,
+    word, channel = "word",
     view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
     title = "extruded from the same contours the raster filled"
 )

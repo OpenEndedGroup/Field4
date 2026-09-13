@@ -19,7 +19,7 @@ the box boundary: a box-declared class lands here as Any?, and .x does not
 resolve on Any?.
 
 ```edn [field-box id="shared_types_receive" role="properties"]
-{"id" "shared_types_receive" "index" 0 "name" "4 - Receive it, still typed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Receive it, still typed" "_tombstone" false "frame" #afield/rect [380.0 140.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_receive_code_.kt" "lines" 6 "characters" 309 "sha256" "da322db215543a742d287e56a9c82a57afe011d1857e1aa51ad1e061308b88a0"}]}
+{"id" "shared_types_receive" "index" 0 "name" "4 - Receive it, still typed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Receive it, still typed" "_tombstone" false "frame" #afield/rect [480.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_receive_code_.kt" "lines" 6 "characters" 309 "sha256" "da322db215543a742d287e56a9c82a57afe011d1857e1aa51ad1e061308b88a0"}]}
 ```
 
 ```kotlin [field-property box="shared_types_receive" name="code" path="shared_types_receive_code_.kt"]
@@ -44,7 +44,7 @@ because shared.Particle is a real compiled class with real metadata -- not a
 type name re-spelled as text.
 
 ```edn [field-box id="shared_types_use" role="properties"]
-{"id" "shared_types_use" "index" 1 "name" "2 - Use it, with full fidelity" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Use it, with full fidelity" "_tombstone" false "frame" #afield/rect [380.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_use_code_.kt" "lines" 9 "characters" 398 "sha256" "64976f46c06e66b7331e324a58e1c88aa23b518f9341493c3c640d868efed8c4"}]}
+{"id" "shared_types_use" "index" 1 "name" "2 - Use it, with full fidelity" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Use it, with full fidelity" "_tombstone" false "frame" #afield/rect [480.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_use_code_.kt" "lines" 9 "characters" 398 "sha256" "64976f46c06e66b7331e324a58e1c88aa23b518f9341493c3c640d868efed8c4"}]}
 ```
 
 ```kotlin [field-property box="shared_types_use" name="code" path="shared_types_use_code_.kt"]
@@ -72,7 +72,7 @@ compiled as ordinary Kotlin into a directory on the shared classloader, NOT
 declared in this box's snippet -- which is why they escape this box at all.
 
 ```edn [field-box id="shared_types_declare" role="properties"]
-{"id" "shared_types_declare" "index" 2 "name" "1 - Declare shared types" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Declare shared types" "_tombstone" false "frame" #afield/rect [40.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_declare_code_.kt" "lines" 10 "characters" 418 "sha256" "6790acbaac7d698a5eb531256d4b0743834df72724c14bbe8b754d9532fea4c7"}]}
+{"id" "shared_types_declare" "index" 2 "name" "1 - Declare shared types" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Declare shared types" "_tombstone" false "frame" #afield/rect [40.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_declare_code_.kt" "lines" 10 "characters" 418 "sha256" "6790acbaac7d698a5eb531256d4b0743834df72724c14bbe8b754d9532fea4c7"}]}
 ```
 
 ```kotlin [field-property box="shared_types_declare" name="code" path="shared_types_declare_code_.kt"]
@@ -100,7 +100,7 @@ From `code`
 it. Before shared types the *value* crossed but its type did not.
 
 ```edn [field-box id="shared_types_export" role="properties"]
-{"id" "shared_types_export" "index" 3 "name" "3 - Export a value" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Export a value" "_tombstone" false "frame" #afield/rect [40.0 140.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_export_code_.kt" "lines" 6 "characters" 258 "sha256" "9a22fdffaa22d6ac95a206bcb1b2f033fde02ff86a98a2e25bd3e121744947de"}]}
+{"id" "shared_types_export" "index" 3 "name" "3 - Export a value" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Export a value" "_tombstone" false "frame" #afield/rect [40.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_export_code_.kt" "lines" 6 "characters" 258 "sha256" "9a22fdffaa22d6ac95a206bcb1b2f033fde02ff86a98a2e25bd3e121744947de"}]}
 ```
 
 ```kotlin [field-property box="shared_types_export" name="code" path="shared_types_export_code_.kt"]

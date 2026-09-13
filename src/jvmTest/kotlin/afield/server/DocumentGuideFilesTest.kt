@@ -88,6 +88,25 @@ class DocumentGuideFilesTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun addingANoteNeverClobbersAndRespectsReadOnly() {
+        val root = createTempDirectory("field-guides-create").toFile()
+        try {
+            val files = DocumentGuideFiles(root)
+            val created = files.create("Note.md", "# Note\n\n", false)
+            assertEquals("# Note\n\n", root.resolve("Note.md").readText())
+            assertEquals(created.revision, files.read("Note.md").revision)
+            // The name is taken: an existing note is offered, never overwritten.
+            assertFailsWith<GuideConflict> { files.create("Note.md", "# Something else\n", false) }
+            assertEquals("# Note\n\n", root.resolve("Note.md").readText())
+            files.create("guides/Deeper.md", "# Deeper\n", false)
+            assertEquals(listOf("guides/Deeper.md", "Note.md"), files.list().map { it.path })
+            assertFailsWith<IllegalStateException> { files.create("ReadOnly.md", "# No\n", true) }
+            assertFailsWith<IllegalArgumentException> { files.create("elsewhere/Note.md", "# No\n", false) }
+            assertFailsWith<IllegalArgumentException> { files.create("notes.txt", "no", false) }
+            assertFalse(root.resolve("ReadOnly.md").exists())
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun boundsAndFileTypesAreEnforced() {
         val root = createTempDirectory("field-guides-bounds").toFile()
         try {

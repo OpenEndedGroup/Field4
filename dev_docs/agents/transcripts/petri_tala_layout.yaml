@@ -26,7 +26,7 @@ operations:
   - create:
       box: petri_tala_force
       name: 1 — FORCE, the spring model
-      frame: { x: 60.0, y: 60.0, w: 260.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -62,7 +62,7 @@ operations:
   - create:
       box: petri_tala_tala
       name: 2 — TALA, via native/field-d2-layout
-      frame: { x: 780.0, y: 60.0, w: 300.0, h: 50.0 }
+      frame: { x: 780.0, y: 60.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -95,7 +95,7 @@ operations:
   - create:
       box: petri_tala_status
       name: 3 — which engine drew it
-      frame: { x: 60.0, y: 700.0, w: 300.0, h: 50.0 }
+      frame: { x: 60.0, y: 700.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*

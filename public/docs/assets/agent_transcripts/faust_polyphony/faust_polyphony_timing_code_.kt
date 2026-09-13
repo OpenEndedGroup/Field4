@@ -59,7 +59,10 @@ if (onsets.size == notated.size) {
     println("              threshold-free line above is the one to believe.")
 }
 
-display("waveform", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
+// Player and plot on SEPARATE channels: display() replaces a channel rather than appending,
+// so both on "waveform" left only whichever went out last.
+displayOpen("audio")
+display("audio", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
 showSignals(
     "mono" to (0 until render.frames step 24).map { mono[it] },
     x = (0 until render.frames step 24).map { it.toDouble() / render.sampleRate },

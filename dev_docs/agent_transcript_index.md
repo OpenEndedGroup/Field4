@@ -39,17 +39,25 @@ sentence is the right tool whenever the artifact's value is the writing rather t
 `check`. It reads text files only — no boxes, no runloop, no GPU — and takes about a second, unlike
 its heavyweight sibling `checkAgentTranscripts` (~25 s, because that one builds real boxes).
 
-**An entry** is a line at column zero of the form:
+**An entry** is a `###` heading at column zero whose whole text is the transcript's name:
 
 ```
-**transcript_name** — prose…
+### transcript_name
+
+prose…
 ```
 
-with an em dash. One per transcript, no more. Fenced code blocks are skipped before any of this is
-parsed, so a `##` line or an entry-shaped line inside a fence is not read as page structure.
-Consequence worth knowing: do not start a line with a single bold lowercase word followed by an em
-dash unless it is an entry — that shape is reserved, and the guard will read it as an entry for a
-transcript that does not exist. Bold mid-sentence is fine.
+One per transcript, no more. Fenced code blocks are skipped before any of this is parsed, so a `##`
+line or an entry-shaped line inside a fence is not read as page structure. Consequence worth knowing:
+`###` on that page is reserved for entries — a sub-heading inside an entry has to be `####` or
+deeper, and a `###` naming anything else is read as an entry for a transcript that does not exist.
+
+Entries were bold run-in lead-ins (`**transcript_name** — prose…`) until 2026-09-13. Headings
+replaced them for two reasons that only appear at this length: 102 paragraphs in a row read as one
+wall of text, and a lead-in has no anchor, so there was no way to link to or scroll to one scene out
+of a hundred. Every entry ends with its `[Open ↗](…)` link alone on its own line, as a paragraph of
+its own rather than run into the end of the prose — that is a house rule for this page, not something
+the guard checks.
 
 **A section** is a `##` heading, followed within four lines by a marker declaring how CI verifies the
 scenes beneath it:
@@ -99,19 +107,34 @@ the welcome screen cannot open.
    from a box it does not contain — add it to `AgentTranscriptMaterializer.EXCLUDE` and say so in its
    entry's prose instead of linking a starting point.
 4. `./gradlew regenerateAgentTranscriptStartingPoints`, and commit the new bundle directory.
-5. Write the entry on `public/docs/agent_transcripts.md`, under the section whose `verified-by` marker
-   matches step 2, and bump the totals paragraph.
+5. Write the entry on `public/docs/agent_transcripts.md` — a `### name` heading, the prose, then the
+   `[Open ↗](…)` line on its own — under the section whose `verified-by` marker matches step 2, and
+   bump the totals paragraph.
 6. `./gradlew checkAgentTranscriptIndex checkAgentTranscripts`.
 
 ## Figures
 
 The index is meant to be illustrated, and there is a hard rule about how: **never** synthesize,
-hand-draw or mock up a capture. Every figure on it is a capture of the real code running, taken for the
-walkthrough page linked beside the entry; all but one come from a `diffstatic_runner` fence on that
-page, and the exception (`assets/imgui_vr_panel/imgui-vr-panel.png`) is a real screenshot of the live
-demo rather than a fence's output, which is worth knowing if you go looking for the fence that made it.
-The materialized bundles
-under `public/docs/assets/agent_transcripts/<name>/` are *not* a source of figures: they hold
-`metadata.edn`, `document.md` and one `.kt` per box property, and no images at all. Most entries
-therefore carry no figure, which is correct: a scene whose output is a native Vulkan window or a
-headset has no still a build can honestly produce, and an honest gap beats a fake.
+hand-draw or mock up a capture. Every figure on it is a capture of the real code running, and the
+right one to reach for, in order of preference:
+
+1. **A capture driven from the transcript itself** — a `diffstatic_runner` fence whose
+   `macro-file=` (or `transcript=`) is that yaml. This is the strongest kind, because the picture is
+   provably of the scene the entry describes. The path tracers, `gpu_state`, `threebox`,
+   `profiling_timeline`, the browser-on-a-texture family and
+   `afield_four_traditional_triangle` all have one. `grep -l 'agents/transcripts/' public/docs/*.md`
+   finds them.
+2. **A capture on the walkthrough page the entry links**, where the transcript is that page's code
+   as boxes ("*X* as seven independent boxes"). Reuse the page's own alt text where it has some.
+3. **Nothing.** Which is correct and common: a scene wanting a camera, a service, a headset or a
+   window nobody has pointed the pipeline at has no still a build can honestly produce, and an
+   honest gap beats a fake. About half the entries are in this state.
+
+Two exceptions worth knowing if you go looking for the fence that made a figure:
+`assets/imgui_vr_panel/imgui-vr-panel.png` is a real screenshot of the live demo rather than a
+fence's output, and the `vision_geometry/*` figures are **Preview Vision Geometry** on a Mac, not the
+device — the mesh is real, the shading is a stand-in, and the section prose says so rather than
+leaving a reader to assume they are looking through a headset.
+
+The materialized bundles under `public/docs/assets/agent_transcripts/<name>/` are *not* a source of
+figures: they hold `metadata.edn`, `document.md` and one `.kt` per box property, and no images at all.

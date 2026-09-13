@@ -24,7 +24,7 @@ operations:
   - create:
       box: control_surface_laws
       name: a law for the travel
-      frame: { x: 80.0, y: 80.0, w: 220.0, h: 55.0 }
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 105.0 }
       properties:
         code: |
           // Four sliders over the same four decades, one per law. Click this box, open the output
@@ -79,7 +79,7 @@ operations:
   - create:
       box: control_surface_button
       name: hold, don't latch
-      frame: { x: 80.0, y: 300.0, w: 220.0, h: 55.0 }
+      frame: { x: 80.0, y: 300.0, w: 320.0, h: 105.0 }
       properties:
         code: |
           // A momentary button beside a checkbox, so the difference is visible rather than described.
@@ -110,7 +110,7 @@ operations:
   - create:
       box: control_surface_meter
       name: a level you can see
-      frame: { x: 80.0, y: 520.0, w: 220.0, h: 55.0 }
+      frame: { x: 80.0, y: 520.0, w: 320.0, h: 105.0 }
       properties:
         code: |
           // Two meters, both fed by a `source` lambda. Nothing here loops: the box says where the

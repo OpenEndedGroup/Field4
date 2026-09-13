@@ -3,13 +3,11 @@ version: 1
 # Ordinary OperationTranscript boxes are compact labels: see OPERATION_TRANSCRIPT.md.
 # Entries here are capture subjects whose box rectangle is part of the intended screenshot. The guard requires
 # one reason per file#box and rejects entries that no longer point at an oversized create.frame.
+#
+# Six entries left on 2026-09-13, when the ordinary ceiling moved from 520 x 120 to 620 x 170: the
+# completion-header and four-panel-lifecycle cards are 620 x 150 and 560 x 150, so they now fit under it
+# and need no exemption. Their frames did not change — only the ceiling did.
 largeFrames:
-  docs_capture/completion_category_headers.yaml#agent_completion_header_alife: Box dimensions are part of the completion-header screenshot composition.
-  docs_capture/completion_category_headers.yaml#agent_completion_header_audio_ai: Box dimensions are part of the completion-header screenshot composition.
-  docs_capture/frames_lifecycle.yaml#frames_lifecycle_forever: Box dimensions are part of the four-panel lifecycle screenshot composition.
-  docs_capture/frames_lifecycle.yaml#frames_lifecycle_stops: Box dimensions are part of the four-panel lifecycle screenshot composition.
-  docs_capture/frames_lifecycle.yaml#frames_lifecycle_rerun: Box dimensions are part of the four-panel lifecycle screenshot composition.
-  docs_capture/frames_lifecycle.yaml#frames_lifecycle_cleanup: Box dimensions are part of the four-panel lifecycle screenshot composition.
   docs_capture/keybindings_inspect.yaml#agent_keybindings_inspect: Box dimensions are part of the keybindings-panel screenshot framing.
   docs_capture/remote_ar_kotlin_plane.yaml#agent_remote_ar_plane_head: Box height reserves the documented Remote AR capture composition.
   docs_capture/remote_ar_kotlin_plane.yaml#agent_remote_ar_plane: Box dimensions are part of the Remote AR editor screenshot composition.

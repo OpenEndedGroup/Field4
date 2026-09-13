@@ -18,7 +18,7 @@ The round trip is worth doing once yourself, because what comes back is not what
 Nothing here writes into the repository: a temp directory, deleted at the end.
 
 ```edn [field-box id="disk_roundtrip" role="properties"]
-{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 160.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 52 "characters" 2570 "sha256" "2bbd8736edd8f1ed65f2e356d80c0f61af2747c0ed05a1d98c4f8fd9f8a06da5"}]}
+{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 52 "characters" 2570 "sha256" "2bbd8736edd8f1ed65f2e356d80c0f61af2747c0ed05a1d98c4f8fd9f8a06da5"}]}
 ```
 
 ```kotlin [field-property box="disk_roundtrip" name="code" path="disk_roundtrip_code_.kt"]
@@ -93,7 +93,7 @@ Change this to any mesh file you have. .glb .gltf .fbx .dae .3ds all go through 
 .ply through PlySupport, .obj and .stl through the dependency-free stdlib reader.
 
 ```edn [field-box id="disk_glb" role="properties"]
-{"id" "disk_glb" "index" 1 "name" "A real GLB, straight into an output area" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A real GLB, straight into an output area" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_glb_code_.kt" "lines" 43 "characters" 2258 "sha256" "426292e0b62668095cead586c1812f4b33af7d9921900e865736404b76f339fc"}]}
+{"id" "disk_glb" "index" 1 "name" "A real GLB, straight into an output area" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A real GLB, straight into an output area" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_glb_code_.kt" "lines" 43 "characters" 2258 "sha256" "426292e0b62668095cead586c1812f4b33af7d9921900e865736404b76f339fc"}]}
 ```
 
 ```kotlin [field-property box="disk_glb" name="code" path="disk_glb_code_.kt"]
@@ -155,7 +155,7 @@ neither OBJ nor STL can carry. Four corners, two triangles, small enough to read
 Change the six colour triples and re-run.
 
 ```edn [field-box id="disk_ply" role="properties"]
-{"id" "disk_ply" "index" 2 "name" "PLY — the format that carries colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "PLY — the format that carries colour" "_tombstone" false "frame" #afield/rect [80.0 240.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_ply_code_.kt" "lines" 55 "characters" 2128 "sha256" "a53b187104751e75069e495f2755f5e314e0493e153ffd963a0be5f6d8fb9fc5"}]}
+{"id" "disk_ply" "index" 2 "name" "PLY — the format that carries colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "PLY — the format that carries colour" "_tombstone" false "frame" #afield/rect [80.0 340.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_ply_code_.kt" "lines" 55 "characters" 2128 "sha256" "a53b187104751e75069e495f2755f5e314e0493e153ffd963a0be5f6d8fb9fc5"}]}
 ```
 
 ```kotlin [field-property box="disk_ply" name="code" path="disk_ply_code_.kt"]

@@ -16,7 +16,7 @@ operations:
   - create:
       box: log_channels
       name: 1 - A channel, and a sink of your own
-      frame: { x: 60.0, y: 60.0, w: 457.6, h: 86.0 }
+      frame: { x: 60.0, y: 60.0, w: 557.6, h: 136.0 }
       properties:
         code: |
           import afield.ai.core.LogDispatcher
@@ -45,7 +45,7 @@ operations:
   - create:
       box: log_mute
       name: 2 - Muting compares the whole string
-      frame: { x: 600.0, y: 60.0, w: 445.9, h: 86.0 }
+      frame: { x: 700.0, y: 60.0, w: 545.9, h: 136.0 }
       properties:
         code: |
           import afield.ai.core.ConsoleMute
@@ -72,7 +72,7 @@ operations:
   - create:
       box: log_filter
       name: 3 - The log widget takes any substring
-      frame: { x: 60.0, y: 176.0, w: 469.3, h: 86.0 }
+      frame: { x: 60.0, y: 226.0, w: 569.3, h: 136.0 }
       properties:
         code: |
           import afield.logger.lprintln
@@ -120,7 +120,7 @@ operations:
   - create:
       box: log_mute_is_console_only
       name: 4 - Muting is a console policy, not a filter
-      frame: { x: 600.0, y: 176.0, w: 500.0, h: 86.0 }
+      frame: { x: 700.0, y: 226.0, w: 600.0, h: 136.0 }
       properties:
         code: |
           import afield.ai.core.ConsoleMute
@@ -152,7 +152,7 @@ operations:
   - create:
       box: log_blocks
       name: 5 - Blocks, and what the indent holds
-      frame: { x: 60.0, y: 292.0, w: 457.6, h: 86.0 }
+      frame: { x: 60.0, y: 392.0, w: 557.6, h: 136.0 }
       properties:
         code: |
           import afield.ai.core.LogDispatcher
@@ -205,7 +205,7 @@ operations:
   - create:
       box: log_stats
       name: 6 - Stat lines and the heatmap
-      frame: { x: 600.0, y: 292.0, w: 375.6, h: 86.0 }
+      frame: { x: 700.0, y: 392.0, w: 475.6, h: 136.0 }
       properties:
         code: |
           import afield.logger.StatsHeatmap

@@ -10,7 +10,7 @@ operations:
   - create:
       box: rw_baseline
       name: Baseline (global fixpoint)
-      frame: { x: 60.0, y: 60.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun p(v: Int) = v
@@ -23,7 +23,7 @@ operations:
   - create:
       box: rw_once
       name: once (single site)
-      frame: { x: 400.0, y: 60.0, w: 200.0, h: 50.0 }
+      frame: { x: 400.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun p(v: Int) = v
@@ -37,7 +37,7 @@ operations:
   - create:
       box: rw_subset
       name: subset (name one rule)
-      frame: { x: 740.0, y: 60.0, w: 200.0, h: 50.0 }
+      frame: { x: 740.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun p(v: Int) = v
@@ -54,7 +54,7 @@ operations:
   - create:
       box: rw_topdown
       name: topdown (outer)
-      frame: { x: 60.0, y: 260.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 260.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun f(v: Int) = v * 2
@@ -68,7 +68,7 @@ operations:
   - create:
       box: rw_bottomup
       name: bottomup (inner)
-      frame: { x: 400.0, y: 260.0, w: 200.0, h: 50.0 }
+      frame: { x: 400.0, y: 260.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun f(v: Int) = v * 2
@@ -82,7 +82,7 @@ operations:
   - create:
       box: rw_seq
       name: then (sequence)
-      frame: { x: 740.0, y: 260.0, w: 200.0, h: 50.0 }
+      frame: { x: 740.0, y: 260.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun p(v: Int) = v
@@ -98,7 +98,7 @@ operations:
   - create:
       box: rw_choice
       name: choice (first applicable)
-      frame: { x: 60.0, y: 470.0, w: 200.0, h: 50.0 }
+      frame: { x: 60.0, y: 470.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun pick(v: Int) = v
@@ -114,7 +114,7 @@ operations:
   - create:
       box: rw_repeat
       name: repeat (bounded)
-      frame: { x: 400.0, y: 470.0, w: 200.0, h: 50.0 }
+      frame: { x: 400.0, y: 470.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           fun f(v: Int) = v * 2
@@ -128,7 +128,7 @@ operations:
   - create:
       box: rw_nested
       name: nested pattern (two levels deep)
-      frame: { x: 740.0, y: 470.0, w: 230.0, h: 50.0 }
+      frame: { x: 740.0, y: 470.0, w: 330.0, h: 100.0 }
       properties:
         code: |
           fun f(v: Int) = v * 2

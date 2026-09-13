@@ -23,8 +23,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // Field could always MEASURE artificial life. It could not search it.
@@ -99,9 +99,9 @@ operations:
       name: "2 — The same engine, a life-like rule table"
       frame:
         x: 60.0
-        y: 160.0
-        w: 320.0
-        h: 50.0
+        y: 210.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // The same engine, a completely different genome.
@@ -182,9 +182,9 @@ operations:
       name: "3 — MAP-Elites: illuminate, do not optimise"
       frame:
         x: 60.0
-        y: 260.0
-        w: 320.0
-        h: 50.0
+        y: 360.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // Illuminate the rule space instead of optimising it.
@@ -247,9 +247,9 @@ operations:
       name: "4 — The engine is shared: FunctionEvolve too"
       frame:
         x: 60.0
-        y: 360.0
-        w: 320.0
-        h: 50.0
+        y: 510.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // The engine is SHARED, and that is the point of the whole exercise.

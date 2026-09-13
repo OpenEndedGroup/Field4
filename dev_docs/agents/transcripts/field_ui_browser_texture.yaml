@@ -18,7 +18,7 @@ operations:
   - create:
       box: field_ui_texture_renderer
       name: renderer — Field UI texture
-      frame: { x: 140.0, y: 180.0, w: 250.0, h: 55.0 }
+      frame: { x: 140.0, y: 180.0, w: 350.0, h: 105.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -39,7 +39,7 @@ operations:
   - create:
       box: field_ui_texture_panel
       name: Field's UI — live Chromium texture
-      frame: { x: 460.0, y: 180.0, w: 330.0, h: 55.0 }
+      frame: { x: 560.0, y: 180.0, w: 430.0, h: 105.0 }
       properties:
         code: |
           import afield.four.browser.FieldUiBrowserTexture

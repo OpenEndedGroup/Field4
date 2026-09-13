@@ -26,7 +26,7 @@ operations:
   - create:
       box: greeter
       name: Greeter
-      frame: { x: 40.0, y: 40.0, w: 220.0, h: 120.0 }
+      frame: { x: 40.0, y: 40.0, w: 320.0, h: 170.0 }
       properties:
         code: |
           println("hello from a transcript")

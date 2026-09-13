@@ -18,7 +18,7 @@ sobel().dx is two-signed: positive on a dark->bright edge, negative on bright->d
 A min..max normalisation puts zero at an arbitrary grey; the diverging policy pins it.
 
 ```edn [field-box id="viz_signed" role="properties"]
-{"id" "viz_signed" "index" 0 "name" "signed dx — diverging, zero fixed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "signed dx — diverging, zero fixed" "_tombstone" false "frame" #afield/rect [430.0 60.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_signed_code_.kt" "lines" 8 "characters" 368 "sha256" "5db6b4b1a3c69828b4eff5e54de44e3de414e6caacffd8775e3630bc10d5782e"}]}
+{"id" "viz_signed" "index" 0 "name" "signed dx — diverging, zero fixed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "signed dx — diverging, zero fixed" "_tombstone" false "frame" #afield/rect [530.0 60.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_signed_code_.kt" "lines" 8 "characters" 368 "sha256" "5db6b4b1a3c69828b4eff5e54de44e3de414e6caacffd8775e3630bc10d5782e"}]}
 ```
 
 ```kotlin [field-property box="viz_signed" name="code" path="viz_signed_code_.kt"]
@@ -37,7 +37,7 @@ src.sobel().dx
 <!-- field-box id="viz_gradient" index="1" -->
 
 ```edn [field-box id="viz_gradient" role="properties"]
-{"id" "viz_gradient" "index" 1 "name" "Gradient — dx, dy, magnitude, direction" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Gradient — dx, dy, magnitude, direction" "_tombstone" false "frame" #afield/rect [430.0 400.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_gradient_code_.kt" "lines" 6 "characters" 187 "sha256" "786b40a46aa02114fa94d3d2add43254b1dfef912807c031b08dccd0ee320dc8"}]}
+{"id" "viz_gradient" "index" 1 "name" "Gradient — dx, dy, magnitude, direction" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Gradient — dx, dy, magnitude, direction" "_tombstone" false "frame" #afield/rect [530.0 400.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_gradient_code_.kt" "lines" 6 "characters" 187 "sha256" "786b40a46aa02114fa94d3d2add43254b1dfef912807c031b08dccd0ee320dc8"}]}
 ```
 
 ```kotlin [field-property box="viz_gradient" name="code" path="viz_gradient_code_.kt"]
@@ -61,7 +61,7 @@ The second frame is the first rotated 0.06 rad about its centre, so the arrows s
 trace a rotation field: little motion near the middle, tangential motion at the edges.
 
 ```edn [field-box id="viz_flow" role="properties"]
-{"id" "viz_flow" "index" 2 "name" "FlowField — quiver, failures included" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "FlowField — quiver, failures included" "_tombstone" false "frame" #afield/rect [800.0 740.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_flow_code_.kt" "lines" 8 "characters" 523 "sha256" "a647b3f772f0518a8d613e38becd56129c7786eb126bdce2ed16abd491303d4d"}]}
+{"id" "viz_flow" "index" 2 "name" "FlowField — quiver, failures included" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "FlowField — quiver, failures included" "_tombstone" false "frame" #afield/rect [1000.0 740.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_flow_code_.kt" "lines" 8 "characters" 523 "sha256" "a647b3f772f0518a8d613e38becd56129c7786eb126bdce2ed16abd491303d4d"}]}
 ```
 
 ```kotlin [field-property box="viz_flow" name="code" path="viz_flow_code_.kt"]
@@ -87,7 +87,7 @@ The rectangle is x 30..90, y 26..76, so the four strongest corners should read b
 (30, 26), (89, 26), (30, 75), (89, 75) — check the disclosure against those numbers.
 
 ```edn [field-box id="viz_corners" role="properties"]
-{"id" "viz_corners" "index" 3 "name" "List<Corner> — scatter by strength" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "List<Corner> — scatter by strength" "_tombstone" false "frame" #afield/rect [60.0 740.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_corners_code_.kt" "lines" 8 "characters" 380 "sha256" "14c056e6ee943d254346bf6b1b5eac94ff52f630069a3cf21db667773ebe999f"}]}
+{"id" "viz_corners" "index" 3 "name" "List<Corner> — scatter by strength" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "List<Corner> — scatter by strength" "_tombstone" false "frame" #afield/rect [60.0 740.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_corners_code_.kt" "lines" 8 "characters" 380 "sha256" "14c056e6ee943d254346bf6b1b5eac94ff52f630069a3cf21db667773ebe999f"}]}
 ```
 
 ```kotlin [field-property box="viz_corners" name="code" path="viz_corners_code_.kt"]
@@ -113,7 +113,7 @@ Each rung is drawn at its real fraction of the base resolution, bottom-aligned, 
 halving is the visible fact rather than a number in a caption.
 
 ```edn [field-box id="viz_pyramid" role="properties"]
-{"id" "viz_pyramid" "index" 4 "name" "GaussianPyramid — rungs at true scale" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "GaussianPyramid — rungs at true scale" "_tombstone" false "frame" #afield/rect [800.0 400.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_pyramid_code_.kt" "lines" 11 "characters" 575 "sha256" "18f2470ee7817245b7f3b820f514e00545dc9aea3426178393c48110bdc3f13d"}]}
+{"id" "viz_pyramid" "index" 4 "name" "GaussianPyramid — rungs at true scale" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "GaussianPyramid — rungs at true scale" "_tombstone" false "frame" #afield/rect [1000.0 400.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_pyramid_code_.kt" "lines" 11 "characters" 575 "sha256" "18f2470ee7817245b7f3b820f514e00545dc9aea3426178393c48110bdc3f13d"}]}
 ```
 
 ```kotlin [field-property box="viz_pyramid" name="code" path="viz_pyramid_code_.kt"]
@@ -142,7 +142,7 @@ Edge magnitude x25 lands far outside 0..1. Clamping would show a flat white rect
 the visualizer rescales for display and prints the range it rescaled from.
 
 ```edn [field-box id="viz_autoranged" role="properties"]
-{"id" "viz_autoranged" "index" 5 "name" "auto-ranged — the true range printed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "auto-ranged — the true range printed" "_tombstone" false "frame" #afield/rect [800.0 60.0 250.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_autoranged_code_.kt" "lines" 8 "characters" 350 "sha256" "e5e245f50a045a70f03222a6ef0e1dbc61d703849e848b40d115265a46c62ee0"}]}
+{"id" "viz_autoranged" "index" 5 "name" "auto-ranged — the true range printed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "auto-ranged — the true range printed" "_tombstone" false "frame" #afield/rect [1000.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_autoranged_code_.kt" "lines" 8 "characters" 350 "sha256" "e5e245f50a045a70f03222a6ef0e1dbc61d703849e848b40d115265a46c62ee0"}]}
 ```
 
 ```kotlin [field-property box="viz_autoranged" name="code" path="viz_autoranged_code_.kt"]
@@ -169,7 +169,7 @@ disc (a Hough circle), two rulings (Hough lines), a checker patch (flow texture)
 The value of the box IS the image, so the inline visualizer is what you see below.
 
 ```edn [field-box id="viz_scene" role="properties"]
-{"id" "viz_scene" "index" 6 "name" "Img — thumbnail, channels, histogram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Img — thumbnail, channels, histogram" "_tombstone" false "frame" #afield/rect [60.0 60.0 250.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_scene_code_.kt" "lines" 15 "characters" 779 "sha256" "84b915637ed66df25f0ba6e70caaff488606d5f92f589a554e15eb39859e9c54"}]}
+{"id" "viz_scene" "index" 6 "name" "Img — thumbnail, channels, histogram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Img — thumbnail, channels, histogram" "_tombstone" false "frame" #afield/rect [60.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_scene_code_.kt" "lines" 15 "characters" 779 "sha256" "84b915637ed66df25f0ba6e70caaff488606d5f92f589a554e15eb39859e9c54"}]}
 ```
 
 ```kotlin [field-property box="viz_scene" name="code" path="viz_scene_code_.kt"]
@@ -202,7 +202,7 @@ Adjacent label ids get unrelated hues (golden-ratio rotation), which is what mak
 touching blobs distinguishable at thumbnail size.
 
 ```edn [field-box id="viz_components" role="properties"]
-{"id" "viz_components" "index" 7 "name" "ComponentLabelling — one hue per blob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ComponentLabelling — one hue per blob" "_tombstone" false "frame" #afield/rect [60.0 1080.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_components_code_.kt" "lines" 9 "characters" 407 "sha256" "102b0a96ececd72d3922f8a983b1ba8fab2a3cd19f11cb4208418ebaf8898599"}]}
+{"id" "viz_components" "index" 7 "name" "ComponentLabelling — one hue per blob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ComponentLabelling — one hue per blob" "_tombstone" false "frame" #afield/rect [60.0 1080.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_components_code_.kt" "lines" 9 "characters" 407 "sha256" "102b0a96ececd72d3922f8a983b1ba8fab2a3cd19f11cb4208418ebaf8898599"}]}
 ```
 
 ```kotlin [field-property box="viz_components" name="code" path="viz_components_code_.kt"]
@@ -230,7 +230,7 @@ The old behaviour: one NaN poisoned min()/max(), normalized() produced an all-Na
 image, the PNG quantiser turned NaN into 0, and the thumbnail went silently black.
 
 ```edn [field-box id="viz_non_finite" role="properties"]
-{"id" "viz_non_finite" "index" 8 "name" "NaN + infinity — counted and magenta" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "NaN + infinity — counted and magenta" "_tombstone" false "frame" #afield/rect [60.0 400.0 250.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_non_finite_code_.kt" "lines" 10 "characters" 448 "sha256" "20473605d3cc0026ff4a39b7839c65c0142c6ea00546989c6f81f72999788d06"}]}
+{"id" "viz_non_finite" "index" 8 "name" "NaN + infinity — counted and magenta" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "NaN + infinity — counted and magenta" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_non_finite_code_.kt" "lines" 10 "characters" 448 "sha256" "20473605d3cc0026ff4a39b7839c65c0142c6ea00546989c6f81f72999788d06"}]}
 ```
 
 ```kotlin [field-property box="viz_non_finite" name="code" path="viz_non_finite_code_.kt"]
@@ -259,7 +259,7 @@ and rho~139 theta=pi/2. A HoughLine is infinite, so the left panel has to invent
 canvas — it says which one, and points at linesToFLines for the in-place version.
 
 ```edn [field-box id="viz_hough" role="properties"]
-{"id" "viz_hough" "index" 9 "name" "List<HoughLine> — geometry + accumulator" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "List<HoughLine> — geometry + accumulator" "_tombstone" false "frame" #afield/rect [430.0 740.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_hough_code_.kt" "lines" 9 "characters" 476 "sha256" "b4adab1b2b0220f98ea221152ca4c4b8fcf4f689653a768fa8e94d9ed68d74c6"}]}
+{"id" "viz_hough" "index" 9 "name" "List<HoughLine> — geometry + accumulator" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "List<HoughLine> — geometry + accumulator" "_tombstone" false "frame" #afield/rect [530.0 740.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "viz_hough_code_.kt" "lines" 9 "characters" 476 "sha256" "b4adab1b2b0220f98ea221152ca4c4b8fcf4f689653a768fa8e94d9ed68d74c6"}]}
 ```
 
 ```kotlin [field-property box="viz_hough" name="code" path="viz_hough_code_.kt"]

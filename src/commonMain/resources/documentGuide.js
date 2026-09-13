@@ -1,6 +1,6 @@
 import { sendWithReply, clearReplyHandler } from './afield.mjs';
 import { renderFieldMarkdown } from './markdownView.js';
-import { boxGuideLink, guideAssetUrl } from './documentGuideModel.js';
+import { boxGuideLink, guideAssetUrl, noteFilePath, noteUid } from './documentGuideModel.js';
 
 let serial = 0;
 function rpc(payload) {
@@ -14,7 +14,7 @@ function rpc(payload) {
 }
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, id, action) => { const b = el('button', '', text); b.type = 'button'; if (id) b.id = id; b.addEventListener('click', action); return b; };
-let panel, reader, source, editor, fileList, outline, status, title, conflict, controls, launcher;
+let panel, reader, source, editor, fileList, noteList, noteHeading, outline, status, title, conflict, controls, launcher;
 let entries = [], current = null, documentKey = '', readOnly = false, visible = false, sourceMode = false;
 let epoch = 0, refreshTimer, refreshPending = false, navigation = [], headings = [], suppressEdit = false;
 const drafts = new Map();
@@ -23,6 +23,11 @@ function storageKey() { return `field.documentGuide.${documentKey || window.curr
 function message(text) { if (status) status.textContent = text; }
 function report(error) { message(error.message || String(error)); }
 function dirty(file = current) { return file && file.draft !== file.contents; }
+/** A box's `notes`: readable here, editable on the box. */
+function isNote(file = current) { return !!file && !!noteUid(file.path); }
+function writable(file = current) { return !!file && !readOnly && !isNote(file); }
+/** A note's own heading, from the list; the read reply carries the text, not the title. */
+function noteTitle(file) { return entries.find(e => e.path === file.path)?.title || noteUid(file.path); }
 function remember() {
     if (current && reader && !sourceMode) saved.positions[current.path] = reader.scrollTop;
     if (current) saved.path = current.path;
@@ -48,16 +53,23 @@ function build() {
         read: button('Read', 'guide-read', () => setMode(false)),
         source: button('Source', 'guide-source', () => setMode(true)),
         save: button('Save', 'guide-save', save),
+        add: button('Add note', 'guide-add', addNote),
+        box: button('Open box', 'guide-open-box', openBox),
         pin: button('Place on canvas', 'guide-pin', pin),
         copy: button('Copy section link', 'guide-copy-link', copySection)
     };
     controls.back.title = 'Previous guide'; controls.back.setAttribute('aria-label', 'Previous guide');
-    toolbar.append(controls.back, controls.read, controls.source, controls.save, controls.copy, controls.pin);
+    controls.add.title = 'Create a new Markdown note in this document';
+    controls.box.title = 'Select the box these notes belong to';
+    toolbar.append(controls.back, controls.read, controls.source, controls.save, controls.add,
+        controls.box, controls.copy, controls.pin);
     const body = el('div', 'guide-body');
     const nav = el('nav', 'guide-nav'); nav.setAttribute('aria-label', 'Guides and headings');
     fileList = el('div', 'guide-files'); fileList.id = 'guide-files';
+    noteList = el('div', 'guide-files guide-notes'); noteList.id = 'guide-notes';
+    noteHeading = el('h2', '', 'Box notes');
     outline = el('div', 'guide-outline'); outline.id = 'guide-outline';
-    nav.append(el('h2', '', 'Guides'), fileList, el('h2', '', 'On this page'), outline);
+    nav.append(el('h2', '', 'Guides'), fileList, noteHeading, noteList, el('h2', '', 'On this page'), outline);
     const content = el('div', 'guide-content');
     conflict = el('div', 'guide-conflict'); conflict.id = 'guide-conflict'; conflict.hidden = true;
     conflict.append(el('span', '', 'Changed on disk. Your draft is kept.'),
@@ -81,20 +93,26 @@ function updateControls() {
     controls.back.disabled = !navigation.length;
     controls.read.classList.toggle('guide-active', !sourceMode);
     controls.source.classList.toggle('guide-active', sourceMode);
-    controls.save.disabled = !dirty() || readOnly || current?.saving;
-    controls.pin.disabled = !current || readOnly;
+    controls.save.disabled = !dirty() || !writable() || current?.saving;
+    controls.add.disabled = readOnly;
+    controls.box.hidden = !isNote();
+    controls.pin.disabled = !writable();
     controls.copy.disabled = !current;
     controls.source.disabled = !current;
     conflict.hidden = !current?.conflict;
-    if (current) title.textContent = current.path + (dirty() ? ' •' : '');
+    if (current) title.textContent = (isNote() ? `${noteTitle(current)} · notes` : current.path) + (dirty() ? ' •' : '');
 }
-function renderFiles() {
-    fileList.replaceChildren();
-    for (const entry of entries) {
-        const b = button(entry.title, null, () => navigate(entry.path)); b.dataset.path = entry.path;
-        b.title = entry.path; b.classList.toggle('guide-active', entry.path === current?.path); fileList.append(b);
+function renderEntries() {
+    const label = entry => entry.kind === 'note' ? `${entry.title} · box notes` : entry.path;
+    for (const [list, kind] of [[fileList, 'guide'], [noteList, 'note']]) {
+        list.replaceChildren();
+        for (const entry of entries.filter(e => (e.kind || 'guide') === kind)) {
+            const b = button(entry.title, null, () => navigate(entry.path)); b.dataset.path = entry.path;
+            b.title = label(entry); b.classList.toggle('guide-active', entry.path === current?.path); list.append(b);
+        }
     }
-    if (!entries.length) fileList.append(el('p', '', 'Add a .md file to this document, docs/ or guides/.'));
+    noteHeading.hidden = noteList.hidden = !noteList.childElementCount;
+    if (!fileList.childElementCount) fileList.append(el('p', '', 'Add note writes a .md file here; docs/ and guides/ are read too.'));
 }
 function markHeading() {
     const top = reader.getBoundingClientRect().top + 24;
@@ -111,7 +129,10 @@ function jump(hash) {
 function renderReader(hash = null) {
     if (!current) return;
     const position = saved.positions[current.path] || 0;
-    headings = renderFieldMarkdown(reader, current.draft, {documentKey, path:current.path, onLink:follow});
+    // A note lives on a box, not in a directory, so its relative links and images resolve from the
+    // document root — the same base `classifyGuideLink` assumes when no path is given.
+    const base = isNote() ? 'README.md' : current.path;
+    headings = renderFieldMarkdown(reader, current.draft, {documentKey, path:base, onLink:follow});
     outline.replaceChildren();
     for (const h of headings) {
         const b = button(h.title, null, () => { setMode(false); jump(h.id); });
@@ -125,7 +146,8 @@ function setEditorValue() {
     if (!editor || !current) return;
     suppressEdit = true;
     if (editor.getValue() !== current.draft) editor.setValue(current.draft);
-    editor.updateOptions({readOnly}); suppressEdit = false;
+    // Source stays available for a note — reading the Markdown is useful — but not editable here.
+    editor.updateOptions({readOnly: !writable()}); suppressEdit = false;
 }
 function setMode(toSource) {
     if (!current) return;
@@ -137,7 +159,7 @@ function setMode(toSource) {
         editor = monaco.editor.create(source, {
             value:current.draft, language:'markdown', theme:'vs-dark', automaticLayout:true,
             minimap:{enabled:false}, fontFamily:'Iosevka Web, Iosevka, monospace', fontSize:14,
-            wordWrap:'on', scrollBeyondLastLine:false, readOnly
+            wordWrap:'on', scrollBeyondLastLine:false, readOnly:!writable()
         });
         editor.onDidChangeModelContent(() => {
             if (suppressEdit || !current) return;
@@ -169,8 +191,9 @@ async function navigate(path, hash = '', push = true) {
         }
         saved.path = path; panel.dataset.path = path;
         sourceMode = false; source.hidden = true; reader.hidden = false;
-        renderFiles(); renderReader(hash); updateControls();
-        message(readOnly ? 'Read-only document' : dirty() ? 'Unsaved draft restored' : 'Markdown file · Changes on disk refresh here');
+        renderEntries(); renderReader(hash); updateControls();
+        message(isNote() ? 'Box notes · Open box to edit them' :
+            readOnly ? 'Read-only document' : dirty() ? 'Unsaved draft restored' : 'Markdown file · Changes on disk refresh here');
         remember();
     } catch (error) { if (token === epoch) report(error); }
 }
@@ -187,7 +210,7 @@ function follow(link) {
     } else if (link.kind === 'asset') window.open(guideAssetUrl(documentKey, link.path), '_blank', 'noopener');
 }
 async function save() {
-    if (!dirty() || readOnly || current.saving) return;
+    if (!dirty() || !writable() || current.saving) return;
     const file = current, contents = file.draft; file.saving = true; updateControls();
     try {
         const response = await rpc({action:'save', path:file.path, revision:file.revision, contents});
@@ -212,13 +235,37 @@ async function reload() {
 }
 async function copyDraft() { try { await navigator.clipboard.writeText(current.draft); message('Copied draft'); } catch (error) { report(error); } }
 async function copySection() {
-    const h = markHeading(), label = h?.title || current.path;
-    const path = current.path.split('/').map(encodeURIComponent).join('/');
-    try { await navigator.clipboard.writeText(`[${label.replace(/[\[\]]/g, '')}](${`field://guide/${path}`}${h ? '#'+h.id : ''})`); message('Copied Markdown link to this section'); }
+    const h = markHeading();
+    // A note has no guide path to link to; its box does, and that link opens the notes themselves.
+    const label = h?.title || (isNote() ? noteTitle(current) : current.path);
+    const href = isNote() ? boxGuideLink(noteUid(current.path), 'notes')
+        : `field://guide/${current.path.split('/').map(encodeURIComponent).join('/')}${h ? '#'+h.id : ''}`;
+    try { await navigator.clipboard.writeText(`[${String(label).replace(/[\[\]]/g, '')}](${href})`); message('Copied Markdown link to this section'); }
     catch (error) { report(error); }
 }
+/** Editing notes belongs to the box, so hand the selection over rather than growing a second writer. */
+function openBox() {
+    const uid = noteUid(current?.path || '');
+    if (!uid) return;
+    if (window.navigateToBoxFromLink?.(uid, 'notes', null, null)) message('Opened these notes on their box');
+    else message(`Box “${uid}” is no longer in this document`);
+}
+async function addNote() {
+    if (readOnly) { message('Read-only document'); return; }
+    const name = window.prompt('New note — a title, or docs/a-title', 'Note');
+    if (name === null) return;
+    const heading = name.trim().replace(/\.(md|markdown)$/i, '').split('/').pop().trim();
+    const path = noteFilePath(name);
+    try {
+        const response = await rpc({action:'create', path, contents:`# ${heading || 'Note'}\n\n`});
+        if (!response.ok) throw new Error(response.conflict ? `${path} already exists — open it from the list` : response.error);
+        entries = response.entries || entries;
+        await navigate(path);
+        if (current?.path === path) { setMode(true); message(`New note · Save writes to ${path}`); }
+    } catch (error) { report(error); }
+}
 async function pin() {
-    if (!current || readOnly) return;
+    if (!writable()) return;
     try {
         const response = await rpc({action:'pin', path:current.path, x:60, y:60});
         if (!response.ok) throw new Error(response.error);
@@ -237,7 +284,7 @@ async function refresh() {
         const response = await rpc({action:'list'});
         if (!visible || token !== epoch) return;
         if (!response.ok) throw new Error(response.error);
-        entries = response.entries || []; renderFiles();
+        entries = response.entries || []; renderEntries();
         if (file && !file.saving) {
             const response = await rpc({action:'read', path:file.path});
             if (!visible || file !== current || token !== epoch || file.saving) return;
@@ -273,10 +320,14 @@ async function show(path = '') {
             try { saved = {path:'',positions:{},...JSON.parse(localStorage.getItem(storageKey()) || '{}')}; } catch (_) { saved = {path:'',positions:{}}; }
             if (saved.rect) setRect(saved.rect);
         }
-        readOnly = response.readOnly; entries = response.entries || []; renderFiles();
+        readOnly = response.readOnly; entries = response.entries || []; renderEntries();
         const target = path || current?.path || (entries.some(e=>e.path===saved.path) ? saved.path : entries[0]?.path);
         if (target) { if (target !== current?.path) await navigate(target); else { renderReader(); updateControls(); } }
-        else { reader.textContent = 'This document has no guides yet. Add a Markdown file beside metadata.edn, or inside docs/ or guides/.'; message('No guides found'); }
+        else {
+            reader.textContent = 'This document has no guides or notes yet. Use Add note, put a Markdown file beside '
+                + 'metadata.edn or inside docs/ or guides/, or write notes on a box.';
+            message('No guides or notes found');
+        }
         clearInterval(refreshTimer); refreshTimer = setInterval(refresh, 2500); refresh();
     } catch (error) { report(error); }
 }
@@ -297,6 +348,8 @@ function installGestures(header) {
 }
 window.showDocumentGuide = show;
 window.closeDocumentGuide = close;
+// The panel has to be open for a new note to land somewhere visible, so open it first.
+window.addDocumentGuideNote = async () => { await show(); await addNote(); };
 // Discovery for Open Anything does not build or open the viewer, or fetch guide bodies.
 let paletteCatalogue = null, paletteCatalogueAt = 0, paletteCatalogueKey = '', paletteCataloguePending = null;
 window.documentGuidePaletteList = () => {
@@ -338,9 +391,14 @@ setInterval(async () => {
             window.documentGuideSessionKey = response.document; window.syncNotesMarkdownPreview?.();
         }
         build();
-        if (!launcher) { launcher=button('Guides', 'document-guide-launcher',()=>show()); launcher.title='Open this document’s guides'; document.body.append(launcher); }
-        launcher.hidden=!response.entries?.length;
-        launcher.textContent=`Guides · ${response.entries?.length || 0}`;
+        if (!launcher) { launcher=button('Guides', 'document-guide-launcher',()=>show()); launcher.title='Open this document’s guides and notes'; document.body.append(launcher); }
+        const found = response.entries || [];
+        const noteCount = found.filter(e => e.kind === 'note').length;
+        launcher.hidden = !found.length;
+        // Name what is actually there: a document can carry notes and no Markdown files, or the reverse.
+        launcher.textContent = noteCount === found.length ? `Notes · ${noteCount}`
+            : noteCount ? `Guides · ${found.length - noteCount} · Notes · ${noteCount}`
+            : `Guides · ${found.length}`;
         const initial = new URL(location.href).searchParams.get('guide');
         if (initial && !deepLinkOpened) { deepLinkOpened = true; await show(initial); }
     } catch (_) { discovered=''; }

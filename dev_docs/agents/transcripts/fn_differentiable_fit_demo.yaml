@@ -13,7 +13,7 @@ operations:
   - create:
       box: fn_fit_demo
       name: differentiable Fn fit
-      frame: { x: 80.0, y: 60.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.Functions

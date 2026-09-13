@@ -18,7 +18,7 @@ Rosenbrock's curved valley is the classic separator: a first-order method zig-za
 across it, a curvature model plus a line search walks along it.
 
 ```edn [field-box id="autodiff_optimizers" role="properties"]
-{"id" "autodiff_optimizers" "index" 0 "name" "three descents, one valley" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "three descents, one valley" "_tombstone" false "frame" #afield/rect [60.0 1800.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_optimizers_code_.kt" "lines" 32 "characters" 1493 "sha256" "b490c94b7f8276c5a163f3afde9c473a9a60d4320906f14087c80ee61f7df154"}]}
+{"id" "autodiff_optimizers" "index" 0 "name" "three descents, one valley" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "three descents, one valley" "_tombstone" false "frame" #afield/rect [60.0 1800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_optimizers_code_.kt" "lines" 32 "characters" 1493 "sha256" "b490c94b7f8276c5a163f3afde9c473a9a60d4320906f14087c80ee61f7df154"}]}
 ```
 
 ```kotlin [field-property box="autodiff_optimizers" name="code" path="autodiff_optimizers_code_.kt"]
@@ -61,7 +61,7 @@ report("L-BFGS", lbfgsRun)
 <!-- field-box id="autodiff_fn_fit" index="1" -->
 
 ```edn [field-box id="autodiff_fn_fit" role="properties"]
-{"id" "autodiff_fn_fit" "index" 1 "name" "exact gradients through the Fn graph" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "exact gradients through the Fn graph" "_tombstone" false "frame" #afield/rect [60.0 3600.0 250.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_fn_fit_code_.kt" "lines" 38 "characters" 2011 "sha256" "a2ba7189c56c18a5f40b3aa4cc3abac7fc61606ed3e96a09a6b3fbe446a4ca81"}]}
+{"id" "autodiff_fn_fit" "index" 1 "name" "exact gradients through the Fn graph" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "exact gradients through the Fn graph" "_tombstone" false "frame" #afield/rect [60.0 3600.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_fn_fit_code_.kt" "lines" 38 "characters" 2011 "sha256" "a2ba7189c56c18a5f40b3aa4cc3abac7fc61606ed3e96a09a6b3fbe446a4ca81"}]}
 ```
 
 ```kotlin [field-property box="autodiff_fn_fit" name="code" path="autodiff_fn_fit_code_.kt"]
@@ -118,7 +118,7 @@ growing quadratically once they interpenetrate. Walls are the same shape. Every 
 differentiable, so the packing is a descent rather than a relaxation loop of nudges.
 
 ```edn [field-box id="autodiff_pack" role="properties"]
-{"id" "autodiff_pack" "index" 2 "name" "a differentiable circle packing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a differentiable circle packing" "_tombstone" false "frame" #afield/rect [1400.0 1800.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_pack_code_.kt" "lines" 60 "characters" 2473 "sha256" "e00e0046cdb4926e8f132998b700f0602ec9cffc644e81c580709dc4d9e795b5"}]}
+{"id" "autodiff_pack" "index" 2 "name" "a differentiable circle packing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a differentiable circle packing" "_tombstone" false "frame" #afield/rect [1400.0 1800.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_pack_code_.kt" "lines" 60 "characters" 2473 "sha256" "e00e0046cdb4926e8f132998b700f0602ec9cffc644e81c580709dc4d9e795b5"}]}
 ```
 
 ```kotlin [field-property box="autodiff_pack" name="code" path="autodiff_pack_code_.kt"]
@@ -196,7 +196,7 @@ Forward kinematics is a cumulative sum of joint angles and a running position, w
 perfectly differentiable, so the inverse problem is just L-BFGS on |tip - target|^2.
 
 ```edn [field-box id="autodiff_ik" role="properties"]
-{"id" "autodiff_ik" "index" 3 "name" "inverse kinematics on an FLine chain" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "inverse kinematics on an FLine chain" "_tombstone" false "frame" #afield/rect [1400.0 60.0 250.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_ik_code_.kt" "lines" 62 "characters" 2826 "sha256" "5a6943c5f014f39745e4692cf8b897f1a763d60d5cf76f6ebf986df0bbc0b3ba"}]}
+{"id" "autodiff_ik" "index" 3 "name" "inverse kinematics on an FLine chain" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "inverse kinematics on an FLine chain" "_tombstone" false "frame" #afield/rect [1400.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_ik_code_.kt" "lines" 62 "characters" 2826 "sha256" "5a6943c5f014f39745e4692cf8b897f1a763d60d5cf76f6ebf986df0bbc0b3ba"}]}
 ```
 
 ```kotlin [field-property box="autodiff_ik" name="code" path="autodiff_ik_code_.kt"]
@@ -276,7 +276,7 @@ AD is not a new numeric tower you have to learn — it is ordinary Kotlin arithm
 scalar that happens to remember how it was made. `grad { }` returns a *function*.
 
 ```edn [field-box id="autodiff_basics" role="properties"]
-{"id" "autodiff_basics" "index" 4 "name" "reverse mode, forward mode, and the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reverse mode, forward mode, and the oracle" "_tombstone" false "frame" #afield/rect [60.0 60.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_basics_code_.kt" "lines" 37 "characters" 1919 "sha256" "a99d56d9b22d88ab15c3be29e340402a579e35b093e97af1df85b38b9fe278e0"}]}
+{"id" "autodiff_basics" "index" 4 "name" "reverse mode, forward mode, and the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reverse mode, forward mode, and the oracle" "_tombstone" false "frame" #afield/rect [60.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_basics_code_.kt" "lines" 37 "characters" 1919 "sha256" "a99d56d9b22d88ab15c3be29e340402a579e35b093e97af1df85b38b9fe278e0"}]}
 ```
 
 ```kotlin [field-property box="autodiff_basics" name="code" path="autodiff_basics_code_.kt"]

@@ -22,7 +22,7 @@ operations:
   - create:
       box: condense_basics
       name: 1 - Condense a rhythm
-      frame: { x: 60.0, y: 60.0, w: 300.0, h: 86.0 }
+      frame: { x: 60.0, y: 60.0, w: 400.0, h: 136.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -74,7 +74,7 @@ operations:
   - create:
       box: condense_invents_nothing
       name: 2 - Invent nothing
-      frame: { x: 60.0, y: 500.0, w: 300.0, h: 86.0 }
+      frame: { x: 60.0, y: 500.0, w: 400.0, h: 136.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -149,7 +149,7 @@ operations:
   - create:
       box: condense_from_audio
       name: 3 - Close the loop
-      frame: { x: 60.0, y: 940.0, w: 300.0, h: 86.0 }
+      frame: { x: 60.0, y: 940.0, w: 400.0, h: 136.0 }
       properties:
         code: |
           import afield.four.synth.*

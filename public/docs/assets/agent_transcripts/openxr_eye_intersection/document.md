@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="eye_ray_renderer" index="0" -->
 
 ```edn [field-box id="eye_ray_renderer" role="properties"]
-{"id" "eye_ray_renderer" "index" 0 "name" "1 · OpenXR renderer" "parents" ["root"] "children" ["eye_ray_scene"] "properties" {"children" #{#afield/box "eye_ray_scene"} "parents" #{#afield/box "root"} "name" "1 · OpenXR renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 240.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eye_ray_renderer_code_.kt" "lines" 19 "characters" 590 "sha256" "3c5f577b5a3ff192e8684e4cfc58e49115b72e38181fd3fd0d8453c73880aa59"}]}
+{"id" "eye_ray_renderer" "index" 0 "name" "1 · OpenXR renderer" "parents" ["root"] "children" ["eye_ray_scene"] "properties" {"children" #{#afield/box "eye_ray_scene"} "parents" #{#afield/box "root"} "name" "1 · OpenXR renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eye_ray_renderer_code_.kt" "lines" 19 "characters" 590 "sha256" "3c5f577b5a3ff192e8684e4cfc58e49115b72e38181fd3fd0d8453c73880aa59"}]}
 ```
 
 ```kotlin [field-property box="eye_ray_renderer" name="code" path="eye_ray_renderer_code_.kt"]
@@ -41,7 +41,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 290.0 70.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 175 "characters" 8176 "sha256" "68d6c78bcabb79d7327352c1193a80a4e399685dbf70e433a0de9f2a0018d8e8"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 175 "characters" 8176 "sha256" "68d6c78bcabb79d7327352c1193a80a4e399685dbf70e433a0de9f2a0018d8e8"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]

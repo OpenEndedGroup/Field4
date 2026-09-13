@@ -10,7 +10,7 @@ class AgentTranscriptLayoutGuardTest {
     @Test
     fun compactPositiveFramePasses() {
         val repo = fixture(
-            transcript = transcript("compact", 40.0, 40.0, 240.0, 50.0),
+            transcript = transcript("compact", 40.0, 40.0, 340.0, 100.0),
         )
 
         val result = AgentTranscriptLayoutGuard.audit(repo)
@@ -29,7 +29,7 @@ class AgentTranscriptLayoutGuardTest {
         val problems = AgentTranscriptLayoutGuard.audit(repo).problems
 
         assertTrue(problems.any { "negative position" in it }, problems.joinToString("\n"))
-        assertTrue(problems.any { "exceeds the ordinary 520 x 120 ceiling" in it }, problems.joinToString("\n"))
+        assertTrue(problems.any { "exceeds the ordinary 620 x 170 ceiling" in it }, problems.joinToString("\n"))
     }
 
     @Test
@@ -41,7 +41,7 @@ class AgentTranscriptLayoutGuardTest {
         assertEquals(emptyList(), AgentTranscriptLayoutGuard.audit(accepted).problems)
 
         val stale = fixture(
-            transcript = transcript("dashboard", 40.0, 40.0, 240.0, 50.0),
+            transcript = transcript("dashboard", 40.0, 40.0, 340.0, 100.0),
             exceptions = "example.yaml#dashboard: Wide dashboard card holds a deliberately composed visual surface.",
         )
         val problems = AgentTranscriptLayoutGuard.audit(stale).problems
