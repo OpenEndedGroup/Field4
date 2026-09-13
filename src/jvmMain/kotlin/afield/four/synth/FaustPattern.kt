@@ -6,6 +6,7 @@ import afield.Box
 import afield.ReturnValueRegistry
 import afield.RunsAt
 import afield.controlGroup
+import afield.displayOpen
 import afield.inMain
 import afield.registerLaunchJob
 import afield.returnValueRegistration
@@ -878,6 +879,8 @@ fun Box.faustPolyControls(launch: FaustPolyLaunch, channel: String = "controls")
  * The one-liner that makes the whole thing visible without an audio device, and the way to put a
  * polyphonic Faust figure in the documentation.
  *
+ * @param channel the waveform's output channel. The player lands on `"$channel-audio"`, because one
+ *   channel cannot hold both: `display(channel, …)` replaces a channel rather than appending to it.
  * @param automate shared controls patterned by label —
  *   `mapOf("cutoff" to pat("400 3000 900 6000").nums())`
  * @param stealReleaseFrames as [faustPoly]: the default starts a stolen note on time and clicks, and
@@ -924,8 +927,14 @@ fun Box.showFaustPattern(
         sustain = sustain, gain = gain, automation = automation,
         stealReleaseFrames = stealReleaseFrames
     )
+    // The player gets its OWN channel, because `display(channel, …)` replaces a channel rather than
+    // appending to it: with both on [channel] the waveform below landed second and erased the player,
+    // so the "audio player and a waveform" this function advertises was only ever the waveform. The
+    // waveform keeps [channel] so that every existing figure stays where its author put it.
+    val audioChannel = "$channel-audio"
+    displayOpen(audioChannel)
     display(
-        channel,
+        audioChannel,
         afield.four.audio.WavFloatArrayWriter.encodeStereo16(
             render.left, render.right, render.sampleRate, normalizePeak = 0.9f
         )

@@ -17,7 +17,11 @@ val wrung = marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130)
 println("smooth union with a sphere: ${melted.triangleCount} triangles; " +
     "shelled: ${hollow.triangleCount}; twisted: ${wrung.triangleCount}")
 
-showImg(grid.toImg(), caption = "the 2D signed distance field — mid grey is the outline")
+displayOpen("sdf")
+showImg(
+    grid.toImg(), channel = "sdf",
+    caption = "the 2D signed distance field — mid grey is the outline"
+)
 showMeshGrid(
     "marchingCubes on the letters" to marched,
     "sdfSmoothUnion with a sphere" to melted,
