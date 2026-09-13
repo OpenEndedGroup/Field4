@@ -336,18 +336,20 @@ useful and one that is merely present:
   `field.core` already referred, so completion works in a box that has never been run;
 - **`:extra-metadata`**, so each candidate carries its `arglists` and its docstring, which is what
   the panel beside the popup shows;
-- **the surrounding form, as `:context`**, with the caret's prefix replaced by Compliment's
-  `__prefix__` marker. That is what lets it offer a `let` binding, a `fn` parameter or a `doseq`
-  variable, none of which any amount of namespace introspection can know. It is also the part that
-  can fail, because half-typed code does not read, so a rejection falls back to "globals only"
-  rather than to nothing.
+- **the code up to the caret, as `:context`**, with the prefix replaced by Compliment's
+  `__prefix__` marker and the brackets still open at the caret closed for it. That is what lets it
+  offer a `let` binding, a `fn` parameter or a `doseq` variable, none of which any amount of
+  namespace introspection can know. Two details, both learned the hard way: the context has to
+  *read*, and a context that does not read is answered with globals only and no complaint — so
+  "locals sometimes work" is the shape this failure takes. And the text *after* the caret is
+  dropped, because in a real editor that text is not yours: auto-closing has already put a `)`
+  where your `[` wants its `]`.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box at the prefix sp, grouped by kind. Under FUNCTIONS: spit, split-at, split-with and special-symbol?, each with its argument vector in grey underneath. Then a CLASS, and a VAR named spiral. The panel to the right reads clojure.core/spit, its argument vector, and its docstring."}
-// The subject is the *shape* of a Clojure candidate — name, argument vector, docstring — so this
-// types an ordinary prefix and photographs the answer. The `let` binding is here because the code
-// under the caret should be code somebody would write, not because the figure claims to show it
-// being completed: `spiral` in the VAR group is a var this page's spiral fence left in the shared
-// namespace, and locals are asserted where they can be measured, in ClojureHostTest.
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box at the prefix sp, grouped by kind. Under FUNCTIONS: spit, split-at, split-with and special-symbol?, each with its argument vector in grey underneath. Then LOCAL, holding spline — the let binding two lines up. Then VALUES, holding a var named spiral, and TYPES, holding a class. The panel to the right reads clojure.core/spit, its argument vector, and its docstring."}
+// An ordinary prefix, in code with a `let` binding in scope, so one figure carries both halves of
+// what a Clojure candidate is: the shape of one (name, argument vector, docstring) and where it
+// came from (core, the binding two lines up, and — as `spiral` under VALUES — a var an earlier box
+// on this page left in the shared namespace).
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor("clojure_completion")
 ui.pause(900)
@@ -368,10 +370,12 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-Each row carries its own argument vector, and the panel beside the list carries the docstring.
-That is `:extra-metadata` arriving: `clojure.core/spit [f content & options]` is Compliment's answer
-verbatim, not a signature Field reconstructed. `spiral` in the VAR group is a var an earlier box on
-this page defined, which is the shared namespace above showing through.
+Three of those groups are the three inputs above, in one popup. Each row carries its own argument
+vector and the panel carries the docstring, which is `:extra-metadata` arriving —
+`clojure.core/spit [f content & options]` is Compliment's answer verbatim, not a signature Field
+reconstructed. **`spline` under LOCAL is the `let` binding two lines up**, which is `:context` being
+read. And `spiral` under VALUES is a var an earlier box on this page defined, which is the shared
+namespace showing through.
 
 Completion is the one part of this language that is allowed to be absent: if Compliment is not on
 the classpath, a Clojure box still runs, and the popup is empty rather than broken.
