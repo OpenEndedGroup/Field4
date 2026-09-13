@@ -41,7 +41,7 @@ PDE or an agent population to a statistical verdict.
     [`massRadiusDimension`](reference/alife.md#alife-kt). They are what the rest of the family makes
     its claims through.
 
-## What this implementation does, and does not do
+## Source files
 
 Six dependency-free files built on the existing [imaging](imaging_examples.md) and
 [mesh](mesh_examples.md) families. Nothing here reimplements convolution, connected-component
@@ -1059,7 +1059,6 @@ re-simulation and it is not uniform in the original walk's wall-clock either: a 
 longer to arrive than an early one, because it has to random-walk in from a larger circle past a bigger
 target. What is uniform is particle *count*.
 
-Watch what that shows, because it is the mechanism the fractal dimension is a consequence of.
 **Screening.** The interior stops growing almost immediately: once a branch has neighbours on both sides,
 a walker arriving from outside is overwhelmingly likely to touch a tip first, so it never reaches the
 inside. What grows is a small number of tips racing outward while everything behind them is frozen, and
@@ -1354,10 +1353,10 @@ Field document. Left: the `v` field of a `spots` run, 5000 steps in seven second
 `v = 0.25` iso-contours, re-extracted **every frame** through `contours.kt`'s marching squares, with the
 loop count in the caption.
 
-Watch the loop count. It climbs while the spots are dividing, because each division is one loop becoming
+The loop count climbs while the spots are dividing, because each division is one loop becoming
 two, and it is the one number on this page that is a *topological* measurement rather than a statistical
-one: it changes by integers, at the moment a thing happens. And watch the contours' relationship to the
-field: the loops stay locked to the field's level set as it moves.
+one: it changes by integers, at the moment a thing happens. The contours stay locked to the field's
+level set as it moves.
 
 The step budget carries one extra cost here, 36 marching-squares passes a second as well as the
 reaction, and the caption's step counter is what shows whether the clip kept up.
@@ -1675,8 +1674,7 @@ crossoverRate = 0, immigrantRate = 0)` on an `FnGenomeOps`, and its random strea
 hand-rolled `(1 + λ)` climb's: the core skips the parent draw when the population holds one individual,
 and skips the crossover and immigrant draws when their rates are exactly zero.
 
-That is a claim about bytes, so the FIELD_TEST `functions.evolve.worked-example` checks it as one against
-committed numbers:
+The FIELD_TEST `functions.evolve.worked-example` checks this against committed numbers:
 
 ```diffstatic {data-lang=text}
 initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
