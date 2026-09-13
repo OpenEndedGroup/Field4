@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
  *    and `DELETE` from any origin were in no table anywhere. Demonstrated rather than argued:
  *    an unguarded verbless route planted in `Server.kt` left the whole suite green on
  *    `d7d8dccc2`.
- *  - **`staticFiles` directory mounts.** Five, all in `Server.kt`, and **invisible to every
+ *  - **`staticFiles` directory mounts.** Six, all in `Server.kt`, and **invisible to every
  *    route regex in the tree**, because a `staticFiles` call is not a verb declaration. One
  *    of them serves the workspace directory at `/`.
  *  - **The `/ws` command names.** 105 of them, in a single dispatch table declared at
@@ -630,8 +630,11 @@ class ServerSurfaceLedgerTest {
     /**
      * Every `staticFiles` mount, matched both ways.
      *
-     * Five rows that no other guard in the tree can see, one of which serves the workspace
-     * directory. A sixth appearing without a ledger row is the event this exists for.
+     * Six rows that no other guard in the tree can see, one of which serves the workspace
+     * directory. A seventh appearing without a ledger row is the event this exists for — and
+     * on `2026-09-13` that happened for the first time: a `/sample-assets` mount for the
+     * shared sample GLB was added to `Server.kt` and this test was the only thing that
+     * noticed, which is the whole argument for counting a surface nothing else can see.
      */
     @Test
     fun everyStaticFileMountIsInTheLedgerAndEveryLedgerRowIsAMount() {
