@@ -22,7 +22,7 @@ number it prints and why that number matters, and no generator over the yaml can
 Figures are captures of the code running, taken by the docs capture pipeline: most for the
 walkthrough page linked beside the entry, and some — the path tracers, the browser-on-a-texture
 scenes, `gpu_state`, `threebox`, the triangle at the foot of the page — driven from the transcript
-file itself. About half the entries carry one. The rest are honest gaps rather than omissions:
+file itself. About half the entries carry one. The rest have none:
 nothing in the tree captures that scene, because it publishes to a headset, wants a camera or an
 external service, or opens a window the pipeline has never been pointed at. Those entries say what
 to run instead. Nothing on this page is hand-drawn, mocked up or synthesized.
@@ -384,7 +384,7 @@ drawing crosses nothing, and TALA's orthogonal routing crosses three.
 ### box_layout_demo
 
 The only scene here that is a starting position rather than a result: nine
-boxes wired into a pipeline and placed badly on purpose, so there is something for **Lay out
+boxes wired into a pipeline and placed badly, so there is something for **Lay out
 selection** and **Lay out whole document** to fix. Both palette commands read each box's frame for
 its size and the box graph for its edges, ask the same `native/field-d2-layout` helper where things
 should go, and animate the boxes into place through `OperationTranscript.recordMove`, so one undo
@@ -812,7 +812,7 @@ first-exactly-correct with a dropped tick, because a curve that reaches zero and
 48 bits; the widths are odd, because morpho's `SPLIT` gives equal halves only at even
 widths and a family of powers of two never shows the search a cell whose halves differ, so it will
 happily return a design that is silently wrong at 5. *The recursive adder is not found* is the
-negative result, and it is here because the alternative is to not mention it at all: four drivers,
+negative result: four drivers,
 including one *given* the SPLITs, all flatten well short of correct, and then the box hand-writes the
 ripple skeleton in the generator's own grammar and scores it through the same evaluator, so the target
 is provably inside the search space. The empty half of that cost plane is the finding.
