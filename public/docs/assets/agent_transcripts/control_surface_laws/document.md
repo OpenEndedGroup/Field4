@@ -23,7 +23,7 @@ posts nothing when you press it, and it is the one control here that reads rathe
 writes.
 
 ```edn [field-box id="control_surface_meter" role="properties"]
-{"id" "control_surface_meter" "index" 0 "name" "a level you can see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a level you can see" "_tombstone" false "frame" #afield/rect [80.0 520.0 220.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_meter_code_.kt" "lines" 30 "characters" 1399 "sha256" "0bc8dee6b33353d050e74395b4b7f815ebcdbadc71ab9ac3c2791f468864c5ba"}]}
+{"id" "control_surface_meter" "index" 0 "name" "a level you can see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a level you can see" "_tombstone" false "frame" #afield/rect [80.0 520.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_meter_code_.kt" "lines" 30 "characters" 1399 "sha256" "0bc8dee6b33353d050e74395b4b7f815ebcdbadc71ab9ac3c2791f468864c5ba"}]}
 ```
 
 ```kotlin [field-property box="control_surface_meter" name="code" path="control_surface_meter_code_.kt"]
@@ -76,7 +76,7 @@ is inside the first pixel of travel, which is not a resolution problem — no nu
 pixels fixes a 200 Hz jump per pixel — it is the wrong shape.
 
 ```edn [field-box id="control_surface_laws" role="properties"]
-{"id" "control_surface_laws" "index" 1 "name" "a law for the travel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a law for the travel" "_tombstone" false "frame" #afield/rect [80.0 80.0 220.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_laws_code_.kt" "lines" 48 "characters" 2239 "sha256" "3ef3ab1ae5cf7b0544c401c810c1c786972f0e962c7aa3d5448d3d19419ae1f5"}]}
+{"id" "control_surface_laws" "index" 1 "name" "a law for the travel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a law for the travel" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_laws_code_.kt" "lines" 48 "characters" 2239 "sha256" "3ef3ab1ae5cf7b0544c401c810c1c786972f0e962c7aa3d5448d3d19419ae1f5"}]}
 ```
 
 ```kotlin [field-property box="control_surface_laws" name="code" path="control_surface_laws_code_.kt"]
@@ -151,7 +151,7 @@ remembered press would re-fire on every rerun, so editing one character of a DSP
 retrigger the note.
 
 ```edn [field-box id="control_surface_button" role="properties"]
-{"id" "control_surface_button" "index" 2 "name" "hold, don't latch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hold, don't latch" "_tombstone" false "frame" #afield/rect [80.0 300.0 220.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_button_code_.kt" "lines" 24 "characters" 1146 "sha256" "c0fea6319e1166b7cd202e2d14f2d5cfd55e99aac43d421749529b774ebbd191"}]}
+{"id" "control_surface_button" "index" 2 "name" "hold, don't latch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hold, don't latch" "_tombstone" false "frame" #afield/rect [80.0 300.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_button_code_.kt" "lines" 24 "characters" 1146 "sha256" "c0fea6319e1166b7cd202e2d14f2d5cfd55e99aac43d421749529b774ebbd191"}]}
 ```
 
 ```kotlin [field-property box="control_surface_button" name="code" path="control_surface_button_code_.kt"]

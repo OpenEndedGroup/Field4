@@ -9,8 +9,8 @@ operations:
     frame:
       x: 80.0
       y: 100.0
-      w: 260.0
-      h: 65.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         import kotlinx.coroutines.*
@@ -63,10 +63,10 @@ operations:
     box: simulation_capture
     name: 2. Record and explore
     frame:
-      x: 450.0
+      x: 550.0
       y: 100.0
-      w: 260.0
-      h: 65.0
+      w: 360.0
+      h: 115.0
     properties:
       code: |
         CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start",3.0,stacks=true))

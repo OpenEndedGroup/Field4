@@ -16,8 +16,8 @@ operations:
       frame:
         x: 40.0
         y: 40.0
-        w: 280.0
-        h: 50.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           // One publish, and every box in this document can name these types. They are
@@ -34,10 +34,10 @@ operations:
       box: shared_types_use
       name: 2 - Use it, with full fidelity
       frame:
-        x: 380.0
+        x: 480.0
         y: 40.0
-        w: 280.0
-        h: 50.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           // Named arguments, copy, destructuring and the data-class toString all work,
@@ -54,9 +54,9 @@ operations:
       name: 3 - Export a value
       frame:
         x: 40.0
-        y: 140.0
-        w: 280.0
-        h: 50.0
+        y: 190.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           // @rootExported publishes the value to the document root, so any box can reach
@@ -69,10 +69,10 @@ operations:
       box: shared_types_receive
       name: 4 - Receive it, still typed
       frame:
-        x: 380.0
-        y: 140.0
-        w: 280.0
-        h: 50.0
+        x: 480.0
+        y: 190.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           // _particle arrives from box 3. These lines only COMPILE because the type crossed

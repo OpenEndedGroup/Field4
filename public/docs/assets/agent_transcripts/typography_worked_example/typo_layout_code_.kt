@@ -40,9 +40,10 @@ val prose = wrapText(
     face.atSize(44.0), maxWidth = 620.0
 )
 println("wrapped to ${prose.lines().size} lines, widest ${"%.1f".format(prose.lines().maxOf { textWidth(it, face.atSize(44.0)) })} of 620")
+displayOpen("alignment")
 showImgGrid(
     *TextAlign.entries.map { a ->
         a.name.lowercase() to rasterizeText(layoutText(prose, face.atSize(44.0), align = a, lineSpacing = 1.12), 700, 380)
     }.toTypedArray(),
-    columns = 3, cellSide = 420
+    channel = "alignment", columns = 3, cellSide = 420
 )

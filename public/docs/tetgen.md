@@ -47,7 +47,7 @@ Sampling a distance function onto grid nodes destroys a sharp edge *before the m
 Refining the grid only buys a smaller rounded radius. Structural stress concentrates at exactly
 those edges. [The sharp edge](#the-sharp-edge) below measures both halves of that on this machine.
 
-## The first mesh, and how to look at it
+## The first mesh
 
 A tetrahedral mesh is awkward to look at, which is a real obstacle to trusting one. Render it
 naively and you see the boundary — the surface you already had — while everything the mesher
@@ -123,7 +123,7 @@ The middle panel is the one that answers "did it work". A conforming mesh's boun
 encloses the body's volume; if the mesher had cheated anywhere, the cut face would be ragged and the
 bores would not come through it round.
 
-## Quality, and which number means what
+## The two quality measures
 
 Two quality measures get used here and they are not the same number. Confusing them is the easiest
 mistake in this subsystem, so both have their own call.
@@ -522,7 +522,7 @@ and `4` are exactly representable in float32 and a 48-segment cylinder's vertice
 need better than 1 part in `10⁹` on a curved body, the bridge is where to spend the effort, not the
 mesher.
 
-## What it refuses, and what it quietly accepts
+## Input surfaces
 
 Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
 
@@ -557,7 +557,7 @@ knowing precisely because it is the shape of the mistake you will actually make 
 with an unwelded or over-welded seam produces a plausible solid of the wrong size, and nothing in
 this path will tell you. Compare `mesh.volume()` against `Solid.volume` before you trust a result.
 
-??? aside "The fatal path, and why it does not take the JVM with it"
+??? aside "The fatal path"
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
     normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
     wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
@@ -610,7 +610,7 @@ the refinement to go. The size request is ignored along with everything else, wh
 `structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
 with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
 protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
-layout is deliberately the layout that goes on the wire, so nothing is reshaped in between. The mesh
+layout matches the wire format, so nothing is reshaped in between. The mesh
 picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
 `SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
 disagree about.
@@ -678,7 +678,7 @@ not a re-mesh. Seven times the nodes is seven times the unknowns, though, and th
 the 864-element beam Kratos takes 1.05 s at order 2 against 0.20 s at order 1, for 99.8% against
 69.5%.
 
-??? aside "TetGen has an `-o2` for this and it cannot be called from the library"
+??? aside "TetGen's `-o2` has a use-after-free"
     TetGen 1.6.0's `highorder()` `delete[]`s the `highordertable` holding every element's extra-node
     pointers before it returns, and `outelements()` then dereferences them. Driven from the command
     line it usually survives; driven through `tetgenio` it does not, because `outelements()`
@@ -723,7 +723,7 @@ it. Field is AGPL-3, so the first applies and nothing further is needed. Kratos 
 behind `USE_TETGEN_NONFREE_TPL` because *Kratos* is BSD, and its published wheels contain MMG and no
 TetGen.
 
-Two things in the build are load-bearing and neither is negotiable:
+Two things in the build are required and neither is negotiable:
 
 - **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
   predicates depend on their arithmetic not being reassociated or kept at extended precision in a

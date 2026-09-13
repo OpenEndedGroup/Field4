@@ -7,7 +7,7 @@ operations:
   - create:
       box: encodec_reconstruction_microscope
       name: EnCodec reconstruction microscope
-      frame: { x: 80.0, y: 80.0, w: 240.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*

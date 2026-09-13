@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="field_ui_texture_renderer" index="0" -->
 
 ```edn [field-box id="field_ui_texture_renderer" role="properties"]
-{"id" "field_ui_texture_renderer" "index" 0 "name" "renderer — Field UI texture" "parents" ["root"] "children" ["field_ui_texture_panel"] "properties" {"children" #{#afield/box "field_ui_texture_panel"} "parents" #{#afield/box "root"} "name" "renderer — Field UI texture" "_tombstone" false "frame" #afield/rect [140.0 180.0 250.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_renderer_code_.kt" "lines" 15 "characters" 282 "sha256" "5b0b7c04956e2b8e82b26d18494e0da6da04e4721dc109f98e48a6df9598c923"}]}
+{"id" "field_ui_texture_renderer" "index" 0 "name" "renderer — Field UI texture" "parents" ["root"] "children" ["field_ui_texture_panel"] "properties" {"children" #{#afield/box "field_ui_texture_panel"} "parents" #{#afield/box "root"} "name" "renderer — Field UI texture" "_tombstone" false "frame" #afield/rect [140.0 180.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_renderer_code_.kt" "lines" 15 "characters" 282 "sha256" "5b0b7c04956e2b8e82b26d18494e0da6da04e4721dc109f98e48a6df9598c923"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_renderer" name="code" path="field_ui_texture_renderer_code_.kt"]
@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="field_ui_texture_panel" index="1" -->
 
 ```edn [field-box id="field_ui_texture_panel" role="properties"]
-{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [460.0 180.0 330.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 121 "characters" 4743 "sha256" "baf06424530e641df55756f3598dc9965819ded90dfbd2b75a0b8b58ee779d67"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
+{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [560.0 180.0 430.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 121 "characters" 4743 "sha256" "baf06424530e641df55756f3598dc9965819ded90dfbd2b75a0b8b58ee779d67"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_panel" name="code" path="field_ui_texture_panel_code_.kt"]

@@ -24,8 +24,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 270.0
-        h: 50.0
+        w: 370.0
+        h: 100.0
       properties:
         code: |
           // Conway's Life. Every claim here is about an object that predates this code, stated as an
@@ -73,8 +73,8 @@ operations:
       frame:
         x: 60.0
         y: 260.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // Wolfram's elementary rules, and the sharpest evidence in the family: rule 90 from a single seed
@@ -122,8 +122,8 @@ operations:
       frame:
         x: 60.0
         y: 460.0
-        w: 290.0
-        h: 50.0
+        w: 390.0
+        h: 100.0
       properties:
         code: |
           // A cyclic cellular automaton: a cell in state s advances to s+1 as soon as any neighbour is
@@ -165,10 +165,10 @@ operations:
       box: alife_gray_scott
       name: "4 — Gray-Scott: regimes told apart by measurement"
       frame:
-        x: 420.0
+        x: 520.0
         y: 60.0
-        w: 330.0
-        h: 50.0
+        w: 430.0
+        h: 100.0
       properties:
         code: |
           // Gray-Scott reaction-diffusion. Two coupled fields, two parameters, and the whole zoo of
@@ -208,10 +208,10 @@ operations:
       box: alife_lenia
       name: "5 — Lenia: exact in its discrete limit"
       frame:
-        x: 420.0
+        x: 520.0
         y: 260.0
-        w: 270.0
-        h: 50.0
+        w: 370.0
+        h: 100.0
       properties:
         code: |
           // Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
@@ -266,10 +266,10 @@ operations:
       box: alife_boids
       name: "6 — Boids: order above the random baseline"
       frame:
-        x: 420.0
+        x: 520.0
         y: 460.0
-        w: 290.0
-        h: 50.0
+        w: 390.0
+        h: 100.0
       properties:
         code: |
           // Reynolds' boids on a torus. A flock is not "dots that move together"; it is a population whose
@@ -307,10 +307,10 @@ operations:
       box: alife_physarum
       name: "7 — Physarum: a network the code never mentions"
       frame:
-        x: 780.0
+        x: 980.0
         y: 60.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // Jones' Physarum model: agents deposit into a trail field, sense it three ways ahead, turn toward
@@ -345,10 +345,10 @@ operations:
       box: alife_dla
       name: "8 — DLA: a fractal dimension, and two controls at 2"
       frame:
-        x: 780.0
+        x: 980.0
         y: 260.0
-        w: 350.0
-        h: 50.0
+        w: 450.0
+        h: 100.0
       properties:
         code: |
           // Diffusion-limited aggregation: a seed, then particles released far away that random-walk until
@@ -386,10 +386,10 @@ operations:
       box: alife_lsystem
       name: "9 — L-systems: exact combinatorial identities"
       frame:
-        x: 780.0
+        x: 980.0
         y: 460.0
-        w: 310.0
-        h: 50.0
+        w: 410.0
+        h: 100.0
       properties:
         code: |
           // L-systems are the one generative system in this family whose output can be checked exactly and
@@ -437,10 +437,10 @@ operations:
       box: alife_bridges
       name: "10 — Bridges out: FLines, trees, and a watertight mesh"
       frame:
-        x: 1140.0
+        x: 1440.0
         y: 60.0
-        w: 370.0
-        h: 50.0
+        w: 470.0
+        h: 100.0
       properties:
         code: |
           // What makes this family Field's rather than a generic ALife library: the bridges out into the
@@ -490,8 +490,8 @@ operations:
       frame:
         x: 60.0
         y: 760.0
-        w: 260.0
-        h: 50.0
+        w: 360.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -526,8 +526,8 @@ operations:
       frame:
         x: 60.0
         y: 960.0
-        w: 330.0
-        h: 50.0
+        w: 430.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -564,8 +564,8 @@ operations:
       frame:
         x: 60.0
         y: 1160.0
-        w: 340.0
-        h: 50.0
+        w: 440.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -601,10 +601,10 @@ operations:
       box: alife_gray_scott_moving
       name: "4 — Gray-Scott: 6000 steps, ramped — launch me"
       frame:
-        x: 420.0
+        x: 520.0
         y: 760.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -634,10 +634,10 @@ operations:
       box: alife_lenia_moving
       name: "5 — Lenia: two growth windows, running — launch me"
       frame:
-        x: 420.0
+        x: 520.0
         y: 960.0
-        w: 340.0
-        h: 50.0
+        w: 440.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -672,10 +672,10 @@ operations:
       box: alife_boids_moving
       name: "6 — Boids: the control arm, running — launch me"
       frame:
-        x: 420.0
+        x: 520.0
         y: 1160.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -709,10 +709,10 @@ operations:
       box: alife_physarum_moving
       name: "7 — Physarum: the network finding itself — launch me"
       frame:
-        x: 780.0
+        x: 980.0
         y: 760.0
-        w: 350.0
-        h: 50.0
+        w: 450.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -750,10 +750,10 @@ operations:
       box: alife_dla_moving
       name: "8 — DLA: the order the branches arrived in — launch me"
       frame:
-        x: 780.0
+        x: 980.0
         y: 960.0
-        w: 370.0
-        h: 50.0
+        w: 470.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -803,10 +803,10 @@ operations:
       box: alife_lsystem_moving
       name: "9 — L-systems: the turtle, walking — launch me"
       frame:
-        x: 780.0
+        x: 980.0
         y: 1160.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -843,10 +843,10 @@ operations:
       box: alife_bridges_moving
       name: "10 — A field and its contours, live — launch me"
       frame:
-        x: 1140.0
+        x: 1440.0
         y: 760.0
-        w: 320.0
-        h: 50.0
+        w: 420.0
+        h: 100.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a

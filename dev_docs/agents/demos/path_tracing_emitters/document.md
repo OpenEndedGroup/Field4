@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pt_renderer" index="0" -->
 
 ```edn [field-box id="pt_renderer" role="properties"]
-{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_emitters"] "properties" {"children" #{#afield/box "pt_emitters"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 212 "sha256" "a27b9916860ed84fb3ab64c59102141d5a6485bb30f0e5e871b509f0049f3bac"}]}
+{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_emitters"] "properties" {"children" #{#afield/box "pt_emitters"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 212 "sha256" "a27b9916860ed84fb3ab64c59102141d5a6485bb30f0e5e871b509f0049f3bac"}]}
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="pt_emitters" index="1" -->
 
 ```edn [field-box id="pt_emitters" role="properties"]
-{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 140.0 280.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 55 "characters" 2755 "sha256" "78358aa84940ec00c93413f36d88fa00cb745da8072b34a75cf0d84d64d258aa"}]}
+{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 55 "characters" 2755 "sha256" "78358aa84940ec00c93413f36d88fa00cb745da8072b34a75cf0d84d64d258aa"}]}
 ```
 
 ```kotlin [field-property box="pt_emitters" name="code" path="pt_emitters_code_.kt"]

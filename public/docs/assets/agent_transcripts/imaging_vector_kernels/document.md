@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="imaging_perf_boxblur" index="0" -->
 
 ```edn [field-box id="imaging_perf_boxblur" role="properties"]
-{"id" "imaging_perf_boxblur" "index" 0 "name" "boxBlur — running sum vs the box kernel, two independent definitions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "boxBlur — running sum vs the box kernel, two independent definitions" "_tombstone" false "frame" #afield/rect [80.0 540.0 450.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_boxblur_code_.kt" "lines" 66 "characters" 3090 "sha256" "8450b105d9a44c867ced429eebcb2bae475d48983d163ec9f0f1e2a38f634c98"}]}
+{"id" "imaging_perf_boxblur" "index" 0 "name" "boxBlur — running sum vs the box kernel, two independent definitions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "boxBlur — running sum vs the box kernel, two independent definitions" "_tombstone" false "frame" #afield/rect [80.0 540.0 550.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_boxblur_code_.kt" "lines" 66 "characters" 3090 "sha256" "8450b105d9a44c867ced429eebcb2bae475d48983d163ec9f0f1e2a38f634c98"}]}
 ```
 
 ```kotlin [field-property box="imaging_perf_boxblur" name="code" path="imaging_perf_boxblur_code_.kt"]
@@ -94,7 +94,7 @@ From `code`
 Smaller again: bilateral is O(r^2) per pixel and this is the expensive box.
 
 ```edn [field-box id="imaging_perf_bilateral" role="properties"]
-{"id" "imaging_perf_bilateral" "index" 1 "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "_tombstone" false "frame" #afield/rect [80.0 1000.0 450.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_bilateral_code_.kt" "lines" 60 "characters" 2816 "sha256" "aa3115536234d6146d6a0103b79aa1e35a4b9ded6141408a2d86125b5a068949"}]}
+{"id" "imaging_perf_bilateral" "index" 1 "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "_tombstone" false "frame" #afield/rect [80.0 1000.0 550.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_bilateral_code_.kt" "lines" 60 "characters" 2816 "sha256" "aa3115536234d6146d6a0103b79aa1e35a4b9ded6141408a2d86125b5a068949"}]}
 ```
 
 ```kotlin [field-property box="imaging_perf_bilateral" name="code" path="imaging_perf_bilateral_code_.kt"]
@@ -173,7 +173,7 @@ A texture with detail at several scales, so an aliasing bug in the decimation wo
 visible as moire rather than hiding in a smooth gradient.
 
 ```edn [field-box id="imaging_perf_pyrdown" role="properties"]
-{"id" "imaging_perf_pyrdown" "index" 2 "name" "pyrDown — fused decimation vs blur-then-throw-away" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pyrDown — fused decimation vs blur-then-throw-away" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_pyrdown_code_.kt" "lines" 68 "characters" 2941 "sha256" "361d4bd906a5b8f822652f337dbda5a8a3acbb27ec64ca3da67ac9da0c0c608c"}]}
+{"id" "imaging_perf_pyrdown" "index" 2 "name" "pyrDown — fused decimation vs blur-then-throw-away" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pyrDown — fused decimation vs blur-then-throw-away" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_pyrdown_code_.kt" "lines" 68 "characters" 2941 "sha256" "361d4bd906a5b8f822652f337dbda5a8a3acbb27ec64ca3da67ac9da0c0c608c"}]}
 ```
 
 ```kotlin [field-property box="imaging_perf_pyrdown" name="code" path="imaging_perf_pyrdown_code_.kt"]

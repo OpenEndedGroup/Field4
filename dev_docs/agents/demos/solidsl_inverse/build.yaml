@@ -13,7 +13,7 @@ operations:
   - create:
       box: gradient
       name: 1 - A solid, and its exact gradient
-      frame: { x: 60.0, y: 60.0, w: 434.2, h: 86.0 }
+      frame: { x: 60.0, y: 60.0, w: 534.2, h: 136.0 }
       properties:
         code: |
           import afield.solidsl.*
@@ -91,7 +91,7 @@ operations:
   - create:
       box: inverse
       name: 2 - Inverse design - let a gradient find the numbers
-      frame: { x: 600.0, y: 60.0, w: 500.0, h: 86.0 }
+      frame: { x: 700.0, y: 60.0, w: 600.0, h: 136.0 }
       properties:
         code: |
           import afield.solidsl.*
@@ -168,7 +168,7 @@ operations:
   - create:
       box: refusals
       name: 3 - What refuses, and the one that does not
-      frame: { x: 60.0, y: 176.0, w: 500.0, h: 86.0 }
+      frame: { x: 60.0, y: 226.0, w: 600.0, h: 136.0 }
       properties:
         code: |
           import afield.solidsl.*

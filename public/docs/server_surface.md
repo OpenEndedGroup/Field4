@@ -1,4 +1,4 @@
-# What Field Exposes, and What Stops It
+# Field's server surface
 
 Field has a **web server** inside it, and that server is how Field's own editor talks to
 Field. When you open a document, the window you are looking at is a browser, and everything
@@ -9,9 +9,9 @@ That also means a *listening socket on your machine*, which raises the question 
 answers: **what can reach it, and what stops a web page you happen to be visiting from
 driving your editor?**
 
-You do not need to do anything with this page to use Field. It is here because anyone running
-Field on a laptop on a shared network, in a studio or a university or on conference wifi,
-deserves to know the shape of what they are running.
+You do not need to do anything with this page to use Field. Anyone running Field on a shared
+network — in a studio, a university, or on conference wifi — deserves to know the shape of what
+they are running.
 
 ## The one-paragraph version
 
@@ -251,7 +251,7 @@ Field has dozens of other unguarded `/api/…` routes. A hostile or compromised 
 page would be able to call all of them. Restricting the mirror to loopback takes that whole
 same-origin position off the local network.
 
-## Two things that are open, and why they stay open
+## What stays open
 
 Nothing above closes these. Both are known, and both cost something real to close.
 

@@ -42,10 +42,12 @@ expect:
  *
  * ### The five things it checks
  *
- * 1. **Completeness** — every `*.yaml` in the corpus has exactly one entry. An entry is a line of the
- *    form `**transcript_name** — …` at column zero. (Consequence worth knowing: do not start a line
- *    with a single bold lowercase word followed by an em dash unless it is an entry; that shape is
- *    reserved, and the guard will read it as an entry for a transcript that does not exist.)
+ * 1. **Completeness** — every `*.yaml` in the corpus has exactly one entry. An entry is a `###`
+ *    heading whose whole text is the transcript's name, `### transcript_name`, at column zero.
+ *    (Consequence worth knowing: `###` on that page is reserved for entries, so a sub-heading inside
+ *    an entry has to be `####` or deeper; a `###` naming anything else is read as an entry for a
+ *    transcript that does not exist. The entries were bold run-in lead-ins until `2026-09-13`, when
+ *    102 of them had become one wall of text with no way to link or scroll to a single scene.)
  * 2. **No orphans** — every entry names a transcript that is still in the corpus, so deleting or
  *    renaming a yaml turns the stale paragraph red instead of leaving it to be read as current.
  * 3. **The CI claim, per entry** — each `##` section declares how CI verifies the scenes under it,
@@ -97,13 +99,13 @@ object AgentTranscriptIndexGuard {
         KOTLINJS("kotlinjs", "compiled to JavaScript"),
     }
 
-    /** One `**name** — …` line, with the section it sits in and the Open link (if any) beneath it. */
+    /** One `### name` heading, with the section it sits in and the Open link (if any) beneath it. */
     private data class Entry(val name: String, val line: Int, val section: Section?, val openTarget: String?)
 
     /** One `##` heading, with the CI levels its marker line declares. */
     private data class Section(val title: String, val line: Int, val levels: Set<Level>)
 
-    private val ENTRY = Regex("""^\*\*([a-z0-9_]+)\*\* — """)
+    private val ENTRY = Regex("""^###\s+([a-z0-9_]+)\s*$""")
     private val HEADING = Regex("""^##\s+(.*\S)\s*$""")
     private val VERIFIED_BY = Regex("""<!--\s*transcript-index:\s*verified-by\s*=\s*([a-z, ]+?)\s*-->""")
     private val TOTALS = Regex("""<!--\s*transcript-index:\s*totals\s*-->""")
@@ -162,7 +164,7 @@ object AgentTranscriptIndexGuard {
             when {
                 found == null -> problems.add(
                     "$name: in the corpus (dev_docs/agents/transcripts/$name.yaml) but has NO entry on " +
-                        "$INDEX_REL. Write one: a `**$name** — …` paragraph under the section whose " +
+                        "$INDEX_REL. Write one: a `### $name` heading and a paragraph under the section whose " +
                         "verified-by marker matches how CI checks it. See dev_docs/agent_transcript_index.md."
                 )
                 found.size > 1 -> problems.add(
@@ -172,7 +174,7 @@ object AgentTranscriptIndexGuard {
         }
         for (entry in entries) {
             if (entry.name !in corpus) problems.add(
-                "line ${entry.line}: entry **${entry.name}** names no transcript — dev_docs/agents/transcripts/" +
+                "line ${entry.line}: entry `### ${entry.name}` names no transcript — dev_docs/agents/transcripts/" +
                     "${entry.name}.yaml does not exist. Delete the entry, or fix the name if the yaml was renamed."
             )
         }
@@ -196,7 +198,7 @@ object AgentTranscriptIndexGuard {
                 continue
             }
             if (section == null) {
-                problems.add("line ${entry.line}: entry **${entry.name}** sits above the first `##` section heading.")
+                problems.add("line ${entry.line}: entry `### ${entry.name}` sits above the first `##` section heading.")
                 continue
             }
             if (section.levels.isNotEmpty() && level !in section.levels) problems.add(

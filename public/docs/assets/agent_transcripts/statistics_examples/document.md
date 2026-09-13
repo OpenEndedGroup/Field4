@@ -19,7 +19,7 @@ Freedman-Diaconis, Scott and Sturges widths, floored so the count cannot exceed 
 Re-derive the whole decision from the public stats and predict the bin count.
 
 ```edn [field-box id="stats_histogram" role="properties"]
-{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 51 "characters" 3020 "sha256" "914f87a61faf182233abe1ccaebf117b2d5e0b8ef9e1f2b888799753165e111d"}]}
+{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 51 "characters" 3020 "sha256" "914f87a61faf182233abe1ccaebf117b2d5e0b8ef9e1f2b888799753165e111d"}]}
 ```
 
 ```kotlin [field-property box="stats_histogram" name="code" path="stats_histogram_code_.kt"]
@@ -88,7 +88,7 @@ The whole reason StatsDependence has six coefficients instead of one. Six shapes
 coefficient on each, and the disagreements are the point.
 
 ```edn [field-box id="stats_dependence" role="properties"]
-{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 350.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 84 "characters" 4404 "sha256" "b28314eabc8d255382241f0fbb8b295a8a4c04d8cf5df11d14310ab468765fb2"}]}
+{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 84 "characters" 4404 "sha256" "b28314eabc8d255382241f0fbb8b295a8a4c04d8cf5df11d14310ab468765fb2"}]}
 ```
 
 ```kotlin [field-property box="stats_dependence" name="code" path="stats_dependence_code_.kt"]
@@ -190,7 +190,7 @@ buildSummaryStats hands back seventeen numbers. Three of them are routinely misr
 pin each one as arithmetic rather than trusting the label on the card.
 
 ```edn [field-box id="stats_summary" role="properties"]
-{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 44 "characters" 2671 "sha256" "6fa1646d64cbf5125e30b537bfdd585cbf472a35f307eb9a83fe63c37e0f5ac0"}]}
+{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 44 "characters" 2671 "sha256" "6fa1646d64cbf5125e30b537bfdd585cbf472a35f307eb9a83fe63c37e0f5ac0"}]}
 ```
 
 ```kotlin [field-property box="stats_summary" name="code" path="stats_summary_code_.kt"]
@@ -253,7 +253,7 @@ relationship comes and goes. RollingDistanceCorrelation maintains its sums
 incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
 
 ```edn [field-box id="stats_rolling" role="properties"]
-{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 73 "characters" 3665 "sha256" "f70afdc082289973f056a4530565a740207ea48bb01910c3c19ba05bccdcd0f9"}]}
+{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 73 "characters" 3665 "sha256" "f70afdc082289973f056a4530565a740207ea48bb01910c3c19ba05bccdcd0f9"}]}
 ```
 
 ```kotlin [field-property box="stats_rolling" name="code" path="stats_rolling_code_.kt"]
@@ -344,7 +344,7 @@ quantilewarp.kt does not measure anything. It fits a monotone 8-knot PCHIP curve
 the measured quantiles of recent samples onto the quantiles of a target distribution.
 
 ```edn [field-box id="stats_warp" role="properties"]
-{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 86 "characters" 4512 "sha256" "c7dd22014478302a4b0226be830f75a243dfd65ca48de70dc463ce2ca2ced97c"}]}
+{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 86 "characters" 4512 "sha256" "c7dd22014478302a4b0226be830f75a243dfd65ca48de70dc463ce2ca2ced97c"}]}
 ```
 
 ```kotlin [field-property box="stats_warp" name="code" path="stats_warp_code_.kt"]

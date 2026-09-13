@@ -14,7 +14,7 @@ operations:
   - create:
       box: rectsl_inverse_fit
       name: RectSL inverse animation
-      frame: { x: 80.0, y: 60.0, w: 260.0, h: 50.0 }
+      frame: { x: 80.0, y: 60.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           import afield.rectsl.*
@@ -184,7 +184,7 @@ operations:
   - create:
       box: rectsl_free_param_word
       name: the free-param word
-      frame: { x: 80.0, y: 960.0, w: 260.0, h: 50.0 }
+      frame: { x: 80.0, y: 960.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           import afield.rectsl.*

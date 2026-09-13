@@ -35,4 +35,13 @@ println("laid out: ${word.contourCount} contours, ${word.holeCount} holes, " +
 // The same word again, but as VECTORS this time: showText fills the FLines through
 // drawToSVG, so the counters come out holes there too — Skia fills non-zero, and that is the
 // convention doing the work rather than the rasteriser being clever.
-showText(word, title = "the same layout as filled FLines, through drawToSVG", showBaseline = true, height = 220)
+//
+// Its own channel, and that is not decoration: `display(channel, …)` REPLACES a channel
+// rather than appending to it, so a second figure on "main" silently erases the first. Two
+// figures in one box means two channels. displayOpen marks the card open before the content
+// lands, so it arrives expanded instead of as a collapsed header.
+displayOpen("vectors")
+showText(
+    word, channel = "vectors",
+    title = "the same layout as filled FLines, through drawToSVG", showBaseline = true, height = 220
+)

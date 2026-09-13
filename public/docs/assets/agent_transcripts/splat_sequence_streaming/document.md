@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="splat_sequence_streaming" index="0" -->
 
 ```edn [field-box id="splat_sequence_streaming" role="properties"]
-{"id" "splat_sequence_streaming" "index" 0 "name" "Splat Sequence Streaming" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Splat Sequence Streaming" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_sequence_streaming_code_.kt" "lines" 134 "characters" 5897 "sha256" "4d3e6bcc0feff56aecab08750bc90478f8db8e5fce1b22d724559468a81d00b0"}]}
+{"id" "splat_sequence_streaming" "index" 0 "name" "Splat Sequence Streaming" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Splat Sequence Streaming" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_sequence_streaming_code_.kt" "lines" 134 "characters" 5897 "sha256" "4d3e6bcc0feff56aecab08750bc90478f8db8e5fce1b22d724559468a81d00b0"}]}
 ```
 
 ```kotlin [field-property box="splat_sequence_streaming" name="code" path="splat_sequence_streaming_code_.kt"]

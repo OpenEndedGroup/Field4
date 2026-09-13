@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_material_check"] "properties" {"children" #{#afield/box "path_trace_material_check"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 208 "sha256" "b6c2bd22807c33e2c2e4d8717a315d29f7748bf5fc921acfae8e2aad2e0a0ec1"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_material_check"] "properties" {"children" #{#afield/box "path_trace_material_check"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 208 "sha256" "b6c2bd22807c33e2c2e4d8717a315d29f7748bf5fc921acfae8e2aad2e0a0ec1"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_material_check" index="1" -->
 
 ```edn [field-box id="path_trace_material_check" role="properties"]
-{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 140.0 260.0 70.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 111 "sha256" "3f35ab62c9062e7520cf50e53f2facce58f272fe9bdba7fb8da6ec9b6d6539a1"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 48 "characters" 2313 "sha256" "1f7ef7229af07eaee31376ba105ec1fbb54664e7f26cc549f1073f2bf8da7bfe"}]}
+{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 111 "sha256" "3f35ab62c9062e7520cf50e53f2facce58f272fe9bdba7fb8da6ec9b6d6539a1"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 48 "characters" 2313 "sha256" "1f7ef7229af07eaee31376ba105ec1fbb54664e7f26cc549f1073f2bf8da7bfe"}]}
 ```
 
 ```glsl [field-property box="path_trace_material_check" name="compute" path="path_trace_material_check_compute_.glsl"]

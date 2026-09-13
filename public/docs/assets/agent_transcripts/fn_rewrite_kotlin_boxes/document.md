@@ -18,7 +18,7 @@ An ordinary, idle box. Its only job is to own a live Kotlin engine that somebody
 can compile in. Executing it once is what brings that engine up.
 
 ```edn [field-box id="fnrw_host" role="properties"]
-{"id" "fnrw_host" "index" 0 "name" "Host" "parents" ["root"] "children" ["fnrw_working"] "properties" {"children" #{#afield/box "fnrw_working"} "parents" #{#afield/box "root"} "name" "Host" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_host_code_.kt" "lines" 3 "characters" 186 "sha256" "ae1f0977ff1f0c713f43958562103af09b6328a85adc64319a41b4bb1acd8da0"}]}
+{"id" "fnrw_host" "index" 0 "name" "Host" "parents" ["root"] "children" ["fnrw_working"] "properties" {"children" #{#afield/box "fnrw_working"} "parents" #{#afield/box "root"} "name" "Host" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_host_code_.kt" "lines" 3 "characters" 186 "sha256" "ae1f0977ff1f0c713f43958562103af09b6328a85adc64319a41b4bb1acd8da0"}]}
 ```
 
 ```kotlin [field-property box="fnrw_host" name="code" path="fnrw_host_code_.kt"]
@@ -39,7 +39,7 @@ WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that b
 idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
 
 ```edn [field-box id="fnrw_working" role="properties"]
-{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 200.0 460.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 31 "characters" 1546 "sha256" "f366d95883672cab6d1ddd546cff80457a1453f2ea66d67be5b7b5f7b9b64045"}]}
+{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 31 "characters" 1546 "sha256" "f366d95883672cab6d1ddd546cff80457a1453f2ea66d67be5b7b5f7b9b64045"}]}
 ```
 
 ```kotlin [field-property box="fnrw_working" name="code" path="fnrw_working_code_.kt"]
@@ -101,7 +101,7 @@ Twice is still once too many -- anything this body does before the rewrite happe
 which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
 
 ```edn [field-box id="fnrw_broken" role="properties"]
-{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 360.0 460.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 32 "characters" 1584 "sha256" "42a9619d9488a5b561d3a4fa9179bc53962c395d82d6261fcabbddfa1729ed8b"}]}
+{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 32 "characters" 1584 "sha256" "42a9619d9488a5b561d3a4fa9179bc53962c395d82d6261fcabbddfa1729ed8b"}]}
 ```
 
 ```kotlin [field-property box="fnrw_broken" name="code" path="fnrw_broken_code_.kt"]

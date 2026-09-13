@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tb_renderer" index="0" -->
 
 ```edn [field-box id="tb_renderer" role="properties"]
-{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "cce6bf0ac8d8e5636e37d3a3298738dd70f5c6e6086bc4a0a02ac4f3a33650aa"}]}
+{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "cce6bf0ac8d8e5636e37d3a3298738dd70f5c6e6086bc4a0a02ac4f3a33650aa"}]}
 ```
 
 ```kotlin [field-property box="tb_renderer" name="code" path="tb_renderer_code_.kt"]
@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="tb_compute" index="1" -->
 
 ```edn [field-box id="tb_compute" role="properties"]
-{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [240.0 40.0 200.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 25 "characters" 1127 "sha256" "11b1082659d88972a7b42fc5a292b50be5893a3be76d7f0f73b0ce45f2ed296d"}]}
+{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 25 "characters" 1127 "sha256" "11b1082659d88972a7b42fc5a292b50be5893a3be76d7f0f73b0ce45f2ed296d"}]}
 ```
 
 ```glsl [field-property box="tb_compute" name="compute" path="tb_compute_compute_.glsl"]
@@ -91,7 +91,7 @@ println("compute launched, N=" + N)
 <!-- field-box id="tb_draw" index="2" -->
 
 ```edn [field-box id="tb_draw" role="properties"]
-{"id" "tb_draw" "index" 2 "name" "draw particles" "parents" ["root" "tb_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "tb_compute"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [440.0 40.0 200.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "tb_draw_vertex_.glsl" "lines" 17 "characters" 643 "sha256" "0d85756a2e212600c96f1f99aa3a4ed39a26169880a2d89c9cc1f87d174ae514"} {"name" "fragment" "language" "glsl" "path" "tb_draw_fragment_.glsl" "lines" 10 "characters" 312 "sha256" "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e"} {"name" "code" "language" "kotlin" "path" "tb_draw_code_.kt" "lines" 9 "characters" 267 "sha256" "1177cb983bc71460b886db49c592c2bc76d06703433390fcabda1d9da76d55c9"}]}
+{"id" "tb_draw" "index" 2 "name" "draw particles" "parents" ["root" "tb_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "tb_compute"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "tb_draw_vertex_.glsl" "lines" 17 "characters" 643 "sha256" "0d85756a2e212600c96f1f99aa3a4ed39a26169880a2d89c9cc1f87d174ae514"} {"name" "fragment" "language" "glsl" "path" "tb_draw_fragment_.glsl" "lines" 10 "characters" 312 "sha256" "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e"} {"name" "code" "language" "kotlin" "path" "tb_draw_code_.kt" "lines" 9 "characters" 267 "sha256" "1177cb983bc71460b886db49c592c2bc76d06703433390fcabda1d9da76d55c9"}]}
 ```
 
 ```glsl [field-property box="tb_draw" name="vertex" path="tb_draw_vertex_.glsl"]

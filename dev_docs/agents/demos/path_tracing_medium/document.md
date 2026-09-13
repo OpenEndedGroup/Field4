@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pt_renderer" index="0" -->
 
 ```edn [field-box id="pt_renderer" role="properties"]
-{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_medium"] "properties" {"children" #{#afield/box "pt_medium"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 216 "sha256" "2b12b11e18a24ddf4b4f160c4d1d141125cbcbb7c121734b6290ecf58ced8a17"}]}
+{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_medium"] "properties" {"children" #{#afield/box "pt_medium"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 216 "sha256" "2b12b11e18a24ddf4b4f160c4d1d141125cbcbb7c121734b6290ecf58ced8a17"}]}
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="pt_medium" index="1" -->
 
 ```edn [field-box id="pt_medium" role="properties"]
-{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 90.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 78 "characters" 3954 "sha256" "e16af50dcc57bd42586b9ca607a522914ba8957becc4de0f66947b159bf0a64f"}]}
+{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 78 "characters" 3954 "sha256" "e16af50dcc57bd42586b9ca607a522914ba8957becc4de0f66947b159bf0a64f"}]}
 ```
 
 ```kotlin [field-property box="pt_medium" name="code" path="pt_medium_code_.kt"]

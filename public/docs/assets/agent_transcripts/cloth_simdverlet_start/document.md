@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="cloth_start" index="0" -->
 
 ```edn [field-box id="cloth_start" role="properties"]
-{"id" "cloth_start" "index" 0 "name" "20 x 10 cloth in a SimdVerlet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "20 x 10 cloth in a SimdVerlet" "_tombstone" false "frame" #afield/rect [80.0 80.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloth_start_code_.kt" "lines" 50 "characters" 2343 "sha256" "1ca4f931131718247c302863e61059d5b3d983d158242919cf653580dcf05463"}]}
+{"id" "cloth_start" "index" 0 "name" "20 x 10 cloth in a SimdVerlet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "20 x 10 cloth in a SimdVerlet" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloth_start_code_.kt" "lines" 50 "characters" 2343 "sha256" "1ca4f931131718247c302863e61059d5b3d983d158242919cf653580dcf05463"}]}
 ```
 
 ```kotlin [field-property box="cloth_start" name="code" path="cloth_start_code_.kt"]

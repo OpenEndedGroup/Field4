@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_heading_solve" index="0" -->
 
 ```edn [field-box id="rectsl_heading_solve" role="properties"]
-{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 36 "characters" 1514 "sha256" "55e3a2f64e7505156ade465481dc65a8c99a5f8526e4f8c86d55e375237242ff"}]}
+{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 36 "characters" 1514 "sha256" "55e3a2f64e7505156ade465481dc65a8c99a5f8526e4f8c86d55e375237242ff"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_solve" name="code" path="rectsl_heading_solve_code_.kt"]
@@ -58,7 +58,7 @@ val agreement = heading.gradientAgreement(
 <!-- field-box id="rectsl_heading_lowering" index="1" -->
 
 ```edn [field-box id="rectsl_heading_lowering" role="properties"]
-{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 68 "characters" 2459 "sha256" "93420a63b42fce305570e4f6a7b3ae929a159792d40e52071664aabbedcbe5e5"}]}
+{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 68 "characters" 2459 "sha256" "93420a63b42fce305570e4f6a7b3ae929a159792d40e52071664aabbedcbe5e5"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_lowering" name="code" path="rectsl_heading_lowering_code_.kt"]

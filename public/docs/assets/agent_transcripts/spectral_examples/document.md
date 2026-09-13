@@ -17,7 +17,7 @@ From `code`
 Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
 
 ```edn [field-box id="spectral_one_spectrum" role="properties"]
-{"id" "spectral_one_spectrum" "index" 0 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 32 "characters" 1155 "sha256" "bfd8527fb96230b683d680dc379c43a374a93efd47cc3674c88e6135529a58e5"}]}
+{"id" "spectral_one_spectrum" "index" 0 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 32 "characters" 1155 "sha256" "bfd8527fb96230b683d680dc379c43a374a93efd47cc3674c88e6135529a58e5"}]}
 ```
 
 ```kotlin [field-property box="spectral_one_spectrum" name="code" path="spectral_one_spectrum_code_.kt"]
@@ -60,7 +60,7 @@ println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rol
 <!-- field-box id="spectral_spectrogram" index="1" -->
 
 ```edn [field-box id="spectral_spectrogram" role="properties"]
-{"id" "spectral_spectrogram" "index" 1 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 30 "characters" 1325 "sha256" "a0d46a0fce786cece96b8591c65ccdbe6168e32793626440c14614a456bfcf1f"}]}
+{"id" "spectral_spectrogram" "index" 1 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 30 "characters" 1325 "sha256" "a0d46a0fce786cece96b8591c65ccdbe6168e32793626440c14614a456bfcf1f"}]}
 ```
 
 ```kotlin [field-property box="spectral_spectrogram" name="code" path="spectral_spectrogram_code_.kt"]
@@ -101,7 +101,7 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.
 <!-- field-box id="spectral_streaming" index="2" -->
 
 ```edn [field-box id="spectral_streaming" role="properties"]
-{"id" "spectral_streaming" "index" 2 "name" "streaming spectral features" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "streaming spectral features" "_tombstone" false "frame" #afield/rect [80.0 1540.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_streaming_code_.kt" "lines" 30 "characters" 1219 "sha256" "3d68032177ecde40aec99dbcbe9cc1229c5ee308bab7d26ac9935ff481177796"}]}
+{"id" "spectral_streaming" "index" 2 "name" "streaming spectral features" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "streaming spectral features" "_tombstone" false "frame" #afield/rect [80.0 1540.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_streaming_code_.kt" "lines" 30 "characters" 1219 "sha256" "3d68032177ecde40aec99dbcbe9cc1229c5ee308bab7d26ac9935ff481177796"}]}
 ```
 
 ```kotlin [field-property box="spectral_streaming" name="code" path="spectral_streaming_code_.kt"]
@@ -142,7 +142,7 @@ println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 2
 <!-- field-box id="spectral_mel" index="3" -->
 
 ```edn [field-box id="spectral_mel" role="properties"]
-{"id" "spectral_mel" "index" 3 "name" "mel spectrogram (crossing chirps)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mel spectrogram (crossing chirps)" "_tombstone" false "frame" #afield/rect [80.0 820.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_mel_code_.kt" "lines" 27 "characters" 1053 "sha256" "e7d28152ef16413d6bd94d5b35b03f4fecc685de783197b2d5fc814a04c3ca5a"}]}
+{"id" "spectral_mel" "index" 3 "name" "mel spectrogram (crossing chirps)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mel spectrogram (crossing chirps)" "_tombstone" false "frame" #afield/rect [80.0 820.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_mel_code_.kt" "lines" 27 "characters" 1053 "sha256" "e7d28152ef16413d6bd94d5b35b03f4fecc685de783197b2d5fc814a04c3ca5a"}]}
 ```
 
 ```kotlin [field-property box="spectral_mel" name="code" path="spectral_mel_code_.kt"]
@@ -180,7 +180,7 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
 <!-- field-box id="spectral_resonator" index="4" -->
 
 ```edn [field-box id="spectral_resonator" role="properties"]
-{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 210.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1550 "sha256" "35f796728c7428a28503c902b97743af1abe54f61b14103a4ef8bc92160b329e"}]}
+{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1550 "sha256" "35f796728c7428a28503c902b97743af1abe54f61b14103a4ef8bc92160b329e"}]}
 ```
 
 ```kotlin [field-property box="spectral_resonator" name="code" path="spectral_resonator_code_.kt"]

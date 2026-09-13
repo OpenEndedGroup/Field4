@@ -38,7 +38,7 @@ Twenty-three label literals exist in the tree today — six in the renderer prop
 with a window or context index, as at `Renderer.kt:1248#CPUSpan.time("present[$ctxIndex]") {`),
 fourteen under OpenXR and three in the virtual-texture system.
 
-Two things about it are load-bearing and neither is obvious from the name.
+Two things about it are not obvious from the name.
 
 **It is wall time, not CPU time.** `time` reads `System.nanoTime()` and nothing else. A
 `present` span that spends four milliseconds waiting on a fence reports four milliseconds,
@@ -106,7 +106,7 @@ display("main", Table(
 
 Six hundred spans in, `n` is 500 rather than 600 and the hitch is sitting in `max` — at
 48.91 ms in the run above rather than the 40 asked for, because `Thread.sleep` is a lower
-bound and the span honestly reports the time that actually passed. Meanwhile `p99` reads
+bound and the span reports the time that actually passed. Meanwhile `p99` reads
 0.33 ms, because one bad sample out of 500 cannot reach element 494. Five hundred spans
 later `max` has fallen to 0.42 ms — and `p99` is still 0.33, having moved by **0.00 ms**
 across the entire episode. **A hitch that happens once a minute is invisible to every
@@ -200,7 +200,7 @@ allocated once at the start. Named scope tokens and snapshot exports also alloca
 a capture; compare like-for-like recordings. With no capture
 active the dispatch path is one volatile read (`CoroutineProfiling.kt:40#val capture = active`)
 and an origin lookup; no counters are read and no measurement token is allocated.
-Note also that the latch deliberately drops its references to your live
+Note also that the latch drops its references to your live
 objects (`CoroutineProfiling.kt:176#origins.clear() // do not retain live object graphs in a saved capture`),
 and only four documents' captures are kept
 (`CoroutineProfiling.kt:77#while (captures.size > 4) captures.remove(captures.keys.first())`).
@@ -263,7 +263,7 @@ busy. Three seconds at a 10 ms period is 300 possible firings, so about six CPU 
 should have landed in the workload. **Nine arrived.** Out of 207 total sampled events,
 exactly **9 were CPU samples and 198 were allocation samples.**
 
-Nine. In three seconds, with three boxes deliberately burning CPU. If you want CPU stacks
+Nine. In three seconds, with three boxes burning CPU. If you want CPU stacks
 worth grouping, the work has to be *happening* while you record: a piece genuinely spending
 half its frame budget in box code will yield a couple of hundred samples in three seconds,
 and a piece that is mostly waiting will yield a handful however long you record it.
@@ -380,7 +380,7 @@ Notice that the two groupings are consistent rather than contradictory — `vec`
 callee and line 12 is the caller, which is exactly the difference between **Top frame only**
 and **Including callees**, and exactly why the two columns must not be added.
 
-Notice also the honest half. In the same capture the *periodic burst* box — the one costing
+In the same capture the *periodic burst* box — the one costing
 2.2 ms every 240 ms, which is by far the largest single cost in the recording — was
 represented by **one** sample, on its line 7, with no measurable allocation. Sampling found
 the allocation problem immediately and very nearly missed the CPU problem entirely. The

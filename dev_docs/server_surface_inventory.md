@@ -32,7 +32,7 @@ What was uncovered before this page existed, and is what it adds:
 | --- | --- | --- |
 | HTTP **read** routes | 37 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
-| `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
+| `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 108 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
@@ -222,9 +222,9 @@ for more than pages, and nothing in the repository records whether any of these 
 
 ## Static directory mounts
 
-Five `staticFiles` mounts, all in `Server.kt`, and **none of them is visible to any route
+Six `staticFiles` mounts, all in `Server.kt`, and **none of them is visible to any route
 regex in the tree** — a `staticFiles` call is not a verb declaration, so every census
-written before this page missed all five.
+written before this page missed all six.
 
 | mount | directory | declared in |
 | --- | --- | --- |
@@ -233,12 +233,22 @@ written before this page missed all five.
 | `/` | `File("./src/jsMain/resources/")` | `Server.kt` |
 | `/` | `File("./src/jsMain/resources/monaco")` | `Server.kt` |
 | `/` | `File(home)` | `Server.kt` |
+| `/sample-assets` | `File("./public/docs/assets/fabricate_demo")` | `Server.kt` |
 
 Four serve build output and bundled front-end resources. The fifth,
 `Server.kt#staticFiles(remotePath = "", dir = File(home))`, serves **the workspace
 directory** at `/`, which is the same tree `/project/{...}` serves with a containment check.
 Ktor's own `staticFiles` does the containment check here, which is why this is a note rather
 than a second `/local`.
+
+The sixth arrived on 2026-09-13 and is the only one with a mount point of its own. It serves
+the shared sample assets — the CC0 Khronos ToyCar GLB and the Venice sunset environment —
+because a **head** box (a browser or a headset running Kotlin compiled to JavaScript) can
+only fetch an asset over http, and the thing that reads as the answer to that,
+`mapDirectory`, is dead: it sends a `files.map` message no route in this tree consumes, and
+the `/local/{...}` route it was presumably written for is backed by the callerless
+`addRoute` below. One directory, of files already published on the documentation site, and
+Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 

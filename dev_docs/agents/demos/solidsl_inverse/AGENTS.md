@@ -42,7 +42,7 @@ array is your proof the code ran (and where compile errors and exceptions surfac
 ```yaml
 # scene.yaml
 operations:
-  - create: { box: hello, name: Hello, frame: {x: 40.0, y: 40.0, w: 200.0, h: 120.0},
+  - create: { box: hello, name: Hello, frame: {x: 40.0, y: 40.0, w: 300.0, h: 170.0},
               properties: { code: 'println("built by an agent")' } }
   - launch: { box: hello, property: code }
   - await:  { wait: pending }
