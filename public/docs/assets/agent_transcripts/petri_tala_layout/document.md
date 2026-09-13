@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_tala_tala" index="0" -->
 
 ```edn [field-box id="petri_tala_tala" role="properties"]
-{"id" "petri_tala_tala" "index" 0 "name" "2 — TALA, via native/field-d2-layout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — TALA, via native/field-d2-layout" "_tombstone" false "frame" #afield/rect [780.0 60.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_tala_code_.kt" "lines" 26 "characters" 948 "sha256" "04eaada9070aa830ea22cd4b1b4a9f42f1a3fbe8edd2bcf6f0df0aed8fd1da05"}]}
+{"id" "petri_tala_tala" "index" 0 "name" "2 — TALA, via native/field-d2-layout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — TALA, via native/field-d2-layout" "_tombstone" false "frame" #afield/rect [780.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_tala_code_.kt" "lines" 26 "characters" 948 "sha256" "04eaada9070aa830ea22cd4b1b4a9f42f1a3fbe8edd2bcf6f0df0aed8fd1da05"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_tala" name="code" path="petri_tala_tala_code_.kt"]
@@ -48,7 +48,7 @@ else
 <!-- field-box id="petri_tala_force" index="1" -->
 
 ```edn [field-box id="petri_tala_force" role="properties"]
-{"id" "petri_tala_force" "index" 1 "name" "1 — FORCE, the spring model" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — FORCE, the spring model" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_force_code_.kt" "lines" 29 "characters" 1343 "sha256" "a8ee1f3fbf1ec94cff7e24a6105fb914eb6ea114eb3c86cf2a44cd22602b5131"}]}
+{"id" "petri_tala_force" "index" 1 "name" "1 — FORCE, the spring model" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — FORCE, the spring model" "_tombstone" false "frame" #afield/rect [60.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_force_code_.kt" "lines" 29 "characters" 1343 "sha256" "a8ee1f3fbf1ec94cff7e24a6105fb914eb6ea114eb3c86cf2a44cd22602b5131"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_force" name="code" path="petri_tala_force_code_.kt"]
@@ -88,7 +88,7 @@ showPetriNet(net, layout = PetriLayout.FORCE, w = 620.0, h = 520.0)
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 80 "characters" 3423 "sha256" "9759fa3daf7f06d27566e6d86aff995c737153d100a8313d0835ca3e7f65a340"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 80 "characters" 3423 "sha256" "9759fa3daf7f06d27566e6d86aff995c737153d100a8313d0835ca3e7f65a340"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]

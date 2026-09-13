@@ -29,7 +29,7 @@ operations:
   - create:
       box: disk_glb
       name: A real GLB, straight into an output area
-      frame: { x: 80.0, y: 80.0, w: 300.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           // Field has four things that read geometry off disk — stdlib's OBJ/STL reader, PlySupport,
@@ -78,7 +78,7 @@ operations:
   - create:
       box: disk_roundtrip
       name: Out to a file and back — what each format keeps
-      frame: { x: 80.0, y: 160.0, w: 300.0, h: 50.0 }
+      frame: { x: 80.0, y: 210.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           // The round trip is worth doing once yourself, because what comes back is not what went out.
@@ -136,7 +136,7 @@ operations:
   - create:
       box: disk_ply
       name: PLY — the format that carries colour
-      frame: { x: 80.0, y: 240.0, w: 300.0, h: 50.0 }
+      frame: { x: 80.0, y: 340.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           // PLY is what photogrammetry and scanners emit, and the reason is per-vertex colour, which

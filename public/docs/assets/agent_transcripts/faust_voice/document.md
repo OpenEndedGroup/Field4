@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="faust_voice_error" index="0" -->
 
 ```edn [field-box id="faust_voice_error" role="properties"]
-{"id" "faust_voice_error" "index" 0 "name" "an error, on the line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "an error, on the line" "_tombstone" false "frame" #afield/rect [80.0 780.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_error_code_.kt" "lines" 14 "characters" 600 "sha256" "ec2186875d8593d88d16adb6eed1452c85d1d8dab89f69031fa35c5ccb74bbf1"}]}
+{"id" "faust_voice_error" "index" 0 "name" "an error, on the line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "an error, on the line" "_tombstone" false "frame" #afield/rect [80.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_error_code_.kt" "lines" 14 "characters" 600 "sha256" "ec2186875d8593d88d16adb6eed1452c85d1d8dab89f69031fa35c5ccb74bbf1"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_error" name="code" path="faust_voice_error_code_.kt"]
@@ -36,7 +36,7 @@ process = os.sawtoothX(440);
 <!-- field-box id="faust_voice_waveform" index="1" -->
 
 ```edn [field-box id="faust_voice_waveform" role="properties"]
-{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 16 "characters" 637 "sha256" "53d6714a4ff305e9d12cac56c2fd2385fcf2fb1147a06f2549a752991dde76af"}]}
+{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 16 "characters" 637 "sha256" "53d6714a4ff305e9d12cac56c2fd2385fcf2fb1147a06f2549a752991dde76af"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_waveform" name="code" path="faust_voice_waveform_code_.kt"]
@@ -63,7 +63,7 @@ println("rendered 20ms of " + program.outputs + " channels")
 <!-- field-box id="faust_voice_interface" index="2" -->
 
 ```edn [field-box id="faust_voice_interface" role="properties"]
-{"id" "faust_voice_interface" "index" 2 "name" "the interface it declares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the interface it declares" "_tombstone" false "frame" #afield/rect [80.0 420.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_interface_code_.kt" "lines" 30 "characters" 1309 "sha256" "7e85ffc76d6dd916d2b0b5752f14af37ddd75cc989bfe7b6ecdf61c5b558883b"}]}
+{"id" "faust_voice_interface" "index" 2 "name" "the interface it declares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the interface it declares" "_tombstone" false "frame" #afield/rect [80.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_interface_code_.kt" "lines" 30 "characters" 1309 "sha256" "7e85ffc76d6dd916d2b0b5752f14af37ddd75cc989bfe7b6ecdf61c5b558883b"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_interface" name="code" path="faust_voice_interface_code_.kt"]
@@ -104,7 +104,7 @@ program.ui.meters.forEach { println(it.label + "  " + it.type + " (read-only, us
 <!-- field-box id="faust_voice_diagram" index="3" -->
 
 ```edn [field-box id="faust_voice_diagram" role="properties"]
-{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 15 "characters" 622 "sha256" "8c9dad069cae25d2307514dce0a2d5370100157943d2796dfc525e0b2204029c"}]}
+{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 15 "characters" 622 "sha256" "8c9dad069cae25d2307514dce0a2d5370100157943d2796dfc525e0b2204029c"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_diagram" name="code" path="faust_voice_diagram_code_.kt"]
@@ -130,7 +130,7 @@ println("diagram for " + program.name + " — " + program.wasm.size + " bytes of
 <!-- field-box id="faust_voice_play" index="4" -->
 
 ```edn [field-box id="faust_voice_play" role="properties"]
-{"id" "faust_voice_play" "index" 4 "name" "Faust voice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust voice" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_play_code_.kt" "lines" 16 "characters" 753 "sha256" "ff904e4878c354c1f965e851444d5a670c7fa3a0286120bbb8f21272f9a79ad8"}]}
+{"id" "faust_voice_play" "index" 4 "name" "Faust voice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust voice" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_play_code_.kt" "lines" 16 "characters" 753 "sha256" "ff904e4878c354c1f965e851444d5a670c7fa3a0286120bbb8f21272f9a79ad8"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_play" name="code" path="faust_voice_play_code_.kt"]

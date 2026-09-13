@@ -16,7 +16,7 @@ operations:
   - create:
       box: sdf_lower
       name: rectsl -> glsl sdf
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Lower a RectSL scene to a GLSL signed distance field.
@@ -58,7 +58,7 @@ operations:
   - create:
       box: sdf_use
       name: using the distance
-      frame: { x: 300.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A distance is worth more than a coverage mask. Everything below comes

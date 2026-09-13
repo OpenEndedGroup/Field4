@@ -32,7 +32,7 @@ operations:
   - create:
       box: world_drape
       name: 1 - A cloth draping over a sphere
-      frame: { x: 40.0, y: 40.0, w: 320.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 100.0 }
       properties:
         code: |
           import afield.four.physics.*
@@ -90,7 +90,7 @@ operations:
   - create:
       box: world_tear
       name: 2 - A sphere tearing through a pinned sheet
-      frame: { x: 400.0, y: 40.0, w: 320.0, h: 50.0 }
+      frame: { x: 500.0, y: 40.0, w: 420.0, h: 100.0 }
       properties:
         code: |
           import afield.four.physics.*
@@ -146,7 +146,7 @@ operations:
   - create:
       box: world_wind
       name: 3 - A flag in gusty wind, seen from above
-      frame: { x: 40.0, y: 140.0, w: 320.0, h: 50.0 }
+      frame: { x: 40.0, y: 190.0, w: 420.0, h: 100.0 }
       properties:
         code: |
           import afield.four.physics.*
@@ -207,7 +207,7 @@ operations:
   - create:
       box: world_all
       name: 4 - Everything at once, and one knob
-      frame: { x: 400.0, y: 140.0, w: 320.0, h: 50.0 }
+      frame: { x: 500.0, y: 190.0, w: 420.0, h: 100.0 }
       properties:
         code: |
           import afield.four.physics.*

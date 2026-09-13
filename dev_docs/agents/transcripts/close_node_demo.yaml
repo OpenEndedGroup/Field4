@@ -32,7 +32,7 @@ operations:
   - create:
       box: close_node_reversal
       name: reversing a closed contour
-      frame: { x: 80.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A square that relies on close() for its fourth side, and a two-contour outline whose
@@ -119,7 +119,7 @@ operations:
   - create:
       box: close_node_arrow
       name: the shipped primitive that has an interior Close in it
-      frame: { x: 80.0, y: 700.0, w: 370.0, h: 50.0 }
+      frame: { x: 80.0, y: 700.0, w: 470.0, h: 100.0 }
       properties:
         code: |
           // Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a

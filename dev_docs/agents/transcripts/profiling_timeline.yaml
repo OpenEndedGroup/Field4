@@ -9,7 +9,7 @@ operations:
   - create:
       box: profile_steady
       name: 1. Steady work
-      frame: { x: 80.0, y: 80.0, w: 220.0, h: 55.0 }
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 105.0 }
       properties:
         code: |
           // A small amount of CPU work at roughly 60 Hz. Increase iterations to widen the bars.
@@ -22,7 +22,7 @@ operations:
   - create:
       box: profile_bursts
       name: 2. Periodic bursts
-      frame: { x: 80.0, y: 200.0, w: 220.0, h: 55.0 }
+      frame: { x: 80.0, y: 250.0, w: 320.0, h: 105.0 }
       properties:
         code: |
           // Sparse, longer CPU bars. Try 800000 iterations, or shorten the quiet interval.
@@ -38,7 +38,7 @@ operations:
   - create:
       box: profile_vectors
       name: 3. Allocate or reuse
-      frame: { x: 80.0, y: 320.0, w: 220.0, h: 55.0 }
+      frame: { x: 80.0, y: 420.0, w: 320.0, h: 105.0 }
       properties:
         code: |
           // Flip reuse to true, relaunch, and record again. Both paths update the same vectors.
@@ -59,7 +59,7 @@ operations:
   - create:
       box: profile_capture
       name: 4. Record and explore
-      frame: { x: 420.0, y: 200.0, w: 250.0, h: 55.0 }
+      frame: { x: 520.0, y: 250.0, w: 350.0, h: 105.0 }
       properties:
         code: |
           // Run the three workload boxes first, then run this box. The macro does that for you.

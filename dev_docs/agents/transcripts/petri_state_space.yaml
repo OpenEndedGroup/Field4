@@ -36,7 +36,7 @@ operations:
   - create:
       box: petri_ss_philosophers
       name: 1 — the table can wedge
-      frame: { x: 60.0, y: 60.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -81,7 +81,7 @@ operations:
   - create:
       box: petri_ss_asymmetric
       name: 2 — proved, and the difference from starved
-      frame: { x: 320.0, y: 60.0, w: 220.0, h: 50.0 }
+      frame: { x: 420.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -123,7 +123,7 @@ operations:
   - create:
       box: petri_ss_buffer
       name: 3 — a buffer, counted exactly
-      frame: { x: 580.0, y: 60.0, w: 220.0, h: 50.0 }
+      frame: { x: 780.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -160,7 +160,7 @@ operations:
   - create:
       box: petri_ss_unbounded
       name: 4 — a leak, and an omega
-      frame: { x: 60.0, y: 200.0, w: 220.0, h: 50.0 }
+      frame: { x: 60.0, y: 200.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -206,7 +206,7 @@ operations:
   - create:
       box: petri_ss_exclusion
       name: 5 — what the algebra cannot see
-      frame: { x: 320.0, y: 200.0, w: 220.0, h: 50.0 }
+      frame: { x: 420.0, y: 200.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*
@@ -250,7 +250,7 @@ operations:
   - create:
       box: petri_ss_reduction
       name: 6 — the wall, and stubborn sets
-      frame: { x: 580.0, y: 200.0, w: 220.0, h: 50.0 }
+      frame: { x: 780.0, y: 200.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.petri.*

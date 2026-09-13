@@ -10,7 +10,7 @@ operations:
   - create:
       box: youtube_kaleidoscope_renderer
       name: kaleidoscope window + renderer
-      frame: { x: 40.0, y: 40.0, w: 250.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 350.0, h: 100.0 }
       properties:
         code: |
           import afield.Rect
@@ -36,7 +36,7 @@ operations:
   - create:
       box: youtube_kaleidoscope_shards
       name: YouTube — 224 Vulkan shards
-      frame: { x: 330.0, y: 40.0, w: 280.0, h: 50.0 }
+      frame: { x: 430.0, y: 40.0, w: 380.0, h: 100.0 }
       properties:
         code: |
           import afield.four.Target

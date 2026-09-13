@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_expression_gallery" index="0" -->
 
 ```edn [field-box id="polytope_expression_gallery" role="properties"]
-{"id" "polytope_expression_gallery" "index" 0 "name" "1 — Conway expressions, retype the list" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway expressions, retype the list" "_tombstone" false "frame" #afield/rect [80.0 80.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_expression_gallery_code_.kt" "lines" 36 "characters" 1703 "sha256" "4c8046873e1c5f0d5d4ca529a91a886f29c60c7b5fbd551eee4d6f84ef826289"}]}
+{"id" "polytope_expression_gallery" "index" 0 "name" "1 — Conway expressions, retype the list" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway expressions, retype the list" "_tombstone" false "frame" #afield/rect [80.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_expression_gallery_code_.kt" "lines" 36 "characters" 1703 "sha256" "4c8046873e1c5f0d5d4ca529a91a886f29c60c7b5fbd551eee4d6f84ef826289"}]}
 ```
 
 ```kotlin [field-property box="polytope_expression_gallery" name="code" path="polytope_expression_gallery_code_.kt"]
@@ -58,7 +58,7 @@ println(expressions.joinToString("\n") { source ->
 <!-- field-box id="polytope_realization_relax" index="1" -->
 
 ```edn [field-box id="polytope_realization_relax" role="properties"]
-{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 57 "characters" 2325 "sha256" "82e9709df1b599387060e1cbdf4d338de407ef7afa20ba55d0f753e08a5ffdeb"}]}
+{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 57 "characters" 2325 "sha256" "82e9709df1b599387060e1cbdf4d338de407ef7afa20ba55d0f753e08a5ffdeb"}]}
 ```
 
 ```kotlin [field-property box="polytope_realization_relax" name="code" path="polytope_realization_relax_code_.kt"]
@@ -126,7 +126,7 @@ solved
 <!-- field-box id="polytope_parameter_field" index="2" -->
 
 ```edn [field-box id="polytope_parameter_field" role="properties"]
-{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 77 "characters" 3148 "sha256" "821d844c938df9c1c39cdeaab9b9f79b06ee7c285fa8aa3713fa017f923a780d"}]}
+{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 77 "characters" 3148 "sha256" "821d844c938df9c1c39cdeaab9b9f79b06ee7c285fa8aa3713fa017f923a780d"}]}
 ```
 
 ```kotlin [field-property box="polytope_parameter_field" name="code" path="polytope_parameter_field_code_.kt"]
@@ -214,7 +214,7 @@ displayOpen("parameter-field")
 <!-- field-box id="polytope_abstract_dual" index="3" -->
 
 ```edn [field-box id="polytope_abstract_dual" role="properties"]
-{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 36 "characters" 2293 "sha256" "0eff0a398106c19ff4d55174458a29093ca2fa42a08dc94a49d76213917407c5"}]}
+{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 36 "characters" 2293 "sha256" "0eff0a398106c19ff4d55174458a29093ca2fa42a08dc94a49d76213917407c5"}]}
 ```
 
 ```kotlin [field-property box="polytope_abstract_dual" name="code" path="polytope_abstract_dual_code_.kt"]

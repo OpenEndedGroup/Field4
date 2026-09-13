@@ -22,7 +22,7 @@ operations:
   - create:
       box: spectral_one_spectrum
       name: one spectrum (chirp + tones)
-      frame: { x: 80.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
@@ -60,7 +60,7 @@ operations:
   - create:
       box: spectral_spectrogram
       name: spectrogram of a chirp
-      frame: { x: 80.0, y: 440.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 440.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           val sampleRate = 8000.0
@@ -96,7 +96,7 @@ operations:
   - create:
       box: spectral_mel
       name: mel spectrogram (crossing chirps)
-      frame: { x: 80.0, y: 820.0, w: 240.0, h: 50.0 }
+      frame: { x: 80.0, y: 820.0, w: 340.0, h: 100.0 }
       properties:
         code: |
           val sampleRate = 8000.0
@@ -129,7 +129,7 @@ operations:
   - create:
       box: spectral_resonator
       name: resonator bank (no transform)
-      frame: { x: 80.0, y: 1180.0, w: 210.0, h: 50.0 }
+      frame: { x: 80.0, y: 1180.0, w: 310.0, h: 100.0 }
       properties:
         code: |
           import afield.four.audio.resonate
@@ -176,7 +176,7 @@ operations:
   - create:
       box: spectral_streaming
       name: streaming spectral features
-      frame: { x: 80.0, y: 1540.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 1540.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           val sampleRate = 8000f

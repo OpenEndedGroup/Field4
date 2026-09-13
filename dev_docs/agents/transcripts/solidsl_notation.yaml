@@ -15,7 +15,7 @@ operations:
   - create:
       box: solidsl_part
       name: "SolidSL — a part, and what the notation knows before it meshes"
-      frame: { x: 80.0, y: 80.0, w: 380.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 480.0, h: 100.0 }
       properties:
         code: |
           import afield.solidsl.*
@@ -116,7 +116,7 @@ operations:
   - create:
       box: solidsl_shader
       name: "SolidSL — the same value, lowered to GLSL"
-      frame: { x: 80.0, y: 700.0, w: 380.0, h: 50.0 }
+      frame: { x: 80.0, y: 700.0, w: 480.0, h: 100.0 }
       properties:
         code: |
           import afield.solidsl.*

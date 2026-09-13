@@ -86,7 +86,7 @@ copying it into a document that will not be written.
 Nothing in this document needs a GPU, a network, or any setup.
 
 ```edn [field-box id="870b3111-5179-4b74-8e71-06aec8dc8536" role="properties"]
-{"id" "870b3111-5179-4b74-8e71-06aec8dc8536" "index" 2 "name" "How to see read-only mode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How to see read-only mode" "frame" #afield/rect [60.0 60.0 430.0 90.0] "nested" #{} "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt" "lines" 23 "characters" 1236 "sha256" "a067194446865b655ce75e21223b8d806cc2cc3af4b606f13afe45afc2344422"}]}
+{"id" "870b3111-5179-4b74-8e71-06aec8dc8536" "index" 2 "name" "How to see read-only mode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How to see read-only mode" "frame" #afield/rect [60.0 60.0 530.0 140.0] "nested" #{} "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt" "lines" 23 "characters" 1236 "sha256" "a067194446865b655ce75e21223b8d806cc2cc3af4b606f13afe45afc2344422"}]}
 ```
 
 ```kotlin [field-property box="870b3111-5179-4b74-8e71-06aec8dc8536" name="code" path="870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt"]

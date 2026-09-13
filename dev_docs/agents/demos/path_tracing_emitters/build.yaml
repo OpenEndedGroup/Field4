@@ -11,7 +11,7 @@ operations:
   - create:
       box: pt_renderer
       name: path tracing renderer
-      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      frame: { x: 40.0, y: 40.0, w: 320.0, h: 110.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -26,7 +26,7 @@ operations:
   - create:
       box: pt_emitters
       name: emitter sampling, on and off
-      frame: { x: 320.0, y: 140.0, w: 280.0, h: 80.0 }
+      frame: { x: 320.0, y: 180.0, w: 380.0, h: 130.0 }
       properties:
         code: |
           import afield.four.fabricated.PathTraceEnvironment

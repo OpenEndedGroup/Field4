@@ -45,7 +45,7 @@ operations:
   - create:
       box: morpho_search_control
       name: Does selection beat sampling? One-bit full adder, three drivers, one budget
-      frame: { x: 60.0, y: 60.0, w: 500.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 600.0, h: 100.0 }
       properties:
         code: |
           import afield.morpho.*
@@ -90,7 +90,7 @@ operations:
   - create:
       box: morpho_search_recursion
       name: A recursion, found — reducing a bus to one bit, then drawn at three widths
-      frame: { x: 60.0, y: 520.0, w: 490.0, h: 50.0 }
+      frame: { x: 60.0, y: 520.0, w: 590.0, h: 100.0 }
       properties:
         code: |
           import afield.morpho.*
@@ -163,7 +163,7 @@ operations:
   - create:
       box: morpho_search_adder
       name: The recursive adder is not found — and the target is provably in the space
-      frame: { x: 60.0, y: 1020.0, w: 490.0, h: 50.0 }
+      frame: { x: 60.0, y: 1020.0, w: 590.0, h: 100.0 }
       properties:
         code: |
           import afield.morpho.*

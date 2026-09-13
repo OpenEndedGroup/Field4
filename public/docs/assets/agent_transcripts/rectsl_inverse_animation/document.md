@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_inverse_fit" index="0" -->
 
 ```edn [field-box id="rectsl_inverse_fit" role="properties"]
-{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 78 "characters" 2930 "sha256" "b7f138b37e00ddb7bfac88972013b09d84e670a34d3e3c41d97969e21ae7b892"}]}
+{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 78 "characters" 2930 "sha256" "b7f138b37e00ddb7bfac88972013b09d84e670a34d3e3c41d97969e21ae7b892"}]}
 ```
 
 ```kotlin [field-property box="rectsl_inverse_fit" name="code" path="rectsl_inverse_fit_code_.kt"]
@@ -100,7 +100,7 @@ display(
 <!-- field-box id="rectsl_free_param_word" index="1" -->
 
 ```edn [field-box id="rectsl_free_param_word" role="properties"]
-{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 39 "characters" 1162 "sha256" "000161ee012e56783e649b062e78e3fd842eda53043d146a3e51a2ba33b1f918"}]}
+{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 39 "characters" 1162 "sha256" "000161ee012e56783e649b062e78e3fd842eda53043d146a3e51a2ba33b1f918"}]}
 ```
 
 ```kotlin [field-property box="rectsl_free_param_word" name="code" path="rectsl_free_param_word_code_.kt"]

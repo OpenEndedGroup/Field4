@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sg_renderer" index="0" -->
 
 ```edn [field-box id="sg_renderer" role="properties"]
-{"id" "sg_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sg_update"] "properties" {"children" #{#afield/box "sg_update"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_renderer_code_.kt" "lines" 11 "characters" 272 "sha256" "855b1cf6bb497bdeab0c259266e37e505a716c91fbd61ba2fdddaf914704b026"}]}
+{"id" "sg_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sg_update"] "properties" {"children" #{#afield/box "sg_update"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_renderer_code_.kt" "lines" 11 "characters" 272 "sha256" "855b1cf6bb497bdeab0c259266e37e505a716c91fbd61ba2fdddaf914704b026"}]}
 ```
 
 ```kotlin [field-property box="sg_renderer" name="code" path="sg_renderer_code_.kt"]
@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="sg_update" index="1" -->
 
 ```edn [field-box id="sg_update" role="properties"]
-{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [240.0 40.0 200.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 67 "characters" 2094 "sha256" "9b89e8bb436a610322b8c131f8d4beb877ef1715264438a64061a4c4e4bf1346"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 81 "characters" 2824 "sha256" "6040437363cc639fece0bad11c5bc7dec6041ec71943b11351230e79656c635b"}]}
+{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 67 "characters" 2094 "sha256" "9b89e8bb436a610322b8c131f8d4beb877ef1715264438a64061a4c4e4bf1346"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 81 "characters" 2824 "sha256" "6040437363cc639fece0bad11c5bc7dec6041ec71943b11351230e79656c635b"}]}
 ```
 
 ```glsl [field-property box="sg_update" name="compute" path="sg_update_compute_.glsl"]
@@ -195,7 +195,7 @@ println("update launched L=" + L + " N=" + N + " groups=" + groups)
 <!-- field-box id="sg_measure" index="2" -->
 
 ```edn [field-box id="sg_measure" role="properties"]
-{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [470.0 40.0 230.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 33 "characters" 895 "sha256" "aca31c63d45c88f5f93ee1e639ef2c6b625144884319214bfd2978182843e30e"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 26 "characters" 862 "sha256" "873372261006800a2ec917674e72fadc1634068d42c8d8afe4504e6a04345073"}]}
+{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 33 "characters" 895 "sha256" "aca31c63d45c88f5f93ee1e639ef2c6b625144884319214bfd2978182843e30e"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 26 "characters" 862 "sha256" "873372261006800a2ec917674e72fadc1634068d42c8d8afe4504e6a04345073"}]}
 ```
 
 ```glsl [field-property box="sg_measure" name="compute" path="sg_measure_compute_.glsl"]
@@ -268,7 +268,7 @@ println("measure launched N=" + N)
 <!-- field-box id="sg_draw" index="3" -->
 
 ```edn [field-box id="sg_draw" role="properties"]
-{"id" "sg_draw" "index" 3 "name" "lattice view" "parents" ["root" "sg_measure"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sg_measure"} "name" "lattice view" "_tombstone" false "frame" #afield/rect [720.0 40.0 200.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "sg_draw_vertex_.glsl" "lines" 8 "characters" 245 "sha256" "852162ed2f08d7ffd06e2e62b4d9690cd3c965fe20fffd0ee96aec38bf529865"} {"name" "fragment" "language" "glsl" "path" "sg_draw_fragment_.glsl" "lines" 38 "characters" 1330 "sha256" "2e01a5c445595f5be6a82a13fdf6bb9343b974c5971779c5df7aee90ada5f448"} {"name" "code" "language" "kotlin" "path" "sg_draw_code_.kt" "lines" 13 "characters" 407 "sha256" "7d91a6157126d7c13a4c3d27e955fb5fd350e05e114fccb40ab29b801047e99a"}]}
+{"id" "sg_draw" "index" 3 "name" "lattice view" "parents" ["root" "sg_measure"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sg_measure"} "name" "lattice view" "_tombstone" false "frame" #afield/rect [1020.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "sg_draw_vertex_.glsl" "lines" 8 "characters" 245 "sha256" "852162ed2f08d7ffd06e2e62b4d9690cd3c965fe20fffd0ee96aec38bf529865"} {"name" "fragment" "language" "glsl" "path" "sg_draw_fragment_.glsl" "lines" 38 "characters" 1330 "sha256" "2e01a5c445595f5be6a82a13fdf6bb9343b974c5971779c5df7aee90ada5f448"} {"name" "code" "language" "kotlin" "path" "sg_draw_code_.kt" "lines" 13 "characters" 407 "sha256" "7d91a6157126d7c13a4c3d27e955fb5fd350e05e114fccb40ab29b801047e99a"}]}
 ```
 
 ```glsl [field-property box="sg_draw" name="vertex" path="sg_draw_vertex_.glsl"]

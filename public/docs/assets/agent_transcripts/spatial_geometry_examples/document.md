@@ -18,7 +18,7 @@ Marching squares has exactly two decisions in it, and both are places where a pl
 implementation is quietly wrong. Each input below has an answer you already know.
 
 ```edn [field-box id="spatial_marching" role="properties"]
-{"id" "spatial_marching" "index" 0 "name" "The two decisions inside marching squares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The two decisions inside marching squares" "_tombstone" false "frame" #afield/rect [1020.0 500.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_marching_code_.kt" "lines" 72 "characters" 4223 "sha256" "4189ee20babea63ba4fc66f1911ecf62887f188885dfa2671bb861352964daae"}]}
+{"id" "spatial_marching" "index" 0 "name" "The two decisions inside marching squares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The two decisions inside marching squares" "_tombstone" false "frame" #afield/rect [1020.0 500.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_marching_code_.kt" "lines" 72 "characters" 4223 "sha256" "4189ee20babea63ba4fc66f1911ecf62887f188885dfa2671bb861352964daae"}]}
 ```
 
 ```kotlin [field-property box="spatial_marching" name="code" path="spatial_marching_code_.kt"]
@@ -109,7 +109,7 @@ the nearest and the second nearest site recovers it from a completely different
 algorithm. Except at exactly zero — see below.
 
 ```edn [field-box id="spatial_contours" role="properties"]
-{"id" "spatial_contours" "index" 1 "name" "A field, and the seam through it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A field, and the seam through it" "_tombstone" false "frame" #afield/rect [1020.0 80.0 230.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_contours_code_.kt" "lines" 69 "characters" 3438 "sha256" "6a8d31ea72d50958773b79f6a5c17d2f663e9a117c88d84102ce9b3ccf97ffe4"}]}
+{"id" "spatial_contours" "index" 1 "name" "A field, and the seam through it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A field, and the seam through it" "_tombstone" false "frame" #afield/rect [1020.0 80.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_contours_code_.kt" "lines" 69 "characters" 3438 "sha256" "6a8d31ea72d50958773b79f6a5c17d2f663e9a117c88d84102ce9b3ccf97ffe4"}]}
 ```
 
 ```kotlin [field-property box="spatial_contours" name="code" path="spatial_contours_code_.kt"]
@@ -204,7 +204,7 @@ arcs and a line. `enclosed` goes 0 -> 2 between weight 2.02 and 2.45.
 by an EXACT equality of weights, so it really is discontinuous.
 
 ```edn [field-box id="spatial_apollonius_sweep" role="properties"]
-{"id" "spatial_apollonius_sweep" "index" 2 "name" "Sweep the weight, and watch the bisector bow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the weight, and watch the bisector bow" "_tombstone" false "frame" #afield/rect [1020.0 500.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_sweep_code_.kt" "lines" 50 "characters" 2735 "sha256" "a69c7237114ac3c1eb5e5d639bf871d165837b949b9599a28410cf7b9446fda5"}]}
+{"id" "spatial_apollonius_sweep" "index" 2 "name" "Sweep the weight, and watch the bisector bow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the weight, and watch the bisector bow" "_tombstone" false "frame" #afield/rect [1020.0 500.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_sweep_code_.kt" "lines" 50 "characters" 2735 "sha256" "a69c7237114ac3c1eb5e5d639bf871d165837b949b9599a28410cf7b9446fda5"}]}
 ```
 
 ```kotlin [field-property box="spatial_apollonius_sweep" name="code" path="spatial_apollonius_sweep_code_.kt"]
@@ -273,7 +273,7 @@ cell per site, the triangulation joins two sites exactly when their cells share 
 vec2VoronoiDualGraph is literally one line in the source that returns vec2DelaunayGraph.
 
 ```edn [field-box id="spatial_delaunay" role="properties"]
-{"id" "spatial_delaunay" "index" 3 "name" "Delaunay, and the Voronoi dual" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Delaunay, and the Voronoi dual" "_tombstone" false "frame" #afield/rect [80.0 80.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_delaunay_code_.kt" "lines" 71 "characters" 3511 "sha256" "35b9a2469b47748c497e261c52b74b2d49612fcc707ce54cee44ee35d645e0a7"}]}
+{"id" "spatial_delaunay" "index" 3 "name" "Delaunay, and the Voronoi dual" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Delaunay, and the Voronoi dual" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_delaunay_code_.kt" "lines" 71 "characters" 3511 "sha256" "35b9a2469b47748c497e261c52b74b2d49612fcc707ce54cee44ee35d645e0a7"}]}
 ```
 
 ```kotlin [field-property box="spatial_delaunay" name="code" path="spatial_delaunay_code_.kt"]
@@ -366,7 +366,7 @@ and the changeover is a frame where the marcher's four corner values decide the 
 Contours are coloured by index, so the merge reads as a colour vanishing.
 
 ```edn [field-box id="spatial_iso_sweep" role="properties"]
-{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2414 "sha256" "037be9d61d45c762dc689182d009878682ebce59c5b393b4a543fbcf82befb3a"}]}
+{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2414 "sha256" "037be9d61d45c762dc689182d009878682ebce59c5b393b4a543fbcf82befb3a"}]}
 ```
 
 ```kotlin [field-property box="spatial_iso_sweep" name="code" path="spatial_iso_sweep_code_.kt"]
@@ -436,7 +436,7 @@ equation of a CIRCLE, which degenerates to a line only when the weights match. S
 here is not a polygon: its boundary is made of ArcPieces and LinePieces.
 
 ```edn [field-box id="spatial_apollonius" role="properties"]
-{"id" "spatial_apollonius" "index" 5 "name" "When the bisector is a circle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "When the bisector is a circle" "_tombstone" false "frame" #afield/rect [80.0 500.0 210.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_code_.kt" "lines" 62 "characters" 3208 "sha256" "60779cf12cd818a062300d7422fda4cc824ffb03ad0d60bfa9c5eb2f1e1cb484"}]}
+{"id" "spatial_apollonius" "index" 5 "name" "When the bisector is a circle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "When the bisector is a circle" "_tombstone" false "frame" #afield/rect [80.0 500.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_code_.kt" "lines" 62 "characters" 3208 "sha256" "60779cf12cd818a062300d7422fda4cc824ffb03ad0d60bfa9c5eb2f1e1cb484"}]}
 ```
 
 ```kotlin [field-property box="spatial_apollonius" name="code" path="spatial_apollonius_code_.kt"]
@@ -520,7 +520,7 @@ Well-separated blobs make all four look identical, so this cloud has exactly ONE
 wrong with it: three tight blobs of 28, and a single 85th point nine units out.
 
 ```edn [field-box id="spatial_clustering" role="properties"]
-{"id" "spatial_clustering" "index" 6 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 75 "characters" 4295 "sha256" "aade0bcdfb1cc16d5bd4a9ccb149079c7b780311bf78be3590ebc8d0cb25a0e7"}]}
+{"id" "spatial_clustering" "index" 6 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 75 "characters" 4295 "sha256" "aade0bcdfb1cc16d5bd4a9ccb149079c7b780311bf78be3590ebc8d0cb25a0e7"}]}
 ```
 
 ```kotlin [field-property box="spatial_clustering" name="code" path="spatial_clustering_code_.kt"]

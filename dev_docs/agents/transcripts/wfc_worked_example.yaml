@@ -15,8 +15,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 200.0
-        h: 50.0
+        w: 300.0
+        h: 100.0
       properties:
         code: |
           // Section 1: the model, by hand. Three tile IDs and a table; nothing is learned.
@@ -82,8 +82,8 @@ operations:
       frame:
         x: 60.0
         y: 260.0
-        w: 270.0
-        h: 50.0
+        w: 370.0
+        h: 100.0
       properties:
         code: |
           // Section 2: learn tiles and adjacency from a source image -- and see what the learned
@@ -176,8 +176,8 @@ operations:
       frame:
         x: 60.0
         y: 460.0
-        w: 290.0
-        h: 50.0
+        w: 390.0
+        h: 100.0
       properties:
         code: |
           // Section 2b: the same simple-tiled solver, but the tiles carry art whose EDGES must line up.
@@ -237,10 +237,10 @@ operations:
       box: wfc_overlapping
       name: "4 — Overlapping patterns + ground constraint"
       frame:
-        x: 460.0
+        x: 560.0
         y: 60.0
-        w: 300.0
-        h: 50.0
+        w: 400.0
+        h: 100.0
       properties:
         code: |
           // Section 3: the overlapping model. Every 3x3 window of the source becomes a "tile", and two
@@ -316,10 +316,10 @@ operations:
       box: wfc_neighborhoods
       name: "5 — Neighborhoods: von Neumann vs Moore"
       frame:
-        x: 460.0
+        x: 560.0
         y: 260.0
-        w: 270.0
-        h: 50.0
+        w: 370.0
+        h: 100.0
       properties:
         code: |
           // Section 4: the neighborhood is a modelling decision, not a performance knob.
@@ -359,10 +359,10 @@ operations:
       box: wfc_collapse
       name: "6 — Watching the collapse"
       frame:
-        x: 460.0
+        x: 560.0
         y: 460.0
-        w: 200.0
-        h: 50.0
+        w: 300.0
+        h: 100.0
       properties:
         code: |
           // Section 5: step() is public and does exactly one WFC iteration, so the collapse is drawable.
@@ -432,10 +432,10 @@ operations:
       box: wfc_scalar_field
       name: "7 — Not pixels: WFC on a scalar field"
       frame:
-        x: 860.0
+        x: 1060.0
         y: 60.0
-        w: 260.0
-        h: 50.0
+        w: 360.0
+        h: 100.0
       properties:
         code: |
           // Section 6: the solver never sees a pixel. sliceIntoUniqueTiles2D and
@@ -534,10 +534,10 @@ operations:
       box: wfc_inline_view
       name: "8 — The solver's own inline view"
       frame:
-        x: 860.0
+        x: 1060.0
         y: 260.0
-        w: 230.0
-        h: 50.0
+        w: 330.0
+        h: 100.0
       properties:
         code: |
           // Section 5b: WfcSolver implements ToHTML, so evaluating a solver in a box draws its state

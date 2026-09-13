@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_hello_display" index="0" -->
 
 ```edn [field-box id="agent_hello_display" role="properties"]
-{"id" "agent_hello_display" "index" 0 "name" "Agent Hello Display" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Agent Hello Display" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_hello_display_code_.kt" "lines" 1 "characters" 51 "sha256" "52aba6c6149281dc8951d3bbe9a0ee3f9a706db68be67a72ab8c304248338b2a"}]}
+{"id" "agent_hello_display" "index" 0 "name" "Agent Hello Display" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Agent Hello Display" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_hello_display_code_.kt" "lines" 1 "characters" 51 "sha256" "52aba6c6149281dc8951d3bbe9a0ee3f9a706db68be67a72ab8c304248338b2a"}]}
 ```
 
 ```kotlin [field-property box="agent_hello_display" name="code" path="agent_hello_display_code_.kt"]
