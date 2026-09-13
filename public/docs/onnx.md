@@ -147,7 +147,7 @@ Resolution is also the only performance dial that really matters, because cost i
 it. The `@126` panel has about 4.6× fewer pixels than `@266` (the counts are in the captions) and ran
 in roughly a quarter of the time.
 
-### The normalisation window, and what `settled` means
+### The normalisation window
 
 A texture needs values in `[0,1]`, so the raw map has to be normalised against *something*. Picking
 each frame's own min and max makes the image flicker — a hand entering shot rescales the entire
@@ -191,7 +191,7 @@ depth.submit(webcam.frameBuffer, 640, 480)   // returns immediately
 if (depth.consume()) tex.recordUpload(commandBuffer)
 ```
 
-!!! info "This one needs a Vulkan device and a webcam, so it does not run here"
+!!! info "Needs a Vulkan device and a webcam"
     [Which code on this page runs](#which-code-on-this-page-runs) names the tests that stand behind
     its ONNX half.
 
@@ -302,7 +302,7 @@ drapery.
 This is the most misread property of CLIP, and the reason `classify` exists rather than a bare
 threshold on `cosine`.
 
-Look at the numbers in that figure. Every single image↔text cosine sits between about 0.15 and 0.27,
+Every single image↔text cosine sits between about 0.15 and 0.27,
 including the *correct* ones. Meanwhile two unrelated *text* prompts, `storm` and `calm`, sit at
 0.8813. The two towers occupy offset regions of the sphere — the **modality gap** — so:
 
@@ -378,7 +378,7 @@ problem: a large asset that must not live in the repository.
     without ever opening a model, because `ClipText`'s session is `by lazy`. That is what lets the
     completion corpus guard compile the shipped transcript with no network at all.
 
-## What was measured, and what it contradicts
+## Measurements
 
 Measured on Apple Silicon with 10 cores, at 518² unless stated, and quoted from `OnnxRuntime`'s own
 KDoc. Every row contradicts a plausible guess:
@@ -479,7 +479,7 @@ That is the whole technique. It keeps the text encoder out of the per-frame path
 session that never asks it anything. `ClipText.encodeAll` is the batch form, and
 `val prompts = mapOf("…" to clipEncode("…"), …)` is what the shipped transcript does.
 
-??? aside "There was a `clip()` macro, and why baking a prompt is the wrong answer"
+??? aside "The `clip()` macro"
     A `clip("…")` macro shipped alongside the package and was reverted the next day by commit
     `9d611b4cb`. It encoded a prompt at *macro-expansion* time and cached the 512 floats in the box's
     attic as base64, so the text encoder never loaded at run time. Its stated justification was

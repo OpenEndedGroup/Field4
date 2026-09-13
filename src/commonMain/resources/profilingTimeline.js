@@ -1,5 +1,5 @@
 import { sendWithReply, clearReplyHandler } from "./afield.mjs";
-import { selectedSpans, profileSummary, mergeProfileSpans } from "./profileTimelineModel.js";
+import { selectedSpans, profileSummary, profileFrameSummary, profileFrameBuckets, mergeProfileSpans } from "./profileTimelineModel.js";
 import { createProfileStacks } from "./profilingStacks.js";
 
 const ROW = 32;
@@ -9,7 +9,7 @@ let visible = false, timer = null, pending = false, serial = 0, epoch = 0, dragg
 let documentName = "", laneOrder = [];
 let replyName = "", replyTimeout = null;
 let queuedAction = null;
-let stackSamples=[],stackViewer,stackPanel,coroutineBody;
+let stackSamples=[],frameRecords=[],stackViewer,stackPanel,coroutineBody,framePanel;
 const fmt = n => Number(n).toFixed(2);
 const bytes = n => n === null || n < 0 ? "unavailable" : n >= 1048576 ? `${fmt(n/1048576)} MiB` : `${fmt(n/1024)} KiB`;
 const el = (tag, cls, text) => { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; };
@@ -40,7 +40,7 @@ function build() {
     filter=el("input"); filter.type="search"; filter.placeholder="Find a box or coroutine"; filter.id="profile-filter"; filter.setAttribute("aria-label",filter.placeholder);
     filter.addEventListener("input", ()=>{focusLane=null;render();});
     metric=el("select"); metric.id="profile-metric"; metric.setAttribute("aria-label","Overview metric");
-    [["wall","Execution time"],["cpu","CPU time"],["bytes","Allocated bytes"],["sampleCpu","JVM CPU samples"],["sampleBytes","JVM allocation samples"]].forEach(([v,t])=>{const o=el("option","",t);o.value=v;metric.append(o);});
+    [["frameWall","Frame interval"],["frameBytes","Bytes per frame"],["wall","Self execution time"],["cpu","CPU time"],["bytes","Allocated bytes"],["sampleCpu","JVM CPU samples"],["sampleBytes","JVM allocation samples"]].forEach(([v,t])=>{const o=el("option","",t);o.value=v;metric.append(o);});
     metric.addEventListener("change",render);
     toolbar.append(filter,metric,button("Zoom to selection",()=>{if(brush){view=brush.slice();render();}},"profile-zoom"),
         button("Show all",()=>{brush=null;view=null;focusLane=null;render();},"profile-reset"));
@@ -55,9 +55,16 @@ function build() {
     coroutineBody=body;stackPanel=el("div","profile-stacks");stackPanel.id="profile-stacks";stackPanel.hidden=true;
     stackViewer=createProfileStacks(stackPanel,compact);
     const tabs=el("div","profile-tabs");
-    for(const [id,label,showStacks] of [["profile-tab-coroutines","Coroutines",false],["profile-tab-stacks","Hot code",true]]){const b=button(label,()=>{body.hidden=showStacks;stackPanel.hidden=!showStacks;metric.value=showStacks?"sampleCpu":"wall";tabs.querySelectorAll("button").forEach(n=>n.classList.toggle("profile-tab-active",n===b));render();},id);b.classList.toggle("profile-tab-active",!showStacks);tabs.append(b);}
-    const note=el("footer","", "Brush time to inspect work. Cyan is CPU; grey is elapsed execution. Resume counters exclude suspension and background work. Optional JVM stacks sample all threads and become available after latching.");
-    panel.append(header,toolbar,overview,ticks,summary,tabs,body,stackPanel,note);document.body.append(panel);
+    framePanel=el("div","profile-frames");framePanel.id="profile-frames";framePanel.hidden=true;
+    for(const [id,label,mode] of [["profile-tab-coroutines","Coroutines & scopes","coroutines"],["profile-tab-frames","Frame budgets","frames"],["profile-tab-stacks","Hot code","stacks"]]) {
+        const b=button(label,()=>{body.hidden=mode!=="coroutines";stackPanel.hidden=mode!=="stacks";framePanel.hidden=mode!=="frames";
+            focusLane=null;selected=null;metric.value=mode==="stacks"?"sampleCpu":mode==="frames"?"frameWall":"wall";
+            tabs.querySelectorAll("button").forEach(n=>n.classList.toggle("profile-tab-active",n===b));render();},id);
+        b.classList.toggle("profile-tab-active",mode==="coroutines");tabs.append(b);
+    }
+    metric.value="wall";
+    const note=el("footer","", "Brush time to inspect work. All-lane totals use self costs; a selected lane includes its children. Frames are explicit application intervals. Amber marks GC pauses across the whole JVM.");
+    panel.append(header,toolbar,overview,ticks,summary,tabs,body,framePanel,stackPanel,note);document.body.append(panel);
     installResize();
     lanes.addEventListener("scroll", drawLanes);
     overview.addEventListener("pointerdown",e=>{if(!capture)return;dragging=overviewTime(e);overview.setPointerCapture(e.pointerId);brush=[dragging,dragging];render();});
@@ -97,34 +104,40 @@ function setupCanvas(c,height){const w=Math.max(1,c.clientWidth),ratio=window.de
 function render(){
     if(!panel||!visible)return;
     const available=capture?.captureId;
-    const caughtUp=(spans.at(-1)?.sequence??-1)>=(capture?.nextSequence??0)-1;
+    const caughtUp=(spans.at(-1)?.sequence??-1)>=(capture?.nextSequence??0)-1 && (frameRecords.at(-1)?.sequence??-1)>=(capture?.nextFrameSequence??0)-1;
     document.getElementById("profile-record").disabled=!!capture?.recording;
     document.getElementById("profile-stop").disabled=!capture?.recording;
     const stacksDone=!capture||["off","failed","ready"].includes(capture.stackState||"off")&&stackSamples.length>=(capture.stackSampleCount||0);
     document.getElementById("profile-save").disabled=!available||capture.recording||!caughtUp||!stacksDone;
     document.getElementById("profile-enable-stacks").disabled=!!capture?.recording;
     document.getElementById("profile-zoom").disabled=!brush;
-    status.textContent=available?`${capture.recording?"Recording":caughtUp?"Latched":"Loading"} · ${fmt(capture.elapsedMs/1000)} s · ${spans.length.toLocaleString()} resumes${capture.droppedSpans?` · ${capture.droppedSpans.toLocaleString()} omitted`:""}`:"Ready — record while your boxes run";
+    status.textContent=available?`${capture.recording?"Recording":caughtUp?"Latched":"Loading"} · ${fmt(capture.elapsedMs/1000)} s · ${spans.length.toLocaleString()} spans · ${frameRecords.length} frames${capture.droppedSpans?` · ${capture.droppedSpans.toLocaleString()} omitted`:""}`:"Ready — record while your boxes run";
     const search=filter.value.toLowerCase();
-    laneOrder=(capture?.lanes||[]).filter(l=>`${l.boxName} ${l.boxId} ${l.strand} ${l.id}`.toLowerCase().includes(search));
+    laneOrder=(capture?.lanes||[]).filter(l=>l.kind!=="frame").filter(l=>`${l.boxName} ${l.boxId} ${l.strand} ${l.label||""} ${l.id}`.toLowerCase().includes(search));
     const allowed=new Set(laneOrder.map(l=>l.id));
     const range=brush||windowRange();
     const selectedRecords=selectedSpans(spans,range,focusLane).filter(s=>allowed.has(s.lane));
-    const totals=profileSummary(selectedRecords);
-    summary.textContent=`Runloop · ${fmt(range[0])}–${fmt(range[1])} ms · ${totals.count.toLocaleString()} resumes · execution ${fmt(totals.wallMs)} ms · CPU ${totals.cpuMs===null?"unavailable":fmt(totals.cpuMs)+" ms"} · allocated ${bytes(totals.allocatedBytes)} · resume p95 ${fmt(totals.p95Ms)} ms`;
+    const totals=profileSummary(selectedRecords,focusLane===null);
+    summary.textContent=`${focusLane===null?"Self costs":"Inclusive lane"} · ${fmt(range[0])}–${fmt(range[1])} ms · ${totals.count.toLocaleString()} spans · execution ${fmt(totals.wallMs)} ms · CPU ${totals.cpuMs===null?"unavailable":fmt(totals.cpuMs)+" ms"} · allocated ${bytes(totals.allocatedBytes)} · span p95 ${fmt(totals.p95Ms)} ms`;
     panel.dataset.selectedCount=totals.count;panel.dataset.rangeStart=range[0];panel.dataset.rangeEnd=range[1];
     const[g,w]=setupCanvas(overview,64),[start,end]=extent();g.fillStyle="#232323";g.fillRect(0,0,w,64);
     const buckets=new Float64Array(Math.min(400,Math.ceil(w/3)));
     const add=(t,n)=>{const i=Math.max(0,Math.min(buckets.length-1,Math.floor((t-start)/(end-start)*buckets.length)));buckets[i]+=n;};
     if(metric.value.startsWith("sample")){for(const s of stackSamples)if(s.kind===(metric.value==="sampleCpu"?"cpu":"allocation"))add(s.timeMs,s.weight);}
-    else for(const s of spans){if(allowed.has(s.lane))add(s.startMs,metric.value==="bytes"?Math.max(0,s.allocatedBytes):metric.value==="cpu"?Math.max(0,s.cpuMs):s.wallMs);}
-    const peak=Math.max(...buckets,1);g.fillStyle=["bytes","sampleBytes"].includes(metric.value)?"#d7ad79":["cpu","sampleCpu"].includes(metric.value)?"#48c9ff":"#aaa";buckets.forEach((v,i)=>g.fillRect(i*w/buckets.length,60-v/peak*52,Math.max(1,w/buckets.length-1),v/peak*52));
+    else if(metric.value.startsWith("frame")){
+        const frameLanes=new Set((capture?.lanes||[]).filter(l=>l.kind==="frame"&&`${l.boxName} ${l.label}`.toLowerCase().includes(search)).map(l=>l.id));
+        buckets.set(profileFrameBuckets(frameRecords.filter(f=>frameLanes.has(f.lane)),[start,end],buckets.length,metric.value==="frameBytes"));
+    }
+    else for(const s of spans){if(allowed.has(s.lane))add(s.startMs,metric.value==="bytes"?Math.max(0,s.selfAllocatedBytes??s.allocatedBytes):metric.value==="cpu"?Math.max(0,s.selfCpuMs??s.cpuMs):(s.selfWallMs??s.wallMs));}
+    const peak=Math.max(...buckets,1);g.fillStyle=["bytes","sampleBytes","frameBytes"].includes(metric.value)?"#d7ad79":["cpu","sampleCpu"].includes(metric.value)?"#48c9ff":"#aaa";buckets.forEach((v,i)=>g.fillRect(i*w/buckets.length,60-v/peak*52,Math.max(1,w/buckets.length-1),v/peak*52));
+    g.fillStyle="#d7ad79";for(const pause of capture?.gcPauses||[]){const x=(pause.startMs-start)/(end-start)*w;g.fillRect(x,0,Math.max(2,pause.durationMs/(end-start)*w),6);}
     if(brush){const x=(brush[0]-start)/(end-start)*w,x2=(brush[1]-start)/(end-start)*w;g.fillStyle="rgba(72,201,255,.13)";g.fillRect(x,0,x2-x,64);g.strokeStyle="#48c9ff";g.strokeRect(x+.5,.5,x2-x,63);}
-    document.getElementById("profile-axis").textContent=`${fmt(start/1000)} s${" ".repeat(8)} ${metric.value.startsWith("sample")?"whole JVM samples":"Runloop resumes"}${" ".repeat(8)}${fmt(end/1000)} s`;
+    document.getElementById("profile-axis").textContent=`${fmt(start/1000)} s${" ".repeat(8)} ${metric.value.startsWith("sample")?"whole JVM samples":metric.value.startsWith("frame")?"worst frame per time bin":"self continuation / scope costs"}${" ".repeat(8)}${fmt(end/1000)} s`;
     rows.replaceChildren();
-    laneOrder.forEach(l=>{const b=button(`${l.boxName||l.boxId} · #${l.id}`,()=>{focusLane=focusLane===l.id?null:l.id;selected=null;render();});b.title=`${l.strand} · ${l.state} · source ${l.revision}`;b.dataset.lane=l.id;b.classList.toggle("profile-lane-selected",focusLane===l.id);rows.append(b);});
+    laneOrder.forEach(l=>{const b=button(`${l.boxName||l.boxId} · ${l.label||"#"+l.id}`,()=>{focusLane=focusLane===l.id?null:l.id;selected=null;render();});b.title=`${l.strand} · ${l.state} · source ${l.revision}`;b.dataset.lane=l.id;b.classList.toggle("profile-lane-selected",focusLane===l.id);rows.append(b);});
     drawLanes();
     renderDetail();
+    renderFrames(range,search);
     stackViewer.update(capture,spans,stackSamples,range,focusLane);
 }
 
@@ -145,30 +158,49 @@ function drawLanes(){
 function renderDetail(){
     detail.replaceChildren();const lane=capture?.lanes.find(l=>l.id===(selected?.lane??focusLane));
     if(!lane){detail.append(el("h3","","Inspect a coroutine"),el("p","","Select a lane, then zoom and click an execution span. The bright lower strip is CPU time; the full bar is elapsed execution time."));if(capture?.captureId&&!spans.length)detail.append(el("p","","No box-owned continuations observed. Launch a box with loop { … } or frames { … }, then record again."));return;}
-    detail.append(el("h3","",lane.boxName||lane.boxId),el("p","",`Coroutine #${lane.id} · ${lane.strand} · ${lane.state}`),el("p","",`Source revision ${lane.revision}`));
+    detail.append(el("h3","",lane.boxName||lane.boxId),el("p","",`${lane.kind==="scope"?"Scope":"Coroutine"} ${lane.label||"#"+lane.id} · ${lane.strand} · ${lane.state}`),el("p","",`Source revision ${lane.revision}`));
     detail.append(button("Open current box code",()=>{window.navigateToBoxProperty?.(lane.boxId,"code",null,null);compact();},"profile-open-source"));
-    if(selected){const s=selected;detail.append(el("p","",`Runloop tick ${s.frame} · ${fmt(s.startMs)} ms`),el("p","",`Execution ${fmt(s.wallMs)} ms`),el("p","",`CPU ${s.cpuMs<0?"unavailable":fmt(s.cpuMs)+" ms"}`),el("p","",`Allocated ${bytes(s.allocatedBytes)}`));}
+    if(selected){const s=selected;detail.append(el("p","",`Runloop tick ${s.frame} · ${fmt(s.startMs)} ms`),el("p","",`Execution ${fmt(s.wallMs)} ms`),el("p","",`CPU ${s.cpuMs<0?"unavailable":fmt(s.cpuMs)+" ms"}`),el("p","",`Allocated ${bytes(s.allocatedBytes)} · self ${bytes(s.selfAllocatedBytes??s.allocatedBytes)}`));}
     const records=selectedSpans(spans,brush||windowRange(),lane.id).sort((a,b)=>b.wallMs-a.wallMs).slice(0,6);
-    detail.append(el("h4","","Longest resumes in selection"));records.forEach(s=>detail.append(button(`${fmt(s.startMs)} ms → ${fmt(s.wallMs)} ms`,()=>{selected=s;const pad=Math.max(1,s.wallMs);view=[Math.max(0,s.startMs-pad),s.startMs+s.wallMs+pad];render();})));
+    detail.append(el("h4","","Longest inclusive spans in selection"));records.forEach(s=>detail.append(button(`${fmt(s.startMs)} ms → ${fmt(s.wallMs)} ms`,()=>{selected=s;const pad=Math.max(1,s.wallMs);view=[Math.max(0,s.startMs-pad),s.startMs+s.wallMs+pad];render();})));
+}
+
+function renderFrames(range,search) {
+    framePanel.replaceChildren();
+    const lanes=(capture?.lanes||[]).filter(l=>l.kind==="frame"&&`${l.boxName} ${l.label}`.toLowerCase().includes(search));
+    if(!lanes.length){framePanel.append(el("p","","No explicit frame boundaries observed. In your ordinary frames box, create frameProfile(), then call beginFrame() once per application frame. Use measure(\"stage\") { … } for named scopes."));return;}
+    for(const lane of lanes) {
+        const records=selectedSpans(frameRecords,range,lane.id), s=profileFrameSummary(records);
+        const card=el("section","profile-frame-card");card.dataset.frameLane=lane.id;
+        card.append(el("h3","",`${lane.boxName} · ${lane.label}`));
+        card.append(el("p","",`${s.count} complete frames · mean ${fmt(s.meanMs)} ms · p50 ${fmt(s.p50Ms)} · p95 ${fmt(s.p95Ms)} · p99 ${fmt(s.p99Ms)} · max ${fmt(s.maxMs)} ms`));
+        const budget=el("p",s.missed||s.allocationMissed?"profile-budget-miss":"",`${s.missed} interval budget misses · ${s.allocationMissed} allocation guide misses · mean CPU ${s.meanCpuMs===null?"unavailable":fmt(s.meanCpuMs)+" ms"} · ${bytes(s.meanBytes)} allocated/frame`);
+        card.append(budget,button("Open frame owner",()=>{window.navigateToBoxProperty?.(lane.boxId,lane.strand,null,null);compact();}));
+        const worst=el("div","profile-frame-worst");
+        records.slice().sort((a,b)=>b.wallMs-a.wallMs).slice(0,5).forEach(f=>worst.append(button(`${fmt(f.startMs)} ms → ${fmt(f.wallMs)} ms · ${bytes(f.allocatedBytes)}`,()=>{brush=[f.startMs,f.startMs+f.wallMs];view=brush.slice();render();})));
+        card.append(el("h4","","Slowest intervals — select to inspect their scopes"),worst);framePanel.append(card);
+    }
+    framePanel.append(el("p","",`Whole JVM during capture: ${capture.gcCollections||0} GC collections · ${capture.gcCollectionMs||0} ms collector time${capture.gcPauses?.length?" · "+fmt(capture.gcPauses.reduce((s,p)=>s+p.durationMs,0))+" ms recorded GC pause events":""}. Collector time and pause duration are different measurements.${capture.oldestFrameSequence?" Earlier frame records were overwritten: "+capture.oldestFrameSequence:""}`));
 }
 
 function request(action="snapshot", seconds=10){
     if(!visible)return;
     if(pending){if(action!=="snapshot")queuedAction=[action,seconds];return;}
     pending=true;const token=epoch;
-    const after=spans.at(-1)?.sequence??-1;const payload={action,seconds,after,captureId:capture?.captureId||"",stacks:document.getElementById("profile-enable-stacks").checked,stackAfter:stackSamples.length-1};
+    const after=spans.at(-1)?.sequence??-1;const payload={action,seconds,after,captureId:capture?.captureId||"",stacks:document.getElementById("profile-enable-stacks").checked,stackAfter:stackSamples.length-1,frameAfter:frameRecords.at(-1)?.sequence??-1};
     replyName=`profile-timeline-${++serial}`;
     replyTimeout=setTimeout(()=>{clearReplyHandler(replyName);pending=false;status.textContent="Capture request timed out — retrying";schedule(1000);},8000);
     sendWithReply("coroutine-profile",payload,replyName,(_message,response)=>{
         if(token!==epoch)return "remove";pending=false;clearTimeout(replyTimeout);
         const data={ok:true,captureId:"",recording:false,elapsedMs:0,nextSequence:0,oldestSequence:0,droppedSpans:0,lanes:[],spans:[],...response};
         if(!data.ok){status.textContent=data.error||"Capture request failed";schedule(1000);return "remove";}
-        if(data.captureId!==capture?.captureId){spans=[];stackSamples=[];brush=null;view=null;selected=null;focusLane=null;if([3000,10000,30000].includes(data.durationMs))document.getElementById("profile-duration").value=data.durationMs/1000;}
+        if(data.captureId!==capture?.captureId){spans=[];stackSamples=[];frameRecords=[];brush=null;view=null;selected=null;focusLane=null;if([3000,10000,30000].includes(data.durationMs))document.getElementById("profile-duration").value=data.durationMs/1000;}
         else {if(!data.stackFrames?.length)data.stackFrames=capture?.stackFrames||[];if(!data.stackSources?.length)data.stackSources=capture?.stackSources||[];}
         stackSamples.push(...(data.stackSamples||[]));
         if(data.captureId)document.getElementById("profile-enable-stacks").checked=(data.stackState||"off")!=="off";
+        frameRecords=mergeProfileSpans(frameRecords,data.frameRecords||[],data.oldestFrameSequence||0);
         spans=mergeProfileSpans(spans,data.spans||[],data.oldestSequence||0);capture=data;render();
-        const caughtUp=(spans.at(-1)?.sequence??-1)>=data.nextSequence-1;
+        const caughtUp=(spans.at(-1)?.sequence??-1)>=data.nextSequence-1&&(frameRecords.at(-1)?.sequence??-1)>=(data.nextFrameSequence||0)-1;
         if(queuedAction){const next=queuedAction;queuedAction=null;request(...next);}
         else if(data.recording||!caughtUp||data.stackState==="processing"||stackSamples.length<(data.stackSampleCount||0))schedule(caughtUp?500:60);
         return "remove";
@@ -176,7 +208,7 @@ function request(action="snapshot", seconds=10){
 }
 
 function schedule(ms){clearTimeout(timer);if(visible)timer=setTimeout(()=>request(),ms);}
-function save(){if(!capture?.captureId||document.getElementById("profile-save").disabled)return;const blob=new Blob([JSON.stringify({formatVersion:2,document:documentName,...capture,spans,stackSamples},null,2)],{type:"application/json"});const u=URL.createObjectURL(blob),a=el("a");a.href=u;a.download=`field-profile-${capture.captureId}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function save(){if(!capture?.captureId||document.getElementById("profile-save").disabled)return;const blob=new Blob([JSON.stringify({formatVersion:3,document:documentName,...capture,spans,stackSamples,frameRecords},null,2)],{type:"application/json"});const u=URL.createObjectURL(blob),a=el("a");a.href=u;a.download=`field-profile-${capture.captureId}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function close(){visible=false;epoch++;pending=false;queuedAction=null;stackViewer?.clearMarks();clearTimeout(timer);clearTimeout(replyTimeout);if(replyName)clearReplyHandler(replyName);if(panel)panel.hidden=true;}
 function compact(){panel.style.width=`${Math.max(550,window.innerWidth*.5-24)}px`;panel.style.right="auto";render();}
 function installResize(){
@@ -190,5 +222,5 @@ function installResize(){
         Object.assign(panel.style,{left:`${left}px`,top:`${top}px`,right:"auto",bottom:"auto",width:`${width}px`,height:`${height}px`});
     });
 }
-window.showProfilingTimeline=()=>{build();const name=window.currentDocumentFilename||"";if(documentName!==name){capture=null;spans=[];stackSamples=[];brush=null;view=null;documentName=name;}visible=true;panel.hidden=false;render();request();};
+window.showProfilingTimeline=()=>{build();const name=window.currentDocumentFilename||"";if(documentName!==name){capture=null;spans=[];stackSamples=[];frameRecords=[];brush=null;view=null;documentName=name;}visible=true;panel.hidden=false;render();request();};
 window.closeProfilingTimeline=close;

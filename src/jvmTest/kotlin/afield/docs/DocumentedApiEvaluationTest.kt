@@ -177,6 +177,10 @@ class DocumentedApiEvaluationTest {
         "shadeMaterial" to
             "path_tracing.md; this is a GLSL material hook in the editable compute shader. " +
                 "Live material-box checks exercise it on a GPU; headless CI compiles the transcript.",
+        "setDefaultSampler" to
+            "afield_four_graphics.md; aperture_playground is COMPILE_ONLY because constructing " +
+                "its RTT and Vulkan sampler needs a real renderer/device. The docs capture executes " +
+                "the complete graph on a GPU; headless CI compiles its Kotlin only.",
         "eyeGazeState" to
             "vision.md; openxr_eye_intersection is COMPILE_ONLY. The target requires a live " +
                 "Vulkan/OpenXR session. Native binding calls and state validity are tested separately.",

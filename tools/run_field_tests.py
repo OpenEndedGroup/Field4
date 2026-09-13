@@ -28,6 +28,7 @@ from PIL import Image, ImageChops, ImageStat
 
 from discover_field_tests import DEFAULT_ROOTS, discover
 from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
+from field_languages import needs_language_root
 from verification_runtime import (
     automation_server_environment,
     automation_workspace,
@@ -1039,6 +1040,7 @@ def extension_for_test(test: dict[str, Any]) -> str:
         "javascript": "js",
         "js": "js",
         "python": "py",
+        "clojure": "clj",
         "html": "html",
         "yaml": "yaml",
         "text": "txt",
@@ -1292,6 +1294,37 @@ def build_backdoor_command(
         wait_seconds = float(test.get("waitSec") or test.get("wait") or 0.0)
 
         commands: list[str] = []
+        # A snippet in a main language has to run in a *child* of a box carrying `mainLanguage`, so
+        # it takes two boxes and a connect. Without this the snippet lands in a plain Kotlin box and
+        # fails as Kotlin — for a Clojure snippet, an "expecting a top level declaration" on line 1,
+        # which reads as a broken example rather than a harness that never set the language.
+        # Everything after this still addresses the snippet's box as `@last`, because the child is
+        # the last box created.
+        language = str(test.get("snippetLanguage") or "").lower()
+        if needs_language_root(language):
+            root_alias = f"{sanitize_test_id(str(test.get('id')))}-{language}-root"
+            commands.append(
+                shlex.join(
+                    [
+                        "new-box",
+                        "--name",
+                        f"{name}-root",
+                        "--alias",
+                        root_alias,
+                        "--x",
+                        str(x),
+                        "--y",
+                        str(y - 100.0),
+                        "--w",
+                        "120",
+                        "--h",
+                        "80",
+                        "--timeout",
+                        str(timeout),
+                    ]
+                )
+            )
+            commands.append(shlex.join(["set", root_alias, "mainLanguage", language]))
         commands.append(
             shlex.join(
                 [
@@ -1311,6 +1344,11 @@ def build_backdoor_command(
                 ]
             )
         )
+        if needs_language_root(language):
+            commands.append(shlex.join(["connect", root_alias, "@last", "--timeout", str(timeout)]))
+            # The topology watcher swaps the child's execution on its own poll, not on the connect,
+            # so the snippet has to arrive after that has happened rather than in the same breath.
+            commands.append(shlex.join(["sleep", "0.5"]))
         editor_capture = screenshot is not None and str(screenshot.get("kind") or "box") == "editor"
         if editor_capture:
             commands.append(
@@ -1387,6 +1425,14 @@ def build_backdoor_command(
         if capture_path is not None:
             commands.append(build_screenshot_command(test, capture_path, timeout=timeout))
         if execution == "launch":
+            # Collect before stopping. A launched box produces its output *after* the `launch`
+            # command has returned, and `sleep` records nothing — so a launch test's events were
+            # whatever arrived inside the launch call itself, which for an animation is one
+            # `is-running`. `output` flushes what accumulated in between, which is what makes
+            # `expect.outputContains` mean anything here: docs.clojure.animate wants the frame
+            # counter its figure shows, and used to fail with "no output-area events were emitted"
+            # against a box that had in fact drawn several thousand frames.
+            commands.append(shlex.join(["output", "@last", "--kind", "all"]))
             commands.append(
                 shlex.join(
                     [
@@ -1448,7 +1494,15 @@ def collect_execution_problems(backdoor_results: list[dict[str, Any]]) -> list[s
                 line = payload.get("line")
                 line_suffix = f" line {line}" if line is not None else ""
                 html = str(payload.get("html", "")).replace("\n", " ").strip()
-                problems.append(f"{command}{line_suffix}: {html or 'execution error'}")
+                # An error event with no text is not an error: it is how a runtime *clears* the
+                # marker a previous failed run left on the box (see `HasOutput.error`'s "an error of
+                # null,,-1 means 'clear errors'" in `src/jvmMain/kotlin/afield/outputs.kt`).
+                # DatalogExecution sends one on every success and ClojureExecution now does too, so
+                # reading it as a failure would fail every test whose box merely ran cleanly — and
+                # report it as the bare string "execution error", with nothing to go on.
+                if not html:
+                    continue
+                problems.append(f"{command}{line_suffix}: {html}")
                 continue
             if name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
                 text = str(payload.get("text", "")).replace("\n", " ").strip()
@@ -1479,8 +1533,11 @@ def collect_output_gap(test: dict[str, Any], backdoor_results: list[dict[str, An
     has_output_area = bool(set_output_events)
     has_svg_output = any("<svg" in str(payload.get("value", "")).lower() for payload in set_output_events)
 
-    expects_svg = re.search(r"\blines\s*\(", snippet) is not None
-    expects_display = re.search(r"\bdisplay\s*\(", snippet) is not None
+    # Both call shapes, because a snippet in this catalog is not necessarily Kotlin: `lines(…)` is
+    # how a Kotlin or Python box draws, `(lines …)` is how a Clojure one does. Matching only the
+    # first made this check quietly vacuous for every Lisp snippet — a box that drew nothing passed.
+    expects_svg = re.search(r"\blines\s*\(|\(\s*lines\b", snippet) is not None
+    expects_display = re.search(r"\bdisplay\s*\(|\(\s*display\b", snippet) is not None
     expects_output_area = expects_svg or expects_display
 
     if expects_output_area and not has_output_area:

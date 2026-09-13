@@ -556,6 +556,24 @@ code {
     margin-top:10px;
 }
 
+/* …but a nested section's children have to read as belonging to the heading
+   above them, so the space *above* the group must be smaller than the space
+   below it. The nudge above is meant for the top of the index as a whole;
+   inherited by every nested list it did precisely the reverse — 10px off the
+   parent and 0 before the parent's next peer, which binds a section's children
+   to the wrong heading. Now 3px above, 11px below.
+
+   The bottom space sits on the last child rather than on the nested `.md-nav`,
+   because a collapsed section keeps that element (at zero height, clipped) and
+   a margin on it would space out every collapsed heading too. */
+.md-nav__item--nested > .md-nav > .md-nav__list > li:first-child {
+    margin-top: 3px;
+}
+
+.md-nav__item--nested > .md-nav > .md-nav__list > li:last-child {
+    margin-bottom: 11px;
+}
+
 
 
 .md-typeset a {

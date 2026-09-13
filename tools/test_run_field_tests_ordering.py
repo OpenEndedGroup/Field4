@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tools.run_field_tests import (  # noqa: E402
     RunnerError,
+    build_backdoor_command,
     apply_expected_smoke_failure,
     coverage_snapshot,
     describe_unmatched_ids,
@@ -216,3 +217,54 @@ class RequestedIdDiagnosticTests(unittest.TestCase):
 
     def test_nothing_is_said_when_every_id_matched(self) -> None:
         self.assertEqual(describe_unmatched_ids(set(), tests("a.one"), filtered=set()), "")
+
+
+class MainLanguageRootTests(unittest.TestCase):
+    """A snippet in a main language has to be run in a *child* of a `mainLanguage` root.
+
+    `public/docs_hooks.py` has always built that pair for a `diffstatic_runner` fence; this runner
+    did not, so a FIELD_TEST guarding one of those fences ran the snippet in a plain Kotlin box.
+    For a Clojure snippet that fails as Kotlin on line 1, which reads as a broken example rather
+    than as a harness that never set the language — so the two halves are asserted here against the
+    one shared list they both now read (`tools/field_languages.py`).
+    """
+
+    def commands_for(self, test: dict[str, object]) -> list[str]:
+        command, _ = build_backdoor_command(test, port=9999, workspace=None)
+        return [
+            value
+            for flag, value in zip(command, command[1:])
+            if flag == "--command"
+        ]
+
+    def test_a_clojure_snippet_gets_a_language_root_and_is_connected_to_it(self) -> None:
+        commands = self.commands_for({
+            "id": "docs.clojure.example",
+            "runner": "backdoor-box",
+            "snippet": '(println "hi")',
+            "snippetLanguage": "clojure",
+        })
+
+        root_creations = [c for c in commands if c.startswith("new-box") and "--alias" in c]
+        self.assertEqual(len(root_creations), 1, commands)
+        alias = root_creations[0].split("--alias ")[1].split(" ")[0]
+        self.assertIn(f"set {alias} mainLanguage clojure", commands)
+        # The root is created first and the snippet's box second, so `@last` — which every command
+        # after this uses — is the child rather than the root.
+        self.assertLess(commands.index(root_creations[0]), commands.index(next(
+            c for c in commands if c.startswith("new-box") and "--alias" not in c
+        )))
+        self.assertIn(f"connect {alias} @last --timeout 20.0", commands)
+        self.assertTrue(any(c.startswith("run @last ") for c in commands), commands)
+
+    def test_a_kotlin_snippet_gets_one_box_and_no_root(self) -> None:
+        commands = self.commands_for({
+            "id": "docs.kotlin.example",
+            "runner": "backdoor-box",
+            "snippet": 'println("hi")',
+            "snippetLanguage": "kotlin",
+        })
+
+        self.assertEqual(len([c for c in commands if c.startswith("new-box")]), 1, commands)
+        self.assertFalse([c for c in commands if c.startswith("set ") and "mainLanguage" in c])
+        self.assertFalse([c for c in commands if c.startswith("connect ")])

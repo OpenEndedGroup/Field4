@@ -586,7 +586,7 @@ The grime and surface variation are in the GLB's own texture maps; neither viewe
 // from the repository root. In a document of your own, name the asset and let Field resolve it:
 //     val toyCarPath = "ToyCar.glb".absolutePath
 // which looks inside the document folder first and the workspace project second. See
-// "Files, and where they live" under Working in a Document.
+// "Where Field looks for a file" under Working in a Document.
 val toyCarPath = File("public/docs/assets/fabricate_demo/ToyCar.glb").absolutePath
 val loaded = bundle.registerGltf(
     path = toyCarPath,

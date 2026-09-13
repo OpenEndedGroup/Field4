@@ -1,4 +1,4 @@
-# Files, and where they live
+# Where Field looks for a file
 
 A Field document is a folder, not a single file, and the code in a box runs from wherever that
 folder happens to be sitting. So a path typed into a box has a problem the same path in a compiled

@@ -2733,8 +2733,8 @@ fun registerBuiltinCommands() {
             }
         },{
             id:'switch-to-docs-iframe',
-            label:"Switch to Documentation Iframe",
-            detail:"Switch to the documentation mode",
+            label:"Read the Field Documentation",
+            detail:"The documentation in place of the editor — this checkout's build of it when there is one",
             run: () => {
                 window.switchToDefaultDocs();
             }

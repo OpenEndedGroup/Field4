@@ -36,9 +36,18 @@
     `;
     document.head.appendChild(css);
 
+    // Which copy of the page you are annotating. The notes are keyed on `canonicalPage`
+    // either way, so this is not about where a note goes — it is about whether the
+    // sentence in front of you is the one you just wrote or the one readers can see.
+    const servedLocally = window.__FIELD_DOCS_SOURCE__ === "local";
+    const sourceLabel = servedLocally ? "local build" : "published";
+    const sourceTitle = servedLocally
+        ? `served from this checkout's build of ${canonicalPage}`
+        : `served from ${canonicalPage}`;
+
     const panel = document.createElement("aside");
     panel.id = "f4-annotations";
-    panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Select documentation text, then press Ctrl+Shift+A">+ selection</button><button data-act="hide">×</button></header>
+    panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="source" title="${sourceTitle}">${sourceLabel}</span><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Select documentation text, then press Ctrl+Shift+A">+ selection</button><button data-act="hide">×</button></header>
       <div class="f4a-filters"><input data-filter="tag" placeholder="@tag"><input data-filter="from" type="date" title="from"><input data-filter="to" type="date" title="to"></div>
       <div data-role="editor" hidden><div class="f4a-quote" data-role="selection"></div><textarea aria-label="Annotation note. Enter saves, Shift+Enter inserts a line, Escape cancels." placeholder="Note — use @tags to direct improvement"></textarea></div>
       <div data-role="list"></div>`;

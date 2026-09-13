@@ -95,14 +95,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
-- `inertial_movement.yaml`: two pure-CPU playgrounds for interrupted motion, both `loop { }` +
-  `showPlane` (so no Window and no Renderer, and both must be **launched**). `inertial_easing` draws
-  one target and two blends that differ in exactly one argument — the speed the value already has,
-  against zero — and checks `inertialTo { }` against the hand-driven `InertialEasing.solve` it
-  packages before it starts animating. `movement_playground` chases an XY pad through
-  `MovementState`, against a ghost of the same model with the smoothing off. Every knob is live:
-  drag `compensation` to watch the lag that smoothing costs come back. The library is
-  `afield/stdlib/movement.kt` and `inertialTo` in `afield/stdlib/interpolants.kt`.
+- `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+  no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
+  declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
+  `inertial_vs_restarting` adds a `startAt` per frame, so the restarted arm and the re-solving one
+  are one line apart. `movement_playground` chases an XY pad through `MovementState` on live
+  sliders, against a ghost with the smoothing off. Worth copying for the shape as much as the
+  subject: no `AtomicReference` (the Framer runs one coroutine at a time, so control callbacks and
+  the loop share plain `var`s), `showSignals` for anything that is a signal over time and `FLine`s
+  only for the path, which is geometry. The library is `afield/stdlib/movement.kt` and `inertialTo`
+  in `afield/stdlib/interpolants.kt`.
 - `two_box_context.yaml`: creates two boxes, connects them, and runs child code that depends on graph context.
 - `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child `afield.four` graphics transcripts.
 - `field_ui_browser_texture.yaml`: self-contained recursive graphics proof and puppet-browser starting point. A hidden Electron window opens the same Field document, transfers accelerated offscreen IOSurfaces into the JVM, and a Vulkan mesh samples the stable resident texture. The native window's mouse and keyboard control Chromium, `browserControl` publishes the full navigation/input/JavaScript/CDP interface for experimentation, and the launch performs a page-to-Field-to-JavaScript promise round trip. Start Field normally, then run the renderer box before the connected panel box.
