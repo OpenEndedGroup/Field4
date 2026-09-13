@@ -69,25 +69,29 @@ class DerivedArithmeticContractTest {
         /**
          * Floor on the `derive:` markers in the corpus.
          *
-         * Measured 2026-09-13, the day the mechanism landed: **9** markers across 4 pages. Floored
-         * at 7 on the [ProseNumeralContractTest.MIN_MARKED_NUMERALS] convention — two below the
-         * founding set, so adding a marker never needs a second edit and dropping the founding
-         * population is a decision somebody makes on purpose.
+         * Measured 2026-09-13, the day the mechanism landed: **19** markers across 9 pages. The
+         * founding nine came with the mechanism; the other ten came out of the sweep described in
+         * `dev_docs/derived_arithmetic_sweep.md`, which read 65 published derivations by hand and
+         * pinned the ones whose operands were all on the page.
+         *
+         * Floored at 14 on the [ProseNumeralContractTest.MIN_MARKED_NUMERALS] convention — two
+         * below the measurement, so adding a marker never needs a second edit here and dropping
+         * the founding population is a decision somebody makes on purpose.
          *
          * Ratchet it when the corpus grows. That KDoc records what happens otherwise: a floor of 6
          * under a population of 13 permitted deleting seven markers and staying green, because a
          * floor is only a floor relative to the population it floors.
          */
-        const val MIN_MARKERS = 7
+        const val MIN_MARKERS = 14
 
         /**
-         * Floor on the *pages* carrying at least one marker. Measured 2026-09-13: **4**.
+         * Floor on the *pages* carrying at least one marker. Measured 2026-09-13: **9**.
          *
-         * The marker count alone cannot see the shape of a loss: nine markers on one page and nine
-         * spread over four pages are the same number and not the same coverage, and the cheapest
-         * way to shed markers is to stop guarding a page rather than to thin a page out.
+         * The marker count alone cannot see the shape of a loss: nineteen markers on one page and
+         * nineteen spread over nine pages are the same number and not the same coverage, and the
+         * cheapest way to shed markers is to stop guarding a page rather than to thin a page out.
          */
-        const val MIN_MARKED_PAGES = 3
+        const val MIN_MARKED_PAGES = 7
 
         /**
          * The census predicate: a line that *looks like* it states a derived quantity.

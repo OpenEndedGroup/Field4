@@ -145,8 +145,8 @@ client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
 }
 ```
 
-The whole-file job for this 273.82-second recording produces 6,846 frames. A ten-second projection
-at a 40 ms hop has about 250 points and is comfortable for exact pairwise distances.
+The whole-file job for this 273.82-second recording produces 6,846<!--derive: 273.82/0.04--> frames. A ten-second projection
+at a 40 ms hop has about 250<!--derive: 10000/40--> points and is comfortable for exact pairwise distances.
 Longer t-SNE fits are quadratic in memory and expensive; use `maxFrames`, a longer hop, or a selected
 range. Changing those Field-side choices does not invalidate or rerun the cached analysis.
 

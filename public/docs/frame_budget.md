@@ -258,8 +258,8 @@ but a firing only records your work if your work is what is running when it arri
 a single hitch that shows up in no sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
 work in proportion to how much of *wall* time your work occupies. That is not a
 hand-waving claim; it is checkable, and it was checked for this page. The three-second
-recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13%
-busy. Three seconds at a 10 ms period is 300 possible firings, so about six CPU samples
+recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13<!--derive: 63.9/3002.6*100-->%
+busy. Three seconds at a 10 ms period is 300<!--derive: 3000/10--> possible firings, so about six CPU samples
 should have landed in the workload. **Nine arrived.** Out of 207 total sampled events,
 exactly **9 were CPU samples and 198 were allocation samples.**
 

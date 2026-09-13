@@ -135,7 +135,7 @@ Four things in there are worth keeping.
 
 **Nine CPU samples in three seconds.** Three boxes were deliberately burning CPU and the
 sampler found nine. The arithmetic reconciles and is the whole point: 3 s at a 10 ms period
-is 300 possible firings, the workload occupied 2.13% of wall time, so about six samples
+is 300<!--derive: 3000/10--> possible firings, the workload occupied 2.13% of wall time, so about six samples
 were due. This is the number to quote at anyone who expects sampled stacks to behave like
 an exact profiler.
 

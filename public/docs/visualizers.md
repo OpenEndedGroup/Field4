@@ -1168,7 +1168,7 @@ For a programmable local-neighbourhood projection, prefer
 `client.speechEmbeddingSmileTsnePreview(result, poolMillis = 500.0, hopMillis = 40.0)`. It downloads
 the result's binary MessagePack tensor, selects the requested time range before float16 expansion,
 mean-pools 500 ms of evidence around each point, and runs fixed-seed t-SNE inside Field using Smile.
-The independent 40 ms hop produces 25 points per second, just above a 24 fps display. Both values
+The independent 40 ms hop produces 25<!--derive: 1000/40--> points per second, just above a 24 fps display. Both values
 round to the model's native 20 ms grid; omit them to retain the original 50 Hz vectors. Pooling occurs
 before `maxFrames` sampling, and the visualizer header reports the effective pool, hop, distance, and
 projected frame count. The returned `AnalysisPreview` goes directly into the no-fetch visualizers.

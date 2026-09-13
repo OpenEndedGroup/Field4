@@ -784,7 +784,7 @@ explicit reset. Scene geometry remains a static snapshot; object motion vectors 
 a spatial denoiser are not part of this implementation.
 
 The two history buffers are allocated on first use and retained until the tracer
-closes. They add 128 bytes per pixel: about 28 MiB at 640 × 360, or 253 MiB at
+closes. They add 128 bytes per pixel: about 28<!--derive: 640*360*128/1048576--> MiB at 640 × 360, or 253<!--derive: 1920*1080*128/1048576--> MiB at
 1920 × 1080. `samples` continues to count fresh samples for the current view, so it
 may stay at `samplesPerFrame` while moving even though valid pixels carry history.
 
