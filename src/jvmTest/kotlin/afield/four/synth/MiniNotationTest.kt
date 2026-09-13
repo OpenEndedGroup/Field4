@@ -144,6 +144,59 @@ class MiniNotationTest {
         assertTrue(choices.isNotEmpty() && choices.all { it in setOf(4, 12, 2) }, "random choice: $choices")
     }
 
+    // ── `|` at the top level ──────────────────────────────────────────────────────────────
+
+    /**
+     * A whole string is a group like any other. Tidal's grammar says so structurally — `pPolyIn` is
+     * `brackets pTidal`, the same production the top level uses — so `bd|sd|cp` has to parse, and
+     * `[bd|sd|cp]` has to be the identical pattern rather than merely a similar one. Until
+     * 2026-09-13 `parseTop` went straight to `parseStack` and the bare form threw
+     * `Unexpected '|' at 2`.
+     */
+    @Test
+    fun `a bare random choice parses, and the brackets add nothing`() {
+        for (cycle in 0L until 16L) {
+            assertEquals(
+                pat("[bd|sd|cp]").cycle(cycle).map { it.value },
+                pat("bd|sd|cp").cycle(cycle).map { it.value },
+                "cycle $cycle: the brackets changed the pattern"
+            )
+        }
+        // Not a constant dressed up as a choice: over sixteen cycles all three turn up.
+        val chosen = (0L until 16L).flatMap { pat("bd|sd|cp").cycle(it).map { e -> e.value } }
+        assertEquals(setOf("bd", "sd", "cp"), chosen.toSet(), "bare choice did not reach every alternative")
+        assertEquals(16, chosen.size, "a bare choice should sound once a cycle")
+
+        // The alternatives are sequences, not atoms: `bd*2 | sd cp` chooses between a two-event
+        // bar and a two-event bar of different values, never mixes them.
+        for (cycle in 0L until 16L) {
+            val values = pat("bd*2 | sd cp").cycle(cycle).map { it.value }
+            assertTrue(
+                values == listOf("bd", "bd") || values == listOf("sd", "cp"),
+                "cycle $cycle mixed the alternatives: $values"
+            )
+        }
+    }
+
+    /**
+     * `|` binds looser than `,`, so a mixed string is a choice between stacks. Tidal declines to
+     * decide this case — its `pTidal` takes a `,`-tail *or* a `|`-tail, so mixing them is a Tidal
+     * parse error — which is why Field is free to pick, and why picking the looser one outermost is
+     * the safe pick: every string Tidal accepts still means what Tidal means by it.
+     */
+    @Test
+    fun `a mixed stack and choice reads as a choice between stacks`() {
+        for (cycle in 0L until 16L) {
+            val values = pat("bd, hh*2 | cp").cycle(cycle).map { it.value }.sorted()
+            assertTrue(
+                values == listOf("bd", "hh", "hh") || values == listOf("cp"),
+                "cycle $cycle: expected the `bd, hh*2` layer or the `cp` layer, got $values"
+            )
+        }
+        val everything = (0L until 16L).map { pat("bd, hh*2 | cp").cycle(it).size }.toSet()
+        assertEquals(setOf(3, 1), everything, "both sides of the choice should turn up in sixteen cycles")
+    }
+
     // ── polymeter, which used to fall silent after one bar ────────────────────────────────
 
     @Test

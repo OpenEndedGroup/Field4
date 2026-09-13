@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="61" viewBox="0 0 720 61" font-family="Iosevka, Menlo, monospace">
+<rect x="0" y="0" width="720" height="61" fill="#14161c"/>
+<rect x="3" y="0" width="714" height="40" fill="#191c24"/>
+<line x1="3" y1="0" x2="3" y2="40" stroke="#454d5e" stroke-width="1.2"/>
+<line x1="25.31" y1="0" x2="25.31" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="47.63" y1="0" x2="47.63" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="69.94" y1="0" x2="69.94" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="92.25" y1="0" x2="92.25" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="114.56" y1="0" x2="114.56" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="136.88" y1="0" x2="136.88" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="159.19" y1="0" x2="159.19" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="181.50" y1="0" x2="181.50" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="203.81" y1="0" x2="203.81" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="226.13" y1="0" x2="226.13" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="248.44" y1="0" x2="248.44" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="270.75" y1="0" x2="270.75" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="293.06" y1="0" x2="293.06" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="315.38" y1="0" x2="315.38" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="337.69" y1="0" x2="337.69" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="360" y1="0" x2="360" y2="40" stroke="#454d5e" stroke-width="1.2"/>
+<line x1="382.31" y1="0" x2="382.31" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="404.63" y1="0" x2="404.63" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="426.94" y1="0" x2="426.94" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="449.25" y1="0" x2="449.25" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="471.56" y1="0" x2="471.56" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="493.88" y1="0" x2="493.88" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="516.19" y1="0" x2="516.19" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="538.50" y1="0" x2="538.50" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="560.81" y1="0" x2="560.81" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="583.13" y1="0" x2="583.13" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="605.44" y1="0" x2="605.44" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="627.75" y1="0" x2="627.75" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="650.06" y1="0" x2="650.06" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="672.38" y1="0" x2="672.38" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="694.69" y1="0" x2="694.69" y2="40" stroke="#2a2f3a" stroke-width="0.5"/>
+<line x1="717" y1="0" x2="717" y2="40" stroke="#454d5e" stroke-width="1.2"/>
+<rect x="3.50" y="20" width="43.63" height="16" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="7" y="31.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="3.50" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="7" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="92.75" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="96.25" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="137.38" y="20" width="43.63" height="16" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="140.88" y="31.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="137.38" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="140.88" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="226.63" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="230.13" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="271.25" y="20" width="43.63" height="16" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="274.75" y="31.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="271.25" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="274.75" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="360.50" y="20" width="43.63" height="16" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="364" y="31.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="360.50" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="364" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="449.75" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="453.25" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="494.38" y="20" width="43.63" height="16" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="497.88" y="31.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="494.38" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="497.88" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="583.63" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="587.13" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<rect x="628.25" y="20" width="43.63" height="16" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="631.75" y="31.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="628.25" y="4" width="43.63" height="16" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="631.75" y="15.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">cp</text>
+<text x="3" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="start">cycle 0</text>
+<text x="360" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="start">cycle 1</text>
+<text x="717" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">cycle 2</text>
+</svg>

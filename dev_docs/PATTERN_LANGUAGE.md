@@ -170,12 +170,15 @@ queried cycle and is still safe to query out of order or in parallel.
 ## 4. Three behaviours that were measured, not assumed — and one that was fixed
 
 Writing the tests and the gallery turned up four places where the pre-existing code does something
-other than its name suggests. The first two are left alone — callers could reasonably depend on them —
-and are now documented and pinned by a test, with the genuinely missing operator added alongside where
-one was hiding behind a name. The third was a plain defect and is fixed.
+other than its name suggests. The first is left alone — callers could reasonably depend on it — and is
+now documented and pinned by a test, with the genuinely missing operator added alongside where one was
+hiding behind a name. The others were plain defects and are fixed.
 
-**`bjorklund(3, 8)` is `x..x.x..`**, a rotation of the canonical `x..x..x.`. Just as Euclidean (gaps
-3, 2, 3); the gallery asserts the gaps rather than the exact slots.
+**`bjorklund(3, 8)` was `x..x.x..`**, a rotation of the canonical `x..x..x.` — equally Euclidean, so
+it read as a harmless spelling choice and was pinned as one. It is not: `bd(3,8)` names a figure in
+Tidal too, and a rotation is a different groove against the downbeat. Fixed 2026-09-13, and the
+gallery now asserts the exact slots as well as the gaps. See the divergence note in
+[PAT_GALLERY.md](PAT_GALLERY.md).
 
 **`striate(n)` slices each event in place**, despite the Tidal name — it agrees with `chop(n)` on
 values and never interleaves. Tidal's actual `striate`, which plays the whole pattern `n` times per
