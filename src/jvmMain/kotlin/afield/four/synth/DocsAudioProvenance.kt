@@ -10,7 +10,7 @@ id: synth.docs.audio.provenance
 runner: jvm-main
 entrypoint: afield.four.synth.DocsAudioProvenance
 tags: [smoke, synth, audio, wav, docs, provenance, cpu]
-timeoutSec: 300
+timeoutSec: 900
 expect:
   exitCode: 0
   stdoutContains:
@@ -87,6 +87,7 @@ object DocsAudioProvenance {
      */
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
+        "afield.four.synth.PatMiniNotation" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
     )
 

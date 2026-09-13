@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13370 public symbols across 335 source files**, 7160 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13391 public symbols across 336 source files**, 7179 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -23,7 +23,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
-| [Patterns](patterns.md) | 19 | 784 | 342 (43%) | Musical time, as a value. |
+| [Patterns](patterns.md) | 20 | 805 | 361 (44%) | Musical time, as a value. |
 | [Audio](audio.md) | 16 | 841 | 232 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2204 | 653 (29%) | Field's small languages, from the host side. |
@@ -267,12 +267,13 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PathTraceShaderBoxes.kt](renderers.md#pathtraceshaderboxes-kt) | Renderers | 3 | 1 |  |  |
 | [PathTracingRenderer.kt](renderers.md#pathtracingrenderer-kt) | Renderers | 54 | 37 | The path tracer itself: BVH upload, the two traversal backends, accumulation, and the history reprojection that keeps an image usable while a camera moves. |  |
 | [PatKolakoski.kt](patterns.md#patkolakoski-kt) | Patterns | 7 | 7 | Kolakoski rhythms: a bar whose own run lengths are written into it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
+| [PatMiniNotation.kt](patterns.md#patmininotation-kt) | Patterns | 17 | 15 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 | Where a rendered pattern's notes actually start, measured from the audio. |  |
 | [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 0 |  |  |
-| [PatPianoRollGallery.kt](patterns.md#patpianorollgallery-kt) | Patterns | 13 | 10 |  |  |
+| [PatPianoRollGallery.kt](patterns.md#patpianorollgallery-kt) | Patterns | 17 | 14 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatPitchDetection.kt](patterns.md#patpitchdetection-kt) | Patterns | 49 | 25 | What pitch a rendered pattern is actually sounding, measured from the audio. |  |
 | [PatSignals.kt](patterns.md#patsignals-kt) | Patterns | 29 | 29 | Continuous (signal) patterns, and the discretisers that turn them back into events. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md) |
-| [PatSoundDocs.kt](patterns.md#patsounddocs-kt) | Patterns | 31 | 22 |  | [Sound: from a pattern to something you can hear](../sound.md) |
+| [PatSoundDocs.kt](patterns.md#patsounddocs-kt) | Patterns | 31 | 22 |  | [Sound: from a pattern to something you can hear](../sound.md), [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatTranscription.kt](patterns.md#pattranscription-kt) | Patterns | 74 | 25 | Recovered audio, written back out as notation Field can re-render. |  |
 | [PatTranscriptionCorpus.kt](patterns.md#pattranscriptioncorpus-kt) | Patterns | 78 | 28 | A corpus that scores a transcription against the notation that generated the audio. |  |
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 | The figure that makes the round trip something you look at rather than read about. |  |

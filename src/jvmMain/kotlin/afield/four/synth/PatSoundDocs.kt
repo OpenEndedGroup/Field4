@@ -753,8 +753,14 @@ fun patVoice(
     attack: Double = 0.003
 ): PatVoiceSpec = PatVoiceSpec(wave, baseHz, decay.coerceAtLeast(1e-4), sustain.coerceIn(0.0, 1.0), attack.coerceAtLeast(1e-5))
 
-/** The drum map behind unpitched atoms — crude, just enough to be recognisable. */
-private fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = when (atom.substringBefore(':')) {
+/**
+ * The drum map behind unpitched atoms — crude, just enough to be recognisable.
+ *
+ * `internal` rather than private because it is the authority the piano rolls' instrument colours
+ * are checked against: [PatPianoRollGallery.ATOM_COLORS] claims to distinguish exactly the tokens
+ * this function gives a voice of their own, and `synth.pat.mini` reads this map to verify it.
+ */
+internal fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = when (atom.substringBefore(':')) {
     "bd", "kick" -> 62.0 to PatWave.SINE
     "sd", "snare" -> 190.0 to PatWave.NOISE
     "cp", "clap" -> 900.0 to PatWave.NOISE
