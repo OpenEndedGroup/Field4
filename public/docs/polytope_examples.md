@@ -116,7 +116,7 @@ threw all the coordinates away and made new ones. The rest of this page is how t
 Every figure and every number on this page is the output of the code shown above it, run by the docs
 build in a live Field.
 
-!!! info "Where the pieces live"
+??? info "Where the pieces live"
 
     | what you want | where it is |
     |---|---|
@@ -137,7 +137,7 @@ build in a live Field.
     The full architecture note, including the roadmap this page does *not* cover, is
     `dev_docs/POLYTOPE_ALGEBRA.md` in the repository.
 
-## A polyhedron is not a mesh
+## Ranked elements and incidence
 
 `PolytopeTopology` stores elements by rank, incidences between **adjacent** ranks only, and (for
 rank 2) an explicit ordered vertex cycle, because unoriented incidence alone does not choose a
@@ -535,7 +535,7 @@ the `ambo truncate` that ran. The notation is a receipt for the computation rath
 the call, which is what lets a composite sit anywhere in a chain without the lineage becoming a
 lie.
 
-## Prefix notation, and what it refuses
+## Prefix notation
 
 `parseConwayExpression` parses; `conway` parses and evaluates. Whitespace is ignored anywhere, the
 seed must be the final character, and evaluation is right-to-left (`daC` is `d(a(C))`). Only `k` and
@@ -976,7 +976,7 @@ another side: in the canonical form all twenty-four pentagons meet at one common
 Note `reseeded = true` in the readout: the iteration could not get there from the flat cube and
 restarted from a spectral embedding, which is the subject of the next section.
 
-!!! warning "Where it gives up"
+??? warning "Where it gives up"
 
     Because the canonical form is fixed by the combinatorics, a starting embedding the iteration
     cannot use is not by itself a reason to fail: when an attempt diverges or plateaus, the run
@@ -999,7 +999,7 @@ restarted from a spectral embedding, which is the subject of the next section.
     `Realization3` stores Field's single-precision `Vec3`, so the achievable residual floor is about
     `1e-7` relative, however good the iteration is.
 
-#### The counter-example, and what fixes it
+#### The counter-example: kkC
 
 Three embeddings of the same combinatorics: `kkC` as `kis kis C` built it, what `canonicalize()`
 converges to, and what `relaxWithCeres` reaches. Nothing about the topology differs between them.
@@ -1150,8 +1150,7 @@ markdown("spectral", """
 Panels 2 and 3 came from completely different starting coordinates (one from an eigen-decomposition
 of a graph that had never seen a coordinate, one from the operator's own placement on the faces of a
 cube) and landed on the same solid, agreeing on the mean dihedral angle to around `1e-9` radians.
-That is the argument for the topology-first design: the shape was a property of the incidence
-structure the entire time.
+The shape was a property of the incidence structure the entire time.
 
 Panel 1 shows the spectral construction doing real work rather than handing the canonicaliser a
 random cloud. From the graph alone it reaches a tangency spread of
@@ -1585,7 +1584,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 All four are exercised by the transcript execution smoke, so their box bodies cannot rot
 silently.
 
-## What this does not do yet
+## Limitations
 
 - A face carries an outer cycle and any number of disjoint inner rings. A hole ring that touches its
   outer boundary, nested rings, and star/self-intersecting polygons are not represented; Earcut's
