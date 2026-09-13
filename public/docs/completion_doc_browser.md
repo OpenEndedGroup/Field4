@@ -90,7 +90,7 @@ uploaded by this feature. Because they contain full source, treat them with the 
 care as the Field documents themselves. `AFIELD_COMPLETION_INTERACTION_LOG_PATH` can redirect the log
 directory.
 
-## What the panel doesn't do
+## Browsing vs. resolving
 
 The panel resolves symbols; it doesn't list them, so it can't help with a
 question you can't yet name. [What's already in the box](reference/index.md) is

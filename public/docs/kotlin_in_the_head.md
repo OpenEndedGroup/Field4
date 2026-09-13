@@ -137,9 +137,8 @@ var vectors = function (_) {
 }(typeof vectors === 'undefined' ? {} : vectors);
 ```
 
-Notice what *isn't* there: a `data class` also generates `equals`, `hashCode`, `copy`, and
-`component1`/`component2`, but this box never calls them, so whole-program dead-code elimination
-dropped them. That is why a trivial Kotlin/JS box is a few KB and not the ~600 KB of an untree-shaken
+A `data class` also generates `equals`, `hashCode`, `copy`, and `component1`/`component2`, but this
+box never calls them, so whole-program dead-code elimination dropped them. That is why a trivial Kotlin/JS box is a few KB and not the ~600 KB of an untree-shaken
 stdlib.
 
 ## Worked example 2 — ring (real THREE geometry, animated)

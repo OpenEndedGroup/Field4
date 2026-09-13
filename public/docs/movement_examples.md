@@ -105,7 +105,7 @@ And `halflifeToDamping` / `dampingToHalflife` convert between the half-life and
 the damping coefficient the spring is actually built from, for when something else
 in the pipeline insists on the coefficient.
 
-## A spring never catches a moving goal
+## Spring lag behind a moving goal
 
 Aim a spring at something travelling at a constant speed and it settles into a
 fixed distance behind, forever. That distance is knowable: `halflifeToLag` returns

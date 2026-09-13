@@ -197,7 +197,7 @@ println(
 `dx` fires on vertical edges and `dy` on horizontal ones; the orientation panel wheels its hue right
 around the disc, because that is what the gradient direction does.
 
-### When Canny "doesn't work"
+### Canny on low-contrast images
 
 A `(low, high)` pair tuned on a bright synthetic card finds almost nothing in a dark, softly-lit
 photograph. The thresholds are in gradient-magnitude units, and a dark image does not reach them.
