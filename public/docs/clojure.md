@@ -152,7 +152,7 @@ expect:
     - "run number 1"
     - "characters of Clojure"
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/box_object.png" capture="box" open-outputs=true wait="3" wait-output=true wait-output-kind="all" timeout="240" embed=true name="clojure-box-object" w="820" h="300" alt="A Clojure box reporting its own name, run count and code length, with an output panel below it showing a three-key map rendered as a table."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/box_object.png" capture="box" open-outputs=true trim=true wait="3" wait-output=true wait-output-kind="all" timeout="240" embed=true name="clojure-box-object" w="820" h="80" alt="A Clojure box's summary output panel, showing the map it displayed: :name clojure-box-object, :runs 1, :language Clojure, rendered as three rows with their Clojure types named."}
 :::static
 ;; The box is a JVM object. Its properties are its storage, and they outlive a run.
 (def me (box))
@@ -211,7 +211,7 @@ expect:
   outputContains:
     - "500 points"
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/spiral.png" capture="box" open-outputs=true wait="3" wait-output=true wait-output-kind="display" timeout="240" embed=true name="clojure-spiral" w="760" h="470" alt="A Clojure box with an output panel below it showing a yellow Archimedean spiral of five hundred points drawn on dark grey."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/spiral.png" capture="box" open-outputs=true trim=true wait="3" wait-output=true wait-output-kind="display" timeout="240" embed=true name="clojure-spiral" w="760" h="80" alt="The lines output panel of a Clojure box, holding a yellow Archimedean spiral of five hundred points: four turns, drawn anticlockwise from a tight centre, on black."}
 :::static
 ;; A spiral, built in Clojure, drawn by Field.
 (def spiral
@@ -252,7 +252,7 @@ expect:
   outputContains:
     - "frame "
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/animate.png" capture="box" execution="launch" open-outputs=true wait="4" wait-output=true wait-output-kind="display" timeout="300" embed=true name="clojure-animate" w="780" h="330" alt="A launched Clojure box with two output panels: one reading a frame number in the hundreds, the other a pale blue travelling sine wave."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/animate.png" capture="box" execution="launch" open-outputs=true trim=true wait="4" wait-output=true wait-output-kind="display" timeout="300" embed=true name="clojure-animate" w="780" h="80" alt="A launched Clojure box with two output panels: one reading a frame number in the hundreds, the other a pale blue travelling sine wave."}
 :::static
 ;; Returning an animation is what launches it.
 (def n 160)
@@ -342,17 +342,24 @@ useful and one that is merely present:
   can fail, because half-typed code does not read, so a rejection falls back to "globals only"
   rather than to nothing.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box, at the prefix s inside a let. The rows include spiral — the let-bound local — alongside clojure.core names beginning with s, each row followed by its argument lists, and the panel beside the popup shows the selected name's namespace, arglists and docstring."}
-// One local binding and a prefix that both the local and clojure.core answer to, so the figure
-// shows the three sources at once: the local, core, and `field.core`'s own names.
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box at the prefix sp, grouped by kind. Under FUNCTIONS: spit, split-at, split-with and special-symbol?, each with its argument vector in grey underneath. Then a CLASS, and a VAR named spiral. The panel to the right reads clojure.core/spit, its argument vector, and its docstring."}
+// The subject is the *shape* of a Clojure candidate — name, argument vector, docstring — so this
+// types an ordinary prefix and photographs the answer. The `let` binding is here because the code
+// under the caret should be code somebody would write, not because the figure claims to show it
+// being completed: `spiral` in the VAR group is a var this page's spiral fence left in the shared
+// namespace, and locals are asserted where they can be measured, in ClojureHostTest.
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor("clojure_completion")
 ui.pause(900)
 ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("Control+A")
-ui.type("(let [spiral (polyline [[0 0] [10 10]])]\n  (s")
+ui.type("(let [spline (polyline [[0 0] [10 10]])]\n  (lines [sp")
 ui.pause(400)
+// Escape first: typing does not open the popup, and opening it once on the finished text is the
+// only way to be sure the request the figure shows is the one for the caret the figure shows.
+ui.press("Escape")
+ui.pause(200)
 ui.press("Control+Space")
 // No warm-completion here: Clojure's candidates come from Compliment in Field's own JVM rather
 // than from the Analysis API sidecar, so there is nothing to pre-warm — but the first call does
@@ -361,8 +368,10 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-`spiral` in that list is the `let` binding two lines up, offered by a completion engine that was
-told what form the caret is in. Everything else is `clojure.core` and `field.core`.
+Each row carries its own argument vector, and the panel beside the list carries the docstring.
+That is `:extra-metadata` arriving: `clojure.core/spit [f content & options]` is Compliment's answer
+verbatim, not a signature Field reconstructed. `spiral` in the VAR group is a var an earlier box on
+this page defined, which is the shared namespace above showing through.
 
 Completion is the one part of this language that is allowed to be absent: if Compliment is not on
 the classpath, a Clojure box still runs, and the popup is empty rather than broken.
