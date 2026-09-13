@@ -218,6 +218,9 @@ object DemoTranscriptExecSmokeTest {
         // The guide and synthetic phase portraits are pure compute; the live third box owns the
         // optional librosa service call and is deliberately left for an interactive run.
         "audio_ai_spectral_embeddings",
+        // Guide and synthetic instrument-labelled piano roll are model-free. The third box owns the
+        // gated MuScriptor service request and remains an explicit user action.
+        "audio_ai_muscriptor",
         // The guide and durable monitor run headless. The second box contains the complete
         // Librosa-backed indexing and retrieval workflow, and remains inert until run by a user.
         "audio_ai_corpus_microscope",
@@ -336,6 +339,9 @@ object DemoTranscriptExecSmokeTest {
         // Every box is compiled through Field's real K2/preamble path, but none is evaluated: four
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
+        // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
+        // complete live path here, while the authenticated GPU request remains an explicit action.
+        "audio_ai_underfit_mancini",
         "graphics_renderer_launch",
         // These open a native Vulkan renderer; real pixels and reloads are checked separately.
         "path_tracing_materials",

@@ -25,6 +25,7 @@ current pinned HTTP objects, states, and error vocabulary.
 - immutable content-addressed source assets and 48 kHz project representations;
 - asynchronous, cached and reproducible operations with progress and structured errors;
 - source-window MusicGen-Style candidate families and automatic splice previews;
+- checksummed Underfit LoRA and Stable Audio 3 source-conditioned candidate families;
 - typed temporal gesture boards with prompt compilation and waveform-based candidate scoring;
 - EnCodec token capture, reconstruction, metrics, waveform and spectrogram comparison;
 - multi-scale beat and tempo trajectories;
@@ -61,6 +62,49 @@ The source window, text, seed family, sampling temperature, top-k/top-p filterin
 and style bottleneck are direct MusicGen-Style controls. They are global controls: this checkpoint
 does not accept an arbitrary event timeline or density curve.
 
+## Underfit LoRAs and Stable Audio 3
+
+Underfit checkpoints use the same durable candidate path, while Stable Audio 3 runs in its own
+Python 3.10 worker. Field hashes the local `.safetensors` file before submission; the worker checks
+that digest again beneath `FIELD_AUDIO_UNDERFIT_LORA_ROOT`. The digest participates in the request
+hash, so replacing a checkpoint at the same filename cannot return an older cached candidate set.
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.noir.audioai.*
+import java.nio.file.Path
+
+val client = FieldAudioClient()
+val source = client.assetByFilename("*Nancy*").get()
+val region = AssetRegion(source.id, startSeconds = 12.0, durationSeconds = 12.0)
+val loraRoot = Path.of(requireNotNull(System.getenv("FIELD_AUDIO_UNDERFIT_LORA_ROOT")))
+val lora = UnderfitLoraCheckpoint.fromFile(
+    loraRoot.resolve("orchestra/10000.safetensors"),
+    workerRoot = loraRoot,
+    strength = 0.7,
+    intervalMax = 0.92,
+)
+
+client.submit(underfitCandidates(
+    source = region,
+    prompt = "sparse suspended orchestral tension",
+    durationSeconds = 30.0,
+    checkpoints = listOf(lora),
+    model = UnderfitModel.SMALL_MUSIC,
+    controls = UnderfitGenerationControls(
+        steps = 8,
+        cfg = 1.5,
+        initNoiseLevel = 0.65,
+    ),
+)).thenCompose(client::awaitCandidates)
+  .thenAccept { display("underfit", candidateBoardHtml(it)) }
+```
+
+`initNoiseLevel` is the audio-to-audio distance control: zero preserves the selected source and one
+approaches a fresh text-conditioned sample. A LoRA `intervalMax` below one skips it during the
+earliest structure-setting denoising steps. `UnderfitOperation.VARIATIONS` selects the explicit
+variation operation; both operations retain the source, model name, sampling controls, LoRA digest,
+strength, upstream revisions, and seed in candidate provenance.
+
 ## Gestures and how strongly they are enforced
 
 The gesture board accepts timed prompt regions, salience events, and density, register,
@@ -95,6 +139,11 @@ retain normalized mel mass, absolute log-mel, MFCC, and scalar spectral trajecto
 librosa job. Field can then compare exact mel-Wasserstein, log-mel, and cepstral distances with MDS
 or t-SNE. These views use the same synchronized playhead contract as speech spaces, but require no
 model checkpoint or GPU.
+
+[MuScriptor multi-instrument transcription](audio_ai_muscriptor.md) turns a mixed recording into
+instrument-labelled note events, performance and optional quantized MIDI, and a synchronized
+instrument-coloured piano roll. The three revision-pinned model sizes remain behind the same
+`analysis.transcribe_music` operation and a separate gated-weight worker.
 
 Move from analysis into source-derived navigation with the
 [corpus microscope](audio_ai_corpus_microscope.md), then continue with the

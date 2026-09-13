@@ -64,6 +64,27 @@ class AnalysisVisualizationTest {
     }
 
     @Test
+    fun muscriptorPreviewCarriesInstrumentLabelsAndDedicatedPianoRoll() {
+        val preview = AnalysisPreview(
+            operation = "analysis.transcribe_music",
+            durationSeconds = 2.0,
+            series = listOf(series("active_note_count"), series("onset_count")),
+            notes = listOf(
+                AnalysisNote(0.2, 1.1, 60, 1.0, "cello"),
+                AnalysisNote(0.6, 1.8, 67, 1.0, "violin"),
+            ),
+        )
+
+        val html = analysisPreviewVisualizationHtml(preview, syncGroup = "score-a")
+
+        assertContains(html, "MuScriptor instrument piano roll")
+        assertContains(html, "active notes / onsets")
+        assertContains(html, "instrument||'unassigned'")
+        assertContains(html, "field-time-seek")
+        assertContains(html, "\"instrument\":\"cello\"")
+    }
+
+    @Test
     fun statusCardCarriesProgressAndStructuredFailure() {
         val accepted = JobAccepted("job_1", JobState.QUEUED, "sha256:req", "analysis.librosa")
         val event = ProgressEvent(2, "job_1", JobState.ANALYSING, 0.65, "tracking beats", null, "now")

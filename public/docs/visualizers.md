@@ -1209,6 +1209,27 @@ The complete [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) 
 `audio_ai_spectral_embeddings` transcript show source lookup/import → durable job → progress →
 binary artifact → temporal pooling → three Field Smile spaces → bidirectional audition.
 
+### Instrument-labelled transcription
+
+The same `analysisVisualizationHtml` canvas recognizes `analysis.transcribe_music` results as a
+MuScriptor piano roll. Note colour follows the recovered instrument group; the lower lane compares
+active polyphony with onset count. It uses the same `syncGroup` time bus as the waveform, beat,
+pitch, speech-space, and spectral-space views, so playback, hover, seek, zoom, and pan stay aligned.
+
+```diffstatic {data-lang=kotlin}
+val sync = "recording-to-score"
+display("source", audio.audioVisualizerHtml(
+    options = AudioVisualizerOptions(syncGroup = sync),
+))
+display("score", analysisVisualizationHtml(
+    transcription, syncGroup = sync,
+))
+```
+
+The complete [MuScriptor walkthrough](audio_ai_muscriptor.md) and `audio_ai_muscriptor` transcript
+show the source lookup, typed request, durable job monitoring, synchronized result, typed MessagePack
+note access, and MIDI export.
+
 The same visualizer can begin with sound generated inside Field. `renderPatWav`, `renderDirtWav`,
 `renderDoughWav`, `renderFaustWavAsync`, and `recordSonicPiWav` all produce a
 `RenderedAudioFile`; `client.analyzeRenderedAudio(render)` imports it and returns a

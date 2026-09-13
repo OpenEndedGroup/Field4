@@ -44,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 110 transcripts on every build, at three
-depths. 64 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 112 transcripts on every build, at three
+depths. 65 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-39 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+40 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1216,6 +1216,18 @@ Walkthrough: [Short-time spectral spaces](audio_ai_spectral_embeddings.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_spectral_embeddings/metadata.edn)
 
+### audio_ai_muscriptor
+
+Turn an imported or Field-rendered recording into instrument-labelled
+notes with the model-neutral `analysis.transcribe_music` operation. The live box selects a
+revision-pinned small, medium, or large MuScriptor backend, follows its durable job, synchronizes
+the source waveform with an instrument-coloured piano roll, and downloads performance-timed plus
+optional beat-quantized MIDI. The guide and synthetic score viewer execute without gated weights;
+the complete authenticated model path remains an explicit action in box 3.
+Walkthrough: [Multi-instrument transcription with MuScriptor](audio_ai_muscriptor.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_muscriptor/metadata.edn)
+
 ### audio_ai_corpus_microscope
 
 Resolve Nancy and Final Out at Candlestick Park, submit and monitor
@@ -1308,6 +1320,18 @@ path are compile-checked; running them remains an intentional user action.
 Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_render_analysis/metadata.edn)
+
+### audio_ai_underfit_mancini
+
+Import a held-out excerpt, hash the completed Experiment in Terror
+Underfit checkpoint, and submit a 30-second Stable Audio 3 candidate with modest guidance. The guide
+explains the 165-chunk album training set and the source-conditioned controls; box 2 owns the live
+worker request and presents the durable candidate board with source, seed, model revisions, and
+checkpoint provenance. The optional authenticated GPU worker is compiled here and remains an explicit
+interactive action.
+Walkthrough: [Experiment in Terror with an Underfit LoRA](audio_ai_underfit_mancini.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_underfit_mancini/metadata.edn)
 
 ### onnx_webcam_live
 

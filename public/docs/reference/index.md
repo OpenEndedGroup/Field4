@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13632 public symbols across 343 source files**, 7395 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13682 public symbols across 345 source files**, 7419 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -25,7 +25,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 23 | 873 | 402 (46%) | Musical time, as a value. |
 | [Audio](audio.md) | 18 | 871 | 257 (29%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
-| [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
+| [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2218 | 672 (30%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 1 | 45 | 43 (95%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -49,7 +49,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
 | [alife_lsystem.kt](alife.md#alife-lsystem-kt) | ALife | 57 | 34 | Structural spatial ALife: a bracketed, parametric, optionally stochastic L-system with a turtle that emits `FLine`s, plus space-colonization branching. | [Spatial artificial life](../alife_examples.md) |
 | [alife_script.kt](alife.md#alife-script-kt) | ALife | 119 | 94 | Per-agent **scripted** behaviour for ALife: a coroutine each agent runs as its own little program, on a fixed-step virtual clock, composing into weighted steering drives. |  |
-| [AnalysisOperations.kt](audio-ai.md#analysisoperations-kt) | Audio AI | 8 | 8 | Typed constructors for model-free musical analysis and learned speech representations. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Speech-reactive learned spaces](../audio_ai_speech_embeddings.md) |
+| [AnalysisOperations.kt](audio-ai.md#analysisoperations-kt) | Audio AI | 15 | 15 | Typed constructors for model-free musical analysis and learned speech representations. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md) |
 | [AnalysisVisualization.kt](audio-ai.md#analysisvisualization-kt) | Audio AI | 4 | 4 | Analysis viewers and dashboards for beat, pitch, and note results, with zoom, pan, and a shared time cursor. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md) |
 | [ArchitecturalGeometry.kt](solvers.md#architecturalgeometry-kt) | Solvers | 186 | 94 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
 | [Asta.kt](languages.md#asta-kt) | Languages | 16 | 0 |  |  |
@@ -241,6 +241,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 |  |  |
 | [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 |  | [Springs, dampers, and a character with mass](../movement_examples.md) |
+| [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 |  | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
 | [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
@@ -296,7 +297,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [PopulationSearch.kt](search.md#populationsearch-kt) | Search | 50 | 25 | Population search over *any* genome type — the generic drivers that `alife_evolve.kt`, `FunctionEvolve.kt` and `afield.kratos.KratosStudy` all run on. | [Spatial artificial life](../alife_examples.md) |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
-| [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 267 | 195 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 268 | 196 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. | [Python in a box](../python.md) |
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 53 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Which of these signals actually depend on each other?](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Flow Matching](../flow_matching.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
@@ -372,6 +373,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Types.kt](languages.md#types-kt) | Languages | 29 | 3 | The types FieldML infers, and the two ways one is printed back to a reader. |  |
 | [typography.kt](graphics.md#typography-kt) | Graphics | 103 | 73 | Text as geometry: a string becomes contours, and from there everything Field already does to geometry applies to letters. | [Typography as geometry — a string becomes contours](../typography_examples.md), [Datalog in a box](../datalog.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | [typography_field.kt](graphics.md#typography-field-kt) | Graphics | 31 | 24 | The bridges out of a `TextLayout` and into the four families Field already has. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
+| [UnderfitOperations.kt](audio-ai.md#underfitoperations-kt) | Audio AI | 22 | 11 |  | [Field Audio AI](../field_audio_ai.md) |
 | [units.kt](math.md#units-kt) | Math | 47 | 13 | Physical units for Field's spreadsheet-style numbers. |  |
 | [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [DataFrames in a Box](../dataframe.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [Visualizers.kt](synthesis.md#visualizers-kt) | Synthesis | 52 | 3 | How to look at the audio. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
