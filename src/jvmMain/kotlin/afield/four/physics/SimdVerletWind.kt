@@ -10,69 +10,77 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Air: a bulk force pass that makes a sheet flutter instead of hanging.
+ * Wind for [SimdVerlet]: per-particle drag, per-quad cloth aerodynamics, and the reproducible
+ * gust field both of them sample.
  *
- * Two models, because they answer different questions and one of them is not optional if you want
- * the sheet to *move* rather than merely lean.
+ * The two force models answer different questions, and a sheet that is meant to flutter rather
+ * than lean needs the second one.
  *
  * **Per-particle drag** ([SimdVerlet.addWind]) is `F = drag * (w - v)` per particle, where `w` is
- * the wind velocity at that point and `v = (x - px) / dt` is the Verlet velocity. It works on
- * anything — a rope, a point cloud, a cloth — and it is entirely wrong for a sheet: a particle has
- * no orientation, so the force does not care which way the fabric is facing, and a sheet edge-on
- * to the wind is pushed exactly as hard as a sheet face-on. Under a steady wind such a cloth
- * reaches an equilibrium lean and stays there. That is the correct answer to "what does the air do
- * to these points", and it is not a flag.
+ * the wind velocity at that point and `v = (x - px) / dt` is the Verlet velocity. It applies to
+ * anything made of particles (a rope, a point cloud, a cloth), and it cannot see which way fabric
+ * is facing, because a particle has no orientation: a sheet edge-on to the wind is pushed exactly
+ * as hard as a sheet face-on, and under a steady wind such a cloth reaches an equilibrium lean and
+ * stays there.
  *
- * **Per-quad aerodynamics** ([Cloth.addWind]) uses the sheet's own topology, which is free — a
- * [Cloth] is a contiguous row-major grid, so the quad at `(col, row)` is four adds. For each quad
+ * **Per-quad aerodynamics** ([Cloth.addWind]) reads the sheet's own topology, which costs nothing:
+ * a [Cloth] is a contiguous row-major grid, so the quad at `(col, row)` is four adds. For each quad
  * it takes the normal from the diagonals, the area from half that normal's length, the relative
  * velocity from the mean of the four corners, and applies
  *
  *     F = 0.5 * rho * Cd * A * (n . v_rel) * |n . v_rel| * n
  *
- * quartered onto the corners, plus an optional tangential term. That single `n . v_rel` factor is
- * the whole flutter mechanism: a quad turning edge-on stops being pushed, overshoots, catches the
- * wind on the other face, and the instability travels down the sheet as a wave.
+ * quartered onto the corners, plus an optional tangential term. Flutter comes out of the signed
+ * `n . v_rel` factor: a quad turning edge-on stops being pushed, overshoots, catches the wind on
+ * its other face, and the instability travels down the sheet as a wave.
  *
- * Two measurements, both from `SimdVerletWindTest`. The defining one: two identical 12 x 12 sheets
- * at rest in the same wind, one face-on and one edge-on, get 209 and 8.2 of summed force from the
- * per-quad pass — and all 8.2 of that is [ClothWind.tangentialCoefficient], because switching it
- * off leaves the edge-on sheet with exactly zero. The same two sheets get the same 345.6 from
- * drag, to the last bit, because a particle has no orientation to have.
+ * `SimdVerletWindTest` measures both models through the same measurement. Two identical 12 x 12
+ * sheets at rest in the same wind, one face-on and one edge-on, differ by more than twenty times
+ * in the force the per-quad pass puts into them, and what little the edge-on sheet gets is all
+ * skin friction: set `ClothWind.tangentialCoefficient` to zero and its normal force drops below a
+ * millionth of the face-on total. The drag pass gives the two sheets the same force to within a
+ * part in 100000, because a particle has no orientation to have.
  *
- * The practical one, on a 20 x 12 flag in an 8-unit wind with 60 % gusts, as sustained
- * trailing-edge travel per frame after the transient. It comes with a caveat that is worth having
- * before you reach for either model:
+ * The other measurement is sustained motion: a 20 x 12 flag in an 8-unit wind with 60 % gusts,
+ * scored as trailing-edge travel per frame once the transient has passed, with the per-quad pass
+ * on and off. What the test asserts is the shape rather than the figures. Per-quad always adds
+ * motion; it adds more than 2.5 times as much at `Wind.drag = 0.05`, and less than 1.5 times as
+ * much by `0.5`. So the advantage is a low-drag one. Turn drag up and the drag pass is doing the
+ * forcing, and the sheet is being carried rather than flying.
  *
- *     Wind.drag   drag only   drag + per-quad   ratio
- *          0.05     0.00160           0.00507   3.16x
- *          0.15     0.00432           0.00937   2.17x
- *          0.50     0.01790           0.02231   1.25x
- *          still    0.00013
+ * #### The gust field
  *
- * The per-quad model roughly triples the sustained motion at low drag — but the advantage falls
- * away as [drag] rises, because past a point the drag pass is doing the forcing and the sheet is
- * being carried rather than flying. Low drag and the per-quad pass is the flag; high drag is a
- * sheet in treacle that happens to be moving.
+ * `Wind.turbulence` adds gusts on top of the mean `Wind.velocityX`/`velocityY`/`velocityZ`. The
+ * field is a small closed-form spectrum: a few sines per axis, with directions, spatial
+ * frequencies, temporal frequencies and phases all derived from the seed. It is not a noise
+ * lattice and not a fluid simulation, because what it has to be is reproducible and grid-free.
+ * Two runs at the same seed produce the same sheet, so a test can assert something about it and a
+ * capture can be re-taken; and a lattice can align its cells with the cloth's own grid spacing and
+ * stand a pattern in the sheet. A sum of sines has no lattice to align, and costs three sines per
+ * octave per sample.
  *
- * ## Turbulence
+ * Gust amplitude is `turbulence` times the mean wind's speed, so `turbulence = 0.4f` is gusts of
+ * about 40 % whatever the wind is set to, and `0f` is a steady stream.
  *
- * [turbulence] adds a gust field on top of the mean [velocityX]/[velocityY]/[velocityZ]. It is a
- * small fixed spectrum — a few sines with directions, spatial frequencies, temporal frequencies
- * and phases all derived from [seed] — and deliberately not Perlin or a physical simulation. What
- * it has to be is *exactly reproducible*: two runs with the same seed must produce the same sheet,
- * or none of this can be tested and no capture can be re-taken. A closed-form spectrum is
- * reproducible by construction, has no lattice to align with the cloth grid, and costs three sines
- * per octave per sample.
+ * #### Wind time
  *
- * The gust is scaled by [turbulence] times the mean wind's speed, so `turbulence = 0.4f` is
- * "gusts of about 40 %" whatever the wind is set to, and `0f` is a steady stream.
+ * `Wind.time` advances by `dt` on every pass, so a registered wind is a running one. Set it to
+ * drive the gusts from somewhere else (a transport, a scrub bar); reset it to zero to replay a
+ * gust exactly.
+ */
+
+/**
+ * One wind: a mean velocity, a gust field, and the per-particle drag pass those two feed.
  *
- * ## Time
+ * [SimdVerlet.addWind] builds one and registers the pass; every field here is live, so a
+ * direction, a drag or a gust setting can be changed between frames. [accumulate] is the pass
+ * itself for a caller who would rather drive it than leave it registered, [sampleInto] reads the
+ * field at a point, [detach] unregisters it. A wind with `drag = 0f` applies no force at all,
+ * which is how to get one purely as a field for something else to sample: a [ClothWind], the
+ * whiskers of [windLines], or a caller's own pass.
  *
- * [time] advances by `dt` on every pass, so a wind that is registered is a wind that is running.
- * Set it to drive the gusts from somewhere else (a transport, a scrub bar); reset it to zero to
- * replay a gust exactly.
+ * [range] limits the drag pass to a slice of the simulation, so two winds can blow on two
+ * different groups of particles in the same state.
  */
 class Wind internal constructor(
     val sim: SimdVerlet,
