@@ -63,6 +63,14 @@ having — coverage here is a product of sequencing, not of motion.
 - every arm's travel > 5 000, so a blank-versus-blank comparison cannot pass at zero difference;
 - **the control's own score > 0.6**, because a margin measured over a broken control is not earned.
 
+![four panels: scripted trails forming a hexagon with every site ringed and cross-links between
+them; the global-rule arm's trails collapsed into a single C-shaped clump; the boid arm barely
+leaving its start; and a four-trace plot of sites occupied per step in which the scripted trace
+rises immediately and saturates while the others stay near the floor](assets/alife_script/script-counterfactual.png)
+
+Re-captured and opened 2026-09-13 at `070e5c3ae`+ — the scripted panel visits all six rings, the
+control clumps, and the boid arm travels furthest for the least coverage.
+
 ## Regime switching — population: 90 agents, 1 200 steps (20 s), 5 s phases
 
 Polarization via `asBoidFlock()` → `polarization(vx, vy)`, meaned over the last second of each
@@ -76,6 +84,15 @@ swing floor 0.30. Zero behaviour failures.
 
 The two ordered flock phases differ (0.972 vs 0.696) and that is not noise: the first starts from
 the evenly-spread spawn ring, the second from whatever 5 s of hard wandering left behind.
+
+![five panels: four snapshots of ninety short heading arrows at 4.9 s tightly aligned, at 9.9 s
+scattered with random headings, at 14.9 s re-formed into two aligned clusters, and at 19.9 s
+scattered again; plus a polarization trace that starts high, collapses to noise, recovers, and
+collapses again](assets/alife_script/script-regime.png)
+
+Re-captured and opened 2026-09-13. The trace reads high-low-high-low **with high at the top** —
+worth stating because bug 3 below is that this plot was once drawn upside down, and only opening
+the file could tell.
 
 ## Four bugs the harness found in the code it was written for
 
