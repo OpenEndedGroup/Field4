@@ -329,6 +329,9 @@ object DemoTranscriptExecSmokeTest {
         // Every box is compiled through Field's real K2/preamble path, but none is evaluated: four
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
+        // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
+        // complete live path here, while the authenticated GPU request remains an explicit action.
+        "audio_ai_underfit_mancini",
         "graphics_renderer_launch",
         // These open a native Vulkan renderer; real pixels and reloads are checked separately.
         "path_tracing_materials",

@@ -1030,6 +1030,15 @@ path are compile-checked; running them remains an intentional user action.
 Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_render_analysis/metadata.edn)
 
+**audio_ai_underfit_mancini** — Import a held-out excerpt, hash the completed Experiment in Terror
+Underfit checkpoint, and submit a 30-second Stable Audio 3 candidate with modest guidance. The guide
+explains the 165-chunk album training set and the source-conditioned controls; box 2 owns the live
+worker request and presents the durable candidate board with source, seed, model revisions, and
+checkpoint provenance. The optional authenticated GPU worker is compiled here and remains an explicit
+interactive action.
+Walkthrough: [Experiment in Terror with an Underfit LoRA](audio_ai_underfit_mancini.md).
+
+
 **onnx_webcam_live** — One webcam frame through two ONNX models in one box: Depth Anything V2 Small at
 266x266 (~120ms on a CPU execution provider) and CLIP ViT-B/32's vision tower (~45ms), displayed as the
 frame beside its colour-mapped depth map with a zero-shot ranking over four text prompts. The prompts are

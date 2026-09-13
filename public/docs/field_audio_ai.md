@@ -75,7 +75,7 @@ import java.nio.file.Path
 
 val client = FieldAudioClient()
 val source = client.assetByFilename("*Nancy*").get()
-val region = AssetRegion(source.id, startSeconds = 12.0, durationSeconds = 20.0)
+val region = AssetRegion(source.id, startSeconds = 12.0, durationSeconds = 12.0)
 val loraRoot = Path.of(requireNotNull(System.getenv("FIELD_AUDIO_UNDERFIT_LORA_ROOT")))
 val lora = UnderfitLoraCheckpoint.fromFile(
     loraRoot.resolve("orchestra/10000.safetensors"),
@@ -87,12 +87,12 @@ val lora = UnderfitLoraCheckpoint.fromFile(
 client.submit(underfitCandidates(
     source = region,
     prompt = "sparse suspended orchestral tension",
-    durationSeconds = 24.0,
+    durationSeconds = 30.0,
     checkpoints = listOf(lora),
     model = UnderfitModel.SMALL_MUSIC,
     controls = UnderfitGenerationControls(
         steps = 8,
-        cfg = 1.0,
+        cfg = 1.5,
         initNoiseLevel = 0.65,
     ),
 )).thenCompose(client::awaitCandidates)
