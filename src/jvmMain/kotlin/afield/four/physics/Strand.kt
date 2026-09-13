@@ -7,8 +7,8 @@ import afield.stdlib.vec
 import kotlin.math.sqrt
 
 /**
- * A rope living inside somebody else's [SimdVerlet] — the one-dimensional sibling of [Cloth], and
- * the same shape of thing: [Strand.addTo] (or `sim.addStrand(...)`) appends `count` particles to a
+ * A rope inside somebody else's [SimdVerlet]: the one-dimensional sibling of [Cloth], and the same
+ * shape of thing. `sim.addStrand(...)` (or `Strand.addTo`) appends `count` particles to a
  * simulation that may already contain others, chains them through a
  * [SimdVerlet.DirectedConstraints4], and hands back a handle that speaks node indices.
  *
@@ -17,72 +17,70 @@ import kotlin.math.sqrt
  *     rope.pin(0)
  *     while (true) { rope.step(gravity = 9.8f, iterations = 16); draw(rope.lines()) }
  *
- * ## Two slots, and what the other two are for
+ * #### Two slots, and what the other two are for
  *
  * A chain node spends slot 0 on its successor and slot 1 on its predecessor; the ends use one
- * each. That leaves **slots 2 and 3 free on every node of every rope**, and that is deliberate
- * rather than incidental: it is what [attachTo] spends. A rope can be tied to a cloth corner, to
- * another rope, or to any particle in the simulation with a spare slot, and the join is an
- * ordinary symmetric distance constraint that the same solver, the same colliders and the same
- * [Tearing] all already understand — a tied rope tears at its knot under enough load, with nothing
- * written to make that happen.
+ * each. That leaves **slots 2 and 3 free on every node of every rope**, which is what
+ * `Strand.attachTo` spends. A rope can be tied to a cloth corner, to another rope, or to any
+ * particle in the simulation with a spare slot, and the join is an ordinary symmetric distance
+ * constraint that the same solver, the same colliders and the same [Tearing] already understand.
+ * So a tied rope tears at its knot under enough load.
  *
  * What it cannot tie to is a cloth's *interior*, which has all four slots on its axis neighbours.
- * [attachTo] says so with the particle index rather than failing quietly. Corners have two free
- * slots and edges have one.
+ * `attachTo` throws there and names the particle index rather than ignoring the tie. Corners have
+ * two free slots and edges have one.
  *
- * ## Bending, and why it is a projection too
+ * #### Bending
  *
- * [bendStiffness] straightens the rope by moving each interior node toward the midpoint of its two
- * neighbours — the 1-D case of [Cloth]'s curvature idea, but as a **position projection** in
- * [SimdVerlet.positionProjections] rather than a force, and `0..1` rather than open-ended.
+ * `Strand.bendStiffness` straightens the rope by moving each interior node toward the midpoint of
+ * its two neighbours: the 1-D case of [Cloth]'s curvature idea, but as a **position projection**
+ * in `SimdVerlet.positionProjections` rather than a force.
  *
- * It was written as a force first, exactly like [Cloth.curvatureStrength], and the measurement
- * said no. On a clamped cantilever at `dt = 1/60`, tip droop against bend strength:
+ * A projection rather than a force, because a curvature force would sit on the solver's
+ * `stiffness * iterations` scale, where the product has a divergence ceiling in `dt`, and the
+ * strength that holds a rope straight is above it: turned up far enough such a force thrashes
+ * instead of stiffening. A projection has no stiffness, so it has no ceiling. The projection
+ * itself is the standard mass-weighted one — `C = b - (a+c)/2`, corrections `Δb = +w_b·d/S`,
+ * `Δa = Δc = -w·d/2S` with `S = w_b + (w_a + w_c)/4` — applied to `x` *and* `px` together so it
+ * injects no velocity and can add no energy, and swept in **three colours** so that overlapping
+ * stencils do not stack their corrections on top of each other. `bendStiffness` is clamped to
+ * `0..1`, and `Strand.MAX_BEND_CORRECTION` is what `1` maps onto: the stiffest correction this
+ * integrator holds, rather than a full one.
  *
- *     bend      0     300    1200    2000    2600    3000    3400
- *     6 nodes   0.602 0.602  0.602   0.602   0.602   0.602   0.601
- *     8 nodes   0.904 0.904  0.904   0.903   0.903   flails  NaN
- *     12 nodes  1.511 1.511  1.509   1.508   flails  NaN     NaN
+ * What it controls is **how tightly the rope can fold**, which is not the same thing as how stiff
+ * the rope is. `StrandTest` heaps a 50-node rope on a floor between two anchors and reads the mean
+ * joint angle: it falls with every increase in `bendStiffness`, and by `1.0` it is under a third of
+ * the limp rope's, with no sharp corner left.
  *
- * There is no band. From 0 to 2000 the rope does not move — three significant figures of nothing —
- * and above that the explicit integrator loses it (the "flails" entries have a mean joint angle of
- * 112 and 124 degrees, so they are not stiff, they are thrashing). The ceiling is
- * `bend · dt² ≲ 1`, and the strength a cantilever actually needs is far above it. That is the same
- * trap the colliders avoid, arriving a second time by a different road, and it is fixed the same
- * way: a projection has no stiffness, so it has no ceiling.
- *
- * The projection is the standard mass-weighted one — `C = b - (a+c)/2`, corrections
- * `Δb = +w_b·d/S`, `Δa = Δc = -w·d/2S` with `S = w_b + (w_a + w_c)/4` — scaled by
- * [bendStiffness], applied to `x` *and* `px` together so it injects no velocity and can add no
- * energy, and swept in **three colours** so that overlapping stencils do not stack their
- * corrections on top of each other.
- *
- * What it controls is **how tightly the rope can fold**, and that is worth being precise about
- * because it is not the same as "how stiff the rope is". On a 50-node rope compressed onto a floor
- * between two anchors, mean joint angle against `bendStiffness`:
- *
- *     0.0 -> 38.8 deg    0.2 -> 21.5    0.5 -> 13.9    1.0 -> 8.3
- *
- * On a *cantilever* it does almost nothing — a 20-node clamped rope's tip moves 0.5 % across the
- * whole range — because a rope hanging under gravity is already straight, and the base moment a
- * cantilever needs is not something a local three-node stencil can supply. If you want a rod, add
- * distance constraints across the gaps rather than turning this up.
+ * On a *cantilever* it does almost nothing, because a rope hanging under gravity is already
+ * straight and the base moment a cantilever needs is not something a local three-node stencil can
+ * supply. For a rod, add distance constraints across the gaps rather than turning this up.
  *
  * `0f` is the default: a rope is limp unless told otherwise.
  *
  * One ordering caveat. Projections run in registration order, so a strand created *before* its
- * colliders bends first and is then pushed out of the world, which is what you want. Create the
- * strand after the colliders and the last word belongs to bending, and a stiff rope can end a
- * frame slightly inside a shape.
+ * colliders bends first and is then pushed out of the world. Create the strand after the colliders
+ * and the last word belongs to bending, and a stiff rope can end a frame slightly inside a shape.
  *
- * ## Stability
+ * #### Stability
  *
  * The same contract as [Cloth]: the rope's particles are the contiguous range
  * `[base, base + count)`, so it does not survive particle removal anywhere below its own top
  * index. Appending after it is fine.
  *
- * [step], [lines] and the mutators serialize on this strand's own monitor.
+ * `Strand.step`, `Strand.lines` and the mutators serialize on this strand's own monitor.
+ */
+
+/**
+ * The handle for one rope: node indices, the bending projection, and the ties to other particles.
+ *
+ * `strand[node]` is a particle index, [position] and [teleport] address nodes, [pin] nails one
+ * down, [lines] is the polyline to draw and [frames] is the step-and-draw loop. [attachTo] ties a
+ * node to any other particle that has a free constraint slot, and [remove] drops this rope's
+ * constraints and its bending pass while leaving its particles where they are.
+ *
+ * Built by `sim.addStrand(...)` rather than directly: a rope is a contiguous range of particles
+ * appended to a simulation, and [base] is where that range starts.
  */
 class Strand private constructor(
     /** The simulation these particles live in. */
@@ -105,7 +103,7 @@ class Strand private constructor(
 ) {
     /**
      * How much of the way toward straight each interior node is moved by the registered bending
-     * projection, per step, in `0..1`. `0f` disables it live; see the class KDoc for why this is a
+     * projection, per step, in `0..1`. `0f` disables it live; the file overview has why this is a
      * projection and not a force.
      */
     @Volatile
@@ -399,8 +397,7 @@ class Strand private constructor(
          *   number that matters is `stiffness * iterations`; see `SIMDVERLET_4_CONSTRAINTS.md`.
          * @param bendStiffness how much of the way toward straight each interior node is moved
          *   per step, `0..1`; `0f` (the default — a rope is limp unless told otherwise) registers
-         *   nothing. A projection, not a force: see the class KDoc for the measurement that made
-         *   it one.
+         *   nothing. A projection, not a force: the file overview has why.
          * @param pinned which nodes get inverse mass 0. Nothing, by default: a strand that is
          *   pinned by default would be a surprise in the way a hanging cloth is not.
          * @param constraints constraint set to wire into; defaults to [SimdVerlet.constraints4],

@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13524 public symbols across 337 source files**, 7293 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13524 public symbols across 337 source files**, 7320 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -16,7 +16,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 26 | 533 | 192 (36%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 27 | 821 | 331 (40%) | Making a shape behave. |
+| [Simulation](simulation.md) | 27 | 821 | 358 (43%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 10 | 539 | 323 (59%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -105,7 +105,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Dough.kt](synthesis.md#dough-kt) | Synthesis | 20 | 0 |  | [Making a sound in Field: every path there is](../sound_paths.md) |
 | [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 | Native Kotlin ports of low-level DSP from dough, carrying dough's AGPL-3.0 terms. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 13 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
-| [Dyn4jScene.kt](simulation.md#dyn4jscene-kt) | Simulation | 43 | 0 |  |  |
+| [Dyn4jScene.kt](simulation.md#dyn4jscene-kt) | Simulation | 43 | 17 | A 2D rigid-body scene: dyn4j's `World` behind a Kotlin surface that addresses bodies by handle, with a converter from Field's own drawing into collision geometry. |  |
 | [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [Effects.kt](synthesis.md#effects-kt) | Synthesis | 76 | 47 | The mono effects: delays, reverbs, distortions and dynamics, each one a `SignalProcessor` that `/` pipes a signal into. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
@@ -315,12 +315,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 4 | Notes with times on them, and a lazy player for a stream of them. | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [shaders.kt](graphics.md#shaders-kt) | Graphics | 180 | 180 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 28 | The value types the rest of the synthesis category is written in, and the per-block contract they render under. | [Making a sound in Field: every path there is](../sound_paths.md), [Faust](../faust.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [SimdVerlet.kt](simulation.md#simdverlet-kt) | Simulation | 31 | 18 |  |  |
+| [SimdVerlet.kt](simulation.md#simdverlet-kt) | Simulation | 31 | 18 | The particle solver: structure-of-arrays Verlet integration, directed distance constraints, and the vector kernels that run both. |  |
 | [SimdVerletColliders.kt](simulation.md#simdverletcolliders-kt) | Simulation | 60 | 32 | Collision shapes for `SimdVerlet`: the world layer of the particle solver. | [Physics: particles, constraints, and the one number that decides everything](../physics.md) |
 | [SimdVerletDebugLines.kt](simulation.md#simdverletdebuglines-kt) | Simulation | 1 | 1 |  |  |
-| [SimdVerletDyn4jBridge.kt](simulation.md#simdverletdyn4jbridge-kt) | Simulation | 22 | 0 |  |  |
+| [SimdVerletDyn4jBridge.kt](simulation.md#simdverletdyn4jbridge-kt) | Simulation | 22 | 10 | Runs a `SimdVerlet` particle simulation and a `Dyn4jScene` in one frame, so that chosen particles collide with rigid bodies as circles while the rest stay ordinary particles. |  |
 | [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 |  |  |
-| [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 |  |  |
+| [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 | Wind for `SimdVerlet`: per-particle drag, per-quad cloth aerodynamics, and the reproducible gust field both of them sample. |  |
 | [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 2 |  |  |
 | [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 12 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
 | [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 | One solved revision: the raw fields exactly as Kratos produced them, and the views Field draws. |  |
@@ -349,7 +349,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [standardShapes.kt](renderers.md#standardshapes-kt) | Renderers | 13 | 1 |  |  |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
-| [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 |  |  |
+| [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something printable. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Making a sound in Field: every path there is](../sound_paths.md) |
