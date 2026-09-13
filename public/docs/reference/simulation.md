@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints, and the one number that decides everything](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-27 source file(s), 821 public symbol(s), 331 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 821 public symbol(s), 358 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -112,28 +112,99 @@ A rectangular cloth patch living inside somebody else's [`SimdVerlet`](simulatio
 
 ## Dyn4jScene.kt { #dyn4jscene-kt }
 
+A 2D rigid-body scene: dyn4j's `World` behind a Kotlin surface that addresses bodies by handle,
+with a converter from Field's own drawing into collision geometry.
+
+[`SimdVerlet`](simulation.md#simdverlet-kt-simdverlet) has no notion of a rigid body. Its colliders push particles out of shapes, and
+nothing a particle touches is pushed back by it. This is the other half of that, flat: bodies
+with mass, rotation, friction and restitution, resolving contacts against one another.
+[`JoltPhysicsWorld`](simulation.md#joltphysicsworld-kt-joltphysicsworld) is the same idea in 3D, and [`SimdVerletDyn4jBridge`](simulation.md#simdverletdyn4jbridge-kt-simdverletdyn4jbridge) runs a particle
+simulation and one of these scenes in the same frame.
+
+### Handles, not bodies
+
+`addBody` returns a [`DynBodyHandle`](simulation.md#dyn4jscene-kt-dynbodyhandle) rather than the dyn4j `Body` it made, and every accessor
+takes one. Handle ids count up from 1 and are never reused, so a handle to a removed body
+cannot come to mean a later one. A handle whose body has been removed resolves to nothing:
+`getBodyState` returns `null`, `removeBody` returns `false`, and the five mutators return
+without touching anything. Nothing throws on a stale handle, which suits a `loop { }` editing a
+scene it is also drawing.
+
+`world` is public. Joints, raycasts, contact listeners and everything else dyn4j offers are
+reached through it; what this class covers is making bodies, moving them and reading them back.
+
+### Shapes
+
+[`DynShapeDef`](simulation.md#dyn4jscene-kt-dynshapedef) has four cases. `Box` and `Circle` go straight to dyn4j primitives. `Polygon`
+must already be a convex loop, and a loop dyn4j rejects is re-reported as an `error` carrying
+dyn4j's own complaint. `Concave` is decomposed by Bayazit into convex parts, and each part
+becomes a fixture on the one body, so a concave body is several fixtures sharing a transform.
+
+Both vertex cases are sanitised first: consecutive duplicates are dropped, a repeated closing
+point is removed, dyn4j's own `cleanse` runs, and a loop whose signed winding is negative is
+reversed, so every loop reaching dyn4j turns the same way whichever way it was drawn. Fewer
+than three distinct vertices fails a `require`.
+
+### Mass and rest
+
+`DynBodyKind.STATIC` sets `MassType.INFINITE`; `DynBodyKind.DYNAMIC` takes its mass from
+`DynBodyDef.density` and the fixture areas. Density is floored just above zero, so asking for
+`0.0` gives a very light body rather than a massless one. dyn4j lets a body that has stopped
+moving go to rest; every mutator here clears that flag, including the two that write
+`body.transform` directly and so bypass dyn4j entirely.
+
+`DynBodyState.position` is the body's centre of mass, while `setBodyTransform` writes the
+transform's translation. For a box or a circle, both of which dyn4j builds around the origin,
+those coincide. For a polygon given arbitrary vertices they need not, so setting a position and
+reading it back does not always round-trip.
+
+### Stepping
+
+`step` is one dyn4j iteration of exactly the `dtSeconds` it is given, so the timestep belongs
+to the caller. Gravity defaults to zero on both axes: a scene made with no arguments is
+weightless, and gravity is changed afterwards through `world.gravity`.
+
+### FLines as collision geometry
+
+`flattenClosedFLineLoops` turns a drawn `FLine` into vertex loops for `DynShapeDef.Concave` or
+`Polygon`, by way of `java.awt.geom` path flattening: curves become runs of line segments at
+the given tolerance and subdivision limit, and each subpath of three or more points comes back
+as a loop with any duplicate closing point removed. It reads `SEG_CLOSE` off the path iterator,
+but its final flush accepts an unterminated subpath as well, and a dyn4j polygon is closed
+implicitly, so a line drawn without a closing node converts to the same vertices as one drawn
+with it. `InteriorCloseNodeTest.theDyn4jLoopFlattenerWasNeverActuallyBroken` pins that.
+
+Nothing else in the repository constructs a [`Dyn4jScene`](simulation.md#dyn4jscene-kt-dyn4jscene). These are a surface for box code to
+call, and that one test case is the only coverage the file has.
+
 `src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt` — [read the source](source/jvmMain/afield/four/physics/Dyn4jScene/)
 
 ### DynBodyKind { #dyn4jscene-kt-dynbodykind }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">DynBodyKind</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L20)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">DynBodyKind</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L88)
+
+Whether dyn4j moves a body, or it stands still and is only collided against.
 
 Constants: `STATIC`, `DYNAMIC`.
 
 ### DynShapeDef { #dyn4jscene-kt-dynshapedef }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L25)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L100)
+
+The collision shape of a body, in the body's own coordinates.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Box</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L26) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Circle</span><span class="p">(</span><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L27) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Polygon</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L28) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Concave</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L29) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Box</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L101) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Circle</span><span class="p">(</span><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L102) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Polygon</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L103) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Concave</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynShapeDef</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L104) |  |
 
 ### DynBodyDef { #dyn4jscene-kt-dynbodydef }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynBodyDef</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">DynBodyKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">DynShapeDef</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angleRad</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">friction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="k">val</span> <span class="n">restitution</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">density</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">bullet</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">vx</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">vy</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularVelocity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">userData</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L32)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynBodyDef</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">DynBodyKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">DynShapeDef</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angleRad</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">friction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="k">val</span> <span class="n">restitution</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">density</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">bullet</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">vx</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">vy</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularVelocity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">userData</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L116)
+
+Everything `Dyn4jScene.addBody` needs to make one body, with defaults that give a unit-density, non-bouncing, undamped body at rest at the origin.
 
 | Declaration | Summary |
 | --- | --- |
@@ -155,11 +226,15 @@ Constants: `STATIC`, `DYNAMIC`.
 
 ### DynBodyHandle { #dyn4jscene-kt-dynbodyhandle }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynBodyHandle</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L50)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynBodyHandle</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L140)
+
+An opaque reference to a body in one [`Dyn4jScene`](simulation.md#dyn4jscene-kt-dyn4jscene), counted up from 1 and never reused.
 
 ### DynBodyState { #dyn4jscene-kt-dynbodystate }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynBodyState</span><span class="p">(</span><span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">angleRad</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearVelocity</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularVelocity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">DynBodyKind</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L52)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynBodyState</span><span class="p">(</span><span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">angleRad</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearVelocity</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularVelocity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">DynBodyKind</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L150)
+
+A body read back out of the scene, as of the last `Dyn4jScene.step`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -172,22 +247,24 @@ Constants: `STATIC`, `DYNAMIC`.
 
 ### Dyn4jScene { #dyn4jscene-kt-dyn4jscene }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">Dyn4jScene</span><span class="p">(</span><span class="n">gravityX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">gravityY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L61)
+[<code class="highlight"><span class="k">class</span> <span class="nf">Dyn4jScene</span><span class="p">(</span><span class="n">gravityX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">gravityY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L167)
+
+A dyn4j `World` plus the handle table that keeps [`DynBodyHandle`](simulation.md#dyn4jscene-kt-dynbodyhandle)s pointing at the right bodies.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">world</span><span class="p">:</span> <span class="nc">World</span><span class="p">&lt;</span><span class="nc">Body</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L65) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">addBody</span><span class="p">(</span><span class="n">def</span><span class="p">:</span> <span class="nc">DynBodyDef</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynBodyHandle</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L75) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">removeBody</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L102) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearBodies</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L107) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">getBodyState</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynBodyState</span><span class="o">?</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L115) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">allBodyStates</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DynBodyState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L120) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">setBodyTransform</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">angleRad</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L124) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">setBodyVelocity</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">vx</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">vy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">angular</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L131) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyForce</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">fx</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">fy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L138) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyImpulse</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">ix</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L144) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyTorque</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">torque</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L150) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dtSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L156) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">world</span><span class="p">:</span> <span class="nc">World</span><span class="p">&lt;</span><span class="nc">Body</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L171) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">addBody</span><span class="p">(</span><span class="n">def</span><span class="p">:</span> <span class="nc">DynBodyDef</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynBodyHandle</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L193) | Builds the body `def` describes, adds it to `world`, and returns the handle it will be known by. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">removeBody</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L224) | Takes the body `handle` names out of `world`. `false` if this scene has no such body, and also `false` if it had one but dyn4j had already dropped it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearBodies</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L235) | Removes every body this scene made, so it is empty and reusable. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">getBodyState</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynBodyState</span><span class="o">?</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L244) | A snapshot of one body, or `null` if `handle` names nothing in this scene. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">allBodyStates</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DynBodyState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L255) | Every body, in the order it was added, as a fresh list of snapshots. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setBodyTransform</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">angleRad</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L267) | Teleports a body: its transform is overwritten and its velocity left as it was. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setBodyVelocity</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">vx</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">vy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">angular</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L279) | Overwrites a body's linear and angular velocity, in units per second and radians per second. Unlike an impulse this ignores the body's mass, and unlike a force it takes effect without a `step`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyForce</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">fx</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">fy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L287) | Adds a world-frame force to a body, to act over the next `step`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyImpulse</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">ix</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L297) | Adds a world-frame linear impulse to a body: a change of momentum, so the velocity it buys depends on the body's mass. This is the one for a kick. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyTorque</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="nc">DynBodyHandle</span><span class="p">,</span> <span class="n">torque</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L304) | Adds a torque about a body's centre of mass, the angular counterpart of `applyForce`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dtSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Dyn4jScene/#L320) | Advances the world by exactly `dtSeconds`: one dyn4j iteration, with nothing accumulated between calls. |
 
 ## JoltCameraFrustumPlanes.kt { #joltcamerafrustumplanes-kt }
 
@@ -796,23 +873,101 @@ Several [`Collider`](simulation.md#simdverletcolliders-kt-collider)s applied as 
 
 ## SimdVerletDyn4jBridge.kt { #simdverletdyn4jbridge-kt }
 
+Runs a [`SimdVerlet`](simulation.md#simdverlet-kt-simdverlet) particle simulation and a [`Dyn4jScene`](simulation.md#dyn4jscene-kt-dyn4jscene) in one frame, so that chosen
+particles collide with rigid bodies as circles while the rest stay ordinary particles.
+
+The coupling is by nomination. `nominate` takes a particle index and gives it a circle body in
+the scene's dyn4j world; every other particle is untouched and costs nothing. Then each `step`
+advances the particle simulation, copies the nominated particles into their bodies, advances
+dyn4j, and copies the bodies back. A nominated particle is still a Verlet particle that
+constraints and force generators pull on; it spends the end of every frame being a rigid body
+as well.
+
+### The frame, and what it leaves out
+
+`step` does not call `SimdVerlet.step`. It runs its own copy of that frame, because it has to
+decide per particle whether gravity applies. In order: queued removals, zero the accumulators,
+gravity, the per-particle force generators, the constraint solve, Verlet integration, then the
+dyn4j half.
+
+What the copy leaves out is what this class does not support. There is no
+`SimdVerlet.bulkForces` pass, no `accumulateForces` hook, and neither post-integration stage
+runs, so a `ColliderSet` in `SimdVerlet.positionProjections` or a [`Tearing`](simulation.md#simdverlettearing-kt-tearing) in
+`SimdVerlet.constraintEdits` is silent under `step`. It also solves only
+`SimdVerlet.DirectedConstraints3`, while [`Cloth`](simulation.md#cloth-kt-cloth) and [`Strand`](simulation.md#strand-kt-strand) build
+`SimdVerlet.DirectedConstraints4`: step a cloth through this bridge and its constraints go
+unsolved, because the default `constraints = sim.constraints` is null when the fabric is in
+`constraints4`. So this is a bridge for loose particles rather than for fabric.
+
+### Positions and velocities, both ways
+
+A Verlet particle carries its velocity as the gap between `x` and `px`; a dyn4j body carries
+one directly, in units per second. So the push sets the body to the particle's *previous*
+position with `(x - px) / dt` as its velocity and lets dyn4j integrate that forward over the
+same `dt`: the dyn4j step redoes the frame's last integration, this time with contacts in it.
+The pull then writes `x` from the body's centre and rebuilds `px` as `centre - velocity * dt`,
+so the particle's history after a frame comes from the body rather than surviving the hop.
+
+Only `x`, `y`, `px` and `py` are written. [`CollisionPlane`](simulation.md#simdverletdyn4jbridge-kt-collisionplane) has one case and the constructor
+requires it: this is the simulation's x/y plane, and `z` is left alone.
+
+### Gravity, counted once
+
+`DynGravityMode.MIRROR_SIM` copies `step`'s `gravity` argument into the dyn4j world and
+withholds it from the nominated particles in the Verlet pass, so dyn4j is the only thing
+accelerating them. `DynGravityMode.ZERO` does the reverse: the dyn4j world gets none, and every
+particle, nominated or not, gets the simulation's. Either way a particle falls once per frame.
+
+The two are not the same fall. What the Verlet pass adds `gravity` to is the `ay` accumulator,
+which is a *force* whenever the state has an `invMass` array, as `SimdVerlet.State3.empty`
+allocates by default, so a heavy particle falls more slowly in the simulation. A dyn4j world
+gravity is an acceleration, which every body there feels equally. They agree at inverse mass 1.
+
+### Mass, radius, removal
+
+Each frame the body's density is set so its mass is the particle's `1 / invMass` spread over
+the circle's area, and an inverse mass of zero or less becomes `MassType.INFINITE`, the same
+convention that pins a particle in the solver. That conversion is cached and redone only when
+the particle's inverse mass changes.
+
+Changing `BulletSpec.radius` destroys the body and builds a new one, at the next `step` rather
+than when the spec changes, because the fixture's circle is not resized in place. Friction and
+restitution are written to the existing fixture instead. `unnominate` and `clearNominations`
+take the bodies back out of the world.
+
+Nominations are keyed by particle index, and `SimdVerlet`'s removal is a swap compaction: a
+deleted slot is filled from the tail. Each frame drops the nominations whose index has fallen
+out of range, which is as much as an index can tell it — a nomination whose index survives a
+removal now names whichever particle was swapped into that slot. Re-nominate after removing
+particles.
+
+Nothing in the repository constructs one of these and no test covers it. It is a surface for
+box code to call, and there is no 3D equivalent: [`JoltPhysicsWorld`](simulation.md#joltphysicsworld-kt-joltphysicsworld) is a rigid-body world of
+its own, with nothing wiring it to a particle simulation.
+
 `src/jvmMain/kotlin/afield/four/physics/SimdVerletDyn4jBridge.kt` — [read the source](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/)
 
 ### CollisionPlane { #simdverletdyn4jbridge-kt-collisionplane }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CollisionPlane</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L12)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CollisionPlane</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L87)
+
+Which plane of the simulation the rigid-body scene lives in. Only `XY` is implemented.
 
 Constants: `XY`.
 
 ### DynGravityMode { #simdverletdyn4jbridge-kt-dyngravitymode }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">DynGravityMode</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L16)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">DynGravityMode</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L96)
+
+Which of the two engines accelerates a nominated particle, so that gravity is applied once rather than twice or not at all. See the file overview above for the difference between the two falls.
 
 Constants: `ZERO`, `MIRROR_SIM`.
 
 ### BulletSpec { #simdverletdyn4jbridge-kt-bulletspec }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BulletSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.05f</span><span class="p">,</span> <span class="k">val</span> <span class="n">friction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="k">val</span> <span class="n">restitution</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">bullet</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">userData</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L21)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BulletSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.05f</span><span class="p">,</span> <span class="k">val</span> <span class="n">friction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="k">val</span> <span class="n">restitution</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">angularDamping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">bullet</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">userData</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L109)
+
+The rigid body a nominated particle becomes: a circle of `radius`, with dyn4j's contact parameters.
 
 | Declaration | Summary |
 | --- | --- |
@@ -826,7 +981,9 @@ Constants: `ZERO`, `MIRROR_SIM`.
 
 ### SimdVerletDyn4jBridge { #simdverletdyn4jbridge-kt-simdverletdyn4jbridge }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">SimdVerletDyn4jBridge</span><span class="p">(</span><span class="k">val</span> <span class="n">sim</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">,</span> <span class="k">val</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">Dyn4jScene</span><span class="p">,</span> <span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">CollisionPlane</span> <span class="o">=</span> <span class="nc">CollisionPlane</span><span class="p">.</span><span class="nc">XY</span><span class="p">,</span> <span class="k">val</span> <span class="n">gravityMode</span><span class="p">:</span> <span class="nc">DynGravityMode</span> <span class="o">=</span> <span class="nc">DynGravityMode</span><span class="p">.</span><span class="nc">MIRROR&#95;SIM</span><span class="p">,</span> <span class="k">val</span> <span class="n">defaultSpec</span><span class="p">:</span> <span class="nc">BulletSpec</span> <span class="o">=</span> <span class="nc">BulletSpec</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L31)
+[<code class="highlight"><span class="k">class</span> <span class="nf">SimdVerletDyn4jBridge</span><span class="p">(</span><span class="k">val</span> <span class="n">sim</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">,</span> <span class="k">val</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">Dyn4jScene</span><span class="p">,</span> <span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">CollisionPlane</span> <span class="o">=</span> <span class="nc">CollisionPlane</span><span class="p">.</span><span class="nc">XY</span><span class="p">,</span> <span class="k">val</span> <span class="n">gravityMode</span><span class="p">:</span> <span class="nc">DynGravityMode</span> <span class="o">=</span> <span class="nc">DynGravityMode</span><span class="p">.</span><span class="nc">MIRROR&#95;SIM</span><span class="p">,</span> <span class="k">val</span> <span class="n">defaultSpec</span><span class="p">:</span> <span class="nc">BulletSpec</span> <span class="o">=</span> <span class="nc">BulletSpec</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L128)
+
+One particle simulation, one rigid-body scene, and the nomination table joining them. The file overview above has the frame in order and what it leaves out.
 
 | Declaration | Summary |
 | --- | --- |
@@ -835,12 +992,12 @@ Constants: `ZERO`, `MIRROR_SIM`.
 | <code class="highlight"><span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">CollisionPlane</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">gravityMode</span><span class="p">:</span> <span class="nc">DynGravityMode</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">defaultSpec</span><span class="p">:</span> <span class="nc">BulletSpec</span></code> |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">nominate</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">BulletSpec</span> <span class="o">=</span> <span class="n">defaultSpec</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L51) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">updateNomination</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">BulletSpec</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L66) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">unnominate</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L73) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearNominations</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L79) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">nominatedIndices</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L87) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">gravity</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nc">DirectedConstraints3</span><span class="o">?</span> <span class="o">=</span> <span class="n">sim</span><span class="p">.</span><span class="n">constraints</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L89) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">nominate</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">BulletSpec</span> <span class="o">=</span> <span class="n">defaultSpec</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L161) | Gives the particle at `index` a circle rigid body, so that it collides with the scene. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">updateNomination</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">BulletSpec</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L185) | Replaces the [`BulletSpec`](simulation.md#simdverletdyn4jbridge-kt-bulletspec) of an already-nominated `index`, keeping its body where possible. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">unnominate</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L199) | Takes the particle at `index` back to being an ordinary particle, removing its body from the dyn4j world. `false` if it was not nominated. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearNominations</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L211) | Unnominates every particle, removing all of this bridge's bodies from the dyn4j world. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">nominatedIndices</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L223) | The currently nominated particle indices, as a copy, so it is safe to iterate while calling `nominate` or `unnominate`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">gravity</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nc">DirectedConstraints3</span><span class="o">?</span> <span class="o">=</span> <span class="n">sim</span><span class="p">.</span><span class="n">constraints</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/SimdVerletDyn4jBridge/#L241) | Advances both engines by `dt` and reconciles them: a Verlet frame, then the dyn4j world, then the nominated particles written back from their bodies. |
 
 ## SimdVerletTearing.kt { #simdverlettearing-kt }
 
