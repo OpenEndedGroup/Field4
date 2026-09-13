@@ -19,31 +19,44 @@ expect:
 */
 
 /**
- * Headless **piano-roll gallery** for the pattern language: `TidalPatterns.kt` plus the three
- * files added on top of it ([PatSignals][sine], [PatAlgebra][appLeft], [PatComposition][voiceLead]).
+ * Headless **piano-roll gallery** for the pattern language, drawing the operators defined across
+ * `TidalPatterns.kt`, `PatSignals.kt`, `PatAlgebra.kt` and `PatComposition.kt`.
  *
- * Output is **SVG**, not raster. A piano roll is line art — rectangles, gridlines, a parameter
- * polyline — so per the house rule it is drawn as vector geometry, built here as plain strings.
- * That also makes it diffable: a changed operator shows up as a changed rectangle in the file,
- * not as a changed PNG blob. There is no AWT, no browser, no GPU, no Field window.
+ * Output is **SVG**, not raster. A piano roll is line art (rectangles, gridlines, a parameter
+ * polyline), so it is drawn as vector geometry, built here as plain strings. That also makes it
+ * diffable: a changed operator shows up as a changed rectangle in the file rather than as a
+ * changed PNG blob. There is no AWT, no browser, no GPU, no Field window.
  *
- * Every rectangle is a **real scheduled event**: each roll queries actual patterns over actual
- * cycles through `PatPattern.events(...)`. Nothing is hand-placed. The only synthetic part is the
- * choice of colours and the mapping from cycle time to pixels.
+ * Every rectangle is a **scheduled event**. Each lane queries its pattern over the roll's cycles
+ * through `PatPattern.events(...)`, and nothing is hand-placed; the only parts chosen by hand are
+ * the colours and the mapping from cycle time to pixels.
  *
- * Most rolls are **two-panel**: the top lane is what the pre-tonight surface could
- * express and the bottom lane is what the new operator does, in the same figure, at the same
- * scale, so the difference is looked at rather than described.
+ * #### Lanes, and how a roll is read
  *
- * As a FIELD_TEST (`synth.pat.gallery`) it renders every roll to a temp dir and asserts real
- * correctness — the SVG contains exactly one rectangle per event, the events land on the exact
- * rational grid each roll claims, and each roll's own `verify` checks the musical claim (`rev`
- * really reverses, `euclid` really is Euclidean, `iter` really rotates, a continuous parameter
- * really sweeps). It writes NO committed assets during the test. Pass an output dir as `args[0]`
- * (or set `PAT_ROLL_DIR`) to regenerate the committed captures under
- * `dev_docs/assets/pat_gallery/`.
+ * A roll is a stack of horizontal lanes drawn at one shared time scale, so reading down a column
+ * compares the same instant across all of them. Most rolls are built as a source lane with its
+ * transforms underneath: `pat("a b c d")` on top, then `rev()`, `euclid(3,8)`, `iter(4)` and the
+ * rest below it. Where a form is shorthand for a longhand spelling, the two are lanes of the same
+ * roll and the check compares them event for event.
  *
- * Add a roll by appending one [Roll] to [ROLLS].
+ * #### What each roll is checked against
+ *
+ * As a FIELD_TEST (`synth.pat.gallery`) every roll is rendered to a temp dir and asserted: each
+ * lane draws at least one event, no event falls outside the window the roll plots, and the SVG
+ * holds exactly one rectangle per event plus one backdrop per lane plus one page background, so
+ * the figure can neither invent a note nor drop one. Each roll then runs its own `verify` over the
+ * events it actually drew, which is where the musical claim lives: that `rev` reverses, that
+ * `euclid(3,8)` puts three onsets on the eighth grid with gaps as even as 8/3 allows, that
+ * `iter(4)` rotates by a step per cycle, that `shuffle(4)` is a permutation every cycle, and that
+ * a continuous parameter takes the value of its curve at each note's own midpoint. It writes no
+ * committed assets during the test. Pass an output dir as `args[0]` (or set `PAT_ROLL_DIR`) to
+ * regenerate the committed captures under `dev_docs/assets/pat_gallery/`.
+ *
+ * Add a roll by appending one `Roll` to `ROLLS`.
+ */
+
+/**
+ * The catalogue of piano rolls, the SVG renderer behind them, and the FIELD_TEST entry point.
  */
 object PatPianoRollGallery {
 

@@ -18,24 +18,26 @@ expect:
 */
 
 /**
- * The **mini-notation catalogue**: every form the `pat("…")` string can take, one entry each, with
- * the piano roll and the audio clip that the documentation publishes under it.
+ * The **mini-notation catalogue**: the forms a `pat("…")` string can take, one entry each, with
+ * the piano roll and the audio clip the documentation publishes under it.
  *
- * This exists because the mini-notation section of `pattern_language.md` used to be a
- * fourteen-row table of prose — `bd*4` *"four times as fast"* — and a table cannot show you that
- * `{bd hh cp}%8` **phases** against the bar, or let you hear that `bd _ _ sd` and `bd@3 sd` are the
- * same rhythm. Each entry here renders both, so a reader learns the notation by looking at it and
- * listening to it rather than by trusting a gloss.
+ * A table of prose can say that `bd*4` is four times as fast, but it cannot show that
+ * `{bd hh cp}%8` phases against the bar, or let you hear that `bd _ _ sd` and `bd@3 sd` are the
+ * same rhythm. Each entry here renders a roll and a clip, so a reader can look at the notation and
+ * listen to it instead of taking a gloss on trust.
  *
- * ### One list, four consumers
+ * #### One list, four consumers
  *
- * [EXAMPLES] is the single source of truth. The same list produces the committed SVG rolls, the
- * committed `.wav` clips, the checks below, and (via [markdownSection]) the page's own markdown —
- * so an example cannot appear in the prose without a figure, carry a roll that disagrees with its
- * audio, or drift out of the order the page teaches it in. Adding a form to the notation means
- * appending one [Example].
+ * `EXAMPLES` is the single source of truth. The same list produces the committed SVG rolls, the
+ * committed `.wav` clips, the checks below, and, through `markdownSection`, the page's own
+ * markdown. So an example cannot appear in the prose without a figure, carry a roll that disagrees
+ * with its audio, or drift out of the order the page teaches it in.
+ * `PatMiniNotationDocsGuardTest.the page's mini-notation section is what the catalogue generates`
+ * compares the committed region of `pattern_language.md` against a fresh render and fails on any
+ * difference, so the page cannot be hand-edited back out of step. Adding a form to the notation
+ * means appending one `Example`.
  *
- * ### What is actually verified
+ * #### What each entry is checked against
  *
  * As a FIELD_TEST (`synth.pat.mini`) every entry is rendered to a temp dir and asserted, writing no
  * committed assets:
@@ -43,19 +45,25 @@ expect:
  *  * it parses, draws at least one event, and draws nothing outside its own plotted window;
  *  * the SVG holds exactly one rectangle per event plus one backdrop per lane plus one page
  *    background, so the figure cannot invent or drop a note;
- *  * where an entry declares an [Example.equivalent] — `bd ! ! sd` against `bd!3 sd` — the two are
- *    compared **arc for arc and value for value across every cycle**, which is the only claim in
- *    this file that a reader cannot check by eye;
- *  * the clip renders to a real RIFF/WAVE file, non-silent and all-finite, and its onsets are
- *    counted out of the audio and compared with the schedule;
- *  * [ATOM_COLOR_CLAIM] — the instrument colours distinguish exactly the tokens the voice gives a
- *    distinct sound to, checked against [patDrumHz] rather than against a comment;
- *  * and the handful of entries that make a *specific* musical claim carry their own
- *    [Example.verify] to prove it: that `?` really is deterministic, that `<>` really changes per
- *    cycle, that `%8` really phases.
+ *  * where an entry declares a longhand equivalent, as `bd ! ! sd` does for `bd!3 sd`, the two are
+ *    compared **arc for arc and value for value across every cycle**, which is the one claim in
+ *    this file a reader cannot check by eye;
+ *  * the clip renders to a RIFF/WAVE file, non-silent and all-finite, and its onsets are counted
+ *    out of the rendered audio and compared against the times the pattern strikes;
+ *  * `checkAtomColorClaim` holds the instrument colours to the voice in both directions: two
+ *    tokens drawn in different colours must get different sounds out of the drum map, and two
+ *    tokens sharing a colour must share a voice, so the roll never draws a difference the ear
+ *    cannot find;
+ *  * and the entries that make a *specific* musical claim carry their own check to prove it: that
+ *    `?` is deterministic, that `<>` changes per cycle, that `%8` phases.
  *
  * Pass an output dir as `args[0]` (or set `PAT_MINI_DIR`) to regenerate the committed captures
- * under `public/docs/assets/pattern_language/mini/`.
+ * under `public/docs/assets/pattern_language/mini/`. `--markdown` prints the page section instead.
+ */
+
+/**
+ * The mini-notation catalogue itself: the example groups, the page-markdown generator, and the
+ * FIELD_TEST entry point that renders and checks every entry.
  */
 object PatMiniNotation {
 
