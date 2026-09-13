@@ -148,9 +148,9 @@ class DocumentDirectoryWriterLedgerTest {
         private fun exempt(writes: Int, why: String) = DocumentDirectoryWriterLedgerTest.Entry(writes, why)
 
         /**
-         * Every jvmMain file that writes to a document-derived path, as of 2026-09-07.
+         * Every jvmMain file that writes to a document-derived path, as of 2026-09-13.
          *
-         * Seventeen files: five gated, twelve not. The twelve are **not** all bugs — most write
+         * Eighteen files: six gated, twelve not. The twelve are **not** all bugs — most write
          * somewhere a read-only session never reaches. The ones that are genuinely reachable are
          * marked `REACHABLE`, and they are the backlog this test exists to keep visible rather than
          * a claim that tonight fixed them. They were surveyed by an audit of 693 raw write-primitive
@@ -162,6 +162,11 @@ class DocumentDirectoryWriterLedgerTest {
             "src/jvmMain/kotlin/afield/agent_backdoor.kt" to GATED,
             "src/jvmMain/kotlin/afield/history.kt" to GATED,
             "src/jvmMain/kotlin/afield/server/fileproxy.kt" to GATED,
+            // Reachable: the Guides panel's save and the AI4 create/patch/append tools both write
+            // <doc>/*.md, <doc>/docs/** and <doc>/guides/**. Gated on the read-only predicate at
+            // every mutator — `blocksWritesFromCurrentSession()` for the handler, `info.readOnly`
+            // for the tool factory — and each refusal goes through `refuseWrite`.
+            "src/jvmMain/kotlin/afield/server/documentGuides.kt" to GATED,
             "src/jvmMain/kotlin/afield/stdlib/saved.kt" to GATED,
 
             // ---- ungated and reachable from a read-only session: the backlog ----

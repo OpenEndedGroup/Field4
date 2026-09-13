@@ -62,8 +62,22 @@ internal class DocumentGuideFiles(root: File) {
         return DocumentGuideFile(path, bytes.toString(Charsets.UTF_8), revision(bytes))
     }
 
+    /**
+     * Refuse a write in a read-only session, loudly.
+     *
+     * `ReadOnlyDocuments.refuseWrite` is the channel the other document-directory writers use, so a
+     * refused guide edit lands in `SaveReloadLog` next to them rather than being a silent no-op that
+     * only shows up as an error string in the panel. Throwing (rather than returning) keeps the
+     * contract that a returned [DocumentGuideFile] describes bytes that are actually on disk.
+     */
+    private fun refuseIfReadOnly(operation: String, path: String, readOnly: Boolean) {
+        if (!readOnly) return
+        ReadOnlyDocuments.refuseWrite("document-guide-$operation", File(root, path).path)
+        error("This document is read-only")
+    }
+
     fun save(path: String, expected: String, contents: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
-        check(!readOnly) { "This document is read-only" }
+        refuseIfReadOnly("save", path, readOnly)
         val bytes = contents.toByteArray(Charsets.UTF_8)
         require(bytes.size <= MAX_BYTES) { "Guide exceeds the 1 MiB limit" }
         val current = read(path)
@@ -103,7 +117,7 @@ internal class DocumentGuideFiles(root: File) {
 
     /** Publish a complete new file, atomically, only if the name is still absent. */
     fun create(path: String, contents: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
-        check(!readOnly) { "This document is read-only" }
+        refuseIfReadOnly("create", path, readOnly)
         val target = guideTarget(path).toPath()
         val bytes = contents.toByteArray(Charsets.UTF_8)
         require(bytes.size <= MAX_BYTES) { "Guide exceeds the 1 MiB limit" }
@@ -120,7 +134,7 @@ internal class DocumentGuideFiles(root: File) {
     }
 
     fun patch(path: String, expected: String, oldText: String, newText: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
-        check(!readOnly) { "This document is read-only" }
+        refuseIfReadOnly("patch", path, readOnly)
         val current = read(path)
         if (current.revision != expected) throw GuideConflict()
         require(oldText.isNotEmpty()) { "oldText must identify one existing passage" }
@@ -130,7 +144,7 @@ internal class DocumentGuideFiles(root: File) {
     }
 
     fun append(path: String, expected: String, text: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
-        check(!readOnly) { "This document is read-only" }
+        refuseIfReadOnly("append", path, readOnly)
         val current = read(path)
         if (current.revision != expected) throw GuideConflict()
         save(path, expected, current.contents + text, readOnly)
@@ -209,7 +223,13 @@ fun documentGuideHandlers() {
                     DocumentGuideResponse(file = created, entries = files.list() + notes.list())
                 }
                 "pin" -> {
-                    check(!readOnly) { "This document is read-only" }
+                    // Pinning adds a file-proxy box bound to a path inside the document, which
+                    // `createProxyTarget` would refuse anyway; refusing here keeps the box off the
+                    // canvas and puts the refusal in the same log as the guide writes above.
+                    if (readOnly) {
+                        ReadOnlyDocuments.refuseWrite("document-guide-pin", File(info.filename, request.path).path)
+                        error("This document is read-only")
+                    }
                     check(!isNote) { "$onTheBox; it is already on the canvas" }
                     files.read(request.path)
                     val target = files.resolve(request.path)

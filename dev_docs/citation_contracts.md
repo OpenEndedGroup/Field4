@@ -321,7 +321,7 @@ ways; a derivation with no sensible superset stays forward-only and the census s
 
 There are 55<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
 citation that **resolved perfectly**, on a page that passed
-`citationGates` — one of the 13<!--count:citationGuardTestClasses--> focused test classes that task
+`citationGates` — one of the 14<!--count:citationGuardTestClasses--> focused test classes that task
 runs — with every anchor green. The grep behind it saw `ValuePrinterRegistry.register` and
 missed the reified wrapper `registerValuePrinter<T>`, which is how all but four of them are written.
 The conclusion happened to survive, for a reason the page never gave — see the rewritten paragraph
@@ -398,6 +398,143 @@ The ratio is not embarrassing, it is the point. Most of those digits are one-off
 are rather than to let a green tick imply a page's numbers are all checked. The census excludes table
 rows, fenced and inline code, ISO dates, bare years, ordered-list markers, heading anchors and link
 targets — categories whose digits are addresses rather than claims about the code.
+
+## Pinning the arithmetic between two facts
+
+*2026-09-13.* Everything above pins a number to **a population derived from the code**. This pins a
+number to **the arithmetic the page itself claims for it**, which is a different defect and was
+unguarded until now.
+
+`DerivedArithmeticGuard` and `DerivedArithmeticContractTest` are the mechanism, split the same way
+`DerivedCountGuard` and `ProseNumeralContractTest` are: scanner and evaluator in one file, assertions
+over the corpus in the other. `DerivedCountGuard.stripCode` is reused verbatim rather than
+reimplemented, so the two markers cannot drift apart in how they attach.
+
+### The defect family
+
+A page cites two facts. Both resolve. Both are correct. Then it states a third number that is
+arithmetic over them, and gets the arithmetic wrong. Every guard on this page stays green, because
+every guard on this page is looking at the citations.
+
+2026-09-12 produced two instances in one day, on pages that passed `citationGates`:
+
+- `frame_budget.md` said a 10 ms sampler gives "roughly 0.6 chances per frame" at 60 fps. A 16.67 ms
+  frame over a 10 ms period is 1.67. The published figure was `10/16.67` — **the reciprocal of the
+  answer**, with both operands right and both sitting in the same sentence.
+- `profiling_stack.md` said `CPUSpan.notifyListeners` allocates "about 360 short-lived lists a second
+  … whether or not anyone is listening", citing a `listeners.toList()` that returns the `EmptyList`
+  singleton at size 0 and therefore allocates nothing at all.
+
+`b84ce6d25` fixed both in prose, and this section says so deliberately: **the mechanism is not
+justified by those two sentences, which are gone.** It is justified by the family. A reciprocal is one
+keystroke from correct, it survives every other contract on this page, and the sweep that found the
+founding markers turned up 381 lines under `dev_docs/` and `public/docs/` carrying two numerals and a
+derivation connective.
+
+### The marker
+
+```markdown
+Sixty frames a second is 16.67<!--derive: 1000/60--> milliseconds a frame.
+… four 8<!--derive: 1920*1080*4/1e6--> MB allocations per call at 1920x1080 —
+around 33<!--derive: 4*1920*1080*4/1e6--> MB of allocate-and-zero per operation.
+```
+
+The adjacency rule, the invisibility and the inertness inside code are all inherited from the
+`count:` marker above and argued there. What is new is the body: it carries **the author's own
+arithmetic**, in the sentence, where a reader can audit it without opening a test.
+
+The second example is why that matters. "Four 8 MB allocations … around 33 MB" looks like an error —
+four eights are thirty-two. The marker shows that both numbers come from `1920*1080*4`, which is
+8.29 MB, and that the page is using decimal MB rather than MiB. Neither of those facts was recoverable
+from the prose, and the number that looked wrong was right.
+
+Four rules, each chosen against an alternative:
+
+- **The grammar is `+ - * /`, parentheses, unary minus, and decimal or exponent literals.** Nothing
+  else — no functions, no variables, no `^`. The marker's only advantage over a Kotlin-side
+  `Derivation` is that it is legible *in place*, and a richer language spends exactly that: `1000/60`
+  is checkable by eye and `round(hz*ms/1e3, 2)` is not. Totality is structural rather than hoped for:
+  every refusal is a null, and nothing in the evaluator throws.
+- **The default tolerance is the precision the prose already states.** The computed value, rounded
+  `HALF_UP` to the number of decimal places the published numeral shows, must equal it. So `16.67`
+  passes against `1000/60`, `1.7` passes against `16.7/10`, and `0.6` fails against `16.67/10`. This
+  needs no declaration in the common case, which is the point — a tolerance nobody has to write is a
+  tolerance nobody gets wrong, and the author has already declared their precision by choosing how to
+  spell the number. Where rounding is not the story, `~2` (absolute) or `~5%` (relative) after the
+  expression widens it, visibly, in the page's own markup.
+- **Operands are literals, never references to another number.** Resolution would need a key registry
+  — which is exactly what confines the `count:` marker to pages on `GUARDED_PAGES` — and it would
+  destroy the legibility that justifies the whole marker. **The limit, stated rather than discovered
+  later: a wrong *operand* is invisible here.** A page that writes `1000/50` and publishes `20` passes.
+  What is checked is the *step*, and that is where all three recorded instances went wrong.
+- **Digits only, unlike the `count:` marker.** That is not a reversal of the argument above about not
+  making prose worse; it is a consequence of the tolerance rule. A count spelled "four" is exact, and a
+  derived quantity spelled "two and a half" has discarded the precision the agreement test is built
+  on. There is nothing to round to.
+
+### A malformed marker fails open per marker, and closed on itself
+
+A marker whose expression will not parse does **not** stop the corpus being scanned. Every other
+marker on every other page is still evaluated. That is `d6023c83b`'s pattern, copied on purpose:
+`tools/discover_field_tests.py` was fail-closed tree-wide, and one bad annotation left the entire
+smoke runner dead for twelve hours.
+
+But *fail open* must not slide into *silently skipped*, because a typo that quietly un-guards a
+published number is the defect this exists to stop. So the malformed marker is collected with its
+page, its line and the parser's reason, and `everyMarkerCarriesArithmeticThisCanEvaluate` fails on it.
+Open in blast radius, closed in verdict. `tolerancesAreHonouredAndOneBadMarkerDoesNotBlindTheRest`
+asserts both halves on one synthetic page rather than leaving them as an intention.
+
+### The population, said as a number
+
+Every tracked-shape `.md` file under `dev_docs/` and `public/docs/`, which was **641** on the day this
+landed. That is wider than the `count:` marker's reach, and for a structural reason rather than
+ambition: a `derive:` marker carries its own arithmetic, so there is nothing to register and no reason
+to restrict the corpus to pages that have a registry entry.
+
+Both trees are already declared `citationGates` inputs, so this needed no new Gradle declaration and
+`GateInputDeclarationTest` holds that property rather than this paragraph.
+
+The population is written down here because this repo has now recorded four guards that selected less
+than their author believed — a `_GUARDED_PAGE` regex matching only `dev_docs/` that left all ten
+`public/docs` pages invisible, and a `_reference_input` predicate covering two of sixteen source roots
+— and in every case the direction of the error was *less*. `theCorpusThisScansIsTheOneItClaims` runs
+first and asserts the corpus size against a floor, so a renamed tree or a walk that stops entering
+fails loudly instead of turning every other assertion in the class into a green tick over an empty
+list.
+
+### What it checks, and in which direction
+
+| assertion | direction | fails when |
+|---|---|---|
+| `everyDerivedNumberAgreesWithItsOwnArithmetic` | value | the page publishes the reciprocal |
+| `everyMarkerCarriesArithmeticThisCanEvaluate` | shape | an expression will not parse |
+| `everyMarkerIsAttachedToANumber` | shape | a marker sits after the noun |
+| `theCorpusThisScansIsTheOneItClaims` | anti-vacuity | the corpus walk collapsed |
+| `theMarkedPopulationIsFlooredAndTheRemainderIsCounted` | anti-vacuity | every marker was deleted at once |
+| `theAgreementCheckFailsOnAWrongDerivation` | the teeth | the headline assertion stops being able to fail |
+
+The last row is the one this repo had to learn to write. A guard whose teeth are asserted in prose is
+a guard nobody has watched bite, and last night's review caught a class in this very package citing
+`assertEqual(catalog["skipped"], [])` as its teeth when an earlier `strict=True` made the call *raise*
+first, so that line was unreachable as a failure. `theAgreementCheckFailsOnAWrongDerivation` replays
+the 2026-09-12 reciprocal — `0.6` published for `16.67/10` — and asserts that the check reports it and
+that the failure message names the value the arithmetic gives. The commit that introduced the
+mechanism was pushed **red** against a planted reciprocal first, with the failure quoted in its
+message, for the same reason.
+
+### Adding one
+
+1. **Work out the arithmetic and write it in the marker**, beside the number, with literal operands.
+2. **Check the units are the ones the expression uses.** The `1920*1080*4/1e6` example above is the
+   whole hazard in one line: `/1e6` and `/1048576` give 33 and 32, and only one of them is the number
+   the page publishes.
+3. **Run it**: `./gradlew --no-daemon citationGates --rerun --tests '*DerivedArithmeticContract*'`.
+   The `--rerun` is not optional. This gate has gone `UP-TO-DATE` on a docs edit three times, once
+   inside a verification of this very page — an 11-second `BUILD SUCCESSFUL` that had not run
+   anything, against 1 m 8 s and five tasks executed when forced.
+4. **Ratchet `MIN_MARKERS`** if you have grown the founding set. A floor is only a floor relative to
+   the population it floors.
 
 ## The failure modes, with dated examples
 
