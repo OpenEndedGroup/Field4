@@ -185,6 +185,8 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_STORE` (`-Dafield.docsAnnotations.store`) | `~/.afield/docs-annotations.json` | selects the annotation notebook. Relative paths are resolved from Field's working directory, so automation can use `.field-backdoor/docs-annotations.json` without touching the human's global notes. The property wins over the environment. |
+| `AFIELD_DOCS_MIRROR_SOURCE` (`-Dafield.docsMirror.source`) | unset → `auto` | which copy `/field-docs/…` serves. `auto` is the local build when it exists and the published site when it does not; `local` never falls back; `upstream` is the original always-proxy behaviour. An unrecognised value is `auto` — the startup line prints what was resolved. |
+| `AFIELD_DOCS_MIRROR_DIR` (`-Dafield.docsMirror.dir`) | `public/field4` under Field's working directory | the built site the two local modes serve. Checked per request, so a docs build that finishes while Field is running needs no restart. |
 | `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site HTTP writes and browser upgrades to Field's two command WebSockets, not just this feature. Browser URLs must name `localhost` or a literal IP. Off by default; see the last section for what it does and — mostly — does not close. |
 
 Five independent conditions guard the spawn, each separately sufficient to stop the
@@ -254,9 +256,27 @@ answered *which machine* and stopped there, when the thing it names — steering
 just as available to a page in your own browser. Both questions are asked now; see
 "Annotations are same-site as well as loopback-only", above.
 
+## The mirror prefers the build in front of you
+
+Since 2026-09-13 `/field-docs/…` serves `public/field4/` — this checkout's built site —
+whenever that directory has the page, and only falls back to fetching openendedgroup.com
+when it does not. Two things were wrong with always proxying. It needs the network, and
+when the fetch failed the pane showed `documentation unavailable: null` — an exception
+whose `message` was null, with nothing in the log to say more. And it showed the
+*published* prose, so the notes you took were about a page that may already have been
+rewritten, which is a strange way to run a loop whose output is a rewrite of that page.
+
+The notes are unaffected either way: `docsAnnotations.js` keys them on the canonical
+`https://openendedgroup.com/field4/…` URL, which the server declares in
+`window.__FIELD_DOCS_UPSTREAM__` no matter where the bytes came from. What does change is
+the `<base href>` — local for a local page, so its assets are local too — and a label in
+the panel header reading `local build` or `published`.
+
+`AFIELD_DOCS_MIRROR_SOURCE=upstream` restores the old behaviour; see the contract table.
+
 ## And so is the mirror, for a different reason
 
-`/field-docs/…` fetches openendedgroup.com and serves it back **from Field's own origin**.
+`/field-docs/…` serves the documentation **from Field's own origin**.
 That is the whole trick: it is what lets the injected panel `fetch('/api/docs-annotations')`
 without CORS. The price of the trick is that every script in the mirrored page is
 same-origin with Field, and Field has around fifty other `/api/…` routes with no

@@ -279,7 +279,7 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**98 rebindable commands**, 50 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**107 rebindable commands**, 50 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
@@ -295,11 +295,15 @@ exactly what a fresh `keybindings.yaml` says.
 | Command id | Default | Where | What it does |
 | --- | --- | --- | --- |
 | `-copy` | *(none)* | both | Duplicate box(es) |
+| `-layout-boxes` | *(none)* | both | Lay out selection |
+| `-layout-document` | *(none)* | both | Lay out whole document |
 | `-update-check` | *(none)* | both | Check for updates |
+| `add-document-note` | *(none)* | both | Add Note to This Document |
 | `add-editor-to-output` | *(none)* | both | Add Editor to Output Area |
 | `align` | *(none)* | both | Align boxes |
 | `connect` | `g` | canvas | Connect boxes |
-| `copy-selection` | `cmd+c` | both | Copy Selection |
+| `copy-box-guide-link` | *(none)* | both | Copy Markdown Link to Box or Line |
+| `copy-selection` | `cmd+c` | canvas | Copy Selection |
 | `delete-box` | `cmd+backspace` or `cmd+delete` | both | Delete Box(es) |
 | `disconnect` | `u` | canvas | Disconnect boxes |
 | `edit-hashtag` | `cmd+h` | both | Edit hashtag |
@@ -316,17 +320,18 @@ exactly what a fresh `keybindings.yaml` says.
 | `macro-transcript-undo` | *(none)* | both | Macro: Undo on Selection |
 | `move-forward` | *(none)* | both | Move selected boxes forward |
 | `nest-into` | *(none)* | both | Nest selection into a box |
-| `new-box` | `n` | both | New Box |
+| `new-box` | `n` | canvas | New Box |
 | `normalize-nested-pan` | *(none)* | both | Normalize Nested contents |
 | `open-user-keybindings` | *(none)* | both | Open Keybindings |
 | `open-user-theme` | *(none)* | both | Open User Theme |
-| `paste-selection` | `cmd+v` | both | Paste Selection |
+| `paste-selection` | `cmd+v` | canvas | Paste Selection |
 | `provisional-accept-all` | *(none)* | both | Accept All Provisional (Everywhere) |
 | `provisional-reject-all` | *(none)* | both | Reject All Provisional (Everywhere) |
 | `record-selected-box-mp4` | *(none)* | both | Record Selected Box MP4 |
 | `record-selected-editor-mp4` | *(none)* | both | Record Selected Editor MP4 |
 | `record-window-mp4` | *(none)* | both | Record Window MP4 |
 | `reload-user-keybindings` | *(none)* | both | Reload Keybindings |
+| `reloadPersonal` | *(none)* | both | Reload personal/ classes |
 | `reset` | *(none)* | both | Reset Kotlin Environment for Box |
 | `route` | *(none)* | both | Route (position-guided) |
 | `save-as-template` | *(none)* | both | Save selection as template |
@@ -334,22 +339,26 @@ exactly what a fresh `keybindings.yaml` says.
 | `select-all-boxes` | *(none)* | both | Select All Boxes |
 | `set-main-language` | *(none)* | both | Set Main Language |
 | `set-main-language-clojure` | *(none)* | both | Set Main Language: Clojure |
+| `set-main-language-datalog` | *(none)* | both | Set Main Language: Datalog |
 | `set-main-language-fieldml` | *(none)* | both | Set Main Language: FieldML |
-| `set-main-language-forth` | *(none)* | both | Set Main Language: Forth |
+| `set-main-language-forth` | *(none)* | both | Set Main Language: ForthField |
 | `set-main-language-kotlin` | *(none)* | both | Set Main Language: Kotlin |
 | `set-main-language-kotlinjs` | *(none)* | both | Set Main Language: Kotlin → head |
 | `set-main-language-morpho` | *(none)* | both | Set Main Language: MorphoHDL |
 | `set-main-language-nano` | *(none)* | both | Set Main Language: Nano |
+| `set-main-language-python` | *(none)* | both | Set Main Language: Python |
 | `set-main-language-remotejs` | *(none)* | both | Set Main Language: Javascript |
 | `show-all-layers` | *(none)* | both | Show All Layers |
+| `show-document-guide` | *(none)* | both | Show Document Guide |
 | `show-document-history` | *(none)* | both | Show Document History |
+| `show-profiling-timeline` | *(none)* | both | Show Profiling Timeline |
 | `snap_tidy` | *(none)* | both | Snap + tidy boxes |
 | `solo-next-layer` | `alt+]` | both | Solo Next Layer |
 | `solo-previous-layer` | `alt+[` | both | Solo Previous Layer |
-| `switch-to-docs-iframe` | *(none)* | both | Switch to Documentation Iframe |
+| `switch-to-docs-iframe` | *(none)* | both | Read the Field Documentation |
 | `switch-to-monaco-editor` | *(none)* | both | Switch to Monaco Editor |
 | `toggle-keypress-display` | *(none)* | both | Toggle Keypress Display |
-| `toggle-notes-markdown-preview` | `cmd+shift+m` | both | Toggle Notes Markdown Preview |
+| `toggle-notes-markdown-preview` | `cmd+shift+m` | both | Toggle Markdown Preview |
 | `un-nest` | *(none)* | both | Un-nest selection |
 
 ### Editor

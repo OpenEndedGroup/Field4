@@ -26,6 +26,7 @@ import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -468,6 +469,102 @@ class DocsAnnotationRouteSecurityTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // The mirror, serving the build in front of you
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * The whole of the local path, end to end, over a directory this test wrote: the page
+     * comes from disk, the annotation panel is injected into it, the note key is still the
+     * *published* URL, and the `<base href>` is local so the page's own assets are too.
+     *
+     * That last one is what makes it work offline, and it is invisible in a screenshot:
+     * with the upstream base the HTML would load locally and then fetch every stylesheet
+     * and image from openendedgroup.com.
+     */
+    @Test
+    fun theMirrorServesTheLocalBuildWithTheNotesPanelStillAttached() {
+        val build = builtSite()
+        docsApp(mirror = DocsMirror(DocsMirrorSource.AUTO, build)) {
+            val home = get("/field-docs/")
+            assertEquals(HttpStatusCode.OK, home.status)
+            val body = home.bodyAsText()
+            assertTrue("THE LOCAL HOME PAGE" in body, "the bytes must be the local build's: [$body]")
+            assertTrue("""window.__FIELD_DOCS_SOURCE__="local"""" in body, "the panel labels which copy this is")
+            assertTrue(
+                """window.__FIELD_DOCS_UPSTREAM__="https://openendedgroup.com/field4/index.html"""" in body,
+                "notes are keyed on the published URL however the page was served, or a rebuild orphans them",
+            )
+            assertTrue("/docsAnnotations.js" in body, "the panel must be injected into the local copy too")
+            assertTrue("""<base href="/field-docs/">""" in body, "a local page's assets must resolve locally")
+
+            // A directory one level down: `index.html`, and a base href that keeps its
+            // relative links inside the mirror.
+            val nested = get("/field-docs/reference/")
+            assertEquals(HttpStatusCode.OK, nested.status)
+            assertTrue("THE REFERENCE INDEX" in nested.bodyAsText())
+            assertTrue("""<base href="/field-docs/reference/">""" in nested.bodyAsText())
+
+            // Not HTML: served as itself, with the charset that stops a browser decoding
+            // the built site's typography as something else.
+            val css = get("/field-docs/assets/extra.css")
+            assertEquals(HttpStatusCode.OK, css.status)
+            assertEquals("body{color:#eee}", css.bodyAsText())
+            assertEquals("text/css; charset=UTF-8", css.headers[HttpHeaders.ContentType])
+        }
+    }
+
+    /**
+     * The failure the human actually hit, from the other end: a pane that said
+     * `documentation unavailable: null` and nothing else.
+     *
+     * `local` is the mode that cannot fall back, so this is where a missing page has to
+     * explain itself. The assertion is not on prose for its own sake — the pane is the
+     * only place this message is ever read, and a bare status line there is
+     * indistinguishable from the feature being broken.
+     */
+    @Test
+    fun aMissingLocalPageSaysWhichDirectoryAndWhatToBuild() {
+        val build = builtSite()
+        docsApp(mirror = DocsMirror(DocsMirrorSource.LOCAL, build)) {
+            val missing = get("/field-docs/never-written.html")
+            assertEquals(HttpStatusCode.NotFound, missing.status)
+            val body = missing.bodyAsText()
+            assertTrue(build.toString() in body, "say which build was searched: [$body]")
+            assertTrue("build_zensical_docs.py" in body, "say how to build it: [$body]")
+            assertTrue("AFIELD_DOCS_MIRROR_SOURCE" in body, "say how to change the choice: [$body]")
+        }
+    }
+
+    /** A path that leaves the build directory is refused before anything is read from disk. */
+    @Test
+    fun theMirrorWillNotReadAFileOutsideTheBuild() {
+        val build = builtSite()
+        val outside = Files.createTempFile("not-documentation", ".html")
+        Files.writeString(outside, "A SECRET NOT IN THE DOCUMENTATION")
+        docsApp(mirror = DocsMirror(DocsMirrorSource.LOCAL, build)) {
+            for (attack in listOf("/field-docs/../${outside.fileName}", "/field-docs/%2e%2e/${outside.fileName}")) {
+                val response = get(attack)
+                assertTrue(
+                    response.status == HttpStatusCode.BadRequest || response.status == HttpStatusCode.NotFound,
+                    "$attack must be refused, was ${response.status}",
+                )
+                assertFalse("A SECRET" in response.bodyAsText(), "$attack read a file outside the build")
+            }
+        }
+    }
+
+    /** A minimal built site: the two pages and the one asset the tests above ask for. */
+    private fun builtSite(): Path {
+        val root = createTempDirectory("docs-mirror").toRealPath()
+        Files.writeString(root.resolve("index.html"), "<html><head><title>x</title></head><body>THE LOCAL HOME PAGE</body></html>")
+        val reference = Files.createDirectories(root.resolve("reference"))
+        Files.writeString(reference.resolve("index.html"), "<html><head></head><body>THE REFERENCE INDEX</body></html>")
+        val assets = Files.createDirectories(root.resolve("assets"))
+        Files.writeString(assets.resolve("extra.css"), "body{color:#eee}")
+        return root
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
 
     /**
      * Stands the real routes and the real CORS configuration up, and hands [block] the
@@ -491,6 +588,7 @@ class DocsAnnotationRouteSecurityTest {
      */
     private fun docsApp(
         policy: DocsAccessPolicy = remoteAllowed,
+        mirror: DocsMirror = noLocalBuild,
         block: suspend HttpClient.() -> Unit,
     ) = withTempStore { store ->
         storeInUse = store
@@ -498,11 +596,21 @@ class DocsAnnotationRouteSecurityTest {
             application {
                 install(ContentNegotiation) { json() }
                 installFieldApiCors()
-                routing { installDocsAnnotationRoutes(policy) }
+                routing { installDocsAnnotationRoutes(policy, mirror) }
             }
             client.block()
         }
     }
+
+    /**
+     * The mirror every test gets unless it says otherwise: `local`, pointed at a directory
+     * that does not exist.
+     *
+     * Not "no configuration" on purpose. The shipped default would fall through to
+     * fetching openendedgroup.com, and a unit test that reaches the internet is a test
+     * that fails on a train — so nothing in this file can do it by accident.
+     */
+    private val noLocalBuild = DocsMirror(DocsMirrorSource.LOCAL, Path.of("/no-such-docs-build"))
 
     /** Loopback opened, everything else as shipped: the posture that isolates the site guard. */
     private val remoteAllowed = DocsAccessPolicy(allowRemoteAnnotations = true)

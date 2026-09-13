@@ -635,8 +635,8 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
   - Full recapture build that bypasses the screenshot/video cache entirely: `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean`
   - No-capture docs build that reuses existing assets without starting Field: `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean`
   - Experimental warm-session capture path (opt-in, default OFF): set `FIELD_DOCS_RUNNER_SESSION=1` to route eligible non-graphics captures through one persistent `tools/field_session.py` daemon (JVM + WebSocket + Playwright page attached once) instead of a fresh `field_backdoor.py` process per capture. It is safe: each attempt fast-fails and falls back to the authoritative per-process path, and a circuit breaker (`SESSION_MAX_FAILURES=1`) stops the daemon on the first miss so the warm daemon and a per-process fallback never share one Field. Each capture creates its box at the origin and deletes it after the screenshot (via the `delete-box` backdoor command), so boxes never accumulate and one never-re-reset scratch doc serves an unbounded run. Measured ~2.0–2.4x on a forth+fline build (56 captures: 321–376s → 153–159s, pixel-identical). Still default OFF pending a full 236-capture clean-build validation; the residual risk is a slow graphics/SVG capture false-missing and handing off to the per-process path, which can hang on a Field already degraded by heavy cumulative graphics captures. Graphics-context and video captures always use the per-process path.
-  - Serve built site (matches Field’s default docs iframe URL): `cd public && python3 -m http.server 8000`
-  - Browse: `http://localhost:8000/field4/`
+  - Serve built site standalone: `cd public && python3 -m http.server 8000`
+  - Browse: `http://localhost:8000/field4/` — or just open Field's documentation pane, which serves `public/field4/` at `/field-docs/` once it is built
 
 ### `!!! note` vs `??? aside` — who a callout is written for
 
@@ -653,7 +653,8 @@ Mechanics: `pymdownx.details` supplies `???` (see `public/zensical.yml`), and `a
 
 - Field can show documentation in an iframe overlay (resizable, switchable from the command palette).
 - Frontend toggle command: `switch-to-docs-iframe` (`src/jsMain/kotlin/afield/commands.kt`).
-- Default URL + iframe wiring: `src/commonMain/resources/bootstrapMonaco.js` (defaults to `http://localhost:8000/field4/index.html`).
+- Default URL + iframe wiring: `src/commonMain/resources/bootstrapMonaco.js` (defaults to `/field-docs/`, Field's own mirror).
+- `/field-docs/…` serves **`public/field4/` — this checkout's built site — when the page is there**, and proxies `https://openendedgroup.com/field4/` when it is not. So the pane shows the docs you are editing, and works offline. `AFIELD_DOCS_MIRROR_SOURCE=local|upstream` and `AFIELD_DOCS_MIRROR_DIR` override it; served by `src/jvmMain/kotlin/afield/server/docsAnnotations.kt`, and both paths inject the annotation panel. See `dev_docs/DOCS_IFRAME_MODE.md`.
 - Bridge API for docs pages: `src/commonMain/resources/docsIframeApi.js` (injected into the iframe; exposes `window.FieldAPI.*` to run actions / navigate / execute boxes).
 
 ### Exporting docs from a live Field document
