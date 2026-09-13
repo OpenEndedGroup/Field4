@@ -265,8 +265,8 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 ## What this means for the audio elsewhere in these docs
 
 The stand-in is not the voice you are hearing on most of the site. The audit described at the
-bottom of this page sweeps every published clip and measures each one; the corpus is fifteen
-clips across four pages, and it breaks down like this:
+bottom of this page sweeps every published clip and measures each one; the corpus is seventeen
+clips across five pages, and it breaks down like this:
 
 <div class="field-data-table" markdown>
 
@@ -276,12 +276,12 @@ clips across four pages, and it breaks down like this:
 | 1 | real Dirt-Samples one-shots | here |
 | 1 | real samples + the stand-in per unmatched event | here |
 | 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
-| 1 | a **Faust** program compiled at runtime | [Sound paths](sound_paths.md) |
+| 3 | a **Faust** program compiled at runtime | 1 on [Sound paths](sound_paths.md), 2 on [Faust](faust.md) |
 
 </div>
 
-Nine of the fifteen never touch `patVoice` at all, and the largest family among them is standing
-in for nothing. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant lowpass and a soft
+Eleven of the seventeen never touch `patVoice` at all, and the largest family among them is
+standing in for nothing. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant lowpass and a soft
 clipper on real signals; a plate reverb ringing down *is* the thing that page is about.
 
 Where the stand-in genuinely is the voice, in the five clips of the first row, the reason is the
