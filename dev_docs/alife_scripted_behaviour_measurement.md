@@ -82,10 +82,11 @@ the evenly-spread spawn ring, the second from whatever 5 s of hard wandering lef
 This is the section worth reading, because in every case the mechanism was right and the
 *measurement* or the *parameter* was wrong.
 
-1. **`align` cannot bootstrap from rest.** 90 agents spawned at rest reached polarization 0.106
-   after 4 s of a flocking script. `align` steers toward the mean *neighbour velocity*, and at rest
-   there is none. **Rest is not disordered, it is empty.** Fix: `spawn()` takes an initial velocity,
-   documented at the parameter.
+1. **`align` does not bootstrap from rest.** 90 agents spawned at rest reached polarization 0.106
+   after 4 s of a flocking script. `align` sums its neighbours' velocity components and steers
+   toward their mean (`alife_script.kt:1400#fun align`), so at rest the sum is zero and the drive
+   has no direction to give. **Rest is not disordered, it is empty.** Fix: `spawn()` takes an
+   initial velocity, documented at the parameter.
 2. **`wander(turn = 6.0)` is not a scatter.** 0.05 rad/step at 60 Hz random-walks a heading only
    0.05·√300 ≈ 0.9 rad across a 5 s phase, so it *preserved* the alignment it inherited — the figure
    measured polarization **rising** during a phase labelled "scatter" (0.736). `turn = 40` is needed
