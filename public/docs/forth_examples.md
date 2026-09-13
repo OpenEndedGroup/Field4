@@ -52,7 +52,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" wait="1.0" capture="box" embed=true name="forth-output-channels"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
 :::static
 variable count
 0 count !
@@ -61,7 +61,7 @@ variable count
 2 count +!
 3 count +!
 
-s"<b>Forth can emit HTML into Field output areas.</b>" display
+s"Forth writes straight into a Field output area." display
 s"count = " count @ str str+ s"debug" display-channel
 ```
 
@@ -268,7 +268,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" wait="1.0" capture="box" embed=true name="forth-visualization-helpers"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" wait="1.0" capture="box" trim=true embed=true name="forth-visualization-helpers"}
 :::static
 s"<b>Hello from raw Forth HTML.</b>" html
 

@@ -356,6 +356,89 @@ class DocsAnnotationSecurityTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // The local build the mirror prefers
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    fun theLocalMirrorRefusesEveryWayOutOfItsDirectory() {
+        val root = createTempDirectory("docs-mirror").toRealPath()
+        Files.writeString(root.resolve("index.html"), "<html><head></head>local</html>")
+        val outside = Files.createDirectory(root.parent.resolve("${root.fileName}-outside"))
+        Files.writeString(outside.resolve("secret.html"), "not documentation")
+        // The same attacks the proxy is pinned against, now against a filesystem, where
+        // they would read a file rather than fetch a page.
+        for (attack in listOf(
+            "/field-docs/../${outside.fileName}/secret.html",
+            "/field-docs/%2e%2e/${outside.fileName}/secret.html",
+            "/field-docs/..%2f${outside.fileName}%2fsecret.html",
+            "/field-docs/a\\..\\b",
+        )) {
+            assertNull(docsMirrorFile(root, attack), "$attack must be refused")
+        }
+        // A symlink is the way out the textual checks cannot see, so it is checked on
+        // the file that was actually found rather than on the path that was asked for.
+        Files.createSymbolicLink(root.resolve("escape.html"), outside.resolve("secret.html"))
+        assertNull(docsMirrorFile(root, "/field-docs/escape.html"), "a symlink out of the build is out of the build")
+    }
+
+    @Test
+    fun theLocalMirrorServesTheBuildItIsFor() {
+        val root = createTempDirectory("docs-mirror").toRealPath()
+        Files.writeString(root.resolve("index.html"), "<html><head></head>home</html>")
+        Files.writeString(root.resolve("rectsl.html"), "<html><head></head>rectsl</html>")
+        val nested = Files.createDirectories(root.resolve("reference"))
+        Files.writeString(nested.resolve("index.html"), "<html><head></head>reference</html>")
+        // Both spellings of the root, and a directory, resolve to an index.html — the
+        // published site's behaviour, which the pages' relative links assume.
+        assertEquals(root.resolve("index.html"), docsMirrorFile(root, "/field-docs/"))
+        assertEquals(root.resolve("index.html"), docsMirrorFile(root, "/field-docs"))
+        assertEquals(nested.resolve("index.html"), docsMirrorFile(root, "/field-docs/reference/"))
+        assertEquals(nested.resolve("index.html"), docsMirrorFile(root, "/field-docs/reference"))
+        assertEquals(root.resolve("rectsl.html"), docsMirrorFile(root, "/field-docs/rectsl.html"))
+        // A page the local build does not have is a miss, not an error: in AUTO that is
+        // precisely the case that falls through to the published site.
+        assertNull(docsMirrorFile(root, "/field-docs/not-built-yet.html"))
+    }
+
+    @Test
+    fun theMirrorSourceIsAutoUnlessSomebodySaidOtherwise() {
+        assertEquals(DocsMirrorSource.AUTO, resolveDocsMirrorSource(null, null))
+        assertEquals(DocsMirrorSource.AUTO, resolveDocsMirrorSource(null, ""), "an exported-but-empty variable is not a choice")
+        assertEquals(DocsMirrorSource.AUTO, resolveDocsMirrorSource(null, "localhost"), "an unrecognised value must not break the route")
+        assertEquals(DocsMirrorSource.LOCAL, resolveDocsMirrorSource(null, "LOCAL"))
+        assertEquals(DocsMirrorSource.UPSTREAM, resolveDocsMirrorSource(null, " upstream "))
+        assertEquals(
+            DocsMirrorSource.UPSTREAM,
+            resolveDocsMirrorSource("upstream", "local"),
+            "a -D flag on this JVM beats a variable from a login shell",
+        )
+    }
+
+    @Test
+    fun theMirrorDirectoryDefaultsToThisCheckoutsBuildAndNeedNotExistYet() {
+        val checkout = createTempDirectory("checkout")
+        assertEquals(
+            checkout.resolve(DEFAULT_DOCS_MIRROR_DIRECTORY).toAbsolutePath().normalize(),
+            resolveDocsMirrorDirectory(null, checkout),
+        )
+        assertEquals(
+            checkout.resolve("elsewhere").toAbsolutePath().normalize(),
+            resolveDocsMirrorDirectory(checkout.resolve("elsewhere").toString(), checkout),
+        )
+        // Deliberately not `toRealPath`: neither of the paths above exists, because a
+        // docs build that finishes an hour after Field started must be picked up by the
+        // next request rather than by the next restart.
+        assertFalse(Files.exists(resolveDocsMirrorDirectory(null, checkout)), "resolution must not require a built site")
+        // A relative override is resolved from Field's own working directory, the same
+        // rule the annotation store follows, so `.field-backdoor/…` means what automation
+        // expects it to mean.
+        assertEquals(
+            Path.of("some/other/build").toAbsolutePath().normalize(),
+            resolveDocsMirrorDirectory("some/other/build", checkout),
+        )
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // The store
     // ══════════════════════════════════════════════════════════════════════════
 

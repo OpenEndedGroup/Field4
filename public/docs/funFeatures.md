@@ -295,9 +295,15 @@ Clojure is another wonderful JVM language that we have a lot of respect for:
 
 ![](assets/screenshot_54.png)
 
-What can we say: we have rainbow parens?
+Same idea as Python, one runtime further in: Clojure 1.11 *is* a JVM language, so a Clojure box and
+a Kotlin box are two objects in one process with nothing between them. `(.getChildren (box))` walks
+the document, an `FLine` you build in Clojure is the same `FLine` Field's renderer draws, and
+returning an animation launches it by the same rule a Kotlin box follows. Printed output lands
+beside the form that printed it, and so does the exception when a form throws.
 
-## some-Forth
+And, yes: we have rainbow parens. [Clojure in a box](clojure.md) is the whole story.
+
+## ForthField
 
 Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth: stack words, dictionary inspection, recursion, return-stack tricks, helpful diagnostics, Field-native visualization, and full JVM interop:
 
@@ -666,3 +672,18 @@ The document-level command 'Add Editor to Output Area` will allow you to pin a p
 </video>
 
 These additional, fully functional editors, give you a place to keep code (or outputs embedded in code!) that you keep coming back to.
+
+## From your phone
+
+The other browser worth pointing at Field is the one in your pocket. Field serves a page at
+`/controllers` that is built for a phone rather than shrunk down to one: a large touch pad that
+sends X, Y or both into the selected box, the sliders and colour wells that box publishes, its
+output areas reformatted into a single narrow column, the real AI4 conversation for it, Open
+Anything, and a full Monaco editor on whatever is selected. There is one selection behind all of
+it, shared with the desktop — the phone follows Field's, and a pick made on the phone becomes
+Field's — so a piece can be running on a projector while you hold its controls and walk around in
+front of it.
+
+[Field from your phone](mobile_controllers.md) has the URL, what each of the six tabs does, and the
+warning that goes with any of this: the page can run boxes, edit code and call AI4 tools, so it
+belongs on a network you trust and never on the open internet.

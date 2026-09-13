@@ -181,8 +181,8 @@ import afield.CellRole
  *
  * Example: long-form output areas from FORTH:
  * ```forth
- * s"<b>Inline-ish output area content</b>" display
- * s"<pre>Detailed log text...</pre>" s"debug" display-channel
+ * s"<b>Inline-ish output area content</b>" html
+ * s"<pre>Detailed log text...</pre>" s"debug" html-channel
  * ```
  *
  * Example: launchable animation with cooperative yielding via `frame`.
