@@ -1418,6 +1418,14 @@ val citationGuardTestClasses = listOf(
     // pinned to a population derived from the code. Here for the same reason as the line above — a
     // docs-only branch that restates a count must not be able to go green without recomputing it.
     "afield.docs.ProseNumeralContractTest",
+    // The *arithmetic* half, added 2026-09-13. ProseNumeralContractTest pins a number to a population
+    // derived from the code; this pins a number to the arithmetic the page itself claims for it — the
+    // case where both operands are cited, both resolve, and the step between them is wrong. Here for
+    // the same reason as its two neighbours and more strongly: it reads nothing but Markdown, across
+    // the whole of dev_docs/**.md and public/docs/**.md, both declared inputs below and neither on any
+    // JVM classpath. In the broad jvmTest a docs-only edit would inherit an UP-TO-DATE result and the
+    // guard would serve a cached verdict about the previous text.
+    "afield.docs.DerivedArithmeticContractTest",
     // The claim half: a dev_docs sentence asserting that something is *impossible*, or that a cause has
     // been *ruled out*, must carry a reproducer, a citation or an explicit conjecture marker. Here
     // rather than in the broad jvmTest for the decisive reason — it reads Markdown, and citationGates
@@ -1875,6 +1883,14 @@ tasks.register<JavaExec>("checkAgentTranscriptLayouts") {
     mainClass.set("afield.docs.AgentTranscriptLayoutGuard")
 }
 
+tasks.register<JavaExec>("checkBoxOutputChannels") {
+    group = "verification"
+    description = "Fails when one box writes two figures to the same output channel — display(channel, …) replaces rather than appends, so the first figure is never seen."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.BoxOutputChannelGuard")
+}
+
 tasks.register<JavaExec>("checkCompletionCorpusFixtures") {
     group = "verification"
     description = "Fails if tools/completion-corpus/boxes no longer matches the transcript and template corpus after real macro expansion."
@@ -2085,6 +2101,7 @@ tasks.named("check") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkAgentTranscriptLayouts")
+    dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
     dependsOn(checkExpectedTestFailures)
@@ -2122,6 +2139,7 @@ tasks.register("docsGates") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkAgentTranscriptLayouts")
+    dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentDemos")
@@ -2138,6 +2156,7 @@ citationGates.configure {
         "checkAgentTranscripts",
         "checkAgentTranscriptIndex",
         "checkAgentTranscriptLayouts",
+        "checkBoxOutputChannels",
         "checkCompletionCorpusFixtures",
         "checkPythonTools",
         "checkAgentDemos",

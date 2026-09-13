@@ -146,7 +146,7 @@ markdown("main", report)
 <!-- field-box id="midi_write" index="3" -->
 
 ```edn [field-box id="midi_write" role="properties"]
-{"id" "midi_write" "index" 3 "name" "1 - Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 60.0 246.09765625 85.64453125] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 56 "characters" 1787 "sha256" "50572d9f087af8245dea82d68bc335f23b25fae277b3445a6434992215a906b8"}]}
+{"id" "midi_write" "index" 3 "name" "1 - Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 60.0 346.1 135.6] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 56 "characters" 1787 "sha256" "50572d9f087af8245dea82d68bc335f23b25fae277b3445a6434992215a906b8"}]}
 ```
 
 ```kotlin [field-property box="midi_write" name="code" path="midi_write_code_.kt"]

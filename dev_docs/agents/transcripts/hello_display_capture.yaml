@@ -11,8 +11,8 @@ operations:
       frame:
         x: 80.0
         y: 80.0
-        w: 200.0
-        h: 50.0
+        w: 300.0
+        h: 100.0
       properties:
         code: |
           markdown("main", "hello from OperationTranscript")

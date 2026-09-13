@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidsl_shader" index="0" -->
 
 ```edn [field-box id="solidsl_shader" role="properties"]
-{"id" "solidsl_shader" "index" 0 "name" "SolidSL — the same value, lowered to GLSL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — the same value, lowered to GLSL" "_tombstone" false "frame" #afield/rect [80.0 700.0 380.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_shader_code_.kt" "lines" 61 "characters" 3032 "sha256" "eff37fb7f07e8cc030861efb0668894f24210191786482a5a61d8d1035ab1cb9"}]}
+{"id" "solidsl_shader" "index" 0 "name" "SolidSL — the same value, lowered to GLSL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — the same value, lowered to GLSL" "_tombstone" false "frame" #afield/rect [80.0 700.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_shader_code_.kt" "lines" 61 "characters" 3032 "sha256" "eff37fb7f07e8cc030861efb0668894f24210191786482a5a61d8d1035ab1cb9"}]}
 ```
 
 ```kotlin [field-property box="solidsl_shader" name="code" path="solidsl_shader_code_.kt"]
@@ -83,7 +83,7 @@ println("  after simplifying:  ${noBlend.simplified().exactRefusal()?.why ?: "(n
 <!-- field-box id="solidsl_part" index="1" -->
 
 ```edn [field-box id="solidsl_part" role="properties"]
-{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 95 "characters" 4017 "sha256" "9efc204947cb1ca2729165eecba6421f180f4795aef029f19bfbb683464425a1"}]}
+{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 95 "characters" 4017 "sha256" "9efc204947cb1ca2729165eecba6421f180f4795aef029f19bfbb683464425a1"}]}
 ```
 
 ```kotlin [field-property box="solidsl_part" name="code" path="solidsl_part_code_.kt"]

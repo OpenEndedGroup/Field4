@@ -10,7 +10,7 @@ id: synth.docs.audio.provenance
 runner: jvm-main
 entrypoint: afield.four.synth.DocsAudioProvenance
 tags: [smoke, synth, audio, wav, docs, provenance, cpu]
-timeoutSec: 300
+timeoutSec: 900
 expect:
   exitCode: 0
   stdoutContains:
@@ -87,11 +87,15 @@ object DocsAudioProvenance {
      */
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
-        // Both drive patVoice, so both are the stand-in: CaSoundDocs through patRenderStereo, and
-        // PatSynthDocs through a PatSynthBank rendered block by block.
+        "afield.four.synth.PatMiniNotation" to Origin.STAND_IN_SYNTH,
+        // Both of these drive patVoice too: CaSoundDocs through patRenderStereo, and PatSynthDocs
+        // through a PatSynthBank rendered block by block.
         "afield.four.synth.CaSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.PatSynthDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
+        // Both of its figures are one Faust program rendered offline, so the family is the same at
+        // eight voices and at one — the difference between them is voice allocation, not origin.
+        "afield.four.synth.FaustPolySoundDocs" to Origin.FAUST,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */
@@ -209,6 +213,15 @@ object DocsAudioProvenance {
         val standInSimilarity: Double,
         val frames: Int,
         val channels: Int,
+        /**
+         * The committed file's own sample rate, read out of its header.
+         *
+         * Not a constant, and it used to be one: the duration column divided by [PatSoundDocs.SR]
+         * for every asset, so the eight 48kHz clips in the corpus — every `DoughDspSoundDocs` scene
+         * and both `FaustPolySoundDocs` figures — were reported 8.8% longer than they are. An audit
+         * printing a number it did not measure is the thing this file exists to stop.
+         */
+        val sampleRate: Int,
         val peak: Double,
         val rms: Double,
         /** Non-null when the asset could not be re-rendered at all, with the reason. */
@@ -221,7 +234,11 @@ object DocsAudioProvenance {
             append(" %-26s".format(origin?.name ?: "UNKNOWN"))
             append(" R=%s".format(if (reproducibility.isNaN()) "  n/a " else "%.4f".format(reproducibility)))
             append(" S=%s".format(if (standInSimilarity.isNaN()) "  n/a " else "%.4f".format(standInSimilarity)))
-            append(" %dch %.2fs peak=%.3f rms=%.4f".format(channels, frames / PatSoundDocs.SR.toDouble(), peak, rms))
+            append(
+                " %dch %.2fs@%dHz peak=%.3f rms=%.4f".format(
+                    channels, frames / sampleRate.toDouble(), sampleRate, peak, rms
+                )
+            )
             if (failure != null) append("  !! $failure")
         }
     }
@@ -238,7 +255,10 @@ object DocsAudioProvenance {
         val origin = originOf(published)
         val committedFile = published.file
         if (!committedFile.isFile) {
-            return Finding(published, origin, Double.NaN, Double.NaN, 0, 0, 0.0, 0.0, "asset missing on disk")
+            return Finding(
+                published, origin, Double.NaN, Double.NaN, 0, 0, PatSoundDocs.SR, 0.0, 0.0,
+                "asset missing on disk",
+            )
         }
         val committed = readWav(committedFile)
         val peak = PatSoundDocs.peak(committed.mono)
@@ -248,7 +268,8 @@ object DocsAudioProvenance {
         val fresh = runCatching { renderThrough(published, scratch) }
         if (fresh.isFailure) {
             return Finding(
-                published, origin, Double.NaN, Double.NaN, committed.frames, channels, peak, rms,
+                published, origin, Double.NaN, Double.NaN, committed.frames, channels,
+                sampleRateOf(committedFile), peak, rms,
                 "could not re-render: ${fresh.exceptionOrNull()?.message?.take(160)}",
             )
         }
@@ -270,7 +291,10 @@ object DocsAudioProvenance {
             }
         }.getOrDefault(Double.NaN)
 
-        return Finding(published, origin, reproducibility, standIn, committed.frames, channels, peak, rms)
+        return Finding(
+            published, origin, reproducibility, standIn, committed.frames, channels,
+            sampleRateOf(committedFile), peak, rms,
+        )
     }
 
     /** Calls `<renderer>.renderWav(spec, tmp)` reflectively and reads the result back. */
@@ -283,6 +307,10 @@ object DocsAudioProvenance {
         check(out.isFile) { "${published.renderer}.renderWav wrote no file" }
         return readWav(out)
     }
+
+    /** The committed file's sample rate, out of its own header. The corpus is not all one rate. */
+    fun sampleRateOf(file: File): Int =
+        AudioSystem.getAudioFileFormat(file).format.sampleRate.toInt()
 
     /** Declared channel count of a WAV, before it is folded for measurement. */
     fun channelsOf(file: File): Int = AudioSystem.getAudioInputStream(file).use { it.format.channels }

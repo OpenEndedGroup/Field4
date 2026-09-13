@@ -30,7 +30,7 @@ operations:
   - create:
       box: audio_absent_service
       name: Field Audio is not running
-      frame: { x: 80.0, y: 80.0, w: 380.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 480.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.Param

@@ -19,7 +19,7 @@ exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
 continuous pattern directly — you discretise it, and segment(n) is how.
 
 ```edn [field-box id="pat_demo_signals" role="properties"]
-{"id" "pat_demo_signals" "index" 0 "name" "1 — continuous signals" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — continuous signals" "_tombstone" false "frame" #afield/rect [60.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_signals_code_.kt" "lines" 24 "characters" 1150 "sha256" "675cf9b2144f2e1d071da4927a78a8b9d562f7dd46ef2af8abaaa0c3ffe0a291"}]}
+{"id" "pat_demo_signals" "index" 0 "name" "1 — continuous signals" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — continuous signals" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_signals_code_.kt" "lines" 24 "characters" 1150 "sha256" "675cf9b2144f2e1d071da4927a78a8b9d562f7dd46ef2af8abaaa0c3ffe0a291"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_signals" name="code" path="pat_demo_signals_code_.kt"]
@@ -61,7 +61,7 @@ When two patterns meet, one of three things happens to the rhythm. The bars say 
 the structure comes from, exactly as in Tidal.
 
 ```edn [field-box id="pat_demo_structure" role="properties"]
-{"id" "pat_demo_structure" "index" 1 "name" "2 — whose rhythm survives" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — whose rhythm survives" "_tombstone" false "frame" #afield/rect [820.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_structure_code_.kt" "lines" 25 "characters" 1299 "sha256" "8eb0976d9384eb59d1740791b53ea5efd509aa23967e411c45133cdc9b6ceb32"}]}
+{"id" "pat_demo_structure" "index" 1 "name" "2 — whose rhythm survives" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — whose rhythm survives" "_tombstone" false "frame" #afield/rect [820.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_structure_code_.kt" "lines" 25 "characters" 1299 "sha256" "8eb0976d9384eb59d1740791b53ea5efd509aa23967e411c45133cdc9b6ceb32"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_structure" name="code" path="pat_demo_structure_code_.kt"]
@@ -104,7 +104,7 @@ A little piece. Change any string or any number and re-run this box: the roll an
 audio player both come from the same pattern, so they can never disagree.
 
 ```edn [field-box id="pat_demo_playground" role="properties"]
-{"id" "pat_demo_playground" "index" 2 "name" "6 — playground (edit me)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground (edit me)" "_tombstone" false "frame" #afield/rect [820.0 1020.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_playground_code_.kt" "lines" 35 "characters" 1653 "sha256" "87d5c6178bb3e907f444fcbb9eedf4aab421cd196868b67fac573b55fed84bed"}]}
+{"id" "pat_demo_playground" "index" 2 "name" "6 — playground (edit me)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground (edit me)" "_tombstone" false "frame" #afield/rect [820.0 1020.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_playground_code_.kt" "lines" 35 "characters" 1653 "sha256" "87d5c6178bb3e907f444fcbb9eedf4aab421cd196868b67fac573b55fed84bed"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_playground" name="code" path="pat_demo_playground_code_.kt"]
@@ -157,7 +157,7 @@ Spelled from each chord's own root, a progression makes the hand leap. voiceLead
 picks each chord's inversion and octave to minimise how far the voices have to move.
 
 ```edn [field-box id="pat_demo_voice_leading" role="properties"]
-{"id" "pat_demo_voice_leading" "index" 3 "name" "5 — voice leading" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — voice leading" "_tombstone" false "frame" #afield/rect [60.0 1020.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_voice_leading_code_.kt" "lines" 29 "characters" 1303 "sha256" "195480d7d0a0fdcb5c7f2e487a97f08ab2e945b042c8001c5aa322f295626229"}]}
+{"id" "pat_demo_voice_leading" "index" 3 "name" "5 — voice leading" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — voice leading" "_tombstone" false "frame" #afield/rect [60.0 1020.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_voice_leading_code_.kt" "lines" 29 "characters" 1303 "sha256" "195480d7d0a0fdcb5c7f2e487a97f08ab2e945b042c8001c5aa322f295626229"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_voice_leading" name="code" path="pat_demo_voice_leading_code_.kt"]
@@ -205,7 +205,7 @@ pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION,
 the note count does not change when you read it.
 
 ```edn [field-box id="pat_demo_parameter" role="properties"]
-{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 230.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 26 "characters" 1183 "sha256" "ff4f430d58ad8a1e9aa9dc69c3cce6e6f6a92ff24048e3f6102626029c29a0a4"}]}
+{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 26 "characters" 1183 "sha256" "ff4f430d58ad8a1e9aa9dc69c3cce6e6f6a92ff24048e3f6102626029c29a0a4"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_parameter" name="code" path="pat_demo_parameter_code_.kt"]
@@ -249,7 +249,7 @@ swing() is exact rational time, not a nudge in milliseconds: every off-beat land
 third of a subdivision late and the pattern stays exactly quantised.
 
 ```edn [field-box id="pat_demo_groove" role="properties"]
-{"id" "pat_demo_groove" "index" 5 "name" "7 — groove and substitution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — groove and substitution" "_tombstone" false "frame" #afield/rect [60.0 1560.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_groove_code_.kt" "lines" 33 "characters" 1435 "sha256" "aa3d6d76090e9b58ec4ed50779e84481ca5d1beb4e139297fe4d9e8fdf2abad5"}]}
+{"id" "pat_demo_groove" "index" 5 "name" "7 — groove and substitution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — groove and substitution" "_tombstone" false "frame" #afield/rect [60.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_groove_code_.kt" "lines" 33 "characters" 1435 "sha256" "aa3d6d76090e9b58ec4ed50779e84481ca5d1beb4e139297fe4d9e8fdf2abad5"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_groove" name="code" path="pat_demo_groove_code_.kt"]
@@ -301,7 +301,7 @@ this instead", so the first half of the file is what the old surface could expre
 the second half is the identical pattern with the gain following a sine.
 
 ```edn [field-box id="pat_demo_gain" role="properties"]
-{"id" "pat_demo_gain" "index" 6 "name" "4 — hear the difference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — hear the difference" "_tombstone" false "frame" #afield/rect [820.0 520.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_gain_code_.kt" "lines" 29 "characters" 1304 "sha256" "7e7b11b372e7a91039ca54b8687ddb425980dfdf54b22161f3162a218031912a"}]}
+{"id" "pat_demo_gain" "index" 6 "name" "4 — hear the difference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — hear the difference" "_tombstone" false "frame" #afield/rect [820.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_gain_code_.kt" "lines" 29 "characters" 1304 "sha256" "7e7b11b372e7a91039ca54b8687ddb425980dfdf54b22161f3162a218031912a"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_gain" name="code" path="pat_demo_gain_code_.kt"]
@@ -349,7 +349,7 @@ below must come out arc-for-arc identical — and the roll draws them one above 
 so you can check by eye as well as by assertion.
 
 ```edn [field-box id="pat_demo_mini_notation" role="properties"]
-{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 37 "characters" 1811 "sha256" "910e66c79a53c38827207abde7073903730c2923962b1732ff2d4f19d8397ac1"}]}
+{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 37 "characters" 1811 "sha256" "910e66c79a53c38827207abde7073903730c2923962b1732ff2d4f19d8397ac1"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_mini_notation" name="code" path="pat_demo_mini_notation_code_.kt"]

@@ -1,10 +1,10 @@
-# Forth examples
+# ForthField examples
 
-Forth in Field is a data stack and a dictionary of words that push and pop it. A definition is usually one line long (`: sqr dup * ;` is a complete one), and the dictionary can be rewritten while the box is still running. Around that core sit the control-flow words, vec2 helpers, enough `FLine` vocabulary to sketch geometry, and a reflection bridge that lets Forth call methods on any JVM object it can reach.
+ForthField is Field's Forth: a data stack and a dictionary of words that push and pop it. A definition is usually one line long (`: sqr dup * ;` is a complete one), and the dictionary can be rewritten while the box is still running. Around that core sit the control-flow words, vec2 helpers, enough `FLine` vocabulary to sketch geometry, and a reflection bridge that lets ForthField call methods on any JVM object it can reach.
 
-To get a Forth box, run **Set Main Language: Forth** on a parent box; its children then run Forth rather than Kotlin. Documents carrying the older `isForthRoot` property still work, but the action is the way to do it now.
+To get a ForthField box, run **Set Main Language: ForthField** on a parent box; its children then run ForthField rather than Kotlin. Documents carrying the older `isForthRoot` property still work, but the action is the way to do it now.
 
-Every example below is raw Forth, run through the same `ForthInterpreter` your boxes use. The interpreter's KDoc in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` carries a few examples of its own; the ones here expand on them.
+Every example below is raw ForthField, run through the same `ForthInterpreter` your boxes use. The interpreter's KDoc in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` carries a few examples of its own; the ones here expand on them.
 
 ## A tiny stack language
 
@@ -36,7 +36,7 @@ s"hypot^2 = " 3 4 hypot2 str str+ println
 
 ## Variables, strings, and output channels
 
-Forth variables are named storage cells. They are enough for counters, state machines, and launch-time animation state.
+ForthField variables are named storage cells. They are enough for counters, state machines, and launch-time animation state.
 
 <!--
 FIELD_TEST
@@ -52,7 +52,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" wait="1.0" capture="box" embed=true name="forth-output-channels"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
 :::static
 variable count
 0 count !
@@ -61,7 +61,7 @@ variable count
 2 count +!
 3 count +!
 
-s"<b>Forth can emit HTML into Field output areas.</b>" display
+s"ForthField writes straight into a Field output area." display
 s"count = " count @ str str+ s"debug" display-channel
 ```
 
@@ -143,7 +143,7 @@ zig
 
 ## Reflection can build geometry too
 
-The reflection bridge resolves a class by name, constructs it, and calls methods without leaving Forth, which is how Forth reaches anything the `fline-*` words do not already cover.
+The reflection bridge resolves a class by name, constructs it, and calls methods without leaving ForthField, which is how ForthField reaches anything the `fline-*` words do not already cover.
 
 <!--
 FIELD_TEST
@@ -191,7 +191,7 @@ s"Fli" class-matches println
 
 ## Dictionary tools, recursion, and temporary stack storage
 
-These words are the first ones to reach for when Forth starts feeling opaque. `words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
+These words are the first ones to reach for when ForthField starts feeling opaque. `words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
 
 ```diffstatic {data-lang=forth}
 : sqr dup * ;
@@ -242,7 +242,7 @@ count3
 n @ println
 ```
 
-When something fails, Forth errors include the current token, a stack snapshot, and the word call stack. For example:
+When something fails, ForthField errors include the current token, a stack snapshot, and the word call stack. For example:
 
 ```diffstatic {data-lang=forth}
 : inner nope ;
@@ -252,7 +252,7 @@ outer
 
 Reports the unknown word, shows that `10` was still on the data stack, and shows the path through `outer` into `inner`.
 
-The small display vocabulary gives Forth direct access to Field output areas without going through Kotlin:
+The small display vocabulary gives ForthField direct access to Field output areas without going through Kotlin:
 
 <!--
 FIELD_TEST
@@ -268,9 +268,9 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" wait="1.0" capture="box" embed=true name="forth-visualization-helpers"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" wait="1.0" capture="box" trim=true embed=true name="forth-visualization-helpers"}
 :::static
-s"<b>Hello from raw Forth HTML.</b>" html
+s"<b>Hello from raw ForthField HTML.</b>" html
 
 0.72 1.0 s"progress" bar
 42 s"answer" watch
@@ -284,7 +284,7 @@ plot-stack
 
 ## Extending the dictionary from Kotlin
 
-The host bridge goes the other direction too. Kotlin can inject new words when Forth should drive a renderer, a buffer, or some other JVM-side subsystem.
+The host bridge goes the other direction too. Kotlin can inject new words when ForthField should drive a renderer, a buffer, or some other JVM-side subsystem.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -309,7 +309,7 @@ forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
 }
 ```
 
-With a real buffer object on the Forth stack, the call site stays tiny:
+With a real buffer object on the ForthField stack, the call site stays tiny:
 
 ```diffstatic {data-lang=forth}
 0.0 1.0 0.0 1.0 append-vec4
@@ -317,11 +317,11 @@ With a real buffer object on the Forth stack, the call site stays tiny:
 0.0 0.0 1.0 1.0 append-vec4
 ```
 
-The host keeps hold of the resource; Forth only names it.
+The host keeps hold of the resource; ForthField only names it.
 
 ## Launch mode and `frame`
 
-The interpreter also has a cooperative `frame` primitive for launch-mode animation. This one needs a real, launched Forth box to do anything — it animates, so there is nothing to print.
+The interpreter also has a cooperative `frame` primitive for launch-mode animation. This one needs a real, launched ForthField box to do anything — it animates, so there is nothing to print.
 
 ```diffstatic {data-lang=forth}
 variable tick
@@ -355,6 +355,6 @@ spinner
 
 ## When a definition misbehaves
 
-`words` shows the dictionary and `see name` prints a definition, which together answer most of "is the word I think I redefined actually the one running". A Forth error already carries the token that failed, a snapshot of the data stack and the path of word calls that led there, so the usual next step is to read the error rather than to add prints.
+`words` shows the dictionary and `see name` prints a definition, which together answer most of "is the word I think I redefined actually the one running". A ForthField error already carries the token that failed, a snapshot of the data stack and the path of word calls that led there, so the usual next step is to read the error rather than to add prints.
 
 Naming a word has one trap in it. Builtins and user definitions share a single flat dictionary, and `:` overwrites without complaint, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` refuses to remove anything host-defined — but it will happily remove your replacement, and that leaves no entry at all rather than restoring the builtin underneath.

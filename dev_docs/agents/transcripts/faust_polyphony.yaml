@@ -31,7 +31,7 @@ operations:
   - create:
       box: faust_polyphony_play
       name: Faust instrument
-      frame: { x: 80.0, y: 80.0, w: 220.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -79,7 +79,7 @@ operations:
   - create:
       box: faust_polyphony_offline
       name: offline, with a plot
-      frame: { x: 660.0, y: 80.0, w: 220.0, h: 50.0 }
+      frame: { x: 660.0, y: 80.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -120,7 +120,7 @@ operations:
   - create:
       box: faust_polyphony_chord
       name: three notes at once
-      frame: { x: 80.0, y: 470.0, w: 220.0, h: 50.0 }
+      frame: { x: 80.0, y: 470.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -166,7 +166,7 @@ operations:
   - create:
       box: faust_polyphony_timing
       name: onsets, in samples
-      frame: { x: 660.0, y: 470.0, w: 220.0, h: 50.0 }
+      frame: { x: 660.0, y: 470.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -230,7 +230,10 @@ operations:
               println("              threshold-free line above is the one to believe.")
           }
 
-          display("waveform", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
+          // Player and plot on SEPARATE channels: display() replaces a channel rather than appending,
+          // so both on "waveform" left only whichever went out last.
+          displayOpen("audio")
+          display("audio", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
           showSignals(
               "mono" to (0 until render.frames step 24).map { mono[it] },
               x = (0 until render.frames step 24).map { it.toDouble() / render.sampleRate },
@@ -240,7 +243,7 @@ operations:
   - create:
       box: faust_polyphony_refusal
       name: what it refuses
-      frame: { x: 80.0, y: 830.0, w: 220.0, h: 50.0 }
+      frame: { x: 80.0, y: 830.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -267,7 +270,7 @@ operations:
   - create:
       box: faust_polyphony_steal
       name: when it runs out of voices
-      frame: { x: 660.0, y: 830.0, w: 220.0, h: 50.0 }
+      frame: { x: 660.0, y: 830.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           import afield.four.synth.*

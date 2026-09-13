@@ -8,15 +8,20 @@ import kotlin.system.exitProcess
  * Keeps OperationTranscript boxes visible and compact without outlawing deliberately composed boards.
  *
  * A Field box frame is the labelled canvas rectangle, not its Monaco editor or output viewport. Ordinary
- * boxes therefore start near the positive canvas origin at roughly `200 x 50`; see
+ * boxes therefore start near the positive canvas origin at roughly `300 x 100`; see
  * `dev_docs/agents/OPERATION_TRANSCRIPT.md`. A larger visual or capture card is allowed only when its
  * `file#box` key has a concrete reason in `dev_docs/agents/transcript_layout_exceptions.yaml`.
+ *
+ * The ceiling was `520 x 120` until 2026-09-13, when the whole corpus grew by `+100 w` / `+50 h`: the
+ * compaction that brought these boxes down to `200 x 50` had overshot, leaving labels cramped. Growing
+ * the boxes without growing the ceiling would have turned every name-widened box into a violation, so
+ * the two move together and the ratio between an ordinary box and the ceiling is unchanged.
  *
  * Run with `./gradlew checkAgentTranscriptLayouts` (also part of `check` and `docsGates`).
  */
 object AgentTranscriptLayoutGuard {
-    const val MAX_ORDINARY_WIDTH = 520.0
-    const val MAX_ORDINARY_HEIGHT = 120.0
+    const val MAX_ORDINARY_WIDTH = 620.0
+    const val MAX_ORDINARY_HEIGHT = 170.0
 
     private const val CORPUS_REL = "dev_docs/agents/transcripts"
 private const val DEMOS_REL = "dev_docs/agents/demos"

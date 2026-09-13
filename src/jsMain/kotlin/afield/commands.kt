@@ -2733,16 +2733,21 @@ fun registerBuiltinCommands() {
             }
         },{
             id:'switch-to-docs-iframe',
-            label:"Switch to Documentation Iframe",
-            detail:"Switch to the documentation mode",
+            label:"Read the Field Documentation",
+            detail:"The documentation in place of the editor — this checkout's build of it when there is one",
             run: () => {
                 window.switchToDefaultDocs();
             }
         },{
             id:'show-document-guide',
             label:"Show Document Guide",
-            detail:"Read this document's Markdown guides beside its boxes",
+            detail:"Read this document's Markdown guides and box notes beside its boxes",
             run: () => { window.showDocumentGuide(); }
+        },{
+            id:'add-document-note',
+            label:"Add Note to This Document",
+            detail:"Create a new Markdown note in this document and open it for editing",
+            run: () => { window.addDocumentGuideNote(); }
         },{
             id:'copy-box-guide-link',
             label:"Copy Markdown Link to Box or Line",

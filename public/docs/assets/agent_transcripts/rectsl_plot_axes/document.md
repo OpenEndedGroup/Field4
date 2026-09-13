@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="plot_renderer" index="0" -->
 
 ```edn [field-box id="plot_renderer" role="properties"]
-{"id" "plot_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["plot_figure"] "properties" {"children" #{#afield/box "plot_figure"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_renderer_code_.kt" "lines" 14 "characters" 246 "sha256" "6dcaf0e33cf2b68fee73361b58603108a1644aca5a5f244daecdf0632b314526"}]}
+{"id" "plot_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["plot_figure"] "properties" {"children" #{#afield/box "plot_figure"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_renderer_code_.kt" "lines" 14 "characters" 246 "sha256" "6dcaf0e33cf2b68fee73361b58603108a1644aca5a5f244daecdf0632b314526"}]}
 ```
 
 ```kotlin [field-property box="plot_renderer" name="code" path="plot_renderer_code_.kt"]
@@ -49,7 +49,7 @@ and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
 / rectsl_examples.md ("A plotted figure").
 
 ```edn [field-box id="plot_figure" role="properties"]
-{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [300.0 140.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 68 "characters" 2177 "sha256" "c3ef48bfdf8df61388382bd15ac32330a4eaafb9437694dee6a15f8d4b921ad9"}]}
+{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 68 "characters" 2177 "sha256" "c3ef48bfdf8df61388382bd15ac32330a4eaafb9437694dee6a15f8d4b921ad9"}]}
 ```
 
 ```kotlin [field-property box="plot_figure" name="code" path="plot_figure_code_.kt"]

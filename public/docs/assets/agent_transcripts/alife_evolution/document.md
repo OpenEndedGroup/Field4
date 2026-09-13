@@ -25,7 +25,7 @@ This is the figure worth looking at. Top left is sparse and nearly dead; bottom 
 and noisy; and somewhere in the middle band are the rules that hold structure while still moving.
 
 ```edn [field-box id="map_elites" role="properties"]
-{"id" "map_elites" "index" 0 "name" "3 — MAP-Elites: illuminate, do not optimise" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — MAP-Elites: illuminate, do not optimise" "_tombstone" false "frame" #afield/rect [60.0 260.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "map_elites_code_.kt" "lines" 55 "characters" 2867 "sha256" "0b5bd8f6f39f72f13451ecf45696aaab77fd70da0aa60fa837b590ca26d1c7a4"}]}
+{"id" "map_elites" "index" 0 "name" "3 — MAP-Elites: illuminate, do not optimise" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — MAP-Elites: illuminate, do not optimise" "_tombstone" false "frame" #afield/rect [60.0 360.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "map_elites_code_.kt" "lines" 55 "characters" 2867 "sha256" "0b5bd8f6f39f72f13451ecf45696aaab77fd70da0aa60fa837b590ca26d1c7a4"}]}
 ```
 
 ```kotlin [field-property box="map_elites" name="code" path="map_elites_code_.kt"]
@@ -115,7 +115,7 @@ acceptedMutations=12  evaluations=961
 Below is that same search, running here.
 
 ```edn [field-box id="shared_core" role="properties"]
-{"id" "shared_core" "index" 1 "name" "4 — The engine is shared: FunctionEvolve too" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — The engine is shared: FunctionEvolve too" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_core_code_.kt" "lines" 50 "characters" 2380 "sha256" "2ca1b47188430d56dc93af5287f4bb605acd50ee5df318ae76103fccf80c8a07"}]}
+{"id" "shared_core" "index" 1 "name" "4 — The engine is shared: FunctionEvolve too" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — The engine is shared: FunctionEvolve too" "_tombstone" false "frame" #afield/rect [60.0 510.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_core_code_.kt" "lines" 50 "characters" 2380 "sha256" "2ca1b47188430d56dc93af5287f4bb605acd50ee5df318ae76103fccf80c8a07"}]}
 ```
 
 ```kotlin [field-property box="shared_core" name="code" path="shared_core_code_.kt"]
@@ -194,7 +194,7 @@ for exactly that reason. A control arm that nearly wins is telling you the probl
 that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 
 ```edn [field-box id="evolve_ca" role="properties"]
-{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 160.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 73 "characters" 3962 "sha256" "c0418b3b6d2cd06a8cab5b16ae7ef515d4aabd77bf78b290dfd27390c244afc2"}]}
+{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 210.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 73 "characters" 3962 "sha256" "c0418b3b6d2cd06a8cab5b16ae7ef515d4aabd77bf78b290dfd27390c244afc2"}]}
 ```
 
 ```kotlin [field-property box="evolve_ca" name="code" path="evolve_ca_code_.kt"]
@@ -293,7 +293,7 @@ the score below is read straight off leniaRun, which already classifies a run in
 DEATH / BOUNDED / SATURATION and already reports a wrapped centroid drift.
 
 ```edn [field-box id="evolve_lenia" role="properties"]
-{"id" "evolve_lenia" "index" 3 "name" "1 — Evolution against chance, on a Lenia rule" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Evolution against chance, on a Lenia rule" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_lenia_code_.kt" "lines" 67 "characters" 3537 "sha256" "03ecde2a8ca3b3c8d834221b1b589a9097afdc2f1845598cc6423666dc75e894"}]}
+{"id" "evolve_lenia" "index" 3 "name" "1 — Evolution against chance, on a Lenia rule" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Evolution against chance, on a Lenia rule" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_lenia_code_.kt" "lines" 67 "characters" 3537 "sha256" "03ecde2a8ca3b3c8d834221b1b589a9097afdc2f1845598cc6423666dc75e894"}]}
 ```
 
 ```kotlin [field-property box="evolve_lenia" name="code" path="evolve_lenia_code_.kt"]

@@ -315,7 +315,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 if (counterName != null)
                     needsResync.add(to to counterName)
 
-                thisSessionInfo.get().topologyGeneration++
+                (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
 
                 if (property == "children") {
                     onTopologyChange(this, true, to)
@@ -344,7 +344,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             if (counterName != null)
                 needsResync.add(to to counterName)
 
-            thisSessionInfo.get().topologyGeneration++
+            (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
             if (property == "children") {
                 onTopologyChange(this, false, to)
             }

@@ -59,3 +59,10 @@
 .profile-source-line>span:nth-child(2) { color:#48c9ff; width:100px; text-align:right; }
 .profile-source-line code { font:inherit; white-space:pre; }
 .profile-source-focus { background:#203943; }
+
+.profile-frames { flex:1; min-height:0; overflow:auto; background:#232323; padding:12px; border-radius:6px; }
+.profile-frame-card { background:#181818; padding:12px; margin-bottom:10px; border-radius:5px; }
+.profile-frame-card h3 { color:#48c9ff; margin:0 0 8px; }
+.profile-frame-card h4 { color:#999; font-weight:normal; }
+.profile-frame-worst { display:flex; flex-wrap:wrap; gap:6px; }
+.profile-budget-miss { color:#d7ad79; }

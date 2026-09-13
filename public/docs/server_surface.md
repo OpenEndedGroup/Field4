@@ -1,4 +1,4 @@
-# What Field Exposes, and What Stops It
+# Field's server surface
 
 Field has a **web server** inside it, and that server is how Field's own editor talks to
 Field. When you open a document, the window you are looking at is a browser, and everything
@@ -9,9 +9,9 @@ That also means a *listening socket on your machine*, which raises the question 
 answers: **what can reach it, and what stops a web page you happen to be visiting from
 driving your editor?**
 
-You do not need to do anything with this page to use Field. It is here because anyone running
-Field on a laptop on a shared network, in a studio or a university or on conference wifi,
-deserves to know the shape of what they are running.
+You do not need to do anything with this page to use Field. Anyone running Field on a shared
+network — in a studio, a university, or on conference wifi — deserves to know the shape of what
+they are running.
 
 ## The one-paragraph version
 
@@ -64,10 +64,77 @@ A Chromium page served from `http://127.0.0.1:9493` is a genuinely foreign origi
 there:
 
 - `GET /api/instance-info` and `GET /api/welcome-changelog` are **readable**. The first
-  returns the absolute path of your checkout; the second returns your recent commit messages.
+  returns **four** things, not one: the absolute path of your checkout, the absolute path of
+  the **workspace your documents live in**, the moment the server started, and its process id
+  (`Server.kt:3599#get("/api/instance-info") {`). The second returns your recent commit
+  messages.
 - `POST /api/shutdown-instance` **stops the server**.
 
 So the defences that matter are the ones that ask *which website*.
+
+### What `GET /api/instance-info` actually returns
+
+This page used to describe that route as returning "the absolute path of your checkout",
+singular. That was true of the route when the sentence was written and is not true of it now.
+So rather than describe the payload again, here it is — 246 bytes, `curl`ed from a Field started
+out of this checkout, with only the home directory rewritten to `~`:
+
+```diffstatic {data-lang=json}
+{
+  "repoRoot": "~/field4-worktrees/2026-09-13-3-instance-info-exposure-docs",
+  "startedAtEpochMs": 1789290604492,
+  "pid": 47573,
+  "workspace": "~/field4-worktrees/2026-09-13-3-instance-info-exposure-docs/build/field-automation-workspace"
+}
+```
+
+One thing about that capture is unrepresentative, and it is the interesting key. This Field was
+launched with an explicit throwaway `--workspace` inside the checkout, so `workspace` points
+there. Launched the ordinary way, with no `--workspace`, the same install resolves
+`~/Documents/AFieldWorkspace` — `./field.sh --print-workspace` says so — and that is the string
+the route hands out on a normal day. So the shape to read off the capture is "an absolute
+filesystem path to wherever this server keeps your documents", not this particular directory.
+
+Four keys. Three of them describe the *program* — which checkout is running, when it booted,
+which process it is — and they are there for a reason: an agent or a test that reuses a healthy
+Field already listening on a port has to be able to tell it apart from a sibling worktree's JVM,
+and `/health` cannot. The fourth key, `workspace`
+(`Server.kt:3608#workspace = displayWorkspacePath(home),`), describes *you*. It is the directory
+this server resolves document names against, which on an ordinary install is a folder inside
+your documents, and it was added so that a client attaching to a server it did not launch could
+find out where that server's documents live — a real problem that it really solves.
+
+Two claims sit close together here and are worth keeping apart, because they are established
+differently:
+
+- **The workspace path is in the response body.** Measured — it is the capture above, and the
+  `pid` in it matched the process actually holding the port, so the answer came from the Field
+  that was asked.
+- **A page on another origin is handed that body, not just a status code.** Also measured, and
+  one step short of a browser: the same request with `Origin: https://evil.example` and
+  `Sec-Fetch-Mode: cors` came back **`200`** with **`Access-Control-Allow-Origin: *`** and
+  `Content-Length: 246`. That header is the browser's instruction to give the response to the
+  calling page, and it is there because of the CORS block quoted under Defence 1. What was *not*
+  measured for this page is a real `fetch` from a real foreign origin; the probe table further
+  down did that, against the older, checkout-path-only version of the same route.
+
+**Why this drifted silently, which is the part worth carrying elsewhere.** Field's route census,
+`ServerSurfaceLedgerTest`, enumerates **routes**, and `GET /api/instance-info` is one of its
+landmarks (`ServerSurfaceLedgerTest.kt:467#"GET /api/instance-info",`). A census of routes cannot
+see a new **key** appear inside a route's response: the door being counted did not change, only
+what gets handed through it. So the ledger stayed green, the route's own KDoc went on saying "the
+path of your work", and this page went on saying "the absolute path of your checkout" — three
+artifacts agreeing with each other and none of them agreeing with the payload. Anything policed
+by a list of endpoints has that blind spot, and closing it means pinning the *shape of the
+answer* and not just the existence of the question.
+
+**What is left to decide, which this page does not decide.** Reporting `workspace` is what makes
+"verify the workspace before you edit" a check that can fail; taking it away makes that check
+impossible again. Not answering cross-origin reads at all is the other end, and it is the end
+that costs a behaviour change to a running system. The choice between "keep the field, and accept
+that a page you visit can read the path to your documents" and "keep the field, but stop handing
+read bodies to foreign origins by default" belongs to whoever runs Field.
+`AFIELD_API_REQUIRE_SAME_SITE=1`, described under Defence 2, is the lever that exists today.
 
 ## Defence 1 — CORS, and the `anyHost()` that has to be there
 
@@ -121,7 +188,8 @@ through untouched, which is deliberate (a WebSocket upgrade is a `GET`, and so i
 ordinary page load) and is also why reads need saying separately:
 
 > A read is not a lesser exposure than a write. It is a different one. `GET /api/instance-info`
-> leaks the path of your work, `GET /api/welcome-changelog` leaks your commit messages, and
+> leaks the path of your checkout *and* the path of the workspace your documents live in,
+> `GET /api/welcome-changelog` leaks your commit messages, and
 > `GET /api/source` and `GET /api/workspace-search` reach source text. **33 of Field's 36 read
 > routes have no guard at all**, and the same-site switch does not cover them.
 
@@ -251,7 +319,7 @@ Field has dozens of other unguarded `/api/…` routes. A hostile or compromised 
 page would be able to call all of them. Restricting the mirror to loopback takes that whole
 same-origin position off the local network.
 
-## Two things that are open, and why they stay open
+## What stays open
 
 Nothing above closes these. Both are known, and both cost something real to close.
 

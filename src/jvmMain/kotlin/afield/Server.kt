@@ -5095,6 +5095,22 @@ class Server {
                         staticFiles(remotePath = "", dir = File("./src/jsMain/resources/"), block = assetCache)
                         staticFiles(remotePath = "", dir = File("./src/jsMain/resources/monaco"), block = assetCache)
                         staticFiles(remotePath = "", dir = File("./src/commonMain/resources/"), block = assetCache)
+                        // The shared sample assets — the CC0 Khronos ToyCar GLB and the Venice sunset
+                        // environment — committed once under the documentation tree and used by both
+                        // JVM boxes (which read them off disk) and *head* boxes, which cannot: a
+                        // browser or headset head can only fetch over http. `mapDirectory` reads as
+                        // the answer to that and is not — it sends a `files.map` message no route in
+                        // the tree consumes, and `DynamicDirectoryRoutes.addRoute` behind `/local`
+                        // has no callers (dev_docs/server_surface_inventory.md). So this mount is
+                        // what makes `loadGLTF("/sample-assets/ToyCar.glb", …)` resolve in
+                        // `remotear_scene_motion`. Narrow on purpose: one directory of assets that
+                        // are already published on the documentation site, not the docs tree at
+                        // large, and Ktor's own containment check applies as it does above.
+                        staticFiles(
+                            remotePath = "/sample-assets",
+                            dir = File("./public/docs/assets/fabricate_demo"),
+                            block = assetCache,
+                        )
 
                         val indexHtmlInterceptor = createRouteScopedPlugin("IndexHtmlInterceptor") {
                             onCall { call ->
@@ -5531,7 +5547,8 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  * The reason a read is not a lesser exposure than a write is [installFieldApiCors]. `anyHost()`
  * plus `allowMethod(Get)` makes every read's *response body* readable cross-origin, so the
  * attacker does not merely reach the route, it gets the answer: `/api/instance-info` leaks the
- * path of your work, `/api/welcome-changelog` your commit messages, `/api/source` and
+ * path of your checkout **and**, since `FieldInstanceInfo` grew its fourth field, the path of the
+ * workspace your documents live in; `/api/welcome-changelog` your commit messages, `/api/source` and
  * `/api/workspace-search` source text. Hardening here had been organised around mutation — the
  * CORS census counts mutating routes, this interceptor skipped reads — so "unguarded" was the
  * default for reads and nothing recorded the decision that a given read did not need a guard.

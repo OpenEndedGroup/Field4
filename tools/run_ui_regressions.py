@@ -3873,7 +3873,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="document-guide",
-            description="Read document Markdown, follow box/heading links, edit safely against disk revisions, and place a shared file proxy.",
+            description="Read document Markdown and collected box notes, follow box/heading links, add a note, edit safely against disk revisions, and place a shared file proxy.",
             document=f"ui-regression-guide-{int(time.time())}",
             commands=[
                 "new-box --name GuideTarget --alias guide_target --x 300 --y 100",
@@ -3893,6 +3893,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 })]),
             ],
             screenshot="macro run guide_capture",
+        ),
+        UiRegression(
+            id="simulation-clock",
+            description="Ordinary editor launch/stop/relaunch owns simulation children; frame budgets share the profiling brush.",
+            document=f"ui-regression-simulation-{int(time.time())}",
+            commands=[
+                "new-box --name SimulationOwner --x 40 --y 40",
+                shell_join(["set", "@last", "code", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.kt")]),
+                "editor-open @last --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="profiling-timeline",

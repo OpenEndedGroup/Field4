@@ -20,10 +20,10 @@
 <line x1="965.25" y1="62" x2="965.25" y2="136" stroke="#2a2f3a" stroke-width="0.5"/>
 <line x1="1020.63" y1="62" x2="1020.63" y2="136" stroke="#2a2f3a" stroke-width="0.5"/>
 <line x1="1076" y1="62" x2="1076" y2="136" stroke="#454d5e" stroke-width="1.2"/>
-<text x="12" y="103" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">x..x.x..</text>
+<text x="12" y="103" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">x..x..x.</text>
 <rect x="190.50" y="69" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <rect x="522.75" y="69" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
-<rect x="744.25" y="69" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<rect x="855" y="69" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="184" y="117" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">x</text>
 <rect x="190" y="146" width="886" height="74" fill="#191c24"/>
 <line x1="190" y1="146" x2="190" y2="220" stroke="#454d5e" stroke-width="1.2"/>
@@ -46,7 +46,7 @@
 <text x="12" y="187" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">→ x(3,8)</text>
 <rect x="190.50" y="153" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <rect x="522.75" y="153" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
-<rect x="744.25" y="153" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<rect x="855" y="153" width="109.75" height="60" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="184" y="201" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">x</text>
 <rect x="190" y="230" width="886" height="74" fill="#191c24"/>
 <line x1="190" y1="230" x2="190" y2="304" stroke="#454d5e" stroke-width="1.2"/>
@@ -123,16 +123,16 @@
 <line x1="1020.63" y1="398" x2="1020.63" y2="472" stroke="#2a2f3a" stroke-width="0.5"/>
 <line x1="1076" y1="398" x2="1076" y2="472" stroke="#454d5e" stroke-width="1.2"/>
 <text x="12" y="439" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">bd [hh hh] sd [cp cp]</text>
-<rect x="190.50" y="405" width="220.50" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="412" y="420" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="522.75" y="420" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="633.50" y="435" width="220.50" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="855" y="450" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="965.75" y="450" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<text x="184" y="417" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">bd</text>
-<text x="184" y="432" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">hh</text>
-<text x="184" y="447" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">sd</text>
-<text x="184" y="462" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">cp</text>
+<rect x="190.50" y="450" width="220.50" height="15" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<rect x="412" y="405" width="109.75" height="15" rx="1.5" fill="#fff176" fill-opacity="0.92"/>
+<rect x="522.75" y="405" width="109.75" height="15" rx="1.5" fill="#fff176" fill-opacity="0.92"/>
+<rect x="633.50" y="435" width="220.50" height="15" rx="1.5" fill="#ffb74d" fill-opacity="0.92"/>
+<rect x="855" y="420" width="109.75" height="15" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<rect x="965.75" y="420" width="109.75" height="15" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="184" y="417" fill="#fff176" font-size="9" font-weight="400" text-anchor="end">hh</text>
+<text x="184" y="432" fill="#f06292" font-size="9" font-weight="400" text-anchor="end">cp</text>
+<text x="184" y="447" fill="#ffb74d" font-size="9" font-weight="400" text-anchor="end">sd</text>
+<text x="184" y="462" fill="#4fc3f7" font-size="9" font-weight="400" text-anchor="end">bd</text>
 <rect x="190" y="482" width="886" height="74" fill="#191c24"/>
 <line x1="190" y1="482" x2="190" y2="556" stroke="#454d5e" stroke-width="1.2"/>
 <line x1="245.38" y1="482" x2="245.38" y2="556" stroke="#2a2f3a" stroke-width="0.5"/>
@@ -152,16 +152,16 @@
 <line x1="1020.63" y1="482" x2="1020.63" y2="556" stroke="#2a2f3a" stroke-width="0.5"/>
 <line x1="1076" y1="482" x2="1076" y2="556" stroke="#454d5e" stroke-width="1.2"/>
 <text x="12" y="523" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">→ bd hh*2 sd cp*2</text>
-<rect x="190.50" y="489" width="220.50" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="412" y="504" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="522.75" y="504" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="633.50" y="519" width="220.50" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="855" y="534" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<rect x="965.75" y="534" width="109.75" height="15" rx="1.5" fill="#ba68c8" fill-opacity="0.92"/>
-<text x="184" y="501" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">bd</text>
-<text x="184" y="516" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">hh</text>
-<text x="184" y="531" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">sd</text>
-<text x="184" y="546" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">cp</text>
+<rect x="190.50" y="534" width="220.50" height="15" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<rect x="412" y="489" width="109.75" height="15" rx="1.5" fill="#fff176" fill-opacity="0.92"/>
+<rect x="522.75" y="489" width="109.75" height="15" rx="1.5" fill="#fff176" fill-opacity="0.92"/>
+<rect x="633.50" y="519" width="220.50" height="15" rx="1.5" fill="#ffb74d" fill-opacity="0.92"/>
+<rect x="855" y="504" width="109.75" height="15" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<rect x="965.75" y="504" width="109.75" height="15" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<text x="184" y="501" fill="#fff176" font-size="9" font-weight="400" text-anchor="end">hh</text>
+<text x="184" y="516" fill="#f06292" font-size="9" font-weight="400" text-anchor="end">cp</text>
+<text x="184" y="531" fill="#ffb74d" font-size="9" font-weight="400" text-anchor="end">sd</text>
+<text x="184" y="546" fill="#4fc3f7" font-size="9" font-weight="400" text-anchor="end">bd</text>
 <rect x="190" y="566" width="886" height="74" fill="#191c24"/>
 <line x1="190" y1="566" x2="190" y2="640" stroke="#454d5e" stroke-width="1.2"/>
 <line x1="245.38" y1="566" x2="245.38" y2="640" stroke="#2a2f3a" stroke-width="0.5"/>

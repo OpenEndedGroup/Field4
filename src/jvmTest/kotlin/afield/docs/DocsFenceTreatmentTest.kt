@@ -10,10 +10,11 @@ import kotlin.test.assertTrue
  *
  * A fence written as a bare language word — ` ```kotlin ` — renders as ordinary highlighted
  * Markdown while its neighbours get the code-diff chrome, and **nothing in the build noticed**.
- * `docs_hooks.py` does rewrite plain fences, but only for workspace guides (`rewrite_guide_fences`
- * is gated behind `is_workspace_guide`), so a hand-written page was never covered. The failure is
- * silent and purely visual, which is why it kept coming back: on 2026-08-19 a new page shipped six
- * of them, and a sweep then found 26 more across ten pages that had been wrong for months.
+ * Nothing in the build rewrites a page's plain fences: there was one exception until 2026-09-13,
+ * `docs_hooks.rewrite_guide_fences`, and it only ever covered the workspace guides under
+ * `public/docs/assets` — which are no longer built as pages at all. The failure is silent and
+ * purely visual, which is why it kept coming back: on 2026-08-19 a new page shipped six of them,
+ * and a sweep then found 26 more across ten pages that had been wrong for months.
  *
  * The fix a failure wants is mechanical — ` ```kotlin ` becomes ` ```diffstatic {data-lang=kotlin} `
  * — and the message below says so with the exact replacement text.
@@ -39,6 +40,9 @@ class DocsFenceTreatmentTest {
 
     private val markerPrefixes = listOf(":::static", ":::before", ":::after", ":::")
 
+    /** Read off `build_zensical_docs.WORKSPACE_MARKDOWN_FILENAMES` by [theWorkspaceSkipMatchesTheBuild]. */
+    private val workspaceMarkdown = setOf("AGENTS.md", "README.md", "document.md")
+
     private data class Fence(val file: String, val line: Int, val lang: String, val body: List<String>)
 
     private val fenceOpen = Regex("""^( {0,3})(`{3,}|~{3,})(.*?)\s*$""")
@@ -56,10 +60,11 @@ class DocsFenceTreatmentTest {
         val found = mutableListOf<Fence>()
         docs.walkTopDown().filter { it.isFile && it.extension == "md" }.sorted().forEach { file ->
             val relative = file.relativeTo(root).path
-            // Workspace guides are copied verbatim into every workspace and must stay ordinary
-            // markdown on disk; docs_hooks.rewrite_guide_fences gives them the treatment at build
-            // time. They are the one case the build already handles.
-            if (file.name in setOf("AGENTS.md", "README.md") && "assets" in relative.split(File.separator)) return@forEach
+            // The markdown Field writes into a workspace under public/docs/assets is not a
+            // published page: build_zensical_docs.is_workspace_markdown keeps all three files out
+            // of the page pipeline and ships them raw, so their fences are never rendered by the
+            // site and must stay ordinary markdown on disk for the copy in a user's workspace.
+            if (file.name in workspaceMarkdown && "assets" in relative.split(File.separator)) return@forEach
 
             var closing: Regex? = null
             var openedAt = 0
@@ -151,21 +156,44 @@ class DocsFenceTreatmentTest {
     /**
      * Pins the premise the whole guard rests on: the build does *not* rescue a hand-written page.
      *
+     * It used to have one exception, `docs_hooks.rewrite_guide_fences` behind `is_workspace_guide`,
+     * which is why [bareFences] skips the workspace markdown under `public/docs/assets`. That
+     * markdown stopped being built as pages on 2026-09-13 — 312 orphans whose only reader was the
+     * search index — so the rewriting went with it and no page's fences are touched on the way in.
      * If `docs_hooks.py` ever learns to rewrite every page's plain fences, this guard becomes
      * belt-and-braces rather than the only thing standing between a plain fence and a wrong render,
      * and this test should be the one that says so.
      */
     @Test
-    fun theBuildStillOnlyRewritesFencesForWorkspaceGuides() {
+    fun theBuildStillDoesNotRewriteAnyPagesFences() {
         val hooks = File(CitationGuard.repoRoot(), "public/docs_hooks.py").readText()
         assertTrue(
-            "def rewrite_guide_fences" in hooks,
-            "docs_hooks.py no longer has rewrite_guide_fences; re-derive what this guard is for",
-        )
-        assertTrue(
-            "def is_workspace_guide" in hooks && "GUIDE_FILENAMES" in hooks,
-            "the workspace-guide gate is gone — if plain fences are now rewritten site-wide, this " +
+            "def rewrite_guide_fences" !in hooks && "def is_workspace_guide" !in hooks,
+            "docs_hooks.py rewrites fences on the way in again — if that is now site-wide this " +
                 "guard is no longer load-bearing and its KDoc needs saying so",
+        )
+    }
+
+    /**
+     * The skip in [bareFences] must name the same files the docs build keeps out of the site.
+     *
+     * Read off `WORKSPACE_MARKDOWN_FILENAMES` rather than restated, because the two lists failing
+     * apart is silent in both directions: a file the build still renders would go unchecked, and a
+     * file it no longer renders would be held to a contract about published pages.
+     */
+    @Test
+    fun theWorkspaceSkipMatchesTheBuild() {
+        val build = File(CitationGuard.repoRoot(), "tools/build_zensical_docs.py").readText()
+        val declared = Regex("""WORKSPACE_MARKDOWN_FILENAMES\s*=\s*frozenset\(\{([^}]*)\}\)""").find(build)
+        assertTrue(
+            declared != null,
+            "build_zensical_docs.py no longer declares WORKSPACE_MARKDOWN_FILENAMES; if workspace " +
+                "markdown is a published page again, bareFences() must stop skipping it",
+        )
+        assertEquals(
+            workspaceMarkdown,
+            Regex(""""([^"]+)"""").findAll(declared.groupValues[1]).map { it.groupValues[1] }.toSet(),
+            "the docs build and this guard disagree about which markdown is workspace furniture",
         )
     }
 

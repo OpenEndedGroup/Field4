@@ -25,7 +25,7 @@ operations:
   - create:
       box: cloth_start
       name: 20 x 10 cloth in a SimdVerlet
-      frame: { x: 80.0, y: 80.0, w: 260.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 360.0, h: 100.0 }
       properties:
         code: |
           import afield.four.physics.*

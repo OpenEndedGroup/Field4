@@ -60,7 +60,7 @@ them to a file — you cannot do to those. The way back in is `link-audio-in`, b
 | `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
 | `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
 
-Every audio figure in these docs, all fifteen of them, comes out of the `wav-file` sink, which is
+Every audio figure in these docs, all seventeen of them, comes out of the `wav-file` sink, which is
 why they regenerate on a build machine with no sound card.
 
 ## The four that bring samples in
@@ -217,7 +217,7 @@ uses: declare, re-derive from the tree, fail on disagreement.
    Read that failure before editing the number.
 2. **Undeclared paths, derived from markers.** Five literals in the tree can only mean "a new way in
    or out of this process": `alcOpenDevice(` (three files, three genuinely separate OpenAL
-   contexts), `alcCaptureOpenDevice(` (one), `fun renderWav(name: String, outPath: String)` (four —
+   contexts), `alcCaptureOpenDevice(` (one), `fun renderWav(name: String, outPath: String)` (five —
    the docs-audio producer contract), `WavFloatArrayWriter.encode` (six) and
    `override fun generateStereo(` (eight — every node on the seam). Every file carrying one is
    attributed to a declared path, and a new hit names itself in the failure.

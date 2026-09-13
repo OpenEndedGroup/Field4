@@ -18,6 +18,7 @@ class DocsGatesWiringTest {
             "afield.docs.DocsFenceTreatmentTest",
             "afield.server.ServerSurfaceLedgerTest",
             "afield.docs.ProseNumeralContractTest",
+            "afield.docs.DerivedArithmeticContractTest",
             "afield.docs.ImpossibilityClaimContractTest",
             "afield.docs.DocumentedApiEvaluationTest",
             "afield.docs.GateInputDeclarationTest",

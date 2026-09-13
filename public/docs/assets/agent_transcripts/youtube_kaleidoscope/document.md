@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_kaleidoscope_renderer" index="0" -->
 
 ```edn [field-box id="youtube_kaleidoscope_renderer" role="properties"]
-{"id" "youtube_kaleidoscope_renderer" "index" 0 "name" "kaleidoscope window + renderer" "parents" ["root"] "children" ["youtube_kaleidoscope_shards"] "properties" {"children" #{#afield/box "youtube_kaleidoscope_shards"} "parents" #{#afield/box "root"} "name" "kaleidoscope window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 250.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_renderer_code_.kt" "lines" 20 "characters" 413 "sha256" "ae8da01dbefffad6a227699abea07ce979c78353ee3638622e4b7d399ef603cd"}]}
+{"id" "youtube_kaleidoscope_renderer" "index" 0 "name" "kaleidoscope window + renderer" "parents" ["root"] "children" ["youtube_kaleidoscope_shards"] "properties" {"children" #{#afield/box "youtube_kaleidoscope_shards"} "parents" #{#afield/box "root"} "name" "kaleidoscope window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_renderer_code_.kt" "lines" 20 "characters" 413 "sha256" "ae8da01dbefffad6a227699abea07ce979c78353ee3638622e4b7d399ef603cd"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_renderer" name="code" path="youtube_kaleidoscope_renderer_code_.kt"]
@@ -42,7 +42,7 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [330.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 104 "characters" 3983 "sha256" "cd0aeac7cfef58e9aa0943e30e88196dfc393808cc5e539efa6c01ef15ad4ac1"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 104 "characters" 3983 "sha256" "cd0aeac7cfef58e9aa0943e30e88196dfc393808cc5e539efa6c01ef15ad4ac1"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]

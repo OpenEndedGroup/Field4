@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_vision_geometry_animated_root" index="0" -->
 
 ```edn [field-box id="agent_vision_geometry_animated_root" role="properties"]
-{"id" "agent_vision_geometry_animated_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_vision_geometry_animated"] "properties" {"children" #{#afield/box "agent_vision_geometry_animated"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 200.0 50.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
+{"id" "agent_vision_geometry_animated_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_vision_geometry_animated"] "properties" {"children" #{#afield/box "agent_vision_geometry_animated"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 300.0 100.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
 ```
 
 ## 2. Geometry — rebuilt per frame
@@ -29,7 +29,7 @@ From `msl`
 Note how little this shader does: all the motion is in the geometry, rebuilt in Kotlin.
 
 ```edn [field-box id="agent_vision_geometry_animated" role="properties"]
-{"id" "agent_vision_geometry_animated" "index" 1 "name" "Geometry — rebuilt per frame" "parents" ["root" "agent_vision_geometry_animated_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_animated_root"} "name" "Geometry — rebuilt per frame" "_tombstone" false "frame" #afield/rect [90.0 100.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_animated_code_.kt" "lines" 41 "characters" 1562 "sha256" "6c871bbd8e29a52d9592186299f22b91ccd9982f9e4e38b1507da42d350bd96f"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_animated_msl_.metal" "lines" 30 "characters" 1141 "sha256" "9f85a62b10b0e213f2924cb73bfce954af9b19175ec6de47781de091036c1a2d"}]}
+{"id" "agent_vision_geometry_animated" "index" 1 "name" "Geometry — rebuilt per frame" "parents" ["root" "agent_vision_geometry_animated_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_animated_root"} "name" "Geometry — rebuilt per frame" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_animated_code_.kt" "lines" 41 "characters" 1562 "sha256" "6c871bbd8e29a52d9592186299f22b91ccd9982f9e4e38b1507da42d350bd96f"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_animated_msl_.metal" "lines" 30 "characters" 1141 "sha256" "9f85a62b10b0e213f2924cb73bfce954af9b19175ec6de47781de091036c1a2d"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_animated" name="code" path="agent_vision_geometry_animated_code_.kt"]

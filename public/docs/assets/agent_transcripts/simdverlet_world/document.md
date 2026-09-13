@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="world_tear" index="0" -->
 
 ```edn [field-box id="world_tear" role="properties"]
-{"id" "world_tear" "index" 0 "name" "2 - A sphere tearing through a pinned sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A sphere tearing through a pinned sheet" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_tear_code_.kt" "lines" 50 "characters" 2221 "sha256" "73e3af63fd43590faaf3fff38fb885a99b5bead777e1ef1232d2950188094129"}]}
+{"id" "world_tear" "index" 0 "name" "2 - A sphere tearing through a pinned sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A sphere tearing through a pinned sheet" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_tear_code_.kt" "lines" 50 "characters" 2221 "sha256" "73e3af63fd43590faaf3fff38fb885a99b5bead777e1ef1232d2950188094129"}]}
 ```
 
 ```kotlin [field-property box="world_tear" name="code" path="world_tear_code_.kt"]
@@ -72,7 +72,7 @@ loop {
 <!-- field-box id="world_all" index="1" -->
 
 ```edn [field-box id="world_all" role="properties"]
-{"id" "world_all" "index" 1 "name" "4 - Everything at once, and one knob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Everything at once, and one knob" "_tombstone" false "frame" #afield/rect [400.0 140.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_all_code_.kt" "lines" 99 "characters" 5321 "sha256" "82c06e9572c64bbfeb3d66bc8184e37cb7ab1211b6aec0484a6cc8c3078ebc86"}]}
+{"id" "world_all" "index" 1 "name" "4 - Everything at once, and one knob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Everything at once, and one knob" "_tombstone" false "frame" #afield/rect [500.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_all_code_.kt" "lines" 99 "characters" 5321 "sha256" "82c06e9572c64bbfeb3d66bc8184e37cb7ab1211b6aec0484a6cc8c3078ebc86"}]}
 ```
 
 ```kotlin [field-property box="world_all" name="code" path="world_all_code_.kt"]
@@ -182,7 +182,7 @@ loop {
 <!-- field-box id="world_wind" index="2" -->
 
 ```edn [field-box id="world_wind" role="properties"]
-{"id" "world_wind" "index" 2 "name" "3 - A flag in gusty wind, seen from above" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A flag in gusty wind, seen from above" "_tombstone" false "frame" #afield/rect [40.0 140.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_wind_code_.kt" "lines" 55 "characters" 2294 "sha256" "c537976d357c6d40befc41473fc9c4ad8a7e75eb212cde674286a50e04c25abb"}]}
+{"id" "world_wind" "index" 2 "name" "3 - A flag in gusty wind, seen from above" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A flag in gusty wind, seen from above" "_tombstone" false "frame" #afield/rect [40.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_wind_code_.kt" "lines" 55 "characters" 2294 "sha256" "c537976d357c6d40befc41473fc9c4ad8a7e75eb212cde674286a50e04c25abb"}]}
 ```
 
 ```kotlin [field-property box="world_wind" name="code" path="world_wind_code_.kt"]
@@ -248,7 +248,7 @@ loop {
 <!-- field-box id="world_drape" index="3" -->
 
 ```edn [field-box id="world_drape" role="properties"]
-{"id" "world_drape" "index" 3 "name" "1 - A cloth draping over a sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A cloth draping over a sphere" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_drape_code_.kt" "lines" 52 "characters" 2443 "sha256" "23d76c5e06d26e53fc8454cfb37f62f00843e0dfa90eda055abd9e1f32f8a6fe"}]}
+{"id" "world_drape" "index" 3 "name" "1 - A cloth draping over a sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A cloth draping over a sphere" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_drape_code_.kt" "lines" 52 "characters" 2443 "sha256" "23d76c5e06d26e53fc8454cfb37f62f00843e0dfa90eda055abd9e1f32f8a6fe"}]}
 ```
 
 ```kotlin [field-property box="world_drape" name="code" path="world_drape_code_.kt"]

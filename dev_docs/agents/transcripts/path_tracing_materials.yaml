@@ -4,7 +4,7 @@ operations:
   - create:
       box: path_trace_renderer
       name: path tracing renderer
-      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      frame: { x: 40.0, y: 40.0, w: 320.0, h: 110.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -19,7 +19,7 @@ operations:
   - create:
       box: path_trace_materials
       name: progressive material study
-      frame: { x: 320.0, y: 140.0, w: 250.0, h: 70.0 }
+      frame: { x: 320.0, y: 180.0, w: 350.0, h: 120.0 }
       properties:
         code: |
           import afield.four.fabricated.PathTraceDemo

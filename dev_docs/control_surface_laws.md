@@ -136,7 +136,7 @@ wrong about.
 
 The per-meter rate has a **spread of 0.0/s** across all three, so the cost is **strictly linear and
 unbatched**: each meter has its own coalescer and nothing merges two meters into one frame. Ten boxes
-with five meters each really is 1500 messages a second down the same websocket that carries editor
+with five meters each really is 1500<!--derive: 10*5*30--> messages a second down the same websocket that carries editor
 commands. That is stated here rather than left to be discovered by someone whose editor goes sticky
 while a DSP is playing — **if a document ever wants that many meters, batching is the fix, and the table
 above is the number to beat.**

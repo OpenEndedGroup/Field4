@@ -17,8 +17,8 @@ operations:
       frame:
         x: 40.0
         y: 40.0
-        w: 280.0
-        h: 50.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           import org.jetbrains.kotlinx.dataframe.api.*
@@ -38,10 +38,10 @@ operations:
       box: dataframe_derived
       name: 2 - A schema that changes
       frame:
-        x: 380.0
+        x: 480.0
         y: 40.0
-        w: 280.0
-        h: 50.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           import org.jetbrains.kotlinx.dataframe.api.*
@@ -64,9 +64,9 @@ operations:
       name: 3 - The whole chain in one pass
       frame:
         x: 40.0
-        y: 140.0
-        w: 280.0
-        h: 50.0
+        y: 190.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           import org.jetbrains.kotlinx.dataframe.api.*
@@ -86,10 +86,10 @@ operations:
       box: dataframe_live
       name: 4 - Typed across the boundary
       frame:
-        x: 380.0
-        y: 140.0
-        w: 280.0
-        h: 50.0
+        x: 480.0
+        y: 190.0
+        w: 380.0
+        h: 100.0
       properties:
         code: |
           import org.jetbrains.kotlinx.dataframe.api.*

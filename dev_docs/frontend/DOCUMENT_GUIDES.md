@@ -1,10 +1,20 @@
 # Document guides
 
-**Show Document Guide** opens the current document's Markdown files beside the box graph and editor. A **Guides** button also appears when the document has guides. The panel can be dragged by its header and resized from any corner. Closing it keeps its current file, reading position and unsaved drafts for this page session.
+**Show Document Guide** opens the current document's Markdown files, and the notes written on its boxes, beside the box graph and editor. A launcher button also appears when the document has either. The panel can be dragged by its header and resized from any corner. Closing it keeps its current file, reading position and unsaved drafts for this page session.
 
-**Open Anything** includes a **Document Guides** group. Search a guide's title or filename to open it directly, or search **Document Viewer** to return to the last page you were reading. Discovery uses the same bounded catalogue as the viewer and does not load every guide's contents.
+**Open Anything** includes a **Document Guides** group. Search a guide's title or filename to open it directly, a box note by its title, or **Document Viewer** to return to the last page you were reading. Discovery uses the same bounded catalogue as the viewer and does not load every guide's contents.
 
 The catalogue finds `.md` and `.markdown` files in the document root, plus `docs/` and `guides/` (up to four levels). README appears first; titles come from the first H1. Hidden files, property sidecars ending in `_.md`, `document.md`, and agent instruction files are excluded. Nested Field documents are not traversed. No manifest or extra boxes are required.
+
+## Box notes in the same list
+
+A **Box notes** section lists the `notes` property of every live box that has one, so a document's prose can be read in one place instead of a box at a time. A note is titled by its own first H1, falling back to the box's name and then its uid; blank notes, tombstoned boxes and notes past the 1 MiB file bound are left out. Notes sort by title after the files, and the launcher names what it found — `Guides · 2 · Notes · 3`, or just `Notes · 3` for a document whose prose lives entirely on its boxes.
+
+Notes address their box rather than a file: `box/<uid>`, a path the file catalogue cannot produce, since it has no Markdown extension and its directory is neither `docs` nor `guides`. Reading one is ordinary — headings outline, links and relative images work, resolving from the document root — but **Save**, **Place on canvas** and the source editor are read-only, and the server refuses a write to a `box/…` path whatever asks for it. **Open box** selects the box and opens its `notes` property, where the box editor's own Markdown preview already edits it; that keeps one writer, and one transcript entry, for the property. **Copy section link** on a note copies `field://box/<uid>?property=notes` instead of a guide link.
+
+## Adding a note
+
+**Add note** (also **Add Note to This Document** in the command palette) asks for a title and publishes a new Markdown file containing that title as its H1, then opens it in the source editor. A leading `docs/` or `guides/` in what you type is honoured; anything else collapses to one slug — no traversal, no hidden file, no `_.md` sidecar name, 80 characters at most. Publication is atomic and never clobbers: an existing name is reported so you can open it from the list instead. Read-only documents cannot add notes.
 
 ## Reading and navigation
 
@@ -52,13 +62,15 @@ The first pass bounds files to 1 MiB, catalogue results to 128 and local images 
 
 ## Verification
 
-- `node --test tools/test_document_guide.mjs` checks relative paths, fragments, stable box links and rejected URL schemes.
-- `./gradlew jvmTest --tests afield.server.DocumentGuideFilesTest` checks discovery, canonical path confinement, stale saves, read-only protection and file bounds.
-- `uv run --project . --group backdoor python tools/run_ui_regressions.py --id document-guide --port 9693 --timeout 60` drives the real guide UI: discovery, local images, box/line navigation, source save, a concurrent writer, close/reopen, live refresh and file proxies. Its retained screenshot shows the reader beside the code editor.
+- `node --test tools/test_document_guide.mjs` checks relative paths, fragments, stable box links, rejected URL schemes, the `box/<uid>` note namespace and the paths a typed note name is allowed to become.
+- `./gradlew jvmTest --tests afield.server.DocumentGuideFilesTest --tests afield.server.DocumentGuideNotesTest` checks discovery, canonical path confinement, stale saves, no-clobber creation, read-only protection and file bounds, plus which box notes are collected and what a read of one returns.
+- `uv run --project . --group backdoor python tools/run_ui_regressions.py --id document-guide --port 9693 --timeout 60` drives the real guide UI: discovery, local images, box/line navigation, source save, a concurrent writer, close/reopen, live refresh, file proxies, a collected box note refusing writes and handing over to its box, and **Add note** reaching disk. Its retained screenshot shows the reader beside the code editor.
 
 ## Durable notes for AI4 and external agents
 
 AI4's inline, editor and general chat paths use the same guide files and revision checks as the viewer. Each request carries a small catalogue (up to 32 titles and paths, prioritizing `HANDOFF.md`, `DECISIONS.md` and `README.md`). Bodies are read on demand. The full catalogue remains available through the list tool.
+
+These tools stay file-only: the box notes the viewer collects are not in their catalogue, because agents already reach `notes` directly through the document outline and `field_read_note`/`field_write_note`. Listing them here too would report the same prose twice under two names.
 
 | AI4 tool | MCP tool | Use |
 | --- | --- | --- |

@@ -44,7 +44,7 @@ operations:
   - create:
       box: typo_values
       name: 1 — a string becomes contours
-      frame: { x: 60.0, y: 60.0, w: 210.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 310.0, h: 100.0 }
       properties:
         code: |
           // A Typeface is a font at a size. Logical families (SansSerif, Serif, Monospaced) always
@@ -84,11 +84,20 @@ operations:
           // The same word again, but as VECTORS this time: showText fills the FLines through
           // drawToSVG, so the counters come out holes there too — Skia fills non-zero, and that is the
           // convention doing the work rather than the rasteriser being clever.
-          showText(word, title = "the same layout as filled FLines, through drawToSVG", showBaseline = true, height = 220)
+          //
+          // Its own channel, and that is not decoration: `display(channel, …)` REPLACES a channel
+          // rather than appending to it, so a second figure on "main" silently erases the first. Two
+          // figures in one box means two channels. displayOpen marks the card open before the content
+          // lands, so it arrives expanded instead of as a collapsed header.
+          displayOpen("vectors")
+          showText(
+              word, channel = "vectors",
+              title = "the same layout as filled FLines, through drawToSVG", showBaseline = true, height = 220
+          )
   - create:
       box: typo_winding
       name: 2 — the winding convention, and what happens without it
-      frame: { x: 60.0, y: 420.0, w: 370.0, h: 50.0 }
+      frame: { x: 60.0, y: 420.0, w: 470.0, h: 100.0 }
       properties:
         code: |
           // Both cells below go through the identical filler at the identical fill rule. The only
@@ -130,7 +139,7 @@ operations:
   - create:
       box: typo_layout
       name: 3 — advances, kerning, tracking, alignment
-      frame: { x: 1000.0, y: 60.0, w: 290.0, h: 50.0 }
+      frame: { x: 1000.0, y: 60.0, w: 390.0, h: 100.0 }
       properties:
         code: |
           // Layout is AWT's advances and kerning pairs, plus the things AWT does not do: \n, letter
@@ -175,16 +184,17 @@ operations:
               face.atSize(44.0), maxWidth = 620.0
           )
           println("wrapped to ${prose.lines().size} lines, widest ${"%.1f".format(prose.lines().maxOf { textWidth(it, face.atSize(44.0)) })} of 620")
+          displayOpen("alignment")
           showImgGrid(
               *TextAlign.entries.map { a ->
                   a.name.lowercase() to rasterizeText(layoutText(prose, face.atSize(44.0), align = a, lineSpacing = 1.12), 700, 380)
               }.toTypedArray(),
-              columns = 3, cellSide = 420
+              channel = "alignment", columns = 3, cellSide = 420
           )
   - create:
       box: typo_curve
       name: 4 — text on a curve, by arc length
-      frame: { x: 1000.0, y: 420.0, w: 240.0, h: 50.0 }
+      frame: { x: 1000.0, y: 420.0, w: 340.0, h: 100.0 }
       properties:
         code: |
           // onCurve does not distort a glyph. It looks its advance-box centre up at that distance
@@ -215,15 +225,16 @@ operations:
               "on a cubic" to rasterizeText(onWave, 900, 420),
               columns = 2, cellSide = 430
           )
+          displayOpen("paths")
           showPlaneGrid(
               "the paths, and the letters as outlines" to
                   (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.5); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
-              columns = 1, cellWidth = 420, cellHeight = 420
+              channel = "paths", columns = 1, cellWidth = 420, cellHeight = 420
           )
   - create:
       box: typo_kinetic
       name: 5 — the handles, animated (LAUNCH this one)
-      frame: { x: 60.0, y: 780.0, w: 300.0, h: 50.0 }
+      frame: { x: 60.0, y: 780.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           // Every PlacedGlyph carries mutable handles — offset, rotation, scale, pivot — and the
@@ -265,7 +276,7 @@ operations:
   - create:
       box: typo_mesh
       name: 6 — extrusion, counters and all
-      frame: { x: 1000.0, y: 780.0, w: 220.0, h: 50.0 }
+      frame: { x: 1000.0, y: 780.0, w: 320.0, h: 100.0 }
       properties:
         code: |
           // extrudeMesh and triangulatePolygon in mesh_generate.kt say outright that they cannot do
@@ -310,15 +321,16 @@ operations:
               columns = 2, cellWidth = 400,
               view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2)
           )
+          displayOpen("word")
           showMesh(
-              word,
+              word, channel = "word",
               view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
               title = "extruded from the same contours the raster filled"
           )
   - create:
       box: typo_sdf
       name: 7 — letters in the SDF family
-      frame: { x: 60.0, y: 1140.0, w: 210.0, h: 50.0 }
+      frame: { x: 60.0, y: 1140.0, w: 310.0, h: 100.0 }
       properties:
         code: |
           // toSdf builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes
@@ -340,7 +352,11 @@ operations:
           println("smooth union with a sphere: ${melted.triangleCount} triangles; " +
               "shelled: ${hollow.triangleCount}; twisted: ${wrung.triangleCount}")
 
-          showImg(grid.toImg(), caption = "the 2D signed distance field — mid grey is the outline")
+          displayOpen("sdf")
+          showImg(
+              grid.toImg(), channel = "sdf",
+              caption = "the 2D signed distance field — mid grey is the outline"
+          )
           showMeshGrid(
               "marchingCubes on the letters" to marched,
               "sdfSmoothUnion with a sphere" to melted,
@@ -352,7 +368,7 @@ operations:
   - create:
       box: typo_points
       name: 8 — letters as point clouds
-      frame: { x: 1000.0, y: 1140.0, w: 200.0, h: 50.0 }
+      frame: { x: 1000.0, y: 1140.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // The last bridge is the plainest: even-by-arc-length samples along the outlines, which is

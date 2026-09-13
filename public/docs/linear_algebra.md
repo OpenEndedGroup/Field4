@@ -223,6 +223,25 @@ if (velocity.lengthSquared() > 1e-12f) velocity.normalize()
 if (candidate.distanceSquared(mouse) < 20f * 20f) { /* within 20 units */ }
 ```
 
+For a direction that may be zero, generated extensions on the heap-vector interfaces also provide
+`normalized()`. It returns a new unit vector and preserves zero; `normalized(dest)` writes
+into reusable storage without allocating a result. Neither mutates the source unless you
+explicitly pass that same vector as the destination.
+
+```diffstatic {data-lang=kotlin}
+:::static
+val direction = velocity.normalized()
+val scratch = vec(0, 0, 0)
+velocity.normalized(scratch, epsilon = 1e-6f)
+```
+
+The default epsilon is zero; choose a threshold when a very short direction should count
+as stationary. Scaled arithmetic handles very large and very small finite inputs. NaN,
+infinity, and invalid epsilon values are rejected. The existing `normalize()` and
+`v { normalize() }` retain their original zero-vector behaviour. These methods are emitted
+by the linalg generator for float, double and half heap vectors; see the
+[generated API reference](linear_algebra_api.md).
+
 ## Dot product: “how much do these agree?”
 
 The dot product multiplies matching components and adds them. For unit vectors it

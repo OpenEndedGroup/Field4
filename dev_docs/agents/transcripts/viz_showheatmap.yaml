@@ -20,7 +20,7 @@ operations:
   - create:
       box: heatmap_gaussian
       name: gaussian (viridis)
-      frame: { x: 80.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A smooth 2-D Gaussian bump -> viridis heatmap. showHeatmap min-max normalizes,
@@ -36,7 +36,7 @@ operations:
   - create:
       box: heatmap_diverging
       name: diverging (coolwarm)
-      frame: { x: 80.0, y: 500.0, w: 200.0, h: 50.0 }
+      frame: { x: 80.0, y: 500.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A sin*sin field in [-1,1]. A fixed vmin/vmax with normalize=false anchors the coolwarm
@@ -48,7 +48,7 @@ operations:
   - create:
       box: heatmap_spectrogram
       name: spectrogram (magma)
-      frame: { x: 820.0, y: 80.0, w: 200.0, h: 50.0 }
+      frame: { x: 820.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A synthetic [frame][bin] magnitude spectrogram with a rising ridge. transpose=true puts
@@ -66,7 +66,7 @@ operations:
   - create:
       box: heatmap_image
       name: image (showImage)
-      frame: { x: 820.0, y: 540.0, w: 200.0, h: 50.0 }
+      frame: { x: 820.0, y: 540.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // showImage displays a ready-made ARGB IntArray directly (encode + display), for when you

@@ -19,7 +19,7 @@ An Img is width x height x channels floats, interleaved, origin top-left. This o
 question "is this fast enough to actually use?" has a meaningful answer.
 
 ```edn [field-box id="imaging_basics" role="properties"]
-{"id" "imaging_basics" "index" 0 "name" "Img basics — build, resample, luma, HSV, threshold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Img basics — build, resample, luma, HSV, threshold" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_basics_code_.kt" "lines" 38 "characters" 1845 "sha256" "21ff3c94003d65cd9489e1205c8a86389fe11247d8152188adab0046d8c612c2"}]}
+{"id" "imaging_basics" "index" 0 "name" "Img basics — build, resample, luma, HSV, threshold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Img basics — build, resample, luma, HSV, threshold" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_basics_code_.kt" "lines" 38 "characters" 1845 "sha256" "21ff3c94003d65cd9489e1205c8a86389fe11247d8152188adab0046d8c612c2"}]}
 ```
 
 ```kotlin [field-property box="imaging_basics" name="code" path="imaging_basics_code_.kt"]
@@ -74,7 +74,7 @@ From `code`
 A clean synthetic source, and the same source with 4% salt-and-pepper corruption.
 
 ```edn [field-box id="imaging_filters" role="properties"]
-{"id" "imaging_filters" "index" 1 "name" "filters — gaussian / median / bilateral / unsharp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "filters — gaussian / median / bilateral / unsharp" "_tombstone" false "frame" #afield/rect [80.0 500.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_filters_code_.kt" "lines" 40 "characters" 1735 "sha256" "6844c2c2185cc853bf9a225299eea8163f477e8bd123fe9dc4fa910e75d757eb"}]}
+{"id" "imaging_filters" "index" 1 "name" "filters — gaussian / median / bilateral / unsharp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "filters — gaussian / median / bilateral / unsharp" "_tombstone" false "frame" #afield/rect [80.0 500.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_filters_code_.kt" "lines" 40 "characters" 1735 "sha256" "6844c2c2185cc853bf9a225299eea8163f477e8bd123fe9dc4fa910e75d757eb"}]}
 ```
 
 ```kotlin [field-property box="imaging_filters" name="code" path="imaging_filters_code_.kt"]
@@ -131,7 +131,7 @@ From `code`
 A square whose corners are at exactly known coordinates.
 
 ```edn [field-box id="imaging_features" role="properties"]
-{"id" "imaging_features" "index" 2 "name" "features — Harris / FAST corners and Hough lines" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "features — Harris / FAST corners and Hough lines" "_tombstone" false "frame" #afield/rect [80.0 1340.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_features_code_.kt" "lines" 47 "characters" 2524 "sha256" "345d23f240d7e8e4a009ac34dcb31f33381523a86486cc62d8079934fa02574f"}]}
+{"id" "imaging_features" "index" 2 "name" "features — Harris / FAST corners and Hough lines" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "features — Harris / FAST corners and Hough lines" "_tombstone" false "frame" #afield/rect [80.0 1340.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_features_code_.kt" "lines" 47 "characters" 2524 "sha256" "345d23f240d7e8e4a009ac34dcb31f33381523a86486cc62d8079934fa02574f"}]}
 ```
 
 ```kotlin [field-property box="imaging_features" name="code" path="imaging_features_code_.kt"]
@@ -195,7 +195,7 @@ From `code`
 Three disjoint discs of known radius, then noise on top of them.
 
 ```edn [field-box id="imaging_morphology" role="properties"]
-{"id" "imaging_morphology" "index" 3 "name" "morphology, connected components, distance transform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "morphology, connected components, distance transform" "_tombstone" false "frame" #afield/rect [80.0 1760.0 350.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_morphology_code_.kt" "lines" 36 "characters" 1737 "sha256" "de7b910dd32fcce2138539c683af4d9256495cbd97dfffcbb904dbc0f87cb31a"}]}
+{"id" "imaging_morphology" "index" 3 "name" "morphology, connected components, distance transform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "morphology, connected components, distance transform" "_tombstone" false "frame" #afield/rect [80.0 1760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_morphology_code_.kt" "lines" 36 "characters" 1737 "sha256" "de7b910dd32fcce2138539c683af4d9256495cbd97dfffcbb904dbc0f87cb31a"}]}
 ```
 
 ```kotlin [field-property box="imaging_morphology" name="code" path="imaging_morphology_code_.kt"]
@@ -253,7 +253,7 @@ version tracked 0 of 125 seeds at this size. Coarse octaves survive to the top o
 pyramid; the fine ones sharpen the final refinement.
 
 ```edn [field-box id="imaging_motion" role="properties"]
-{"id" "imaging_motion" "index" 4 "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "_tombstone" false "frame" #afield/rect [80.0 2180.0 420.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_motion_code_.kt" "lines" 54 "characters" 2850 "sha256" "53027a5af1dc97109b62d2d977f907bda3ede6cb19f41126683214722638ba68"}]}
+{"id" "imaging_motion" "index" 4 "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "_tombstone" false "frame" #afield/rect [80.0 2180.0 520.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_motion_code_.kt" "lines" 54 "characters" 2850 "sha256" "53027a5af1dc97109b62d2d977f907bda3ede6cb19f41126683214722638ba68"}]}
 ```
 
 ```kotlin [field-property box="imaging_motion" name="code" path="imaging_motion_code_.kt"]
@@ -318,7 +318,7 @@ lines(flow.toFLines(scale = 6.0, minMagnitude = 0.5))
 <!-- field-box id="imaging_edges" index="5" -->
 
 ```edn [field-box id="imaging_edges" role="properties"]
-{"id" "imaging_edges" "index" 5 "name" "gradients + Canny + the FLines the edges become" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gradients + Canny + the FLines the edges become" "_tombstone" false "frame" #afield/rect [80.0 920.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_edges_code_.kt" "lines" 37 "characters" 1651 "sha256" "2c2cbc8660994bd393ae92e0ab0158eeca5fca2d68c4c6db06e05047781d24dc"}]}
+{"id" "imaging_edges" "index" 5 "name" "gradients + Canny + the FLines the edges become" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gradients + Canny + the FLines the edges become" "_tombstone" false "frame" #afield/rect [80.0 920.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_edges_code_.kt" "lines" 37 "characters" 1651 "sha256" "2c2cbc8660994bd393ae92e0ab0158eeca5fca2d68c4c6db06e05047781d24dc"}]}
 ```
 
 ```kotlin [field-property box="imaging_edges" name="code" path="imaging_edges_code_.kt"]

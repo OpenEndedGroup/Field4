@@ -25,29 +25,40 @@ expect:
 */
 
 /**
- * Headless **offline sound-render harness** for the pattern language — the audible companion to
- * [PatPianoRollGallery]'s piano rolls, following the same contract as [DoughDspSoundDocs].
+ * Headless **offline sound renderer** for the pattern language: the audible companion to
+ * `PatPianoRollGallery`'s piano rolls, in the same harness shape as `DoughDspSoundDocs`.
  *
- * Every scene is produced by actually *scheduling* a pattern and running its events through
- * [patVoice], a small deterministic CPU voice: an oscillator, a one-pole lowpass, and an
- * exponential-decay envelope, driven entirely by the event's own `gain` / `pan` / `cutoff` /
- * `sustain` parameters. There is no realtime engine, no audio device, no GPU and no Field window,
- * and the render is deterministic, so a committed `.wav` regenerates byte-stably.
+ * Every scene schedules a pattern and runs its events through [patRenderStereo] with a
+ * [PatVoiceSpec] — one oscillator, one one-pole lowpass, one exponential-decay envelope — reading
+ * each event's own `gain`, `pan`, `cutoff` and `sustain` annotations. There is no realtime engine,
+ * no audio device, no GPU and no Field window, and the render is deterministic, so a committed
+ * `.wav` regenerates byte-stably.
  *
- * Three scenes are **two-halves-of-one-file**: the first half is what the pre-tonight
- * surface could produce and the second half is the same pattern with the new operator applied, so
- * the difference is *heard* in a single listen rather than described. The verification checks the
- * halves against each other rather than against a remembered number.
+ * #### A before and an after in one file
  *
- * As a FIELD_TEST (`synth.pat.sound`) every scene is rendered to a temp dir and asserted for real
- * correctness: a valid RIFF/WAVE header with the right declared sample rate and data size on disk,
- * non-silence, the expected duration, the expected peak and RMS, the expected number of onsets,
- * and per-scene spectral or stereo claims (the gain modulation really modulates, the filter sweep
- * really brightens, the voice-led chords really sound the notes the pattern says, `jux` really
- * decorrelates the two channels). It writes NO committed assets during the test. Pass an output dir
- * as `args[0]` (or set `PAT_SOUND_DIR`) to regenerate the committed captures.
+ * Several scenes splice two versions of one pattern together with `whenCycle({ it >= 2 })`: the
+ * opening cycles play it without the operator under discussion and the closing cycles play the
+ * same pattern with it, so the difference arrives in a single listen. Those scenes check their two
+ * halves against each other, requiring the modulated half's level to vary by some multiple of the
+ * flat half's, rather than against a remembered number, so retuning the voice leaves the check
+ * meaningful.
  *
- * Add a sound by appending one [Scene] to [SCENES].
+ * #### What each render is checked against
+ *
+ * As a FIELD_TEST (`synth.pat.sound`) every scene is rendered to a temp dir and asserted: a
+ * RIFF/WAVE header whose declared channel count, sample rate and data size agree with the bytes on
+ * disk; a duration within a tenth of a second of what the scene's own cycle count and tempo imply;
+ * peak and RMS inside bounds that catch silence and runaway level; and then each scene's own
+ * `verify`, which is where the musical claim lives. Those range from counting onsets to checking
+ * that the filter sweep brightens, that the voice-led chords sound the notes the pattern says, and
+ * that `jux` decorrelates the two channels. It writes no committed assets during the test. Pass an
+ * output dir as `args[0]` (or set `PAT_SOUND_DIR`) to regenerate the committed captures.
+ *
+ * Add a sound by appending one `Scene` to `SCENES`.
+ */
+
+/**
+ * The catalogue of rendered pattern scenes, and the FIELD_TEST entry point that renders them.
  */
 object PatSoundDocs {
 
@@ -753,7 +764,13 @@ fun patVoice(
     attack: Double = 0.003
 ): PatVoiceSpec = PatVoiceSpec(wave, baseHz, decay.coerceAtLeast(1e-4), sustain.coerceIn(0.0, 1.0), attack.coerceAtLeast(1e-5))
 
-/** The drum map behind unpitched atoms — crude, just enough to be recognisable. */
+/**
+ * The drum map behind unpitched atoms — crude, just enough to be recognisable.
+ *
+ * `internal` rather than private because it is the authority the piano rolls' instrument colours
+ * are checked against: [PatPianoRollGallery.ATOM_COLORS] claims to distinguish exactly the tokens
+ * this function gives a voice of their own, and `synth.pat.mini` reads this map to verify it.
+ */
 internal fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = when (atom.substringBefore(':')) {
     "bd", "kick" -> 62.0 to PatWave.SINE
     "sd", "snare" -> 190.0 to PatWave.NOISE
@@ -900,7 +917,13 @@ fun afield.Box.showPatSound(name: String, channel: String = "main"): PatSoundDoc
 /** MIDI note number to Hz, A4 = 69 = 440 Hz. */
 fun patMidiToHz(midi: Double): Double = 440.0 * Math.pow(2.0, (midi - 69.0) / 12.0)
 
-/** Attack ramp, hold at full, then exponential decay — the whole envelope, in one expression. */
+/**
+ * Attack ramp, hold at full, then exponential decay — the whole envelope, in one expression.
+ *
+ * `internal` rather than private because [PatSynthBank] renders the same voice block by block on the
+ * audio seam, and a realtime voice that differed from the offline one here would make every `.wav`
+ * on the site stop being evidence about what the speakers do.
+ */
 internal fun patVoiceEnvelope(t: Double, holdSec: Double, attack: Double, decay: Double): Double = when {
     t < attack -> t / attack
     t <= holdSec -> 1.0

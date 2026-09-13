@@ -95,9 +95,9 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/graphics/FLineThickening.kt", 160, "flineToJavaShape_notThickened"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLineThickening.kt", 384, "flineToJavaShape_notThickened"),
 
-        Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 239, "flattenClosedFLineLoops"),
-        Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 244, "flineToJavaShape_notThickened"),
-        Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 307, "flush(requireClosed = false)"),
+        Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 421, "flattenClosedFLineLoops"),
+        Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 426, "flineToJavaShape_notThickened"),
+        Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 489, "flush(requireClosed = false)"),
 
         Triple("src/jvmTest/kotlin/afield/graphics/ClosedLineNodeAccessTest.kt", 74, "vec(0f, 100f, 0f)"),
 

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_ss_unbounded" index="0" -->
 
 ```edn [field-box id="petri_ss_unbounded" role="properties"]
-{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 38 "characters" 1693 "sha256" "5260fccc075482de19d532f1f8ef8d11b161c40d458cb940dbd31acc1240987f"}]}
+{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 38 "characters" 1693 "sha256" "5260fccc075482de19d532f1f8ef8d11b161c40d458cb940dbd31acc1240987f"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_unbounded" name="code" path="petri_ss_unbounded_code_.kt"]
@@ -60,7 +60,7 @@ println("  " + capped.stateSpace().report().lines().first())
 <!-- field-box id="petri_ss_philosophers" index="1" -->
 
 ```edn [field-box id="petri_ss_philosophers" role="properties"]
-{"id" "petri_ss_philosophers" "index" 1 "name" "1 — the table can wedge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the table can wedge" "_tombstone" false "frame" #afield/rect [60.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_philosophers_code_.kt" "lines" 37 "characters" 1660 "sha256" "d0f051479977fb4f75cd029209581fd13dd4e3742329e878ccb4c3413a743a49"}]}
+{"id" "petri_ss_philosophers" "index" 1 "name" "1 — the table can wedge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the table can wedge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_philosophers_code_.kt" "lines" 37 "characters" 1660 "sha256" "d0f051479977fb4f75cd029209581fd13dd4e3742329e878ccb4c3413a743a49"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_philosophers" name="code" path="petri_ss_philosophers_code_.kt"]
@@ -108,7 +108,7 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_exclusion" index="2" -->
 
 ```edn [field-box id="petri_ss_exclusion" role="properties"]
-{"id" "petri_ss_exclusion" "index" 2 "name" "5 — what the algebra cannot see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — what the algebra cannot see" "_tombstone" false "frame" #afield/rect [320.0 200.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_exclusion_code_.kt" "lines" 36 "characters" 1714 "sha256" "39811f62360bac42ff8a388f319685a11fba355281748dabdd6ed89cb458f8cd"}]}
+{"id" "petri_ss_exclusion" "index" 2 "name" "5 — what the algebra cannot see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — what the algebra cannot see" "_tombstone" false "frame" #afield/rect [420.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_exclusion_code_.kt" "lines" 36 "characters" 1714 "sha256" "39811f62360bac42ff8a388f319685a11fba355281748dabdd6ed89cb458f8cd"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_exclusion" name="code" path="petri_ss_exclusion_code_.kt"]
@@ -155,7 +155,7 @@ showPetriNet(safe, w = 760.0, h = 400.0, layout = PetriLayout.FORCE)
 <!-- field-box id="petri_ss_asymmetric" index="3" -->
 
 ```edn [field-box id="petri_ss_asymmetric" role="properties"]
-{"id" "petri_ss_asymmetric" "index" 3 "name" "2 — proved, and the difference from starved" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — proved, and the difference from starved" "_tombstone" false "frame" #afield/rect [320.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_asymmetric_code_.kt" "lines" 34 "characters" 1508 "sha256" "d7133d0c5bda354f4c0db9abb504bb131fca19da310fc46dd3ef04a80b25ec2e"}]}
+{"id" "petri_ss_asymmetric" "index" 3 "name" "2 — proved, and the difference from starved" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — proved, and the difference from starved" "_tombstone" false "frame" #afield/rect [420.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_asymmetric_code_.kt" "lines" 34 "characters" 1508 "sha256" "d7133d0c5bda354f4c0db9abb504bb131fca19da310fc46dd3ef04a80b25ec2e"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_asymmetric" name="code" path="petri_ss_asymmetric_code_.kt"]
@@ -200,7 +200,7 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_reduction" index="4" -->
 
 ```edn [field-box id="petri_ss_reduction" role="properties"]
-{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [580.0 200.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 59 "characters" 2774 "sha256" "54a1334b2f37c7aaccc27f010940ced8620351f07c2788221f8ced1803d33f87"}]}
+{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 59 "characters" 2774 "sha256" "54a1334b2f37c7aaccc27f010940ced8620351f07c2788221f8ced1803d33f87"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_reduction" name="code" path="petri_ss_reduction_code_.kt"]
@@ -270,7 +270,7 @@ showPetriStateSpace(reduced, w = 1100.0, h = 600.0)
 <!-- field-box id="petri_ss_buffer" index="5" -->
 
 ```edn [field-box id="petri_ss_buffer" role="properties"]
-{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [580.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1244 "sha256" "383a496135c05360a28ac15436aa95b208b22dcf5d8a483d6c84991862709533"}]}
+{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1244 "sha256" "383a496135c05360a28ac15436aa95b208b22dcf5d8a483d6c84991862709533"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_buffer" name="code" path="petri_ss_buffer_code_.kt"]

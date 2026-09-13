@@ -4,6 +4,7 @@ import afield.logger.lprintln
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.defaultForFilePath
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
@@ -95,6 +96,21 @@ internal const val DOCS_ANNOTATIONS_STORE_ENV = "AFIELD_DOCS_ANNOTATIONS_STORE"
 
 /** Header carrying [DOCS_IMPROVEMENT_TOKEN_ENV] on a launch request. */
 internal const val DOCS_IMPROVEMENT_TOKEN_HEADER = "X-Field-Docs-Improvement-Token"
+
+/** System property choosing where `/field-docs/…` reads from. Env fallback: [DOCS_MIRROR_SOURCE_ENV]. */
+internal const val DOCS_MIRROR_SOURCE_PROPERTY = "afield.docsMirror.source"
+
+/** `local`, `upstream`, or unset for [DocsMirrorSource.AUTO]. Property equivalent: [DOCS_MIRROR_SOURCE_PROPERTY]. */
+internal const val DOCS_MIRROR_SOURCE_ENV = "AFIELD_DOCS_MIRROR_SOURCE"
+
+/** System property naming the built documentation site to serve. Env fallback: [DOCS_MIRROR_DIRECTORY_ENV]. */
+internal const val DOCS_MIRROR_DIRECTORY_PROPERTY = "afield.docsMirror.dir"
+
+/** The built documentation site to serve. Unset means [DEFAULT_DOCS_MIRROR_DIRECTORY] under the server's own directory. */
+internal const val DOCS_MIRROR_DIRECTORY_ENV = "AFIELD_DOCS_MIRROR_DIR"
+
+/** Where `tools/build_zensical_docs.py` writes the site, relative to a checkout. */
+internal const val DEFAULT_DOCS_MIRROR_DIRECTORY = "public/field4"
 
 /**
  * The resolved configuration the two guards below are written against.
@@ -708,6 +724,25 @@ private val docsImprovementDirectory: DocsImprovementDirectory by lazy {
 }
 
 /**
+ * Where `/field-docs/…` reads from, as a value for the same reason [DocsAccessPolicy] is
+ * one: "serves the local build", "serves the published site" and "has no local build" are
+ * then all just arguments, and a test can stand the real route up over a temporary
+ * directory without a network or an environment variable in sight.
+ */
+internal data class DocsMirror(val source: DocsMirrorSource, val directory: Path)
+
+/** The mirror this JVM resolved at startup, from the environment, and prints on installation. */
+private val docsMirror: DocsMirror by lazy {
+    DocsMirror(
+        resolveDocsMirrorSource(System.getProperty(DOCS_MIRROR_SOURCE_PROPERTY), System.getenv(DOCS_MIRROR_SOURCE_ENV)),
+        resolveDocsMirrorDirectory(
+            System.getProperty(DOCS_MIRROR_DIRECTORY_PROPERTY) ?: System.getenv(DOCS_MIRROR_DIRECTORY_ENV),
+            Paths.get("."),
+        ),
+    )
+}
+
+/**
  * Refuses and returns true when this call is not from *this machine*.
  *
  * Written as an explicit call at the head of each handler rather than a pipeline
@@ -757,11 +792,22 @@ internal const val SEC_FETCH_SITE_HEADER = "Sec-Fetch-Site"
  *   startup; a test passes its own so that "the server as it shipped last week", "the
  *   hatch open" and "the hatch shut" are all just arguments, the way [DocsAccessPolicy]
  *   was designed to make them.
+ * @param mirror which copy of the documentation `/field-docs/…` serves, same idea: a test
+ *   hands over a temporary directory and needs no network.
  */
-internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAccessPolicy) {
+internal fun Route.installDocsAnnotationRoutes(
+    policy: DocsAccessPolicy = docsAccessPolicy,
+    mirror: DocsMirror = docsMirror,
+) {
     // One line at startup that says what this server will and will not do, because the
     // failure mode being defended against is silent capability.
     lprintln("docs-annotations", "Documentation annotation store: ${DocsAnnotationStore.path}")
+    lprintln(
+        "docs-annotations",
+        "Documentation mirror ($PROXY_ROOT) source=${mirror.source.name.lowercase()}: " +
+            "local build ${mirror.directory} (${if (Files.isRegularFile(mirror.directory.resolve("index.html"))) "built" else "not built yet"}), " +
+            "published site $DOCS_ORIGIN$DOCS_ROOT. Change with $DOCS_MIRROR_SOURCE_ENV / $DOCS_MIRROR_DIRECTORY_ENV.",
+    )
     if (policy.improvementEnabled) {
         lprintln(
             "docs-annotations",
@@ -851,13 +897,14 @@ internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAc
     }
     // Gated like the annotations, and the reason is not the one you would guess.
     //
-    // The content is a public website, so nothing here is *secret*. The problem is where
-    // it runs. This route fetches openendedgroup.com's HTML and serves it back from
+    // The content is a public website — or this checkout's own build of it — so nothing
+    // here is *secret*. The problem is where it runs. This route serves that HTML from
     // Field's own origin — that is the entire trick that lets the injected panel talk to
     // `/api/docs-annotations` without CORS. The cost of the trick is that every script in
     // the mirrored page is same-origin with Field, and Field has ~50 other unauthenticated
     // `/api/…` routes. A compromised or hostile documentation page would be able to call
-    // all of them.
+    // all of them. Serving the local build does not change that argument: a built site is
+    // generated from this checkout's Markdown, so it is exactly as trusted as the checkout.
     //
     // A remote reader loses nothing by this: the only thing the proxy adds over visiting
     // the real site is the annotation panel, and that panel is loopback-only anyway. So
@@ -874,7 +921,7 @@ internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAc
             // same-origin position they arrive in — to another device, and that is the
             // loopback check, unchanged.
             if (call.refuseUnlessLocalDocsClient(policy)) return@get
-            call.proxyFieldDocs()
+            call.serveFieldDocs(mirror)
         }
     }
 }
@@ -903,18 +950,110 @@ internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAc
  * becomes a traversal.
  */
 internal fun docsProxyTarget(rawPath: String, rawQuery: String?): URI? {
-    // Both spellings of the root: Ktor routes `/field-docs` as well as `/field-docs/`,
-    // and the old prefix-strip only matched the latter, so a request without the
-    // trailing slash was assembled into `/field4//field-docs` and 404'd upstream.
-    val relative = rawPath.removePrefix(PROXY_ROOT.removeSuffix("/")).removePrefix("/").ifBlank { "index.html" }
-    val decoded = runCatching { URLDecoder.decode(relative, StandardCharsets.UTF_8) }.getOrNull() ?: return null
-    if (decoded.split('/').any { it == ".." }) return null
-    if (decoded.startsWith("/") || decoded.contains('\\') || decoded.any { it.code < 0x20 }) return null
+    val relative = docsRequestRelativePath(rawPath)
+    safeDecodedDocsPath(relative) ?: return null
     val target = runCatching {
         URI.create("$DOCS_ORIGIN$DOCS_ROOT$relative" + rawQuery?.let { "?$it" }.orEmpty()).normalize()
     }.getOrNull() ?: return null
     if (!isWithinFieldDocs(target)) return null
     return target
+}
+
+/**
+ * A `/field-docs/…` request path reduced to a path relative to the documentation root,
+ * still percent-encoded because the upstream URL is assembled out of it verbatim.
+ *
+ * Both spellings of the root: Ktor routes `/field-docs` as well as `/field-docs/`, and
+ * the old prefix-strip only matched the latter, so a request without the trailing slash
+ * was assembled into `/field4//field-docs` and 404'd upstream.
+ */
+private fun docsRequestRelativePath(rawPath: String): String =
+    rawPath.removePrefix(PROXY_ROOT.removeSuffix("/")).removePrefix("/").ifBlank { "index.html" }
+
+/**
+ * [relative] decoded once and checked textually, or `null` to refuse — the first of
+ * [docsProxyTarget]'s two independent checks, and the only one [docsMirrorFile] can
+ * share, since a local path has no origin to re-check afterwards.
+ */
+private fun safeDecodedDocsPath(relative: String): String? {
+    val decoded = runCatching { URLDecoder.decode(relative, StandardCharsets.UTF_8) }.getOrNull() ?: return null
+    if (decoded.split('/').any { it == ".." }) return null
+    if (decoded.startsWith("/") || decoded.contains('\\') || decoded.any { it.code < 0x20 }) return null
+    return decoded
+}
+
+/**
+ * Which copy of the documentation `/field-docs/…` serves.
+ *
+ * [AUTO] is the default and means "the local build if it is there, the published site if
+ * it is not". That ordering is the useful one twice over: it is the only copy that exists
+ * when the machine is offline — the mirror used to fail with nothing but
+ * `documentation unavailable: null`, which is what an exception with no message reduces
+ * to — and it is the copy that contains the paragraph you just edited, which is the whole
+ * point of annotating a page in order to improve it.
+ *
+ * [UPSTREAM] is the old behaviour, for checking what a reader of the published site
+ * actually sees. [LOCAL] refuses to fall back, so a missing page is reported as missing
+ * rather than quietly answered from the internet — which is what you want while you are
+ * working on the build itself.
+ */
+internal enum class DocsMirrorSource { AUTO, LOCAL, UPSTREAM }
+
+/**
+ * Reads [DOCS_MIRROR_SOURCE_PROPERTY]/[DOCS_MIRROR_SOURCE_ENV], property first for the
+ * same reason as [docsFlagEnabled]: a `-D` on this JVM's command line is a more specific
+ * statement of intent than a variable inherited from a login shell.
+ *
+ * Anything unrecognised — including the empty string an unset-but-exported variable
+ * produces — is [DocsMirrorSource.AUTO] rather than an error, because failing to start
+ * the documentation route over a typo is a worse outcome than serving the default. The
+ * startup line prints the *resolved* value, so the typo is visible where it matters.
+ */
+internal fun resolveDocsMirrorSource(property: String?, environment: String?): DocsMirrorSource {
+    val raw = (property?.trim()?.takeIf(String::isNotEmpty) ?: environment?.trim().orEmpty()).lowercase()
+    return when (raw) {
+        "local" -> DocsMirrorSource.LOCAL
+        "upstream" -> DocsMirrorSource.UPSTREAM
+        else -> DocsMirrorSource.AUTO
+    }
+}
+
+/**
+ * The built site [DocsMirrorSource.LOCAL] and [DocsMirrorSource.AUTO] serve, as an
+ * absolute path. Not required to exist: a docs build finished an hour after Field
+ * started should be picked up by the next request, not by the next restart, so existence
+ * is a per-request question ([docsMirrorFile]) and only the *path* is settled once.
+ */
+internal fun resolveDocsMirrorDirectory(configured: String?, serverDirectory: Path): Path =
+    (configured?.trim()?.takeIf(String::isNotEmpty)?.let(Paths::get) ?: serverDirectory.resolve(DEFAULT_DOCS_MIRROR_DIRECTORY))
+        .toAbsolutePath().normalize()
+
+/**
+ * The file under [root] a `/field-docs/…` request names, or `null` if there isn't one.
+ *
+ * Three ways out of [root], all closed, because "serve a file from a directory" is the
+ * other classic of this genre and the proxy's own traversal bug (see [docsProxyTarget])
+ * is a reminder that one clever check is not enough:
+ *
+ *  - the textual check of [safeDecodedDocsPath], shared with the proxy;
+ *  - `startsWith` on the normalised path, which catches anything the decode produced
+ *    that the textual check did not anticipate;
+ *  - `toRealPath` on the file that was found, so a **symlink** inside the built site
+ *    cannot point out of it. The built site is generated, so this is not hypothetical
+ *    only because nobody has yet written a docs hook that symlinks something in.
+ *
+ * A directory resolves to its `index.html`, matching how the published site is served,
+ * so `/field-docs/` and `/field-docs/reference/` both work.
+ */
+internal fun docsMirrorFile(root: Path, rawPath: String): Path? {
+    val decoded = safeDecodedDocsPath(docsRequestRelativePath(rawPath)) ?: return null
+    val candidate = root.resolve(decoded).normalize()
+    if (!candidate.startsWith(root)) return null
+    val file = if (Files.isDirectory(candidate)) candidate.resolve("index.html") else candidate
+    if (!Files.isRegularFile(file)) return null
+    val realRoot = runCatching { root.toRealPath() }.getOrNull() ?: return null
+    val realFile = runCatching { file.toRealPath() }.getOrNull() ?: return null
+    return if (realFile.startsWith(realRoot)) file else null
 }
 
 /**
@@ -941,15 +1080,70 @@ private fun isWithinFieldDocs(uri: URI): Boolean =
 private fun escapeDocsHtmlAttribute(value: String): String =
     value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
-private suspend fun ApplicationCall.proxyFieldDocs() {
+/**
+ * The annotation panel's bootstrap, plus the `<base href>` that decides where the rest
+ * of the page's assets come from.
+ *
+ * `upstream` is the *canonical* URL of the page whichever copy served it, because it is
+ * what `docsAnnotations.js` keys notes on (`canonicalPage`). A note taken on the local
+ * build and a note taken on the published site are notes on the same page, and rebuilding
+ * the site must not orphan either — so the key is the published URL even when not one
+ * byte came from there.
+ */
+private fun docsAnnotationsSauce(upstream: URI, pageBase: String, source: String): String =
+    """<script>window.__FIELD_DOCS_UPSTREAM__=${Json.encodeToString(upstream.toString())};window.__FIELD_DOCS_PROXY__='$PROXY_ROOT';window.__FIELD_DOCS_SOURCE__=${Json.encodeToString(source)};const fieldDocsAnnotationsScript=document.createElement('script');fieldDocsAnnotationsScript.src=window.location.origin+'/docsAnnotations.js';document.head.appendChild(fieldDocsAnnotationsScript);</script><base href="${escapeDocsHtmlAttribute(pageBase)}">"""
+
+/** Puts [sauce] immediately after `<head …>`, or at the very top of a page that has no head. */
+private fun withDocsAnnotationsInjected(html: String, sauce: String): String {
+    val headMatch = Regex("<head[^>]*>", RegexOption.IGNORE_CASE).find(html) ?: return sauce + html
+    return html.substring(0, headMatch.range.last + 1) + sauce + html.substring(headMatch.range.last + 1)
+}
+
+/**
+ * Serves `/field-docs/…` from the local build when there is one, and from the published
+ * site when there is not — see [DocsMirrorSource] for why that is the order.
+ *
+ * Both paths inject the same annotation panel and declare the same canonical page URL,
+ * so which copy answered is invisible to the notebook and visible to you: the panel
+ * labels itself from `window.__FIELD_DOCS_SOURCE__`.
+ */
+private suspend fun ApplicationCall.serveFieldDocs(mirror: DocsMirror) {
     val incoming = URI(request.uri)
+    // Computed first and for both paths: it is the annotation key, and its refusal is the
+    // traversal guard the local path shares.
     val target = docsProxyTarget(incoming.rawPath, incoming.rawQuery)
         ?: return respond(HttpStatusCode.BadRequest, "invalid docs path")
+    val (source, root) = mirror
+    if (source != DocsMirrorSource.UPSTREAM) {
+        val file = docsMirrorFile(root, incoming.rawPath)
+        if (file != null) return respondLocalDocs(file, root, target)
+        if (source == DocsMirrorSource.LOCAL) return respondText(
+            docsUnavailableHtml(
+                target,
+                "$DOCS_MIRROR_SOURCE_ENV=local, so the published site was not tried.",
+                root,
+                "No file for this page under the local build.",
+            ),
+            ContentType.Text.Html,
+            HttpStatusCode.NotFound,
+        )
+    }
     val upstream = try {
         withContext(Dispatchers.IO) {
             docsProxyClient.send(HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(30)).GET().build(), HttpResponse.BodyHandlers.ofByteArray())
         }
-    } catch (error: Exception) { return respond(HttpStatusCode.BadGateway, "documentation unavailable: ${error.message}") }
+    } catch (error: Exception) {
+        // `error.message` alone was the whole of this response, and an exception with no
+        // message — a bare `IOException`, a cancellation — rendered as the sentence
+        // "documentation unavailable: null" with nothing in the log either. Name the
+        // class, and say what the alternative copy would have been.
+        lprintln("warning,docs-annotations", "Docs mirror could not reach $target: $error")
+        return respondText(
+            docsUnavailableHtml(target, describeDocsFailure(error), root, localDocsAbsence(root)),
+            ContentType.Text.Html,
+            HttpStatusCode.BadGateway,
+        )
+    }
     // Where the bytes actually came from, after any redirects the client followed. See
     // [isWithinFieldDocs]: the path checks above only constrain where we *asked*.
     if (!isWithinFieldDocs(upstream.uri())) {
@@ -958,14 +1152,77 @@ private suspend fun ApplicationCall.proxyFieldDocs() {
     }
     val contentType = upstream.headers().firstValue(HttpHeaders.ContentType).orElse("application/octet-stream")
     if (contentType.lowercase().contains("text/html")) {
-        var html = upstream.body().toString(StandardCharsets.UTF_8)
-        val pageBase = escapeDocsHtmlAttribute(target.resolve(".").toString())
-        val sauce = """<script>window.__FIELD_DOCS_UPSTREAM__=${Json.encodeToString(target.toString())};window.__FIELD_DOCS_PROXY__='$PROXY_ROOT';const fieldDocsAnnotationsScript=document.createElement('script');fieldDocsAnnotationsScript.src=window.location.origin+'/docsAnnotations.js';document.head.appendChild(fieldDocsAnnotationsScript);</script><base href="$pageBase">"""
-        val head = Regex("<head[^>]*>", RegexOption.IGNORE_CASE)
-        val headMatch = head.find(html)
-        html = if (headMatch != null) html.substring(0, headMatch.range.last + 1) + sauce + html.substring(headMatch.range.last + 1) else sauce + html
-        respondText(html, ContentType.Text.Html, HttpStatusCode.fromValue(upstream.statusCode()))
+        val html = upstream.body().toString(StandardCharsets.UTF_8)
+        val sauce = docsAnnotationsSauce(target, target.resolve(".").toString(), "published")
+        respondText(withDocsAnnotationsInjected(html, sauce), ContentType.Text.Html, HttpStatusCode.fromValue(upstream.statusCode()))
     } else {
         respondBytes(upstream.body(), runCatching { ContentType.parse(contentType) }.getOrDefault(ContentType.Application.OctetStream), HttpStatusCode.fromValue(upstream.statusCode()))
     }
+}
+
+/**
+ * Serves one file of the local build, annotated exactly as the proxied copy is.
+ *
+ * The `<base href>` is the *local* directory rather than the upstream one, which is what
+ * keeps the page offline: with an upstream base every stylesheet, script and image on the
+ * page is fetched from openendedgroup.com, and a mirror whose assets all come from the
+ * internet is not a mirror. Relative links then resolve to `/field-docs/…` on their own,
+ * and `docsAnnotations.js`'s link rewriting — which only fires for upstream-origin links
+ * — correctly does nothing.
+ */
+private suspend fun ApplicationCall.respondLocalDocs(file: Path, root: Path, canonical: URI) {
+    val bytes = withContext(Dispatchers.IO) { runCatching { Files.readAllBytes(file) }.getOrNull() }
+        ?: return respondText(
+            docsUnavailableHtml(canonical, "The local build has this page but it could not be read.", root, "$file is not readable."),
+            ContentType.Text.Html,
+            HttpStatusCode.InternalServerError,
+        )
+    val declared = ContentType.defaultForFilePath(file.fileName.toString())
+    if (declared.match(ContentType.Text.Html)) {
+        val relativeDirectory = root.relativize(file.parent).toString().replace('\\', '/')
+        val pageBase = PROXY_ROOT + if (relativeDirectory.isEmpty()) "" else "$relativeDirectory/"
+        val sauce = docsAnnotationsSauce(canonical, pageBase, "local")
+        return respondText(withDocsAnnotationsInjected(bytes.toString(StandardCharsets.UTF_8), sauce), ContentType.Text.Html)
+    }
+    // [defaultForFilePath] appends `charset=UTF-8` to text, SVG and JavaScript itself,
+    // which matters: a CSS or JS file served without one is decoded as the *document's*
+    // encoding, and the built site is full of characters that do not survive that.
+    respondBytes(bytes, declared)
+}
+
+/** An exception's class as well as its message, because [Exception.message] is so often null. */
+private fun describeDocsFailure(error: Exception): String =
+    error.message?.takeIf(String::isNotBlank)?.let { "${error.javaClass.simpleName}: $it" } ?: error.javaClass.name
+
+/** Why the local build did not answer, for the page that has to explain itself. */
+private fun localDocsAbsence(root: Path): String = when {
+    !Files.isDirectory(root) -> "There is no local build at $root."
+    !Files.isRegularFile(root.resolve("index.html")) -> "$root exists but has no index.html — an unbuilt or half-built site."
+    else -> "The local build at $root has no file for this page."
+}
+
+/**
+ * The page you get when neither copy of the documentation can answer.
+ *
+ * HTML rather than a plain-text status body because this is read inside the editor's
+ * documentation pane, where a bare string is indistinguishable from a broken feature —
+ * which is exactly how "documentation unavailable: null" read. It says which two places
+ * were tried, what went wrong with each, and the one command that fixes the common case.
+ */
+private fun docsUnavailableHtml(page: URI, upstreamFailure: String, root: Path, localFailure: String): String {
+    val e = ::escapeDocsHtmlAttribute
+    return """<!doctype html><html><head><meta charset="utf-8"><title>Documentation unavailable</title>
+<style>body{background:#090909;color:#e8e8e8;font:13px/1.6 Iosevka,ui-monospace,monospace;margin:0;padding:40px;max-width:46em}
+h1{font-size:15px;letter-spacing:.06em;font-weight:600;margin:0 0 1.5em}dt{color:#8b8b8b;margin-top:1.2em}dd{margin:.3em 0 0}
+pre{background:#111;border:1px solid #333;padding:10px;overflow:auto;white-space:pre-wrap}code{color:rgb(72,201,255)}</style></head>
+<body><h1>DOCUMENTATION UNAVAILABLE</h1>
+<p>Nothing could answer <code>${e(page.toString())}</code>.</p>
+<dl>
+<dt>the published site</dt><dd>${e(upstreamFailure)}</dd>
+<dt>the local build</dt><dd>${e(localFailure)}</dd>
+</dl>
+<p>Build the site and this pane serves it from disk, offline, including whatever you have just written:</p>
+<pre>FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean</pre>
+<p><code>$DOCS_MIRROR_DIRECTORY_ENV</code> points this pane at another build directory; <code>$DOCS_MIRROR_SOURCE_ENV=upstream</code> pins it to the published site, <code>=local</code> to the build at <code>${e(root.toString())}</code>.</p>
+</body></html>"""
 }

@@ -19,7 +19,7 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3373 "sha256" "50999af5a385488c99575d9240c453b7a84cdd36ad210b627d1f435238216b7c"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3373 "sha256" "50999af5a385488c99575d9240c453b7a84cdd36ad210b627d1f435238216b7c"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
@@ -125,7 +125,7 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 
 ```edn [field-box id="keyframe_persist" role="properties"]
-{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 84 "characters" 3267 "sha256" "f400efad27318a1e4e7cc134240d2aee1e965fb8f8bbb4b24482d923faf03891"}]}
+{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 84 "characters" 3267 "sha256" "f400efad27318a1e4e7cc134240d2aee1e965fb8f8bbb4b24482d923faf03891"}]}
 ```
 
 ```kotlin [field-property box="keyframe_persist" name="code" path="keyframe_persist_code_.kt"]
@@ -228,7 +228,7 @@ Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Eve
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 
 ```edn [field-box id="keyframe_updatecode" role="properties"]
-{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 40 "characters" 2077 "sha256" "a016cfab9fe4d49055a19e6cabd402f8b01f1ebb8b208244e143f6ed8519beb8"}]}
+{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 40 "characters" 2077 "sha256" "a016cfab9fe4d49055a19e6cabd402f8b01f1ebb8b208244e143f6ed8519beb8"}]}
 ```
 
 ```kotlin [field-property box="keyframe_updatecode" name="code" path="keyframe_updatecode_code_.kt"]
@@ -288,7 +288,7 @@ SCREW MOTION, and between two cameras looking at the same subject it is a very d
 move from lerping the two positions. Draw both and the argument makes itself.
 
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 101 "characters" 4266 "sha256" "799e057adc38f85c6490cdc1103af5cf891ca514f1cd08348a982bf7c84fe045"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 101 "characters" 4266 "sha256" "799e057adc38f85c6490cdc1103af5cf891ca514f1cd08348a982bf7c84fe045"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]

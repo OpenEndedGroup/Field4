@@ -486,10 +486,12 @@ object SoundPathMap {
             roots = listOf("src/jvmMain/kotlin"),
             declaredIn = mapOf(
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
             ),
         ),
         Marker(

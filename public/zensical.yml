@@ -5,54 +5,66 @@ site_name: OpenEndedGroup | Field·4
 
 nav:
   - Home: index.md
+  # The front of the site, read in order: install it, learn the survival moves, learn enough Kotlin
+  # to read an example, then take the Tour. The Tour is nested *inside* this section rather than
+  # sitting beside it, because "Start Here" is the only heading a first-time reader goes looking
+  # for, and an arc one heading over from it was an arc nobody found.
   - Start Here:
     - Installation: installation.md
     - Survival Guide: survivalGuide.md
     - Kotlin Syntax Overview: kotlin_overview.md
+    # Above the Tour, not after it: "Where to Go Next" is the arc's exit ramp onto the rest of the
+    # site, so nothing may follow it inside this section. A lookup table is also the one page here
+    # that nobody reads in sequence, which makes it the cheapest thing to pass on the way in.
     - Keyboard Shortcuts: keybindings.md
-  # A read-in-order arc, not a category: six pages, one faculty each, ending with the thing that
-  # drives all of them. Every entry here is a page that also stands alone, but the order is the
-  # point — running_code is the mechanic the next four rest on, and automating_field is what hands
-  # the whole sequence to an agent. A page appears once in this nav (Zensical resolves prev/next
-  # from position), so these are moved here rather than aliased, and their former sections were
-  # rebalanced to suit.
-  - Tour:
-    - What Field Is: funFeatures.md
-    - Running Code in a Box: running_code.md
-    - Drawing with FLines: fline_examples.md
-    - Frames, and What a Frame Is: animation_time_model.md
-    # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
-    - "Sound: the Pattern → Audio Path": sound.md
-    - Letting an Agent Drive: automating_field.md
-    # The exit ramp rather than a seventh step: a themed map of everything below, which is what
-    # this page already was. Its framing paragraph still describes a staging area and needs a
-    # rewrite; the filename stays put so its inbound link and its generated-artifact references
-    # do not have to move.
-    - Where to Go Next: staging.md
-  - Writing Code in a Box:
-    - Kotlin in the Head: kotlin_in_the_head.md
-    - Autocomplete:
+    # A read-in-order arc, not a category: one faculty per page, and the order is the point.
+    # running_code is the mechanic every later page rests on; autocomplete is the editor you meet
+    # while typing that code, so it comes immediately after rather than being filed as an advanced
+    # topic; and the last two hand the whole running document to something that is not you — a
+    # phone first, then an agent. Every entry also stands alone. A page appears once in this nav
+    # (Zensical resolves prev/next from position), so these are moved here rather than aliased, and
+    # their former sections were rebalanced to suit.
+    - A Tour:
+      - What Field Is: funFeatures.md
+      - Running Code in a Box: running_code.md
+      # The ranking page follows the browser page because it answers the question the browser page
+      # raises: why *this* candidate first. Flat rather than under an "Autocomplete" sub-heading —
+      # this is already the third nav level, and a fourth buys a label at the cost of a click.
       - The Documentation Browser: completion_doc_browser.md
       - How Completions Are Ranked: completion_ranking.md
-    # Both are about making the editor understand a syntax that is not stock Kotlin, which is a
-    # writing-code concern rather than a language-gallery one; the gallery of small languages that
-    # use this machinery is its own section below.
-    - Rewriting Your Own Syntax: pattern_rewrite.md
-    - Language Extensions: language_extensions.md
+      - Drawing with FLines: fline_examples.md
+      - Frames, and What a Frame Is: animation_time_model.md
+      # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
+      - "Sound: the Pattern → Audio Path": sound.md
+      # Before automating_field and after sound, because by this point in the arc there is a living
+      # document worth reaching for: the phone drives the sliders, outputs and AI4 chat of the
+      # thing the previous four pages built. Moved out of "AI & Agents", where it sat behind three
+      # pages about Field's own AI and was found by nobody.
+      - Field From Your Phone: mobile_controllers.md
+      - Letting an Agent Drive: automating_field.md
+      # The exit ramp rather than another step: a themed map of everything below, which is what
+      # this page already was. The filename stays put so its inbound link and its
+      # generated-artifact references do not have to move.
+      - Where to Go Next: staging.md
   - Working in a Document:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
-    - Files, and Where They Live: files_and_paths.md
+    - Where Field Looks for a File: files_and_paths.md
+    # The three history pages together. history_lens.md used to sit below the two performance
+    # pages, which put the inline view of a property's past two clicks away from the two pages
+    # that explain what that past is; nothing about the split was deliberate.
     - Your History with Field: history_overview.md
     - Document History: document_history.md
+    - Inline History (History Lens): history_lens.md
+    - The Semantic Index: semantic_index.md
+    - Simulation Time: simulation_clock.md
     - Profiling Timeline: profiling_timeline.md
     # Beside profiling_timeline.md rather than under Internals, and the split between the two is
     # audience: that page is the panel's controls, this one is what the numbers under them mean and
     # what each of the three instruments structurally cannot see. Somebody whose piece is dropping
-    # frames needs this one, and may never need to open the other.
+    # frames needs this one, and may never need to open the other. Last in the section, as the pair
+    # you open when something is wrong rather than when you are working.
     - Holding a Frame Budget: frame_budget.md
-    - Inline History (History Lens): history_lens.md
-    - The Semantic Index: semantic_index.md
   # "What happens when a box ends on a value" is a faculty of its own, and these five were spread
   # across Libraries & APIs and the staging area. Note that output_panel_sizing.md is deliberately
   # NOT here: see the comment on it under Internals, which places it beside server_surface.md as a
@@ -103,8 +115,9 @@ nav:
       - Polytopes & the Conway Algebra: polytope_examples.md
       - Typography as Geometry: typography_examples.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
-    # sound.md opens the Tour's fifth step, so this group starts at the pattern language that
-    # feeds it and continues into the paths that page only introduces.
+    # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
+    # it and continues into the paths that page only introduces. Deliberately not an ordinal —
+    # the Tour has gained a stop twice now, and a comment that counts them goes stale silently.
     - Sound & Music:
       - Patterns & Rhythm: pattern_language.md
       - Making a Sound, Every Path There Is: sound_paths.md
@@ -142,15 +155,28 @@ nav:
     - RectSL Cheatsheet: rectsl_cheatsheet.md
     - RectSL Examples: rectsl_examples.md
     - RectSL Inverse Animation: rectsl_inverse_animation.md
-    - Forth Examples: forth_examples.md
+    - ForthField Examples: forth_examples.md
     - Python in a Box: python.md
+    # Beside python.md rather than further down: the two pages answer the same question about two
+    # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
+    # with the host's objects reachable directly — and a reader who has read one wants the contrast.
+    - Clojure in a Box: clojure.md
     - Nano Examples: nano_examples.md
+    # The tail of this section is the three "make your own" pages, in ascending order of how much
+    # machinery they ask for, after the gallery that already uses them: MorphoHDL is a language
+    # brought in from outside, `rewrite { … }` is a syntax of your own with no language at all
+    # behind it — a preprocessor in a box — and Language Extensions is how any of them earns
+    # highlighting, diagnostics and a context lens in the editor. The last two arrived here from a
+    # "Writing Code in a Box" section that no longer exists: they read as advanced Kotlin-editor
+    # topics and are in fact the two pages this gallery is the evidence for.
     - Bridging Another Language (MorphoHDL): morpho_examples.md
-  # Two pages here carry an in-page warning rather than a section-level one: vision.md opens
-  # "work in progress", and ray_tracing_examples.md says its four figures are placeholder cards
-  # because macOS exposes no ray-tracing extension. A warning a reader meets on the page is more
-  # honest than a nav heading nobody reads as a disclaimer, which is the whole argument for
-  # retiring the staging area.
+    - Rewriting Your Own Syntax: pattern_rewrite.md
+    - Language Extensions: language_extensions.md
+  # Three pages here carry an in-page warning rather than a section-level one: vision.md opens
+  # "work in progress", vision_geometry.md says it is written for code running inside that app, and
+  # ray_tracing_examples.md says its four figures are placeholder cards because macOS exposes no
+  # ray-tracing extension. A warning a reader meets on the page is more honest than a nav heading
+  # nobody reads as a disclaimer, which is the whole argument for retiring the staging area.
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
       - afield.four Graphics: afield_four_graphics.md
@@ -159,6 +185,13 @@ nav:
       # dispatch, this teaches what changes when the shader's input is its own last output, and
       # field_probes instruments exactly that kind of scene.
       - GPU State: gpu_state.md
+      # The worked example of the two pages above it, and here rather than under "Working in a
+      # Document" where it first landed: nothing on it is about working in a document. It is an
+      # eight-box render-to-texture graph — four light bands, two reductions, two aperture filters
+      # and a composite — and it says so itself, pointing at afield_four_graphics.md for the APIs
+      # it uses. Third in this group so the order reads contract, then feedback, then a graph built
+      # out of both.
+      - Aperture Playground: aperture_playground.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
       - Progressive Path Tracing: path_tracing.md
@@ -167,6 +200,13 @@ nav:
       - Field Probes: field_probes.md
     - Heads & Headsets:
       - RemoteJS & WebXR: ar_reference.md
+      # Here rather than at the head of "Writing Code in a Box", where it was the first thing a
+      # reader met about writing code in a box at all. It is not that: it is a box whose Kotlin is
+      # cross-compiled to JavaScript in-process and shipped over a WebSocket to a browser tab or a
+      # Vision Pro, which is useful only once you have a head to ship it to. It belongs directly
+      # after the page above — same transport, real Kotlin instead of raw JS — and directly before
+      # the two visionOS pages whose `visionmetal` profile it is the compile route for.
+      - Kotlin in the Head: kotlin_in_the_head.md
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
       - ImGui as a VR Panel: imgui_vr_panel.md
@@ -187,8 +227,9 @@ nav:
     - AI Overview: aiFeatures.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
+    # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
+    # way of reaching a running document, and only one of its six tabs is about AI at all.
     - Agent Transcript Gallery: agent_transcripts.md
-    - Mobile Controllers: mobile_controllers.md
   # Generated from source rather than written: extracted KDoc and codegen output. As finished as
   # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:

@@ -203,7 +203,7 @@ stale.
 The dropped `Close`, not any `nodes[i - 1]` read. `_flineToJavaShape` is reached two ways:
 
 - `flineToJavaShape_notThickened` → `byJavaOffsetting` (`FLineThickening.kt:160`), the JTS bridge's
-  `toMultiLineString` (`:384`), `Dyn4jScene.flattenClosedFLineLoops` (`Dyn4jScene.kt:244`);
+  `toMultiLineString` (`:384`), `Dyn4jScene.flattenClosedFLineLoops` (`Dyn4jScene.kt:426`);
 - `flineToJavaShape` (`FLinesAndJavaShapes.kt:1920`), which strokes the result → the four boolean
   ops (`FLineGeometry.kt:1006-1042`) and **`FLine.byThickening`** (`FLine.kt:412`).
 

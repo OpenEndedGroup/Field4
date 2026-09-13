@@ -20,7 +20,7 @@ MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 and the first Close has a whole arrowhead after it.
 
 ```edn [field-box id="close_node_arrow" role="properties"]
-{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 370.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2669 "sha256" "1be5a18c222f70b762b62f929af6315afd6c19a95f38155ddfcb174eeb2dbbb6"}]}
+{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2669 "sha256" "1be5a18c222f70b762b62f929af6315afd6c19a95f38155ddfcb174eeb2dbbb6"}]}
 ```
 
 ```kotlin [field-property box="close_node_arrow" name="code" path="close_node_arrow_code_.kt"]
@@ -95,7 +95,7 @@ counter also relies on close(). These are the shapes where a Close is load-beari
 rather than a formality — an explicit lineTo back to the start would hide everything.
 
 ```edn [field-box id="close_node_reversal" role="properties"]
-{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 81 "characters" 3599 "sha256" "8ab6814de85cc6dc065809f8096d70cbf6250d24071634f196530a66e9683a3a"}]}
+{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 81 "characters" 3599 "sha256" "8ab6814de85cc6dc065809f8096d70cbf6250d24071634f196530a66e9683a3a"}]}
 ```
 
 ```kotlin [field-property box="close_node_reversal" name="code" path="close_node_reversal_code_.kt"]

@@ -19,31 +19,44 @@ expect:
 */
 
 /**
- * Headless **piano-roll gallery** for the pattern language: `TidalPatterns.kt` plus the three
- * files added on top of it ([PatSignals][sine], [PatAlgebra][appLeft], [PatComposition][voiceLead]).
+ * Headless **piano-roll gallery** for the pattern language, drawing the operators defined across
+ * `TidalPatterns.kt`, `PatSignals.kt`, `PatAlgebra.kt` and `PatComposition.kt`.
  *
- * Output is **SVG**, not raster. A piano roll is line art — rectangles, gridlines, a parameter
- * polyline — so per the house rule it is drawn as vector geometry, built here as plain strings.
- * That also makes it diffable: a changed operator shows up as a changed rectangle in the file,
- * not as a changed PNG blob. There is no AWT, no browser, no GPU, no Field window.
+ * Output is **SVG**, not raster. A piano roll is line art (rectangles, gridlines, a parameter
+ * polyline), so it is drawn as vector geometry, built here as plain strings. That also makes it
+ * diffable: a changed operator shows up as a changed rectangle in the file rather than as a
+ * changed PNG blob. There is no AWT, no browser, no GPU, no Field window.
  *
- * Every rectangle is a **real scheduled event**: each roll queries actual patterns over actual
- * cycles through `PatPattern.events(...)`. Nothing is hand-placed. The only synthetic part is the
- * choice of colours and the mapping from cycle time to pixels.
+ * Every rectangle is a **scheduled event**. Each lane queries its pattern over the roll's cycles
+ * through `PatPattern.events(...)`, and nothing is hand-placed; the only parts chosen by hand are
+ * the colours and the mapping from cycle time to pixels.
  *
- * Most rolls are **two-panel**: the top lane is what the pre-tonight surface could
- * express and the bottom lane is what the new operator does, in the same figure, at the same
- * scale, so the difference is looked at rather than described.
+ * #### Lanes, and how a roll is read
  *
- * As a FIELD_TEST (`synth.pat.gallery`) it renders every roll to a temp dir and asserts real
- * correctness — the SVG contains exactly one rectangle per event, the events land on the exact
- * rational grid each roll claims, and each roll's own `verify` checks the musical claim (`rev`
- * really reverses, `euclid` really is Euclidean, `iter` really rotates, a continuous parameter
- * really sweeps). It writes NO committed assets during the test. Pass an output dir as `args[0]`
- * (or set `PAT_ROLL_DIR`) to regenerate the committed captures under
- * `dev_docs/assets/pat_gallery/`.
+ * A roll is a stack of horizontal lanes drawn at one shared time scale, so reading down a column
+ * compares the same instant across all of them. Most rolls are built as a source lane with its
+ * transforms underneath: `pat("a b c d")` on top, then `rev()`, `euclid(3,8)`, `iter(4)` and the
+ * rest below it. Where a form is shorthand for a longhand spelling, the two are lanes of the same
+ * roll and the check compares them event for event.
  *
- * Add a roll by appending one [Roll] to [ROLLS].
+ * #### What each roll is checked against
+ *
+ * As a FIELD_TEST (`synth.pat.gallery`) every roll is rendered to a temp dir and asserted: each
+ * lane draws at least one event, no event falls outside the window the roll plots, and the SVG
+ * holds exactly one rectangle per event plus one backdrop per lane plus one page background, so
+ * the figure can neither invent a note nor drop one. Each roll then runs its own `verify` over the
+ * events it actually drew, which is where the musical claim lives: that `rev` reverses, that
+ * `euclid(3,8)` puts three onsets on the eighth grid with gaps as even as 8/3 allows, that
+ * `iter(4)` rotates by a step per cycle, that `shuffle(4)` is a permutation every cycle, and that
+ * a continuous parameter takes the value of its curve at each note's own midpoint. It writes no
+ * committed assets during the test. Pass an output dir as `args[0]` (or set `PAT_ROLL_DIR`) to
+ * regenerate the committed captures under `dev_docs/assets/pat_gallery/`.
+ *
+ * Add a roll by appending one `Roll` to `ROLLS`.
+ */
+
+/**
+ * The catalogue of piano rolls, the SVG renderer behind them, and the FIELD_TEST entry point.
  */
 object PatPianoRollGallery {
 
@@ -99,6 +112,56 @@ object PatPianoRollGallery {
     private const val TEXT = "#c9d1e0"
     private const val TEXT_DIM = "#7d879b"
     private val LANE_COLORS = listOf("#4fc3f7", "#ffb74d", "#ba68c8", "#81c784", "#f06292", "#fff176")
+
+    /**
+     * Colour per **instrument**, rather than per lane.
+     *
+     * The rule is that colour tracks what you *hear*. These are exactly the tokens [patDrumHz]
+     * gives a voice of its own, ordered coolest-for-lowest through brightest-for-highest, and the
+     * aliases share a colour because they share a pitch. `synth.pat.mini` asserts that
+     * correspondence against the drum map instead of trusting this paragraph, so a token that
+     * stops being audibly distinct stops being visually distinct in the same commit.
+     *
+     * A token the drum map has no voice for has no instrument identity to encode, so it falls back
+     * to its lane's colour and those figures read exactly as they did before. That is why this is a
+     * map with five entries and not a hash of the atom string: a colour here is a claim about
+     * sound, and `a`, `b`, `x` and `1 2 3` make no such claim.
+     */
+    val ATOM_COLORS: Map<String, String> = mapOf(
+        "bd" to "#4fc3f7", "kick" to "#4fc3f7",   // 62 Hz sine — the lowest voice in the map
+        "sd" to "#ffb74d", "snare" to "#ffb74d",  // 190 Hz noise
+        "cp" to "#f06292", "clap" to "#f06292",   // 900 Hz noise
+        "oh" to "#81c784",                        // 4200 Hz noise
+        "hh" to "#fff176", "hat" to "#fff176",    // 6200 Hz noise — the brightest
+    )
+
+    /**
+     * The colour for one event's atom, or null when the drum map has no voice of its own for it.
+     *
+     * The `:n` sample-index suffix is dropped first, for the same reason [patDrumHz] drops it:
+     * `bd:3` is a kick, so it is kick-coloured.
+     */
+    fun atomColor(atom: String): String? = ATOM_COLORS[atom.substringBefore(':').lowercase()]
+
+    /**
+     * A lane's distinct atoms, ordered **high pitch at the top** — the axis a piano roll has.
+     *
+     * The first draft assigned rows in order of first appearance, which puts an atom's height at
+     * the mercy of where it happens to be written: `bd sd . hh hh hh` drew the kick above the hats
+     * and `hh hh hh . bd sd` would have drawn it below, for the same music. Sorting by the pitch
+     * the voice will actually play — MIDI numbers through [patMidiToHz], named drums through
+     * [patDrumHz] — means an instrument sits at the same height in every figure on the page, so
+     * vertical position carries information instead of noise. Paired with [ATOM_COLORS] it also
+     * gives each lane two independent cues for the same fact.
+     *
+     * The sort is stable, so atoms the drum map has no voice for keep their order of appearance
+     * among themselves rather than being shuffled by an arbitrary tiebreak.
+     */
+    fun orderAtoms(atoms: List<String>): List<String> =
+        atoms.sortedByDescending { atom ->
+            val bare = atom.trim()
+            bare.toDoubleOrNull()?.let { patMidiToHz(it) } ?: patDrumHz(bare, baseHz = 220.0).first
+        }
 
     // ── the rolls ──────────────────────────────────────────────────────────────────────────
 
@@ -809,7 +872,7 @@ object PatPianoRollGallery {
             val values = if (numeric) numbers.map { it!! } else emptyList()
             val loValue = values.minOrNull() ?: 0.0
             val hiValue = values.maxOrNull() ?: 1.0
-            val atoms = if (numeric) emptyList() else laneEvents.events.map { it.value }.distinct()
+            val atoms = if (numeric) emptyList() else orderAtoms(laneEvents.events.map { it.value }.distinct())
 
             for (event in laneEvents.events) {
                 val x0 = x(event.arc.start.toDouble())
@@ -819,6 +882,11 @@ object PatPianoRollGallery {
                 val rowTop: Double
                 val rowHeight: Double
                 var opacity = 0.92
+                // Instrument colour applies where a lane is drawn as atom rows, because that is the
+                // only layout whose rectangles stand for *things you hear*. A value-axis lane plots
+                // one number and a parameter lane plots one measurement; colouring either per atom
+                // would say a `gain` of 0.4 and a `gain` of 0.8 are different instruments.
+                var fill = color
                 when {
                     numeric -> {
                         val span = hiValue - loValue
@@ -846,11 +914,12 @@ object PatPianoRollGallery {
                         val rows = max(1, atoms.size)
                         rowHeight = (LANE_H - 14.0) / rows
                         rowTop = top + 7.0 + row * rowHeight
+                        fill = atomColor(event.value) ?: color
                     }
                 }
                 sb.append(
                     """<rect x="${fmt(x0 + 0.5)}" y="${fmt(rowTop)}" width="${fmt(w)}" height="${fmt(rowHeight)}" """ +
-                        """rx="1.5" fill="$color" fill-opacity="${fmt(opacity)}"/>"""
+                        """rx="1.5" fill="$fill" fill-opacity="${fmt(opacity)}"/>"""
                 ).append('\n')
             }
 
@@ -871,7 +940,8 @@ object PatPianoRollGallery {
                 atoms.forEachIndexed { row, atom ->
                     val rows = max(1, atoms.size)
                     val rowHeight = (LANE_H - 14.0) / rows
-                    sb.append(text(LEFT - 6, top + 7.0 + row * rowHeight + rowHeight * 0.8, atom, TEXT_DIM, 9, anchor = "end")).append('\n')
+                    // Tinted to match the row's rectangles, which makes the roll its own legend.
+                    sb.append(text(LEFT - 6, top + 7.0 + row * rowHeight + rowHeight * 0.8, atom, atomColor(atom) ?: TEXT_DIM, 9, anchor = "end")).append('\n')
                 }
             }
             if (numeric) {
@@ -886,6 +956,120 @@ object PatPianoRollGallery {
         val axisY = TOP + spec.lanes.size * (LANE_H + LANE_GAP) + 16
         for (cycle in 0..spec.cycles) {
             sb.append(text(x(cycle.toDouble()), axisY, "cycle $cycle", TEXT_DIM, 10, anchor = if (cycle == spec.cycles) "end" else "start")).append('\n')
+        }
+        sb.append("</svg>\n")
+        return sb.toString()
+    }
+
+    // ── compact rendering: one example, at the width of a paragraph ─────────────────────────
+
+    private const val COMPACT_WIDTH = 720
+    private const val COMPACT_LANE_H = 40
+    private const val COMPACT_LANE_GAP = 6
+    private const val COMPACT_AXIS_H = 15
+    private const val COMPACT_PAD = 3
+
+    /**
+     * Height of the strip above a lane that carries its source, when a roll draws more than one.
+     *
+     * It is a strip rather than a corner of the lane itself because the first draft put the label
+     * inside the plot at the top left, where it sat directly on top of the first event's rectangle
+     * and its name — `bd sd . hh hh hh` overprinted the `bd` bar in every two-lane figure. There is
+     * nowhere inside a plot that is reliably empty, so the label gets space of its own.
+     */
+    private const val COMPACT_LABEL_H = 13
+
+    /**
+     * The same roll at **card size**: one or two lanes, no title block, sized to sit under a
+     * paragraph rather than to fill a figure.
+     *
+     * [renderSvg] is 1100px wide with a 190px label gutter, which is the right shape for nine lanes
+     * of comparison and the wrong shape entirely for a single `bd [sd sd]` — the docs page's content
+     * column is 52rem, so the big roll arrives scaled down and its 9px labels arrive unreadable.
+     * This variant drops the gutter, puts each atom's name *inside* its own rectangle where it fits,
+     * and leans on [ATOM_COLORS] for the rest. The consequence worth knowing: it draws atom rows
+     * unconditionally, so it is for lanes of named instruments and not for value-axis or parameter
+     * lanes, which have no atoms to name and are what [renderSvg] is for.
+     *
+     * [showLaneLabels] writes each lane's own source into its top-left corner. Off for a single
+     * lane, where the card's heading already says it; on for a shorthand drawn against the
+     * bracketed spelling it stands for, where which-is-which is the whole point of the figure.
+     */
+    fun renderCompactSvg(
+        spec: PatRollSpec,
+        resolved: List<LaneEvents>,
+        showLaneLabels: Boolean = spec.lanes.size > 1
+    ): String {
+        require(spec.lanes.isNotEmpty()) { "a compact roll needs at least one lane" }
+        val plotWidth = COMPACT_WIDTH - 2 * COMPACT_PAD
+        val labelH = if (showLaneLabels) COMPACT_LABEL_H else 0
+        val laneStride = COMPACT_LANE_H + labelH + COMPACT_LANE_GAP
+        val height = spec.lanes.size * laneStride + COMPACT_AXIS_H
+        val sb = StringBuilder(1 shl 13)
+        sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$COMPACT_WIDTH" height="$height" """)
+        sb.append("""viewBox="0 0 $COMPACT_WIDTH $height" font-family="Iosevka, Menlo, monospace">""").append('\n')
+        sb.append("""<rect x="0" y="0" width="$COMPACT_WIDTH" height="$height" fill="$BG"/>""").append('\n')
+
+        fun x(cycleTime: Double) = COMPACT_PAD + cycleTime / spec.cycles * plotWidth
+
+        spec.lanes.forEachIndexed { laneIndex, lane ->
+            val laneEvents = resolved[laneIndex]
+            // The label strip sits above its own lane, so the lane's own top moves down past it.
+            if (showLaneLabels) {
+                sb.append(text(COMPACT_PAD + 1, laneIndex * laneStride + 10, lane.label, TEXT, 10, weight = "600")).append('\n')
+            }
+            val top = laneIndex * laneStride + labelH
+            val bottom = top + COMPACT_LANE_H
+            val laneColor = lane.color ?: LANE_COLORS[laneIndex % LANE_COLORS.size]
+
+            sb.append("""<rect x="$COMPACT_PAD" y="$top" width="$plotWidth" height="$COMPACT_LANE_H" fill="#191c24"/>""").append('\n')
+
+            // Sixteenths stay legible up to two cycles; past that they close into a grey wash, so
+            // the grid coarsens to eighths and the cycle boundaries keep doing the real work.
+            val division = if (spec.cycles <= 2) 16 else 8
+            for (tick in 0..spec.cycles * division) {
+                val gx = fmt(x(tick.toDouble() / division))
+                val strong = tick % division == 0
+                sb.append(
+                    """<line x1="$gx" y1="$top" x2="$gx" y2="$bottom" stroke="${if (strong) GRID_STRONG else GRID}" """ +
+                        """stroke-width="${if (strong) "1.2" else "0.5"}"/>"""
+                ).append('\n')
+            }
+
+            val atoms = orderAtoms(laneEvents.events.map { it.value }.distinct())
+            val rows = max(1, atoms.size)
+            val rowHeight = (COMPACT_LANE_H - 8.0) / rows
+
+            for (event in laneEvents.events) {
+                val x0 = x(event.arc.start.toDouble())
+                val x1 = x(event.arc.end.toDouble())
+                val w = max(1.5, x1 - x0 - 1.0)
+                val row = max(0, atoms.indexOf(event.value))
+                val rowTop = top + 4.0 + row * rowHeight
+                val fill = atomColor(event.value) ?: laneColor
+                sb.append(
+                    """<rect x="${fmt(x0 + 0.5)}" y="${fmt(rowTop)}" width="${fmt(w)}" height="${fmt(rowHeight)}" """ +
+                        """rx="1.5" fill="$fill" fill-opacity="0.92"/>"""
+                ).append('\n')
+                // The name goes inside its own bar when the bar is wide enough to hold it, which is
+                // what removes the need for a label gutter. 5.4px per char at font-size 9, plus the
+                // inset either side; narrower than that and the colour is the only label.
+                val label = event.value
+                if (w > label.length * 5.4 + 8 && rowHeight >= 8.0) {
+                    sb.append(
+                        text(x0 + 4.0, rowTop + rowHeight / 2 + 3.2, label, "#14161c", 9, weight = "600")
+                    ).append('\n')
+                }
+            }
+
+        }
+
+        // Cycle ruler. One tick per cycle boundary, the last one right-anchored so it stays inside.
+        val axisY = spec.lanes.size * laneStride + 10
+        for (cycle in 0..spec.cycles) {
+            sb.append(
+                text(x(cycle.toDouble()), axisY, "cycle $cycle", TEXT_DIM, 9, anchor = if (cycle == spec.cycles) "end" else "start")
+            ).append('\n')
         }
         sb.append("</svg>\n")
         return sb.toString()

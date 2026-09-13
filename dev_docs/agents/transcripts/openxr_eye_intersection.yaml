@@ -7,7 +7,7 @@ operations:
   - create:
       box: eye_ray_renderer
       name: 1 · OpenXR renderer
-      frame: { x: 40.0, y: 40.0, w: 240.0, h: 60.0 }
+      frame: { x: 40.0, y: 40.0, w: 340.0, h: 110.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -32,7 +32,7 @@ operations:
   - create:
       box: eye_ray_scene
       name: 2 · eye rays + world marker
-      frame: { x: 340.0, y: 150.0, w: 290.0, h: 70.0 }
+      frame: { x: 340.0, y: 150.0, w: 390.0, h: 120.0 }
       properties:
         vertex: |
           #version 450

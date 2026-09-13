@@ -6,15 +6,11 @@ This page is generated from the typed algebra model that emits Field's heap, fra
 
 ## One algebra, three storage forms
 
-<div class="field-data-table" markdown>
-
 | Storage | Types | Lifetime and use |
 | --- | --- | --- |
 | Heap | `Vector2f`, `Vector3f`, `Vector4f` | Ordinary mutable values; persistent state and the normal case |
 | Frame arena | `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` | Temporary values inside `frameScratch` or an explicit `FrameArena` scope |
 | Segment view | `SegmentVec2f`, `SegmentVec3f`, `SegmentVec4f` | Non-owning views into packed, aligned, direct, foreign, or mapped memory |
-
-</div>
 
 All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.
 
@@ -276,6 +272,7 @@ The float heap vectors also carry a small generated operator surface for live co
 | Operator | Meaning |
 | --- | --- |
 | `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |
+| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Zero remains zero; optional epsilon sets the zero threshold. Finite inputs only. |
 | `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |
 | `a %= b` | In-place assignment: copies b's components into a. |
 | `v len 10` | Returns a copy rescaled to the given length, keeping direction. |
@@ -293,14 +290,10 @@ Alongside the vectors, the library provides rotation and matrix types whose core
 
 ## Storage layouts
 
-<div class="field-data-table" markdown>
-
 | Vector | Layout choices |
 | --- | --- |
 | Vec2 | `PACKED_8`, `ALIGNED_8`, `ALIGNED_16` |
 | Vec3 | `PACKED_12`, `ALIGNED_16` |
 | Vec4 | `PACKED_16`, `ALIGNED_16` |
-
-</div>
 
 A layout name describes both array stride and required base alignment. A segment view never owns the memory and never performs Vulkan synchronization.

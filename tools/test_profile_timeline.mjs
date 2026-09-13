@@ -75,3 +75,37 @@ test('gutter mapping requires the matching box, property and unchanged code',()=
     assert.deepEqual(profileHeatLines([source],null),[]);
     assert.deepEqual(profileHeatLines([],context),[]);
 });
+
+test('nested spans use self totals without double counting their parents',()=>{
+    const nested=[{wallMs:10,cpuMs:8,allocatedBytes:100,selfWallMs:4,selfCpuMs:3,selfAllocatedBytes:30},
+        {wallMs:6,cpuMs:5,allocatedBytes:70,selfWallMs:6,selfCpuMs:5,selfAllocatedBytes:70}];
+    assert.equal(profileSummary(nested,true).wallMs,10);
+    assert.equal(profileSummary(nested,true).allocatedBytes,100);
+    assert.equal(profileSummary(nested).wallMs,16);
+});
+
+test('frame budgets use complete intervals and report rare hitches and missing counters',async()=>{
+    const {profileFrameSummary}=await import('../src/commonMain/resources/profileTimelineModel.js');
+    const frames=Array.from({length:100},(_,i)=>({wallMs:i===99?50:10,cpuMs:2,allocatedBytes:i===99?2048:128,targetMs:16.67,allocationGuideBytes:1024}));
+    const summary=profileFrameSummary(frames);
+    assert.equal(summary.missed,1);assert.equal(summary.allocationMissed,1);
+    assert.equal(summary.p99Ms,10);assert.equal(summary.maxMs,50);
+    assert.equal(profileFrameSummary([{...frames[0],allocatedBytes:-1}]).meanBytes,null);
+});
+
+test('selected recursive scopes retain samples after a nested scope returns',()=>{
+    const frames=[{id:0,className:'Game',method:'work',line:1}];
+    const samples=[20,31].map(timeMs=>({timeMs,threadId:7,kind:'cpu',weight:1,stack:[0]}));
+    const nested=[{lane:1,threadId:7,startMs:0,wallMs:30},{lane:1,threadId:7,startMs:10,wallMs:2},
+        {lane:2,threadId:7,startMs:14,wallMs:2}];
+    assert.equal(profileHotspots(samples,frames,[0,40],{lane:1,spans:nested}).count,1);
+    assert.equal(profileHotspots(samples,frames,[0,40],{lane:2,spans:nested}).count,0);
+});
+
+test('frame overview preserves a hitch without summing unrelated frames in the same bin',async()=>{
+    const {profileFrameBuckets}=await import('../src/commonMain/resources/profileTimelineModel.js');
+    const frames=[{startMs:0,wallMs:2,allocatedBytes:10},{startMs:1,wallMs:40,allocatedBytes:200},
+        {startMs:3,wallMs:2,allocatedBytes:10},{startMs:51,wallMs:5,allocatedBytes:-1}];
+    assert.deepEqual([...profileFrameBuckets(frames,[0,100],2)],[40,5]);
+    assert.deepEqual([...profileFrameBuckets(frames,[0,100],2,true)],[200,0]);
+});

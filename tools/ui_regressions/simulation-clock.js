@@ -1,0 +1,43 @@
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+const get=id=>document.getElementById(id);
+const check=(v,m)=>{if(!v)throw Error(m);};
+const wait=async(f,m)=>{for(let i=0;i<400;i++){if(f())return;await pause(50);}throw Error(m+': '+get('profile-status')?.textContent);};
+try {
+    const editor=window.globalEditor;
+    check(editor?.getModel()?.getValue().includes('withSimulationClock'),'Owner source must be selected');
+    await editor.getAction('launch-all').run();
+    await wait(()=>get('simulation-clock-view')?.dataset.run,'Standard Launch Box must run the simulation');
+    const firstRun=get('simulation-clock-view').dataset.run;
+    window.showProfilingTimeline();
+    await wait(()=>get('profile-status')?.textContent.startsWith('Ready'),'initial snapshot');
+    get('profile-duration').value='3'; get('profile-record').click();
+    await wait(()=>get('profile-status')?.textContent.startsWith('Latched'),'capture latched');
+    get('profile-tab-frames').click();
+    await wait(()=>get('profile-frames').querySelector('.profile-frame-card'),'Frame intervals');
+    const frames=get('profile-frames').textContent;
+    check(frames.includes('p99')&&frames.includes('allocated/frame')&&frames.includes('collector time'),'Frame measurements and GC totals');
+    check(!frames.includes('unavailable'),'Thread counters unavailable');
+    const first=get('profile-frames').querySelector('.profile-frame-worst button');
+    check(first,'No complete interval');first.click();
+    const start=get('profile-timeline').dataset.rangeStart;
+    get('profile-tab-coroutines').click();
+    check(get('profile-timeline').dataset.rangeStart===start,'Switching tabs lost the frame brush');
+    get('profile-reset').click();
+    const labels=[...document.querySelectorAll('.profile-labels button')].map(b=>b.textContent);
+    for(const label of ['Orbit','Pulse','Simulation','Vectors'])check(labels.some(v=>v.includes(label)),`Missing ${label} lane`);
+    get('profile-close').click();
+    await editor.getAction('stop-all').run();
+    await wait(()=>get('simulation-clock-status')?.dataset.run===firstRun,'Standard Stop Box must finish');
+    check(get('simulation-clock-status').textContent.includes('2 children'),'Both children must clean up');
+    // Relaunch through the same action, not a special simulation command.
+    await editor.getAction('launch-all').run();
+    await wait(()=>get('simulation-clock-view')?.dataset.run && get('simulation-clock-view').dataset.run!==firstRun,'Relaunch must start a new run');
+    const secondRun=get('simulation-clock-view').dataset.run;
+    await pause(300);
+    await editor.getAction('stop-all').run();
+    await wait(()=>get('simulation-clock-status')?.dataset.run===secondRun,'Second stop must finish');
+    check(get('simulation-clock-status').textContent.includes('2 children'),'Relaunch left old children or failed to clean up');
+    window.showProfilingTimeline();get('profile-tab-frames').click();get('profile-reset').click();
+    const panel=get('profile-timeline');panel.style.width='1200px';panel.style.height='520px';panel.style.right='auto';panel.style.left='20px';panel.style.top='20px';
+    return {ok:true,frames,lanes:labels,lifecycle:'ordinary Launch Box / Stop Box / relaunch / Stop Box'};
+} catch(e){return {ok:false,reason:String(e),status:get('profile-status')?.textContent};}

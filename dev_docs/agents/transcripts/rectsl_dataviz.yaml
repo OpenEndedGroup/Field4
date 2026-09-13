@@ -13,7 +13,7 @@ operations:
   - create:
       box: dataviz_renderer
       name: window + renderer
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -34,7 +34,7 @@ operations:
   - create:
       box: dataviz_figure
       name: rectsl dataviz
-      frame: { x: 300.0, y: 140.0, w: 200.0, h: 50.0 }
+      frame: { x: 300.0, y: 140.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // RectSL data-visualization demo.

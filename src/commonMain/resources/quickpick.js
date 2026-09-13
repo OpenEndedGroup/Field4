@@ -381,8 +381,11 @@ function bootstrapAnywhereProviders() {
                 }, ...guides.map(guide => ({
                         id: `document-guide-${guide.path}`,
                         label: guide.title || guide.path,
-                        description: guide.path,
-                        detail: "Read this Markdown file in the document viewer.",
+                        // A note's path is its box, not a file: describe it by what it is.
+                        description: guide.kind === "note" ? `box notes · ${guide.uid}` : guide.path,
+                        detail: guide.kind === "note"
+                                ? "Read this box’s notes in the document viewer."
+                                : "Read this Markdown file in the document viewer.",
                         path: guide.path,
                         score: 36,
                         exactMatch: !!q && [guide.title, guide.path, guide.path.split('/').pop()]

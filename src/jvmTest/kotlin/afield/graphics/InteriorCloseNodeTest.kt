@@ -545,10 +545,10 @@ class InteriorCloseNodeTest {
     }
 
     /**
-     * `Dyn4jScene.flattenClosedFLineLoops` (Dyn4jScene.kt:239) is the one caller whose *name* says
+     * `Dyn4jScene.flattenClosedFLineLoops` (Dyn4jScene.kt:421) is the one caller whose *name* says
      * it needs the Close, and it is the interesting negative result: it reads `SEG_CLOSE` off the
      * PathIterator, so the dropped Close meant it never saw one — but its final
-     * `flush(requireClosed = false)` (:307) accepted the subpath anyway, and a dyn4j polygon is
+     * `flush(requireClosed = false)` (:489) accepted the subpath anyway, and a dyn4j polygon is
      * implicitly closed, so it got the same four vertices either way. A landmine that turns out not
      * to be armed at this call site, which is worth writing down rather than fixing decoratively.
      */

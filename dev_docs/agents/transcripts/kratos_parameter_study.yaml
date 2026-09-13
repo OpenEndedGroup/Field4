@@ -12,7 +12,7 @@ operations:
   - create:
       box: kratos_study
       name: Kratos parameter study
-      frame: { x: 60.0, y: 60.0, w: 300.0, h: 50.0 }
+      frame: { x: 60.0, y: 60.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           import afield.frames

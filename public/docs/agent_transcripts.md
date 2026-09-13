@@ -6,9 +6,11 @@ worked examples an agent copies, runs, and adapts when [automating Field](automa
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
-search for it there and open an editable copy in your workspace. Six are not, and each says why in
-its own entry. A transcript that needs an external asset, a user gesture in a browser, or a renderer
-from a box outside itself makes a broken starting point, and an integration probe is not a scene.
+search for it there and open an editable copy in your workspace. Four are not, and each says why in
+its own entry: two are integration probes rather than scenes, and two are the halves of the
+graphics-topology rule — a renderer with nothing to draw, and a draw box with no renderer. Needing a
+gesture, a headset or a service is *not* on that list. A scene you have to click once, or point at a
+device you own, is still a scene.
 
 Every transcript in `dev_docs/agents/transcripts/` has an entry below, and
 `checkAgentTranscriptIndex` keeps it that way: it fails on a transcript with no entry, an entry
@@ -17,9 +19,13 @@ or an entry filed under a section whose claim about CI does not match how CI che
 are written by hand, one per transcript, because the useful thing to say about a scene is which
 number it prints and why that number matters, and no generator over the yaml can write that.
 
-Figures are captures of the code running, taken by the docs capture pipeline for the walkthrough
-page linked beside each one. Most entries carry none: a scene that opens a native Vulkan window, or
-publishes to a headset, has no still image a build can produce, and says what to run instead.
+Figures are captures of the code running, taken by the docs capture pipeline: most for the
+walkthrough page linked beside the entry, and some — the path tracers, the browser-on-a-texture
+scenes, `gpu_state`, `threebox`, the triangle at the foot of the page — driven from the transcript
+file itself. About half the entries carry one. The rest are honest gaps rather than omissions:
+nothing in the tree captures that scene, because it publishes to a headset, wants a camera or an
+external service, or opens a window the pipeline has never been pointed at. Those entries say what
+to run instead. Nothing on this page is hand-drawn, mocked up or synthesized.
 
 ## Running one
 
@@ -38,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 108 transcripts on every build, at three
-depths. 63 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 110 transcripts on every build, at three
+depths. 64 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-38 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+39 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -64,27 +70,65 @@ welcome screen opens is the one the yaml produces today.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
-**hello_display** — Minimal blank-canvas macro that creates one runnable output box.
+### hello_display
+
+Minimal blank-canvas macro that creates one runnable output box.
+
+![One box named main on an otherwise empty canvas, its output a pale card reading "hello from OperationTranscript"](assets/macro-hello-display.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/hello_display/metadata.edn)
 
-**profiling_timeline** — Three real coroutine workloads: steady arithmetic, periodic CPU bursts,
+### profiling_timeline
+
+Three real coroutine workloads: steady arithmetic, periodic CPU bursts,
 and vector allocation. The fourth box records three seconds with JVM stacks and opens the timeline;
 **Hot code** explores sampled classes, methods, and box lines within the same time brush.
 Replay waits for launch startup, verifies the measured lanes and allocation, then stops the workers
 so you can brush and explore a quiet, latched capture. Change the vector box's `reuse` flag to
 compare construction with in-place `set` on Field's vectors. See [Profiling Timeline](profiling_timeline.md).
+
+![A real three-second Field capture, brushed and zoomed, with separate lanes for steady arithmetic, periodic bursts, and vector allocation. The selected vector lane reports CPU time and allocated bytes](assets/profiling_timeline/brush.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/profiling_timeline/metadata.edn)
 
-**hello_display_capture** — The same single display box, paired with the backdoor capture commands
+### simulation_clock
+
+The same instrument pointed at *simulation* time rather than wall-clock time, in two
+boxes. The first runs two named coroutines — `Orbit`, stepping a phase on `stepSeconds`, and
+`Pulse`, blinking on a 120/350 ms `delay` — inside a `withSimulationClock` driven by the box's own
+`frames { }` loop, under an explicit `frameProfile("Playground", targetFps = 60.0,
+allocationKiB = 128.0)` with two named scopes, `Simulation` and `Vectors`. The second records three
+seconds with stacks and opens the timeline on its **Frames** tab, so the budget, the named scopes
+and the child lanes all arrive in one real capture rather than three. Nothing here is a service: the
+ordinary **launch**/**stop** controls own the coroutines, and the transcript proves it rather than
+claiming it — on stop the box's own `finally` counts the children that unwound, and the replay
+checks that count is exactly 2 alongside the lanes it expects (`Orbit` as a coroutine, `Vectors` as
+a scope) and more than ten recorded frames. Replay records and then stops; launch the first box to
+watch it play. It carries the same `reuse` flag as `profiling_timeline`, over 2048 vectors: flip it
+and compare bytes per frame. See [Simulation time](simulation_clock.md).
+
+![Field's existing profiling panel displaying complete simulation frame intervals, allocation per frame, budget misses, and selectable slow intervals from a real capture](assets/simulation_clock/frames.png)
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/simulation_clock/metadata.edn)
+
+### hello_display_capture
+
+The same single display box, paired with the backdoor capture commands
 (`wait-output` / `output` / `screenshot-box`) that collect its output events and a cropped
 screenshot. Capture is a transport concern, so it lives in backdoor commands, not in the macro.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/hello_display_capture/metadata.edn)
 
-**two_box_context** — Creates a parent/child pair and verifies the child inherits graph context from
+### two_box_context
+
+Creates a parent/child pair and verifies the child inherits graph context from
 its parent.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/two_box_context/metadata.edn)
 
-**cloth_simdverlet_start** — The starting place for cloth: a `SimdVerlet`, a 20 x 10 cloth put into
+### cloth_simdverlet_start
+
+The starting place for cloth: a `SimdVerlet`, a 20 x 10 cloth put into
 it with `sim.addCloth(...)`, an explicit `loop { }` that runs the physics, and
 `sim.debugLines()` (a segment per distance constraint, a dot per particle, the pins in red, a
 whisker per velocity) through `showPlane`, so the whole scene is CPU physics and Skia SVG with no
@@ -95,9 +139,14 @@ this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. I
 so CI launches it, advances 90 real runloop frames, and stops it.
 [Particles, Cloth & Constraints](physics.md) is the explainer behind it, and re-derives that ladder
 from scratch.
+
+![Four panels of the same cloth at stiffness-times-iterations products of 6, 64, 320 and 960, on one shared window so the rungs are comparable: at product 6 the sheet has stretched into a tall narrow web, at 64 it is a recognisable but slack cloth, and at 320 and 960 it is a sheet with shallow festoons between the pins. Each caption gives the product and the worst strain reached over four hundred frames](assets/physics/tuning_ladder.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/cloth_simdverlet_start/metadata.edn)
 
-**simdverlet_world** — The world the cloth above hangs in: colliders, tearing and wind, plus a rope
+### simdverlet_world
+
+The world the cloth above hangs in: colliders, tearing and wind, plus a rope
 that can be knotted into a sheet. Four boxes: one each for draping over something, coming apart and
 flying, and a fourth where all of it runs in one simulation. A collider is a **post-solve position
 projection** rather than a force, and it has to be: because the solve is force-based,
@@ -107,24 +156,29 @@ holds and touches nothing, at `0.25f` a rip opens where the rope pulls and the p
 sphere and the floor, and both ends of that sentence are asserted by
 `SimdVerletTearingTest.theWholeWorldLayerInOneSceneBehavesAsTheDemoSaysItWill`. Like the cloth, it
 `launch`es rather than executes.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/simdverlet_world/metadata.edn)
 
-**inertial_movement** — Two playgrounds for motion that gets interrupted. The first draws one target
-and two blends of it that differ in a single argument: both ask `InertialEasing.solve` for the
-smoothstep that is a given distance from the target *and* travelling at a given speed, and one
-passes the speed the value already has while the other passes zero, which is what a one-shot
-interpolant does every time it restarts. Tick `target keeps moving` and the second arm never gets
-going, because it is asked to start from a standstill sixty times a second. Before it animates, the
-box checks its own claim: `inertialTo { }` against the three-line hand-driven solve it packages, 180
-frames, worst disagreement printed. The second box is a character chasing an XY pad — the pad is a
-target position and the model takes a desired *velocity*, so the three lines that convert one to the
-other are the ones to read first. Its grey ghost is the same model with the smoothing half-lives at
-zero, so the distance between the two characters is what the smoothing is adding, and `compensation`
-takes most of that lag back without taking the smoothing off. Both boxes are `loop { }`s over
-`showPlane`, so CI launches them, advances 90 frames, and stops them.
+### inertial_movement
+
+Motion that survives being interrupted, as three boxes that get longer in
+that order. `inertial_hello` is five declarations: a `goal` that jumps between two values, an
+`inertialTo` chasing it, and `showSignals` on the last 240 readings — the smallest thing that
+wiggles. `inertial_vs_restarting` adds one line, a `startAt` on every frame, and that line is the
+whole argument: restarting a blend throws away the speed it had, which is what any one-shot ease does
+each time you re-aim it, so against a target that never holds still the restarted arm never gets
+going at all. `movement_playground` is the interactive one — drag an XY pad and a character chases it
+through `MovementState`, with every parameter on a live slider, against a grey ghost of the same
+model with the smoothing half-lives at zero, so the gap between the two is what the smoothing is
+adding and `lag compensation` is what takes it back. No `AtomicReference` anywhere: the Framer runs
+one coroutine at a time, so a plain `var` per control is enough. All three are `loop { }`s, so CI
+launches them, advances 90 frames, and stops them.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/inertial_movement/metadata.edn)
 
-**shared_types_demo** — A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
+### shared_types_demo
+
+A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
 `shared.Particle` as ordinary Kotlin onto the shared classloader; box 2 shows the metadata survived
 (`Particle(x=3.0, y=4.0, mass=2.0)`, `copy(mass = 10.0)`, destructuring); box 3 `@rootExported` a
 value and box 4 reads `momentum = 11.661903789690601` off it. That last number is what `sharedTypes`
@@ -132,9 +186,12 @@ buys: a class declared *inside* a box is nested in that box's snippet loader and
 as `Any?`, so `.momentum` would not resolve. Box 1 runs twice, so the file covers a recycled engine
 as well as a fresh one: the publisher takes its classpath snapshot after publishing, and a recycled
 engine re-runs its preamble.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/shared_types_demo/metadata.edn)
 
-**dataframe_typed_columns** — Kotlin DataFrame's compiler plugin, which types a DataFrame by the
+### dataframe_typed_columns
+
+Kotlin DataFrame's compiler plugin, which types a DataFrame by the
 columns it actually contains: `people.age` with no `df["age"]`, no cast and no generated accessors in
 the project. Box 2 is the one that cannot pass by accident: `filter { age >= 18 }` drops Alice and
 `add("decade") { age / 10 }` prints `[3, 4]` for a column that exists only because the plugin
@@ -145,29 +202,43 @@ for a loop whose whole point is to load once and then poke at the result. `typed
 frame's runtime columns and writes `@DataSchema interface People { … }` into the box's preamble, and a
 schema declared in an earlier snippet *is* one the plugin generates accessors for. So the second
 execution prints `ages: [15, 30, 45]` off a frame it never reloaded.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/dataframe_typed_columns/metadata.edn)
 
-**linalg_thumbnails_demo** — Each box evaluates one `afield.stdlib.linalg` value; on execute its
+### linalg_thumbnails_demo
+
+Each box evaluates one `afield.stdlib.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws: an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
+
+![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/value_visualizers/linalg_map.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn)
 
-**control_surface_laws** — The three affordances Field's control surface gained: a slider **law**
+### control_surface_laws
+
+The three affordances Field's control surface gained: a slider **law**
 (logarithmic, taper, bipolar), a **momentary button**, and a read-only **meter** fed by a `source`
 lambda at 30 Hz. Four sliders over the same 20 Hz–20 kHz range make the point directly (1 kHz sits at
 56.6% of a logarithmic track and 4.90% of a linear one), and a button sits beside a checkbox so the
 difference between a gesture and a state is visible rather than described.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/control_surface_laws/metadata.edn)
 
-**fn_differentiable_fit_demo** — A self-contained demo of the differentiable fitter
+### fn_differentiable_fit_demo
+
+A self-contained demo of the differentiable fitter
 (`afield.stdlib.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
 `evolve()`. The target is a product of two oscillators with a seed chosen to be wrong; a single
 `fitGradient` stalls in a frequency local-minimum, so the demo uses `fitBest` (jittered restarts) to
 land in the global basin. On execute it plots the target and the fitted curve and returns an RMSE
 before→after summary with a loss-trajectory sparkline.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn)
 
-**pat_fn_graph_fit** — A rhythm as a graph you can fit. `patFn(...)` turns a pattern of kernel atoms
+### pat_fn_graph_fit
+
+A rhythm as a graph you can fit. `patFn(...)` turns a pattern of kernel atoms
 (`g:(value,sigma)`, `adsr:(…)`) into a `Functions.Fn`, and that `Fn` carries a real graph node whose
 leaves are the numbers written in the pattern text, so `fitGradient` tunes a *rhythm*. Box 1 prints
 the node: its op, its role-tagged knobs (`atom0.sigma`, `atom1.attack`, `cps`) and their values. Box 2
@@ -175,9 +246,14 @@ fits a two-bump target from a seed with the right structure and the wrong number
 top of each other, and prints the fitted gesture back out as pattern text you can paste anywhere. Box
 3 is the real limit: the same fit with the two heights *swapped* stalls, because re-assigning values
 between atoms is a permutation rather than a direction.
+
+![Two plots, target and fitted, lying on top of each other, above the fitted pattern text and the RMSE before and after](assets/pattern_language/fn-fit.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pat_fn_graph_fit/metadata.edn)
 
-**pattern_language_composition** — [The pattern language](pattern_language.md) as eight independent
+### pattern_language_composition
+
+[The pattern language](pattern_language.md) as eight independent
 boxes, six of which render their own audio offline. *Continuous signals* prints the exact rational
 midpoint of `PatArc(3/7, 5/7)`, because a pattern is a function of a time *interval* and the
 arithmetic is rational rather than floating point. *Whose rhythm survives* is the one to read
@@ -195,9 +271,14 @@ the `_` and `!` forms) arc-for-arc and value-for-value and prints the boolean; a
 the box to edit. `showPatRoll` is SVG into `display()` and `showPatAudio` renders through a
 deterministic CPU voice into an inline player, so there is no audio device and no window anywhere in
 this file.
+
+![Piano roll showing the three structure-choice combinators producing four, two and three events](assets/pattern_language/structure-choice.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_language_composition/metadata.edn)
 
-**pitch_transcription_roundtrip** — The other direction: sound back to notation. Five pure-compute
+### pitch_transcription_roundtrip
+
+The other direction: sound back to notation. Five pure-compute
 boxes notate a pattern, render it offline, hear the audio back as pitched note events, and print a
 `pat("…")` string that re-renders, the arrow `audio_render_analysis` draws by hand and nothing in the
 repo could walk. Ground truth costs nothing here because Field authored the notation being scored
@@ -212,9 +293,14 @@ The box to edit is box 4: it declares the register the detector may resolve, whi
 window and therefore the shortest resolvable note, and changing that one line takes onset recall on
 unchanged audio from 0.91 to 0.03. Pitch error is reported in cents throughout, because one corpus
 case sits exactly 50 cents from equal temperament where the correct note name does not exist.
+
+![Three panels of notated-against-recovered piano rolls: a stepped scale at 15 of 16 notes recovered, wide leaps at 16 of 16 with the pitch order intact, and a detuned run at 8 of 8 whose bars sit slightly off their outlines](assets/pat_transcription/pat-transcription-roundtrip.svg)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pitch_transcription_roundtrip/metadata.edn)
 
-**petri_sound** — [Petri nets as a sequencer](petri_nets.md) as seven independent boxes, each
+### petri_sound
+
+[Petri nets as a sequencer](petri_nets.md) as seven independent boxes, each
 drawing its net with `showPetriNet` and playing it with `showDirtAudio`: a net's `emits()` is a
 `PatPattern<String>`, so the audio path takes it with no adapter. The audio is
 mixed *offline* from the real Tidal Dirt-Samples library when it is installed (`DirtRender.kt`
@@ -239,9 +325,14 @@ seventh box is the *live* path rather than the offline one (the real polyphonic 
 by the transport) behind a `live` flag that defaults to false, because `audio { }` opens an output
 device and this file is replayed end to end in CI; the flag rather than a comment is what keeps
 those lines compiling.
+
+![The five-against-three net drawn as two independent token rings, above its own summary card (8 places, 8 transitions, the marked place and the ready transition highlighted) and the analysis: settles after 15 steps, T-invariants 2 of sizes 5 and 3, the loop the engine ran is a genuine invariant](assets/petri_nets/polyrhythm.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_sound/metadata.edn)
 
-**petri_state_space** — The other half of `afield.petri`: the same engine as an exact concurrency
+### petri_state_space
+
+The other half of `afield.petri`: the same engine as an exact concurrency
 checker, in five boxes. Where `petri_sound` asks what a net *plays*, this asks what it can *do*,
 [the classical questions](petri_nets.md) over every interleaving rather than the one the conflict
 policy picks. The first box makes the case: on the symmetric five-philosopher table `willDeadlock()`
@@ -264,9 +355,14 @@ Finally *the wall* measures the thing a green tick hides: the philosophers' stat
 companion Pell numbers, about 2.41× per philosopher, so eleven is 16 238 markings in 230 ms and twelve
 is past the budget, and a stubborn-set partial-order reduction turns that into `2n²−2n+2`, a **73×**
 speed-up at eleven and an answer at twelve, while refusing every property the theorem does not cover.
+
+![The dining table's whole state space drawn as BFS columns of grey dots joined by faint firings, with the five-firing counterexample traced in orange from a green start into a red-ringed stuck marking; beneath it the summary card reading 82 markings, 265 firings, depth 5, "can deadlock", "safe (1-bounded)", "not live", "not reversible"](assets/petri_nets/state_space.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_state_space/metadata.edn)
 
-**petri_tala_layout** — One net, drawn twice, to compare Field's own layout with TALA — the engine
+### petri_tala_layout
+
+One net, drawn twice, to compare Field's own layout with TALA — the engine
 [d2](https://d2lang.com) uses for architecture diagrams, open-sourced in September 2026 and reached
 through the optional `native/field-d2-layout` co-process. `PetriLayout.FORCE` relaxes a spring model
 from 48 seeded starts and keeps whichever scores best on crossings and overlaps; `PetriLayout.TALA`
@@ -276,9 +372,18 @@ the fewest crossings. Which wins is per net rather than settled: on the dining t
 is five against one, and TALA gets there in 2.1 s to FORCE's 4.5 s. The third box is the one to read
 after running it — it prints which engine actually drew the second panel, because a machine without
 the helper gets FORCE twice and should be told so rather than shown a relabelled drawing.
+
+The figure is the same two-panel comparison on the *larger* dining table of
+[the Petri page](petri_nets.md), which is where the direction reverses: FORCE's relaxed spring
+drawing crosses nothing, and TALA's orthogonal routing crosses three.
+
+![Two panels of the same net. Left, headed "FORCE, spring model — 0 arc crossings", is a relaxed organic layout of round places and green transition bars with curved arcs. Right, headed "TALA, d2 v0.9.0 — 3 arc crossings", is the same net on a rectilinear grid with every arc routed in right angles](assets/petri_nets/tala-vs-force.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_tala_layout/metadata.edn)
 
-**box_layout_demo** — The only scene here that is a starting position rather than a result: nine
+### box_layout_demo
+
+The only scene here that is a starting position rather than a result: nine
 boxes wired into a pipeline and placed badly on purpose, so there is something for **Lay out
 selection** and **Lay out whole document** to fix. Both palette commands read each box's frame for
 its size and the box graph for its edges, ask the same `native/field-d2-layout` helper where things
@@ -288,9 +393,12 @@ them, where a diagram tool would resize a container around its contents, and the
 back on the selection's own top-left corner instead of the document origin. Nothing runs when the
 transcript replays — the nine boxes carry one-line comments and no execution — so the scene opens
 the same way every time.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/box_layout_demo/metadata.edn)
 
-**mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
+### mesh_geometry_examples
+
+The [mesh and 3D geometry worked example](mesh_examples.md) as seven
 independent boxes, one per stage of the family. *Primitives* builds a cube, an icosphere, a torus and a
 cylinder and prints what each one is: welded, watertight, χ = 2. *Marching cubes* takes a sphere, a
 drilled sphere and a gyroid out of scalar fields and shows the surface converging on the analytic
@@ -302,9 +410,14 @@ inside* queries a torus through the BVH and prints correctly-signed Gaussian cur
 `voronoi3d` cells into meshes, meshes into `FLine`s, and writes OBJ and STL. The last box needs no view
 code at all: it evaluates a `TriMesh` and lets its own `ToHTML` draw it: a shaded render beside the
 counts, χ, genus, area, volume and bounds. Every box is pure CPU and runs on its own.
+
+![Six marched solids in a 2x3 grid — a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open — each panel headed with the expression that made it, and each drawn as a shaded surface with a depth-tested wireframe over it](assets/mesh_examples/modelling.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/mesh_geometry_examples/metadata.edn)
 
-**geometry_from_disk** — [Geometry from disk](geometry_from_disk.md) as three boxes, all of them
+### geometry_from_disk
+
+[Geometry from disk](geometry_from_disk.md) as three boxes, all of them
 starting from a file rather than a generator. The first reads the committed 5.4 MB Khronos ToyCar
 GLB through `meshFromAnyFile` and renders it with `showMesh`: **77,429 vertices, 108,936 triangles**
 over three mesh/material buckets, each baked through its own node transform so the car arrives
@@ -319,9 +432,14 @@ the coordinates themselves survived. The third writes a four-corner coloured ASC
 with `PlySupport.loadPly`, which needs no renderer at all, then bridges it to a `TriMesh` with the
 colours intact and the loader's invented `(0, 0, 1)` normal correctly dropped. Change the path in
 the first box to a mesh file of your own; boxes two and three clean up the temp files they write.
+
+![The Khronos ToyCar GLB in Field's Three.js viewer: a 1950s saloon model sitting on a heavily draped cloth, correctly shaded with soft folds, above a caption reading 77429 verts, 108936 tris, extent 0.073 x 0.029 x 0.074, chi=1909, open](assets/geometry_from_disk/toycar.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/geometry_from_disk/metadata.edn)
 
-**typography_worked_example** — [Typography as geometry](typography_examples.md) as eight boxes, and
+### typography_worked_example
+
+[Typography as geometry](typography_examples.md) as eight boxes, and
 the interesting thing about it is that there is no AWT rasteriser anywhere in the file: AWT is touched
 only to read a font's glyph outlines, and every picture after that is Field's own scanline filler or
 Skia SVG. *A string becomes contours* prints, per glyph, the contour and hole counts, the advance, and
@@ -343,7 +461,9 @@ close it out, the second running Delaunay and k-medoids over sampled letters.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/typography_worked_example/metadata.edn)
 
-**wfc_worked_example** — The [Wave Function Collapse worked
+### wfc_worked_example
+
+The [Wave Function Collapse worked
 example](wfc_examples.md) as eight independent boxes: adjacency authored by hand with `wfcRules { }`
 and both phases pinned with `forceTile`; the simple-tiled model learned from an image, printing the
 band histogram that shows its learned weights losing the water bands entirely; an eight-tile
@@ -355,9 +475,14 @@ iso-contour `FLine`s. The last box needs no view code at all: it evaluates a hal
 contradicted solver and lets `WfcSolver`'s own `ToHTML` draw them: possibilities left, entropy, and
 the tiles decided so far, with the contradicted cell marked in both heatmaps. Every box is pure CPU,
 runs on its own, and prints the numbers the docs page quotes.
+
+![A diagonal stripe source, a von Neumann result that is noise, and a Moore result that reproduces the stripes exactly](assets/wfc_examples/neighborhoods.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
 
-**spatial_geometry_examples** — The [Voronoi, contours and clusters worked
+### spatial_geometry_examples
+
+The [Voronoi, contours and clusters worked
 example](spatial_geometry_examples.md) as five independent boxes, each drawing itself with
 `showPlaneGrid` (which is `drawToSVG` → `display`, so no AWT and no GPU). *Delaunay* builds the
 triangulation, its Voronoi dual and the convex hull, checks the triangle and edge counts against
@@ -375,9 +500,14 @@ saddle cell, and draws the sampling grid so you can see what the marcher had to 
 *Clustering* cuts a merge tree at two depths, shows the finer cut nested inside the coarser, and runs
 k-medoids and k-medians on the same planted clusters. Every box is pure CPU and runs on its own; move
 a site, change a weight, raise an iso level or ask for a different `k` and re-run it.
+
+![Three panels of the same five sites: equal weights giving straight-line bisectors meeting at a Y junction, mixed weights bowing every one of those edges into a circular arc, and one site at weight 2.6 reducing its two lightest neighbours to complete circular discs](assets/spatial_geometry_examples/apollonius.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
 
-**alife_evolution** — the other half of [spatial artificial life](alife_examples.md): four boxes that
+### alife_evolution
+
+The other half of [spatial artificial life](alife_examples.md): four boxes that
 **search** those rule spaces rather than measuring a rule someone chose. The fitness functions are
 `alife.kt`'s own 816 lines of morphology statistics, read as objectives instead of as reports. Box 1
 asks for a Lenia soliton (alive, in one piece, travelling) and scores it straight off `leniaRun`'s
@@ -397,9 +527,14 @@ random sampling spreads over a descriptor space for free, so coverage on its own
 good enough to stumble onto a decent rule occasionally looks exactly like a successful search. None
 of the four opens a `Window` or a `Renderer`. Change `LifeRuleGenome(radius = 2)` to
 `LifeRuleGenome()` in box 2 and watch the margin collapse.
+
+![A contact sheet of twenty small greyscale automaton boards in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/alife_evolution/metadata.edn)
 
-**alife_worked_example** — [Spatial artificial life](alife_examples.md) as twenty boxes: ten that
+### alife_worked_example
+
+[Spatial artificial life](alife_examples.md) as twenty boxes: ten that
 measure, and a band below them of ten that **move**. The measuring ten are independent and pure CPU:
 Conway's Life checked against the glider's exact `(1, 1)` displacement and the R-pentomino's
 textbook peak of 319 at generation 821; Wolfram's rule 90 checked cell-for-cell against Pascal's
@@ -417,9 +552,13 @@ counter burned into every frame so a clip cannot lie about where it got to. They
 rather than run: a `Frames` that is only built never runs. None of the twenty opens a `Window` or a
 `Renderer`.
 
+![Two magma-coloured trail fields from the same 6000 agents: the sensing population has drawn a branching network of bright filaments and closed loops, the blind control is a featureless uniform disc](assets/alife_examples/physarum.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/alife_worked_example/metadata.edn)
 
-**statistics_examples** — [Which of these signals actually depend on each other?](statistics_examples.md)
+### statistics_examples
+
+[Which of these signals actually depend on each other?](statistics_examples.md)
 as five independent boxes. *Summary* pins the three quantities `buildSummaryStats` makes easy to
 misread: MAD recomputed from scratch to show it is the unscaled median absolute deviation, the
 `sampleStdDev/populationStdDev` ratio against `sqrt(n/(n-1))` to show which of the two conventions the
@@ -438,9 +577,14 @@ cross-checks the incremental sums against the O(w²) batch call, two different a
 edges: `evaluate(-1.0)` returning −21.1 outside the fitted knots, and the 0.20 smoothing tracking
 `10·0.8ᵏ`. Every box is pure CPU and self-checking; change a shape, a window size, a target distribution
 or an n and re-run it.
+
+![Six scatter panels — linear, monotone-curved, parabola, sine, growing-spread and independent — each captioned with six dependence coefficients](assets/statistics_examples/dependence_grid.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/statistics_examples/metadata.edn)
 
-**spectral_examples** — [Spectral examples](spectral_examples.md) as five independent boxes over the
+### spectral_examples
+
+[Spectral examples](spectral_examples.md) as five independent boxes over the
 same chirp. *One spectrum* runs `fft` with a Hann window and plots the one-sided magnitude against
 real Hz, with the centroid and the 85 % rolloff drawn in as dashed marks rather than left as numbers.
 *Spectrogram* takes the same chirp through `stft`, converts to dB relative to peak with an explicit
@@ -456,7 +600,9 @@ and two thirds of the way through, so spectral flux has something it should spik
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/spectral_examples/metadata.edn)
 
-**imaging_cv_examples** — [Imaging and computer vision](imaging_examples.md) as six independent
+### imaging_cv_examples
+
+[Imaging and computer vision](imaging_examples.md) as six independent
 boxes, all pure CPU: `showImgGrid` is `Img.toPngBytes` → `PngEncoder` → `display`, so there is no AWT
 rasteriser and no GPU. The images are large (2400×1800, 4.3 megapixels, 52 MB of float
 RGB) because that is the size at which "is this fast enough to actually use?" has a meaningful
@@ -476,7 +622,9 @@ disagrees with the planted one over a 16-point probe grid, the real number for t
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/imaging_cv_examples/metadata.edn)
 
-**imaging_vector_kernels** — Three boxes that each time one imaging primitive against a *second,
+### imaging_vector_kernels
+
+Three boxes that each time one imaging primitive against a *second,
 independent definition of the same thing*, written out longhand in the box. *pyrDown* times the fused
 decimation against blur-then-throw-away, and prints the max elementwise difference so you can see the
 only disagreement is float summation order. *boxBlur* times the running-sum implementation against
@@ -490,9 +638,12 @@ prove nothing, then prints the noise left in a flat patch. The absolute millisec
 published benchmark (that is `:tools:imaging-bench` against OpenCV); what these boxes show is the
 ratio to the slower definition. See the *Is it fast enough?*
 section of [Imaging and computer vision](imaging_examples.md) for the measured comparison.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/imaging_vector_kernels/metadata.edn)
 
-**imaging_visualizers_demo** — Ten boxes with no `showImg`, no `display()` and no `println` in any of
+### imaging_visualizers_demo
+
+Ten boxes with no `showImg`, no `display()` and no `println` in any of
 them. Every box's last expression is an imaging value, and what you see is the inline
 `ValueVisualizer` deciding how to draw it, which makes this the demo for
 [visualizers](visualizers.md) rather than for imaging. `Img` gets an aspect-correct thumbnail with a
@@ -507,18 +658,26 @@ check its disclosure against the corners of the rectangle the box planted at `x 
 caption admits it) and once as accumulator peaks. `FlowField` draws failed tracks as grey crosses
 rather than hiding them, and `ComponentLabelling` rotates hue by the golden ratio so adjacent label
 ids get unrelated colours.
+
+![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/imaging_visualizers/img_non_finite.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/imaging_visualizers_demo/metadata.edn)
 
-**viz_showheatmap** — Four small boxes for the one-line helpers, and the shortest thing on this page.
+### viz_showheatmap
+
+Four small boxes for the one-line helpers, and the shortest thing on this page.
 A Gaussian bump in viridis; a diverging field with `normalize = false` and explicit `vmin`/`vmax`,
 which is what anchors the white midpoint at zero rather than at the data's mean; a synthetic
 spectrogram with `transpose`, `flipY` and `logScale`, which is the shape a spectrogram wants; and a
 hand-built ARGB `IntArray` through `showImage`. `showHeatmap` and `showImage`
 encode with `PngEncoder` and `display`, so there is no manual bilinear resampling, no flipY
 bookkeeping and no AWT.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/viz_showheatmap/metadata.edn)
 
-**audio_ai_codec** — One box for the [EnCodec reconstruction
+### audio_ai_codec
+
+One box for the [EnCodec reconstruction
 microscope](audio_ai_codec.md): two waveform players with a shared playhead, two log-frequency STFT
 images, and a token map you can hover to read a codebook entry. The box builds a deterministic
 fixture in-process (a 4-second chirp at 8 kHz, a "reconstruction" that is the source at 0.91 gain
@@ -531,7 +690,9 @@ is why it runs in CI at all.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_codec/metadata.edn)
 
-**arclength_spacing_demo** — Two boxes on the difference between spacing a curve by its *parameter*
+### arclength_spacing_demo
+
+Two boxes on the difference between spacing a curve by its *parameter*
 and spacing it by its *arc length*. A cubic can be perfectly straight and still be parameterised so
 unevenly that `t = 0.5` is four fifths of the way along it, which is exactly the case an arc-length
 table has to catch. *Dashes* dashes the same two curves twice (marching `t` in
@@ -542,9 +703,12 @@ arc length with the max/median gap on each (2.821 against 1.000 on the collinear
 the mechanism as numbers: a subdivision metric reading 0.000 on a curve that another scores at 161.
 Both boxes compute both spacings live, so neither picture is stored. Move a control point towards the
 middle of the chord and re-run to watch the two columns converge.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
-**close_node_demo** — Two boxes about the `Close` node in the middle of an `FLine`, which is a shape
+### close_node_demo
+
+Two boxes about the `Close` node in the middle of an `FLine`, which is a shape
 Field's own stdlib produces. *Reversing a closed contour* writes out a naive reversal walk inline,
 beside the shipped one, on a square whose fourth side is the close and on a
 two-contour glyph with a counter, and captions every panel with one number, the fraction of the
@@ -557,9 +721,12 @@ needed to build it. It runs ten public operations over that arrow
 under `runCatching` (reverse, subdivide, simplify, convex hull, filter, winding number, contains,
 centroid, bounds, dash) and prints `ok` or `THREW` for each. Both boxes draw with
 `showPlaneGrid`, so no AWT and no GPU.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/close_node_demo/metadata.edn)
 
-**dynamic_graph_systems_examples** — [Graphs that change while you
+### dynamic_graph_systems_examples
+
+[Graphs that change while you
 watch](dynamic_graph_systems_examples.md) as six independent boxes: point clouds that move while the
 graph joining them is continually reinforced and forgotten. *Six systems* runs all six
 `DynamicGraphSystem`s over one 220-point disc for the same 20 frames with the same reinforcement and
@@ -582,9 +749,14 @@ not executed: *breathing* rewires a k-nearest-neighbour graph over a cloud that 
 identical system with its clock pinned at zero (which holds exactly 590 edges for all 420 steps), and
 *morphogenesis* grows a 64-point ring into a branching filament beside the same nine-stage pipeline with
 tip growth removed. Every box is pure CPU; no `Window`, no `Renderer`.
+
+![Six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse dim proximity mesh, a dim forest of routing chains, and a dim fully triangulated alpha-event graph](assets/dynamic_graph_systems_examples/six_systems.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn)
 
-**autodiff_worked_example** — Field's **automatic-differentiation layer** as five independent
+### autodiff_worked_example
+
+Field's **automatic-differentiation layer** as five independent
 boxes, one per layer of the stack. *Basics* differentiates one expression three ways that have to agree
 (a reverse-mode tape sweep, a second-order forward-mode `Dual2` number, and a central-difference
 oracle) and plots `f`, `f'` and `f''` from a **single** sweep, because the second derivative comes
@@ -627,7 +799,9 @@ packing settles instead of chattering across the contact.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/autodiff_worked_example/metadata.edn)
 
-**morpho_circuit_search** — Three boxes that search for circuits in
+### morpho_circuit_search
+
+Three boxes that search for circuits in
 [somebody else's language](morpho_examples.md), where one unit of budget is one invocation of
 morpho's own compiler on GraalJS. *Does selection beat sampling?* gives random search, hill climbing
 and evolution the same generator, the same seed and the same budget on a one-bit full adder (whose
@@ -647,7 +821,9 @@ is provably inside the search space. The empty half of that cost plane is the fi
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/morpho_circuit_search/metadata.edn)
 
-**keyframer_worked_example** — `KeyframeScope`, the thing that stops a look you spent twenty minutes
+### keyframer_worked_example
+
+`KeyframeScope`, the thing that stops a look you spent twenty minutes
 arriving at from existing only as the contents of a running process. Four pure-CPU boxes: *targets*
 registers two uniform `Structure`s, captures them into a `Key`, edits it, invokes it to write the
 state back, and reads the live structures to prove it landed, including the fact that `capture()`
@@ -666,9 +842,12 @@ dead centre of frame for the whole move, while lerping the two positions cuts th
 ![Left, a plan view: a blue quarter-circle sclerp path with equal-length sight lines to the subject, and an orange straight chord cutting across it. Right, distance to the subject over the move: flat blue at 8.2462, orange dipping to 6.0](assets/keyframer_examples/camera_screw.png)
 
 Walkthrough: [Capturing & replaying live state](keyframer_examples.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframer_worked_example/metadata.edn)
 
-**keyframe_code_blend** — What to do when the two keyframes are *programs*. Two looks for one
+### keyframe_code_blend
+
+What to do when the two keyframes are *programs*. Two looks for one
 StackSL patch differ in a warp scale, an offset and a tint vector and in nothing else, so the two
 token streams align and those three numbers can be interpolated; change one word instead — `fbm` for
 `noise` — and the alignment reports a divergence and the blend goes back to stepping, because a
@@ -686,9 +865,12 @@ body that is running — 327 nested runs and 355 seconds, measured. Hydrating in
 is what the split does, runs it once.
 
 Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframe_code_blend/metadata.edn)
 
-**fn_rewrite_kotlin_boxes** — The same hazard as the pair above, in the rewrite language, and the
+### fn_rewrite_kotlin_boxes
+
+The same hazard as the pair above, in the rewrite language, and the
 two spellings side by side so the difference is visible rather than described. A `@{...}` right-hand
 side in an `Fn` rewrite spec is Kotlin, and it is compiled in a live box's engine — but which box?
 `rewriteKotlin` answers "the one calling me", so calling it from a box body asks that engine to
@@ -701,7 +883,9 @@ costs and why the second box is the one to copy.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_rewrite_kotlin_boxes/metadata.edn)
 
-**pattern_rewrite_worked_example** — Six runnable boxes that each hold one
+### pattern_rewrite_worked_example
+
+Six runnable boxes that each hold one
 [user-authored rewrite rule](pattern_rewrite.md) and one `println` that could not compile without it.
 `neg(x) → -x` is the shape of the whole mechanism. `twice(x) → x * 2` is the precedence guard, and the
 reason it is called with `twice(3 + 4)`: a non-atomic capture has to be parenthesised, so the answer
@@ -711,9 +895,12 @@ computes the replacement *at compile time* from the matched identifier's text. T
 one that is never executed: it holds a rule and nothing else, and a child box wired beneath it
 compiles against that rule by inheritance, a control for ambient scope, which only means anything
 because the parent stayed un-run.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn)
 
-**rewrite_strategies_demo** — Nine boxes on *where and when* a rewrite rule fires, and the only
+### rewrite_strategies_demo
+
+Nine boxes on *where and when* a rewrite rule fires, and the only
 transcript in the corpus whose boxes `check` their own answers rather than printing them. The
 arithmetic is chosen so a number identifies a strategy: helpers multiply by 10, 100 and 1000 or add
 1, 2 and 100, so `once` landing on 12 and the baseline landing on 30 are two different rewrite
@@ -724,18 +911,24 @@ same input, 102 against 202; `choice("toY", "toX")` inverts declaration order to
 the strategy picks, not the source; `repeat(topdown, 2)` leaves the innermost `f` alone; and the last
 box's `from { f(f(x)) }` eats two levels per step. The actual bound: each assertion proves this
 strategy fired differently from the baseline, not that the rewriter is sound in general.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rewrite_strategies_demo/metadata.edn)
 
-**polytope_conway_demo** — One very compact box for the
+### polytope_conway_demo
+
+One very compact box for the
 [Conway polytope algebra](polytope_examples.md). It marks two opposite cube faces with different
 height attributes, selects exactly those faces, applies `kis` only there with the height deployed per
 face, and sends the resulting polygonal faces to the on-canvas `threeLines(...)` viewer. Orbit it,
 hover a face, and click one: a provenance card reports the output face id, the transform role, the
 deployed height, the source elements it descends from, and the 3D hit position. The inspection output
 below the view exercises the registered polytope value printers.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_conway_demo/metadata.edn)
 
-**polytope_conway_gallery** — The same algebra as four small boxes, one question each.
+### polytope_conway_gallery
+
+The same algebra as four small boxes, one question each.
 *Expressions* is a Conway-notation contact sheet you retype: change one list and the whole grid
 rebuilds, captions and all, read off the topology rather than the pictures. *Abstract dual* takes the
 cube's coordinates away and shows the dual's `realization` as `null` and its `toFaceFLines()` and
@@ -746,9 +939,14 @@ onto the pickable output faces. *Realization* jitters a Conway output, relaxes i
 solver's own before/after diagnostics (edge-length deviation, planarity error, convergence and stop
 reason) as its final value. Every box is pure CPU.
 Walkthrough: [Polytopes: topology first, coordinates later](polytope_examples.md).
+
+![A shaded spiked dodecahedron. The pyramids on the left-hand faces are short and coloured cyan, those on the right are long and coloured orange, with a smooth gradient across the middle; its caption reports kis deployed over 12 faces with the height resolved per face](assets/polytope_examples/parameter_field.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_conway_gallery/metadata.edn)
 
-**polytope_canonical_gallery** — One box with one parameter: a Conway prefix string, `"gD"` as
+### polytope_canonical_gallery
+
+One box with one parameter: a Conway prefix string, `"gD"` as
 shipped. It evaluates the expression, canonicalizes it, and draws the two forms side by side (both
 gauge-normalized first, so the only difference on screen is shape and not scale or orientation) then
 leaves the solver's own diagnostics as text: tangency-radius spread and planarity before and after,
@@ -756,9 +954,17 @@ the stop reason and iteration count, and the combinatorial face orbits. Click a 
 its degree, which orbit it belongs to of how many, and its plane's distance from the centre. Change
 the string to `"kkC"` to watch the same box report a clean failure: `canonicalize()` does not reach
 that one, and the box prints the reason rather than a picture that looks fine.
+
+That failure, from the walkthrough: `kkC` as built, the same solid after `canonicalize()`, and what a
+different solver makes of it.
+
+![Three shaded solids in a row above a table. The left, kkC as built, is a compact spiky ball of triangles. The middle, canonicalize(), is not a solid at all — it has collapsed to a thin diagonal sliver a few pixels wide, essentially a line. The right, relaxWithCeres(), is a clean stellated form with deep triangular spikes. The table gives tangency radius spread 3.386e-01, 1.930e+00 and 5.104e-08, and minimum dihedral angle 0.955, 0.003 and 0.340; canonicalize() reports converged = false with reason max iterations](assets/polytope_examples/kkc_canonical.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_canonical_gallery/metadata.edn)
 
-**polytope_holes_and_chains** — Three boxes for faces with holes, and for chaining composite
+### polytope_holes_and_chains
+
+Three boxes for faces with holes, and for chaining composite
 operators. *A face with a hole, end to end* builds a cube with a window cut in one face and prints the
 consequences: Euler characteristic counting elements against counting cells (a disk with one hole is
 `1 - 1`, so a sphere with a window is 1), the manifold check failing with exactly the count of
@@ -776,7 +982,9 @@ still refusing a single realization policy.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_holes_and_chains/metadata.edn)
 
-**ceres_free_variables** — Two boxes on unknowns that are not vertex positions. *A plane per face*
+### ceres_free_variables
+
+Two boxes on unknowns that are not vertex positions. *A plane per face*
 canonicalizes a Conway solid by solving for a unit normal and an offset per face, and solves the same
 problem twice (once with the residual written in Kotlin and differentiated on `ceres::Jet` through
 the expression VM, once with the hand-written C++ opcode) then prints the largest disagreement
@@ -789,9 +997,12 @@ print that it is missing, show a card naming `./gradlew buildCeresRedistributabl
 *unsolved* seed rather than failing. One caveat while reading that branch: an ABI-too-old wrapper
 is swallowed by the same `runCatching`, so at the box's output it is indistinguishable from an
 absent one.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/ceres_free_variables/metadata.edn)
 
-**manifold_solids** — Two boxes on [robust mesh Booleans](manifold.md), the second optional native
+### manifold_solids
+
+Two boxes on [robust mesh Booleans](manifold.md), the second optional native
 dependency in the tree, and the one that needs no wrapper: Manifold ships a C ABI, so the whole
 binding is Panama/FFM against `libmanifoldc`. *A part, and whether it is manufacturable* builds a
 60×40×8 plate with four bored bosses, a properly rounded slot (a square `offset` by 4.5 with round
@@ -809,9 +1020,14 @@ solid that is **guaranteed** closed rather than merely usually closed, then slic
 contours) with each layer `offset` inward by half a nozzle width, so the orange lines are the path a
 printer would actually walk. Both boxes need `brew install manifold`; without it the first draws the
 same shape through Field's own `marchingCubes` and names the difference.
+
+![A gyroid-thickened torus drawn as a pale wireframed surface, its rim rippling in and out where the gyroid cuts it, captioned 14869 verts, 29738 tris, chi=0 genus 1, watertight, volume 17750.1245, and "29738 triangles, genus 1, guaranteed closed"](assets/manifold/levelset.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/manifold_solids/metadata.edn)
 
-**solidsl_notation** — Two boxes on [`afield.solidsl`](solid_notation.md), the notation in which a
+### solidsl_notation
+
+Two boxes on [`afield.solidsl`](solid_notation.md), the notation in which a
 solid is a *value* rather than a `(Vec3) -> Float`. *A part, and what the notation knows before it
 meshes* interrogates a bored plate with a blended boss before anything is built: **17 nodes**,
 symbolic bounds, and exactly one subtree with no exact CSG form: the `SmoothUnion`, because "a
@@ -827,9 +1043,14 @@ together: set the blend radius to zero and the simplifier reports `path level se
 because a blend of radius zero *is* a union, and a union has an exact form where a blend never will.
 Ask the *unsimplified* tree and it still refuses (the rewrite is what removes the refusal), so the
 box prints both; read apart, that pair of lines looks like a contradiction.
+
+![Two panels of the same part: a rectangular plate with four corner holes and a domed boss blended into its centre. The left panel, the hybrid build, draws the plate as a handful of large flat triangles with long diagonals and the bores as clean swept strips, while only the central boss carries a fine mesh. The right panel, fully marched, is uniformly finely triangulated everywhere including the flat faces](assets/solid_notation/hybrid.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/solidsl_notation/metadata.edn)
 
-**rectsl_glsl_sdf** — Two boxes that print. [RectSL](rectsl_cheatsheet.md) scenes lower to a single
+### rectsl_glsl_sdf
+
+Two boxes that print. [RectSL](rectsl_cheatsheet.md) scenes lower to a single
 `float scene(vec2, float)` GLSL function, and `emitSdf` is a string builder over the compiled
 program, with no shaderc, no window and no renderer, so these are the cheapest possible check that the
 emitter still compiles against the language. The first box lowers a two-track scene and prints the
@@ -839,9 +1060,12 @@ with `array` whose per-copy offsets are constant in time fold to literals rather
 functions, because the stack VM ran once at compile time and `array`, `grid`, selections and the
 `{{ }}` escapes are all spent before the GLSL exists. To see the same thing drawn and moving, replay
 `rectsl_sdf_live` below.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_glsl_sdf/metadata.edn)
 
-**rectsl_inverse_animation** — Two boxes on the *third* track backend. A RectSL track already knew how
+### rectsl_inverse_animation
+
+Two boxes on the *third* track backend. A RectSL track already knew how
 to evaluate itself and how to spell itself as GLSL; `toFn` lowers it to an `Fn` instead, which makes it
 differentiable, so a track can be solved rather than authored. The first box prints the symbolic IR with
 its unknowns still in it, `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)`, and is the
@@ -850,9 +1074,14 @@ should pass through, fits the parameters against them on the exact gradient, and
 three stacked bands: the target, a seed missing every waypoint by 7.72, and the solved arc threading all
 three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one somewhere
 `amp·trig(rate·t + phase) + centre` cannot reach and the caption reports the miss instead.
+
+![Three stacked bands. The top, "TARGET 3 WAYPOINTS", shows three empty white squares. The middle, "SEED worst miss 7.72", has one orange rect smeared across the centre, hitting none of them. The bottom, "FITTED worst miss 4.7e-15", is a mint arc of rect samples threading exactly through all three](assets/rectsl/inverse-animation-fit-box.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_inverse_animation/metadata.edn)
 
-**rectsl_heading_fit** — The same backend, over headings. `->face-travel` builds a `HeadingTrack`,
+### rectsl_heading_fit
+
+The same backend, over headings. `->face-travel` builds a `HeadingTrack`,
 which is `atan2` of a central finite difference, and covers 116 of the gallery corpus's 2754 tracks.
 The first box makes the lowering checkable rather than asserted: one figure-of-eight trajectory
 drawn three times, with the sampler's own rotation on top, the lowered `Fn`'s beneath it, and
@@ -864,9 +1093,12 @@ steep a climb makes the dart point at 45 degrees, descending the exact gradient 
 1.0000000000000244 with the residual falling 0.637 to 4.7e-15. It also prints the θ-slot map, which
 is the surprising part of the machinery: a heading reads each position track twelve times, so one
 named parameter occupies 36 slots and the fitter has to move all of them as one variable.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_heading_fit/metadata.edn)
 
-**faust_voice** — Five boxes around [Faust](faust.md), whose compiler Field ships as WebAssembly, so
+### faust_voice
+
+Five boxes around [Faust](faust.md), whose compiler Field ships as WebAssembly, so
 nothing is installed to run any of them. *Faust voice* is the one to click: a `#faust` region returned as
 the box's last expression, which keeps the box lit while it plays and takes the sound down when you stop
 it. The three sliders that appear are not written anywhere in the box: they are the program's own
@@ -881,9 +1113,12 @@ line* is broken here: `#` is not a comment in Faust, so the `#faust` marker is s
 compiling and its lines are added back before the marker is placed; get that arithmetic wrong and every
 diagnostic lands a row or two off, looking like a compiler bug. Only the middle three boxes are replayed
 here; the voice wants an audio device and the last one is meant to fail.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_voice/metadata.edn)
 
-**popup_prior_inspect** — Asks Field what ranking prior the completion popup currently has for a
+### popup_prior_inspect
+
+Asks Field what ranking prior the completion popup currently has for a
 receiver type, by calling the object the completion server itself calls, `afield.CommonMemberPrior`,
 rather than describing it. Tabulates the type's `@CommonMembers` list in declared order with the score
 each position earns. Change one string to ask about your own class, and replay it when a member you
@@ -891,9 +1126,12 @@ expect near the top of `ctrl-space` is not there. It answers one of the two ques
 the other is which *section* it lands in, which lives behind an `internal` object and so belongs to
 `FIELD_RANK_DUMP` instead. Both are explained on
 [How completions are ranked](completion_ranking.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/popup_prior_inspect/metadata.edn)
 
-**faust_polyphony** — Six boxes in which [Faust](faust.md) stops being a drone with knobs and becomes an
+### faust_polyphony
+
+Six boxes in which [Faust](faust.md) stops being a drone with knobs and becomes an
 instrument that a [pattern](sound.md) plays: eight instances of one compiled program, allocated to
 notes. *Faust instrument* is the one to click: `faustPoly(…, voices = 8)` played by
 `inst.play(pat("[c4,ef4,g4] …"), automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()))`,
@@ -918,6 +1156,7 @@ knob here you can hear: four notes on two voices, rendered at `stealReleaseFrame
 `1440`, printing **4.23×** and **0.11×** for the normalised waveform step across the steal, with
 both WAVs playable and the line to edit marked. Five of the six are replayed here; the instrument
 wants an audio device.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_polyphony/metadata.edn)
 
 ## Service-backed composition scenes
@@ -927,45 +1166,64 @@ wants an audio device.
 These are complete, editable starting points whose first view works without model weights. Their
 generation boxes remain explicit about the companion service or hardware they need.
 
-**audio_ai_gesture_board** — Draw timed prompt regions, salience events, and activity, density,
+### audio_ai_gesture_board
+
+Draw timed prompt regions, salience events, and activity, density,
 register and brightness curves over one shared musical timeline. The first box renders and explains
 the typed sketch immediately. The second resolves a source recording by filename, requests eight
 MusicGen-Style candidates, then presents both gesture-fit rankings and the full waveform/splice
 audition board. The current worker treats prompt wording as compiled conditioning and the numeric
 lanes as waveform-evaluated targets; the UI never disguises either as native timed control.
 Walkthrough: [Gesture board: drawing toward a sound](audio_ai_gesture_board.md).
+
+![The first box's typed sketch: an eighteen-second board whose effective prompt is assembled from three timed regions, a row of chips marking each term DIRECT, COMPILED or EVALUATIVE, and four curves — breath, event density, register drift and surface light — over one shared timeline with two salience events drawn as dashed orange verticals](assets/audio_ai_gesture_board/gesture_board.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_gesture_board/metadata.edn)
 
-**audio_ai_analysis** — Resolve a recording by filename, display its exact source window, submit
+### audio_ai_analysis
+
+Resolve a recording by filename, display its exact source window, submit
 librosa beat and pYIN analysis plus Spotify Basic Pitch, follow all three jobs through replaceable
 progress cards and the durable monitor, await their immutable results, then compare onset, tempo,
 confidence, monophonic F0, voicing and polyphonic notes on synchronized timelines. Its first two
 boxes are model-free and remain runnable without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
+
+![The analysis board with a shared playhead across three cards: beats (onset strength, two local-tempo traces at 116 and 112 bpm, and their confidences), pitch mono (a pYIN F0 arc between C3 and C4 over a voiced-probability trace), and pitch poly (a Basic Pitch piano roll with its activation and active-pitch count), over a zoomable waveform of the model-free synchronized source](assets/audio_ai_analysis/synchronized_analysis.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_analysis/metadata.edn)
 
-**audio_ai_speech_embeddings** — Find or import `near_drowning.wav`, submit revision-pinned
+### audio_ai_speech_embeddings
+
+Find or import `near_drowning.wav`, submit revision-pinned
 emotion2vec and WavLM Base+ frame-embedding jobs, follow both through replaceable progress cards
 and the durable monitor, then pool 500 ms of evidence at 25 Hz and play the recording through Smile
 t-SNE axes 0×1 and 2×3 in each learned space. The first two boxes explain and exercise the
 synchronized phase-portrait renderer without
 downloading model weights; the complete local source-to-result path remains explicit in box 3.
 Walkthrough: [Speech-reactive learned spaces](audio_ai_speech_embeddings.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_speech_embeddings/metadata.edn)
 
-**audio_ai_spectral_embeddings** — Find or import `near_drowning.wav`, submit and monitor one
+### audio_ai_spectral_embeddings
+
+Find or import `near_drowning.wav`, submit and monitor one
 model-free librosa spectral job, retain its 25 Hz mel, log-mel, MFCC, and diagnostic trajectories,
 then decode the binary artifact once and compare mel-Wasserstein, log-mel cosine, and MFCC Euclidean
 t-SNE phase portraits. The first two boxes explain and exercise the synchronized renderer without a
 service; box 3 owns the complete source-to-result path.
 Walkthrough: [Short-time spectral spaces](audio_ai_spectral_embeddings.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_spectral_embeddings/metadata.edn)
 
-**audio_ai_corpus_microscope** — Resolve Nancy and Final Out at Candlestick Park, submit and monitor
+### audio_ai_corpus_microscope
+
+Resolve Nancy and Final Out at Candlestick Park, submit and monitor
 multi-scale segmentation and grouped descriptor jobs, then use a six-second Nancy window to retrieve
 related source windows. The resulting board aligns playheads and hover cursors in relative time,
 shows each descriptor-group distance, and provides an automatic query-to-neighbour splice audition.
 Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_corpus_microscope.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
 
@@ -977,16 +1235,21 @@ These boxes are all compiled through Field's real Kotlin/preamble path, but not 
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
 
-**kratos_thermal_playground** — Launch one box and drag the cuboid arm, conductivity, heat source
+### kratos_thermal_playground
+
+Launch one box and drag the cuboid arm, conductivity, heat source
 and skin temperature controls. A persistent optional Kratos worker solves embedded conduction on
 one fixed background grid. The original and current temperature slices, grid identity, changed
 classifications, revisions and timings remain visible. Stop releases the worker; launch restarts it.
 Install the worker first with `uv sync --project optional/kratos --frozen` from the Field checkout.
 Requires Manifold. Each slice uses its own colour range; numerical temperature differences are
 reported alongside it. The controls also appear on `/controllers`.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_thermal_playground/metadata.edn)
 
-**kratos_flow_playground** — Incompressible flow past a sphere-and-rod obstacle, on the same fixed
+### kratos_flow_playground
+
+Incompressible flow past a sphere-and-rod obstacle, on the same fixed
 background grid and the same optional worker as the thermal playground. Dragging the radius reshapes
 the body immediately, because that part is Manifold alone; solving is a button, because one request
 marches three Newton steps and costs seconds rather than milliseconds. The result comes back as a
@@ -997,9 +1260,12 @@ around the obstacle, and potential flow around a sphere gives exactly 1.5, which
 to see that the answer is a flow and not a plausible picture. Install the worker first with
 `uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels.
 Requires Manifold.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_flow_playground/metadata.edn)
 
-**kratos_structural_playground** — An L-bracket bending under load, and the argument for quadratic
+### kratos_structural_playground
+
+An L-bracket bending under load, and the argument for quadratic
 elements made as a picture rather than a table. Unlike the other two this one is **body-fitted**:
 Kratos has no immersed structural element, so TetGen tetrahedralizes the Manifold surface and the
 mesh goes to the worker, which means a geometry edit costs a remesh and a new session where the
@@ -1011,9 +1277,12 @@ of the quadratic one's deflection, which is the constant-strain tetrahedron's lo
 and dragging the arm longer makes the gap worse. Install the worker first with
 `uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels;
 TetGen needs `python3 tools/build_tetgen_native.py` once. Requires Manifold.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_structural_playground/metadata.edn)
 
-**kratos_parameter_study** — The same worker and the same background grid, asked a question one
+### kratos_parameter_study
+
+The same worker and the same background grid, asked a question one
 solve cannot answer: which arm length and which conductivity put 294.15 K — one kelvin above the
 skin — at a chosen point inside the part? The box declares a two-axis design space and a scalar
 reduced from each solved field, then either tiles the space on a grid or searches it with an
@@ -1026,17 +1295,23 @@ A change of arm length is a reclassification, never a remesh: 225 solves and `bu
 `uv sync --project optional/kratos --frozen`, or build the container image where Kratos has no
 wheels. Requires Manifold.
 ![A dark heat map of miss-from-target over arm length and conductivity, with a valley curving from the bottom-left to the upper-right, the grid's best cell ringed in white and a search's best crossed in blue; below it, a log-scale best-so-far convergence plot](assets/kratos_studies/kratos-study-sheet.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_parameter_study/metadata.edn)
 
-**audio_render_analysis** — Start with music written in Field rather than an imported recording.
+### audio_render_analysis
+
+Start with music written in Field rather than an imported recording.
 Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite
 WAV, import it by content hash, submit the standard beat and pitch fan-out, stream each job's status,
 and end in a source waveform plus synchronized analysis board. The guide and every complete service
 path are compile-checked; running them remains an intentional user action.
 Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_render_analysis/metadata.edn)
 
-**onnx_webcam_live** — One webcam frame through two ONNX models in one box: Depth Anything V2 Small at
+### onnx_webcam_live
+
+One webcam frame through two ONNX models in one box: Depth Anything V2 Small at
 266x266 (~120ms on a CPU execution provider) and CLIP ViT-B/32's vision tower (~45ms), displayed as the
 frame beside its colour-mapped depth map with a zero-shot ranking over four text prompts. The prompts are
 encoded once into a `val`, because a fixed prompt does not change between frames; the depth map is
@@ -1044,6 +1319,7 @@ normalised against an exponential moving average of its own range, since Depth A
 relative* depth in arbitrary units whose range moves with the content. Running it downloads ~600MB of
 encoders on first use. Needs a camera, which the build does not have, so it is compiled and never
 evaluated here.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/onnx_webcam_live/metadata.edn)
 
 ## visionOS device scenes
@@ -1057,32 +1333,65 @@ JavaScript for the head, and CI compiles them through the real head profile; `vi
 `vision_geometry_desk_preview` are JVM Kotlin and CI runs them to completion. See
 [Building geometry in the headset](vision_geometry.md) for the walkthrough these are drawn from.
 
-**visionos_start** — The smallest complete Live Metal program, and the place to start: a cube built in
+Read the figures here for what they are: **Preview Vision Geometry** rendering the same builder on
+the Mac, so the mesh is the real packed vertex array the headset would have received, and the shading
+is a stand-in two-light lambert over your vertex colours. None of them is a photograph of the device,
+and none of them says anything about your MSL.
+
+### visionos_start
+
+The smallest complete Live Metal program, and the place to start: a cube built in
 the headset by `geometry { }`, a Metal shader in the box's `msl` property, and one uniform animated on
 the compositor clock.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/visionos_start/metadata.edn)
 
-**vision_geometry_shapes** — A tour of the geometry builder's shape primitives: cube, sphere, plane
+### vision_geometry_shapes
+
+A tour of the geometry builder's shape primitives: cube, sphere, plane
 and tube side by side in one mesh, with a shader that reads the uv the shapes write as a checker.
+
+![Cube, sphere, plane and swept tube in one mesh, previewed side by side on a desktop](assets/vision_geometry/vision-geometry-shapes.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_shapes/metadata.edn)
 
-**vision_geometry_heightfield** — The builder at its raw level: a ripple height field assembled vertex
+### vision_geometry_heightfield
+
+The builder at its raw level: a ripple height field assembled vertex
 by vertex, with normals from finite differences of the same height function and per-vertex colour
 carrying relief into the shader. The shape most procedural meshes take.
+
+![The ripple height field: a central peak, a trough ring and a decaying wave, shaded by height](assets/vision_geometry/vision-geometry-heightfield.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_heightfield/metadata.edn)
 
-**vision_geometry_animated** — Rebuilding the mesh every frame, which is what separates building
+### vision_geometry_animated
+
+Rebuilding the mesh every frame, which is what separates building
 geometry in the headset from shipping it over the wire: a swept tube whose spine and radius both move.
+
+![Four frames of a helix whose winding count and radius drift, rebuilt from scratch each frame](assets/vision_geometry/vision-geometry-animated-filmstrip.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_animated/metadata.edn)
 
-**vision_metal_cube** — The non-Kotlin/JS route, for comparison: JVM Kotlin publishes the shader, the
+### vision_metal_cube
+
+The non-Kotlin/JS route, for comparison: JVM Kotlin publishes the shader, the
 script and an explicit request for the head's built-in cube in one `visionMetal(...)` call.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_metal_cube/metadata.edn)
 
-**vision_geometry_desk_preview** — The one on this list that needs **no headset at all**: both boxes
+### vision_geometry_desk_preview
+
+The one on this list that needs **no headset at all**: both boxes
 build a Live Metal `geometry { … }` for real (compiled to JavaScript and executed) and draw the
 resulting mesh into their own output. The second is the same mesh wound backwards, so you can see what
 an inside-out mesh looks like and how the preview tells you.
+
+![The lantern built correctly: an orange sphere resting on a blue ring with grey posts, its stats line reading "winding 100% agrees with normals"](assets/vision_geometry/vision-geometry-lantern.png)
+
+![The same ring of quads wound backwards, drawn with culling disabled, its stats line reading "winding 0% agrees with normals" in amber](assets/vision_geometry/vision-geometry-lantern-inverted.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
 
 ## Browser-head scenes
@@ -1096,33 +1405,58 @@ body through the real head profile its `// {{ marker }}` names; an unknown marke
 rather than a silent fallback to the wrong head. See [Kotlin in the head](kotlin_in_the_head.md) for
 the profiles and [RemoteJS and WebXR](ar_reference.md) for the bound names.
 
-**remotear_start** — The starter: a `// {{ remoteAR }}` box beneath a KotlinJS language root that
+### remotear_start
+
+The starter: a `// {{ remoteAR }}` box beneath a KotlinJS language root that
 adds one cube 1.2 m up and 1.5 m out and spins it on the frame clock. Open the head page yourself
 first; this transcript does not open one. `onStop` runs exactly once when you relaunch, which is
 what makes editing the box and launching it again a clean hot-replace rather than two cubes.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/remotear_start/metadata.edn)
 
-**remotear_scene_motion** — The larger of the two RemoteAR scenes, and the one that is *not* offered
-as a starting point: a metallic torus knot under a directional and an ambient light, an `FLine` ring
-built with the transform operators (`+ Matrix4`, `+ Vector3`, `* scalar`) and published to
-`stage.orbit`, and a glTF loaded through `mapDirectory` and played on the XR animation mixer. It
-refers to an external `/abs/assets/robot.glb`, which no checkout contains, so it stays
-agent-only rather than shipping as a starting point that half-loads. Replay it with your own model
-and both paths edited; everything except the glTF works as written.
+### remotear_scene_motion
 
-**tone_synth_sequence** — Computer music in the head, and self-contained in a way the other two are
+The larger of the two RemoteAR scenes: a metallic torus knot under a
+directional and an ambient light, an `FLine` ring built with the transform operators
+(`+ Matrix4`, `+ Vector3`, `* scalar`) and published to `stage.orbit`, and a glTF loaded and handed
+to the XR animation mixer. The asset is the one thing worth reading twice. A head is a browser, so
+it can only fetch over http — a path on your disk is not a URL it can reach, and `mapDirectory`,
+which reads as the fix, sends a message no route in the server consumes. So the model here is the
+committed CC0 Khronos ToyCar, mounted at `/sample-assets`, and this scene needs nothing you do not
+already have. It carries no animation clips, so `play()` is a no-op that says so in the log; point
+it at a model with clips and the mixer moves. Until 2026-09-13 it referred to an external
+`robot.glb` no checkout contains, and was withheld from the welcome screen for exactly that reason.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/remotear_scene_motion/metadata.edn)
+
+### tone_synth_sequence
+
+Computer music in the head, and self-contained in a way the other two are
 not: box 1 embeds the head page in the Field document itself as an iframe, so there is no separate
-browser window to arrange. Box 3 is `// {{ tone }}` Kotlin (a `PolySynth` into a reverb, an
-arpeggio scheduled on the transport at 96 bpm) and it is not offered as a starting point for one
-reason: a browser starts its `AudioContext` suspended and only resumes it after a real user gesture,
-so `Tone.start()` has to follow a click *inside* the head. The box name says so. There is nothing to
-hear in a headless build, which is why CI compiles this one and stops there.
+browser window to arrange, and the Tone.js it plays through is vendored rather than fetched. Box 3
+is `// {{ tone }}` Kotlin — a `PolySynth` into a reverb, an arpeggio scheduled on the transport at
+96 bpm. One thing to know before you open it: a browser starts its `AudioContext` suspended and
+resumes it only after a real user gesture, so `Tone.start()` has to follow a click *inside* the
+head, and the box is named to say so. That is an instruction, not a defect, which is why this ships
+as a starting point from 2026-09-13 rather than staying agent-only. There is still nothing to hear
+in a headless build, which is why CI compiles this one and stops there.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/tone_synth_sequence/metadata.edn)
 
 ## Graphics scenes
 
 <!-- transcript-index: verified-by = compile -->
 
-**openxr_eye_intersection** — A white wire cube at the closest-approach midpoint of the two real
+These are self-contained scenes that build their own `Window` + `Renderer` and, when run, open a
+**native Vulkan window**, so the live image is a desktop window, not an embedded frame. The figures
+here are captures of that window, taken by the docs capture pipeline from *these* transcript files
+(`capture="native-window"`), so they are the real frame and not a synthesized still. Where an entry
+carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
+`native-screenshot` backdoor command (with `--with-playwright`).
+
+### openxr_eye_intersection
+
+A white wire cube at the closest-approach midpoint of the two real
 HTC eye rays, with a 3 cm maximum gap and explicit LOCAL-to-world conversion. A translated,
 30-degree-yaw world origin and a hold control make coordinate mistakes visible when you move your
 head. The EXT combined ray is drawn separately because one ray cannot determine depth. macOS
@@ -1131,13 +1465,9 @@ HTC-capable OpenXR runtime. See [the coordinate walkthrough](openxr_eye_intersec
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
 
-These are self-contained scenes that build their own `Window` + `Renderer` and, when run, open a
-**native Vulkan window**, so the live image is a desktop window, not an embedded frame. This page
-ships no synthesized still of any of them: open the scene and run it yourself, and capture its window
-with a follow-on `native-screenshot` backdoor command (with `--with-playwright`). Where a walkthrough
-page already carries a real capture of the same scene, the entry links or shows it.
+### splat_sequence_streaming
 
-**splat_sequence_streaming** — 4D splat video: a sequence of PlayCanvas `.compressed.ply` files
+4D splat video: a sequence of PlayCanvas `.compressed.ply` files
 played as fifteen simultaneous sources arranged in a ring around the viewer, all decoded into **one**
 GPU buffer. The measurement that shaped it: on a real 15-file frame of 309,555 splats, reading each
 file and re-packing it took 59 ms against a 41.7 ms budget at 24 fps, while `readRaw` +
@@ -1151,20 +1481,34 @@ a matrix palette here. And `SplatTransport.advance()` returns false on the six d
 where the resolved source frame did not move, so scrubbing a shot costs nothing until it crosses a
 frame boundary. Needs your own frames: the box prints how to make them and stops if the directory is
 absent, rather than shipping somebody's capture as a fixture.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
 
-**gpu_state** — A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
+### gpu_state
+
+A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
 ping-ponged pair of device-local buffers and are never uploaded after frame one. A renderer box, a
 compute box whose force law is a live `stack.auto` StackSL slot you can retype while it runs, and a
 draw box reading the same allocation. The companion page is [GPU State](gpu_state.md).
+
+![40,000 GPU particles held on a noise field, warm where the field is fast and cool where it is slow, with density voids where it diverges](assets/gpu_state/particle-field.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn)
 
-**threebox** — A self-contained renderer + compute + draw particle system: a renderer box that owns
+### threebox
+
+A self-contained renderer + compute + draw particle system: a renderer box that owns
 the `Window`/`Renderer` and pumps the loop, a compute box that simulates 100k particles into a
 `buffer_reference` buffer it publishes as a prop, and a draw box that reads that buffer and renders.
+The capture below is this transcript instrumented on [Field probes](field_probes.md).
+
+![100k soft-quad particles drawn as a glowing galaxy in a native Vulkan window](assets/field_probes/particles-galaxy.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/threebox/metadata.edn)
 
-**four_pass_chain** — A **heterogeneous, multi-resolution** post-process chain in three boxes: a
+### four_pass_chain
+
+A **heterogeneous, multi-resolution** post-process chain in three boxes: a
 renderer, a grid of lit spheres, and one `addPassChain(...)` call that reduces the scene to a half and
 then a quarter, blurs the cheap small image with two aperture discs, and composites back at full
 resolution. Six passes, each with *its own* resolution — which is the thing the post stack could not
@@ -1181,32 +1525,69 @@ with assertions on the pixels.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/four_pass_chain/metadata.edn)
 
-**spin_glass** — A 2D Edwards–Anderson spin glass, Vulkan-compute accelerated. A renderer box, a
+### aperture_playground
+
+The same multi-resolution idea as `four_pass_chain`, taken apart into eight boxes you
+can edit one at a time: a renderer, a full-resolution `RGBA16F` source of lines and point sprites, a
+½ and a ¼ reduction, two circular-aperture filters (4/10 px, then 24 px), a screen composite, and a
+last column of analytic point sprites. One shader pair and at most one resource per box, so editing
+a shader and re-executing *that* box is the whole edit loop, and the two reduction helpers are
+nested inside the source box with their shaders still visible rather than hidden behind it.
+
+Two things in it are the reason to read the code. The source's four channels are four **light
+bands**, at radii 0, 4, 10 and 24 px — which means alpha is carrying light rather than coverage, so
+every intermediate filter has to run with `blend = false` or the band is composited away; that is
+the mistake this file is shaped to make visible. And the last column computes the disc-and-aperture
+overlap *analytically*, with no texture and no blur pass at all, so the filtered columns beside it
+have something exact to be wrong against. The composite's `sharp / blur / guide` mix is one shared
+`Vec4` the paint box also writes, so it is a number to edit rather than a pipeline to rebuild. The
+renderer is on the ordinary launch/stop controls, and
+[Aperture playground](aperture_playground.md) is the walkthrough.
+
+![Four rows of lines and discs, progressively broader and dimmer from top to bottom, rendered through Field's editable aperture passes; an analytic sprite column is on the right](assets/aperture_playground/aperture.png)
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/aperture_playground/metadata.edn)
+
+### spin_glass
+
+A 2D Edwards–Anderson spin glass, Vulkan-compute accelerated. A renderer box, a
 "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with
 cosine simulated annealing, updating in-place buffers), a "measure" compute box (probes
 `vec2(spin, energy)` per site so the stats card's x-mean is the magnetization and y-mean the energy
 per spin), and a "lattice view" draw box whose fragment shader colours each cell. Demonstrates a
 `renderer → update → measure → view` publish/read chain and a two-dispatch red-black update with a
 `computeMemoryBarrier` between passes.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/spin_glass/metadata.edn)
 
-**recstl_playground** — A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a
+### recstl_playground
+
+A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a
 hackable `#rectsl` snippet, and transport controls (play / loop / speed / time-scrub) published in
 the box's output area. Edit the `rectsl` string and re-run to change it live.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/recstl_playground/metadata.edn)
 
-**rectsl_dataviz** — A loadable demo of the RectSL data-visualization family: a viridis colour-bar
+### rectsl_dataviz
+
+A loadable demo of the RectSL data-visualization family: a viridis colour-bar
 legend built with `array` + `colormap`, and a bar chart whose heights and colours are both bound to a
 numeric list via `data` / `normalize` / `bars`, animated in with a staggered eased `->alpha`.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_dataviz/metadata.edn)
 
-**rectsl_plot_axes** — A loadable demo of the RectSL plotting layer: a shared coordinate `->domain` +
+### rectsl_plot_axes
+
+A loadable demo of the RectSL plotting layer: a shared coordinate `->domain` +
 `->frame` with `axes` (rules, nice-number ticks, numeric labels drawn as rect numerals, gridlines) and
 three series overlaid in the one domain (an `area`, a `line`, and `points`) plus a `colorbar` and a
 discrete swatch `legend`.
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_plot_axes/metadata.edn)
 
-**rectsl_musicality** — A RectSL scene on a musical clock, and nothing in it is written in seconds:
+### rectsl_musicality
+
+A RectSL scene on a musical clock, and nothing in it is written in seconds:
 the wall declares `->tempo 120` and `->beats-per-cycle 4`, and the tracks are written in
 mini-notation. The identity it demonstrates: a RectSL track is `sample(t)`
 and a pattern is `events(arc)`, both pure functions of time, so a pattern *is* a track, and a pattern
@@ -1214,10 +1595,15 @@ event carries an onset and a real duration, so an event *is* a life window. `pat
 by rhythm instead of by ordinal: it spends its subdivision on *when*, where `strip` spends it on
 *where*. A kick on `"bd*4"` drops in on an ease-out and fades; hats are a Euclidean 5-in-16 ring;
 `->every` keeps both versions of a track and chooses per sample. See the *Musicality* section of
-[RectSL examples](rectsl_examples.md) for the same program with figures.
+[RectSL examples](rectsl_examples.md) for the same program as video, where the rhythm is legible.
+
+![One frame of the scene: five mint dashes of the sixteen-slot hat ring, caught part-way through the turn a saw drives, a salmon square kick mid-fall, and the score strip as a blue rule along the bottom](assets/rectsl/rectsl-musicality-four-to-the-floor.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_musicality/metadata.edn)
 
-**rectsl_sdf_live** — The drawn counterpart to `rectsl_glsl_sdf`: the same lowering, but the emitted
+### rectsl_sdf_live
+
+The drawn counterpart to `rectsl_glsl_sdf`: the same lowering, but the emitted
 `scene()` goes into a generated fullscreen-triangle pipeline and is drawn per pixel, so the trade
 becomes visible. Distance buys outlines and glows at any width, `smin` blending *between* rectangles,
 boolean ops, per-pixel normals and sub-frame motion blur, in exchange for fill, material and z
@@ -1232,7 +1618,9 @@ require version 140 or higher": a message about nothing. Hence `fragmentSource`.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_sdf_live/metadata.edn)
 
-**imgui_vr_panel** — [Dear ImGui as an in-VR panel](imgui_vr_panel.md), in four working lines on top
+### imgui_vr_panel
+
+[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in four working lines on top
 of the renderer box: a side-by-side stereo target, the demo panel, and a mouse-driven mock controller.
 The ImGui frame goes into a 2048×2048 render-to-texture, onto a world-space quad 1.5 m out, rendered
 once per eye, so the panel has real stereo depth rather than being pasted flat, and the packed
@@ -1244,7 +1632,9 @@ transcript does not exercise.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/imgui_vr_panel/metadata.edn)
 
-**external_browser_surface_macos_smoke** — The receiver half of a web UI on a VR texture, exercised
+### external_browser_surface_macos_smoke
+
+The receiver half of a web UI on a VR texture, exercised
 against real macOS GPU objects: an IOSurface-backed render target becomes a Mach send right, is
 looked up through the same port path an Electron producer must use, imported through
 `VK_EXT_metal_objects`, and copied into a stable sampled image. The box reads that resident image
@@ -1253,7 +1643,9 @@ CI compiles the graph on every OS; the tracked backdoor replay is the live macOS
 integration probe rather than a welcome-screen starting point, so no materialized document is
 offered here.
 
-**external_browser_surface_linux_smoke** — The Linux receiver and transport proof: a real dma-buf
+### external_browser_surface_linux_smoke
+
+The Linux receiver and transport proof: a real dma-buf
 crosses processes with SCM_RIGHTS, keeps its DRM modifier and per-plane layout, imports into Vulkan,
 and is copied into Field's stable resident texture before its lease is released. It also exercises
 the opt-in CPU bitmap fallback used while Chromium's Linux shared-texture export can announce an
@@ -1261,7 +1653,9 @@ unfilled buffer. CI compiles the graph everywhere; the live replay belongs on a 
 Like the macOS half it is an integration probe rather than a starting point, so no materialized
 document is offered.
 
-**field_ui_browser_texture** — The end-to-end version: a hidden Electron window opens this Field
+### field_ui_browser_texture
+
+The end-to-end version: a hidden Electron window opens this Field
 document, emits Chromium's accelerated offscreen `paint` textures, and transfers their IOSurfaces
 to Field as Mach rights. Field imports each image into Vulkan, copies it into a stable sampled
 texture, draws that texture on a full-window mesh, and only then releases Electron's paint lease.
@@ -1276,16 +1670,22 @@ renderer box first, then the panel box.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/field_ui_browser_texture/metadata.edn)
 
-**youtube_mouse_keyboard_browser** — The desktop interaction proof: a full YouTube watch page
+### youtube_mouse_keyboard_browser
+
+The desktop interaction proof: a full YouTube watch page
 rendered directly into a matching 1280×720 native Field window. This path does not synthesize a VR
 controller. GLFW mouse motion, buttons and wheel are mapped across the aspect-identical texture into
 Chromium CSS pixels; key up/down, modifiers and text input come from the same physical keyboard.
 That makes the EU consent controls, search field and player usable exactly as ordinary browser UI,
 while Electron continues to play page audio.
 
+![A complete live YouTube watch page rendered into a native Field Vulkan window](assets/puppet_browser/youtube-desktop.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn)
 
-**youtube_kaleidoscope** — The proof that the browser texture is ordinary native graphics data,
+### youtube_kaleidoscope
+
+The proof that the browser texture is ordinary native graphics data,
 not a rectangular desktop-share layer. The transcript accepts the EU consent page and starts the
 real YouTube `HTMLVideoElement`, then feeds the fully composited 1280×720 tab to 224 independently
 animated Vulkan triangles. Each shard rotates and drifts in the vertex stage; its fragment stage
@@ -1295,46 +1695,73 @@ considers the hidden tab audible.
 
 ![A live YouTube page folded and colour-separated across 224 animated triangular Vulkan shards](assets/puppet_browser/youtube-kaleidoscope.png)
 
-[How it works](puppet_browser.md) ·
+Walkthrough: [Chromium as a native Field surface](puppet_browser.md).
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_kaleidoscope/metadata.edn)
 
-**youtube_vr_browser** — The usable layer built on that transport: a full YouTube watch page, not
+### youtube_vr_browser
+
+The usable layer built on that transport: a full YouTube watch page, not
 an embed or screenshot, rendered at 1280×720 onto a 1.6 m × 0.9 m quad 1.7 m ahead. It is rendered
 once per eye at real stereo depth. The controller ray supplies hover and trigger clicks for the EU
 consent flow and player controls; thumbstick or trackpad scrolls, and the physical keyboard can type
 into Chromium. Electron continues to play the page's audio. Without a headset the desktop window
 shows the same side-by-side scene and its mouse supplies the controller ray.
 
+![A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window](assets/puppet_browser/youtube-stereo.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_vr_browser/metadata.edn)
 
-**path_tracing_camera** — A keyboard-controlled perspective camera with subpixel antialiasing
+### path_tracing_camera
+
+A keyboard-controlled perspective camera with subpixel antialiasing
 and thin-lens depth of field. The middle sphere stays sharp while the nearer and farther spheres
 blur; focus follows the camera target unless a distance is supplied.
 
+![A sharp gold sphere at the focus plane between a blurred near red sphere and distant blue sphere, over a checkerboard](assets/path_tracing/camera.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_camera/metadata.edn)
 
-**path_tracing_materials** — Plastic, polished gold and rough metal under a sunset environment.
+### path_tracing_materials
+
+Plastic, polished gold and rough metal under a sunset environment.
 The [path tracer](path_tracing.md) accumulates into a render-to-texture target and uses a separate
 pass to put it on screen.
 
+![Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by the compute path tracer](assets/path_tracing/materials.png)
+
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_materials/metadata.edn)
 
-**path_tracing_glass** — Clear, absorbing and frosted glass spheres, plus a thin blue pane, over
+### path_tracing_glass
+
+Clear, absorbing and frosted glass spheres, plus a thin blue pane, over
 a checkerboard and striped background. Shows the difference between solid refraction and thin glass.
+
+![Clear, green absorbing and frosted glass spheres beside a thin blue pane, over a checkerboard and striped background](assets/path_tracing/glass.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_glass/metadata.edn)
 
-**path_tracing_gltf** — Imports the textured Toy Car GLB with its hierarchy and PBR materials, fits
+### path_tracing_gltf
+
+Imports the textured Toy Car GLB with its hierarchy and PBR materials, fits
 the camera to its bounds, and lights it with a hidden sunset environment.
+
+![Textured Toy Car imported from GLB and path traced on a grey floor with hidden sunset environment lighting](assets/path_tracing/gltf.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_gltf/metadata.edn)
 
-**path_tracing_hidden_environment** — Keeps the environment's illumination and reflections while
+### path_tracing_hidden_environment
+
+Keeps the environment's illumination and reflections while
 primary camera rays see a black background. The same output can carry transparent coverage for compositing.
+
+![The sunset environment illuminates and reflects in three PBR spheres while camera-visible sky pixels are black](assets/path_tracing/hidden_environment.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn)
 
-**path_tracing_material_shader_check** — Exercises editable material shaders, includes and reflected
+### path_tracing_material_shader_check
+
+Exercises editable material shaders, includes and reflected
 push constants. An intentional shader error preserves the last valid pipeline; a successful reload
 resets accumulation and produces a PASS marker during live execution.
 
@@ -1344,7 +1771,9 @@ The three below end at the same tracer and start somewhere else in Field, so eac
 subsystems the others do not; [Chains Across Subsystems](chain_polytope_render.md) is where they are
 walked through.
 
-**polytope_path_trace_lineage** — Bevel of the dodecahedron, traced with its materials read out of
+### polytope_path_trace_lineage
+
+Bevel of the dodecahedron, traced with its materials read out of
 its lineage. Each of the 62 faces descends from exactly one element of the seed, so the rank of that
 element picks gold, thin glass or plastic, and the three groups come out 12, 30 and 20: the
 dodecahedron's own faces, edges and vertices. See
@@ -1352,7 +1781,9 @@ dodecahedron's own faces, edges and vertices. See
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn)
 
-**polytope_manifold_path_trace** — The same polytope through the Boolean layer: welded into a
+### polytope_manifold_path_trace
+
+The same polytope through the Boolean layer: welded into a
 Manifold solid, eroded by a ball and subtracted from itself into a wall of constant thickness, cut
 open by a plane, then traced. Genus, volume and watertightness are each measured twice, once by
 Manifold and once by Field's own mesh code, and the shell's volume is checked against area times
@@ -1360,7 +1791,9 @@ thickness.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn)
 
-**physics_manifold_path_trace** — A 14 × 14 SimdVerlet cloth drapes over a sphere collider, and each
+### physics_manifold_path_trace
+
+A 14 × 14 SimdVerlet cloth drapes over a sphere collider, and each
 of its 364 distance constraints becomes a rod: the convex hull of a ball at each end, which is a
 capsule needing no orientation arithmetic. One batched union welds them, and the genus of the result
 has to equal the sheet's 169 quads, which the box checks and says in words. See
@@ -1368,7 +1801,9 @@ has to equal the sheet's 169 quads, which the box checks and says in words. See
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/physics_manifold_path_trace/metadata.edn)
 
-**pattern_particles** — Four boxes and the whole chain from a rhythm to a GPU push constant.
+### pattern_particles
+
+Four boxes and the whole chain from a rhythm to a GPU push constant.
 `patSynth` schedules `pat("bd*4, ~ 52 ~ 52, hh*16")` block by block on the audio seam, a `BandSplit`
 of four `Biquad` band-passes measures what comes out, the four numbers become four push-constant
 floats, and 24,000 particles in four rings follow them, one band each. The audio box pulls the bank
@@ -1377,7 +1812,9 @@ output device. See [the walkthrough](chain_pattern_particles.md).
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_particles/metadata.edn)
 
-**life3d_manifold_path_trace** — `LIFE3D_BLOB` for eight generations, then the question a volume of
+### life3d_manifold_path_trace
+
+`LIFE3D_BLOB` for eight generations, then the question a volume of
 ones and zeros cannot answer for itself: how many separate things are left. Field's marching cubes
 and Manifold's level set both march the same density field, disagree about the genus, and the
 disagreement is the finding — `decompose()` returns 48 independent solids whose volumes sum exactly
@@ -1387,7 +1824,9 @@ each way, because the count is a property of the surface and not only of the aut
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn)
 
-**rectsl_spacetime_path_trace** — A RectSL animation read as a solid object. The scene's signed
+### rectsl_spacetime_path_trace
+
+A RectSL animation read as a solid object. The scene's signed
 distance over (x, y, time) is sampled slice by slice, one autodiff tape each, handed to both marchers
 through `sampledField3D`, and traced: the swept bar becomes a twisted ribbon and the growing square a
 wedge, coloured along the time axis. It also measures what each marcher does where the volume runs
@@ -1405,10 +1844,19 @@ nothing to draw, the other is a child box that gets its renderer from a parent i
 They are in the corpus because they are the two halves of the graphics-topology rule, and an agent
 composing a new scene needs both; see `dev_docs/agents/transcripts/README.md`.
 
-**graphics_renderer_launch** — The bare parent: open a `Window`, build a `Renderer`, pump the loop.
+### graphics_renderer_launch
+
+The bare parent: open a `Window`, build a `Renderer`, pump the loop.
 Nothing is drawn. Replay it when you want a renderer for boxes you are about to write, then wire
 those boxes beneath it so they can reach it through graph context.
 
-**afield_four_traditional_triangle** — The other half: a single draw box with no renderer of its own,
+### afield_four_traditional_triangle
+
+The other half: a single draw box with no renderer of its own,
 which calls `fromContext()` and expects an `agent_graphics_context` parent to have supplied one.
-Replayed alone it has nothing to draw into, which is the rule it exists to demonstrate.
+Replayed alone it has nothing to draw into, which is the rule it exists to demonstrate. The figure is
+this same box *given* that parent, which is how the
+[afield.four graphics walkthrough](afield_four_graphics.md) opens: the docs runner supplies the
+context, and one triangle arrives.
+
+![A right triangle filling a native Vulkan window against black, filled with a smooth interpolated gradient from deep blue at its lower-left corner to green at its upper-right](assets/afield_four_graphics/00-traditional-triangle.png)
