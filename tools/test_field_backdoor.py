@@ -659,6 +659,123 @@ class BackdoorLiveCodingStateTests(unittest.TestCase):
         self.assertEqual(sent[0][0], "set-rect")
 
 
+#: The `output` event a live Field on port 8802 emitted on 2026-09-14 for a box whose
+#: `code` was `val x: Int = "this is not an Int"`. Copied verbatim from the reproduction
+#: in `dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md` rather than invented, because the
+#: whole point of these tests is that the packet carrying the diagnostic was already
+#: arriving and the `run` branch was not reading it.
+COMPILE_ERROR_EVENT = {
+    "seq": 35,
+    "messageName": "exec_45b94fbcf59d449fa6a7f95021f53483",
+    "name": "output",
+    "originalName": "output",
+    "payload": {
+        "uid": "box",
+        "line": 1,
+        "html": "Initializer type mismatch: expected &#39;Int&#39;, actual &#39;String&#39;.",
+        "kind": "error",
+        "frame": 30058,
+        "startColumn": 12,
+        "endLine": 1,
+        "endColumn": 13,
+    },
+    "replyContext": {"uid": "box", "command": "run"},
+    "uid": "box",
+    "kind": "error",
+}
+
+
+class ExecutionTruthfulnessTests(unittest.TestCase):
+    """`run` / `launch` / `continue` must not report success for a box that failed.
+
+    Before 2026-09-14 all three computed `ok = not timed_out` and never looked at the
+    events they had just collected, so a box with a hard Kotlin compile error returned
+    `ok: true`, `running: false`, process exit 0 -- while the diagnostic sat unread in
+    the same result's `events`. `action` (`execution_errors`) and `wait-output`
+    (`_execution_error_event`) already graded themselves on exactly these packets.
+    """
+
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.05, logger=_Logger())
+        self.client.boxes["box"] = {"uid": "box", "runningStrands": {}}
+
+    def dispatch(self, command: str, *, events: list[dict], running: bool = False) -> dict:
+        from tools.field_backdoor import dispatch_command
+
+        async def fake(uid: str, *, property_name: str, value, timeout: float):
+            for event in events:
+                self.client.event_log.append(event)
+                self.client._apply_event(event)
+            data = {"uid": uid, "property": property_name, "codeLength": 63, "running": running}
+            return data, events, False
+
+        self.client.run_box = fake  # type: ignore[method-assign]
+        self.client.launch_box = fake  # type: ignore[method-assign]
+        self.client.continue_box = fake  # type: ignore[method-assign]
+        return asyncio.run(dispatch_command(self.client, parse_command(command), command))
+
+    def test_run_reports_failure_for_a_box_that_did_not_compile(self) -> None:
+        result = self.dispatch("run box", events=[COMPILE_ERROR_EVENT])
+
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["timedOut"])
+        self.assertIn("Initializer type mismatch", " ".join(result["data"]["errors"]))
+        # `data["error"]` is the single string the two harnesses print (`run_field_tests`'s
+        # `collect_execution_problems`, `docs_hooks`'s `require_diagnostic` path).
+        self.assertIn("Initializer type mismatch", result["data"]["error"])
+
+    def test_launch_reports_failure_for_a_box_that_did_not_compile(self) -> None:
+        result = self.dispatch("launch box", events=[COMPILE_ERROR_EVENT])
+        self.assertFalse(result["ok"])
+        self.assertIn("Initializer type mismatch", " ".join(result["data"]["errors"]))
+
+    def test_continue_reports_failure_for_a_box_that_did_not_compile(self) -> None:
+        result = self.dispatch("continue box", events=[COMPILE_ERROR_EVENT])
+        self.assertFalse(result["ok"])
+
+    def test_a_clean_run_is_still_ok(self) -> None:
+        output = {
+            "seq": 1,
+            "name": "set-output",
+            "messageName": "set-output",
+            "uid": "box",
+            "payload": {"uid": "box", "channel": "default", "value": "<svg/>"},
+        }
+        result = self.dispatch("run box", events=[output])
+
+        self.assertTrue(result["ok"])
+        self.assertNotIn("errors", result["data"])
+
+    def test_a_cleared_error_is_not_a_failure(self) -> None:
+        """Field clears a stale marker with an empty error at line -1.
+
+        DatalogExecution sends one on every success and ClojureExecution now does too, so
+        reading it as a failure would fail every box that merely ran cleanly.
+        """
+        clear = {
+            "seq": 1,
+            "name": "output",
+            "messageName": "output",
+            "uid": "box",
+            "payload": {"uid": "box", "kind": "error", "line": -1, "property": "code", "html": ""},
+        }
+        result = self.dispatch("run box", events=[clear])
+        self.assertTrue(result["ok"])
+
+    def test_no_fail_on_error_is_the_documented_escape_hatch(self) -> None:
+        """The five smoke tests with `allowExecutionErrors: true` need a way to opt out.
+
+        Same flag name and same meaning as `wait-output --no-fail-on-error`, which has had
+        it since the docs-capture silent-timeout fix.
+        """
+        result = self.dispatch("run box --no-fail-on-error", events=[COMPILE_ERROR_EVENT])
+
+        self.assertTrue(result["ok"])
+        # Opting out of the verdict must not suppress the evidence.
+        self.assertIn("Initializer type mismatch", " ".join(result["data"]["errors"]))
+        self.assertTrue(result["data"]["executionErrorsIgnored"])
+
+
 class MacroAliasTests(unittest.TestCase):
     def test_macro_and_transcript_are_exact_parser_aliases(self) -> None:
         macro = parse_command("macro run demo --scope project --project-name example")
