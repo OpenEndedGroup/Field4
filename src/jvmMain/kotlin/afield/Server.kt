@@ -5531,7 +5531,8 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  * The reason a read is not a lesser exposure than a write is [installFieldApiCors]. `anyHost()`
  * plus `allowMethod(Get)` makes every read's *response body* readable cross-origin, so the
  * attacker does not merely reach the route, it gets the answer: `/api/instance-info` leaks the
- * path of your work, `/api/welcome-changelog` your commit messages, `/api/source` and
+ * path of your checkout **and**, since `FieldInstanceInfo` grew its fourth field, the path of the
+ * workspace your documents live in; `/api/welcome-changelog` your commit messages, `/api/source` and
  * `/api/workspace-search` source text. Hardening here had been organised around mutation — the
  * CORS census counts mutating routes, this interceptor skipped reads — so "unguarded" was the
  * default for reads and nothing recorded the decision that a given read did not need a guard.

@@ -76,6 +76,24 @@ So the defences that matter are the ones that ask *which website*.
 
 This page used to describe that route as returning "the absolute path of your checkout",
 singular. That was true of the route when the sentence was written and is not true of it now.
+So rather than describe the payload again, here it is — 246 bytes, `curl`ed from a Field started
+out of this checkout, with only the home directory rewritten to `~`:
+
+```diffstatic {data-lang=json}
+{
+  "repoRoot": "~/field4-worktrees/2026-09-13-3-instance-info-exposure-docs",
+  "startedAtEpochMs": 1789290604492,
+  "pid": 47573,
+  "workspace": "~/field4-worktrees/2026-09-13-3-instance-info-exposure-docs/build/field-automation-workspace"
+}
+```
+
+One thing about that capture is unrepresentative, and it is the interesting key. This Field was
+launched with an explicit throwaway `--workspace` inside the checkout, so `workspace` points
+there. Launched the ordinary way, with no `--workspace`, the same install resolves
+`~/Documents/AFieldWorkspace` — `./field.sh --print-workspace` says so — and that is the string
+the route hands out on a normal day. So the shape to read off the capture is "an absolute
+filesystem path to wherever this server keeps your documents", not this particular directory.
 
 Four keys. Three of them describe the *program* — which checkout is running, when it booted,
 which process it is — and they are there for a reason: an agent or a test that reuses a healthy
@@ -86,14 +104,19 @@ this server resolves document names against, which on an ordinary install is a f
 your documents, and it was added so that a client attaching to a server it did not launch could
 find out where that server's documents live — a real problem that it really solves.
 
-Two claims here, and only one of them is measured on this page:
+Two claims sit close together here and are worth keeping apart, because they are established
+differently:
 
-- **The workspace path is in the response body.** Measured — see the capture below.
-- **A website you have open can read that body.** That follows from the CORS configuration
-  quoted in Defence 1: `anyHost()` together with `allowMethod(HttpMethod.Get)` means the browser
-  hands a foreign origin the *body*, not merely the status code. It is an inference from
-  configuration here, not a fresh measurement; the probe table further down measured the older,
-  checkout-path-only version of this same route.
+- **The workspace path is in the response body.** Measured — it is the capture above, and the
+  `pid` in it matched the process actually holding the port, so the answer came from the Field
+  that was asked.
+- **A page on another origin is handed that body, not just a status code.** Also measured, and
+  one step short of a browser: the same request with `Origin: https://evil.example` and
+  `Sec-Fetch-Mode: cors` came back **`200`** with **`Access-Control-Allow-Origin: *`** and
+  `Content-Length: 246`. That header is the browser's instruction to give the response to the
+  calling page, and it is there because of the CORS block quoted under Defence 1. What was *not*
+  measured for this page is a real `fetch` from a real foreign origin; the probe table further
+  down did that, against the older, checkout-path-only version of the same route.
 
 **Why this drifted silently, which is the part worth carrying elsewhere.** Field's route census,
 `ServerSurfaceLedgerTest`, enumerates **routes**, and `GET /api/instance-info` is one of its
