@@ -7,6 +7,31 @@ import org.msgpack.value.Value
 import org.msgpack.value.ValueType
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Typed decoder for the versioned note document a multi-instrument transcription job leaves behind.
+ *
+ * `musicTranscriptionAnalysis` in `AnalysisOperations.kt` builds the request, and three accessors
+ * beside it locate what came back: performance MIDI, optional beat-quantized MIDI, and the
+ * MessagePack event document. This file reads the last of those.
+ * `decodeMusicTranscriptionMessagePack` turns its bytes into a [MusicTranscription], and
+ * `FieldAudioClient.musicTranscription` is the one-call path from a finished [AnalysisResult].
+ *
+ * MessagePack rather than JSON keeps the note times binary, so an onset reaches the JVM as the
+ * float64 the worker wrote. The decoder rejects a payload whose `format` is not
+ * `field.audio.music-transcription.v1`, rejects trailing data after the root map, and range-checks
+ * every note: non-negative onset, offset at or after onset, MIDI pitch inside 0..127. A malformed
+ * artifact fails at the decode rather than at the first drawing that reads it.
+ *
+ * Most of the document is optional. `MusicTranscription.beatGrid` is null when the artifact carries
+ * no `beat_grid` or a nil one, and inside a grid `beatsPerBar`, `onsetDelaySeconds` and
+ * `beatSubdivision` are each independently absent. The four provenance fields come from the
+ * artifact's `metadata` map and are null when the worker recorded nothing there. `instrument` is a
+ * string naming one of the worker's own instrument groups, which is a model's hypothesis about a
+ * mixed recording and not a reading of what played it. See
+ * [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) for how far that has
+ * been checked against a known source.
+ */
+
 /** One source-aligned note recovered by a multi-instrument transcription worker. */
 data class MusicTranscriptionNote(
     val startSeconds: Double,

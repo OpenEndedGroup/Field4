@@ -241,7 +241,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 |  |  |
 | [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 |  | [Springs, dampers, and a character with mass](../movement_examples.md) |
-| [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 |  | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
+| [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 | Typed decoder for the versioned note document a multi-instrument transcription job leaves behind. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
 | [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
@@ -345,7 +345,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 |  |  |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Spectral examples](../spectral_examples.md) |
 | [SpectralEmbeddingProjection.kt](audio-ai.md#spectralembeddingprojection-kt) | Audio AI | 41 | 9 | Spectral embedding: decode, pool, and project the short-time spectral frames stored in an analysis artifact. | [Short-time spectral spaces](../audio_ai_spectral_embeddings.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [SpeechEmbeddingMds.kt](audio-ai.md#speechembeddingmds-kt) | Audio AI | 54 | 12 |  |  |
+| [SpeechEmbeddingMds.kt](audio-ai.md#speechembeddingmds-kt) | Audio AI | 54 | 12 | Speech embedding: decode, pool, and project the learned speech frames stored in an analysis artifact. |  |
 | [SpeechEmbeddingVisualization.kt](audio-ai.md#speechembeddingvisualization-kt) | Audio AI | 6 | 6 | Phase portrait renderers for speech and spectral embedding spaces, synchronized with a shared audio cursor. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SplatSequence.kt](renderers.md#splatsequence-kt) | Renderers | 28 | 22 | Playing a splat capture over time: the frame reader, the play head, and the box controls that drive it. |  |
 | [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
@@ -373,7 +373,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Types.kt](languages.md#types-kt) | Languages | 29 | 3 | The types FieldML infers, and the two ways one is printed back to a reader. |  |
 | [typography.kt](graphics.md#typography-kt) | Graphics | 103 | 73 | Text as geometry: a string becomes contours, and from there everything Field already does to geometry applies to letters. | [Typography as geometry — a string becomes contours](../typography_examples.md), [Datalog in a box](../datalog.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | [typography_field.kt](graphics.md#typography-field-kt) | Graphics | 31 | 24 | The bridges out of a `TextLayout` and into the four families Field already has. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
-| [UnderfitOperations.kt](audio-ai.md#underfitoperations-kt) | Audio AI | 22 | 11 |  | [Field Audio AI](../field_audio_ai.md) |
+| [UnderfitOperations.kt](audio-ai.md#underfitoperations-kt) | Audio AI | 22 | 11 | Request builder for source-conditioned Stable Audio 3 generation, with LoRAs named by digest. | [Field Audio AI](../field_audio_ai.md) |
 | [units.kt](math.md#units-kt) | Math | 47 | 13 | Physical units for Field's spreadsheet-style numbers. |  |
 | [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [DataFrames in a Box](../dataframe.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [Visualizers.kt](synthesis.md#visualizers-kt) | Synthesis | 52 | 3 | How to look at the audio. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
