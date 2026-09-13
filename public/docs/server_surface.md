@@ -64,10 +64,54 @@ A Chromium page served from `http://127.0.0.1:9493` is a genuinely foreign origi
 there:
 
 - `GET /api/instance-info` and `GET /api/welcome-changelog` are **readable**. The first
-  returns the absolute path of your checkout; the second returns your recent commit messages.
+  returns **four** things, not one: the absolute path of your checkout, the absolute path of
+  the **workspace your documents live in**, the moment the server started, and its process id
+  (`Server.kt:3599#get("/api/instance-info") {`). The second returns your recent commit
+  messages.
 - `POST /api/shutdown-instance` **stops the server**.
 
 So the defences that matter are the ones that ask *which website*.
+
+### What `GET /api/instance-info` actually returns
+
+This page used to describe that route as returning "the absolute path of your checkout",
+singular. That was true of the route when the sentence was written and is not true of it now.
+
+Four keys. Three of them describe the *program* — which checkout is running, when it booted,
+which process it is — and they are there for a reason: an agent or a test that reuses a healthy
+Field already listening on a port has to be able to tell it apart from a sibling worktree's JVM,
+and `/health` cannot. The fourth key, `workspace`
+(`Server.kt:3608#workspace = displayWorkspacePath(home),`), describes *you*. It is the directory
+this server resolves document names against, which on an ordinary install is a folder inside
+your documents, and it was added so that a client attaching to a server it did not launch could
+find out where that server's documents live — a real problem that it really solves.
+
+Two claims here, and only one of them is measured on this page:
+
+- **The workspace path is in the response body.** Measured — see the capture below.
+- **A website you have open can read that body.** That follows from the CORS configuration
+  quoted in Defence 1: `anyHost()` together with `allowMethod(HttpMethod.Get)` means the browser
+  hands a foreign origin the *body*, not merely the status code. It is an inference from
+  configuration here, not a fresh measurement; the probe table further down measured the older,
+  checkout-path-only version of this same route.
+
+**Why this drifted silently, which is the part worth carrying elsewhere.** Field's route census,
+`ServerSurfaceLedgerTest`, enumerates **routes**, and `GET /api/instance-info` is one of its
+landmarks (`ServerSurfaceLedgerTest.kt:467#"GET /api/instance-info",`). A census of routes cannot
+see a new **key** appear inside a route's response: the door being counted did not change, only
+what gets handed through it. So the ledger stayed green, the route's own KDoc went on saying "the
+path of your work", and this page went on saying "the absolute path of your checkout" — three
+artifacts agreeing with each other and none of them agreeing with the payload. Anything policed
+by a list of endpoints has that blind spot, and closing it means pinning the *shape of the
+answer* and not just the existence of the question.
+
+**What is left to decide, which this page does not decide.** Reporting `workspace` is what makes
+"verify the workspace before you edit" a check that can fail; taking it away makes that check
+impossible again. Not answering cross-origin reads at all is the other end, and it is the end
+that costs a behaviour change to a running system. The choice between "keep the field, and accept
+that a page you visit can read the path to your documents" and "keep the field, but stop handing
+read bodies to foreign origins by default" belongs to whoever runs Field.
+`AFIELD_API_REQUIRE_SAME_SITE=1`, described under Defence 2, is the lever that exists today.
 
 ## Defence 1 — CORS, and the `anyHost()` that has to be there
 
@@ -121,7 +165,8 @@ through untouched, which is deliberate (a WebSocket upgrade is a `GET`, and so i
 ordinary page load) and is also why reads need saying separately:
 
 > A read is not a lesser exposure than a write. It is a different one. `GET /api/instance-info`
-> leaks the path of your work, `GET /api/welcome-changelog` leaks your commit messages, and
+> leaks the path of your checkout *and* the path of the workspace your documents live in,
+> `GET /api/welcome-changelog` leaks your commit messages, and
 > `GET /api/source` and `GET /api/workspace-search` reach source text. **33 of Field's 36 read
 > routes have no guard at all**, and the same-site switch does not cover them.
 
