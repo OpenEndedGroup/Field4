@@ -21,7 +21,7 @@ thirty edges and twenty vertices, and the picture is a drawing of the seed's own
 Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 [Fabricate demo assets](assets/fabricate_demo/ATTRIBUTION.md).
 
-## What crosses each hop, and what does not
+## What crosses each hop
 
 | hop | the call | what crosses | what stops here |
 | --- | --- | --- | --- |
@@ -170,8 +170,7 @@ a closed shell has two boundary components, two spheres give χ = 4, and *g* = (
 // Built and launched from dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml.
 ```
 
-The rim is the interesting part: its thickness is the same the whole way round, which is what
-distinguishes an erosion from a scale. The interior facets are rounded where the exterior ones are
+The rim has constant thickness — the same the whole way round, which distinguishes an erosion from a scale. The interior facets are rounded where the exterior ones are
 sharp, because eroding by a ball cannot reproduce a concave corner tighter than the ball.
 
 Two details of the last hop are worth copying:
