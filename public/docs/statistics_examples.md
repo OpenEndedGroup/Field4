@@ -1,4 +1,4 @@
-# Which of these signals actually depend on each other?
+# Measuring dependence between two signals
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Math](reference/math.md) and [Data](reference/data.md).*
@@ -42,7 +42,7 @@ reproduce published numbers.
 If you want the two-fence version of the dependence story next to the interpolants it grew out of,
 [Values Over Time](interpolants_examples.md) has it. This page is the family's home.
 
-## The boring half, and exactly how boring it is
+## Summary statistics
 
 `buildSummaryStats` takes any `Iterable<Double>` and hands back seventeen numbers.
 `SummaryStatsBuffer` wraps it in a synchronized, capped sliding window you can `add` to sample by
@@ -179,7 +179,7 @@ like this, bin it yourself.
 
 ## Six questions, six answers
 
-Now the interesting half. Every coefficient in `StatsDependence` takes two equal-length
+Every coefficient in `StatsDependence` takes two equal-length
 `DoubleArray`s and returns one number, and they are *not* interchangeable. Six shapes, drawn with
 every coefficient underneath, make the case:
 
@@ -283,7 +283,7 @@ where `y` is a perfect function of `x`, it reads 0.491; on the sine, 0.286. Lowe
 mean weaker dependence, it means less *linear* dependence. Use it to decide whether to keep
 looking, then use something else to describe what you found.
 
-!!! note "How `xi` handles a tied predictor"
+??? note "How `xi` handles a tied predictor"
 
     Chatterjee's estimator is only defined up to a *random* breaking of the ties among the `x`
     values, so on tied `x` it is a random variable rather than a number. Rather than pick a seed,
@@ -293,22 +293,21 @@ looking, then use something else to describe what you found.
 
     Two consequences. A **constant predictor reads 0**: for a single tie group the numerator's
     expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form is exactly
-    zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact (sweeping
-    `n` = 2..400, 54 values come back non-zero, the largest of them 2.2×10⁻¹⁶), so compare it
-    against a tolerance, not against `0.0`. And a quantised predictor (a bucketed index, an integer
+    zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact, so compare
+    it against a tolerance, not against `0.0`; `dev_docs/STATISTICS_MEASUREMENTS.md` has the sweep
+    that bound comes from. And a quantised predictor (a bucketed index, an integer
     control value, a thresholded signal) is answered correctly: heavy ties with a real relationship
     still read high (a ten-block staircase reads **0.891**), while heavy ties with no relationship
     read ~0.
 
     Inputs whose `x` values are all distinct are unaffected, bit for bit, so every number elsewhere
-    on this page is a tie-free case.
+    on this page is a tie-free case. Every other coefficient here refuses a constant outright:
+    `pearson`, `spearman` and `kendallTauB` return NaN, and `distanceCorrelation` returns 0.0.
 
-    **Recorded xi values on tied `x` from before 2026-07-30 are wrong.** X-ties then broke by input
-    index, which scored how nearly `y` was a function of the order the samples arrived in, so a
-    constant predictor read **0.970**; `dev_docs/stdlib_behaviour_changes.md` owns that history and
-    the `chatterjeeXi` KDoc points at it. Every other coefficient here refuses that input outright:
-    `pearson`, `spearman` and `kendallTauB` return NaN on a constant, and `distanceCorrelation`
-    returns 0.0.
+    **Recorded xi values on tied `x` from before 2026-07-30 are wrong**, not merely different:
+    x-ties then broke by input index, which scored how nearly `y` was a function of the order the
+    samples arrived in. `dev_docs/stdlib_behaviour_changes.md` owns that history and the
+    `chatterjeeXi` KDoc points at it.
 
 ## Is 0.193 big? Measuring the null yourself
 

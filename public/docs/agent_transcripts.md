@@ -558,7 +558,7 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 
 ### statistics_examples
 
-[Which of these signals actually depend on each other?](statistics_examples.md)
+[Measuring dependence between two signals](statistics_examples.md)
 as five independent boxes. *Summary* pins the three quantities `buildSummaryStats` makes easy to
 misread: MAD recomputed from scratch to show it is the unscaled median absolute deviation, the
 `sampleStdDev/populationStdDev` ratio against `sqrt(n/(n-1))` to show which of the two conventions the
