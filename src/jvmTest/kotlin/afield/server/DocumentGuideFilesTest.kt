@@ -56,6 +56,38 @@ class DocumentGuideFilesTest {
         } finally { root.deleteRecursively() }
     }
 
+    /**
+     * Every mutator refuses in a read-only session, with a writable control first.
+     *
+     * The control matters for the same reason it does in `ReadOnlyWriteSurfaceTest`: "no file
+     * appeared" passes just as happily against a writer that has stopped working. `patch` and
+     * `append` are asserted separately from `save` even though they delegate to it — their own
+     * guard is what stops them reading and recomputing contents before the refusal.
+     */
+    @Test
+    fun everyGuideMutatorRefusesInAReadOnlySession() {
+        val root = createTempDirectory("field-guides-readonly").toFile()
+        try {
+            val files = DocumentGuideFiles(root)
+            files.create("docs/HANDOFF.md", "# Handoff\n\nfirst\n", false)
+            val disk = root.resolve("docs/HANDOFF.md")
+            assertEquals("# Handoff\n\nfirst\n", disk.readText())
+            val patched = files.patch("docs/HANDOFF.md", files.read("docs/HANDOFF.md").revision, "first", "second", false)
+            assertEquals("# Handoff\n\nsecond\n", patched.contents)
+            files.append("docs/HANDOFF.md", patched.revision, "third\n", false)
+            assertEquals("# Handoff\n\nsecond\nthird\n", disk.readText())
+
+            val current = files.read("docs/HANDOFF.md")
+            assertFailsWith<IllegalStateException> { files.create("docs/NEW.md", "# New", true) }
+            assertFailsWith<IllegalStateException> { files.save(current.path, current.revision, "no", true) }
+            assertFailsWith<IllegalStateException> { files.patch(current.path, current.revision, "second", "no", true) }
+            assertFailsWith<IllegalStateException> { files.append(current.path, current.revision, "no", true) }
+            assertEquals(current.contents, disk.readText())
+            // No half-written temporary left behind by a refused write, either.
+            assertEquals(listOf("HANDOFF.md"), root.resolve("docs").listFiles()!!.map { it.name })
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun addingANoteNeverClobbersAndRespectsReadOnly() {
         val root = createTempDirectory("field-guides-create").toFile()
         try {
