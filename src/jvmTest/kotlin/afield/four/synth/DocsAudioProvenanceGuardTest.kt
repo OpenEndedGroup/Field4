@@ -34,10 +34,17 @@ class DocsAudioProvenanceGuardTest {
     /**
      * The corpus as it stands, pinned by count and by family.
      *
-     * These numbers are the audit's headline and the reason this file exists. Seven of seventeen are
-     * a DoughDSP primitive, and six of those come from [DoughDspSoundDocs], which never calls
-     * [patVoice] at all; that is the measurement that refutes the "every audio figure" claim. Three
-     * are Faust, which no producer in this package could have made before `sound_paths.md`.
+     * These numbers are the audit's headline and the reason this file exists. Eleven of the
+     * forty-three never touch [patVoice] — seven a DoughDSP primitive, one real Dirt-Samples,
+     * three a Faust program — and that minority is what refuted the "every audio figure in the
+     * documentation is `patVoice`" claim this file was written to check.
+     *
+     * The *majority* moved, though, and the direction is worth recording rather than just
+     * re-typing: it was 5 of 15 stand-in until `pattern_language.md` grew a mini-notation card per
+     * form of the notation, twenty-six clips of `patVoice` in one commit. So the stand-in is now
+     * 31 of 43, and `sound.md`'s section on this had to stop arguing that the stand-in is *not*
+     * what you hear on most of the site. A count pinned here and stated in prose there is exactly
+     * the pair that drifts, which is why the assertion names the page.
      */
     @Test
     fun `the published audio corpus is exactly what we think it is`() {
@@ -51,7 +58,7 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 5,
+            Origin.STAND_IN_SYNTH to 31,
             Origin.DIRT_SAMPLES to 1,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 7,
@@ -180,17 +187,20 @@ class DocsAudioProvenanceGuardTest {
         /**
          * How many `audio="…"` fences the docs publish.
          *
-         * Seventeen, across five pages: three on `pattern_language.md`, six on
-         * `dough_dsp_sound.md`, three on `sound.md`, three on `sound_paths.md` and two on
-         * `faust.md`. Pinned so a new clip cannot ship without a stated provenance.
+         * Forty-three, across five pages: **twenty-nine** on `pattern_language.md` (three scene
+         * clips plus one per mini-notation card), six on `dough_dsp_sound.md`, three on
+         * `sound.md`, three on `sound_paths.md` and two on `faust.md`. Pinned so a new clip
+         * cannot ship without a stated provenance.
          *
          * It was twelve until `sound_paths.md` published its one-buffer-three-paths comparison,
          * which is also where [Origin.FAUST] came from: a Faust program compiled at runtime is a
-         * fourth family, and before that page existed no published clip had ever been one. It
-         * became seventeen when `faust.md` got the two clips that make polyphony audible — the
-         * page had described a polyphonic instrument across ten subsections without ever letting
-         * the reader hear one. See [FaustPolySoundDocs].
+         * fourth family, and before that page existed no published clip had ever been one. Then
+         * fifteen until the mini-notation cards, which added twenty-six in one commit and are the
+         * reason this number is now large enough that a hand-count is no longer a check. The last
+         * two are `faust.md`'s, which made a polyphonic instrument audible on a page that had
+         * described one across ten subsections without ever letting the reader hear it. See
+         * [FaustPolySoundDocs].
          */
-        const val EXPECTED_FENCE_COUNT = 17
+        const val EXPECTED_FENCE_COUNT = 43
     }
 }

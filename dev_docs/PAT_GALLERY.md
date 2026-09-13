@@ -1,6 +1,6 @@
 # Pattern-language capture harnesses — piano rolls and `.wav`s
 
-Two headless harnesses prove the `pat(...)` surface documented in
+Four headless harnesses prove the `pat(...)` surface documented in
 [PATTERN_LANGUAGE.md](PATTERN_LANGUAGE.md). They follow the contract set by
 [DOUGH_DSP_PLOT_GALLERY.md](DOUGH_DSP_PLOT_GALLERY.md): pure CPU, no browser, no GPU, no Vulkan, no
 Field window, deterministic output, and a `FIELD_TEST` that renders to a temp dir and asserts real
@@ -10,12 +10,13 @@ correctness while writing no committed assets.
 | --- | --- | --- |
 | `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 11 piano rolls, **SVG** |
 | `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 8 stereo **`.wav`**s |
+| `afield.four.synth.PatMiniNotation` | `synth.pat.mini` | 26 mini-notation cards — a compact **SVG** roll *and* a **`.wav`** each |
 | `afield.four.synth.PatTranscriptionGallery` | `synth.pat.transcription` | 3 notated-vs-recovered overlays, **SVG** |
 
 ```
 # official pass/fail (starts a Field server, applies the JVM args):
 python3 tools/run_field_tests.py --id synth.pat.gallery --id synth.pat.sound \
-  --id synth.pat.transcription --port 9631
+  --id synth.pat.mini --id synth.pat.transcription --port 9631
 
 # regenerate the committed captures:
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
@@ -27,6 +28,21 @@ python3 tools/field_backdoor.py --port 9631 run-jvm-main \
 ```
 (`PAT_ROLL_DIR` / `PAT_SOUND_DIR` do the same thing, but the backdoor's JVM does not inherit your
 shell environment, so pass `--arg`.)
+
+`synth.pat.mini` is deliberately **not** in that regeneration list. Its SVGs are published straight
+into `public/docs/assets/pattern_language/mini/` and its `.wav`s are rendered by the docs build
+itself through the `audio-spec` fences on the page, so the way to refresh them is a scoped docs
+capture rather than a backdoor call:
+
+```
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=<free> \
+  uv run --project . --group docs python tools/build_zensical_docs.py --page pattern_language.md
+python3 tools/field_backdoor.py --port 9631 run-jvm-main \
+  afield.four.synth.PatMiniNotation --arg "$PWD/public/docs/assets/pattern_language/mini"
+```
+
+The second command is the one that rewrites the rolls; the first rewrites the audio. Passing
+`--arg --markdown` instead prints the page section — see *The mini-notation cards* below.
 
 ---
 
@@ -51,13 +67,24 @@ so the figure cannot contain a rectangle no event produced, and cannot silently 
 
 A lane whose atoms all parse as numbers is drawn on a **value axis**; anything else gets one row per
 distinct atom. Getting that wrong is visible rather than subtle: laid out by row, `rand()` reads as a
-smooth descending line, because rows are assigned in order of first appearance and a fresh random
-value appears at every step. The first draft of this gallery had exactly that bug and it was caught by
-looking at the figure.
+smooth descending line, because a fresh random value appears at every step and each one claims a new
+row. The first draft of this gallery had exactly that bug and it was caught by looking at the figure.
 
 `pan` is drawn as vertical **position** (top is left, bottom is right); every other parameter is drawn
 as rectangle height plus a polyline. A hard-left event under the height convention is an invisible
 sliver.
+
+**Rows are ordered by pitch, and colour is per instrument** (both added with the mini-notation
+cards, and both applied to every roll here). Row order used to be order of first appearance, which
+made an atom's height depend on where it happened to be written: `bd sd . hh hh hh` drew the kick
+above the hats, and the same music spelled `hh hh hh . bd sd` would have drawn it below.
+`orderAtoms` now sorts by the frequency the voice will actually play — MIDI numbers through
+`patMidiToHz`, named drums through `patDrumHz` — so high sits at the top and an instrument keeps one
+height across the whole page. `ATOM_COLORS` does the same for hue, and `checkAtomColorClaim`
+asserts the two-way correspondence against the drum map: two tokens drawn in different colours must
+get different `(frequency, waveform)` pairs, and two sharing a colour (`bd`/`kick`) must share a
+voice. A token the drum map has no voice for keeps its lane's colour, because a colour here is a
+claim about sound and `a b c` makes no such claim.
 
 ### Adding a roll
 
@@ -259,6 +286,95 @@ dot-grouping scenes). Open them; that is the point.
 | `pat-degrade-shuffle.wav` | `hh*16?0.35` over shuffled quarters — deterministic, but no two cycles alike |
 | `pat-swing-before-after.wav` | eight hats a cycle: two cycles dead straight, then two swung |
 | `pat-dot-grouping.wav` | five notes a cycle: two cycles of even fifths, then the same five grouped by a `.` |
+
+---
+
+## The mini-notation cards
+
+`PatMiniNotation` is the fourth harness and the odd one out: it is not a set of figures about the
+operator surface but a **primer on the notation**, one card per form, each with a compact roll and a
+clip of its own. It replaced a fourteen-row table of glosses on `pattern_language.md` — a table
+cannot show you that `{bd hh cp}%8` phases against the bar, or let you hear that `bd _ _ sd` and
+`bd@3 sd` are the same rhythm.
+
+`EXAMPLES` is the single source of truth: the same list produces the SVGs, the `.wav`s, the checks,
+**and the page's markdown** via `markdownSection()`. That last one is the point of the design. Each
+card names its asset stem three times, and hand-maintaining twenty-six of those is how a roll ends
+up captioned with its neighbour's notation — which nobody notices, because every figure is a
+plausible drum pattern. `PatMiniNotationDocsGuardTest` pins the committed region of the page (between
+two `<!-- BEGIN/END GENERATED -->` markers) to what the generator produces, asserts both files
+behind every card exist, rejects assets belonging to no example, and compares each committed SVG
+against a fresh render of *its own* id — so a roll swapped with its neighbour's fails even though
+both files are present and both are valid SVG.
+
+### The compact renderer
+
+`renderCompactSvg` exists because `renderSvg` is the wrong shape for one pattern: 1100px wide with a
+190px label gutter is right for nine lanes of comparison and useless in the page's 52rem content
+column, where it arrives scaled down with unreadable 9px labels. The compact form drops the gutter,
+puts each atom's name **inside its own rectangle** where it fits, and leans on the instrument colour
+otherwise. Two things it got wrong first, both caught by looking at the page rather than by a test:
+
+* the lane's source was drawn at the top-left *inside* the plot, where it printed directly over the
+  first event's bar in every two-lane figure. There is nowhere inside a plot that is reliably empty,
+  so the label now gets a strip of its own above the lane;
+* rows were ordered by first appearance — see *Lane layout* above.
+
+### The envelope is derived, not tuned
+
+One fixed envelope cannot serve a list running from `bd sd` to `hh*8?0.3`. `voiceFor` therefore
+scales the decay to the pattern's **shortest gap between consecutive strikes**, at a fifth of it, so
+that `patRenderStereo`'s `decay * 4` tail lands at four fifths of the gap and consecutive notes
+separate by construction.
+
+The first version scaled to the shortest *event arc* instead, and the difference was audible rather
+than theoretical: it gave `bd [sd sd]` a tail nearly twice its own note spacing, and three of that
+clip's six notes disappeared into their neighbours. Arc length and onset spacing are not the same
+number and only one of them is what the ear is resolving.
+
+Coincident onsets count once. `bd sd, hh*4` schedules twelve events over two cycles but **strikes
+eight times**, because the kick and a hat land together twice a cycle and no detector can pull them
+apart; `onsetTimes` is the distinct start times, and that is what the audio is compared against.
+
+### What is actually verified, and where the strict claim stops
+
+Every card: it parses, draws at least one event, draws nothing outside its plotted window, one
+rectangle per event plus one backdrop per lane plus one background, a real RIFF/WAVE file,
+non-silent, all-finite, the expected duration. Then two claims about the audio, of which the first
+is the one a docs figure really rests on:
+
+* **precision, always strict** — nothing is *heard* that the pattern never scheduled. A clip with a
+  note the roll does not draw is the single failure a reader cannot catch by looking. The tolerance
+  is the detector's own bias: a window whose level crossed is reported by its start, so an onset
+  lands up to one full window early and never late.
+* **recall, strict above three analysis windows** — `RESOLVABLE_GAP_WINDOWS`. This boundary was
+  measured on this catalogue, not chosen. Every entry whose gap is an eighth note at `cps = 2`
+  (62 ms, five windows) counts exactly, including `{bd hh cp}%8` at 32 strikes and
+  `bd(3,8), cp(5,8)` at 10. The two that sit at a sixteenth, 31 ms, do not: `hh(k16)` loses one
+  strike of sixteen, and `hh*16?0.3` lost **five of twenty-four**, with a run of four collapsing
+  into a single rising edge. The counter reads 64 *uniform* sixteenths exactly (see the `gain-lfo`
+  scene), so the limit is irregular clustering of stochastic noise bursts, not density alone. Below
+  three windows one merged pair is allowed for and a second is a failure.
+
+That measurement is why `degrade-p` is `hh*8?0.3` and not the sixteenths it started as. Turning it
+back up makes the clip unverifiable, and holding the density equal to its sibling `bd*8?` leaves the
+*probability* as the only thing that differs between the two cards.
+
+### Two divergences from Tidal this turned up
+
+Neither was written down anywhere before these cards were built, and the page claims that where
+Field's operators share a name with Tidal's they mean the same thing.
+
+* **`|` only parses inside a group.** `parseRandom` is reachable only from `parseFactor`'s `[`
+  branch, so `[bd|sd|cp]` is a random choice per cycle and bare `bd|sd|cp` is a **parse error**.
+  Tidal accepts the bare form.
+* **`bjorklund` returns a rotation of Tidal's figure.** Field draws `bd(3,8)` as `x..x.x..` —
+  gaps 3, 2, 3 — where Tidal spells the same necklace `x..x..x.`, gaps 3, 3, 2. Swept over every
+  `(pulses, steps)` pair up to 32 steps: **204 identical, 292 a rotation, 0 a different rhythm**. So
+  Field's Euclidean rhythms are correctly maximally even and start on a different bead for a little
+  over half of all inputs. The behaviour is deliberate to the extent that `PatKolakoskiTest` pins
+  `x..x.x..`, and the `euclid` roll's own `verify` has always checked gaps of 3-2-3 — it had simply
+  never been compared against Tidal. `bd(3,8,2)` is how a reader asks for the other rotation.
 
 ---
 
