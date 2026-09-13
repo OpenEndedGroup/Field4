@@ -481,11 +481,12 @@ object RectSLMusicWorkout {
         )
         val live = visibleAt(program, 0.5)
         require(live.size == 3) { "3-in-8 should leave three visible, got ${live.size}" }
-        // bjorklund(3,8) here is x..x.x.. — gaps of 3, 2, 3 (PATTERN_LANGUAGE §4). Assert the
-        // gaps rather than the slots, for the same reason the pattern gallery does.
+        // bjorklund(3,8) here is x..x..x. — gaps of 3, 3, 2 (PATTERN_LANGUAGE §4). Assert the
+        // gaps rather than the slots, for the same reason the pattern gallery does: the multiset is
+        // what makes it Euclidean, and it survives a change of starting bead.
         val slots = live.map { Math.round((it.center.x / 1.5) + 3.5).toInt() }.sorted()
         val gaps = slots.zipWithNext { a, b -> b - a } + (slots.first() + 8 - slots.last())
-        require(gaps.sorted() == listOf(2, 3, 3)) { "expected Euclidean gaps 3,2,3; got $gaps from $slots" }
+        require(gaps.sorted() == listOf(2, 3, 3)) { "expected Euclidean gaps 3,3,2; got $gaps from $slots" }
     }
 
     private fun kolakoskiSelectsRightOrdinals() {

@@ -219,10 +219,10 @@
 <text x="12" y="355" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">euclid(3,8)</text>
 <rect x="190.50" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
 <rect x="356.63" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
-<rect x="467.38" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
+<rect x="522.75" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
 <rect x="633.50" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
 <rect x="799.63" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
-<rect x="910.38" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
+<rect x="965.75" y="321" width="54.38" height="60" rx="1.5" fill="#81c784" fill-opacity="0.92"/>
 <text x="184" y="369" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">x</text>
 <rect x="190" y="398" width="886" height="74" fill="#191c24"/>
 <line x1="190" y1="398" x2="190" y2="472" stroke="#454d5e" stroke-width="1.2"/>
@@ -260,11 +260,11 @@
 <line x1="1076" y1="398" x2="1076" y2="472" stroke="#454d5e" stroke-width="1.2"/>
 <text x="12" y="439" fill="#c9d1e0" font-size="12" font-weight="400" text-anchor="start">euclid(3,16)</text>
 <rect x="190.50" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
-<rect x="356.63" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
-<rect x="495.06" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<rect x="328.94" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<rect x="467.38" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
 <rect x="633.50" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
-<rect x="799.63" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
-<rect x="938.06" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<rect x="771.94" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
+<rect x="910.38" y="405" width="26.69" height="60" rx="1.5" fill="#f06292" fill-opacity="0.92"/>
 <text x="184" y="453" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">x</text>
 <rect x="190" y="482" width="886" height="74" fill="#191c24"/>
 <line x1="190" y1="482" x2="190" y2="556" stroke="#454d5e" stroke-width="1.2"/>

@@ -51,8 +51,10 @@ class PatMiniNotationDocsGuardTest {
             PatMiniNotation.markdownSection().trim('\n'),
             committed,
             "the committed mini-notation section has drifted from PatMiniNotation.GROUPS. Regenerate it:\n" +
+                // `--arg=--markdown`, not `--arg --markdown`: argparse reads a value beginning with
+                // a dash as the next option and rejects the call.
                 "  python3 tools/field_backdoor.py --port <p> run-jvm-main " +
-                "afield.four.synth.PatMiniNotation --arg --markdown\n" +
+                "afield.four.synth.PatMiniNotation --arg=--markdown\n" +
                 "and paste the result between the markers. Do not hand-edit the region — edit the " +
                 "catalogue, which is also what the rolls and clips are built from.",
         )

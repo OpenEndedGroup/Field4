@@ -36,14 +36,14 @@
 <line x1="717" y1="0" x2="717" y2="40" stroke="#454d5e" stroke-width="1.2"/>
 <rect x="48.13" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="51.63" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
-<rect x="137.38" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
-<text x="140.88" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="182" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="185.50" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <rect x="271.25" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="274.75" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <rect x="405.13" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="408.63" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
-<rect x="494.38" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
-<text x="497.88" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="539" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="542.50" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <rect x="628.25" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="631.75" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <text x="3" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="start">cycle 0</text>

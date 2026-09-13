@@ -386,7 +386,7 @@ Deterministic matters more than it sounds: a pattern you can re-query is a patte
 
 `|` picks **one** of the alternatives per cycle at random — where `<>` cycles through them in order.
 
-The brackets are not optional here, and this is a real divergence from Tidal: Field parses `|` only *inside* a group, so bare `bd|sd|cp` is a parse error rather than a random choice. Deterministic in the same way `?` is, so this figure is not a different picture every time the docs build runs.
+The brackets are only for show here — a whole string is a group like any other, so bare `bd|sd|cp` parses to exactly this. (It did not until September 2026: `|` was reachable only from inside a `[…]`, and the bare form was a parse error.) Deterministic in the same way `?` is, so this figure is not a different picture every time the docs build runs.
 
 </div>
 
@@ -443,9 +443,9 @@ Two bracket suffixes that do not spell a rhythm out but *construct* one, from a 
 // showPatAudio(pat("bd(3,8)"), cycles = 2, cps = 2)
 ```
 
-Euclidean: spread three onsets as evenly as eight slots allow. Field draws three against eight as `x..x.x..` — gaps of 3, 2 and 3.
+Euclidean: spread three onsets as evenly as eight slots allow. Three against eight is `x..x..x.` — gaps of 3, 3 and 2, the tresillo.
 
-Tidal spells this same rhythm `x..x..x.`, starting the figure one bead further round. Both are the *same necklace* — gaps of 3, 3 and 2 in some rotation — so `bd(3,8)` in Field is Tidal's `bd(3,8)` rotated, not a different rhythm. Field's `bjorklund` is a rotation of Tidal's for a little over half of all `(pulses, steps)` pairs and identical for the rest; the next card is how you choose which rotation you wanted.
+This is Tidal's spelling, bead for bead, and so is every other `(pulses, steps)` pair. It was not always: until September 2026 Field's `bjorklund` stopped one pairing late and returned a *rotation* of this figure for a little over half of all inputs — the same necklace, equally even, starting on a different bead. `bd(3,8)` came out `x..x.x..`. A rotation is a different groove against the downbeat, which is the whole reason a shared notation has to agree on one.
 
 </div>
 
