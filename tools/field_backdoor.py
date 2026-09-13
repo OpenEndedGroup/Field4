@@ -241,6 +241,46 @@ def _execution_error_key(event: dict[str, Any]) -> tuple[str, str] | None:
     return uid, str(payload.get("property") or "__general__")
 
 
+def grade_execution(
+    client: "FieldBackdoor",
+    data: dict[str, Any],
+    events: list[dict[str, Any]],
+    *,
+    timed_out: bool,
+    fail_on_error: bool,
+) -> tuple[dict[str, Any], bool]:
+    """Fold a box's own error output into an execution verb's ``data`` and ``ok``.
+
+    Until 2026-09-14 ``run``/``launch``/``continue``/``launch-batch`` answered "did this
+    box run?" with ``ok = not timed_out`` and never read the events they had just
+    collected. A box with a hard Kotlin compile error therefore returned ``ok: true``,
+    ``running: false``, process exit 0, with the diagnostic sitting unread in the same
+    result. The two sibling verbs in ``dispatch_command`` already did better: ``action``
+    calls ``execution_errors()`` and ``wait-output`` calls ``_execution_error_event()``.
+    This is the shared form of that, so the four execution verbs cannot drift apart again.
+
+    ``execution_errors()`` -- not a fresh predicate -- is what decides, so Field's
+    "clear the marker" packet (an empty error at line -1, which DatalogExecution emits
+    on every success) stays a non-event here exactly as it already does there.
+
+    ``fail_on_error=False`` suppresses the verdict, never the evidence: ``data["errors"]``
+    is still populated and ``data["executionErrorsIgnored"]`` says the verdict was waived.
+    """
+    problems = client.execution_errors(events)
+    if not problems:
+        return data, not timed_out
+    data = dict(data)
+    data["errors"] = problems
+    if fail_on_error:
+        # One flat string as well as the list: `run_field_tests.collect_execution_problems`
+        # and `docs_hooks`' require_diagnostic path both read `data["error"]` to tell a
+        # diagnosed failure from an opaque one, and a bare "command failed" is not proof.
+        data["error"] = "; ".join(problems)
+        return data, False
+    data["executionErrorsIgnored"] = True
+    return data, not timed_out
+
+
 def playwright_attach_budget(timeout: float | None, default_timeout: float) -> float:
     """Effective wait for a Playwright *attach*.
 
@@ -3043,12 +3083,28 @@ def build_command_parser() -> argparse.ArgumentParser:
         exec_parser.add_argument("--value")
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
+        exec_parser.add_argument(
+            "--no-fail-on-error",
+            action="store_true",
+            help=(
+                "Report ok even when the box emits a compile/runtime error. The diagnostics "
+                "still appear in data.errors. Same name and meaning as wait-output's flag."
+            ),
+        )
 
     launch_batch_parser = subparsers.add_parser("launch-batch", add_help=False)
     launch_batch_parser.add_argument("uids", nargs="+")
     launch_batch_parser.add_argument("--property", default="code")
     launch_batch_parser.add_argument("--strand", default="default")
     launch_batch_parser.add_argument("--timeout", type=float)
+    launch_batch_parser.add_argument(
+        "--no-fail-on-error",
+        action="store_true",
+        help=(
+            "Report ok even when a box in the chord emits a compile/runtime error. The "
+            "diagnostics still appear in data.errors."
+        ),
+    )
 
     wait_running_parser = subparsers.add_parser("wait-running", add_help=False)
     wait_running_parser.add_argument("uid")
@@ -3558,8 +3614,22 @@ async def dispatch_command(
             data, events, timed_out = await client.launch_box(args.uid, property_name=args.property, value=value, timeout=timeout)
         else:
             data, events, timed_out = await client.continue_box(args.uid, property_name=args.property, value=value, timeout=timeout)
-        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
-        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
+        data, ok = grade_execution(
+            client,
+            data,
+            events,
+            timed_out=timed_out,
+            fail_on_error=not getattr(args, "no_fail_on_error", False),
+        )
+        result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            timedOut=timed_out,
+            eventCount=len(events),
+            executionErrors=data.get("errors"),
+        )
         return result
 
     if args.command == "launch-batch":
@@ -3576,13 +3646,21 @@ async def dispatch_command(
             strand=args.strand,
             timeout=timeout,
         )
-        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
+        data, ok = grade_execution(
+            client,
+            data,
+            events,
+            timed_out=timed_out,
+            fail_on_error=not getattr(args, "no_fail_on_error", False),
+        )
+        result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
         client.logger.log(
             "command_dispatch_complete",
             commandLine=command_line,
             ok=result["ok"],
             timedOut=timed_out,
             eventCount=len(events),
+            executionErrors=data.get("errors"),
         )
         return result
 
