@@ -1418,6 +1418,14 @@ val citationGuardTestClasses = listOf(
     // pinned to a population derived from the code. Here for the same reason as the line above — a
     // docs-only branch that restates a count must not be able to go green without recomputing it.
     "afield.docs.ProseNumeralContractTest",
+    // The *arithmetic* half, added 2026-09-13. ProseNumeralContractTest pins a number to a population
+    // derived from the code; this pins a number to the arithmetic the page itself claims for it — the
+    // case where both operands are cited, both resolve, and the step between them is wrong. Here for
+    // the same reason as its two neighbours and more strongly: it reads nothing but Markdown, across
+    // the whole of dev_docs/**.md and public/docs/**.md, both declared inputs below and neither on any
+    // JVM classpath. In the broad jvmTest a docs-only edit would inherit an UP-TO-DATE result and the
+    // guard would serve a cached verdict about the previous text.
+    "afield.docs.DerivedArithmeticContractTest",
     // The claim half: a dev_docs sentence asserting that something is *impossible*, or that a cause has
     // been *ruled out*, must carry a reproducer, a citation or an explicit conjecture marker. Here
     // rather than in the broad jvmTest for the decisive reason — it reads Markdown, and citationGates

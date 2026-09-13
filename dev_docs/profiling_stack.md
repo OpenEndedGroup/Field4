@@ -192,7 +192,7 @@ docs branch.
    again to copy the listener list
    (`Renderer.kt:92#val targets = synchronized(lock) { listeners.toList() }`). With six
    labelled spans per window context per frame that is a second uncontended monitor
-   acquisition roughly 360 times a second on the render thread. The *push* it guards is
+   acquisition roughly 360<!--derive: 6*60--> times a second on the render thread. The *push* it guards is
    throttled to once a second
    (`rendererBrowsing.kt:824#private fun maybePushCpuChanged(intervalMs: Long = 1000) {`);
    the lock acquisition is not.
@@ -227,7 +227,7 @@ docs branch.
 4. **`CPUSpan.Stat.samples` is an `ArrayDeque<Long>`**, so each recorded span boxes a
    `Long`, and `snapshot()` copies every deque under the lock
    (`Renderer.kt:102#stats.mapValues { it.value.samples.toList() }`) — 23 labels at 500
-   entries is about 11,500 boxed elements per snapshot, taken up to once a second by the
+   entries is about 11,500<!--derive: 23*500--> boxed elements per snapshot, taken up to once a second by the
    Inspector and every five seconds by the log line. Fine at this size; worth knowing
    before adding a consumer that polls faster.
 

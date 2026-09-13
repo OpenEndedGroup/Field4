@@ -155,8 +155,8 @@ more lanes":
   accumulation type — the current code sums in `Double`, and a large downscale sums thousands of
   samples, so a naive move to `Float` scratch can drift.
 - **`Sobel`/`Scharr`, ~2.0-2.2x.** Memory-bound, not compute-bound: each is two `convolveSeparable`
-  calls, so **four** full-image passes and **four** 8 MB allocations per call at 1920x1080 — around
-  33 MB of allocate-and-zero per operation, and the JVM must zero every one. The lever is a scratch
+  calls, so **four** full-image passes and **four** 8<!--derive: 1920*1080*4/1e6--> MB allocations per call at 1920x1080 — around
+  33<!--derive: 4*1920*1080*4/1e6--> MB of allocate-and-zero per operation, and the JVM must zero every one. The lever is a scratch
   buffer pool for the intermediate (the `tmp` array in `convolveSeparable` is fully overwritten, so
   its zero-fill is pure waste), not anything to do with lanes.
 - **`luma`, ~1.8x.** Already a tight scalar loop with no `Img.get`. It moves 32 MB (24 in, 8 out) in

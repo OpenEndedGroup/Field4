@@ -1,6 +1,6 @@
 # Holding a frame budget
 
-Sixty frames a second is 16.67 milliseconds a frame, and a real-time piece either fits in
+Sixty frames a second is 16.67<!--derive: 60/1000--> milliseconds a frame, and a real-time piece either fits in
 that or it does not. When it stops fitting, Field will show you three different sets of
 numbers, on three different clocks, over three different populations. They do not agree,
 they are not supposed to agree, and the most expensive mistake available here is to read
@@ -251,8 +251,8 @@ millisecond** period
 allocation stacks come from `jdk.ObjectAllocationSample` throttled to **150 a second**
 (`JvmProfileCapture.kt:23#enable("jdk.ObjectAllocationSample").with("throttle", "150/s").withStackTrace()`).
 
-A 10 millisecond period means a sampler that fires 100 times a second per running thread.
-At 60 fps a frame is 16.7 milliseconds long, so about **1.7** firings land in each frame —
+A 10 millisecond period means a sampler that fires 100<!--derive: 1000/10--> times a second per running thread.
+At 60 fps a frame is 16.7 milliseconds long, so about **1.7**<!--derive: 16.7/10--> firings land in each frame —
 but a firing only records your work if your work is what is running when it arrives, so **a
 2 millisecond hitch has about a one in five chance of appearing in any sample at all**, and
 a single hitch that shows up in no sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
@@ -286,7 +286,7 @@ recording started (`JvmProfileCapture.kt:125#// recording. Establish its baselin
 That discard is visible: the measured recording reported three dropped events across
 exactly three sampled threads, which is one per thread and nothing else.
 
-At 150 events a second, ten seconds of a 60 fps piece gives at most 1,500 events spread
+At 150 events a second, ten seconds of a 60 fps piece gives at most 1,500<!--derive: 150*10--> events spread
 across the whole JVM — about two and a half per frame. A per-frame allocation budget read
 off that is an estimate from a couple of samples. So if you are setting yourself a budget
 in kilobytes a frame, it is a working guide rather than a number the JVM owes you, and the
