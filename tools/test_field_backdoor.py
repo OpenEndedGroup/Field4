@@ -826,6 +826,57 @@ class VideoCaptureParserTests(unittest.TestCase):
         self.assertTrue(parsed.restart_target)
 
 
+class SmokeCatalogWaiverWiringTests(unittest.TestCase):
+    """`allowExecutionErrors` has to reach the backdoor now, not just the grader.
+
+    It used to be purely a grading concession inside `evaluate_expectations`: a box could
+    error, `run` still said `ok: true`, and only `collect_execution_problems` -- the one
+    thing the flag gates -- would have objected. Since 2026-09-14 `run` itself reports
+    `ok: false`, and two checks OUTSIDE that gate would then fail the test: the
+    unconditional failed-results loop, and `field_backdoor.py`'s batch loop, which returns
+    at the first not-ok command and so would never reach the screenshot.
+
+    Population at the time of writing: 5 tests tree-wide carry the flag (1 in
+    public/docs/clojure.md, 4 in public/docs/ray_tracing_examples.md).
+    """
+
+    def build(self, *, allow: bool) -> list[str]:
+        with tempfile.TemporaryDirectory() as root:
+            snippet = Path(root) / "snippet.kt"
+            snippet.write_text("print(1)\n", encoding="utf-8")
+            cmd, _ = build_backdoor_command(
+                {
+                    "id": "test.waiver",
+                    "runner": "backdoor-box",
+                    "snippet": "print(1)",
+                    "snippetPath": str(snippet),
+                    "timeoutSec": 20.0,
+                    "expect": {"allowExecutionErrors": True} if allow else {},
+                },
+                port=1,
+                workspace=None,
+            )
+        return [cmd[i + 1] for i, value in enumerate(cmd) if value == "--command"]
+
+    def test_a_registered_execution_error_waives_the_run_verdict(self) -> None:
+        commands = self.build(allow=True)
+        runs = [line for line in commands if line.startswith(("run ", "launch "))]
+        self.assertTrue(runs, commands)
+        for line in runs:
+            self.assertIn("--no-fail-on-error", line)
+
+    def test_nothing_but_the_execution_verb_is_waived(self) -> None:
+        """A screenshot or a stop that fails is still a failure, flag or no flag."""
+        commands = self.build(allow=True)
+        others = [line for line in commands if not line.startswith(("run ", "launch "))]
+        for line in others:
+            self.assertNotIn("--no-fail-on-error", line, line)
+
+    def test_an_ordinary_test_is_emitted_exactly_as_before(self) -> None:
+        for line in self.build(allow=False):
+            self.assertNotIn("--no-fail-on-error", line, line)
+
+
 def _emitted_command(args: list[str]) -> str:
     """The `--command` string run_field_tests.py hands to field_backdoor.py for a jvm-main test."""
     cmd, _ = build_backdoor_command(

@@ -38,6 +38,7 @@ from verification_runtime import (
     select_automation_port,
     terminate_process_tree,
     verification_lock,
+    waive_execution_verdict,
 )
 
 
@@ -1443,6 +1444,16 @@ def build_backdoor_command(
                     ]
                 )
             )
+        if bool((test.get("expect") or {}).get("allowExecutionErrors", False)):
+            # `allowExecutionErrors` already suppressed `collect_execution_problems`
+            # (:1651 below). Since 2026-09-14 `run`/`launch` also report `ok: false` for a
+            # box that errored, and BOTH the unconditional `ok` check in
+            # `evaluate_expectations` (:1593) and `field_backdoor.py`'s batch loop (which
+            # returns at the first not-ok command) sit outside that gate -- so without this
+            # the five tests carrying the flag would fail, and would do so by never reaching
+            # their screenshot. Waiving the verdict does not hide the evidence: the
+            # diagnostics stay in `data.errors` and `executionErrorsIgnored` records it.
+            commands = [waive_execution_verdict(line) for line in commands]
         for command_line in commands:
             cmd.extend(["--command", command_line])
         return cmd, artifacts

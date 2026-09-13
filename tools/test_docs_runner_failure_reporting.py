@@ -383,3 +383,46 @@ class TimeoutDiagnosisOrderingTests(unittest.TestCase):
                 restart_reason="r",
             )
             self.assertIn(expected, str(error))
+
+
+class ExpectErrorFenceWaiverTests(unittest.TestCase):
+    """An `expect-error=true` fence must still reach its screenshot.
+
+    The fence's whole subject is the diagnostic -- the figure is a picture of the error
+    message -- so the box is *supposed* to fail. Since 2026-09-14 `run` reports
+    `ok: false` for a box that errored, and `field_backdoor.py`'s batch loop returns at
+    the first not-ok command, so an un-waived `run` would abort the invocation two
+    commands before the `screenshot-box` the fence exists to take.
+
+    Population: 1 fence tree-wide carries `expect-error` (public/docs/clojure.md).
+    """
+
+    def commands(self, open_line: str) -> list[str]:
+        options = docs_hooks.parse_runner_options(
+            runner_name="field",
+            open_line=open_line,
+            page_path=Path("public/docs/clojure.md"),
+            line_number=1,
+            block_index=0,
+        )
+        return docs_hooks.build_backdoor_command(
+            repo_root=Path(__file__).resolve().parent.parent,
+            page_path=Path("public/docs/clojure.md"),
+            block_index=0,
+            screenshot_path=Path("/tmp/expect-error-fence.png"),
+            options=options,
+            code="print(1)",
+        ).backdoor_commands
+
+    def test_the_run_is_waived_and_the_screenshot_still_happens(self) -> None:
+        commands = self.commands('```field screenshot="x.png" expect-error=true')
+
+        run = next(line for line in commands if line.startswith("run "))
+        self.assertIn("--no-fail-on-error", run)
+        screenshot = next(line for line in commands if line.startswith("screenshot-box "))
+        self.assertNotIn("--no-fail-on-error", screenshot)
+        self.assertLess(commands.index(run), commands.index(screenshot))
+
+    def test_an_ordinary_fence_is_emitted_exactly_as_before(self) -> None:
+        for line in self.commands('```field screenshot="x.png"'):
+            self.assertNotIn("--no-fail-on-error", line, line)
