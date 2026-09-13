@@ -110,12 +110,13 @@ object DemoTranscriptExecSmokeTest {
         // SimdVerlet worlds stepping in one runloop. Same no-Window, no-Renderer argument as the
         // cloth — CPU physics plus showPlane, Skia SVG -> display.
         "simdverlet_world",
-        // Inertial easing and the movement model built on it, as two `loop { }` playgrounds —
-        // launched, 90 frames, stopped, on the same no-Window argument as the cloth. The easing box
-        // additionally checks its own claim before it starts animating: `inertialTo` against the
-        // three-line hand-driven solve it packages, over 180 frames, and prints the worst
-        // disagreement. That assertion-shaped print is the reason this is EXECUTE and not
-        // COMPILE_ONLY — nothing else runs the packaged interpolant against its own arithmetic.
+        // Inertial easing and the movement model built on it, as three `loop { }` boxes that get
+        // longer in that order — launched, 90 frames, stopped, on the same no-Window argument as the
+        // cloth: `showSignals` and `showPlane` are Plotly/Skia into `display`. The equality the
+        // second box demonstrates is asserted properly in
+        // InterpolantsTest.theHandDrivenSolveIsExactlyWhatInertialToPackages; what running it here
+        // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
+        // through the real box path, which no unit test covers.
         "inertial_movement",
         "fn_differentiable_fit_demo",
         // The two ways to run a `@{...}` Kotlin right-hand side, side by side; all three boxes execute.
