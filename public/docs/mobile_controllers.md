@@ -1,4 +1,4 @@
-# Mobile Controllers
+# Field from your phone
 
 Open Field's `/controllers` page in a phone browser and the phone becomes a remote for a running Field document: adjust live controls, read outputs, talk to AI4, pick a box, and edit that box in Monaco, none of which asks you to squeeze the canvas UI onto a phone.
 
