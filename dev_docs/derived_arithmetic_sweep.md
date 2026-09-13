@@ -165,6 +165,9 @@ findings invites over-reading:
 - **A wrong operand is invisible.** `1000/50` published as `20` passes. Only the step is checked.
 - **Sixteen markers in a corpus of 641 pages** is sixteen guarded sentences, not a guarded corpus.
   The build log prints the unchecked remainder on every run for exactly this reason.
-- **Word numerals cannot be pinned**, so "about two and a half per frame" on
+- **Word numerals are not pinnable**, so "about two and a half per frame" on
   `public/docs/frame_budget.md` — which is correct, 1500 events over 600 frames — stays unguarded.
+  Digits-only by construction: a marker has to abut the numeral it derives, and the numeral pattern
+  is `DerivedArithmeticContractTest.kt:113#val NUMERAL = Regex`, so a spelled-out number offers
+  nothing to abut.
 - **The sweep is one night's reading of 65 lines.** It is not a proof about 641 pages.
