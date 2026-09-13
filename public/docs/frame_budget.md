@@ -1,6 +1,6 @@
 # Holding a frame budget
 
-Sixty frames a second is 16.67<!--derive: 60/1000--> milliseconds a frame, and a real-time piece either fits in
+Sixty frames a second is 16.67<!--derive: 1000/60--> milliseconds a frame, and a real-time piece either fits in
 that or it does not. When it stops fitting, Field will show you three different sets of
 numbers, on three different clocks, over three different populations. They do not agree,
 they are not supposed to agree, and the most expensive mistake available here is to read
