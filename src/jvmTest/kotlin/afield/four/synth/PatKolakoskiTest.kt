@@ -129,8 +129,73 @@ class PatKolakoskiTest {
         // The contrast the file overview and `pattern_language.md` draw, with the two strings they
         // print: a Euclidean rhythm answers a spacing question that the step count is part of, so
         // its shorter figure is not a prefix of its longer one.
-        assertEquals("x..x.x..", render(bjorklund(3, 8)))
-        assertEquals("x.....x.", render(bjorklund(3, 16)).take(8))
+        assertEquals("x..x..x.", render(bjorklund(3, 8)))
+        assertEquals("x....x..", render(bjorklund(3, 16)).take(8))
+    }
+
+    /**
+     * The spelling, not just the necklace. `bd(3,8)` names a figure in Field and the same string
+     * names one in Tidal, so the two have to be the same list of slots and not merely rotations of
+     * each other — a rotation is a different groove against the downbeat.
+     *
+     * These are Tidal's own outputs, from `Sound.Tidal.Bjorklund` (the `hmt` implementation Tidal
+     * vendors). The table is small on purpose; what makes it a real fence is that Field's algorithm
+     * and Tidal's were compared exhaustively over every `(pulses, steps)` pair up to 256 steps —
+     * 33,152 of them, all equal — so any drift in `bjorklund` shows up in one of these eighteen.
+     *
+     * Before 2026-09-13 Field returned a rotation of each of these for 292 of the 496 non-trivial
+     * pairs to 32 steps, `bd(3,8)` among them. See [bjorklund]'s KDoc and dev_docs/PAT_GALLERY.md.
+     */
+    @Test
+    fun `bjorklund spells Tidal's figure, not a rotation of it`() {
+        val tidal = listOf(
+            1 to 4 to "x...",
+            2 to 3 to "xx.",
+            2 to 5 to "x.x..",
+            3 to 4 to "xxx.",
+            3 to 7 to "x.x.x..",
+            3 to 8 to "x..x..x.",
+            3 to 16 to "x....x....x.....",
+            4 to 8 to "x.x.x.x.",
+            4 to 9 to "x.x.x.x..",
+            5 to 8 to "x.xx.xx.",
+            5 to 12 to "x..x.x..x.x.",
+            5 to 16 to "x..x..x..x..x...",
+            7 to 8 to "xxxxxxx.",
+            7 to 12 to "x.xx.x.xx.x.",
+            7 to 16 to "x..x.x.x..x.x.x.",
+            9 to 16 to "x.xx.x.x.xx.x.x.",
+            11 to 24 to "x..x.x.x.x.x..x.x.x.x.x.",
+            13 to 32 to "x..x.x..x.x..x.x..x.x..x.x..x.x.",
+        )
+        for ((figure, expected) in tidal) {
+            val (pulses, steps) = figure
+            assertEquals(expected, render(bjorklund(pulses, steps)), "bjorklund($pulses, $steps)")
+        }
+    }
+
+    /**
+     * The property that holds whatever the spelling, kept alongside the table above so a future
+     * change to `bjorklund` cannot satisfy one and quietly break the other: every figure has the
+     * right density, starts on the downbeat, and is maximally even — at most two distinct gaps, and
+     * those two consecutive integers.
+     */
+    @Test
+    fun `every Euclidean figure is maximally even`() {
+        for (steps in 1..64) {
+            for (pulses in 1..steps) {
+                val mask = bjorklund(pulses, steps)
+                assertEquals(steps, mask.size, "bjorklund($pulses, $steps) is the wrong length")
+                assertEquals(pulses, mask.count { it }, "bjorklund($pulses, $steps) has the wrong density")
+                assertTrue(mask[0], "bjorklund($pulses, $steps) does not start on the downbeat")
+                val onsets = mask.withIndex().filter { it.value }.map { it.index }
+                val gaps = (onsets + (onsets.first() + steps)).zipWithNext { a, b -> b - a }
+                assertTrue(
+                    gaps.toSet().size <= 2 && gaps.max() - gaps.min() <= 1,
+                    "bjorklund($pulses, $steps) is not maximally even — gaps $gaps"
+                )
+            }
+        }
     }
 
     @Test

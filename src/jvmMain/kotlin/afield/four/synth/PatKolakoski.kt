@@ -31,7 +31,7 @@ package afield.four.synth
  * `kolakoski(16)`. Turning the step count up extends the figure instead of re-placing it, so the
  * step count is a dial you can turn without the hits you already have jumping around. `euclid`
  * cannot do that, because the step count is part of the question it answers: `euclid(3, 8)` is
- * `x..x.x..`, and the first eight steps of `euclid(3, 16)` are `x.....x.`. `PatKolakoskiTest`
+ * `x..x..x.`, and the first eight steps of `euclid(3, 16)` are `x....x..`. `PatKolakoskiTest`
  * asserts both halves of that contrast.
  *
  * The alphabet is a parameter. `kolakoski(16, a = 2, b = 3)` is the self-describing word over

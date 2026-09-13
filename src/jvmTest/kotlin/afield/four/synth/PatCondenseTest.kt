@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
  * Exactness and honesty tests for `PatCondense.kt`.
  *
  * Two things have to be true at once and they pull against each other. The search has to **find**
- * structure — `x ~ ~ x ~ x ~ ~` is `x(3,8)` and a condenser that cannot say so is not worth having —
+ * structure — `x ~ ~ x ~ ~ x ~` is `x(3,8)` and a condenser that cannot say so is not worth having —
  * and it has to **not invent** it, because a search scored on description length will happily name a
  * figure that is one step away from the rhythm in front of it if nobody checks.
  *
@@ -473,7 +473,7 @@ class PatCondenseTest {
         // go from audio. Feeding its output straight back in is the payoff: the loop the transcription
         // header draws now ends in a figure rather than a slot list.
         val grid = PatStepGrid(stepSeconds = 0.125, worstResidual = 0.0, steps = 8)
-        val notes = listOf(0, 3, 5).map { step ->
+        val notes = listOf(0, 3, 6).map { step ->
             PatDetectedNote(
                 startSample = (step * 0.125 * 44100).toInt(),
                 endSample = ((step + 1) * 0.125 * 44100).toInt(),
@@ -486,7 +486,7 @@ class PatCondenseTest {
             )
         }
         val flat = patNotationOf(notes, grid)
-        assertEquals("60 ~ ~ 60 ~ 60 ~ ~", flat, "the flat printer changed shape under us")
+        assertEquals("60 ~ ~ 60 ~ ~ 60 ~", flat, "the flat printer changed shape under us")
         val condensed = patCondense(flat)
         assertTrue(condensed.exact, "the flat transcription did not condense")
         assertEquals("60(3,8)", condensed.notation)
@@ -499,11 +499,19 @@ class PatCondenseTest {
      *
      * This is the sentence `PatTranscription.kt`'s header is reaching for. Its arrow "→ revise the
      * generating code" landed on a slot list; it now lands on a figure.
+     *
+     * `60(3,8)` cannot be a case here, and the reason is worth keeping. The tresillo's three onsets
+     * sit at slots 0, 3 and 6 — *equally* spaced inside the bar, the closing gap of two being the
+     * only thing that makes it eight steps rather than three. Audio carries onsets and not bar
+     * lines, so the grid fitter honestly reads that render as three steps of 0.75 s and recovers
+     * `60 60 60`, which is the same sound. It only became unrecoverable when `bjorklund` was aligned
+     * with Tidal's spelling: the old `x..x.x..` had gaps of 3 and 2 and so forced the eight-step
+     * grid. `60(5,8)` below has a one-step gap in it and cannot be read coarser.
      */
     @Test
     fun `a bar rendered to audio and heard back condenses to the figure that made it`() {
         for ((bar, figure) in listOf(
-            "60 ~ ~ 60 ~ 60 ~ ~" to "60(3,8)",
+            "60 ~ 60 60 ~ 60 60 ~" to "60(5,8)",
             "60 ~ ~ 60 60 ~ 60 ~" to "60(k8)"
         )) {
             val audio = patRenderStereo(

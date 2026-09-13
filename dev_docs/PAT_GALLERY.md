@@ -93,7 +93,7 @@ that receives the resolved `LaneEvents`; axes, gridlines, cycle labels, the valu
 the SVG write and the rect-count guard are all shared.
 
 Write the `verify` against the *musical* claim, not against "something rendered". The existing ones
-check that `rev` really mirrors, that `euclid(3,8)`'s onset gaps really are 3-2-3, that `iter(4)`
+check that `rev` really mirrors, that `euclid(3,8)`'s onset gaps really are 3-3-2, that `iter(4)`
 really rotates cycle by cycle, that `shuffle(4)` is a permutation in every cycle, that `voiceLead`
 really reduces movement while preserving pitch-class sets, and that each note's `cutoff` equals the
 curve evaluated analytically at that note's own midpoint.
@@ -360,21 +360,65 @@ That measurement is why `degrade-p` is `hh*8?0.3` and not the sixteenths it star
 back up makes the clip unverifiable, and holding the density equal to its sibling `bd*8?` leaves the
 *probability* as the only thing that differs between the two cards.
 
-### Two divergences from Tidal this turned up
+### Two divergences from Tidal this turned up — both now closed
 
 Neither was written down anywhere before these cards were built, and the page claims that where
-Field's operators share a name with Tidal's they mean the same thing.
+Field's operators share a name with Tidal's they mean the same thing. Both were fixed on
+**2026-09-13**. The decision and its cost are recorded here so the next person does not have to
+re-derive either.
 
-* **`|` only parses inside a group.** `parseRandom` is reachable only from `parseFactor`'s `[`
-  branch, so `[bd|sd|cp]` is a random choice per cycle and bare `bd|sd|cp` is a **parse error**.
-  Tidal accepts the bare form.
-* **`bjorklund` returns a rotation of Tidal's figure.** Field draws `bd(3,8)` as `x..x.x..` —
-  gaps 3, 2, 3 — where Tidal spells the same necklace `x..x..x.`, gaps 3, 3, 2. Swept over every
-  `(pulses, steps)` pair up to 32 steps: **204 identical, 292 a rotation, 0 a different rhythm**. So
-  Field's Euclidean rhythms are correctly maximally even and start on a different bead for a little
-  over half of all inputs. The behaviour is deliberate to the extent that `PatKolakoskiTest` pins
-  `x..x.x..`, and the `euclid` roll's own `verify` has always checked gaps of 3-2-3 — it had simply
-  never been compared against Tidal. `bd(3,8,2)` is how a reader asks for the other rotation.
+**`bjorklund` returned a rotation of Tidal's figure.** Field drew `bd(3,8)` as `x..x.x..` — gaps
+3, 2, 3 — where Tidal spells the same necklace `x..x..x.`, gaps 3, 3, 2, the tresillo. Swept over
+every `(pulses, steps)` pair up to 32 steps: **204 identical, 292 a rotation, 0 a different
+rhythm**. So Field's Euclidean rhythms were already correctly maximally even and merely started on
+a different bead for a little over half of all inputs.
+
+That is exactly why it survived so long, and it is not good enough. The necklace is not what a
+listener hears; the *phase against the downbeat* is, and the two are different grooves. `bd(3,8)`
+is the most recognisable Euclidean rhythm there is, and a reader copying a pattern out of a Tidal
+tutorial got a different one back with no error and no warning. "Same necklace" is a defence of the
+algorithm, not of the notation, and the notation is the thing being shared. The cause was a loop
+that stopped when the *onset* count reached one instead of the *rest* count, i.e. one pairing too
+far — nobody had chosen `x..x.x..`; the test simply pinned whatever came out.
+
+Against that: aligning changes what existing saved patterns play. `bd(3,8,2)` already let anyone
+select a rotation explicitly, so the question was only ever which one is the default, and the
+default should be the one the notation means everywhere else. What it cost:
+
+* `bjorklund` itself (`TidalPatterns.kt`), now in the standard two-list form, plus
+  `PatKolakoskiTest.bjorklund spells Tidal's figure, not a rotation of it` — a table of eighteen of
+  Tidal's own outputs — and a companion property test over every pair to 64 steps. Field's
+  implementation and Tidal's (`Sound.Tidal.Bjorklund`, the `hmt` one) were diffed over all 33,152
+  pairs to 256 steps and agree everywhere.
+* Pinned spellings in `PatKolakoskiTest`, `PatSignalsTest` (`struct` over `euclid(3,8)`) and
+  `PatCondenseTest`, and comments in `RectSLMusicWorkout`, `PatCondense.kt` and `PatKolakoski.kt`.
+* The committed figures under `public/docs/assets/pattern_language/` and
+  `dev_docs/assets/pat_gallery/`, re-captured.
+* One test case had to move rather than be re-pinned, and it is the most interesting consequence.
+  `PatCondenseTest.a bar rendered to audio and heard back condenses to the figure that made it`
+  renders a bar, transcribes the audio, and condenses what it heard. The tresillo's three onsets are
+  *equally* spaced inside the bar — slots 0, 3, 6, the closing gap of two being the only thing that
+  makes it eight steps rather than three — and audio carries onsets, not bar lines. So the grid
+  fitter honestly reads that render as three steps of 0.75 s and recovers `60 60 60`, the same
+  sound. The old irregular spelling forced the eight-step grid. The case is now `60(5,8)`, which has
+  a one-step gap and cannot be read coarser. Nothing is wrong with the transcriber; a perfectly
+  periodic figure is genuinely ambiguous from audio alone.
+
+**`|` only parsed inside a group.** `parseRandom` was reachable only from `parseFactor`'s `[` branch,
+so `[bd|sd|cp]` was a random choice per cycle and bare `bd|sd|cp` was a **parse error**. Tidal
+accepts the bare form, and structurally rather than incidentally: its `pPolyIn` is literally
+`brackets pTidal`, so a bracketed group and a whole string are parsed by the same production. Field
+now matches — `parseTop` goes through `parseRandom` — and `MiniNotationTest.a bare random choice
+parses, and the brackets add nothing` asserts the two spellings are the same pattern cycle for
+cycle, salt included.
+
+The precedence question the fix raises has an answer, and it is that Tidal does not have one.
+Field nests `|` outside `,`, so `bd, hh*2 | cp` is a choice between the stack and `cp`. Tidal's
+`pTidal` takes a `,`-tail *or* a `|`-tail and not both, so mixing the two separators at one level is
+a Tidal parse error — no Tidal-valid string constrains the choice, and putting the looser operator
+outermost means every string Tidal *does* accept still means what Tidal means by it. Field is
+deliberately the more permissive of the two here;
+`MiniNotationTest.a mixed stack and choice reads as a choice between stacks` pins the reading.
 
 ---
 

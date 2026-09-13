@@ -844,23 +844,38 @@ fun <A> PatPattern<A>.degradeBy(probability: Double, salt: Int = 0): PatPattern<
 
 fun <A> PatPattern<A>.degrade(): PatPattern<A> = degradeBy(0.5)
 
+/**
+ * [pulses] onsets spread as evenly as [steps] slots allow — Bjorklund's algorithm, which is
+ * Euclid's applied to a rhythm. `bjorklund(3, 8)` is `x..x..x.`, the tresillo.
+ *
+ * The spelling is Tidal's, and deliberately so: `bd(3,8)` has to name the same figure in both
+ * languages or the shared notation is a trap. Tidal takes its implementation from `hmt`
+ * (Rohan Drape's `Sound.Tidal.Bjorklund`), which pairs the onset list against the rest list until
+ * fewer than two rests remain; this is the same recurrence in the form Toussaint writes it. The two
+ * were compared over every `(pulses, steps)` pair up to 256 steps — 33,152 of them — and agree
+ * everywhere. `PatKolakoskiTest.bjorklund spells Tidal's figure, not a rotation of it` keeps a table
+ * of eighteen of Tidal's own outputs, so a drift here fails against Tidal rather than against a
+ * remembered Field.
+ *
+ * Until 2026-09-13 the loop stopped when the *onset* count reached one rather than the rest count,
+ * running one pairing too far. That yielded a rotation of this figure — the same necklace, so still
+ * maximally even, but starting on a different bead for 292 of the 496 non-trivial pairs to 32 steps.
+ * `bd(3,8)` came out `x..x.x..`. See `dev_docs/PAT_GALLERY.md`.
+ */
 fun bjorklund(pulses: Int, steps: Int): List<Boolean> {
     require(pulses in 0..steps)
     if (pulses == 0) return List(steps) { false }
     if (pulses == steps) return List(steps) { true }
 
-    var pattern = MutableList(pulses) { listOf(true) } + MutableList(steps - pulses) { listOf(false) }
-    while (true) {
-        val (head, tail) = pattern.partition { it == pattern.first() }
-        if (tail.isEmpty() || head.size <= 1) break
-        val next = mutableListOf<List<Boolean>>()
-        val pairs = head.zip(tail)
-        next.addAll(pairs.map { it.first + it.second })
-        if (head.size > tail.size) next.addAll(head.drop(tail.size))
-        if (tail.size > head.size) next.addAll(tail.drop(head.size))
-        pattern = next
+    var onsets: List<List<Boolean>> = List(pulses) { listOf(true) }
+    var rests: List<List<Boolean>> = List(steps - pulses) { listOf(false) }
+    while (rests.size > 1) {
+        val paired = minOf(onsets.size, rests.size)
+        val next = List(paired) { onsets[it] + rests[it] }
+        rests = if (onsets.size > paired) onsets.drop(paired) else rests.drop(paired)
+        onsets = next
     }
-    return pattern.flatten()
+    return (onsets + rests).flatten()
 }
 
 fun euclid(pulses: Int, steps: Int, rotation: Int = 0): PatPattern<Boolean> =
@@ -1174,13 +1189,25 @@ object MiniPat {
         private var index = 0
         private var nextSalt = 1
 
+        /**
+         * The whole string, with the same grammar a `[...]` group gets — which is how Tidal is
+         * built (`pPolyIn` is `brackets pTidal`), and why `bd|sd|cp` has to parse at the top level
+         * and not only inside brackets.
+         */
         fun parseTop(): Node {
-            val node = parseStack(stop = setOf())
+            val node = parseRandom(stop = setOf())
             skipWs()
             if (!eof()) error("Unexpected '${peek()}' at $index")
             return node
         }
 
+        /**
+         * `a|b` — one alternative per cycle. Looser than `,`, so `a, b | c` is a choice between the
+         * stack `a, b` and `c`. Tidal does not decide this case: its `pTidal` takes a `,`-tail or a
+         * `|`-tail but not both, so mixing the two separators at one level is a Tidal parse error
+         * and any reading Field gives it is Field's own. Nesting the looser one outermost at least
+         * means a string Tidal *does* accept means the same thing here.
+         */
         private fun parseRandom(stop: Set<Char>): Node {
             val alts = mutableListOf<Node>()
             do {

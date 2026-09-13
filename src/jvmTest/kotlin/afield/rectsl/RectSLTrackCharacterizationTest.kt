@@ -27,6 +27,14 @@ import kotlin.test.assertTrue
  *         -Dafield.rectsl.characterization=write
  *
  * and read the diff before committing it. A diff here means sampling changed.
+ *
+ * Regenerated **2026-09-13**, when `bjorklund` was aligned with Tidal's spelling (see
+ * `dev_docs/PAT_GALLERY.md`). `musicality-four-to-the-floor` has `5 16 0 ->euclid` and
+ * `musicality-surface` has `3 8 0 euclid`, so both re-select which copies are lit. The diff was
+ * checked to be exactly that and nothing more: 336 rows, confined to those two programs, differing
+ * **only** in the alpha column, and balanced 168 on→off against 168 off→on — the same number of
+ * rects visible, on different beads. Any future diff here that moves a position, a size or the
+ * count is not this change.
  */
 class RectSLTrackCharacterizationTest {
 

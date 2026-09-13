@@ -17,8 +17,8 @@ import java.math.BigInteger
  * found.
  *
  * **Description length is the whole criterion.** There is no notion here of a "better" reading of a
- * rhythm than a shorter one. `x..x.x..` is `bd(3,8)` because that is eight characters against
- * twenty-three, not because Euclidean rhythms are privileged, and a figure that no operator shortens
+ * rhythm than a shorter one. `x ~ ~ x ~ ~ x ~` is `x(3,8)` because that is six characters against
+ * fifteen, not because Euclidean rhythms are privileged, and a figure that no operator shortens
  * comes back as itself, spelled out. [PatCondenseTest] asserts that last part over generated
  * structureless masks, since a condenser that always found *something* would be finding nothing.
  *
@@ -118,7 +118,7 @@ data class PatCondensation(
 /**
  * Condense a mini-notation string: parse it, then find the shortest string that plays the same thing.
  *
- * `patCondense("x ~ ~ x ~ x ~ ~")` is `x(3,8)`, and `patCondense("x ~ ~ x ~ ~ x ~")` is `x(3,8,5)`,
+ * `patCondense("x ~ ~ x ~ ~ x ~")` is `x(3,8)`, and `patCondense("x ~ ~ x ~ x ~ ~")` is `x(3,8,3)`,
  * the same figure turned. `patCondense("bd(3,8)")` is `bd(3,8)` — already minimal, and the search
  * says so by not beating it.
  *

@@ -324,14 +324,24 @@ object PatMiniNotation {
                     cycles = 4,
                     gloss = "`|` picks **one** of the alternatives per cycle at random — where `<>` " +
                         "cycles through them in order.",
-                    note = "The brackets are not optional here, and this is a real divergence from " +
-                        "Tidal: Field parses `|` only *inside* a group, so bare `bd|sd|cp` is a " +
-                        "parse error rather than a random choice. Deterministic in the same way `?` " +
-                        "is, so this figure is not a different picture every time the docs build runs.",
+                    note = "The brackets are only for show here — a whole string is a group like any " +
+                        "other, so bare `bd|sd|cp` parses to exactly this. (It did not until " +
+                        "September 2026: `|` was reachable only from inside a `[…]`, and the bare " +
+                        "form was a parse error.) Deterministic in the same way `?` is, so this " +
+                        "figure is not a different picture every time the docs build runs.",
                     verify = { events ->
                         check(events.size == 4) { "[bd|sd|cp] should sound once a cycle, sounded ${events.size}" }
                         check(events.map { it.value }.distinct().size > 1) {
                             "[bd|sd|cp] chose the same alternative all four cycles: ${events.map { it.value }}"
+                        }
+                        // The brackets claim: the same string without them is the same pattern.
+                        // Salt is allocated per RandomChoice in parse order, so both get salt 1.
+                        val bare = pat("bd|sd|cp")
+                            .events(PatArc(PatQ.ZERO, PatQ.of(4)))
+                            .sortedBy { it.arc.start }
+                            .map { it.value }
+                        check(bare == events.map { it.value }) {
+                            "bare bd|sd|cp gave $bare where [bd|sd|cp] gives ${events.map { it.value }}"
                         }
                     }
                 ),
@@ -382,21 +392,22 @@ object PatMiniNotation {
                 Example(
                     id = "euclid",
                     source = "bd(3,8)",
-                    gloss = "Euclidean: spread three onsets as evenly as eight slots allow. Field draws " +
-                        "three against eight as `x..x.x..` — gaps of 3, 2 and 3.",
-                    note = "Tidal spells this same rhythm `x..x..x.`, starting the figure one bead further " +
-                        "round. Both are the *same necklace* — gaps of 3, 3 and 2 in some rotation — so " +
-                        "`bd(3,8)` in Field is Tidal's `bd(3,8)` rotated, not a different rhythm. " +
-                        "Field's `bjorklund` is a rotation of Tidal's for a little over half of all " +
-                        "`(pulses, steps)` pairs and identical for the rest; the next card is how you " +
-                        "choose which rotation you wanted.",
+                    gloss = "Euclidean: spread three onsets as evenly as eight slots allow. Three " +
+                        "against eight is `x..x..x.` — gaps of 3, 3 and 2, the tresillo.",
+                    note = "This is Tidal's spelling, bead for bead, and so is every other " +
+                        "`(pulses, steps)` pair. It was not always: until September 2026 Field's " +
+                        "`bjorklund` stopped one pairing late and returned a *rotation* of this figure " +
+                        "for a little over half of all inputs — the same necklace, equally even, " +
+                        "starting on a different bead. `bd(3,8)` came out `x..x.x..`. A rotation is a " +
+                        "different groove against the downbeat, which is the whole reason a shared " +
+                        "notation has to agree on one.",
                     verify = { events ->
                         val slots = events.filter { qFloor(it.arc.start) == 0L }
                             .map { (it.arc.start * PatQ.of(8)).toDouble() }
-                        check(slots == listOf(0.0, 3.0, 5.0)) {
-                            "bd(3,8) fell on $slots. If this has become 0, 3, 6 then Field's bjorklund " +
-                                "was aligned with Tidal's — good, but PatKolakoskiTest pins the old " +
-                                "spelling and this card's prose describes it, so both need to move too."
+                        check(slots == listOf(0.0, 3.0, 6.0)) {
+                            "bd(3,8) fell on $slots, and Tidal's tresillo is 0, 3, 6. If this has " +
+                                "become 0, 3, 5 then `bjorklund`'s loop is running one pairing too " +
+                                "far again — see its KDoc and PatKolakoskiTest's table of Tidal figures."
                         }
                         // The claim that survives a rotation, and the one that makes it Euclidean:
                         // the gaps are as equal as eight slots divided by three can be.

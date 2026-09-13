@@ -38,14 +38,14 @@
 <text x="7" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <rect x="137.38" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="140.88" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
-<rect x="226.63" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
-<text x="230.13" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="271.25" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="274.75" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <rect x="360.50" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="364" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <rect x="494.38" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
 <text x="497.88" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
-<rect x="583.63" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
-<text x="587.13" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
+<rect x="628.25" y="4" width="43.63" height="32" rx="1.5" fill="#4fc3f7" fill-opacity="0.92"/>
+<text x="631.75" y="23.20" fill="#14161c" font-size="9" font-weight="600" text-anchor="start">bd</text>
 <text x="3" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="start">cycle 0</text>
 <text x="360" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="start">cycle 1</text>
 <text x="717" y="56" fill="#7d879b" font-size="9" font-weight="400" text-anchor="end">cycle 2</text>

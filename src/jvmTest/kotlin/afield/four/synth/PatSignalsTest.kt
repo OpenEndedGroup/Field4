@@ -193,14 +193,14 @@ class PatSignalsTest {
     @Test
     fun `struct takes rhythm from the boolean pattern and values from the other`() {
         val events = struct(euclid(3, 8), pat("bd")).cycle()
-        // This repo's `bjorklund(3, 8)` produces x..x.x.. — onsets at eighths 0, 3 and 5, which
-        // is a rotation of the canonical x..x..x. and just as Euclidean (gaps 3, 2, 3).
+        // `bjorklund(3, 8)` is the tresillo x..x..x. — onsets at eighths 0, 3 and 6, gaps 3, 3, 2,
+        // and the same spelling Tidal gives `bd(3,8)`.
         assertEquals(3, events.size)
         assertEquals(
             listOf(
                 PatQ.of(0, 8) to PatQ.of(1, 8),
                 PatQ.of(3, 8) to PatQ.of(4, 8),
-                PatQ.of(5, 8) to PatQ.of(6, 8)
+                PatQ.of(6, 8) to PatQ.of(7, 8)
             ),
             arcsOf(events)
         )
@@ -211,8 +211,8 @@ class PatSignalsTest {
     fun `struct against a continuous pattern samples each structural event's midpoint`() {
         val events = struct(euclid(3, 8), sine()).cycle()
         assertEquals(3, events.size)
-        // Midpoints of the three eighth-note slots (0, 3, 5): 1/16, 7/16, 11/16.
-        val expected = listOf(1, 7, 11).map { 0.5 + 0.5 * sin(2.0 * PI * (it / 16.0)) }
+        // Midpoints of the three eighth-note slots (0, 3, 6): 1/16, 7/16, 13/16.
+        val expected = listOf(1, 7, 13).map { 0.5 + 0.5 * sin(2.0 * PI * (it / 16.0)) }
         expected.zip(events.map { it.value }).forEach { (e, v) -> assertEquals(e, v, 1e-12) }
     }
 

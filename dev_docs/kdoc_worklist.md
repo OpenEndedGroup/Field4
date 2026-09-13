@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7310 of 13544 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7293 of 13524 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**858 undocumented entry points** (types, top-level functions and values) and 5075 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**857 undocumented entry points** (types, top-level functions and values) and 5073 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -14,7 +14,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [RectSL.kt](../src/jvmMain/kotlin/afield/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 105 | 409 | 7% |
 | [synth.kt](../src/jvmMain/kotlin/afield/four/synth/synth.kt) | Synthesis | sound_paths | 52 | 0 | 25% |
-| [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 44 | 78 | 21% |
+| [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 43 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
 | [Expr.kt](../src/jvmMain/kotlin/afield/ml/ast/Expr.kt) | Languages | pattern_rewrite | 32 | 57 | 3% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
@@ -247,7 +247,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DatalogParser.kt](../src/jvmMain/kotlin/afield/datalog/DatalogParser.kt) | Languages | — | 0 | 2 | 66% |
 | [PathTraceMediumGpuSmoke.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceMediumGpuSmoke.kt) | Renderers | — | 0 | 2 | 66% |
 | [Buf.kt](../src/jvmMain/kotlin/afield/four/synth/Buf.kt) | Synthesis | — | 0 | 2 | 90% |
-| [FaustPolySoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt) | Audio | — | 0 | 2 | 90% |
 | [MidiSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/MidiSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [MorphoSim.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSim.kt) | Languages | — | 0 | 2 | 77% |
 | [PathTraceGlassDemo.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceGlassDemo.kt) | Renderers | — | 0 | 1 | 50% |
@@ -306,9 +305,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `PatParseContext` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:322` |
 | `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:334` |
 | `PatScheduledEvent` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:441` |
-| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1004` |
-| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1869` |
-| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1894` |
+| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1019` |
+| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1896` |
+| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1921` |
 | `EInt` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:35` |
 | `EFloat` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:36` |
 | `EBool` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:37` |
@@ -384,4 +383,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `WallSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1138` |
 | `PaintSpec` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1145` |
 
-…and **738 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **737 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
