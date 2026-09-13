@@ -11,7 +11,11 @@ operator fun Vector2fc.minus(other:Vector2fc)=sub(other,Vector2f())
 operator fun Vector2fc.minus(scalar:Number)=sub(scalar.toFloat(),Vector2f())
 operator fun Vector2fc.times(other:Vector2fc)=mul(other,Vector2f())
 operator fun Vector2fc.times(scalar:Number)=mul(scalar.toFloat(),Vector2f())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector2fc.times(scalar:Float)=mul(scalar,Vector2f())
 operator fun Vector2fc.div(scalar:Number)=div(scalar.toFloat(),Vector2f())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector2fc.div(scalar:Float)=div(scalar,Vector2f())
 operator fun Vector2fc.unaryMinus()=negate(Vector2f())
 
 operator fun Vector3fc.plus(other:Vector3fc)=add(other,Vector3f())
@@ -20,7 +24,11 @@ operator fun Vector3fc.minus(other:Vector3fc)=sub(other,Vector3f())
 operator fun Vector3fc.minus(scalar:Number)=sub(scalar.toFloat(),Vector3f())
 operator fun Vector3fc.times(other:Vector3fc)=mul(other,Vector3f())
 operator fun Vector3fc.times(scalar:Number)=mul(scalar.toFloat(),Vector3f())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector3fc.times(scalar:Float)=mul(scalar,Vector3f())
 operator fun Vector3fc.div(scalar:Number)=div(scalar.toFloat(),Vector3f())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector3fc.div(scalar:Float)=div(scalar,Vector3f())
 operator fun Vector3fc.unaryMinus()=negate(Vector3f())
 
 operator fun Vector4fc.plus(other:Vector4fc)=add(other,Vector4f())
@@ -29,7 +37,11 @@ operator fun Vector4fc.minus(other:Vector4fc)=sub(other,Vector4f())
 operator fun Vector4fc.minus(scalar:Number)=sub(scalar.toFloat(),Vector4f())
 operator fun Vector4fc.times(other:Vector4fc)=mul(other,Vector4f())
 operator fun Vector4fc.times(scalar:Number)=mul(scalar.toFloat(),Vector4f())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector4fc.times(scalar:Float)=mul(scalar,Vector4f())
 operator fun Vector4fc.div(scalar:Number)=div(scalar.toFloat(),Vector4f())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector4fc.div(scalar:Float)=div(scalar,Vector4f())
 operator fun Vector4fc.unaryMinus()=negate(Vector4f())
 
 // Vector2d, Vector3d, Vector4d and their read interfaces are generated in Vectors.kt from the
@@ -40,7 +52,11 @@ operator fun Vector2dc.minus(other:Vector2dc)=sub(other,Vector2d())
 operator fun Vector2dc.minus(scalar:Number)=sub(scalar.toDouble(),Vector2d())
 operator fun Vector2dc.times(other:Vector2dc)=mul(other,Vector2d())
 operator fun Vector2dc.times(scalar:Number)=mul(scalar.toDouble(),Vector2d())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector2dc.times(scalar:Double)=mul(scalar,Vector2d())
 operator fun Vector2dc.div(scalar:Number)=div(scalar.toDouble(),Vector2d())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector2dc.div(scalar:Double)=div(scalar,Vector2d())
 operator fun Vector2dc.unaryMinus()=negate(Vector2d())
 
 operator fun Vector3dc.plus(other:Vector3dc)=add(other,Vector3d())
@@ -49,7 +65,11 @@ operator fun Vector3dc.minus(other:Vector3dc)=sub(other,Vector3d())
 operator fun Vector3dc.minus(scalar:Number)=sub(scalar.toDouble(),Vector3d())
 operator fun Vector3dc.times(other:Vector3dc)=mul(other,Vector3d())
 operator fun Vector3dc.times(scalar:Number)=mul(scalar.toDouble(),Vector3d())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector3dc.times(scalar:Double)=mul(scalar,Vector3d())
 operator fun Vector3dc.div(scalar:Number)=div(scalar.toDouble(),Vector3d())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector3dc.div(scalar:Double)=div(scalar,Vector3d())
 operator fun Vector3dc.unaryMinus()=negate(Vector3d())
 
 operator fun Vector4dc.plus(other:Vector4dc)=add(other,Vector4d())
@@ -58,7 +78,11 @@ operator fun Vector4dc.minus(other:Vector4dc)=sub(other,Vector4d())
 operator fun Vector4dc.minus(scalar:Number)=sub(scalar.toDouble(),Vector4d())
 operator fun Vector4dc.times(other:Vector4dc)=mul(other,Vector4d())
 operator fun Vector4dc.times(scalar:Number)=mul(scalar.toDouble(),Vector4d())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector4dc.times(scalar:Double)=mul(scalar,Vector4d())
 operator fun Vector4dc.div(scalar:Number)=div(scalar.toDouble(),Vector4d())
+/** Primitive scalar overload; returns a new vector. */
+operator fun Vector4dc.div(scalar:Double)=div(scalar,Vector4d())
 operator fun Vector4dc.unaryMinus()=negate(Vector4d())
 
 // Vector8h is half precision (its components are Float in the API), so its scalar operators

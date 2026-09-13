@@ -21,6 +21,7 @@ internal class JvmProfileCapture {
         duration = Duration.ofSeconds(35) // safety ceiling even if the Runloop never returns
         enable("jdk.ExecutionSample").withPeriod(Duration.ofMillis(10)).withStackTrace()
         enable("jdk.ObjectAllocationSample").with("throttle", "150/s").withStackTrace()
+        enable("jdk.GCPhasePause").withThreshold(Duration.ZERO)
         start()
     }
     private var start = Instant.now()
@@ -33,7 +34,7 @@ internal class JvmProfileCapture {
 
     private data class Script(val name: String, val source: ProfileStackSource)
     internal data class Result(val frames: List<ProfileStackFrame>, val sources: List<ProfileStackSource>,
-        val samples: List<ProfileStackSample>, val dropped: Int)
+        val samples: List<ProfileStackSample>, val dropped: Int, val pauses: List<ProfileGcPause>)
 
     fun align(nanos: Long) {
         val clock = Instant.now()
@@ -86,7 +87,8 @@ internal class JvmProfileCapture {
             stackSampleCount = r?.samples?.size ?: 0, stackDropped = r?.dropped ?: 0,
             stackFrames = if (after < 0) r?.frames.orEmpty() else emptyList(),
             stackSources = if (after < 0) r?.sources.orEmpty() else emptyList(),
-            stackSamples = r?.samples?.subList(first, minOf(first+1024, r.samples.size)).orEmpty())
+            stackSamples = r?.samples?.subList(first, minOf(first+1024, r.samples.size)).orEmpty(),
+            gcPauses = r?.pauses.orEmpty())
     }
 
     private fun read(file: Path, scripts: List<Script>, endMs: Double): Result {
@@ -96,6 +98,7 @@ internal class JvmProfileCapture {
         val sourceIds = hashMapOf<String, Int>()
         val sourcePaths = hashMapOf<String, Int>()
         val samples = arrayListOf<ProfileStackSample>()
+        val pauses = arrayListOf<ProfileGcPause>()
         val resolver = ProfileSourceResolver()
         var sourceBytes = 0
         var dropped = 0
@@ -114,6 +117,11 @@ internal class JvmProfileCapture {
         RecordingFile(file).use { input ->
             while (input.hasMoreEvents()) {
                 val event = input.readEvent()
+                if (event.eventType.name == "jdk.GCPhasePause") {
+                    val time = Duration.between(start, event.startTime).toNanos()/1e6
+                    if (time in 0.0..endMs && pauses.size < 2048) pauses += ProfileGcPause(time, event.duration.toNanos()/1e6)
+                    continue
+                }
                 val kind = when (event.eventType.name) {
                     "jdk.ExecutionSample" -> "cpu"
                     "jdk.ObjectAllocationSample" -> "allocation"
@@ -143,7 +151,7 @@ internal class JvmProfileCapture {
             }
         }
         samples.sortBy { it.timeMs }
-        return Result(frames, sources, samples, dropped)
+        return Result(frames, sources, samples, dropped, pauses)
     }
 
     companion object {

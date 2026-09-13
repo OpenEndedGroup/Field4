@@ -45,12 +45,14 @@ nav:
     - Files, and Where They Live: files_and_paths.md
     - Your History with Field: history_overview.md
     - Document History: document_history.md
+    - Simulation Time: simulation_clock.md
     - Profiling Timeline: profiling_timeline.md
     # Beside profiling_timeline.md rather than under Internals, and the split between the two is
     # audience: that page is the panel's controls, this one is what the numbers under them mean and
     # what each of the three instruments structurally cannot see. Somebody whose piece is dropping
     # frames needs this one, and may never need to open the other.
     - Holding a Frame Budget: frame_budget.md
+    - Aperture Playground: aperture_playground.md
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
   # "What happens when a box ends on a value" is a faculty of its own, and these five were spread

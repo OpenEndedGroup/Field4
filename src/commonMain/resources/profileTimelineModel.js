@@ -5,7 +5,9 @@ export function selectedSpans(spans, range, lane = null) {
     return spans.filter(s => s.startMs >= range[0] && s.startMs <= range[1] && (lane === null || s.lane === lane));
 }
 
-export function profileSummary(spans) {
+export function profileSummary(spans, self = false) {
+    if (self) spans = spans.map(s => ({...s, wallMs:s.selfWallMs ?? s.wallMs,
+        cpuMs:s.selfCpuMs ?? s.cpuMs, allocatedBytes:s.selfAllocatedBytes ?? s.allocatedBytes}));
     const wall = spans.map(s => s.wallMs).sort((a, b) => a-b);
     const cpuKnown = spans.every(s => s.cpuMs >= 0);
     const allocationKnown = spans.every(s => s.allocatedBytes >= 0);
@@ -67,16 +69,23 @@ export function profileHotspots(samples, frames, range, {kind="cpu", group="meth
     const byId = new Map(frames.map(f=>[f.id,f]));
     const resumes = new Map();
     if(lane!==null) for(const s of spans) {
+        if(s.lane!==lane)continue;
         if(!resumes.has(s.threadId))resumes.set(s.threadId,[]);
         resumes.get(s.threadId).push(s);
     }
-    for(const list of resumes.values())list.sort((a,b)=>a.startMs-b.startMs);
+    const maxEnds = new Map();
+    for(const [threadId,list] of resumes) {
+        list.sort((a,b)=>a.startMs-b.startMs);
+        let end=-Infinity;
+        maxEnds.set(threadId,list.map(s=>end=Math.max(end,s.startMs+s.wallMs)));
+    }
     const owns = sample => {
         if(lane===null)return true;
         const list=resumes.get(sample.threadId)||[];
         let lo=0,hi=list.length;
         while(lo<hi){const mid=(lo+hi)>>>1;if(list[mid].startMs<=sample.timeMs)lo=mid+1;else hi=mid;}
-        const s=list[lo-1];return s?.lane===lane&&sample.timeMs<=s.startMs+s.wallMs;
+        // Prefix maxima retain an enclosing scope after its nested child has returned.
+        return lo>0 && sample.timeMs<=maxEnds.get(sample.threadId)[lo-1];
     };
     const rows=new Map();let total=0,count=0;
     for(const s of samples) {
@@ -93,4 +102,28 @@ export function profileHotspots(samples, frames, range, {kind="cpu", group="meth
         }
     }
     return {total,count,rows:[...rows.values()].sort((a,b)=>b.weight-a.weight)};
+}
+
+// Complete application intervals only. A scope/resume never masquerades as a frame.
+export function profileFrameSummary(frames) {
+    const values = frames.map(f=>f.wallMs).sort((a,b)=>a-b);
+    const percentile = p => values.length ? values[Math.max(0,Math.ceil(p*values.length)-1)] : 0;
+    const cpuKnown = frames.every(f=>f.cpuMs>=0), bytesKnown=frames.every(f=>f.allocatedBytes>=0);
+    return {count:frames.length, meanMs:values.length?values.reduce((a,b)=>a+b,0)/values.length:0,
+        p50Ms:percentile(.5),p95Ms:percentile(.95),p99Ms:percentile(.99),maxMs:values.at(-1)||0,
+        meanCpuMs:cpuKnown&&frames.length?frames.reduce((a,f)=>a+f.cpuMs,0)/frames.length:null,
+        meanBytes:bytesKnown&&frames.length?frames.reduce((a,f)=>a+f.allocatedBytes,0)/frames.length:null,
+        missed:frames.filter(f=>f.wallMs>f.targetMs).length,
+        allocationMissed:frames.filter(f=>f.allocationGuideBytes>0&&f.allocatedBytes>f.allocationGuideBytes).length};
+}
+
+// Keep a rare bad frame visible, independently of how many short frames share its pixel bin.
+export function profileFrameBuckets(records, range, count, allocation=false) {
+    const buckets=new Float64Array(count),width=Math.max(.001,range[1]-range[0]);
+    for(const f of records) {
+        if(f.startMs<range[0]||f.startMs>range[1])continue;
+        const i=Math.min(count-1,Math.floor((f.startMs-range[0])/width*count));
+        buckets[i]=Math.max(buckets[i],allocation?Math.max(0,f.allocatedBytes):f.wallMs);
+    }
+    return buckets;
 }

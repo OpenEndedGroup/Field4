@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 102 transcripts on every build, at three
-depths. 63 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 104 transcripts on every build, at three
+depths. 64 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-32 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+33 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -60,6 +60,13 @@ welcome screen opens is the one the yaml produces today.
 ## Pure-compute scenes
 
 <!-- transcript-index: verified-by = execute -->
+
+**simulation_clock** — A normal frames box owns named Orbit and Pulse coroutines on a
+simulation clock. Replay records complete frame intervals and named scopes in the existing
+profiler, then stops the owner and checks that both children cleaned up. Change the vector
+reuse switch and compare bytes per frame. See [Simulation time](simulation_clock.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/simulation_clock/metadata.edn)
+
 
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
@@ -972,6 +979,13 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 ## External-service live-coding scenes
 
 <!-- transcript-index: verified-by = compile -->
+
+**aperture_playground** — An editable source RTT, two reductions, circular aperture filters,
+and a composite spread line and point energy across four defocus radii. Each box owns one
+shader pair and at most one texture resource; the renderer uses the ordinary launch/stop
+controls. See [Aperture playground](aperture_playground.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/aperture_playground/metadata.edn)
+
 
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight

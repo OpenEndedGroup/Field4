@@ -302,6 +302,30 @@ interface Vector2fc {
 }
 
 /**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector2fc.normalized(epsilon: Float = 0.0f): Vector2f = normalized(Vector2f(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector2fc.normalized(dest: Vector2f, epsilon: Float = 0.0f): Vector2f {
+    require(epsilon.isFinite() && epsilon >= 0.0f) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    require(nx.isFinite() && ny.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny))
+    if (scale == 0.0f) return dest.set(0.0f, 0.0f)
+    val sx = nx / scale
+    val sy = ny / scale
+    val norm = sqrt(sx * sx + sy * sy)
+    if (scale <= epsilon / norm) return dest.set(0.0f, 0.0f)
+    return dest.set(sx / norm, sy / norm)
+}
+
+
+/**
  * A mutable 2D vector of 32-bit floating-point components.
  *
  * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
@@ -833,6 +857,32 @@ interface Vector3fc {
         return buffer
     }
 }
+
+/**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector3fc.normalized(epsilon: Float = 0.0f): Vector3f = normalized(Vector3f(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector3fc.normalized(dest: Vector3f, epsilon: Float = 0.0f): Vector3f {
+    require(epsilon.isFinite() && epsilon >= 0.0f) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    val nz = z()
+    require(nx.isFinite() && ny.isFinite() && nz.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny), abs(nz))
+    if (scale == 0.0f) return dest.set(0.0f, 0.0f, 0.0f)
+    val sx = nx / scale
+    val sy = ny / scale
+    val sz = nz / scale
+    val norm = sqrt(sx * sx + sy * sy + sz * sz)
+    if (scale <= epsilon / norm) return dest.set(0.0f, 0.0f, 0.0f)
+    return dest.set(sx / norm, sy / norm, sz / norm)
+}
+
 
 /**
  * A mutable 3D vector of 32-bit floating-point components.
@@ -1390,6 +1440,34 @@ interface Vector4fc {
 }
 
 /**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector4fc.normalized(epsilon: Float = 0.0f): Vector4f = normalized(Vector4f(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector4fc.normalized(dest: Vector4f, epsilon: Float = 0.0f): Vector4f {
+    require(epsilon.isFinite() && epsilon >= 0.0f) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    val nz = z()
+    val nw = w()
+    require(nx.isFinite() && ny.isFinite() && nz.isFinite() && nw.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny), abs(nz), abs(nw))
+    if (scale == 0.0f) return dest.set(0.0f, 0.0f, 0.0f, 0.0f)
+    val sx = nx / scale
+    val sy = ny / scale
+    val sz = nz / scale
+    val sw = nw / scale
+    val norm = sqrt(sx * sx + sy * sy + sz * sz + sw * sw)
+    if (scale <= epsilon / norm) return dest.set(0.0f, 0.0f, 0.0f, 0.0f)
+    return dest.set(sx / norm, sy / norm, sz / norm, sw / norm)
+}
+
+
+/**
  * A mutable 4D vector of 32-bit floating-point components.
  *
  * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
@@ -1897,6 +1975,30 @@ interface Vector2dc {
         return buffer
     }
 }
+
+/**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector2dc.normalized(epsilon: Double = 0.0): Vector2d = normalized(Vector2d(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector2dc.normalized(dest: Vector2d, epsilon: Double = 0.0): Vector2d {
+    require(epsilon.isFinite() && epsilon >= 0.0) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    require(nx.isFinite() && ny.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny))
+    if (scale == 0.0) return dest.set(0.0, 0.0)
+    val sx = nx / scale
+    val sy = ny / scale
+    val norm = sqrt(sx * sx + sy * sy)
+    if (scale <= epsilon / norm) return dest.set(0.0, 0.0)
+    return dest.set(sx / norm, sy / norm)
+}
+
 
 /**
  * A mutable 2D vector of 64-bit floating-point components.
@@ -2430,6 +2532,32 @@ interface Vector3dc {
         return buffer
     }
 }
+
+/**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector3dc.normalized(epsilon: Double = 0.0): Vector3d = normalized(Vector3d(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector3dc.normalized(dest: Vector3d, epsilon: Double = 0.0): Vector3d {
+    require(epsilon.isFinite() && epsilon >= 0.0) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    val nz = z()
+    require(nx.isFinite() && ny.isFinite() && nz.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny), abs(nz))
+    if (scale == 0.0) return dest.set(0.0, 0.0, 0.0)
+    val sx = nx / scale
+    val sy = ny / scale
+    val sz = nz / scale
+    val norm = sqrt(sx * sx + sy * sy + sz * sz)
+    if (scale <= epsilon / norm) return dest.set(0.0, 0.0, 0.0)
+    return dest.set(sx / norm, sy / norm, sz / norm)
+}
+
 
 /**
  * A mutable 3D vector of 64-bit floating-point components.
@@ -2985,6 +3113,34 @@ interface Vector4dc {
         return buffer
     }
 }
+
+/**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector4dc.normalized(epsilon: Double = 0.0): Vector4d = normalized(Vector4d(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector4dc.normalized(dest: Vector4d, epsilon: Double = 0.0): Vector4d {
+    require(epsilon.isFinite() && epsilon >= 0.0) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    val nz = z()
+    val nw = w()
+    require(nx.isFinite() && ny.isFinite() && nz.isFinite() && nw.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny), abs(nz), abs(nw))
+    if (scale == 0.0) return dest.set(0.0, 0.0, 0.0, 0.0)
+    val sx = nx / scale
+    val sy = ny / scale
+    val sz = nz / scale
+    val sw = nw / scale
+    val norm = sqrt(sx * sx + sy * sy + sz * sz + sw * sw)
+    if (scale <= epsilon / norm) return dest.set(0.0, 0.0, 0.0, 0.0)
+    return dest.set(sx / norm, sy / norm, sz / norm, sw / norm)
+}
+
 
 /**
  * A mutable 4D vector of 64-bit floating-point components.
@@ -3620,6 +3776,42 @@ interface Vector8hc {
         return buffer
     }
 }
+
+/**
+ * Returns a normalized copy, or zero when its length is at most epsilon.
+ *
+ * Never mutates the receiver. Uses scaled arithmetic for tiny/large finite vectors. Non-finite components and negative/non-finite epsilon are rejected. The default treats only exact zero as zero.
+ */
+fun Vector8hc.normalized(epsilon: Float = 0.0f): Vector8h = normalized(Vector8h(), epsilon)
+/**
+ * Writes a normalized value into dest without allocating; dest may alias this vector.
+ */
+fun Vector8hc.normalized(dest: Vector8h, epsilon: Float = 0.0f): Vector8h {
+    require(epsilon.isFinite() && epsilon >= 0.0f) { "epsilon must be finite and non-negative" }
+    val nx = x()
+    val ny = y()
+    val nz = z()
+    val nw = w()
+    val na = a()
+    val nb = b()
+    val nc = c()
+    val nd = d()
+    require(nx.isFinite() && ny.isFinite() && nz.isFinite() && nw.isFinite() && na.isFinite() && nb.isFinite() && nc.isFinite() && nd.isFinite()) { "Cannot normalize non-finite components" }
+    val scale = maxOf(abs(nx), abs(ny), abs(nz), abs(nw), abs(na), abs(nb), abs(nc), abs(nd))
+    if (scale == 0.0f) return dest.set(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+    val sx = nx / scale
+    val sy = ny / scale
+    val sz = nz / scale
+    val sw = nw / scale
+    val sa = na / scale
+    val sb = nb / scale
+    val sc = nc / scale
+    val sd = nd / scale
+    val norm = sqrt(sx * sx + sy * sy + sz * sz + sw * sw + sa * sa + sb * sb + sc * sc + sd * sd)
+    if (scale <= epsilon / norm) return dest.set(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+    return dest.set(sx / norm, sy / norm, sz / norm, sw / norm, sa / norm, sb / norm, sc / norm, sd / norm)
+}
+
 
 /**
  * A mutable 8D vector of 16-bit floating-point components.

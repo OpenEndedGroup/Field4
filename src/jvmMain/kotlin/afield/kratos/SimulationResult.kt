@@ -19,9 +19,12 @@ import kotlin.math.sqrt
  * [temperature], [pressure] and [velocity] are conveniences that fail with the list of fields that
  * *are* present rather than with a null.
  *
- * Two things are true of every formulation and are therefore direct properties: [distance], the
- * signed nodal level set, positive on the side that was solved; and [cellState], `0` inactive,
- * `1` wholly inside, `2` cut.
+ * Two fields follow from how the formulation meets its geometry rather than from its physics, and
+ * they are direct properties for that reason. An **embedded** result carries [distance], the signed
+ * nodal level set, positive on the side that was solved, and [cellState], `0` inactive, `1` wholly
+ * inside, `2` cut. A **body-fitted** result carries neither: its mesh is the body, so there is no
+ * level set to report and no cell to classify, and both accessors say which fields did arrive
+ * rather than inventing zeros.
  *
  * # Sampling is barycentric in the grid's own tetrahedra
  *
@@ -30,6 +33,20 @@ import kotlin.math.sqrt
  * trilinear hexahedral interpolation and would disagree with one; it matches the discretisation
  * the answer was computed on. A point outside the domain, or one with no active support, samples
  * as `null` rather than as zero.
+ *
+ * That index calculation is closed-form only on a structured grid, so on a body-fitted mesh point
+ * sampling is `null` everywhere and [sliceMesh] refuses outright. [boundaryMesh] and [deformedMesh]
+ * are the views to draw there.
+ */
+
+/**
+ * The arrays decoded from one result frame, and the sample and mesh views built over them.
+ *
+ * A result is decoded from a wire frame rather than built by a caller, which is why the constructor
+ * is `internal`: the worker's own field list drives the decode, and every array it names is
+ * shape-checked against the domain on the way in. [revision] says which solve produced this,
+ * which is how a draw decides whether it is still the current one, and [diagnostics] carries the
+ * worker's timings and the region identities that travelled with the request.
  */
 class SimulationResult internal constructor(
     val domain: BackgroundDomain,
