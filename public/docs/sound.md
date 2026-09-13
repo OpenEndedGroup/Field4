@@ -264,15 +264,14 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ## What this means for the audio elsewhere in these docs
 
-The stand-in is not the voice you are hearing on most of the site. The audit described at the
-bottom of this page sweeps every published clip and measures each one; the corpus is fifteen
-clips across four pages, and it breaks down like this:
+The audit described at the bottom of this page sweeps every published clip and measures each one.
+The corpus is forty-one clips across four pages, and it breaks down like this:
 
 <div class="field-data-table" markdown>
 
 | how many | family | where |
 | --- | --- | --- |
-| 5 | the stand-in synth (`patVoice`) | 3 on [Patterns & Rhythm](pattern_language.md), 1 here, 1 on [Sound paths](sound_paths.md) |
+| 31 | the stand-in synth (`patVoice`) | 29 on [Patterns & Rhythm](pattern_language.md), 1 here, 1 on [Sound paths](sound_paths.md) |
 | 1 | real Dirt-Samples one-shots | here |
 | 1 | real samples + the stand-in per unmatched event | here |
 | 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
@@ -280,13 +279,21 @@ clips across four pages, and it breaks down like this:
 
 </div>
 
-Nine of the fifteen never touch `patVoice` at all, and the largest family among them is standing
-in for nothing. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant lowpass and a soft
-clipper on real signals; a plate reverb ringing down *is* the thing that page is about.
+That first row used to read 5, and this section used to open by saying the stand-in is *not* what
+you are hearing on most of the site. It no longer can: twenty-six of those thirty-one are the
+mini-notation cards on [Patterns & Rhythm](pattern_language.md), one clip per form of the notation,
+and they arrived in a single commit. The stand-in is now most of the audio here by a wide margin.
 
-Where the stand-in genuinely is the voice, in the five clips of the first row, the reason is the
-one given above: it needs no assets, so the figure regenerates anywhere, and its claims can be
-measured in the audio rather than asserted in a caption.
+The reason is the one given above, and adding twenty-six clips is the clearest case for it: a
+primer that plays `bd*4` and `bd(3,8)` and `{bd hh cp}%8` needs a voice that renders identically
+on a clean checkout with no sample library anywhere near it, and whose onsets can be *counted out
+of the rendered audio* and checked against the schedule — which is what every one of those
+twenty-six asserts.
+
+The nine that never touch `patVoice` are still the interesting minority, and the largest of them
+is standing in for nothing at all. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant
+lowpass and a soft clipper on real signals; a plate reverb ringing down *is* the thing that page is
+about.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the homepage
 banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player sets `muted` and
@@ -356,7 +363,7 @@ assertions:
 
 * **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
   until somebody states which family it belongs to;
-* **every committed clip still matches what its producer renders today** — all fifteen
+* **every committed clip still matches what its producer renders today** — all forty-one
   currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation. This is
   the assertion that catches a published figure whose producing code has changed underneath it.
   `56b124131` is the last time two of them had to be repaired by hand;
