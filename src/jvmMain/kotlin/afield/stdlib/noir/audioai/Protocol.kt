@@ -741,8 +741,8 @@ data class AnalysisSeries(
 /**
  * One transcribed note from polyphonic analysis: when, how high, how loud.
  *
- * Only `analysis.pitch_poly` produces these; every other analysis leaves [AnalysisPreview.notes]
- * empty.
+ * `analysis.pitch_poly` and `analysis.transcribe_music` produce these; the latter also fills
+ * [instrument]. Every other analysis leaves [AnalysisPreview.notes] empty.
  */
 @Serializable
 data class AnalysisNote(
@@ -756,6 +756,8 @@ data class AnalysisNote(
     val midi: Int,
     /** Note amplitude as the transcriber reported it; the built-in viewer draws it as a 0..1 opacity. */
     val amplitude: Double,
+    /** MuScriptor instrument group; null for transcribers that do not assign instruments. */
+    val instrument: String? = null,
 )
 
 /**
@@ -769,7 +771,8 @@ data class AnalysisNote(
  * [notes] plus two activation series, and `analysis.embed_speech` fills voice activity, energy,
  * novelty, and MDS coordinate series while retaining the full learned embedding in the NPZ;
  * `analysis.embed_spectral` fills energy, centroid, flatness, rolloff, and flux while its dense mel,
- * log-mel, and MFCC frames remain in NPZ and MessagePack artifacts.
+ * log-mel, and MFCC frames remain in NPZ and MessagePack artifacts; and
+ * `analysis.transcribe_music` fills instrument-labelled [notes], active-note and onset-count series.
  */
 @Serializable
 data class AnalysisPreview(
@@ -783,7 +786,7 @@ data class AnalysisPreview(
     /** Detected beat positions in seconds, for `analysis.beats`; empty otherwise. Not downsampled. */
     @SerialName("beat_times_seconds")
     val beatTimesSeconds: List<Double> = emptyList(),
-    /** Transcribed notes, for `analysis.pitch_poly`; empty otherwise. */
+    /** Transcribed notes, for `analysis.pitch_poly` and `analysis.transcribe_music`; empty otherwise. */
     val notes: List<AnalysisNote> = emptyList(),
     /** The same headline numbers as [AnalysisResult.summary]. */
     val summary: JsonObject = JsonObject(emptyMap()),

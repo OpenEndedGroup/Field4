@@ -175,6 +175,143 @@ fun polyphonicPitchAnalysis(
     )
 }
 
+/** Instrument groups learned by MuScriptor 0.3.0 and accepted as hard transcription constraints. */
+enum class MuscriptorInstrument(val id: String) {
+    ACOUSTIC_PIANO("acoustic_piano"),
+    ELECTRIC_PIANO("electric_piano"),
+    CHROMATIC_PERCUSSION("chromatic_percussion"),
+    ORGAN("organ"),
+    ACOUSTIC_GUITAR("acoustic_guitar"),
+    CLEAN_ELECTRIC_GUITAR("clean_electric_guitar"),
+    DISTORTED_ELECTRIC_GUITAR("distorted_electric_guitar"),
+    ACOUSTIC_BASS("acoustic_bass"),
+    ELECTRIC_BASS("electric_bass"),
+    VIOLIN("violin"),
+    VIOLA("viola"),
+    CELLO("cello"),
+    CONTRABASS("contrabass"),
+    ORCHESTRAL_HARP("orchestral_harp"),
+    TIMPANI("timpani"),
+    STRING_ENSEMBLE("string_ensemble"),
+    SYNTH_STRINGS("synth_strings"),
+    VOICE("voice"),
+    ORCHESTRA_HIT("orchestra_hit"),
+    TRUMPET("trumpet"),
+    TROMBONE("trombone"),
+    TUBA("tuba"),
+    FRENCH_HORN("french_horn"),
+    BRASS_SECTION("brass_section"),
+    SOPRANO_AND_ALTO_SAX("soprano_and_alto_sax"),
+    TENOR_SAX("tenor_sax"),
+    BARITONE_SAX("baritone_sax"),
+    OBOE("oboe"),
+    ENGLISH_HORN("english_horn"),
+    BASSOON("bassoon"),
+    CLARINET("clarinet"),
+    FLUTES("flutes"),
+    SYNTH_LEAD("synth_lead"),
+    SYNTH_PAD("synth_pad"),
+    DRUMS("drums"),
+}
+
+/** Revision-pinned MuScriptor model exposed behind the model-neutral music-transcription operation. */
+enum class MuscriptorBackend(val modelId: String) {
+    /** Roughly 100M parameters; the practical first choice and viable on lower-resource machines. */
+    SMALL("analysis.muscriptor.small"),
+
+    /** Roughly 300M parameters; upstream's default quality/footprint compromise. */
+    MEDIUM("analysis.muscriptor.medium"),
+
+    /** Roughly 1.4B parameters; highest accuracy and the largest GPU/latency cost. */
+    LARGE("analysis.muscriptor.large"),
+}
+
+/** What MuScriptor should do when deriving MIDI tempo and meter from the selected audio. */
+enum class MuscriptorTempoDetection {
+    /** Fail the job when a stable beat grid cannot be recovered. */
+    REQUIRED,
+
+    /** Try, but retain unquantized notes and placeholder MIDI timing when detection fails. */
+    BEST_EFFORT,
+
+    /** Do not run the separate beat tracker. */
+    OFF,
+}
+
+/**
+ * Multi-instrument note transcription with immutable MIDI and structured-note artifacts.
+ *
+ * MuScriptor consumes mono 16 kHz audio internally in five-second chunks. Its note vocabulary
+ * carries onset, offset, MIDI pitch, and one of its instrument groups, but not velocity. Supplying
+ * [instruments] is a hard constraint and can stabilize attribution when the expected ensemble is
+ * known. Prelude forcing preserves held notes across chunk boundaries and therefore requires an
+ * effective batch size of one.
+ */
+fun musicTranscriptionAnalysis(
+    source: AssetRegion,
+    backend: MuscriptorBackend = MuscriptorBackend.SMALL,
+    instruments: List<MuscriptorInstrument> = emptyList(),
+    useSampling: Boolean = false,
+    temperature: Double = 1.0,
+    cfgCoefficient: Double = 1.0,
+    beamSize: Int = 1,
+    preludeForcing: Boolean = true,
+    batchSize: Int? = null,
+    strictEos: Boolean = false,
+    tempoDetection: MuscriptorTempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
+    includeQuantizedMidi: Boolean = true,
+    requestedBy: String? = null,
+    forceRegenerate: Boolean = false,
+): ModelOperation {
+    require(temperature.isFinite() && temperature > 0.0) { "temperature must be positive and finite" }
+    require(cfgCoefficient.isFinite() && cfgCoefficient > 0.0) {
+        "cfgCoefficient must be positive and finite"
+    }
+    require(beamSize >= 1) { "beamSize must be at least one" }
+    require(batchSize == null || batchSize >= 1) { "batchSize must be positive when supplied" }
+    require(!preludeForcing || batchSize == null || batchSize == 1) {
+        "batchSize greater than one requires preludeForcing=false"
+    }
+    return ModelOperation(
+        operation = "analysis.transcribe_music",
+        inputs = listOf(source),
+        parameters = buildJsonObject {
+            putJsonArray("instruments") { instruments.forEach { add(JsonPrimitive(it.id)) } }
+            put("use_sampling", useSampling)
+            put("temperature", temperature)
+            put("cfg_coef", cfgCoefficient)
+            put("beam_size", beamSize)
+            put("prelude_forcing", preludeForcing)
+            batchSize?.let { put("batch_size", it) }
+            put("strict_eos", strictEos)
+            when (tempoDetection) {
+                MuscriptorTempoDetection.REQUIRED -> put("detect_tempo", true)
+                MuscriptorTempoDetection.BEST_EFFORT -> put("detect_tempo", "best-effort")
+                MuscriptorTempoDetection.OFF -> put("detect_tempo", false)
+            }
+            put("include_quantized_midi", includeQuantizedMidi)
+        },
+        candidateCount = 1,
+        backendPreference = backend.modelId,
+        requestedBy = requestedBy,
+        forceRegenerate = forceRegenerate,
+    )
+}
+
+/** The performance-timed MIDI emitted by [musicTranscriptionAnalysis]. */
+fun AnalysisResult.musicTranscriptionMidi(): AssetRepresentation =
+    artifacts.firstOrNull { it.role == "music_transcription_midi" }
+        ?: error("analysis result has no MuScriptor MIDI artifact")
+
+/** Beat-quantized MIDI, present only when requested and a usable subdivision was detected. */
+fun AnalysisResult.musicTranscriptionQuantizedMidiOrNull(): AssetRepresentation? =
+    artifacts.firstOrNull { it.role == "music_transcription_quantized_midi" }
+
+/** Full onset/offset/pitch/instrument event document in the versioned binary interchange format. */
+fun AnalysisResult.musicTranscriptionMessagePack(): AssetRepresentation =
+    artifacts.firstOrNull { it.role == "music_transcription_messagepack" }
+        ?: error("analysis result has no MuScriptor MessagePack artifact")
+
 /** The two revision-pinned learned speech spaces exposed behind one model-neutral operation. */
 enum class SpeechEmbeddingBackend(val modelId: String) {
     /** Prosody, speaker affect, vocal texture, and other emotion-oriented acoustic content. */

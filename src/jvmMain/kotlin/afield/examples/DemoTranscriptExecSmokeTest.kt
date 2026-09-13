@@ -209,6 +209,9 @@ object DemoTranscriptExecSmokeTest {
         // The guide and synthetic phase portraits are pure compute; the live third box owns the
         // optional librosa service call and is deliberately left for an interactive run.
         "audio_ai_spectral_embeddings",
+        // Guide and synthetic instrument-labelled piano roll are model-free. The third box owns the
+        // gated MuScriptor service request and remains an explicit user action.
+        "audio_ai_muscriptor",
         // The guide and durable monitor run headless. The second box contains the complete
         // Librosa-backed indexing and retrieval workflow, and remains inert until run by a user.
         "audio_ai_corpus_microscope",

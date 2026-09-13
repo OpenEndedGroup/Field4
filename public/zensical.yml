@@ -108,6 +108,7 @@ nav:
       - Beat and Pitch Analysis: audio_ai_analysis.md
       - Speech-Reactive Learned Spaces: audio_ai_speech_embeddings.md
       - Short-Time Spectral Spaces: audio_ai_spectral_embeddings.md
+      - Multi-Instrument Transcription: audio_ai_muscriptor.md
       - Corpus Microscope: audio_ai_corpus_microscope.md
       - Render Field Music, Then Analyse It: audio_render_analysis.md
       - EnCodec Reconstruction Microscope: audio_ai_codec.md

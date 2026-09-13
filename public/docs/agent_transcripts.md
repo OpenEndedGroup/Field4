@@ -38,8 +38,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 101 transcripts on every build, at three
-depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 102 transcripts on every build, at three
+depths. 63 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -945,6 +945,15 @@ t-SNE phase portraits. The first two boxes explain and exercise the synchronized
 service; box 3 owns the complete source-to-result path.
 Walkthrough: [Short-time spectral spaces](audio_ai_spectral_embeddings.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_spectral_embeddings/metadata.edn)
+
+**audio_ai_muscriptor** — Turn an imported or Field-rendered recording into instrument-labelled
+notes with the model-neutral `analysis.transcribe_music` operation. The live box selects a
+revision-pinned small, medium, or large MuScriptor backend, follows its durable job, synchronizes
+the source waveform with an instrument-coloured piano roll, and downloads performance-timed plus
+optional beat-quantized MIDI. The guide and synthetic score viewer execute without gated weights;
+the complete authenticated model path remains an explicit action in box 3.
+Walkthrough: [Multi-instrument transcription with MuScriptor](audio_ai_muscriptor.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_muscriptor/metadata.edn)
 
 **audio_ai_corpus_microscope** — Resolve Nancy and Final Out at Candlestick Park, submit and monitor
 multi-scale segmentation and grouped descriptor jobs, then use a six-second Nancy window to retrieve

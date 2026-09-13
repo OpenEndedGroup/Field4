@@ -216,11 +216,19 @@ private fun analysisVisualizationShell(
         const lo=Math.floor(pb[0]-1),hi=Math.ceil(pb[1]+1);lane(0,h*.78,'pYIN pitch');lane(h*.79,h,'voiced probability');grid();
         for(let note=Math.ceil(lo/12)*12;note<hi;note+=12){const y=h*.75-(note-lo)/Math.max(1,hi-lo)*h*.69;context.strokeStyle='rgba(97,200,217,.16)';context.beginPath();context.moveTo(0,y);context.lineTo(w,y);context.stroke();context.fillStyle='#61798a';context.fillText('C'+(note/12-1),7,y-3)}
         line(f,v=>h*.75-(69+12*Math.log2(v/440)-lo)/Math.max(1,hi-lo)*h*.69,colors[0],1,1.7);line(voice,v=>h*.97-v*h*.15,colors[2]);legend.textContent='cyan F0 · green voicing';
-      }else{
+      }else if(data.operation==='analysis.pitch_poly'){
         const notes=data.notes.filter(n=>n.end_seconds>=start&&n.start_seconds<=start+duration),maxA=series('maximum_note_activation'),count=series('active_pitch_count'),nb=notes.length?[Math.min(...notes.map(n=>n.midi)),Math.max(...notes.map(n=>n.midi))]:[48,72],lo=nb[0]-1,hi=nb[1]+1;
         lane(0,h*.72,'Basic Pitch piano roll');lane(h*.73,h,'activation / active pitches');grid();
         for(const n of notes){const x=xOf(n.start_seconds),x2=xOf(n.end_seconds),y=h*.69-(n.midi-lo)/Math.max(2,hi-lo)*h*.64;context.globalAlpha=.25+.75*n.amplitude;context.fillStyle=colors[n.midi%colors.length];context.fillRect(x,y-3,Math.max(1,x2-x),6)}context.globalAlpha=1;
         line(maxA,v=>h*.96-v*h*.19,colors[0]);const cb=bounds(count?count.values:[],[0,1]);line(count,v=>h*.96-(v-cb[0])/Math.max(1,cb[1]-cb[0])*h*.19,colors[1],.9);legend.textContent='notes · cyan activation · gold active count';
+      }else if(data.operation==='analysis.transcribe_music'){
+        const notes=data.notes.filter(n=>n.end_seconds>=start&&n.start_seconds<=start+duration),active=series('active_note_count'),onsets=series('onset_count'),allNames=[...new Set(data.notes.map(n=>n.instrument||'unassigned'))].sort(),colorOf=name=>colors[Math.max(0,allNames.indexOf(name))%colors.length],nb=notes.length?[Math.min(...notes.map(n=>n.midi)),Math.max(...notes.map(n=>n.midi))]:[48,72],lo=nb[0]-1,hi=nb[1]+1;
+        lane(0,h*.72,'MuScriptor instrument piano roll');lane(h*.73,h,'active notes / onsets');grid();
+        for(let note=Math.ceil(lo/12)*12;note<hi;note+=12){const y=h*.69-(note-lo)/Math.max(2,hi-lo)*h*.64;context.strokeStyle='rgba(97,200,217,.12)';context.beginPath();context.moveTo(0,y);context.lineTo(w,y);context.stroke();context.fillStyle='#61798a';context.fillText('C'+(note/12-1),7,y-3)}
+        for(const n of notes){const x=xOf(n.start_seconds),x2=xOf(n.end_seconds),y=h*.69-(n.midi-lo)/Math.max(2,hi-lo)*h*.64;context.globalAlpha=.82;context.fillStyle=colorOf(n.instrument||'unassigned');context.fillRect(x,y-3,Math.max(1,x2-x),6)}context.globalAlpha=1;
+        const ab=bounds(active?active.values:[],[0,1]),ob=bounds(onsets?onsets.values:[],[0,1]);line(active,v=>h*.96-(v-ab[0])/Math.max(1,ab[1]-ab[0])*h*.19,colors[0],1,1.6);line(onsets,v=>h*.96-(v-ob[0])/Math.max(1,ob[1]-ob[0])*h*.19,colors[1],.9);legend.textContent='instruments · '+allNames.join(' · ');
+      }else{
+        lane(0,h,'unsupported analysis');grid();legend.textContent=data.operation;
       }
       if(hover!=null){context.strokeStyle=cursorKind==='playhead'?'rgba(255,223,115,.9)':'rgba(255,255,255,.72)';context.lineWidth=cursorKind==='playhead'?1.7:1;context.beginPath();context.moveTo(hover,0);context.lineTo(hover,h);context.stroke()}}
     const publish=(name,detail)=>{if(sync)timeBus.dispatchEvent(new timeBus.CustomEvent(name,{detail:{group:sync,source:instance,...detail}}))};

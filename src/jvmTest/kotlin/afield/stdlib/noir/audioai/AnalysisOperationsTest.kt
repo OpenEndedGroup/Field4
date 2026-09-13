@@ -61,6 +61,26 @@ class AnalysisOperationsTest {
     }
 
     @Test
+    fun wrapsRevisionPinnedMuscriptorTranscription() {
+        val request = musicTranscriptionAnalysis(
+            source,
+            backend = MuscriptorBackend.MEDIUM,
+            instruments = listOf(MuscriptorInstrument.CELLO, MuscriptorInstrument.VIOLIN),
+            tempoDetection = MuscriptorTempoDetection.OFF,
+            requestedBy = "field:test/muscriptor",
+        )
+
+        assertEquals("analysis.transcribe_music", request.operation)
+        assertEquals("analysis.muscriptor.medium", request.backendPreference)
+        assertEquals(
+            listOf("cello", "violin"),
+            request.parameters.getValue("instruments").jsonArray.map { it.jsonPrimitive.content },
+        )
+        assertEquals(false, request.parameters.getValue("detect_tempo").jsonPrimitive.content.toBoolean())
+        assertTrue(request.parameters.getValue("prelude_forcing").jsonPrimitive.content.toBoolean())
+    }
+
+    @Test
     fun rendersRangeAwareAnalysisCanvas() {
         val result = AnalysisResult(
             id = "analysis_test",
