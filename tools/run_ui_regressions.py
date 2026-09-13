@@ -3873,7 +3873,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="document-guide",
-            description="Read document Markdown, follow box/heading links, edit safely against disk revisions, and place a shared file proxy.",
+            description="Read document Markdown and collected box notes, follow box/heading links, add a note, edit safely against disk revisions, and place a shared file proxy.",
             document=f"ui-regression-guide-{int(time.time())}",
             commands=[
                 "new-box --name GuideTarget --alias guide_target --x 300 --y 100",
