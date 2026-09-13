@@ -122,6 +122,33 @@ sealed class EvalResult {
     data class Err(val error: CompileError) : EvalResult()
 }
 
+/**
+ * Compliment's kind of thing, said in the completion popup's own vocabulary.
+ *
+ * `Metadata.category` is not a label: it is the key `CATEGORY_WEIGHT` in
+ * `src/commonMain/resources/fieldSuggest.js` is looked up by, and a name that table does not know
+ * scores **0** — the same as "other". Handing Compliment's own words over unmapped therefore looked
+ * fine, because the popup will title-case anything into a group header (`class` got a group called
+ * "Class"), while ranking every Clojure candidate as bottom-of-the-list filler. `local` is the one
+ * that matters most: that table scores it 28, above every other category, on the grounds that a name
+ * the reader bound two lines up is the best answer a popup can give. It was arriving with no weight
+ * at all.
+ *
+ * A type this does not know keeps its own spelling rather than collapsing to "other", so a new
+ * Compliment source appears under its own header instead of joining a pile. [ClojureHostTest] pins
+ * every mapping here against the shipped table, so a rename on either side is a test failure rather
+ * than a silent demotion.
+ */
+internal fun clojureCompletionCategory(type: String?): String = when (val kind = type?.trim()?.lowercase()) {
+    null, "" -> ""
+    "local" -> "local"
+    "function", "macro", "special-form", "method", "static-method" -> "functions"
+    "var", "keyword", "field", "static-field" -> "values"
+    "class", "import" -> "types"
+    "namespace" -> "imports"
+    else -> kind
+}
+
 
 // ---------- Helper to safely call Clojure Vars ----------
 private fun varv(ns: String, name: String): Var = Clojure.`var`(ns, name) as Var
@@ -542,27 +569,34 @@ class ClojureHost(private val defaultNs: String = "user") {
     }
 
     /**
-     * The code around the cursor, with the prefix replaced by `__prefix__` and **closed**.
+     * The code **up to** the cursor, with the prefix replaced by `__prefix__`, closed.
      *
      * Compliment reads this to work out what the caret is inside, which is the only way it can know
      * about a local: a `let` binding, a `fn` parameter, a `doseq` variable. It has to *read* it, and
      * code being typed rarely reads — a caret at the end of `(let [spiral 1]\n  (lines [sp` sits
-     * inside three unclosed brackets.
+     * inside three unclosed brackets. So the brackets still open at the caret are closed, by walking
+     * the text with a bracket stack and appending their closers.
      *
-     * So this closes them, by walking the text with a bracket stack and appending the missing
-     * closers. Measured before and after on the same eight shapes: unclosed, Compliment found the
-     * local for a trivial binding (`[spiral 1]`) and lost it the moment the binding's value was
-     * itself a form (`[spiral (polyline [[0 0]])]`), in every caret position. Closed, it finds it in
-     * all of them. That "sometimes" is worse than either alternative, because it looks like the
-     * feature working.
+     * **The text after the caret is dropped, and that is the load-bearing half.** Every form the
+     * caret is inside opens *before* it, so the tail carries no scope — and in a real editor the
+     * tail is not the reader's text at all, it is whatever Monaco's auto-closing left there. The
+     * buffer measured from a live Clojure box on 2026-09-13 was
+     * `(let [spline (polyline [[0 0] [10 10]])]\n  (lines [sp)` — note the final `)`, auto-inserted
+     * for `(lines` and now sitting where the `[` wants its `]`. Kept, that tail makes the context
+     * `[__prefix__)))`, which does not read, and Compliment answers a context it cannot read with
+     * globals only and no complaint: the popup listed functions, a class and a var, and not the
+     * local two lines up. Dropped, the same caret gets `(lines [__prefix__]))` and the local is
+     * there. Every unit test that passes a string ending at the caret was already exercising the
+     * good case, which is why this survived one.
      *
      * Strings, character literals and `;` comments are skipped rather than scanned, so a `"("` or a
      * `\(` does not open anything. The caller still treats a rejection as "no context" — this makes
      * the good case common, it does not promise the string reads.
      */
     private fun completionContext(code: String, cursor: Int, prefix: String): String {
-        val start = (cursor - prefix.length).coerceIn(0, code.length)
-        val marked = code.substring(0, start) + "__prefix__" + code.substring(cursor.coerceIn(0, code.length))
+        val caret = cursor.coerceIn(0, code.length)
+        val start = (caret - prefix.length).coerceIn(0, caret)
+        val marked = code.substring(0, start) + "__prefix__"
         return marked + closersFor(marked)
     }
 
@@ -1068,7 +1102,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                 documentation = completionDocumentation(it),
                 text = it.candidate,
                 displayText = it.displayText ?: "",
-                category = it.type ?: "",
+                category = clojureCompletionCategory(it.type),
                 prefix = it.ns ?: ""
             )
         }

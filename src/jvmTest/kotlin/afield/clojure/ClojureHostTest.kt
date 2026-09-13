@@ -200,4 +200,81 @@ class ClojureHostTest {
         assertEquals(listOf("called" to 1), invoked.out)
         assertEquals(":done", invoked.ok.result.printed)
     }
+
+    /**
+     * The buffer a *real* editor sends, which is not the buffer a test would think to write.
+     *
+     * Recorded on 2026-09-13 from the live server behind `public/docs/clojure.md`'s completion
+     * figure, by logging `CompletionRequest.allCode` and its cursor. Monaco's auto-closing had
+     * inserted a `)` for `(lines` and left it sitting where the `[` wants its `]`, so the text
+     * after the caret is neither the reader's nor balanced — and the caret is at 53 of 54, not at
+     * the end. Every other completion assertion in this file passes a string that stops at the
+     * caret, which is exactly the case that always worked: the popup in that figure listed
+     * functions, a class and a var, and no local, while the same caret in a test found one.
+     */
+    @Test
+    fun `a local is offered in the buffer a live editor actually sends`() {
+        val buffer = "(let [spline (polyline [[0 0] [10 10]])]\n  (lines [sp)"
+        val caret = 53
+        assertEquals(54, buffer.length, "the recorded buffer is 54 chars; the caret is one short of it")
+        assertEquals("sp", buffer.substring(caret - 2, caret), "the caret sits just after the prefix")
+
+        val candidates = host().complete(buffer, caret).mapNotNull { it.displayText }
+        assertTrue("spline" in candidates, "the let binding is not offered: $candidates")
+        assertTrue("split-at" in candidates, "core names are not offered either: $candidates")
+    }
+
+    /**
+     * The categories this runtime emits have to be names `CATEGORY_WEIGHT` scores, and that table
+     * ships in `fieldSuggest.js` — so it is read here rather than restated. A Clojure candidate
+     * whose category the client does not know still *renders* (the popup title-cases anything into
+     * a header), it just ranks at zero alongside "other", which is how `local` — the highest-scoring
+     * category there is — spent its first day as filler.
+     */
+    @Test
+    fun `every category this runtime emits is one the popup ranks`() {
+        val weighted = categoryWeightNames()
+        assertTrue("local" in weighted, "read the wrong table: $weighted")
+
+        // Compliment's own vocabulary, from `compliment.sources`: the types a candidate can carry.
+        val fromCompliment = listOf(
+            "local", "function", "macro", "special-form", "method", "static-method",
+            "var", "keyword", "field", "static-field", "class", "import", "namespace",
+        )
+        for (type in fromCompliment) {
+            val category = clojureCompletionCategory(type)
+            assertTrue(
+                category in weighted,
+                "Compliment's `$type` maps to `$category`, which CATEGORY_WEIGHT does not score: $weighted"
+            )
+        }
+
+        assertEquals("local", clojureCompletionCategory("local"))
+        assertEquals("functions", clojureCompletionCategory("function"))
+        assertEquals("values", clojureCompletionCategory("var"))
+        assertEquals("types", clojureCompletionCategory("class"))
+        assertEquals("", clojureCompletionCategory(null))
+        // An unknown type keeps its own spelling, so it gets its own header rather than joining
+        // "other" — and shows up in this test's failure message if Compliment grows a source.
+        assertEquals("sorcery", clojureCompletionCategory("Sorcery"))
+    }
+
+    /** The category names `src/commonMain/resources/fieldSuggest.js` scores above zero. */
+    private fun categoryWeightNames(): Set<String> {
+        val js = java.io.File(repoRoot(), "src/commonMain/resources/fieldSuggest.js").readText()
+        val table = Regex("""const CATEGORY_WEIGHT = new Map\(\[(.*?)]\);""", RegexOption.DOT_MATCHES_ALL)
+            .find(js)?.groupValues?.get(1)
+            ?: error("could not find CATEGORY_WEIGHT in fieldSuggest.js")
+        return Regex(""""([^"]+)",\s*(\d+)""").findAll(table)
+            .filter { it.groupValues[2].toInt() > 0 }
+            .map { it.groupValues[1] }
+            .toSet()
+    }
+
+    /** The checkout root, found by walking up to the directory holding `settings.gradle.kts`. */
+    private fun repoRoot(): java.io.File {
+        var dir: java.io.File? = java.io.File(".").absoluteFile
+        while (dir != null && !java.io.File(dir, "settings.gradle.kts").exists()) dir = dir.parentFile
+        return dir ?: error("no settings.gradle.kts above ${java.io.File(".").absolutePath}")
+    }
 }
