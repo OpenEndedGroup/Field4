@@ -356,7 +356,7 @@ Every budget is hit **exactly** (2000, 600 and 150 triangles) and all three stay
 χ = 2, which is the link condition doing its job. The volume drifts from 2.1400 down to 2.1252,
 2.0860 and 2.0724 (the collapses cut corners off a convex solid, so it can only lose). The number to
 budget against is the deviation in each panel heading: **0.0047** at 2000 triangles, **0.0166** at 600
-and **0.0326** at 150, on a ball of radius 0.8, so a 34× reduction costs you about 4% of the radius.
+and **0.0326** at 150, on a ball of radius 0.8, so a 34× reduction costs you about 4<!--derive: 0.0326/0.8*100-->% of the radius.
 The deviation grows *slower* than the triangle count falls. Decimation trades on that asymmetry.
 
 `quality()` is the other half of that judgement: minimum and mean triangle angle, aspect ratio,

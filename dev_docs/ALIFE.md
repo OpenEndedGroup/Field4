@@ -39,10 +39,13 @@ stop.
 | `alife_continuous.kt` | `diffuse`, `GrayScottState`, `turingPattern`, `LeniaRule`, `leniaRun` |
 | `alife_agents.kt` | `BoidFlock`, `PhysarumSwarm`, `dlaCluster` / `edenCluster` / `sprinkleCluster` |
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
+| `alife_dla.kt` | `ShaderDlaSettings`, `ShaderDlaSystem` — the GPU aggregation, and not the same thing as `alife_agents.kt`'s CPU `dlaCluster` |
+| `alife_evolve.kt` | `LifeRuleGenome`, `LeniaGenome`, `caEdgeOfChaosObjective`, `leniaSolitonObjective` — the genomes and objectives `PopulationSearch` searches over |
+| `alife_script.kt` | `ScriptWorld`, `BehaviourScope`, `BehaviourSteering`, `ScriptActor` — one program per agent (see below) |
 | `alife_field.kt` | the inline `ToHTML` views for `IntGrid`, `GrayScottState` and `LeniaRun` |
 | `alife_animate.kt` | `Box.animateEvolution` and four "show a prefix of something" helpers |
 
-The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All seven
+The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All ten
 carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
 `Uncategorised` (`StdlibReferenceGenerator.kt:819#private fun inferredCategory`) — which is how
 `alife_field.kt` first failed the reference drift guard, and how the gesture board came to be
@@ -315,6 +318,47 @@ that closes to `2.3e-14` of a step; drawn length that grows by exactly `4×` per
 step (the textbook `4/3` is the constant-*diameter* form); and enclosed area matching
 `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3e-8` relative. That last floor is `FLine`'s single-precision
 coordinate storage, not the maths.
+
+## One program per agent — `alife_script.kt`
+
+Every other system in this family advances a whole population with one call and one parameter block:
+`BoidFlock.step(BoidParams)`, `PhysarumSwarm.step(PhysarumParams, rng)`. The behaviour is a property
+of the *rule*, so two agents differ only in their state, never in what they are trying to do.
+
+`alife_script.kt` adds the other axis. An agent is given a suspending program —
+`forever`, `every`, `repeatTimes`, `wait`/`waitTicks`/`waitUntil`, `phase(name)`, `parallel`,
+`timeout` — and steering is composed from whichever behaviours are active at that instant, as a
+weighted set of drives that a behaviour installs on entry and removes in a `finally` on exit
+(`alife_script.kt:1088#suspend fun moveFor`). The steering vocabulary itself is the familiar one:
+`seek`, `arrive`, `flee`, `orbit`, `wander`, `separate`, `align`, `cohere`, `avoidEdges`.
+
+**The design constraint is determinism, and it is what makes the layer testable.** The clock is a
+fixed step and every agent has a seeded stream, so `ScriptWorld.state()` and `stateSignature()` are
+reproducible across processes, not merely stable within one. That is the difference from the
+obvious way to build this — real coroutines on a wall clock — which cannot be asserted on in CI at
+all. `eventSignature()` does the same for the timeline of what happened.
+
+Three things learned building it, all of which look like bugs in the layer and are not:
+
+- **`align` has no direction to give at rest.** It steers toward the mean *neighbour* velocity, so a
+  population spawned with zero velocity stays unaligned. `spawn` takes `vx`/`vy` for this reason.
+  Rest is not disordered, it is empty.
+- **A symmetric start is a fixed point.** Agents evenly spaced on a ring, each facing along it,
+  cancel exactly — polarization reads `0.000` — and `align` and `cohere` *preserve* that symmetry,
+  so it stays there. Random headings are the fix. A symmetric population is not disordered either;
+  it is cancelling.
+- **A gentle `wander` does not undo a flock.** At 60 Hz, `turn = 6.0` random-walks a heading under a
+  radian across five seconds, so a phase meant to scatter preserves the alignment it inherited.
+
+Targets (`point`, `actor`, `nearest`, `centroid`) belong to `BehaviourScope`, and inside a steering
+block the receiver is `BehaviourSteering`, which does not expose them — so build a target in the
+program and pass it into the block rather than writing it inline. This is a sharp edge worth filing
+down; until it is, it is the first thing a new script trips over.
+
+Verification is `AlifeScriptGallery` (`FIELD_TEST stdlib.alife.script.gallery`), and the method —
+what each figure asserts, the floors in both directions, and the four bugs the harness found in the
+code it was written for — is in `dev_docs/alife_scripted_behaviour_measurement.md`. The loadable
+demo is `dev_docs/agents/demos/alife_script/`.
 
 ## The bridges out, and one thing `isoContourFLines` does not promise
 

@@ -356,7 +356,7 @@ already established. Sizes are what these files occupy on disk:
 | `clip-vit-base-patch32/vision_model.onnx` | 351.7 MB | CLIP vision tower, likewise |
 | `clip-vit-base-patch32/tokenizer.json` | 2.2 MB | the BPE vocabulary; `sot=49406`, `eot=49407` |
 
-So depth alone costs about 99 MB and CLIP costs about 608 MB more. What happens on first call:
+So depth alone costs about 99 MB and CLIP costs about 608<!--derive: 254.1+351.7+2.2--> MB more. What happens on first call:
 
 1. `ensureLocal()` checks for the file and returns immediately if it is there. The second call, and
    every call in every later session, is a file-exists check.
