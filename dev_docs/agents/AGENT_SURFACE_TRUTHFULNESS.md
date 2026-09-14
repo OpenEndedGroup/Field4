@@ -1,11 +1,14 @@
 # Agent-surface truthfulness
 
 A tool that answers a question about the **world** with a value the **caller supplied** turns
-a documented safety check into a ritual: it cannot fail, so it verifies nothing. This page is
-the contract for the three places in `tools/` where that had happened, the predicate for
-finding more, and the reproduction commands.
+a documented safety check into a ritual: it cannot fail, so it verifies nothing. Its sibling
+is a tool that answers with *nothing at all* where the fact was available and simply never
+read. This page is the contract for the places in `tools/` where either had happened, the
+predicate for finding more, and the reproduction commands.
 
-Landed 2026-09-12 on `nightly/2026-09-12/2-agent-surface-truthfulness`.
+Landed 2026-09-12 on `nightly/2026-09-12/2-agent-surface-truthfulness` (workspace, reaping,
+discovery) and 2026-09-14 on `nightly/2026-09-14/2-backdoor-compile-truthfulness` (box
+execution, `open`, and two harness surfaces).
 
 ## The replacement for the four-field safety check
 
@@ -60,13 +63,16 @@ Automation started through `tools/` avoids the problem by construction:
 that env var whenever you launch `./field.sh` with an explicit `--workspace` you do not want
 to make sticky for the human.
 
-### `boxes: []` / `boxCount: 0`, three causes
+### `boxes: []` / `boxCount: 0`, four causes
 
 1. Wrong workspace — now visible as `serverWorkspace`, and a hard error when you claimed one.
 2. A scratch session: `--port` reuse does not reopen an earlier scratch document.
 3. An **absolute** `--document`. The server glues it onto the workspace regardless, so
    `--document /ws/demo_doc` yields `sessionKey` = `/ws//ws/demo_doc` — an empty new document.
    Split it: `--workspace /ws --document demo_doc`. The backdoor now says so on stderr.
+4. **The document was not there and Field created it** — a typo, a renamed demo, a document
+   that lives in another workspace. Added to this list 2026-09-14, when it became answerable:
+   read `documentExisted`, and see the `open` section below.
 
 ### Fatals are no longer silent
 
@@ -227,6 +233,23 @@ remedy — and that an agent can now demand the other behaviour with **`open --m
 which fails *closed* on a server too old to answer, because an unanswerable guarantee is
 worse than no guarantee.
 
+Both values are also cached on the client and reported by `status` and by `field_mcp.py`'s
+`field_open_document`. That is where they matter most: `status` is where this page and
+AGENTS.md send an agent before it edits a real document, and the check they prescribe is
+"a mature document should not unexpectedly report zero boxes" — which had nothing to
+interpret it with. On a live Field, the same preflight against a one-character typo:
+
+| | real document | typo |
+|---|---|---|
+| `documentName` | `real_demo_doc_2026` | `real_demo_doc_2027` |
+| `boxCount` | 2 | **0** |
+| `documentExisted` | `True` | **`False`** |
+| `attachedToLiveDocument` | `False` | `False` |
+
+They are kept tri-state rather than coerced with `bool()`, so `null` still means "the
+server predates these fields" instead of collapsing into "no" — the same distinction the
+missing `@EncodeDefault` destroyed on the wire.
+
 ## Two harness surfaces, same disease (2026-09-14)
 
 ### A JVM in our own submodule was demoted and then leaked
@@ -310,8 +333,8 @@ trusted.
 - Of the **112** files in `dev_docs/agents/transcripts/`, **0** read a backdoor result's
   `ok`. The 3 lines matching `\bok\b` are Kotlin box code inside the yaml
   (`close_node_demo.yaml:170`, `rectsl_glsl_sdf.yaml:50`, `rectsl_sdf_live.yaml:111`).
-- Python tool suites: **450 passed / 452 run, 2 skipped** — the same 2 pre-existing
-  `tools.test_loc_history` skips. `test_field_backdoor` 47 → 64,
+- Python tool suites: **452 passed / 454 run, 2 skipped** — the same 2 pre-existing
+  `tools.test_loc_history` skips. `test_field_backdoor` 47 → 66,
   `test_verification_runtime` 6 → 12, `test_docs_runner_failure_reporting` 16 → 18,
   `test_run_field_tests_reaper` 30 → 34, `test_discover_field_tests` 11 → 15,
   `test_run_field_tests_ordering` 19 → 24.
