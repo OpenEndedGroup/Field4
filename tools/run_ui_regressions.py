@@ -3691,7 +3691,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name ErrorFixImportRegression",
                 "editor-open @last --property code",
                 "sleep 0.5",
-                shell_join(["run", "@last", "--file", str(files["error_fix_import_snippet"]), "--timeout", timeout_text]),
+                # `--no-fail-on-error` because this box is SUPPOSED to fail: the whole test is
+                # about the error panel's "add import" fix. Since 2026-09-14 `run` reports
+                # `ok: false` for a box that errored, and field_backdoor.py's batch loop returns
+                # at the first not-ok command -- so without this the page-eval below never runs
+                # and the test fails as "missing page-eval assertion result".
+                shell_join([
+                    "run", "@last", "--file", str(files["error_fix_import_snippet"]),
+                    "--timeout", timeout_text, "--no-fail-on-error",
+                ]),
                 "sleep 1.0",
                 shell_join(["page-eval", "--body", "--file", str(files["error_fix_import_executes_js"]), "--timeout", pw_timeout]),
             ],
@@ -3712,7 +3720,14 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "sleep 0.25",
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_assert_js"]), "--timeout", pw_timeout]),
                 shell_join(["editor-open", "hello world", "--property", "code"]),
-                shell_join(["run", "hello world", "--value", "clearAFr ame()", "--timeout", timeout_text]),
+                # `clearAFr ame()` is a deliberate syntax error -- the assertion below is that
+                # exactly ONE line-1 error appears. `--no-fail-on-error` for the same reason as
+                # error-fix-import-executes above: the verdict would abort the batch before the
+                # page-eval that is the point of the test.
+                shell_join([
+                    "run", "hello world", "--value", "clearAFr ame()",
+                    "--timeout", timeout_text, "--no-fail-on-error",
+                ]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_single_error_js"]), "--timeout", pw_timeout]),
             ],

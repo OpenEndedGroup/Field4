@@ -978,6 +978,62 @@ class SmokeCatalogWaiverWiringTests(unittest.TestCase):
             self.assertNotIn("--no-fail-on-error", line, line)
 
 
+class UiRegressionWaiverWiringTests(unittest.TestCase):
+    """The third harness that runs a box which is supposed to fail.
+
+    Found by sweeping `run_ui_regressions.py` rather than by it breaking: two of the 34
+    regressions drive a deliberately failing box and then assert on the error the box
+    produced -- `error-fix-import-executes` (an unresolved `MorphoCircuit`, so the "add
+    import" fix row has something to fix) and `remote-ar-head` (`clearAFr ame()`, asserting
+    that exactly ONE line-1 syntax error appears). Since 2026-09-14 `run` reports
+    `ok: false` for those, and `field_backdoor.py`'s batch loop returns at the first not-ok
+    command, so both would have failed as "missing page-eval assertion result" -- the
+    assertion never reached. Unlike the smoke catalog and the docs runner, this harness has
+    no `expect`-style registry, so the flag is written into the two specs by hand and
+    guarded here.
+    """
+
+    def specs(self) -> list:
+        import run_ui_regressions  # noqa: PLC0415  (tools/ is on the path at module import)
+
+        # `prepare_generated_files` writes the snippets and page-eval scripts the specs
+        # reference. Redirected to a temp dir so this stays hermetic and touches neither
+        # the work tree nor `build/`.
+        with tempfile.TemporaryDirectory() as root:
+            with mock.patch.object(run_ui_regressions, "GENERATED_ROOT", Path(root)):
+                files = run_ui_regressions.prepare_generated_files()
+            return run_ui_regressions.tests(files, port=1, timeout=30.0)
+
+    def runs_for(self, test_id: str) -> list[str]:
+        for spec in self.specs():
+            if spec.id == test_id:
+                return [line for line in spec.commands if line.startswith(("run ", "launch "))]
+        self.fail(f"no UI regression with id {test_id!r}")
+
+    def test_the_two_error_expecting_regressions_waive_the_verdict(self) -> None:
+        for test_id in ("error-fix-import-executes", "remote-ar-head"):
+            runs = self.runs_for(test_id)
+            self.assertTrue(runs, test_id)
+            waived = [line for line in runs if "--no-fail-on-error" in line]
+            self.assertTrue(waived, f"{test_id}: no run carries the waiver: {runs}")
+
+    def test_remote_ar_head_waives_only_the_deliberate_syntax_error(self) -> None:
+        """Its other two runs are ordinary and must keep failing loudly."""
+        runs = self.runs_for("remote-ar-head")
+        waived = [line for line in runs if "--no-fail-on-error" in line]
+        self.assertEqual(len(waived), 1, runs)
+        self.assertIn("clearAFr ame()", waived[0])
+
+    def test_no_other_regression_quietly_acquired_the_flag(self) -> None:
+        """A waiver is a deliberate, explained act; this is the ratchet on it."""
+        carrying = {
+            spec.id
+            for spec in self.specs()
+            if any("--no-fail-on-error" in line for line in spec.commands)
+        }
+        self.assertEqual(carrying, {"error-fix-import-executes", "remote-ar-head"})
+
+
 def _emitted_command(args: list[str]) -> str:
     """The `--command` string run_field_tests.py hands to field_backdoor.py for a jvm-main test."""
     cmd, _ = build_backdoor_command(
