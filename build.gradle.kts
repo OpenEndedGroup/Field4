@@ -3200,6 +3200,13 @@ tasks.register<JavaExec>("caveDemo") {
     )
 }
 
+tasks.register<JavaExec>("reflectionHandednessProbe") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.ReflectionHandednessProbeKt",
+        "Measures which ear the reflected field arrives from for a reflector on a known side.",
+    )
+}
+
 tasks.register<JavaExec>("hrtfProbe") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.HrtfProbeKt",
