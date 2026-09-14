@@ -2500,7 +2500,7 @@ reads.
 
 `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt` — [read the source](source/jvmMain/afield/stdlib/quantilewarp/)
 
-**Used in:** [Which of these signals actually depend on each other?](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md)
+**Used in:** [Measuring dependence between two signals](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md)
 
 ### Top-level functions { #quantilewarp-kt-functions }
 
@@ -2929,7 +2929,7 @@ including inside the docs build.
 
 `src/jvmMain/kotlin/afield/stdlib/spatial_field.kt` — [read the source](source/jvmMain/afield/stdlib/spatial_field/)
 
-**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md)
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Measuring dependence between two signals](../statistics_examples.md)
 
 ### Top-level functions { #spatial-field-kt-functions }
 

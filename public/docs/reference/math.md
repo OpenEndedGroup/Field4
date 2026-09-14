@@ -1262,7 +1262,7 @@ implementation's. Use it for intuition and prototyping.
 
 `src/jvmMain/kotlin/afield/stdlib/correlations.kt` — [read the source](source/jvmMain/afield/stdlib/correlations/)
 
-**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md)
+**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Measuring dependence between two signals](../statistics_examples.md)
 
 ### Top-level functions { #correlations-kt-functions }
 
@@ -2055,7 +2055,7 @@ change. `seriesPlotToSvg` envelope-downsamples to `maxSeriesPoints` (500) before
 
 `src/jvmMain/kotlin/afield/stdlib/stats.kt` — [read the source](source/jvmMain/afield/stdlib/stats/)
 
-**Used in:** [Which of these signals actually depend on each other?](../statistics_examples.md)
+**Used in:** [Measuring dependence between two signals](../statistics_examples.md)
 
 ### Top-level functions { #stats-kt-functions }
 
