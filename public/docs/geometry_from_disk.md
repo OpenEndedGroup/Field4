@@ -437,7 +437,7 @@ five of the six, so print it before you draw anything.
 
 </div>
 
-The first row is the one that costs an hour, so here it is concretely: a file called `thing.obj` that
+The first row is the one that costs an hour: a file called `thing.obj` that
 is actually a ZIP, a glTF, or an HTML error page parses to zero vertices and zero triangles and
 raises nothing. `meshFromFile` is loud about a *missing* file and about an extension it does not read,
 and silent about a file whose contents make no sense. `println(mesh.summary())` before `showMesh` costs

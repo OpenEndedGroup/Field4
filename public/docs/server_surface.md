@@ -240,7 +240,7 @@ Only after that does the rest run, and the order matters:
   forbidden header name, so no `fetch` option touches it. `same-origin` passes. `none` passes,
   because a typed URL or a bookmark has no initiator and is not a cross-site request at all.
   `cross-site`, `same-site` and anything unrecognised are refused.
-- **`same-site` being refused is the interesting one.** `http://localhost:9493` is a different
+- **`same-site` is refused too, not just `cross-site`.** `http://localhost:9493` is a different
   *origin* from `https://localhost:9092` but the same *site*, which is exactly the shape a
   page served from another port on your own machine has.
 - For a client too old to send `Sec-Fetch-Site`, `Origin` is compared with the

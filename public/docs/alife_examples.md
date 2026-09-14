@@ -1432,9 +1432,9 @@ search that works.
 
 A soliton, meaning alive and in one piece and moving, is the thing continuous Lenia is famous for, and it is
 three measurements Field already had. Every term of the score is read off `leniaRun`, which classifies a
-run as DEATH, BOUNDED or SATURATION from the mean field value and reports a wrapped centroid drift. The
-phase is measured rather than asserted, which matters because the failure mode here is a rule that scores
-well by saturating the grid and sitting still.
+run as DEATH, BOUNDED or SATURATION from the mean field value and reports a wrapped centroid drift. That
+matters because the failure mode here is a rule that scores well by saturating the grid and
+sitting still.
 
 Against 220 evaluations of the control at the same seed, evolution finds a rule **17.2 % better**:
 `2.09372` against `1.78636`, a margin of `0.3074`. The evolved rule is measured `BOUNDED` with one blob

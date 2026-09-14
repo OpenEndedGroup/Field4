@@ -675,7 +675,7 @@ The two columns differ exactly where a selector needs lineage.
 That difference follows from what a selector runs against: a bare `PolyhedralObject` has no
 transform history to have a role in, and a transform result does.
 
-The last row is the trap. `vertexDegree(4)` matches exactly the
+In the last row, `vertexDegree(4)` matches exactly the
 six apexes kis raised. Negating a `provenanceRole` selector on the *bare object* negates a predicate
 that matched nothing, so `!provenanceRole(...)` is vacuously true and the composed selector still
 matches all six. Ask the transform result and it correctly matches none. A negated provenance test is

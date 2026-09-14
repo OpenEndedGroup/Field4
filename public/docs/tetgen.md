@@ -318,7 +318,8 @@ handful of runs on a laptop is worth; treat these as costs to plan with, not as 
 
 ## The sharp edge
 
-This is the claim the whole route rests on, so here it is measured rather than asserted, twice.
+The whole route rests on this claim, so it is measured twice: once against an exact volume, and
+once against the formulation TetGen replaced.
 
 A `2 × 3 × 4` box has an exact volume of `24`. Through Manifold's 12-triangle surface and TetGen at
 `targetEdgeLength = 0.5`, Field gets `23.999999999999936` — a relative error of `2.7e-15`, three
@@ -541,7 +542,7 @@ Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
 
 </div>
 
-The three acceptances are all correct answers, and the third is the interesting one.
+The three acceptances are all correct answers.
 
 **TetGen does not care which way your surface is wound.** Its input is a piecewise-linear complex,
 which is unoriented — a set of facets, not an oriented boundary. So an inside-out cube meshes the
