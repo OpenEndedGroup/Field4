@@ -483,8 +483,8 @@ page that noticed.
 | notation to topology | [`conway`](reference/polytopes.md) | the ranked incidence structure, a realization from the operator's own policy, and the lineage | nothing; this hop only adds |
 | realization to realization | [`canonicalize`](reference/polytopes.md) / [`relaxWithCeres`](reference/polytopes.md) | the same vertex indexing, so a per-vertex before/after comparison is meaningful | the scale and the centring, both replaced by the canonical gauge — which is why every form here is re-gauged to volume 1 before anything is compared |
 | topology to triangles | [`triangulate`](reference/polytopes.md) | positions, indices, and a map from each triangle back to its polygon | shared corners: each polygon is cut on its own, so `weld` comes next or the surface has no edges |
-| triangles to a solid | [`toSolid`](reference/graphics.md) | positions and indices | every attribute, and any guarantee about self-intersection — `status` checks that the indices describe a manifold, not that the surface avoids itself |
-| a solid to a contour | [`slice`](reference/graphics.md) | a `Section`: contours wound so holes are negative, with an area, a count and `decompose()` | the third dimension, and any material strictly below the cutting plane, including a coplanar face the solid sits on top of |
+| triangles to a solid | [`toSolid`](manifold.md#the-bridges-both-ways) | positions and indices | every attribute, and any guarantee about self-intersection — `status` checks that the indices describe a manifold, not that the surface avoids itself |
+| a solid to a contour | [`slice`](manifold.md#back-down-to-2d-slicing) | a `Section`: contours wound so holes are negative, with an area, a count and `decompose()` | the third dimension, and any material strictly below the cutting plane, including a coplanar face the solid sits on top of |
 
 ## Where each piece is documented
 

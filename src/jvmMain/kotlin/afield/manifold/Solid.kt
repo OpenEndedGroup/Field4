@@ -321,6 +321,38 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
      * val layers = (0..40).map { part.slice(it * 0.25) }        // a print, bottom to top
      * display(layers.flatMap { it.toFLines() })
      * ```
+     *
+     * # It returns the material at and *above* the plane
+     *
+     * The cut is half-open in z, and not in the direction most callers assume. A face lying exactly
+     * in the cutting plane is returned when the solid is above it and is not returned when the solid
+     * is below it. Measured on a 2x2x2 cube centred on the origin: `slice(-1.0)` hands back the whole
+     * bottom face, `area == 4.0` in one contour, while `slice(1.0)` returns **nothing** even though
+     * the top face it declined also has area 4 — and `slice(1.0 - 1e-9)` is back to 4.0. A 4x4x1 slab
+     * with a 2x2x1 block on top of it is the case that names the rule: at `z = 0.999999` the cut is
+     * the slab's 16.0, and at `z = 1.0` exactly it is the block's 4.0.
+     *
+     * The practical consequence is one line of arithmetic. **Put the cuts at layer midpoints** —
+     * `zMin + h * (i + 0.5) / n` — rather than at layer boundaries. Boundaries land on face planes on
+     * exactly the parts most likely to have them, and a part whose height is an exact multiple of the
+     * layer height loses its top layer outright.
+     *
+     * A cut that touches the solid only in a set of zero area is empty: a cone cut through its apex
+     * vertex, or a tetrahedron cut along a horizontal edge, both come back with no contours.
+     *
+     * # Fill rules, and the self-intersection they detect
+     *
+     * [FillRule.POSITIVE] unions overlapping same-wound contours; [FillRule.EVEN_ODD] punches their
+     * overlap out. On a surface that does not pass through itself the two agree on every layer, so a
+     * disagreement is evidence of a self-intersection — which [volume] will not show you, because it
+     * integrates the boundary and counts an overlapped region twice where a slice counts it once.
+     * On the Ceres-canonicalised `kkC` the two rules disagree on 130 of 192 layers for an overlap of
+     * 0.049855, and the layer stack's Riemann sum comes to 0.90029 against a signed volume of 1,
+     * which is `1 - 2 * 0.049855`.
+     *
+     * All of the above is measured by `afield.examples.manifold.PolytopeLayerContours`
+     * (`FIELD_TEST` id `manifold.polytope.contours`) and written up on
+     * `public/docs/chain_ceres_manifold_contours.md`.
      */
     fun slice(height: Double = 0.0, fillRule: FillRule = FillRule.POSITIVE): Section =
         sectionFromPolygons(ManifoldNative.slice, fillRule, ptr, height)
