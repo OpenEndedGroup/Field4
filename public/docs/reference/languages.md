@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-73 source file(s), 2218 public symbol(s), 672 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+73 source file(s), 2218 public symbol(s), 673 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -5843,29 +5843,68 @@ A raster loss and its exact gradient with respect to the scene's whole θ.
 
 ## Asta.kt { #asta-kt }
 
+Source-to-source rewriting of a JavaScript box, over Nashorn's parse tree.
+
+JavaScript has no operator overloading, so in a RemoteJS box `a + b` on two vectors concatenates
+their string forms and `a - b` is `NaN`. This pass rewrites the source before it ships: each
+binary `+`, `-`, `*`, `/` and `^` becomes a call to a global named for the operator, so `a + b`
+leaves here as `__PLUS__(a,b)`. The head supplies those globals in `field/asta.js`, where
+`__PLUS__`, `__MINUS__`, `__MULTIPLY__` and `__DIVIDE__` work componentwise on `THREE` vectors,
+promote an array of two or three numbers to a vector first, let an operand join the protocol by
+defining its own `__PLUS__` (or `__RPLUS__`, for the right-hand side), and throw a named error
+where plain JavaScript would hand back `NaN` or `"[object Object]"`. `XOR` is in the trap set
+here and has no counterpart there.
+
+`executeRemoteJS` runs the pass when its `doASTA` flag is set, which is the default. The
+Kotlin/JS path sets it false, because Kotlin has `operator fun plus` of its own and a compiled
+box needs no rewriting.
+
+The pass also recovers a source location. Nashorn parses at ES6 while the browser is the
+authority on whether newer syntax is valid, so a diagnostic raised here is held rather than
+shown, and used only to fill in the line and column of a `SyntaxError` that the head reported
+without one; an error the head raises at run time keeps its own location. A parser
+`AssertionError` is caught, notified, and the source returned unrewritten, so a construct
+Nashorn cannot read costs the operators rather than the run.
+
+Rewriting is textual, so offsets do the work, and Nashorn's need correcting before they can
+index the string. A string literal's quotes fall outside its reported extent, and a node that
+reports a narrower span than its own children is widened to cover them. Replacements run
+back-to-front so an earlier edit cannot move a later one, and the header of a `for` loop is
+excluded from rewriting entirely, because an edit inside it shifts the offsets of everything the
+loop spans. Field's `//# sourceURL=` trailer is split off before parsing and appended again
+afterwards.
+
+`Options` gates the whole pass. `overloads` is on, and is the operator rewrite above; `numbers`
+is off, and rewrites each numeric literal to `__NUMBER_LITERAL__(start, end, text)`, for which
+this tree carries no head-side definition; `functionRewrite` is off and has no effect beyond
+making the pass run at all. With all three off, `parseAndReconstruct` returns its input
+unchanged.
+
 `src/jvmMain/kotlin/afield/remotejs/Asta.kt` — [read the source](source/jvmMain/afield/remotejs/Asta/)
 
 ### Asta { #asta-kt-asta }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">Asta</span></code>](source/jvmMain/afield/remotejs/Asta/#L13)
+[<code class="highlight"><span class="k">class</span> <span class="nc">Asta</span></code>](source/jvmMain/afield/remotejs/Asta/#L58)
+
+One rewrite pass over one fragment: set `options`, then call `parseAndReconstruct`.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">disabled</span></code>](source/jvmMain/afield/remotejs/Asta/#L15) |  |
-| [<code class="highlight"><span class="k">class</span> <span class="nc">Options</span></code>](source/jvmMain/afield/remotejs/Asta/#L17) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">options</span></code>](source/jvmMain/afield/remotejs/Asta/#L24) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">currentMapping</span></code>](source/jvmMain/afield/remotejs/Asta/#L26) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">lastReturn</span></code>](source/jvmMain/afield/remotejs/Asta/#L27) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">currentContents</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/remotejs/Asta/#L28) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">baseContents</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/remotejs/Asta/#L29) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">accessorMap</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Tree</span><span class="p">.</span><span class="nc">Kind</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Method</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/remotejs/Asta/#L31) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">trapKinds</span></code>](source/jvmMain/afield/remotejs/Asta/#L51) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/Asta/#L53) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">hash</span></code>](source/jvmMain/afield/remotejs/Asta/#L66) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parseAndReconstruct</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="p">(</span><span class="nc">Diagnostic</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="nf">print</span><span class="p">(</span><span class="s">&quot;diagnostic: $it&quot;</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/remotejs/Asta/#L69) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">options</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Options</span></code>](source/jvmMain/afield/remotejs/Asta/#L360) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">srcURL</span></code>](source/jvmMain/afield/remotejs/Asta/#L368) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">trimSrcURL</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/remotejs/Asta/#L370) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">disabled</span></code>](source/jvmMain/afield/remotejs/Asta/#L60) |  |
+| [<code class="highlight"><span class="k">class</span> <span class="nc">Options</span></code>](source/jvmMain/afield/remotejs/Asta/#L62) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">options</span></code>](source/jvmMain/afield/remotejs/Asta/#L69) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">currentMapping</span></code>](source/jvmMain/afield/remotejs/Asta/#L71) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">lastReturn</span></code>](source/jvmMain/afield/remotejs/Asta/#L72) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">currentContents</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/remotejs/Asta/#L73) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">baseContents</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/remotejs/Asta/#L74) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">accessorMap</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Tree</span><span class="p">.</span><span class="nc">Kind</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Method</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/remotejs/Asta/#L76) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">trapKinds</span></code>](source/jvmMain/afield/remotejs/Asta/#L96) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/Asta/#L98) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">hash</span></code>](source/jvmMain/afield/remotejs/Asta/#L111) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parseAndReconstruct</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="p">(</span><span class="nc">Diagnostic</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="nf">print</span><span class="p">(</span><span class="s">&quot;diagnostic: $it&quot;</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/remotejs/Asta/#L114) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">options</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Options</span></code>](source/jvmMain/afield/remotejs/Asta/#L405) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">srcURL</span></code>](source/jvmMain/afield/remotejs/Asta/#L413) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">trimSrcURL</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/remotejs/Asta/#L415) |  |
 
 ## KotlinJs.kt { #kotlinjs-kt }
 
@@ -5911,11 +5950,50 @@ source line. See dev_docs/kotlin_to_js_spike.md.
 
 ## KotlinJsHeadProfiles.kt { #kotlinjsheadprofiles-kt }
 
+Which remote head a Kotlin/JS box runs on, chosen by a marker on its first line.
+
+A box whose main language is `kotlinjs` compiles to JavaScript and ships to a head over the
+RemoteJS transport, but the heads are not interchangeable: each has a different set of globals
+loaded, and Kotlin can only be typed against the globals its target actually has. A profile is
+that pairing. It carries the `external` declarations spliced in front of the author's source
+before compiling, a second surface used for completion, and the transport and lifecycle calls
+that put the compiled JavaScript in front of a head.
+
+`KotlinJsHeadProfiles.resolve` reads a `// {{ name }}` marker on the first non-blank line and
+returns a [`KotlinJsHeadSelection`](languages.md#kotlinjsheadprofiles-kt-kotlinjsheadselection). A name is matched case-insensitively against an id or an
+alias:
+
+ - `remote` — the plain RemoteJS head; aliases `default` and `remotejs`, and what a box with no
+   marker at all gets.
+ - `remoteAR` — the A-Frame and THREE scene head; aliases `ar`, `remote-ar`, `remotear`.
+ - `tone` — the Tone.js computer-music head; aliases `tonejs` and `music`.
+ - `visionmetal` — the visionOS Metal head; aliases `metal` and `vision-metal`.
+
+An unknown name raises instead of falling back, because a box compiled against the wrong globals
+type-checks and then fails in the head. The same reasoning gates delivery at run time: a head
+has to report the capability keys its profile requires in its `initialize` payload before it is
+counted or sent to, so `// {{ tone }}` reaches a head with Tone loaded and no other.
+
+Two further things `resolve` does, both about line numbers. It blanks the marker's line rather
+than removing it, so the lines the compiler reports still line up with what the author sees. And
+`resolveForBox` re-reads the marker from the box's stored `code` when the source handed to it
+carries none, which is what fragment and symbol execution pass when only a selection is being
+run.
+
+The two implementations behind the sealed class mean different things by sending. The WebSocket
+one hands its JavaScript to `executeRemoteJS` with `doASTA = false`, broadcasts to every
+connected head that matches, and reports results back through the box's output. The visionOS one
+publishes a Metal program on the box instead and reports success without waiting, because that
+publication is durable and replays for a native head that subscribes later. Its `uniforms`
+option is the only marker option here: slot order is what the head turns into `#define u_NAME`,
+so it is declared rather than inferred, and the inference that covers an absent declaration says
+what it guessed.
+
 `src/jvmMain/kotlin/afield/remotejs/KotlinJsHeadProfiles.kt` — [read the source](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/)
 
 ### KotlinJsHeadProfile { #kotlinjsheadprofiles-kt-kotlinjsheadprofile }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nf">KotlinJsHeadProfile</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">completionDeclarations</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">aliases</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">optionNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L20)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nf">KotlinJsHeadProfile</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">completionDeclarations</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">aliases</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">optionNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L61)
 
 A compiler surface plus the transport and lifecycle semantics of one remote JavaScript head.
 
@@ -5926,14 +6004,14 @@ A compiler surface plus the transport and lifecycle semantics of one remote Java
 | <code class="highlight"><span class="k">val</span> <span class="n">completionDeclarations</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">aliases</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">optionNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
-| [<code class="highlight"><span class="k">abstract</span> <span class="k">fun</span> <span class="nf">connectedHeadCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L27) |  |
-| [<code class="highlight"><span class="k">abstract</span> <span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span><span class="p">,</span> <span class="n">javascript</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">launchable</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">lifecycleName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">onResponse</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">KotlinJsHeadResponse</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L28) |  |
-| [<code class="highlight"><span class="k">abstract</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span><span class="p">,</span> <span class="n">lifecycleNames</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L36) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">prepareSource</span><span class="p">(</span><span class="n">userSource</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L38) |  |
+| [<code class="highlight"><span class="k">abstract</span> <span class="k">fun</span> <span class="nf">connectedHeadCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L68) |  |
+| [<code class="highlight"><span class="k">abstract</span> <span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span><span class="p">,</span> <span class="n">javascript</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">launchable</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">lifecycleName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">onResponse</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">KotlinJsHeadResponse</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L69) |  |
+| [<code class="highlight"><span class="k">abstract</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span><span class="p">,</span> <span class="n">lifecycleNames</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L77) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">prepareSource</span><span class="p">(</span><span class="n">userSource</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L79) |  |
 
 ### KotlinJsHeadResponse { #kotlinjsheadprofiles-kt-kotlinjsheadresponse }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KotlinJsHeadResponse</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">headId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedHeadIds</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">terminal</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L49)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KotlinJsHeadResponse</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">headId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedHeadIds</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">terminal</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L90)
 
 | Declaration | Summary |
 | --- | --- |
@@ -5944,7 +6022,7 @@ A compiler surface plus the transport and lifecycle semantics of one remote Java
 
 ### KotlinJsHeadSelection { #kotlinjsheadprofiles-kt-kotlinjsheadselection }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KotlinJsHeadSelection</span><span class="p">(</span><span class="k">val</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">explicit</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L56)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KotlinJsHeadSelection</span><span class="p">(</span><span class="k">val</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">explicit</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L97)
 
 | Declaration | Summary |
 | --- | --- |
@@ -5952,40 +6030,71 @@ A compiler surface plus the transport and lifecycle semantics of one remote Java
 | <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">explicit</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">optionList</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L62) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">optionList</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L103) |  |
 
 ### KotlinJsHeadProfiles { #kotlinjsheadprofiles-kt-kotlinjsheadprofiles }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinJsHeadProfiles</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L69)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinJsHeadProfiles</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L110)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">remote</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L73) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">remoteAr</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L81) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L98) | Tone.js computer-music head. Tone is installed as the global `Tone` by the RemoteAR head (`index.html` loads `vendor/tone/…/Tone.js`), so this profile shares that transport but requires the head to actually report the `tone` capability — a bound-but-absent name would compile then fail at runtime, so we route `// {{ tone }}` only to a head that has Tone loaded. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">visionMetal</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L109) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">all</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KotlinJsHeadProfile</span><span class="p">&gt;</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L111) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L128) | Resolve only the first non-blank line. An absent marker preserves the original RemoteJS broadcast behavior; an unknown explicit marker is an error instead of silently using a head with the wrong globals. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">resolveForBox</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L151) | Fragment/symbol execution often contains only the selected text; inherit the marker from code. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">remote</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L114) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">remoteAr</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L122) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L139) | Tone.js computer-music head. Tone is installed as the global `Tone` by the RemoteAR head (`index.html` loads `vendor/tone/…/Tone.js`), so this profile shares that transport but requires the head to actually report the `tone` capability — a bound-but-absent name would compile then fail at runtime, so we route `// {{ tone }}` only to a head that has Tone loaded. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">visionMetal</span><span class="p">:</span> <span class="nc">KotlinJsHeadProfile</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L150) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">all</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KotlinJsHeadProfile</span><span class="p">&gt;</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L152) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L169) | Resolve only the first non-blank line. An absent marker preserves the original RemoteJS broadcast behavior; an unknown explicit marker is an error instead of silently using a head with the wrong globals. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resolveForBox</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinJsHeadSelection</span></code>](source/jvmMain/afield/remotejs/KotlinJsHeadProfiles/#L192) | Fragment/symbol execution often contains only the selected text; inherit the marker from code. |
 
 ## KotlinToJsCompiler.kt { #kotlintojscompiler-kt }
+
+SPIKE — Kotlin source -> JavaScript, for RemoteJS boxes.
+
+This mirrors what JetBrains' `kotlin-compiler-server` (KotlinToJSTranslator) does: a two-phase
+K2 compile of a self-contained Kotlin snippet into a single, eval-able JS module that the existing
+RemoteJS transport ships to the browser / visionOS "graphics head" over the WebSocket bus.
+
+    phase 1:  source.kt      --( -Xir-produce-klib-file )-->                 <module>.klib
+    phase 2:  <module>.klib  --( -Xir-produce-js, -Xinclude, -Xir-dce )-->   <module>.js
+
+What this buys a box author is Kotlin: real types, completion, and native `operator fun plus`
+vector and matrix math, so a Kotlin box needs none of the operator rewriting `Asta.kt` does for a
+JavaScript one. The result runs unchanged in the head via `executeRemoteJS` with
+`doASTA = false`.
+
+Output is a `plain` module that self-invokes `main`, so the head's `global.eval(code)` runs it
+with no changes. Dead-code elimination is what keeps that module small enough to ship on every
+compile: it tree-shakes the stdlib, taking a trivial program well under the ~600 KB an
+unshaken one contributes, and `KotlinToJsSpikeTest` holds the emitted JS under 50 000
+characters.
+
+Two execution modes (`Mode`):
+ - IN_PROCESS: calls `K2JSCompiler().exec(...)` directly, with no JVM launch to pay for. The K2
+   REPL (`KotlinInterface2`) already holds a live IntelliJ application environment in this JVM
+   and `K2JSCompiler` reuses the process-wide `getOrCreateApplicationEnvironment`; the two
+   coexist, and a throw from that call falls back to SUBPROCESS rather than failing the compile.
+ - SUBPROCESS: spawns `java -cp <this app's classpath> K2JSCompiler`. Fully isolated, and reuses
+   the embeddable compiler already on the runtime classpath. Slower, by a cold JVM per compile.
+
+Follow-up (see dev_docs/kotlin_to_js_spike.md): incremental compiles via JsIrCompilerWithIC, and a
+typed `external` façade over the head runtime (THREE / A-Frame / Field JS).
 
 `src/jvmMain/kotlin/afield/remotejs/KotlinToJsCompiler.kt` — [read the source](source/jvmMain/afield/remotejs/KotlinToJsCompiler/)
 
 ### KotlinToJsCompiler { #kotlintojscompiler-kt-kotlintojscompiler }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinToJsCompiler</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L54)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinToJsCompiler</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L71)
 
-SPIKE — Kotlin source -> JavaScript, for RemoteJS boxes.
+The compiler itself: `compile` is the entry point, `Mode` picks how it runs and `Profile` picks the shape of what comes out.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Mode</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L60) |  |
-| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Profile</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L69) | Output shape. - PLAIN_DCE: one self-contained, tree-shaken `plain` module (~5 KB for a trivial program). Eval-able as-is; DCE runs the whole-program reachability pass on every compile. - ESM_SHARED: per-module ES output — a tiny box module (~2 KB) that `import`s from a `kotlin-kotlin-stdlib.mjs` shipped to the head once. No per-compile DCE over the stdlib. |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Diagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L76) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Result</span><span class="p">(</span><span class="k">val</span> <span class="n">js</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">Mode</span><span class="p">,</span> <span class="k">val</span> <span class="n">rawLog</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L78) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">kotlinSource</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">moduleName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field&#95;box&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">Mode</span> <span class="o">=</span> <span class="n">defaultMode</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">Profile</span> <span class="o">=</span> <span class="nc">Profile</span><span class="p">.</span><span class="nc">PLAIN&#95;DCE</span><span class="p">,</span> <span class="n">cacheDir</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">wrapImplicitMain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L387) | Compile `kotlinSource` to a single plain-module, DCE'd JS string. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">emitSharedStdlibMjs</span><span class="p">(</span><span class="p">@</span><span class="nc">Suppress</span><span class="p">(</span><span class="s">&quot;UNUSED&#95;PARAMETER&quot;</span><span class="p">)</span> <span class="n">destDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L501) | OPEN BLOCKER — producing the shared `kotlin-kotlin-stdlib.mjs` for ESM_SHARED. |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Mode</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L77) |  |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Profile</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L86) | Output shape. - PLAIN_DCE: one self-contained, tree-shaken `plain` module (~5 KB for a trivial program). Eval-able as-is; DCE runs the whole-program reachability pass on every compile. - ESM_SHARED: per-module ES output — a tiny box module (~2 KB) that `import`s from a `kotlin-kotlin-stdlib.mjs` shipped to the head once. No per-compile DCE over the stdlib. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Diagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L93) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Result</span><span class="p">(</span><span class="k">val</span> <span class="n">js</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">Mode</span><span class="p">,</span> <span class="k">val</span> <span class="n">rawLog</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L95) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">kotlinSource</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">moduleName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field&#95;box&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">Mode</span> <span class="o">=</span> <span class="n">defaultMode</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">Profile</span> <span class="o">=</span> <span class="nc">Profile</span><span class="p">.</span><span class="nc">PLAIN&#95;DCE</span><span class="p">,</span> <span class="n">cacheDir</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">wrapImplicitMain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L404) | Compile `kotlinSource` to a single plain-module, DCE'd JS string. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">emitSharedStdlibMjs</span><span class="p">(</span><span class="p">@</span><span class="nc">Suppress</span><span class="p">(</span><span class="s">&quot;UNUSED&#95;PARAMETER&quot;</span><span class="p">)</span> <span class="n">destDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/remotejs/KotlinToJsCompiler/#L518) | OPEN BLOCKER — producing the shared `kotlin-kotlin-stdlib.mjs` for ESM_SHARED. |
 
 ## RemoteJS.kt { #remotejs-kt }
 

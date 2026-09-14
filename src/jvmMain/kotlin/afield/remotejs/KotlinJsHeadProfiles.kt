@@ -16,6 +16,47 @@ import afield.notify
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Which remote head a Kotlin/JS box runs on, chosen by a marker on its first line.
+ *
+ * A box whose main language is `kotlinjs` compiles to JavaScript and ships to a head over the
+ * RemoteJS transport, but the heads are not interchangeable: each has a different set of globals
+ * loaded, and Kotlin can only be typed against the globals its target actually has. A profile is
+ * that pairing. It carries the `external` declarations spliced in front of the author's source
+ * before compiling, a second surface used for completion, and the transport and lifecycle calls
+ * that put the compiled JavaScript in front of a head.
+ *
+ * `KotlinJsHeadProfiles.resolve` reads a `// {{ name }}` marker on the first non-blank line and
+ * returns a [KotlinJsHeadSelection]. A name is matched case-insensitively against an id or an
+ * alias:
+ *
+ *  - `remote` — the plain RemoteJS head; aliases `default` and `remotejs`, and what a box with no
+ *    marker at all gets.
+ *  - `remoteAR` — the A-Frame and THREE scene head; aliases `ar`, `remote-ar`, `remotear`.
+ *  - `tone` — the Tone.js computer-music head; aliases `tonejs` and `music`.
+ *  - `visionmetal` — the visionOS Metal head; aliases `metal` and `vision-metal`.
+ *
+ * An unknown name raises instead of falling back, because a box compiled against the wrong globals
+ * type-checks and then fails in the head. The same reasoning gates delivery at run time: a head
+ * has to report the capability keys its profile requires in its `initialize` payload before it is
+ * counted or sent to, so `// {{ tone }}` reaches a head with Tone loaded and no other.
+ *
+ * Two further things `resolve` does, both about line numbers. It blanks the marker's line rather
+ * than removing it, so the lines the compiler reports still line up with what the author sees. And
+ * `resolveForBox` re-reads the marker from the box's stored `code` when the source handed to it
+ * carries none, which is what fragment and symbol execution pass when only a selection is being
+ * run.
+ *
+ * The two implementations behind the sealed class mean different things by sending. The WebSocket
+ * one hands its JavaScript to `executeRemoteJS` with `doASTA = false`, broadcasts to every
+ * connected head that matches, and reports results back through the box's output. The visionOS one
+ * publishes a Metal program on the box instead and reports success without waiting, because that
+ * publication is durable and replays for a native head that subscribes later. Its `uniforms`
+ * option is the only marker option here: slot order is what the head turns into `#define u_NAME`,
+ * so it is declared rather than inferred, and the inference that covers an absent declaration says
+ * what it guessed.
+ */
+
 /** A compiler surface plus the transport and lifecycle semantics of one remote JavaScript head. */
 sealed class KotlinJsHeadProfile(
     val id: String,

@@ -8,7 +8,52 @@ import java.util.function.Function
 import kotlin.Pair
 import kotlin.to
 
-/*    AST based rewriting
+/**
+ * Source-to-source rewriting of a JavaScript box, over Nashorn's parse tree.
+ *
+ * JavaScript has no operator overloading, so in a RemoteJS box `a + b` on two vectors concatenates
+ * their string forms and `a - b` is `NaN`. This pass rewrites the source before it ships: each
+ * binary `+`, `-`, `*`, `/` and `^` becomes a call to a global named for the operator, so `a + b`
+ * leaves here as `__PLUS__(a,b)`. The head supplies those globals in `field/asta.js`, where
+ * `__PLUS__`, `__MINUS__`, `__MULTIPLY__` and `__DIVIDE__` work componentwise on `THREE` vectors,
+ * promote an array of two or three numbers to a vector first, let an operand join the protocol by
+ * defining its own `__PLUS__` (or `__RPLUS__`, for the right-hand side), and throw a named error
+ * where plain JavaScript would hand back `NaN` or `"[object Object]"`. `XOR` is in the trap set
+ * here and has no counterpart there.
+ *
+ * `executeRemoteJS` runs the pass when its `doASTA` flag is set, which is the default. The
+ * Kotlin/JS path sets it false, because Kotlin has `operator fun plus` of its own and a compiled
+ * box needs no rewriting.
+ *
+ * The pass also recovers a source location. Nashorn parses at ES6 while the browser is the
+ * authority on whether newer syntax is valid, so a diagnostic raised here is held rather than
+ * shown, and used only to fill in the line and column of a `SyntaxError` that the head reported
+ * without one; an error the head raises at run time keeps its own location. A parser
+ * `AssertionError` is caught, notified, and the source returned unrewritten, so a construct
+ * Nashorn cannot read costs the operators rather than the run.
+ *
+ * Rewriting is textual, so offsets do the work, and Nashorn's need correcting before they can
+ * index the string. A string literal's quotes fall outside its reported extent, and a node that
+ * reports a narrower span than its own children is widened to cover them. Replacements run
+ * back-to-front so an earlier edit cannot move a later one, and the header of a `for` loop is
+ * excluded from rewriting entirely, because an edit inside it shifts the offsets of everything the
+ * loop spans. Field's `//# sourceURL=` trailer is split off before parsing and appended again
+ * afterwards.
+ *
+ * `Options` gates the whole pass. `overloads` is on, and is the operator rewrite above; `numbers`
+ * is off, and rewrites each numeric literal to `__NUMBER_LITERAL__(start, end, text)`, for which
+ * this tree carries no head-side definition; `functionRewrite` is off and has no effect beyond
+ * making the pass run at all. With all three off, `parseAndReconstruct` returns its input
+ * unchanged.
+ */
+
+/**
+ * One rewrite pass over one fragment: set `options`, then call `parseAndReconstruct`.
+ *
+ * `executeRemoteJS` constructs a fresh instance per fragment, and `accessorMap` is reflected over
+ * every `Tree.Kind` once per instance. Of the mutable state here only `options` is read:
+ * `disabled`, `currentMapping`, `lastReturn`, `currentContents` and `baseContents` are declared
+ * and never touched again, and the `hash` threaded down the recursion reaches no decision.
  */
 class Asta {
 

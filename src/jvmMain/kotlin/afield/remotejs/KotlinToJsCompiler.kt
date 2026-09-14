@@ -30,26 +30,43 @@ import java.nio.file.Files
  * K2 compile of a self-contained Kotlin snippet into a single, eval-able JS module that the existing
  * RemoteJS transport ships to the browser / visionOS "graphics head" over the WebSocket bus.
  *
- *   phase 1:  source.kt        --( -Xir-produce-klib-file )-->  <module>.klib
- *   phase 2:  <module>.klib     --( -Xir-produce-js, -Xinclude, -Xir-dce )-->  <module>.js
+ *     phase 1:  source.kt      --( -Xir-produce-klib-file )-->                 <module>.klib
+ *     phase 2:  <module>.klib  --( -Xir-produce-js, -Xinclude, -Xir-dce )-->   <module>.js
  *
- * The whole point: users write Kotlin (real types, completion, and — crucially — native
- * `operator fun plus` vector/matrix math, so the ASTA operator-rewrite hack is unnecessary for
- * Kotlin boxes) and it runs unchanged in the head via [executeRemoteJS] with `doASTA = false`.
+ * What this buys a box author is Kotlin: real types, completion, and native `operator fun plus`
+ * vector and matrix math, so a Kotlin box needs none of the operator rewriting `Asta.kt` does for a
+ * JavaScript one. The result runs unchanged in the head via `executeRemoteJS` with
+ * `doASTA = false`.
  *
- * Output is a `plain` module (DCE'd: a trivial program is ~4.7 KB, not ~600 KB) that self-invokes
- * `main`, so the head's `global.eval(code)` runs it with no changes.
+ * Output is a `plain` module that self-invokes `main`, so the head's `global.eval(code)` runs it
+ * with no changes. Dead-code elimination is what keeps that module small enough to ship on every
+ * compile: it tree-shakes the stdlib, taking a trivial program well under the ~600 KB an
+ * unshaken one contributes, and `KotlinToJsSpikeTest` holds the emitted JS under 50 000
+ * characters.
  *
- * Two execution modes ([Mode]):
- *  - IN_PROCESS: calls `K2JSCompiler().exec(...)` directly. Fast (no JVM launch). Risk: the K2 REPL
- *    ([afield.KotlinInterface2]) already holds a live IntelliJ application environment in this JVM;
- *    `K2JSCompiler` reuses the process-wide `getOrCreateApplicationEnvironment`, which normally
- *    coexists — but if it ever throws we transparently fall back to SUBPROCESS.
- *  - SUBPROCESS: spawns `java -cp <this app's classpath> K2JSCompiler`. Fully isolated; reuses the
- *    embeddable compiler already on our runtime classpath. Slower (cold JVM per compile).
+ * Two execution modes (`Mode`):
+ *  - IN_PROCESS: calls `K2JSCompiler().exec(...)` directly, with no JVM launch to pay for. The K2
+ *    REPL (`KotlinInterface2`) already holds a live IntelliJ application environment in this JVM
+ *    and `K2JSCompiler` reuses the process-wide `getOrCreateApplicationEnvironment`; the two
+ *    coexist, and a throw from that call falls back to SUBPROCESS rather than failing the compile.
+ *  - SUBPROCESS: spawns `java -cp <this app's classpath> K2JSCompiler`. Fully isolated, and reuses
+ *    the embeddable compiler already on the runtime classpath. Slower, by a cold JVM per compile.
  *
  * Follow-up (see dev_docs/kotlin_to_js_spike.md): incremental compiles via JsIrCompilerWithIC, and a
  * typed `external` façade over the head runtime (THREE / A-Frame / Field JS).
+ */
+
+/**
+ * The compiler itself: `compile` is the entry point, `Mode` picks how it runs and `Profile` picks
+ * the shape of what comes out.
+ *
+ * Errors arrive on `Result` as `Diagnostic` rows carrying a line and column, so a box can decorate
+ * the source line that caused them, with the compiler's own log kept alongside in `rawLog`. The
+ * severities the compiler uses for progress chatter are dropped from those rows unless they carry
+ * a location. Those line numbers take one more step to become usable: a compiled box has its head
+ * declarations and an implicit-main wrapper prepended first, so the line the compiler reports is
+ * not the line the author is looking at, and the preparation step keeps a map back to the editor's
+ * own numbering for the diagnostics to be rewritten through.
  */
 object KotlinToJsCompiler {
 
