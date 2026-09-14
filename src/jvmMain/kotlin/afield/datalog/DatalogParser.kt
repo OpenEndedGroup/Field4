@@ -1,6 +1,20 @@
 package afield.datalog
 
 /**
+ * Source text to abstract syntax: the lexer and recursive-descent parser every Datalog program in
+ * Field goes through, and the two word lists that decide what the notation reserves.
+ *
+ * There is no error recovery. The first thing the parser cannot read raises a [DlException]
+ * carrying the line and column it stopped at, and the box language turns those into an error marker
+ * on the offending line, so a program is either whole or it is a single message.
+ *
+ * Two of the tables outlive the parse. `DatalogParser.functions` and `DatalogParser.aggregateOps`
+ * are what the box language offers in its completion popup, and the browser-side highlighter keeps
+ * its own copy of both; `afield.examples.datalog.DatalogEditorExtensionWorkout` runs the shipped
+ * JavaScript against these sets and fails when the two have drifted apart.
+ */
+
+/**
  * The concrete syntax. One hand-written lexer + recursive-descent parser, no dependencies.
  *
  * ```datalog

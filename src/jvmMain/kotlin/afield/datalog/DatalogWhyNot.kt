@@ -3,6 +3,21 @@ package afield.datalog
 import afield.ToHTML
 
 /**
+ * The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the
+ * one that took the answer count to zero.
+ *
+ * `Datalog.why` accounts for a fact that is present. This accounts for a query that is empty, which
+ * is the commoner question and the one a saturated model cannot be asked directly. [DlWhyNot] is
+ * the result, [DlNarrowing] one step of the walk, and `#whynot <goal>` in a Datalog box is the way
+ * in.
+ *
+ * Everything here is written against the public [Datalog] surface, which is why it is a file of its
+ * own rather than more of the fixpoint's. The counts it reports are the engine's rather than a
+ * second implementation's: each prefix of the conjunction is synthesised into a rule and put
+ * through [DatalogEngine], at a cost of one solve per literal.
+ */
+
+/**
  * Why a goal has *no* answers — the other half of [Datalog.why].
  *
  * A query that comes back empty gives no reason, and a reader with no reason guesses. There is a

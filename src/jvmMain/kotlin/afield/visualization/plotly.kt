@@ -223,7 +223,7 @@ fun Box.showSignals(
 
 /**
  * Restyle a `Plot` into the repo's dark theme and hand back the same instance — near-black paper and
- * plot backgrounds, muted grid and tick colours, tick labels rotated 20°, a vertical legend just
+ * plot backgrounds, muted grid and tick colours, tick labels held horizontal, a vertical legend just
  * outside the plot's right edge, and data-first margins that reclaim most of the ~100px Plotly
  * reserves up top for a title.
  *

@@ -92,15 +92,15 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [CSVReader.kt](simulation.md#csvreader-kt) | Simulation | 10 | 1 |  |  |
 | [DataFrameCharts.kt](visualization.md#dataframecharts-kt) | Visualization | 2 | 2 | A typed frame, charting its own columns. |  |
 | [DataFrameVisualizer.kt](visualization.md#dataframevisualizer-kt) | Visualization | 3 | 3 |  |  |
-| [Datalog.kt](languages.md#datalog-kt) | Languages | 33 | 20 |  |  |
+| [Datalog.kt](languages.md#datalog-kt) | Languages | 33 | 20 | The facade over parser and engine: a `Datalog` holds a program, answers queries as `DlRows`, and reconstructs the proof of a derived fact. |  |
 | [DatalogAst.kt](languages.md#datalogast-kt) | Languages | 35 | 16 | The abstract syntax of Field's Datalog — see `Datalog` for the facade, `DatalogParser` for the concrete syntax and `DatalogEngine` for what evaluates this. |  |
 | [DatalogBoxes.kt](languages.md#datalogboxes-kt) | Languages | 4 | 4 | The Field bridge: the live box graph as Datalog base relations. | [Datalog in a box](../datalog.md) |
 | [DatalogEditorExtension.kt](languages.md#datalogeditorextension-kt) | Languages | 6 | 1 |  |  |
 | [DatalogEngine.kt](languages.md#datalogengine-kt) | Languages | 39 | 17 | Storage and evaluation: indexed relations, a safety-directed body planner, stratification, and a semi-naive fixpoint. |  |
-| [DatalogInterface.kt](languages.md#dataloginterface-kt) | Languages | 14 | 3 |  |  |
+| [DatalogInterface.kt](languages.md#dataloginterface-kt) | Languages | 14 | 3 | Datalog as a box language: the `DatalogExecution` that runs fragments inside a box, and the registration that puts Datalog in the Main Language menu. |  |
 | [DatalogObjects.kt](languages.md#datalogobjects-kt) | Languages | 4 | 4 | Any live object graph as Datalog base relations, by way of `afield.graphquery`. | [Datalog in a box](../datalog.md) |
-| [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 6 | 4 |  |  |
-| [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 |  |  |
+| [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 6 | 4 | Source text to abstract syntax: the lexer and recursive-descent parser every Datalog program in Field goes through, and the two word lists that decide what the notation reserves. |  |
+| [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 | The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the one that took the answer count to zero. |  |
 | [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 0 |  |  |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 | Offline rendering of a pattern through the **real** Dirt sample library. | [Sound: from a pattern to something you can hear](../sound.md) |

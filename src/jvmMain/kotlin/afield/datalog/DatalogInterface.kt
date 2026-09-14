@@ -28,6 +28,23 @@ import afield.stdlib.Delegation
 import afield.thisSession
 
 /**
+ * Datalog as a box language: the [DatalogExecution] that runs fragments inside a box, and the
+ * registration that puts Datalog in the Main Language menu.
+ *
+ * [DatalogExecution] is the `BoxExecution`. It merges a fragment into the box's accumulated
+ * program, prints whatever that fragment asked for, and completes on the relations the box has
+ * actually defined as well as on the builtin functions, the aggregate operators and the box-graph
+ * names. `installDatalog` registers the runtime and the persistent `isDatalogRoot` flag, and
+ * `datalogTopologyNeedsUpdating` attaches and detaches executions as boxes are marked and unmarked.
+ *
+ * The `#directives` are the Field-specific part, and the reason this is more than a thin adapter:
+ * `#boxes` loads the live document into the base relations of [dlBoxRelationSchema], `#why` and
+ * `#whynot` reach the two provenance layers, and `#program` prints back what the box has
+ * accumulated. `directiveHelp` is the one list that `#help` prints and completion offers, so a
+ * directive added to it appears in both.
+ */
+
+/**
  * Datalog as a box language — set a box's Main Language to Datalog and its children hold Datalog
  * programs instead of Kotlin.
  *

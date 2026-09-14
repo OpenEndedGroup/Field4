@@ -4,6 +4,25 @@ import afield.Table
 import afield.ToHTML
 
 /**
+ * The facade over parser and engine: a [Datalog] holds a program, answers queries as [DlRows], and
+ * reconstructs the proof of a derived fact.
+ *
+ * Nothing here parses or evaluates. [DatalogParser] turns text into the [DlUnit] this file merges
+ * and [DatalogEngine] computes the model; what is left is the part a caller touches — holding the
+ * program, noticing when the cached model has gone stale, and sorting rows so that a query prints
+ * the same way twice, which set semantics on their own do not promise.
+ *
+ * The exception is the top-down proof search behind `why`, which is here rather than in the engine
+ * because it reads a finished model instead of building one. It walks rules backwards from a
+ * derived fact, bounded by the round numbers the fixpoint recorded, and picks premises in the same
+ * order the planner would. The opposite question, why a goal has no answers at all, is
+ * `DatalogWhyNot.kt`.
+ *
+ * `import afield.datalog.*` is in every Kotlin box's preamble, so `Datalog()` and the `Dl` types
+ * are in scope with nothing to import.
+ */
+
+/**
  * Datalog for Field — a small deductive database you can point at your own data, or at the live box
  * graph (see `DatalogBoxes.kt`), or write directly in a box (see [afield.datalog.DatalogExecution]).
  *
