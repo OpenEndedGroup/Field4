@@ -410,7 +410,7 @@ Histograms answer “what values have I seen?”, history answers “how did the
 
 The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
 the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
-[Frames, and what a frame is](animation_time_model.md).
+[Frames and the animation loop](animation_time_model.md).
 
 <!--
 FIELD_TEST

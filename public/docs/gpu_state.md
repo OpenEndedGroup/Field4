@@ -419,5 +419,5 @@ python3 tools/field_backdoor.py --port 9483 --graphics-context \
 - [StackSL Examples](stacksl_examples.md) and the [StackSL
   Cheatsheet](stacksl_cheatsheet.md) — the language in the force slot, its vocabulary, and the arity
   rule the report above is checking.
-- [Frames, and What a Frame Is](animation_time_model.md) — what `frameCounter` is counting, and what
+- [Frames and the Animation Loop](animation_time_model.md) — what `frameCounter` is counting, and what
   a `loop {}` does that makes a binding inside one land late.

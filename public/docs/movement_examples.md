@@ -578,4 +578,4 @@ interpolant that keeps its velocity through a change of mind, see
 [Values over time](interpolants_examples.md). For motion that comes out of a
 constraint solve rather than a steering instruction, see
 [Physics](physics.md); for what `dt` should be when any of this runs in a real
-loop, [Frames, and what a frame is](animation_time_model.md).
+loop, [Frames and the animation loop](animation_time_model.md).

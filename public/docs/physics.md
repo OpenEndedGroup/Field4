@@ -16,7 +16,7 @@ that **`stiffness` and `iterations` are not two knobs.**
     Open the **`cloth_simdverlet_start`** starting point from Field's welcome screen, also listed in
     the [Agent Transcript Gallery](agent_transcripts.md): a 20 × 10 sheet, an explicit `loop { }`,
     and the debug view, already hanging. Come back here when you want to change the numbers.
-    [Frames, and What a Frame Is](animation_time_model.md#a-physics-system-in-the-loop) has the same
+    [Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop) has the same
     scene as a moving picture, and explains why an integrator wants a fixed `dt`.
 
 ---
@@ -706,7 +706,7 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   and correctly instead of quickly and approximately, and
   [tetrahedral meshing](reference/simulation.md#tetgen-kt), which is what stands between a solid and
   a solver that wants elements.
-- **[Frames, and What a Frame Is](animation_time_model.md#a-physics-system-in-the-loop)** — the same
+- **[Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop)** — the same
   cloth as a moving picture, and the argument for a fixed `dt`. It also has the generator layer that
   `addPidPositionController` is written in.
 - **[Agent Transcript Gallery](agent_transcripts.md)** — `cloth_simdverlet_start`, the openable

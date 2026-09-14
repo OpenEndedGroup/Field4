@@ -33,7 +33,7 @@ nav:
       - The Documentation Browser: completion_doc_browser.md
       - How Completions Are Ranked: completion_ranking.md
       - Drawing with FLines: fline_examples.md
-      - Frames, and What a Frame Is: animation_time_model.md
+      - Frames and the Animation Loop: animation_time_model.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
       - "Sound: the Pattern → Audio Path": sound.md
       # Before automating_field and after sound, because by this point in the arc there is a living

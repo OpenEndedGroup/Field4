@@ -669,7 +669,7 @@ object StdlibReferenceGenerator {
             "the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and " +
             "the parameter study) and the cloth starting point are in the " +
             "[Agent Transcript Gallery](../agent_transcripts.md); " +
-            "[Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator " +
+            "[Frames and the Animation Loop](../animation_time_model.md) explains why an integrator " +
             "wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose " +
             "this route.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +

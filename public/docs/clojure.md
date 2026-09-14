@@ -236,7 +236,7 @@ only covers the awkward corners.
 A Clojure box launches by the same rule a Kotlin box does: **returning** a `Frames` is what starts
 it. `(animate f)` builds one that calls `f` once per frame, and nothing in `ClojureExecution` says
 the word "animate": the value goes to `ReturnValueRegistry`, which is the same code that drives a
-Kotlin box's `animate { }`. See [Frames, and What a Frame Is](animation_time_model.md).
+Kotlin box's `animate { }`. See [Frames and the Animation Loop](animation_time_model.md).
 
 So `(animate …)` has to be the **last** form, and you have to *launch* the box rather than run it.
 
