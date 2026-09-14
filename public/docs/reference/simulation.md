@@ -12,7 +12,7 @@ Making a shape behave. Three stacks live here and they answer different question
 
 Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape you *want* by minimising residuals you declare; simulation tells you what that shape then *does*. A gridshell relaxed in `Solvers` and a bracket solved in Kratos are two halves of the same design loop, not two ways of doing one thing. Everything above returns geometry, so [Graphics](graphics.md) is where it gets drawn.
 
-The prose, with pictures: [Physics: particles, constraints, and the one number that decides everything](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
+The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
 27 source file(s), 821 public symbol(s), 358 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
@@ -61,7 +61,7 @@ infinite-sequence `Cloth.frames`, and exposes grid coordinates via `Cloth.positi
 
 `src/jvmMain/kotlin/afield/four/physics/Cloth.kt` — [read the source](source/jvmMain/afield/four/physics/Cloth/)
 
-**Used in:** [Frames, and what a frame is](../animation_time_model.md), [Physics: particles, constraints, and the one number that decides everything](../physics.md)
+**Used in:** [Frames, and what a frame is](../animation_time_model.md), [Physics: particles, constraints and cloth](../physics.md)
 
 ### Top-level functions { #cloth-kt-functions }
 
@@ -796,7 +796,7 @@ carry a JDK Incubator Vector path alongside the scalar one; the rest are scalar.
 
 `src/jvmMain/kotlin/afield/four/physics/SimdVerletColliders.kt` — [read the source](source/jvmMain/afield/four/physics/SimdVerletColliders/)
 
-**Used in:** [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints, and the one number that decides everything](../physics.md)
+**Used in:** [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints and cloth](../physics.md)
 
 ### Top-level functions { #simdverletcolliders-kt-functions }
 

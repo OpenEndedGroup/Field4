@@ -662,7 +662,7 @@ object StdlibReferenceGenerator {
             "not two ways of doing one thing. Everything above returns geometry, so " +
             "[Graphics](graphics.md) is where it gets drawn.\n\n" +
             "The prose, with pictures: " +
-            "[Physics: particles, constraints, and the one number that decides everything]" +
+            "[Physics: particles, constraints and cloth]" +
             "(../physics.md) for the real-time stack — read it before touching `stiffness`, " +
             "because it and `iterations` are not two knobs — and " +
             "[Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and " +
