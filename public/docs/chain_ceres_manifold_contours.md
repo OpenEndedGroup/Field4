@@ -29,7 +29,9 @@ import afield.manifold.Solid
 val rows = mutableListOf<List<Any?>>()
 fun cut(what: String, solid: Solid, z: Double) {
     solid.slice(z).use { s ->
-        rows += listOf(what, "%.6f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount)
+        // Nine decimals, because two of these cuts are one part in a billion apart and a
+        // table that printed both as 1.000000 would read as a contradiction.
+        rows += listOf(what, "%.9f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount)
     }
 }
 
@@ -69,7 +71,7 @@ Solid.scope {
         val centre = (s.bounds.first.x + s.bounds.second.x) / 2.0
         rows += listOf(
             "two unit cubes meeting along one edge, cut on it",
-            "0.500000", "%.4f".format(s.area) + " centred at x = %.4f".format(centre), s.contourCount,
+            "0.500000000", "%.4f".format(s.area) + " centred at x = %.4f".format(centre), s.contourCount,
         )
     }
     Unit
@@ -122,19 +124,19 @@ Orientation is the second confound, and it is measured rather than argued away. 
 survives canonicalisation, so the angle each vertex's direction from the centroid turns through is
 a per-vertex number, and the largest of them says whether one z-ladder cuts both forms comparably.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="12" capture="box" open-outputs="true" w="1240" h="960" padding="16" timeout="300" name="chain-contours-gyro" requires="manifold" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="14" capture="box" open-outputs="true" w="1240" h="980" padding="16" timeout="360" name="chain-contours-gyro" requires="manifold" embed=true}
 :::static
 import afield.manifold.Solid
 import afield.manifold.toSolid
 import afield.stdlib.polytope.NormalPolicy
 import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.canonicalDiagnostics
 import afield.stdlib.polytope.canonicalize
 import afield.stdlib.polytope.conway
 import afield.stdlib.polytope.triangulate
 import afield.util.PngEncoder
 
 val LAYERS = 48
+val PANEL = 600
 
 :::fold the chain, the bed gauge, the layer stack, and a plan-view rasteriser
 // Conway notation to a Manifold solid. The triangulator cuts each polygon on its own, so a
@@ -143,45 +145,49 @@ val LAYERS = 48
 fun solidOf(p: PolyhedralObject): Solid =
     p.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6).toSolid()
 
-// Enclosed volume exactly 1, lowest point at z = 0, centred in x and y.
+// Enclosed volume exactly 1, lowest point at z = 0, centred in x and y. Without this,
+// every area below would be a statement about the canonicaliser's scale gauge.
 fun onTheBed(s: Solid): Solid {
     val k = s.scaled(1.0 / Math.cbrt(s.volume))
     val b = k.bounds
     return k.translated(-b.center.x.toDouble(), -b.center.y.toDouble(), -b.min.z.toDouble())
 }
 
-fun stack(s: Solid, n: Int = LAYERS): List<Pair<Double, List<List<Vec2>>>> {
+fun cutHeights(s: Solid, n: Int): List<Double> {
     val low = s.bounds.min.z.toDouble()
     val h = s.bounds.max.z.toDouble() - low
-    return (0 until n).map { i ->
-        val z = low + h * (i + 0.5) / n
-        z to s.slice(z).use { it.toPolygons() }
-    }
+    return (0 until n).map { low + h * (it + 0.5) / n }
 }
 
-fun areas(s: Solid, n: Int = LAYERS): List<Double> {
-    val low = s.bounds.min.z.toDouble()
-    val h = s.bounds.max.z.toDouble() - low
-    return (0 until n).map { i -> s.slice(low + h * (i + 0.5) / n).use { it.area } }
-}
+fun contoursOf(s: Solid, n: Int): List<List<List<Vec2>>> =
+    cutHeights(s, n).map { z -> s.slice(z).use { it.toPolygons() } }
+
+fun areasOf(s: Solid, n: Int): List<Double> =
+    cutHeights(s, n).map { z -> s.slice(z).use { it.area } }
+
+fun centroidOf(v: List<Vec3>): Triple<Double, Double, Double> = Triple(
+    v.sumOf { it.x.toDouble() } / v.size,
+    v.sumOf { it.y.toDouble() } / v.size,
+    v.sumOf { it.z.toDouble() } / v.size,
+)
 
 // The largest and mean angle any vertex's direction from the centroid turns through.
-// Canonicalisation keeps the vertex indexing, so this is a true per-vertex comparison.
+// Canonicalisation keeps the vertex indexing, so this is a true per-vertex comparison
+// rather than a shape descriptor that might agree by accident.
 fun directionTurn(a: PolyhedralObject, b: PolyhedralObject): Pair<Double, Double> {
     val p = a.realization!!.vertexCoordinates
     val q = b.realization!!.vertexCoordinates
-    fun mid(v: List<Vec3>) = Triple(
-        v.sumOf { it.x.toDouble() } / v.size,
-        v.sumOf { it.y.toDouble() } / v.size,
-        v.sumOf { it.z.toDouble() } / v.size,
-    )
-    val cp = mid(p)
-    val cq = mid(q)
+    val cp = centroidOf(p)
+    val cq = centroidOf(q)
     var worst = 0.0
     var total = 0.0
     for (i in p.indices) {
-        val ux = p[i].x - cp.first; val uy = p[i].y - cp.second; val uz = p[i].z - cp.third
-        val vx = q[i].x - cq.first; val vy = q[i].y - cq.second; val vz = q[i].z - cq.third
+        val ux = p[i].x - cp.first
+        val uy = p[i].y - cp.second
+        val uz = p[i].z - cp.third
+        val vx = q[i].x - cq.first
+        val vy = q[i].y - cq.second
+        val vz = q[i].z - cq.third
         val nu = sqrt(ux * ux + uy * uy + uz * uz)
         val nv = sqrt(vx * vx + vy * vy + vz * vz)
         if (nu < 1e-9 || nv < 1e-9) continue
@@ -192,37 +198,47 @@ fun directionTurn(a: PolyhedralObject, b: PolyhedralObject): Pair<Double, Double
     return worst to total / p.size
 }
 
-// A plan view of a whole layer stack, drawn with no AWT: contours in list order, coloured
-// from the bed upwards, so the picture is the stack seen from directly overhead.
-val PANEL = 600
-fun plan(stacks: List<Pair<String, List<Pair<Double, List<List<Vec2>>>>>>): ByteArray {
+// A plan view of a whole layer stack, drawn with no AWT: the stack seen from overhead,
+// each contour coloured by how far up it sits.
+fun mark(px: IntArray, w: Int, x: Int, y: Int, c: Int) {
+    if (x >= 0 && x < w && y >= 0 && y < PANEL) px[y * w + x] = c
+}
+
+fun segment(px: IntArray, w: Int, x0: Double, y0: Double, x1: Double, y1: Double, c: Int) {
+    val steps = maxOf(abs(x1 - x0), abs(y1 - y0)).toInt() + 1
+    for (s in 0..steps) {
+        val t = s.toDouble() / steps
+        mark(px, w, (x0 + (x1 - x0) * t).toInt(), (y0 + (y1 - y0) * t).toInt(), c)
+    }
+}
+
+fun heightColour(t: Double): Int {
+    // Cyan at the bed, orange at the top: the signal palette's two leads.
+    val r = (0x7a + (0xff - 0x7a) * t).toInt()
+    val g = (0xd9 + (0x9e - 0xd9) * t).toInt()
+    val b = (0xff + (0x4a - 0xff) * t).toInt()
+    return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+}
+
+fun plan(stacks: List<List<List<List<Vec2>>>>): ByteArray {
     val w = PANEL * stacks.size
     val px = IntArray(w * PANEL) { 0xFF0D1017.toInt() }
-    fun pixel(x: Int, y: Int, c: Int) { if (x in 0 until w && y in 0 until PANEL) px[y * w + x] = c }
-    fun seg(x0: Double, y0: Double, x1: Double, y1: Double, c: Int) {
-        val steps = maxOf(abs(x1 - x0), abs(y1 - y0)).toInt() + 1
-        for (s in 0..steps) {
-            val t = s.toDouble() / steps
-            pixel((x0 + (x1 - x0) * t).toInt(), (y0 + (y1 - y0) * t).toInt(), c)
-        }
-    }
     // One scale for every panel, or the comparison would be about the framing.
-    val reach = stacks.flatMap { it.second }.flatMap { it.second }.flatten()
-        .maxOfOrNull { maxOf(abs(it.x), abs(it.y)) }?.toDouble() ?: 1.0
-    stacks.forEachIndexed { panel, (_, layers) ->
+    var reach = 1e-9
+    for (stack in stacks) for (layer in stack) for (ring in layer) for (p in ring) {
+        reach = maxOf(reach, abs(p.x).toDouble(), abs(p.y).toDouble())
+    }
+    val k = (PANEL / 2.0 - 16.0) / reach
+    stacks.forEachIndexed { panel, stack ->
         val ox = panel * PANEL + PANEL / 2.0
-        val k = (PANEL / 2.0 - 16.0) / reach
-        layers.forEachIndexed { i, (_, contours) ->
-            val t = i.toDouble() / maxOf(1, layers.size - 1)
-            // Cyan at the bed, orange at the top — the signal palette's two leads.
-            val r = (0x7a + (0xff - 0x7a) * t).toInt()
-            val g = (0xd9 + (0x9e - 0xd9) * t).toInt()
-            val b = (0xff + (0x4a - 0xff) * t).toInt()
-            val colour = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-            contours.forEach { ring ->
+        stack.forEachIndexed { i, layer ->
+            val colour = heightColour(i.toDouble() / maxOf(1, stack.size - 1))
+            for (ring in layer) {
                 for (j in ring.indices) {
-                    val a = ring[j]; val bb = ring[(j + 1) % ring.size]
-                    seg(ox + a.x * k, PANEL / 2.0 - a.y * k, ox + bb.x * k, PANEL / 2.0 - bb.y * k, colour)
+                    val a = ring[j]
+                    val b = ring[(j + 1) % ring.size]
+                    segment(px, w, ox + a.x * k, PANEL / 2.0 - a.y * k,
+                        ox + b.x * k, PANEL / 2.0 - b.y * k, colour)
                 }
             }
         }
@@ -233,33 +249,31 @@ fun plan(stacks: List<Pair<String, List<Pair<Double, List<List<Vec2>>>>>>): Byte
 
 val rows = mutableListOf<List<Any?>>()
 val profiles = mutableListOf<Pair<String, List<Number>>>()
-val panels = mutableListOf<Pair<String, List<Pair<Double, List<List<Vec2>>>>>>()
+val panels = mutableListOf<List<List<List<Vec2>>>>()
 
 for (expression in listOf("gC", "gD")) {
     val raw = conway(expression).polyhedron
     val canonical = raw.canonicalize().polyhedron
-    val (worst, mean) = directionTurn(raw, canonical)
+    val turn = directionTurn(raw, canonical)
 
     Solid.scope {
-        val forms = listOf("raw" to raw, "canonical" to canonical).map { (label, p) ->
-            label to onTheBed(solidOf(p))
-        }
-        forms.forEach { (label, solid) ->
+        for (label in listOf("raw", "canonical")) {
+            val solid = onTheBed(solidOf(if (label == "raw") raw else canonical))
             val height = solid.bounds.max.z.toDouble()
-            val a = areas(solid)
-            val layers = stack(solid)
-            profiles += "$expression $label" to a
-            if (expression == "gC") panels += "$expression $label" to layers
-            rows += listOf(
+            val a = areasOf(solid, LAYERS)
+            val layers = contoursOf(solid, LAYERS)
+            profiles.add("$expression $label" to a)
+            if (expression == "gC") panels.add(layers)
+            rows.add(listOf(
                 "$expression, $label",
                 "%.6f".format(height),
                 "%.6f".format(solid.surfaceArea),
                 "%.6f".format(a.sumOf { it } * height / LAYERS),
-                layers.sumOf { it.second.size },
+                layers.sumOf { it.size },
                 "%.6f".format(a.min()),
                 "%.6f".format(a.max()),
-                if (label == "raw") "" else "%.2f°".format(worst) + " / %.2f°".format(mean),
-            )
+                if (label == "raw") "" else "%.2f° / %.2f°".format(turn.first, turn.second),
+            ))
         }
         Unit
     }
@@ -271,7 +285,7 @@ markdown("forms", Table(listOf(
     "smallest layer", "largest layer", "vertex turn, worst / mean",
 )).rows(rows).h, width = 1180)
 showSignals(
-    *profiles.map { (k, v) -> k to v }.toTypedArray(),
+    profiles[0], profiles[1], profiles[2], profiles[3],
     x = (0 until LAYERS).map { (it + 0.5) / LAYERS },
     channel = "profile",
     xTitle = "height, as a fraction of the object's own",
