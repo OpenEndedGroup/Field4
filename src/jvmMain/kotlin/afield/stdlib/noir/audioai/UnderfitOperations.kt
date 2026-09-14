@@ -10,6 +10,35 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 
+/**
+ * Request builder for source-conditioned Stable Audio 3 generation, with LoRAs named by digest.
+ *
+ * `underfitCandidates` is a [ModelOperation] factory and nothing more: it validates its arguments
+ * here in the JVM, names `underfit.stable_audio_3` as the backend, and packs everything into the
+ * snake_case keys that backend expects. Submitting it, waiting on it and auditioning the candidate
+ * board are `FieldAudioClient`'s job. Stable Audio 3 and Underfit themselves stay in an optional
+ * Python worker, so the Kotlin here knows a wire operation name and a parameter vocabulary rather
+ * than a model.
+ *
+ * The source [AssetRegion] is sent as init audio, and `initNoiseLevel` on
+ * [UnderfitGenerationControls] sets how far generation may travel from it. One candidate is
+ * requested per seed, so the default `0L until 8L` asks for eight. [UnderfitOperation] chooses
+ * between the `generate.style` and `generate.variations` wire operations, and [UnderfitModel]
+ * carries the duration ceiling of each checkpoint pack, which `underfitCandidates` checks
+ * `durationSeconds` against before building anything.
+ *
+ * A LoRA is identified by a path relative to the worker's configured LoRA root plus the lowercase
+ * SHA-256 of its `.safetensors` bytes, and both travel with the request. So a request names one
+ * exact set of weights rather than a filename that may have been retrained since.
+ * `UnderfitLoraCheckpoint.fromFile` computes that digest from a local file, which assumes Field and
+ * the worker share a filesystem. [UnderfitLoraCheckpoint]'s own `init` block checks what it can
+ * before a request exists: the path stays inside the root and ends in `.safetensors`, the digest is
+ * exactly 64 lowercase hex digits, strength is finite and non-negative, and the LoRA's denoising
+ * interval satisfies
+ * `0 <= intervalMin <= intervalMax <= 1`. [UnderfitGenerationControls] validates its sampling knobs
+ * the same way, independently of any one request.
+ */
+
 /** Stable Audio 3 checkpoint packs supported by the pinned Underfit worker. */
 enum class UnderfitModel(val id: String, val maximumDurationSeconds: Double) {
     SMALL_MUSIC("small-music", 120.0),

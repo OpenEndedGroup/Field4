@@ -12,6 +12,47 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Speech embedding: decode, pool, and project the learned speech frames stored in an analysis artifact.
+ *
+ * `speechEmbeddingAnalysis` submits the `analysis.embed_speech` job, and the worker keeps two
+ * things: the full float16 frame tensor, and its own four-axis MDS preview over cosine distance.
+ * This file is the second route to a picture. `decodeSpeechEmbeddingMessagePack` reads the tensor
+ * into a [SpeechEmbeddingFrames] bounded to a time window, then `.mds()` or `.tsne()` fits the
+ * projection in Field through Smile's `smileMds` and `smileTsne`. Changing the range, the pooling,
+ * the distance, the dimension count, the perplexity or the seed re-fits locally and never re-runs
+ * the speech model.
+ *
+ * The payload stores float64 times and float16 vectors as little-endian MessagePack binary fields,
+ * and a private half-float expansion reads them, so nothing here needs JVM float16 support. The
+ * decoder rejects any `format` other than `field.audio.speech-embedding.v1`, and any dtype pair
+ * other than those two.
+ *
+ * Pooling and hop are independent. `poolMillis` is the width of a centred mean window and
+ * `hopMillis` is the spacing between the vectors that come out of it. Both round to the frame rate
+ * recorded in the payload, and omitting them preserves the model's own frames one for one. Pooling
+ * runs as a rolling sum, so a window covering many source rows costs one pass over the range
+ * instead of one pass per output row, and `maxFrames` sampling happens after pooling and keeps time
+ * order.
+ *
+ *     client.speechEmbeddingSmileTsnePreview(result).thenAccept { preview ->
+ *         display("speech space", speechEmbeddingPreviewVisualizationHtml(preview))
+ *     }
+ *
+ * `withSpeechMds` and `withSpeechTsne` replace a preview's projection axes with the locally fitted
+ * ones and stamp the owner, library and method into both the series metadata and the preview's
+ * analysis object, which is how a Field-fitted view is told apart from the worker's cached one on
+ * the page. Both require at least four dimensions, because
+ * `speechEmbeddingPreviewVisualizationHtml` draws axes 0/1 and 2/3 as two phase portraits.
+ *
+ * Every projection result carries the frame times and source frame indices it was fitted from
+ * alongside the backend, model id, model revision and WavLM layer, so a trajectory on screen can be
+ * traced back to the rows and the checkpoint behind it. The coordinates themselves are
+ * navigational: axis numbering is specific to one fit, and comparing coordinate 0 between two
+ * backends or two independently fitted recordings has no meaning. Use the stored vectors for that.
+ * See [Speech-reactive learned spaces](../audio_ai_speech_embeddings.md).
+ */
+
 /** A bounded, time-preserving frame range decoded from a speech embedding MessagePack artifact. */
 data class SpeechEmbeddingFrames(
     val timesSeconds: DoubleArray,
