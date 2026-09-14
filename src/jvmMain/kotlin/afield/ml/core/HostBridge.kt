@@ -21,6 +21,28 @@ import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
+ * How a FieldML box calls Kotlin: `hostCall`, `hostNew` and `hostGet` all arrive here, and so does
+ * a `.field` read on a host value.
+ *
+ * FieldML has no declarations for Field's API and no generated stubs for it. A box names a method
+ * with a string, and all of the matching happens at run time against `java.lang.reflect`. That
+ * leaves this file three problems a compiled language would have settled at its own compile time:
+ * choosing between same-named overloads, giving a FieldML function a JVM type it can be passed
+ * as, and reconciling FieldML's one integer and one float with the JVM's six numeric widths. The
+ * `object` below takes them in that order.
+ *
+ * [FieldMLHostTypes] answers the same three questions a second time, because typing a `hostCall`
+ * means predicting which member this file will pick. Where the answer is a judgement rather than a
+ * lookup the two share one implementation rather than agreeing twice: `numericAffinity` scores
+ * numeric fit for both, and both read a wildcard from the bound that carries the information for
+ * the position it appears in. When they drift, a box type-checks and then invokes the wrong member,
+ * which is a harder failure to read than either a type error or a refusal.
+ *
+ * `dev_docs/FIELDML_HOST_BRIDGE.md` is the longer account, including the named-argument mechanisms
+ * that make Kotlin's default parameters reachable from FieldML at all.
+ */
+
+/**
  * The reflective half of FieldML's JVM bridge: given a name, a receiver and some already-converted
  * FieldML arguments, find the JVM member that the call actually meant and make it happen.
  *
@@ -54,8 +76,8 @@ object FieldMLHostBridge {
 
     /**
      * Tuple- and list-spread, the shape `hostStaticCall` has always used: `hostCall "m" (a, b, c) t`
-     * passes three arguments. Anything else is a single argument, which is what makes
-     * `hostCall1 "lines" [line]` the way to pass one list *as* a list.
+     * passes three arguments. Anything else is a single argument, which is what makes `hostCall1`
+     * with a one-element list the way to pass a list *as* a list.
      */
     fun spreadArguments(value: FieldMLValue): List<Any?> =
         when (value) {
@@ -65,6 +87,13 @@ object FieldMLHostBridge {
             else -> listOf(fieldMLValueToHost(value))
         }
 
+    /**
+     * Calls an instance method on [target] by name, choosing among the same-named methods of the
+     * receiver's runtime class.
+     *
+     * Refuses rather than guesses when nothing of that arity can take these arguments, and the
+     * message lists what the candidates would have accepted.
+     */
     fun callMethod(name: String, target: Any, arguments: List<Any?>): FieldMLValue {
         val candidates = instanceMethods(target.javaClass, name, arguments.size)
         val chosen = choose(candidates, arguments)
@@ -72,6 +101,12 @@ object FieldMLHostBridge {
         return hostToFieldMLValue(invoke(chosen, target, arguments))
     }
 
+    /**
+     * Calls a static method of [owner] by name.
+     *
+     * This is also the route to a Kotlin top-level or extension function, whose receiver the caller
+     * passes as the first argument, because both compile to statics on a file class.
+     */
     fun callStaticMethod(name: String, owner: Class<*>, arguments: List<Any?>): FieldMLValue {
         val candidates = staticMethods(owner, name, arguments.size)
         val chosen = choose(candidates, arguments)
@@ -79,6 +114,13 @@ object FieldMLHostBridge {
         return hostToFieldMLValue(invoke(chosen, null, arguments))
     }
 
+    /**
+     * Constructs an [owner] by positional arguments, scoring its constructors the same way methods
+     * are scored.
+     *
+     * Every optional parameter has to be written out on this path, because reflection cannot see a
+     * Kotlin default. [constructNamed] is the one that can leave them out.
+     */
     fun construct(owner: Class<*>, arguments: List<Any?>): FieldMLValue {
         val candidates = constructors(owner, arguments.size)
         val chosen = choose(candidates, arguments)
@@ -127,6 +169,15 @@ object FieldMLHostBridge {
         return hostToFieldMLValue(invokeNamed(chosen, target, null, arguments))
     }
 
+    /**
+     * [callMethodNamed] for a static method, and the path an extension function with named
+     * arguments takes.
+     *
+     * An extension's receiver is a parameter of its `KFunction` rather than one of its named
+     * arguments, so candidates are filtered to those that want a receiver exactly when one was
+     * supplied. Without that, a member overload and an extension overload of the same name are
+     * both viable on the same name set.
+     */
     fun callStaticMethodNamed(
         name: String,
         owner: Class<*>,
@@ -140,6 +191,15 @@ object FieldMLHostBridge {
         return hostToFieldMLValue(invokeNamed(chosen, null, extensionReceiver, arguments))
     }
 
+    /**
+     * Constructs an [owner] from named arguments, letting Kotlin fill in every parameter not
+     * named.
+     *
+     * This is the only way a FieldML box can construct a Kotlin class with optional parameters
+     * without writing all of them out. Unlike the method paths it does not filter by name first:
+     * the candidates are the `KFunction` view of every public constructor, and one that has no
+     * Kotlin view is not a candidate.
+     */
     fun constructNamed(owner: Class<*>, arguments: Map<String, Any?>): FieldMLValue {
         val candidates = owner.constructors.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
         val chosen = chooseNamed(candidates, arguments)
@@ -151,6 +211,7 @@ object FieldMLHostBridge {
     fun instanceMethods(owner: Class<*>, name: String): List<Method> =
         owner.methods.filter { !Modifier.isStatic(it.modifiers) && it.name == name }
 
+    /** [instanceMethods] for statics: all same-named ones, any arity. */
     fun staticMethods(owner: Class<*>, name: String): List<Method> =
         owner.methods.filter { Modifier.isStatic(it.modifiers) && it.name == name }
 
@@ -287,6 +348,14 @@ object FieldMLHostBridge {
         error("No readable member '$name' on ${target.javaClass.name}")
     }
 
+    /**
+     * The write side of [readMember]: a mutable map entry, a non-final field, or a setter.
+     *
+     * A `val` and a Java `final` field are both simply not writable, and so is a class whose only
+     * member of that name is a getter, which is the usual reason a `hostSet` is refused. The value
+     * is coerced to the declared type on the way in, so a FieldML `Float` can reach a `Float`
+     * field.
+     */
     fun writeMember(name: String, target: Any, value: Any?) {
         if (target is MutableMap<*, *>) {
             @Suppress("UNCHECKED_CAST")
@@ -320,21 +389,38 @@ object FieldMLHostBridge {
     // Arity is `>=` rather than `==` for varargs: `lines(box, lines, channel)` and
     // `hstack(vararg images, gap)` both have a fixed part plus a tail the caller spells out flat.
 
+    /**
+     * Same-named instance methods that could take [arity] arguments, which is the candidate set a
+     * positional call chooses from.
+     *
+     * A `vararg` method qualifies for any arity at or above its fixed part, so a single candidate
+     * can appear for several different call shapes.
+     */
     fun instanceMethods(owner: Class<*>, name: String, arity: Int): List<Method> =
         owner.methods.filter { !Modifier.isStatic(it.modifiers) && it.name == name && acceptsArity(it, arity) }
 
+    /** [instanceMethods] for statics, with the same `vararg` allowance. */
     fun staticMethods(owner: Class<*>, name: String, arity: Int): List<Method> =
         owner.methods.filter { Modifier.isStatic(it.modifiers) && it.name == name && acceptsArity(it, arity) }
 
+    /** Public constructors of [owner] that could take [arity] arguments. */
     fun constructors(owner: Class<*>, arity: Int): List<Constructor<*>> =
         owner.constructors.filter { acceptsArity(it, arity) }
 
     private fun acceptsArity(executable: Executable, arity: Int): Boolean =
         executable.parameterCount == arity || (executable.isVarArgs && arity >= executable.parameterCount - 1)
 
+    /**
+     * A public instance field by name, or null.
+     *
+     * Only public fields are visible, so a Kotlin property never arrives this way — its backing
+     * field is private and [instanceGetter] is what finds it. This path is for Java classes and for
+     * Kotlin's `@JvmField`.
+     */
     fun instanceField(owner: Class<*>, name: String): Field? =
         owner.fields.firstOrNull { !Modifier.isStatic(it.modifiers) && it.name == name }?.also { it.tryOpen() }
 
+    /** [instanceField] for statics: a public static field, a Java constant, or a `@JvmStatic` one. */
     fun staticField(owner: Class<*>, name: String): Field? =
         owner.fields.firstOrNull { Modifier.isStatic(it.modifiers) && it.name == name }?.also { it.tryOpen() }
 
@@ -350,6 +436,7 @@ object FieldMLHostBridge {
             }
         }?.also { it.tryOpen() }
 
+    /** [instanceGetter] for statics, trying the same three spellings of the name. */
     fun staticGetter(owner: Class<*>, name: String): Method? =
         getterNames(name).firstNotNullOfOrNull { candidate ->
             owner.methods.firstOrNull {
@@ -705,6 +792,14 @@ object FieldMLHostBridge {
         val resultType: Class<*>,
     )
 
+    /**
+     * The [SuspendShape] of a functional interface that is really a `suspend` function type, or
+     * null for an ordinary one.
+     *
+     * Detection is by the trailing parameter: a `Continuation` there is the calling convention and
+     * nothing an author wrote. Reading it needs the parameter as substituted at the use site, not
+     * the erased one, which is why [SuspendShape] describes the direction the bounds are read from.
+     */
     fun suspendShape(iface: Class<*>, generic: java.lang.reflect.Type?): SuspendShape? {
         val method = functionalMethod(iface) ?: return null
         val parameters = method.genericParameterTypes
@@ -864,6 +959,13 @@ object FieldMLHostBridge {
     private fun isNumeric(boxedType: Class<*>): Boolean =
         Number::class.java.isAssignableFrom(boxedType)
 
+    /**
+     * The wrapper class for a primitive, or the type unchanged.
+     *
+     * Reflection reports a parameter declared `Int` as `int` while every value the runtime holds is
+     * boxed, so scoring and coercion both compare boxed against boxed and this is what makes that
+     * comparison meaningful.
+     */
     fun boxed(type: Class<*>): Class<*> =
         when (type) {
             java.lang.Integer.TYPE -> Int::class.javaObjectType
