@@ -243,8 +243,8 @@ showSignals(
 
 ![Three re-aiming strategies against a jumping set-point, with their velocities underneath](assets/interpolants_examples/inertial_family.png)
 
-The value panel separates the three at the corners; the change panel is where the
-claim is. `smoothTo` is a straight line between two numbers, so its speed is a
+The value panel separates the three at the corners; the change panel differences
+them into speeds. `smoothTo` is a straight line between two numbers, so its speed is a
 plateau, and re-aiming steps that plateau to a new level between one evaluation
 and the next. Restarting `inertialTo` replaces the step with a zero: the new blend
 begins at rest, so whatever speed the value had is thrown away and built again
@@ -253,7 +253,7 @@ a jump is the speed it had before — it carries on in the old direction for a
 moment, turns around, and has no corner in it anywhere. That is the difference
 between a drag that stutters and one that does not.
 
-Two consequences of re-solving worth knowing before you bind one:
+Two consequences of re-solving, both of which decide whether to bind one:
 
 - `inertialTo` **never reports itself complete**, even while sitting on its
   target. A uniform that reports completion stops being written, and an
@@ -269,8 +269,8 @@ Two consequences of re-solving worth knowing before you bind one:
 in a game loop, or on something the interpolant cannot carry — a quaternion, say.
 `smoothstep(t, s)` is the scaled cubic `s · (3t² − 2t³)` indexed by its own time
 rather than the GLSL function of the same name, `smoothstepDt` is its derivative,
-and `solve(x, v)` is the interesting one: it returns the `t` and `s` whose curve
-is `x` away from its destination *and* moving at velocity `v`. Advance `t` to 1
+and `solve(x, v)` is the one you enter a curve part-way with: it returns the `t`
+and `s` whose curve is `x` away from its destination *and* moving at velocity `v`. Advance `t` to 1
 from there and the gap closes, arriving at rest. A restart is the `v = 0` case of
 that, and the top panel below asks for the same distance at five different
 incoming speeds instead:
