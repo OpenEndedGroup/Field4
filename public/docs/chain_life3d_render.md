@@ -112,7 +112,7 @@ markdown("spacing", "#### The same field at three spacings each way\n\n" + sweep
 
 ![Tables: live cells per generation falling from 1852 to 164; Field's marching cubes reporting 10688 triangles, watertight, genus 0 against Manifold's level set reporting 5374 triangles and genus minus 47; a cluster census whose 48 volumes sum exactly to the whole solid's; and a sweep showing both the cluster count and the volume changing with the sampling spacing](assets/chain_life3d_render/readout.png)
 
-## The two marchers disagree about genus, and that is the finding
+## Why the two marchers disagree about genus
 
 Both numbers are right about different things.
 
@@ -159,7 +159,7 @@ whatever surface was produced rather than measurements of the field.
     The parallel path is roughly three times faster at this size. Take it when the output is going
     to a screen; take the sequential one when a number off it is going to be read.
 
-!!! note "A radius-one blur is the usual choice, and it is the wrong one here"
+!!! note "Set `smoothRadius = 0` for a sparse automaton, or the surface comes back empty"
 
     `asDensityField`'s default smooths the occupancy grid by a voxel before marching, which is right
     for a dense automaton: it turns a box of cubes into a shape, and it drops isolated single voxels
