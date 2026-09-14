@@ -566,7 +566,7 @@ private class CaveRenderer(
  * gap lets you hear the space answer, which is both how echolocation works and the only way to
  * actually judge whether a simulated room sounds right.
  */
-private class PingGenerator(private val samplingRate: Int) {
+internal class PingGenerator(private val samplingRate: Int) {
     private var sampleClock = 0L
     private var noiseState = 0x2545F491u
 

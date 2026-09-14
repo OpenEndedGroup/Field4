@@ -1,6 +1,8 @@
 package afield.four.audio.steamaudio
 
 import afield.four.audio.steamaudio.raw.IPLAudioBuffer
+import afield.four.audio.steamaudio.raw.IPLSpeakerLayout
+import afield.four.audio.steamaudio.raw.IPLVector3
 import afield.four.audio.steamaudio.raw.Phonon
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
@@ -402,29 +404,42 @@ public class SpeakerLayout private constructor(
     public val channelCount: Int
         get() = type.channelCount ?: speakers.size
 
-    internal fun allocate(arena: Arena): MemorySegment {
-        val segment = afield.four.audio.steamaudio.raw.IPLSpeakerLayout.allocate(arena)
-        afield.four.audio.steamaudio.raw.IPLSpeakerLayout.type(segment, type.value)
-        afield.four.audio.steamaudio.raw.IPLSpeakerLayout.numSpeakers(segment, channelCount)
+    /**
+     * True when this layout keeps a pointer to caller-owned memory.
+     *
+     * A custom layout's `IPLSpeakerLayout` holds a raw pointer to its array of speaker
+     * directions. Steam Audio does not document that array as being copied, so it must remain
+     * valid for as long as any effect created with the layout -- which means it cannot live in
+     * a scratch arena that closes when creation returns. Effects that accept a custom layout
+     * own a shared arena for it; see [PathEffect] and [AmbisonicsDecodeEffect].
+     */
+    internal val needsPersistentStorage: Boolean get() = type == SpeakerLayoutType.CUSTOM
+
+    /**
+     * Writes this layout into an existing `IPLSpeakerLayout` at [target].
+     *
+     * @param directionsArena allocates the speaker-direction array for a custom layout. It
+     *   must outlive every effect created from [target].
+     */
+    internal fun writeInto(target: MemorySegment, directionsArena: Arena) {
+        IPLSpeakerLayout.type(target, type.value)
+        IPLSpeakerLayout.numSpeakers(target, channelCount)
         if (type == SpeakerLayoutType.CUSTOM) {
-            val directions = arena.allocate(
-                afield.four.audio.steamaudio.raw.IPLVector3.layout(),
-                speakers.size.toLong(),
-            )
+            val vectorLayout = IPLVector3.layout()
+            val directions = directionsArena.allocate(vectorLayout, speakers.size.toLong())
             speakers.forEachIndexed { index, speaker ->
                 speaker.writeTo(
-                    directions.asSlice(
-                        index.toLong() * afield.four.audio.steamaudio.raw.IPLVector3.layout().byteSize(),
-                        afield.four.audio.steamaudio.raw.IPLVector3.layout().byteSize(),
-                    ),
+                    directions.asSlice(index * vectorLayout.byteSize(), vectorLayout.byteSize()),
                 )
             }
-            afield.four.audio.steamaudio.raw.IPLSpeakerLayout.speakers(segment, directions)
+            IPLSpeakerLayout.speakers(target, directions)
         } else {
-            afield.four.audio.steamaudio.raw.IPLSpeakerLayout.speakers(segment, MemorySegment.NULL)
+            IPLSpeakerLayout.speakers(target, MemorySegment.NULL)
         }
-        return segment
     }
+
+    internal fun allocate(arena: Arena): MemorySegment =
+        IPLSpeakerLayout.allocate(arena).also { writeInto(it, arena) }
 
     override fun toString(): String =
         if (type == SpeakerLayoutType.CUSTOM) "SpeakerLayout(custom, ${speakers.size} speakers)"

@@ -196,9 +196,15 @@ public class AmbisonicsDecodeEffect private constructor(
     public val maxOrder: Int,
     /** The speaker layout used when not decoding binaurally. */
     public val speakerLayout: SpeakerLayout,
+    /** Holds a custom layout's direction array; null for standard layouts. */
+    private val layoutArena: Arena?,
 ) : AudioEffect(handle) {
 
     override fun releaseAction(): (MemorySegment) -> Unit = Phonon::iplAmbisonicsDecodeEffectRelease
+
+    override fun onClosed() {
+        layoutArena?.close()
+    }
 
     override val typeName: String get() = "AmbisonicsDecodeEffect"
 
@@ -245,6 +251,7 @@ public class AmbisonicsDecodeEffect private constructor(
         Phonon.iplAmbisonicsDecodeEffectRetain(liveHandle),
         maxOrder,
         speakerLayout,
+        layoutArena = null,
     )
 
     public companion object {
@@ -262,22 +269,26 @@ public class AmbisonicsDecodeEffect private constructor(
             speakerLayout: SpeakerLayout = SpeakerLayout.STEREO,
         ): AmbisonicsDecodeEffect {
             val contextHandle = context.liveHandle
-            Arena.ofConfined().use { arena ->
-                val audio = audioSettings.allocate(arena)
-                val settings = IPLAmbisonicsDecodeEffectSettings.allocate(arena)
-                IPLAmbisonicsDecodeEffectSettings.maxOrder(settings, maxOrder)
-                IPLAmbisonicsDecodeEffectSettings.hrtf(settings, hrtf.liveHandle)
-                IPLAmbisonicsDecodeEffectSettings.speakerLayout(
-                    settings,
-                    speakerLayout.allocate(arena),
-                )
-                return AmbisonicsDecodeEffect(
+            var layoutArena: Arena? = null
+            try {
+                if (speakerLayout.needsPersistentStorage) layoutArena = Arena.ofShared()
+                val handle = Arena.ofConfined().use { scratch ->
+                    val audio = audioSettings.allocate(scratch)
+                    val settings = IPLAmbisonicsDecodeEffectSettings.allocate(scratch)
+                    IPLAmbisonicsDecodeEffectSettings.maxOrder(settings, maxOrder)
+                    IPLAmbisonicsDecodeEffectSettings.hrtf(settings, hrtf.liveHandle)
+                    speakerLayout.writeInto(
+                        IPLAmbisonicsDecodeEffectSettings.speakerLayout(settings),
+                        layoutArena ?: scratch,
+                    )
                     createHandle("iplAmbisonicsDecodeEffectCreate") { out ->
                         Phonon.iplAmbisonicsDecodeEffectCreate(contextHandle, audio, settings, out)
-                    },
-                    maxOrder,
-                    speakerLayout,
-                )
+                    }
+                }
+                return AmbisonicsDecodeEffect(handle, maxOrder, speakerLayout, layoutArena)
+            } catch (failure: Throwable) {
+                layoutArena?.close()
+                throw failure
             }
         }
     }

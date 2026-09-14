@@ -17,6 +17,12 @@ import java.lang.foreign.ValueLayout
  * This is an ordinary class rather than a native view, so it allocates. On the audio thread,
  * prefer the `(x, y, z)` overloads on the parameter types (for example
  * [BinauralEffectParams.setDirection]) which write straight through to native memory.
+ *
+ * Being a data class, equality is exact per component, which carries the usual floating-point
+ * caveats: `Vector3(0f, -0.0f, 0f)` is not equal to [ZERO] even though the two are numerically
+ * the same, and any vector containing `NaN` is not equal to itself. Cross products in
+ * particular produce `-0.0f` readily. Compare computed vectors with a tolerance rather than
+ * with `==`.
  */
 public data class Vector3(
     public val x: Float,
@@ -307,12 +313,10 @@ public data class CoordinateSpace3(
             up: Vector3 = Vector3.UP,
         ): CoordinateSpace3 {
             val forward = ahead.normalized()
-            // Steam Audio's own frame is +x right, +y up, -z ahead, and that is right-handed as
-            // `ahead cross up` -- which is what iplCalculateRelativeDirection derives internally
-            // from the ahead/up it is given. Building `right` the other way round produced a
-            // self-consistent but mirrored frame: left and right swapped for anything that passes
-            // a whole CoordinateSpace3 (source and listener spaces in the simulation path), while
-            // the direct binaural path stayed correct because it never reads this field.
+            // right = forward x up, NOT up x forward. Steam Audio's frame has +x right with
+            // -z ahead and +y up, and only this order reproduces that: (0,0,-1) x (0,1,0) is
+            // (1,0,0), matching [IDENTITY]. The other order yields (-1,0,0), which silently
+            // swaps the listener's ears -- audible, wrong, and easy to miss.
             val right = (forward cross up).normalized()
             val trueUp = (right cross forward).normalized()
             return CoordinateSpace3(right = right, up = trueUp, ahead = forward, origin = origin)

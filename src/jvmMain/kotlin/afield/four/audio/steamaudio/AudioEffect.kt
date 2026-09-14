@@ -22,6 +22,24 @@ import java.lang.foreign.MemorySegment
  *
  * [drainTail] wraps that loop for the common case.
  *
+ * ### Parameters are ramped across a block
+ *
+ * Steam Audio interpolates parameter changes over the block rather than applying them at sample
+ * zero -- which is what stops a moving source from clicking. The consequence is that **the
+ * first samples of a block are rendered with something closer to the previous parameters**.
+ *
+ * This is invisible for continuous audio and it is exactly what you want there. It matters in
+ * two cases:
+ *
+ *  - **Measuring an impulse response.** An impulse at sample 0 of the same block in which you
+ *    set the direction is rendered with the *old* direction. Measured directly: an Ambisonics
+ *    encode given a fresh direction and an impulse at sample 0 emits only the omnidirectional
+ *    component, all directional components zero. Run one block of the new parameters first,
+ *    then send the impulse in the block after.
+ *  - **Very short one-shots.** A click or tick shorter than a block, triggered in the same
+ *    block that positions it, is partly rendered at the previous position. If precise placement
+ *    of short sounds matters, set the parameters a block early.
+ *
  * ### Threads
  *
  * `apply`, [getTail] and [tailSize] are the real-time-safe surface: they do not allocate, do

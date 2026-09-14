@@ -4,14 +4,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * Checks that the native library loads and a context can be created and released.
- *
- * Skips rather than fails when the library is absent: nothing is committed, so a clone that has
- * never run `fetchSteamAudioNatives` has no libphonon, and the skip names what is missing.
- */
+/** Checks that the native library loads and a context can be created and released. */
 class SmokeTest {
 
+    /**
+     * Whether the tests that touch the native library can run.
+     *
+     * Field does not commit the Steam Audio binaries, so a clone that has never run
+     * `fetchSteamAudioNatives` has none. Skipping with a stated reason keeps `check` green there
+     * and says what is missing, rather than failing on a link error that names no remedy.
+     */
     private fun available(): Boolean {
         if (!SteamAudioNatives.isAvailable) {
             println("SKIPPED Steam Audio smoke tests: ${SteamAudioNatives.describe()}")
@@ -57,8 +59,6 @@ class SmokeTest {
         context.close()
     }
 
-    // No availability guard: this one is pure arithmetic, so it stays covered on a checkout with
-    // no libphonon.
     @Test
     fun ambisonicChannelCounts() {
         assertEquals(1, SteamAudio.ambisonicChannelCount(0))

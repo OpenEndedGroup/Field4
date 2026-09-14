@@ -5,6 +5,7 @@ import afield.four.audio.steamaudio.raw.IPLBatchedAnyHitCallback
 import afield.four.audio.steamaudio.raw.IPLBatchedClosestHitCallback
 import afield.four.audio.steamaudio.raw.IPLClosestHitCallback
 import afield.four.audio.steamaudio.raw.IPLHit
+import afield.four.audio.steamaudio.raw.IPLPathingVisualizationCallback
 import afield.four.audio.steamaudio.raw.IPLProgressCallback
 import afield.four.audio.steamaudio.raw.IPLRay
 import afield.four.audio.steamaudio.raw.IPLSceneSettings
@@ -12,6 +13,47 @@ import afield.four.audio.steamaudio.raw.IPLVector3
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
+
+/**
+ * Receives each probe-to-probe segment the pathing search considered.
+ *
+ * Invaluable for a 2D game: draw these on top of the map and the path graph becomes visible,
+ * which turns "pathing is silent and I do not know why" into an obvious picture of probes that
+ * cannot see each other. Called from the simulation thread during
+ * [Simulator.runPathing], once per segment examined, so it must be cheap and thread-safe --
+ * push the segments onto a queue for the renderer rather than drawing here.
+ *
+ * Coordinates are world-space. In a 2D game, convert back with the inverse of [World2D]'s
+ * mapping: game `x` is world `x`, game `y` is **minus** world `z`.
+ */
+public fun interface PathingVisualizationCallback {
+    /**
+     * @param occluded true when this segment is blocked, so the pair is not mutually visible.
+     */
+    public fun onSegment(
+        fromX: Float, fromY: Float, fromZ: Float,
+        toX: Float, toY: Float, toZ: Float,
+        occluded: Boolean,
+    )
+}
+
+internal object PathingVisualizationCallbacks {
+    fun stub(callback: PathingVisualizationCallback, arena: Arena): MemorySegment =
+        IPLPathingVisualizationCallback.allocate(
+            { from, to, occluded, _ ->
+                try {
+                    callback.onSegment(
+                        IPLVector3.x(from), IPLVector3.y(from), IPLVector3.z(from),
+                        IPLVector3.x(to), IPLVector3.y(to), IPLVector3.z(to),
+                        occluded != 0,
+                    )
+                } catch (_: Throwable) {
+                    // Never propagate across the FFM boundary.
+                }
+            },
+            arena,
+        )
+}
 
 /** Reports progress of a long-running operation as a fraction in `0..1`. */
 public fun interface ProgressCallback {

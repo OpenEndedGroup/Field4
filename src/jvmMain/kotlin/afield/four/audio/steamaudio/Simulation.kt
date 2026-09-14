@@ -106,10 +106,12 @@ public data class SimulationSettings(
  */
 public class SimulationSharedInputs private constructor(
     internal val segment: MemorySegment,
+    /** Arena used for the pathing-visualisation upcall stub, when one is installed. */
+    private val stubArena: Arena,
 ) {
 
     /** Allocates a shared-inputs block from [arena]. */
-    public constructor(arena: Arena) : this(IPLSimulationSharedInputs.allocate(arena)) {
+    public constructor(arena: Arena) : this(IPLSimulationSharedInputs.allocate(arena), arena) {
         listener = CoordinateSpace3.IDENTITY
         numRays = 4096
         numBounces = 16
@@ -174,6 +176,27 @@ public class SimulationSharedInputs private constructor(
     public var irradianceMinDistance: Float
         get() = IPLSimulationSharedInputs.irradianceMinDistance(segment)
         set(value) = IPLSimulationSharedInputs.irradianceMinDistance(segment, value)
+
+    /**
+     * Installs a callback that receives every probe-to-probe segment the pathing search
+     * examines, or clears it when [callback] is null.
+     *
+     * The stub lives in the arena this object was constructed with, so that arena must outlive
+     * any simulation run using these inputs. Intended for debugging -- see
+     * [PathingVisualizationCallback] for why it is worth wiring up in a 2D game, and for the
+     * constraints on what the callback may do.
+     */
+    public fun setPathingVisualizationCallback(callback: PathingVisualizationCallback?) {
+        if (callback == null) {
+            IPLSimulationSharedInputs.pathingVisCallback(segment, MemorySegment.NULL)
+        } else {
+            IPLSimulationSharedInputs.pathingVisCallback(
+                segment,
+                PathingVisualizationCallbacks.stub(callback, stubArena),
+            )
+        }
+        IPLSimulationSharedInputs.pathingUserData(segment, MemorySegment.NULL)
+    }
 }
 
 /** Per-source simulation inputs. A mutable native view. */

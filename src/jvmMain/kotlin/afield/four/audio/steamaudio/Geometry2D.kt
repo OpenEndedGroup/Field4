@@ -7,76 +7,105 @@ import kotlin.math.hypot
  * Maps a 2D game world onto the 3D world Steam Audio simulates in.
  *
  * Steam Audio is always a 3D simulation -- there is no 2D mode -- so a 2D game's geometry has
- * to be given a height. This type fixes the convention for doing that, so that walls, sources
- * and the listener all agree.
+ * to be given a height. This type fixes the convention, so walls, sources and the listener all
+ * agree.
  *
- * ### The mapping
+ * ### The game frame this assumes
  *
-
- * Game `(x, y)` becomes world `(x, height, -y)`: the game's plane is the world's **xz-plane**,
- * with game `y` running along world **−z**. Game `+y` is whichever direction is "up the screen"
- * or "north" in your world.
+ * The standard 2D convention: **geometry lies in the xy-plane**, `+x` is right and `+y` is up
+ * the screen, `+z` points out of the screen, and the listener **translates in xy and rotates
+ * about z**. Both ears therefore lie in the plane of the geometry, and the top of the head
+ * points along `+z`. The frame is right-handed: `x cross y = z`.
  *
- * The negation is not cosmetic. Steam Audio's convention is +x right, +y up, **−z ahead**, and
- * `iplCalculateRelativeDirection` derives the listener's right as `ahead cross up` from the
- * ahead/up it is handed. Map game north to world `+z` instead and that derivation returns
- * `right = −x`, so a source to the game east is rendered on the listener's **left** -- audible,
- * and exactly the mirroring `World2DHandednessTest` exists to catch. With `−z` the game frame
- * and Steam Audio's canonical frame are the same frame.
+ * ### The mapping, and why it is not the obvious one
  *
- * Use [listenerFacing] rather than building a [CoordinateSpace3] by hand.
+ * Game `(gx, gy, gz)` becomes world `(gx, gz, -gy)`.
+ *
+ * Steam Audio's frame is `+x` right, `+y` **up**, `-z` ahead. The game's up axis is `+z`, so
+ * that has to become world `+y` -- which leaves only one choice for the remaining axis if the
+ * mapping is to stay right-handed: game `+y` must map to world **`-z`**, not `+z`.
+ *
+ * The obvious-looking mapping `(gx, gy) -> (gx, height, gy)` is orientation-**reversing** under
+ * these conventions, and it mirrors the listener's ears. That failure is quiet: levels, reverb
+ * and distance all stay correct, and only left and right are swapped. [World2DHandednessTest]
+ * exists to catch exactly this.
+ *
+ * So:
+ *
+ * | game | world |
+ * |---|---|
+ * | `+x` right | `+x` |
+ * | `+y` up the screen | `-z` (ahead, in Steam Audio terms) |
+ * | `+z` out of the screen | `+y` (up) |
+ *
+ * A listener facing game `+y` has a world `ahead` of `(0, 0, -1)`. Use [listenerFacing] and
+ * [point] rather than converting by hand.
  *
  * ### Why walls need a height
  *
- * A 2D game's walls are line segments. Extruded upward they become vertical quads -- but quads
- * alone form an **open-topped box**, and rays escape through the gap, which quietly destroys
- * the reverb. So [WallSet] caps the space with a floor and a ceiling by default. If a room
- * sounds far deader than its materials suggest, a missing cap is the first thing to check.
+ * A 2D game's walls are line segments. Extruded along game `+z` they become quads -- but quads
+ * alone form an **open-ended box**, and rays escape through the gap, which quietly destroys the
+ * reverb. So [WallSet] caps the space at both ends by default. If a room sounds far deader
+ * than its materials suggest, a missing cap is the first thing to check.
  *
- * @property floorHeight world y of the floor.
- * @property ceilingHeight world y of the ceiling. The gap between the two is the acoustic
- *   height of the space, and it matters: a tall room reverberates longer than a low one of the
- *   same footprint.
- * @property earHeight world y at which the listener's ears and sources sit.
+ * ### One consequence worth designing around
+ *
+ * With both ears in the plane of the geometry, every source is at zero elevation. The HRTF's
+ * elevation dimension goes unused, and **front/back confusion becomes the dominant
+ * localisation error**: a source directly ahead and one directly behind produce almost
+ * identical interaural time and level differences, which is why the cave demo measures roughly
+ * 0 dB for both. Real listeners resolve this with small involuntary head movements. If the
+ * player's facing turns in discrete steps, or the camera is fixed, that cue is absent and
+ * sources behind the listener will often be heard as in front.
+ *
+ * Practical mitigations: let facing rotate smoothly rather than snapping, lean on
+ * distinguishing reverb and occlusion rather than direction alone, and consider a deliberate
+ * timbral cue for what is behind.
+ *
+ * @property floorDepth game z of one cap -- the "floor" of the extruded space.
+ * @property ceilingDepth game z of the other cap. The gap between the two is the acoustic
+ *   thickness of the space, and it matters: a taller extrusion reverberates longer than a
+ *   shallow one of the same footprint.
+ * @property earDepth game z at which the listener's ears and the sources sit, normally midway.
  */
 public data class World2D(
-    public val floorHeight: Float = 0f,
-    public val ceilingHeight: Float = 3.5f,
-    public val earHeight: Float = 1.6f,
+    public val floorDepth: Float = -1.75f,
+    public val ceilingDepth: Float = 1.75f,
+    public val earDepth: Float = 0f,
 ) {
     init {
-        require(ceilingHeight > floorHeight) {
-            "ceilingHeight ($ceilingHeight) must be above floorHeight ($floorHeight)"
+        require(ceilingDepth > floorDepth) {
+            "ceilingDepth ($ceilingDepth) must be greater than floorDepth ($floorDepth)"
         }
-        require(earHeight in floorHeight..ceilingHeight) {
-            "earHeight ($earHeight) must lie between floor and ceiling"
+        require(earDepth in floorDepth..ceilingDepth) {
+            "earDepth ($earDepth) must lie between floorDepth and ceilingDepth"
         }
     }
 
-    /** The acoustic height of the space. */
-    public val height: Float get() = ceilingHeight - floorHeight
+    /** The acoustic thickness of the extruded space. */
+    public val thickness: Float get() = ceilingDepth - floorDepth
 
-    /** Converts a 2D game point to a world position at [earHeight]. */
-    public fun point(x: Float, y: Float): Vector3 = point(x, y, earHeight)
+    /** World y of the floor cap. */
+    internal val floorWorldY: Float get() = floorDepth
 
-    /**
-     * Converts a 2D game point to a world position at an explicit height.
-     *
-     * The single place the game-to-world sign convention is applied. Everything that builds
-     * geometry goes through here rather than writing `Vector3(x, h, y)` inline, so the
-     * convention cannot drift between the listener and the walls.
-     */
-    public fun point(x: Float, y: Float, height: Float): Vector3 = Vector3(x, height, -y)
+    /** World y of the ceiling cap. */
+    internal val ceilingWorldY: Float get() = ceilingDepth
+
+    /** Converts a 2D game point to a world position at [earDepth]. */
+    public fun point(x: Float, y: Float): Vector3 = Vector3(x, earDepth, -y)
+
+    /** Converts a game point with an explicit z to a world position. */
+    public fun point(x: Float, y: Float, z: Float): Vector3 = Vector3(x, z, -y)
 
     /**
      * Builds a listener (or directional source) frame from a 2D position and a 2D facing
-     * direction.
+     * direction, both in game coordinates.
      *
-     * [facingX] and [facingY] are in game coordinates and need not be normalised. A facing of
-     * `(0, 1)` -- game north -- becomes a world `ahead` of `(0, 0, -1)`, which is Steam Audio's
-     * own "ahead".
+     * [facingX] and [facingY] need not be normalised. A facing of `(0, 1)` -- up the screen --
+     * becomes a world `ahead` of `(0, 0, -1)`, which is Steam Audio's own forward.
      *
-     * Use this rather than assembling a [CoordinateSpace3] directly.
+     * Use this rather than assembling a [CoordinateSpace3] by hand; the sign that makes it
+     * right-handed is not the one you would guess.
      */
     public fun listenerFacing(
         x: Float,
@@ -86,24 +115,23 @@ public data class World2D(
     ): CoordinateSpace3 {
         val length = hypot(facingX, facingY)
         require(length > 0f) { "facing direction cannot be zero" }
-        val ahead = Vector3(facingX / length, 0f, -facingY / length)
-        // Right-handed frame with world +y as up. Derived rather than hardcoded so the
-        // handedness stays consistent with CoordinateSpace3.lookingAt.
         return CoordinateSpace3.lookingAt(
             origin = point(x, y),
-            ahead = ahead,
+            // Game +y maps to world -z; see the mapping table above.
+            ahead = Vector3(facingX / length, 0f, -facingY / length),
             up = Vector3.UP,
         )
     }
 
     /**
-     * The transform placing a wall quad of [quadLength] -- centred on the origin and running along
-     * world +x, as [MovableWall] builds it -- onto the 2D segment from `(x0, y0)` to `(x1, y1)`.
+     * The transform placing a wall quad of [quadLength] -- centred on the origin and running
+     * along world +x, as [MovableWall] builds it -- onto the game segment `(x0, y0)`-`(x1, y1)`.
      *
      * Lives here, and is called by [MovableWall.moveTo] rather than reimplemented there, because
-     * the sign conventions in it are precisely what mirrors a scene when they are wrong. A second
-     * copy is a second place for them to drift, and a test asserting the copy proves nothing about
-     * the code that runs.
+     * the signs in it are precisely what mirrors a scene when they are wrong, and
+     * `World2DHandednessTest` asserts them. A second copy is a second place for them to drift,
+     * and a test asserting the copy proves nothing about the code that runs -- which is how the
+     * mapping and the transform came to disagree in the first place.
      */
     public fun segmentTransform(
         x0: Float,
@@ -116,9 +144,10 @@ public data class World2D(
         require(segmentLength > 0f) { "a wall segment needs non-zero length" }
         require(quadLength > 0f) { "quadLength must be positive, got $quadLength" }
 
-        // rotationY turns +x towards -z for a positive angle. Under the game-y-to-world-minus-z
-        // mapping that is exactly atan2(game dy, game dx): a segment running game north needs the
-        // quad's +x axis pointing at world -z, and rotationY(pi/2) puts it there.
+        // Scale the unit quad to the segment's length, rotate it about the vertical (world y)
+        // axis, then translate to the segment's midpoint under the game-to-world mapping.
+        // rotationY(angle) sends world +x to (cos, 0, -sin), which is exactly the image of the
+        // game direction (cos, sin), so the angle needs no sign correction.
         val angle = atan2(y1 - y0, x1 - x0)
         val midpoint = point((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, 0f)
         return Matrix4x4.translation(midpoint.x, midpoint.y, midpoint.z) *
@@ -126,7 +155,10 @@ public data class World2D(
             Matrix4x4.scale(segmentLength / quadLength, 1f, 1f)
     }
 
-    /** A listener frame from a facing angle in radians, measured counter-clockwise from game +x. */
+    /**
+     * A listener frame from a facing angle in radians, measured **counter-clockwise from game
+     * +x** -- the natural reading of a rotation about `+z`.
+     */
     public fun listenerAtAngle(x: Float, y: Float, radians: Float): CoordinateSpace3 =
         listenerFacing(x, y, kotlin.math.cos(radians), kotlin.math.sin(radians))
 }
@@ -226,16 +258,16 @@ public class WallSet(
             materials.size - 1
         }
 
-        val floor = world.floorHeight
-        val ceiling = world.ceilingHeight
+        val floor = world.floorWorldY
+        val ceiling = world.ceilingWorldY
 
         for (segment in segments) {
             val base = vertices.size
-            // Bottom edge, then top edge, so the quad is base..base+3 around the perimeter.
-            vertices += world.point(segment.x0, segment.y0, floor)
-            vertices += world.point(segment.x1, segment.y1, floor)
-            vertices += world.point(segment.x1, segment.y1, ceiling)
-            vertices += world.point(segment.x0, segment.y0, ceiling)
+            // Game (x, y) maps to world (x, z, -y); the quad spans game z from floor to ceiling.
+            vertices += Vector3(segment.x0, floor, -segment.y0)
+            vertices += Vector3(segment.x1, floor, -segment.y1)
+            vertices += Vector3(segment.x1, ceiling, -segment.y1)
+            vertices += Vector3(segment.x0, ceiling, -segment.y0)
 
             val index = materialIndex(segment.material)
             triangles += Triangle(base, base + 1, base + 2)
@@ -257,32 +289,23 @@ public class WallSet(
             val capMaterial = floorMaterial ?: segments.first().material
             val capIndex = materialIndex(capMaterial)
 
-            // Floor, wound so its normal points up into the room.
-            //
-            // The winding is the opposite way round from what the corner order suggests, because
-            // world.point negates game y: the quad's traversal is mirrored in the xz-plane on the
-            // way through, which reverses the face normal. Get this backwards and both caps face
-            // out of the room.
-            var base = vertices.size
-            vertices += world.point(minX, minY, floor)
-            vertices += world.point(maxX, minY, floor)
-            vertices += world.point(maxX, maxY, floor)
-            vertices += world.point(minX, maxY, floor)
-            triangles += Triangle(base, base + 1, base + 2)
-            materialIndices += capIndex
-            triangles += Triangle(base, base + 2, base + 3)
-            materialIndices += capIndex
-
-            // Ceiling, wound so its normal points down into the room. Mirrored for the same reason.
-            base = vertices.size
-            vertices += world.point(minX, minY, ceiling)
-            vertices += world.point(maxX, minY, ceiling)
-            vertices += world.point(maxX, maxY, ceiling)
-            vertices += world.point(minX, maxY, ceiling)
-            triangles += Triangle(base, base + 2, base + 1)
-            materialIndices += capIndex
-            triangles += Triangle(base, base + 3, base + 2)
-            materialIndices += capIndex
+            // Both caps are emitted double-sided. Getting a cap's winding backwards makes it
+            // invisible to reflections from inside, which is the same failure as omitting it.
+            for (capY in floatArrayOf(floor, ceiling)) {
+                val base = vertices.size
+                vertices += Vector3(minX, capY, -minY)
+                vertices += Vector3(maxX, capY, -minY)
+                vertices += Vector3(maxX, capY, -maxY)
+                vertices += Vector3(minX, capY, -maxY)
+                triangles += Triangle(base, base + 1, base + 2)
+                materialIndices += capIndex
+                triangles += Triangle(base, base + 2, base + 3)
+                materialIndices += capIndex
+                triangles += Triangle(base + 2, base + 1, base)
+                materialIndices += capIndex
+                triangles += Triangle(base + 3, base + 2, base)
+                materialIndices += capIndex
+            }
         }
 
         return StaticMesh(
@@ -296,7 +319,7 @@ public class WallSet(
 
     /** Number of triangles [build] will produce, for budgeting. */
     public fun triangleCount(capped: Boolean = true, doubleSided: Boolean = true): Int =
-        segments.size * (if (doubleSided) 4 else 2) + (if (capped) 4 else 0)
+        segments.size * (if (doubleSided) 4 else 2) + (if (capped) 8 else 0)
 
     /** The 2D extent of the segments, expanded slightly so caps fully enclose the walls. */
     private fun deriveBounds(): FloatArray {
@@ -366,9 +389,6 @@ public class MovableWall private constructor(
      * effect on the next [Scene.commit].
      */
     public fun moveTo(scene: Scene, x0: Float, y0: Float, x1: Float, y1: Float) {
-        // Scale the unit quad to the segment's length, rotate it into the segment's direction
-        // about the vertical axis, then translate to the segment's midpoint -- all of which
-        // World2D owns, so the convention lives in one place.
         instance.updateTransform(scene, world.segmentTransform(x0, y0, x1, y1, length))
     }
 
@@ -468,10 +488,10 @@ public class MovableWall private constructor(
             val half = length * 0.5f
             return StaticMesh.plane(
                 scene,
-                Vector3(-half, world.floorHeight, 0f),
-                Vector3(half, world.floorHeight, 0f),
-                Vector3(half, world.ceilingHeight, 0f),
-                Vector3(-half, world.ceilingHeight, 0f),
+                Vector3(-half, world.floorWorldY, 0f),
+                Vector3(half, world.floorWorldY, 0f),
+                Vector3(half, world.ceilingWorldY, 0f),
+                Vector3(-half, world.ceilingWorldY, 0f),
                 material,
                 doubleSided = true,
             )

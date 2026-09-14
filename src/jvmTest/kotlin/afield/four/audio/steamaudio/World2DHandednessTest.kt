@@ -7,6 +7,7 @@ import kotlin.math.cos
 import kotlin.math.log10
 import kotlin.math.sin
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -23,9 +24,11 @@ import kotlin.test.assertTrue
 class World2DHandednessTest {
 
     /**
-     * Whether the tests that render audio can run. The last test here is pure arithmetic and
-     * deliberately has no such guard, so the handedness of the transform stays covered on a
-     * checkout that has never fetched the binaries.
+     * Whether the tests that touch the native library can run.
+     *
+     * Field does not commit the Steam Audio binaries, so a clone that has never run
+     * `fetchSteamAudioNatives` has none. Skipping with a stated reason keeps `check` green there
+     * and says what is missing, rather than failing on a link error that names no remedy.
      */
     private fun available(): Boolean {
         if (!SteamAudioNatives.isAvailable) {
@@ -35,7 +38,7 @@ class World2DHandednessTest {
         return true
     }
 
-    private val world = World2D(floorHeight = 0f, ceilingHeight = 4f, earHeight = 1.6f)
+    private val world = World2D(floorDepth = -2f, ceilingDepth = 2f, earDepth = 0f)
     private val settings = AudioSettings(samplingRate = 48_000, frameSize = 1024)
 
     /**
@@ -157,7 +160,8 @@ class World2DHandednessTest {
 
         for (degrees in 0 until 360 step 30) {
             val radians = degrees * PI / 180.0
-            // Clockwise from north, so 90 degrees is due east -- the listener's right.
+            // Measured clockwise from game +y (north), so 90 degrees is due east (+x),
+            // which for a north-facing listener is the right-hand side.
             val x = (5.0 * sin(radians)).toFloat()
             val y = (5.0 * cos(radians)).toFloat()
             val (ild, _) = measure(x, y, listenerFacing.first, listenerFacing.second)
@@ -189,24 +193,130 @@ class World2DHandednessTest {
             floatArrayOf(1f, 1f, 4f, 5f),
             floatArrayOf(-3f, 2f, -7f, -1f),
         ).map { it.toList() }) {
-            // The transform MovableWall.moveTo actually applies, not a copy of it.
+            // The transform MovableWall.moveTo actually applies, not a copy of it. Asserting a
+            // reimplementation here is what let the mapping and the transform disagree: the
+            // mapping was corrected and this case still failed, because it was checking its own
+            // arithmetic rather than the code that runs.
             val transform = world.segmentTransform(x0, y0, x1, y1, quadLength = length)
 
             val startWorld = transform.transformPoint(Vector3(-half, 0f, 0f))
             val endWorld = transform.transformPoint(Vector3(half, 0f, 0f))
 
-            // Game (x, y) maps to world (x, _, -y) -- see World2D.point for why the sign is
-            // not free to choose.
+            // Game (x, y) maps to world (x, _, -y).
             assertTrue(
-                abs(startWorld.x - x0) < 1e-3 && abs(startWorld.z + y0) < 1e-3,
-                "segment start ($x0,$y0) mapped to (${startWorld.x},${startWorld.z})",
+                abs(startWorld.x - x0) < 1e-3 && abs(startWorld.z - (-y0)) < 1e-3,
+                "segment start ($x0,$y0) mapped to world (${startWorld.x},${startWorld.z}), " +
+                    "expected (${x0},${-y0})",
             )
             assertTrue(
-                abs(endWorld.x - x1) < 1e-3 && abs(endWorld.z + y1) < 1e-3,
-                "segment end ($x1,$y1) mapped to (${endWorld.x},${endWorld.z})",
+                abs(endWorld.x - x1) < 1e-3 && abs(endWorld.z - (-y1)) < 1e-3,
+                "segment end ($x1,$y1) mapped to world (${endWorld.x},${endWorld.z}), " +
+                    "expected (${x1},${-y1})",
             )
         }
     }
 }
 
 private operator fun List<Float>.component4(): Float = this[3]
+
+/**
+ * Pins [CoordinateSpace3.lookingAt] against [CoordinateSpace3.IDENTITY].
+ *
+ * These two must agree, and for a while they did not: `lookingAt` computed `right` as
+ * `up cross forward`, which is `(-1, 0, 0)` for Steam Audio's canonical frame where
+ * [CoordinateSpace3.IDENTITY] declares `(1, 0, 0)`.
+ *
+ * It is tempting to say that swapped the ears. It did not, and the correction is worth keeping
+ * because it is what makes this test necessary rather than redundant. Measured with a reflector
+ * on one known side and only the reflection bus, the two conventions give **+6.64 dB and
+ * +6.61 dB** -- the same answer: Steam Audio derives the listener's right internally from the
+ * `ahead`/`up` it is handed and ignores the field we write. So nothing audible distinguishes
+ * them, `ReflectionHandednessTest` is green under both, and no amount of rendering or listening
+ * can catch a regression here.
+ *
+ * What the disagreement does cost is a frame from [CoordinateSpace3.lookingAt] and the identity
+ * frame contradicting each other about which way is right, for every Kotlin-side reader of
+ * `right`. This arithmetic is the only guard on that, which is why it asserts the invariant
+ * directly instead of measuring anything.
+ */
+class CoordinateSpaceHandednessTest {
+
+    @Test
+    fun lookingAtTheCanonicalDirectionReproducesIdentity() {
+        val frame = CoordinateSpace3.lookingAt(
+            origin = Vector3.ZERO,
+            ahead = Vector3.FORWARD,
+            up = Vector3.UP,
+        )
+        // Compared with a tolerance rather than by equality: these components are computed
+        // through cross products, and a cross product readily produces -0.0f, which a data
+        // class's equals() treats as distinct from 0.0f even though they are numerically equal.
+        assertVectorEquals(CoordinateSpace3.IDENTITY.right, frame.right, "right")
+        assertVectorEquals(CoordinateSpace3.IDENTITY.up, frame.up, "up")
+        assertVectorEquals(CoordinateSpace3.IDENTITY.ahead, frame.ahead, "ahead")
+    }
+
+    private fun assertVectorEquals(expected: Vector3, actual: Vector3, what: String) {
+        assertTrue(
+            abs(expected.x - actual.x) < 1e-6 &&
+                abs(expected.y - actual.y) < 1e-6 &&
+                abs(expected.z - actual.z) < 1e-6,
+            "$what: expected $expected but was $actual",
+        )
+    }
+
+    @Test
+    fun theIdentityFrameSatisfiesTheConventionItDeclares() {
+        // IDENTITY is a literal, so nothing else checks that its own three axes are consistent.
+        // If it drifts, every comparison in this class silently changes meaning.
+        val identity = CoordinateSpace3.IDENTITY
+        assertVectorEquals(identity.ahead cross identity.up, identity.right, "ahead cross up")
+    }
+
+    @Test
+    fun frameIsRightHanded() {
+        // For any facing, right x up must equal -ahead: that is what right-handed means here,
+        // and it is the invariant a mirrored frame violates.
+        val horizontal = listOf(0.0, 0.7, 1.9, 3.0, 4.4, 5.8).map {
+            Vector3(kotlin.math.cos(it).toFloat(), 0f, kotlin.math.sin(it).toFloat())
+        }
+        // Directions off the horizontal plane too: a sign error confined to one axis can leave
+        // every level facing correct while pitched ones are wrong, and `up` is re-orthogonalised
+        // for these rather than passed through.
+        val oblique = listOf(
+            Vector3(-2f, 0.5f, 3f),
+            Vector3(0.3f, -0.8f, -0.5f),
+            Vector3(0f, 0.9f, -0.1f),
+        )
+        for (ahead in horizontal + oblique) {
+            val frame = CoordinateSpace3.lookingAt(
+                origin = Vector3.ZERO,
+                ahead = ahead,
+                up = Vector3.UP,
+            )
+            val cross = frame.right cross frame.up
+            val expected = -frame.ahead
+            assertTrue(
+                abs(cross.x - expected.x) < 1e-5 &&
+                    abs(cross.y - expected.y) < 1e-5 &&
+                    abs(cross.z - expected.z) < 1e-5,
+                "ahead=$ahead: right x up = $cross but -ahead = $expected",
+            )
+        }
+    }
+
+    @Test
+    fun axesAreOrthonormal() {
+        val frame = CoordinateSpace3.lookingAt(
+            origin = Vector3.ZERO,
+            ahead = Vector3(1f, 0f, -2f),
+            up = Vector3.UP,
+        )
+        for (axis in listOf(frame.right, frame.up, frame.ahead)) {
+            assertTrue(abs(axis.length - 1f) < 1e-5, "axis $axis is not unit length")
+        }
+        assertTrue(abs(frame.right dot frame.up) < 1e-5)
+        assertTrue(abs(frame.right dot frame.ahead) < 1e-5)
+        assertTrue(abs(frame.up dot frame.ahead) < 1e-5)
+    }
+}

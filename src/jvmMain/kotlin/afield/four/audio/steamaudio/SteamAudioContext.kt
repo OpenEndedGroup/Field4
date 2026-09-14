@@ -1,6 +1,8 @@
 package afield.four.audio.steamaudio
 
+import afield.four.audio.steamaudio.raw.IPLAllocateFunction
 import afield.four.audio.steamaudio.raw.IPLContextSettings
+import afield.four.audio.steamaudio.raw.IPLFreeFunction
 import afield.four.audio.steamaudio.raw.IPLLogFunction
 import afield.four.audio.steamaudio.raw.Phonon
 import java.lang.foreign.Arena
@@ -9,6 +11,35 @@ import java.lang.foreign.MemorySegment
 /** Receives diagnostic messages from the native library. */
 public fun interface LogCallback {
     public fun log(level: LogLevel, message: String)
+}
+
+/**
+ * Supplies the memory Steam Audio allocates internally.
+ *
+ * Installing one of these routes every internal allocation through your code, which is how you
+ * account for the library's memory use -- or pin it to a pre-reserved pool, if an audio engine
+ * needs allocation off the critical path.
+ *
+ * ### Constraints
+ *
+ * These are called from **any** Steam Audio thread, including the ray-tracing workers, so an
+ * implementation must be thread-safe. It must also honour [allocate]'s alignment: Steam Audio
+ * asks for SIMD-aligned blocks and will use aligned loads on them, so returning an
+ * under-aligned pointer crashes rather than degrades.
+ *
+ * Exceptions must not escape; they are swallowed at the boundary and reported to Steam Audio as
+ * an allocation failure.
+ */
+public interface MemoryAllocator {
+    /**
+     * Allocates [size] bytes aligned to [alignment], returning [MemorySegment.NULL] on failure.
+     *
+     * [alignment] is always a power of two.
+     */
+    public fun allocate(size: Long, alignment: Long): MemorySegment
+
+    /** Frees a block previously returned by [allocate]. */
+    public fun free(block: MemorySegment)
 }
 
 /**
@@ -81,11 +112,15 @@ public class SteamAudioContext private constructor(
          * @param logCallback receives native diagnostics. Invoked from whichever native thread
          *   produced the message, including Steam Audio's simulation threads, so it must be
          *   thread-safe. Held for the lifetime of the context.
+         * @param allocator routes Steam Audio's internal allocations through your own code. See
+         *   [MemoryAllocator] for the thread-safety and alignment constraints. Held for the
+         *   lifetime of the context; it must outlive every object created from it.
          */
         public operator fun invoke(
             simdLevel: SimdLevel = SimdLevel.AVX2,
             flags: ContextFlags = ContextFlags.NONE,
             logCallback: LogCallback? = null,
+            allocator: MemoryAllocator? = null,
         ): SteamAudioContext {
             SteamAudioNatives.load()
 
@@ -99,16 +134,48 @@ public class SteamAudioContext private constructor(
                     IPLContextSettings.simdLevel(settings, simdLevel.value)
                     IPLContextSettings.flags(settings, flags.bits)
 
-                    if (logCallback != null) {
+                    if (logCallback != null || allocator != null) {
                         val arena = Arena.ofShared()
                         stubArena = arena
-                        IPLContextSettings.logCallback(
-                            settings,
-                            IPLLogFunction.allocate(
-                                { level, message -> dispatchLog(logCallback, level, message) },
-                                arena,
-                            ),
-                        )
+
+                        if (logCallback != null) {
+                            IPLContextSettings.logCallback(
+                                settings,
+                                IPLLogFunction.allocate(
+                                    { level, message -> dispatchLog(logCallback, level, message) },
+                                    arena,
+                                ),
+                            )
+                        }
+
+                        if (allocator != null) {
+                            IPLContextSettings.allocateCallback(
+                                settings,
+                                IPLAllocateFunction.allocate(
+                                    { size, alignment ->
+                                        try {
+                                            allocator.allocate(size, alignment)
+                                        } catch (_: Throwable) {
+                                            MemorySegment.NULL
+                                        }
+                                    },
+                                    arena,
+                                ),
+                            )
+                            IPLContextSettings.freeCallback(
+                                settings,
+                                IPLFreeFunction.allocate(
+                                    { block ->
+                                        try {
+                                            if (block.address() != 0L) allocator.free(block)
+                                        } catch (_: Throwable) {
+                                            // Never propagate across the FFM boundary.
+                                        }
+                                    },
+                                    arena,
+                                ),
+                            )
+                        }
                     }
 
                     createHandle("iplContextCreate") { out -> Phonon.iplContextCreate(settings, out) }

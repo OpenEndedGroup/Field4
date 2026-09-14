@@ -19,16 +19,38 @@ import java.util.concurrent.atomic.AtomicReference
  *
  *  1. The system property `steamaudio.library.file`, if set: an absolute path to the shared
  *     library itself.
- *  2. The system property `steamaudio.library.path`, if set: a directory holding the platform's
- *     libraries in per-platform subdirectories (`macos/`, `linux-x64/`, `windows-x64/`), which
- *     is what `fetchSteamAudioNatives` unpacks into `build/steamaudio`. This is the path Field
- *     uses, and the one that preloads the Windows dependencies in order.
- *  3. Classpath resources under `/afield/four/audio/steamaudio/natives/<platform>/`, for a
- *     future packaging that ships the libraries inside a jar. Resources are extracted to a
- *     content-addressed cache directory and reused across JVM runs.
+ *  2. The system property `steamaudio.library.path`, if set: a directory containing the
+ *     platform's libraries, laid out as in the vendored `native/` tree
+ *     (`macos/`, `linux-x64/`, `windows-x64/`).
+ *  3. Classpath resources under `/afield/four/audio/steamaudio/natives/<platform>/`, which is
+ *     how the published `steamaudio-kotlin-natives-*` artifacts ship. Resources are extracted
+ *     to a content-addressed cache directory and reused across JVM runs.
  *
  * Loading uses `System.load` on an absolute path, which places the library in the JVM's
  * loader lookup -- this is what the generated bindings resolve symbols against.
+ *
+ * ### Module path: put the natives jar on the classpath
+ *
+ * This library works as a named module, and that is worth doing -- it lets you write
+ * `--enable-native-access=afield.four.audio.steamaudio` instead of opening native access to
+ * everything with `ALL-UNNAMED`.
+ *
+ * The natives jars, though, belong on the **classpath** even then. They contain resources and
+ * no code, so nothing `requires` them; on the module path they are never resolved and their
+ * resources stay invisible. Verified both ways:
+ *
+ * ```
+ * # works
+ * java --module-path lib.jar:kotlin-stdlib.jar \
+ *      --add-modules afield.four.audio.steamaudio \
+ *      --enable-native-access=afield.four.audio.steamaudio \
+ *      -cp app-classes:steamaudio-kotlin-natives-macos.jar MainClass
+ *
+ * # fails: the natives module is never resolved
+ * java --module-path lib.jar:kotlin-stdlib.jar:steamaudio-kotlin-natives-macos.jar ...
+ * ```
+ *
+ * Everything on the plain classpath works too, and is the common case.
  */
 public object SteamAudioNatives {
 
@@ -47,8 +69,8 @@ public object SteamAudioNatives {
         public val dependencies: List<String> = emptyList(),
     ) {
         // macOS, universal binary covering both x86-64 and arm64. Line comments rather than
-        // KDoc: enum entries are not a declaration the reference extractor can read, so a KDoc
-        // block here would be published under whatever parses next. See
+        // KDoc: enum entries are not a declaration Field's reference extractor can read, so a
+        // KDoc block here would be published under whatever parses next. See
         // dev_docs/kdoc_reference_contract.md.
         MACOS("macos", "libphonon.dylib"),
 
@@ -91,9 +113,6 @@ public object SteamAudioNatives {
         }
     }
 
-    /** The path the library was loaded from, or `null` if [load] has not run yet. */
-    public val loadedFrom: Path? get() = loaded.get()
-
     /** How to obtain the library, for any message that has to say what to do next. */
     public const val HOW_TO_FETCH: String =
         "Unpack this host's copy with `./gradlew fetchSteamAudioNatives` (needs the network once), " +
@@ -102,9 +121,10 @@ public object SteamAudioNatives {
     /**
      * Why [load] would fail if called right now, or `null` when the library is loadable.
      *
-     * Resolves without loading, so a caller can decide whether to proceed. That is what lets tests
-     * skip with a stated reason on a checkout that has never fetched the binaries, rather than
-     * failing on an `UnsatisfiedLinkError` that names no remedy.
+     * Resolves without loading, so a caller can decide whether to proceed. That is what lets
+     * tests skip with a stated reason on a checkout that has never fetched the binaries, rather
+     * than failing on an `UnsatisfiedLinkError` that names no remedy -- Field does not commit the
+     * binaries, so that is the ordinary state of a fresh clone.
      */
     public val unavailableReason: String?
         get() {
@@ -143,6 +163,9 @@ public object SteamAudioNatives {
         unavailableReason?.let { return "Steam Audio unavailable: $it. $HOW_TO_FETCH" }
         return "Steam Audio available, not yet loaded"
     }
+
+    /** The path the library was loaded from, or `null` if [load] has not run yet. */
+    public val loadedFrom: Path? get() = loaded.get()
 
     private fun detectPlatform(): Platform {
         val os = System.getProperty("os.name").orEmpty().lowercase()
@@ -236,13 +259,24 @@ public object SteamAudioNatives {
      */
     private fun extractResources(platform: Platform): Path {
         val payloads = platform.allFiles.associateWith { name ->
-            val resource = "$RESOURCE_ROOT/${platform.directory}/$name"
-            val bytes = SteamAudioNatives::class.java.getResourceAsStream(resource)?.use { it.readBytes() }
+            val path = "${RESOURCE_ROOT.removePrefix("/")}/${platform.directory}/$name"
+            val bytes = readResource(path)
             if (bytes == null && name == platform.libraryFileName) {
                 throw IOException(
-                    "no Steam Audio native library on the classpath at $resource. Add the " +
-                        "steamaudio-kotlin-natives-${platform.directory} artifact, or set " +
-                        "$PROPERTY_PATH / $PROPERTY_FILE.",
+                    buildString {
+                        append("no Steam Audio native library found at $path.\n")
+                        append("  Add the steamaudio-kotlin-natives-${platform.directory} ")
+                        append("artifact to the runtime CLASSPATH.\n")
+                        append("  Note: putting it on the module path does not work. It holds ")
+                        append("resources and no code, so\n")
+                        append("  nothing requires it, it is never resolved, and its resources ")
+                        append("stay invisible. Keep the\n")
+                        append("  library on the module path if you like -- just leave the ")
+                        append("natives jar on the classpath.\n")
+                        append("  Alternatively set $PROPERTY_PATH to a directory containing ")
+                        append("the libraries, or\n")
+                        append("  $PROPERTY_FILE to one library file.")
+                    },
                 )
             }
             bytes
@@ -273,6 +307,36 @@ public object SteamAudioNatives {
         }
 
         return cache
+    }
+
+    /**
+     * Reads a classpath resource, trying both module-aware and class-loader lookups.
+     *
+     * The distinction matters once this library is used as a named module. `Class.getResource`
+     * resolves against the *calling class's own module*, so when the natives ship as a separate
+     * jar on the module path -- which is the whole point of publishing them separately -- the
+     * library's own module does not contain them and that lookup returns null.
+     *
+     * The class loader does find them, because an automatic module (a plain jar with no
+     * `module-info`, which is what the natives jars are) does not encapsulate its resources.
+     * Both are attempted so that either layout works: natives bundled into the same jar, or
+     * shipped alongside.
+     */
+    private fun readResource(path: String): ByteArray? {
+        // Same-module lookup first: this is the case where someone has built a fat jar.
+        SteamAudioNatives::class.java.getResourceAsStream("/$path")?.use { return it.readBytes() }
+
+        val loader = SteamAudioNatives::class.java.classLoader
+            ?: ClassLoader.getSystemClassLoader()
+        loader.getResourceAsStream(path)?.use { return it.readBytes() }
+
+        // Last resort for unusual loader arrangements, e.g. a plugin container that puts the
+        // natives on the context loader but not on ours.
+        Thread.currentThread().contextClassLoader
+            ?.getResourceAsStream(path)
+            ?.use { return it.readBytes() }
+
+        return null
     }
 
     private fun cacheRoot(): Path {

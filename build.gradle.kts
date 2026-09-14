@@ -3200,6 +3200,34 @@ tasks.register<JavaExec>("caveDemo") {
     )
 }
 
+tasks.register<JavaExec>("pathingDemo") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.PathingDemoKt",
+        "Renders sound reaching the listener by an indirect path around geometry. Headphones.",
+    )
+}
+
+tasks.register<JavaExec>("binauralQuality") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.BinauralQualityProbeKt",
+        "Reports binaural spatialisation quality measures for the HRTF chain.",
+    )
+}
+
+tasks.register<JavaExec>("ambisonicDebug") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.AmbisonicDebugKt",
+        "Prints the Ambisonic encode/decode channel behaviour, for diagnosing the reflected bus.",
+    )
+}
+
+tasks.register<JavaExec>("geometryBenchmark") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.GeometryBenchmarkKt",
+        "Times scene builds and per-frame commits for moving geometry.",
+    )
+}
+
 tasks.register<JavaExec>("reflectionHandednessProbe") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.ReflectionHandednessProbeKt",
