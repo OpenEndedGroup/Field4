@@ -296,7 +296,7 @@ That recursive example is the **field_ui_browser_texture** starting point. In th
 browser-texture box is selected and its own Monaco editor is open inside Chromium. Any page Chromium
 can compose can become part of a Field scene.
 
-## And then: the kaleidoscope
+## The kaleidoscope: a whole tab as 224 triangles
 
 Once the browser is an ordinary native texture, a rectangle is only a convention. This example opens
 a YouTube watch page, handles the EU consent page, starts its real video element, and fractures the
