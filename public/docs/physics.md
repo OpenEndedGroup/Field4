@@ -340,7 +340,7 @@ rung **worse** (196 → 230, 52 → 66, 19 → 25). That is the accumulator agai
 into the same `ax/ay/az` the springs do, so at these strengths it is one more load on the sheet
 rather than a stiffener.
 
-!!! note "The repository records a different ladder"
+??? note "The repository records a different ladder"
     `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` runs the same four rungs and reports 1949 % /
     116 % / 32 % / 11 %. Those are *settled* values read off a box that has stopped moving, on a
     scene that ships the curvature force; the numbers above are peaks over the fall with curvature
