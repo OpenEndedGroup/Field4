@@ -1,10 +1,42 @@
 package afield.ml.type
 
+/**
+ * The type of every name a FieldML program has before it declares anything: the prelude, as the
+ * type checker sees it.
+ *
+ * [schemes] is the root environment `Inferencer` starts from, so a name here is in scope in every
+ * FieldML box. Each entry is a [Scheme] rather than a bare type, because most of the prelude is
+ * polymorphic and the interesting part is *how* polymorphic: `map` works over any element type,
+ * `abs` over `Int` or `Float` but not over a string, `dot` over two vectors as long as they are
+ * the same width. A scheme carries those restrictions on its quantified variables, which is what
+ * lets one entry stand in for what would otherwise be a pile of overloads.
+ *
+ * `FieldMLRuntimePrelude` holds the other half, name for name: the values these types describe.
+ * The two lists are matched by hand and nothing in the build compares them. What the build does
+ * guard is the page a reader looks the prelude up in, through
+ * `FieldMLCheatsheetCoverageTest.everyPreludeNameIsListedWithItsType`, which fails when a name is
+ * added, removed or retyped without `public/docs/fieldml_cheatsheet.md` following.
+ *
+ * The [THost] values at the top are the handful of host types FieldML names. Everything else the
+ * JVM offers arrives as the opaque `Host`, and the `host…` family of intrinsics is how a program
+ * says what a value of that type actually is.
+ */
+
+/** The prelude as types: the schemes `Inferencer` starts from, and the five host types FieldML knows by name. */
 object FieldMLTypePrelude {
+    /** `Host`: what a value the type checker cannot say anything more specific about has. */
     val host = THost(FieldMLHostTypes.OPAQUE)
+
+    /** A two-component vector. Arithmetic, `.x`/`.y`, and every `overVector` scheme accept it. */
     val vec2 = THost("Vec2")
+
+    /** A three-component vector, and the only width `cross` is defined for. */
     val vec3 = THost("Vec3")
+
+    /** A four-component vector, which is also how a colour is written. */
     val vec4 = THost("Vec4")
+
+    /** An `afield.graphics.FLine`, threaded through the drawing prelude so `moveTo`/`lineTo`/`draw` chain in a pipe. */
     val fline = THost("FLine")
 
     /**
@@ -84,6 +116,17 @@ object FieldMLTypePrelude {
         ),
     )
 
+    /**
+     * Every prelude name and its scheme, grouped in declaration order by what it is for: output,
+     * vectors and FLines, numbers, lists, drawing, the `host…` intrinsics, and the `prop` family.
+     *
+     * `Inferencer` wraps this as the outermost type environment, and it also compares against it by
+     * *identity* in two places: the `host…` intrinsics are only given their refined types when the
+     * name at the head of the call is still this entry. Rebind `hostCall` to something of your own
+     * and it becomes an ordinary function of the type your binding has, with none of the
+     * special-case narrowing. `FieldMLCompletionEngine` reads the same map for the completion list
+     * and for the hover card's signature.
+     */
     val schemes: Map<String, Scheme> = linkedMapOf(
         "Unit" to Scheme(emptySet(), TUnit),
         "thisBox" to Scheme(emptySet(), box),

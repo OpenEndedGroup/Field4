@@ -39,18 +39,70 @@ import afield.thisSession
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CancellationException
 
+/**
+ * FieldML as a box language: set a box's Main Language to FieldML and its children hold FieldML
+ * programs instead of Kotlin.
+ *
+ * [FieldMLExecution] is the `BoxExecution` behind that, one per box. It hands the text to
+ * [FieldMLCompiler], evaluates the core tree that came back against [FieldMLRuntimePrelude], and
+ * writes the value and its inferred type into the box as one inline `value : type` line. A program
+ * that printed something of its own gets no inline line, which is what the file's `TrackingOutput`
+ * is watching for. `display` does not count as printing, so a box that draws still says what it
+ * evaluated to.
+ *
+ * Nothing survives between runs. Each run compiles its text from scratch and evaluates it against
+ * a freshly built prelude, so a FieldML box is the script model rather than the accumulating one a
+ * Datalog box uses. State that has to outlive a run goes in a box property, which is what the
+ * prelude's `prop` and `once` are for.
+ *
+ * Executing and launching differ in one thing, and it is the thing that makes animation work. Both
+ * compile and evaluate. Launch also hands the result to `ReturnValueRegistry`, the same machinery a
+ * Kotlin box's return value goes through, so the `Sequence` that `animate` returns is advanced once
+ * per run loop frame for as long as the box is running, while a plain number is simply the answer.
+ * The run generation counted around that is how a second launch supersedes the first rather than
+ * running beside it.
+ *
+ * Which boxes are FieldML is decided by `fieldMLTopologyNeedsUpdating`, and the answer is about
+ * parents: a box runs FieldML because a *parent* carries `isFieldMLRoot` or names `fieldml` as its
+ * main language, not because it carries the mark itself.
+ */
+
 private const val FIELDML_PENDING_LAUNCH_MODE = "launching"
 private const val FIELDML_ACTIVE_LAUNCH_MODE = "launch"
 
+/**
+ * One FieldML box's runtime: compile, evaluate, and report back to the editor, holding nothing
+ * between runs and hopping to the main thread before each one.
+ */
 class FieldMLExecution(private val owner: Box) : BoxExecution {
+    /**
+     * Run the selected text and print what it evaluated to.
+     *
+     * The FieldML runtime draws no distinction between a fragment and the whole box: both compile
+     * and evaluate the text they were handed, and only the caller decides how much of the box that
+     * text is.
+     */
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         executeOnce(inside, execute, reply, fragment = true)
     }
 
+    /** Run the whole box and print what it evaluated to, without offering the result to the launch machinery. */
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         executeOnce(inside, execute, reply, fragment = false)
     }
 
+    /**
+     * Run the whole box and keep whatever the result turns out to be alive.
+     *
+     * Beyond what [executeAll] does, the value is converted to its host form and offered to
+     * `ReturnValueRegistry`, so a `Sequence` from `animate` runs a frame at a time until the box is
+     * stopped or launched again. The `is-running` messages sent around that are what the editor
+     * draws as the box's running indicator, and they carry a generation per strand so a relaunch
+     * cancels its predecessor instead of doubling it.
+     *
+     * A result no handler claims is not an error; it just means there is nothing left to run, and
+     * the cached return value is dropped so a downstream box does not read a stale one.
+     */
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
         val launchEpoch = inside.captureLaunchEpoch()
@@ -130,6 +182,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
         }
     }
 
+    /** Run one symbol the editor asked about, as a single-line fragment, and print what it evaluated to. */
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
         executeFragment(
             inside,
@@ -145,17 +198,27 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
         )
     }
 
+    /**
+     * Stop whatever this box launched.
+     *
+     * There is no FieldML-specific state to tear down, so this is the standard box stop: every
+     * strand's generation is bumped past what is running, which is the condition the launch
+     * handlers loop on, and the box's registered jobs and stop hooks are drained.
+     */
     override fun stop(inside: Box) {
         inside.stopTrackedJobs()
     }
 
+    /** Answer the editor's completion request from [FieldMLCompletionEngine], which reads the whole box rather than this execution's state. */
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
         reply(Message("complete").payload(FieldMLCompletionEngine.complete(completionRequest)))
     }
 
+    /** The hover card for the symbol under the caret, from [FieldMLCompletionEngine]. */
     override fun describeSymbolContext(inside: Box, request: SymbolContextRequest): SymbolContextResponse =
         FieldMLCompletionEngine.describeSymbolContext(request)
 
+    /** `fieldml`: what the AI layer and the operation transcript are told a box's `code` property is written in. */
     override val languageName: String get() = "fieldml"
 
     private fun executeOnce(inside: Box, execute: Execute, reply: (Message) -> Unit, fragment: Boolean) {
@@ -234,8 +297,22 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
 
 }
 
+/**
+ * The mark that makes a box's *children* FieldML boxes.
+ *
+ * `MainLanguageRuntime` calls this the legacy root, and it is the second of the two marks
+ * `fieldMLTopologyNeedsUpdating` accepts: either this or a `mainLanguage` of `fieldml` will do. It
+ * is persisted with the document, which is what `installFieldML` adds it to
+ * `Box.ioPersistentProperties` for.
+ */
 var Box.isFieldMLRoot by Delegation<Boolean?>()
 
+/**
+ * Register FieldML with the Main Language menu, and make `isFieldMLRoot` survive a save.
+ *
+ * Registration is what puts FieldML in the menu at all; without it the language exists but no box
+ * can be told to use it.
+ */
 @RunsAt(early)
 fun installFieldML() {
     Box.ioPersistentProperties.add("isFieldMLRoot")
@@ -250,11 +327,24 @@ fun installFieldML() {
     )
 }
 
+/**
+ * Start watching the box graph, so marking a box propagates to its children without a reload.
+ *
+ * The watcher fires `fieldMLTopologyNeedsUpdating` whenever a session's topology generation
+ * changes, which is how a box dragged under a FieldML root becomes a FieldML box as you drop it.
+ */
 @RunsAt(plugins)
 fun installFieldMLPlugin() {
     TopologyWatcher("fieldml") { fieldMLTopologyNeedsUpdating(it) }.start()
 }
 
+/**
+ * Attach and detach [FieldMLExecution] over a set of boxes, from their parents' marks.
+ *
+ * A child of a marked box gets a [FieldMLExecution]; a child that has one and no marked parent
+ * left goes back to Kotlin. Having *any* marked parent is enough, so a box under both a FieldML
+ * root and something else stays FieldML and the order the boxes are visited in does not matter.
+ */
 fun fieldMLTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,

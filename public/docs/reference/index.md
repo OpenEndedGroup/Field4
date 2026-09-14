@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13778 public symbols across 346 source files**, 7505 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13778 public symbols across 346 source files**, 7530 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 23 | 873 | 402 (46%) | Musical time, as a value. |
 | [Audio](audio.md) | 18 | 871 | 257 (29%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 73 | 2218 | 683 (30%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 73 | 2218 | 708 (31%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 1 | 45 | 43 (95%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -139,11 +139,11 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 0 |  |  |
 | [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 10 | FieldML's front end behind one call: source text in, and whatever its four stages managed to produce out. |  |
-| [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 0 |  |  |
-| [FieldMLInterface.kt](languages.md#fieldmlinterface-kt) | Languages | 13 | 0 |  |  |
+| [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 3 | Completion and hover for a FieldML box: what the editor offers under the caret, and what the card over a symbol says. |  |
+| [FieldMLInterface.kt](languages.md#fieldmlinterface-kt) | Languages | 13 | 13 | FieldML as a box language: set a box's Main Language to FieldML and its children hold FieldML programs instead of Kotlin. |  |
 | [FieldMLMacroLayer.kt](languages.md#fieldmlmacrolayer-kt) | Languages | 10 | 10 | Reaching Field's Kotlin source macros from FieldML: a table of every macro `MacroRegistry` registers, with the route to each one, and the expansion that follows the route. |  |
-| [FieldMLRuntimePrelude.kt](languages.md#fieldmlruntimeprelude-kt) | Languages | 2 | 0 |  |  |
-| [FieldMLTypePrelude.kt](languages.md#fieldmltypeprelude-kt) | Languages | 10 | 3 |  |  |
+| [FieldMLRuntimePrelude.kt](languages.md#fieldmlruntimeprelude-kt) | Languages | 2 | 2 | The value behind every prelude name: what a FieldML program can call before it declares anything. |  |
+| [FieldMLTypePrelude.kt](languages.md#fieldmltypeprelude-kt) | Languages | 10 | 10 | The type of every name a FieldML program has before it declares anything: the prelude, as the type checker sees it. |  |
 | [FieldPersistence.kt](audio-ai.md#fieldpersistence-kt) | Audio AI | 5 | 5 | How a Field document remembers audio work: ids and judgements in a box property, and not one sample of audio. |  |
 | [FileManager.kt](data.md#filemanager-kt) | Data | 28 | 28 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. | [Where Field looks for a file](../files_and_paths.md) |
 | [Filters.kt](synthesis.md#filters-kt) | Synthesis | 44 | 5 | The filters, and the one saturator that keeps them company. |  |
