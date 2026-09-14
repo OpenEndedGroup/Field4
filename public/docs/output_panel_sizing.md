@@ -292,7 +292,7 @@ somebody having dragged it. The three entry points that resize the box themselve
 `primeAutoSizeForOpen` and `applyClosed`, mark `selfResizeUntil`, or a panel nobody touched would
 come out `userSized` and never auto-size again.
 
-## What is pinned, and what is not
+## What the regression suite pins
 
 `tools/run_ui_regressions.py` has the only executable checks on any of this, and they are
 browser-driven: they build a real box, run real Kotlin, wait for the auto-size passes to settle, and
