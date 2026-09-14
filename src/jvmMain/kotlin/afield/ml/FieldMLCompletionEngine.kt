@@ -37,7 +37,45 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
+/**
+ * Completion and hover for a FieldML box: what the editor offers under the caret, and what the
+ * card over a symbol says.
+ *
+ * The difficulty is that the text is half-written, so the compiler will usually refuse it. Both
+ * entry points compile the box anyway and read the typed tree if one came back. When none did,
+ * they fall back to compiling the top-level statements above the caret and keeping the longest
+ * run of them that does compile, skipping the broken ones rather than stopping at the first,
+ * because the broken one is normally the line being typed. Below that is a regex over `let`, `fun`
+ * and lambda parameters, which finds the names in scope without their types.
+ *
+ * Which *kind* of thing can go under the caret is decided before any candidate is gathered, and
+ * two of those contexts answer with nothing rather than falling through: inside the string
+ * literal of a `host…` intrinsic, and after a record field's dot, a member is the only thing that
+ * can legally follow, so an empty list is the right answer when no member matches. Falling
+ * through to the general list there is how `img.wi` came to offer the `with` keyword.
+ *
+ * Everywhere else the list is five sources merged and deduplicated — snippets, keywords, the
+ * prelude, the bindings in scope, and the constructors this box declared — sorted by a rank that
+ * puts the closest thing first: a typed local binding at 0, a snippet at 10, a constructor at 16,
+ * the graphics prelude at 18, the rest of the prelude at 24, the `host…` names at 34, and a
+ * keyword last at 40. A `|>` to the left of the caret switches the prelude to a second table for
+ * any name whose final argument accepts what the pipe is carrying, which is what floats `moveTo`,
+ * `map` and the rest of `pipePreferred` to the top of a pipeline.
+ *
+ * `hostTap`'s completions are the one place this reads something other than the box: it lists and
+ * describes Kotlin extension functions out of Field's own source, through `KotlinSourceIndex`.
+ */
+
+/** Completion and hover for FieldML, worked out from the box's own text on every keystroke. */
 object FieldMLCompletionEngine {
+    /**
+     * The completion list for a caret position, and the span of text it would replace.
+     *
+     * Dispatches on context first: a `host…` string, a record field, or the general case. The
+     * general case merges snippets, keywords, the prelude, the bindings in scope and this box's
+     * constructors, and ranks them so that what was written nearby comes before what the language
+     * merely offers.
+     */
     fun complete(request: CompletionRequest): Completion {
         val code = request.allCode
         val cursor = request.position.coerceIn(0, code.length)
@@ -82,6 +120,16 @@ object FieldMLCompletionEngine {
         return completion(bounds.first, bounds.second, items)
     }
 
+    /**
+     * The hover card for whatever is under the caret: a declaration line, a one-word detail
+     * saying what kind of thing it is, and whatever documentation there is for it.
+     *
+     * The candidates are tried nearest-first — an indexed Kotlin function named in a `hostTap`
+     * string, a record field, a local binding, a prelude name, a constructor this box declared,
+     * then a keyword. A local binding and a record field get their inferred type printed and no
+     * prose, because the type is the answer. An empty response means nothing under the caret was
+     * recognised, which for a half-written line is common and not an error.
+     */
     fun describeSymbolContext(request: SymbolContextRequest): SymbolContextResponse {
         hostTapTargetContext(request.allCode, request.position)?.let { context ->
             val exact = indexedKotlinFunctions().firstOrNull { it.qualifiedName == context.prefix }

@@ -30,7 +30,44 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.isRegularFile
 
+/**
+ * The value behind every prelude name: what a FieldML program can call before it declares
+ * anything.
+ *
+ * `FieldMLTypePrelude` gives the same list of names their types; this file implements them, and
+ * the two are matched by hand rather than derived from one another. [values] builds the map afresh
+ * for each run, which is how `print`, `thisBox` and the `prop` family come to mean *this* box's
+ * output and *this* box rather than a global.
+ *
+ * Two distinctions in here decide what a FieldML program can get away with:
+ *
+ * - **Checking versus coercing.** A native function unpacks its arguments through the `as…`
+ *   helpers, which refuse a value of the wrong kind and name what they found instead, so
+ *   anything that reached the runtime as an unchecked `Host` stops here with a sentence rather
+ *   than a default. The `hostAs…` family is why there are two sets of helpers rather than one:
+ *   those convert, since saying what a value that arrived through an erased JVM signature
+ *   really is is the whole of their job.
+ * - **Reading versus writing a box property.** `prop` and `propOr` search up the box graph, so a
+ *   value an ancestor wrote is visible; `once` reads only its own box's slot; and `setProp`
+ *   always writes locally, shadowing an ancestor rather than changing it. Writing also narrows an
+ *   integer or a float to the JVM width already in the slot, which is what keeps a `prop<Int>`
+ *   shared with a Kotlin box from throwing `ClassCastException` on the Kotlin side.
+ *
+ * `hostTap` is the one name that goes looking in Field's own source rather than at a class: it
+ * resolves a Kotlin extension function by name through `KotlinSourceIndex` when an index is
+ * loaded, and by walking `src/jvmMain/kotlin` and `src/personal/kotlin` when none is.
+ */
+
+/** The prelude as values: every name a FieldML program can call before it has declared anything. */
 object FieldMLRuntimePrelude {
+    /**
+     * The whole prelude, bound to one run of one box.
+     *
+     * [output] is where `print`, `println` and `display` go, and a null one makes them silent,
+     * which is what a test evaluating an expression for its value wants. [box] is what `thisBox`
+     * evaluates to and what the `prop` family reads and writes; the names that need it fail with a
+     * message naming themselves when it is null, rather than returning something empty.
+     */
     fun values(output: HasOutput? = null, box: Box? = null): Map<String, FieldMLValue> =
         linkedMapOf(
             "Unit" to FieldMLValue.UnitValue,

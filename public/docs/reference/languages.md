@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-73 source file(s), 2218 public symbol(s), 683 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+73 source file(s), 2218 public symbol(s), 708 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1203,18 +1203,73 @@ Lex, parse, infer, lower. The entry point for the box runtime, the completion en
 
 ## FieldMLCompletionEngine.kt { #fieldmlcompletionengine-kt }
 
+Completion and hover for a FieldML box: what the editor offers under the caret, and what the
+card over a symbol says.
+
+The difficulty is that the text is half-written, so the compiler will usually refuse it. Both
+entry points compile the box anyway and read the typed tree if one came back. When none did,
+they fall back to compiling the top-level statements above the caret and keeping the longest
+run of them that does compile, skipping the broken ones rather than stopping at the first,
+because the broken one is normally the line being typed. Below that is a regex over `let`, `fun`
+and lambda parameters, which finds the names in scope without their types.
+
+Which *kind* of thing can go under the caret is decided before any candidate is gathered, and
+two of those contexts answer with nothing rather than falling through: inside the string
+literal of a `host…` intrinsic, and after a record field's dot, a member is the only thing that
+can legally follow, so an empty list is the right answer when no member matches. Falling
+through to the general list there is how `img.wi` came to offer the `with` keyword.
+
+Everywhere else the list is five sources merged and deduplicated — snippets, keywords, the
+prelude, the bindings in scope, and the constructors this box declared — sorted by a rank that
+puts the closest thing first: a typed local binding at 0, a snippet at 10, a constructor at 16,
+the graphics prelude at 18, the rest of the prelude at 24, the `host…` names at 34, and a
+keyword last at 40. A `|>` to the left of the caret switches the prelude to a second table for
+any name whose final argument accepts what the pipe is carrying, which is what floats `moveTo`,
+`map` and the rest of `pipePreferred` to the top of a pipeline.
+
+`hostTap`'s completions are the one place this reads something other than the box: it lists and
+describes Kotlin extension functions out of Field's own source, through `KotlinSourceIndex`.
+
 `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt` — [read the source](source/jvmMain/afield/ml/FieldMLCompletionEngine/)
 
 ### FieldMLCompletionEngine { #fieldmlcompletionengine-kt-fieldmlcompletionengine }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLCompletionEngine</span></code>](source/jvmMain/afield/ml/FieldMLCompletionEngine/#L40)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLCompletionEngine</span></code>](source/jvmMain/afield/ml/FieldMLCompletionEngine/#L70)
+
+Completion and hover for FieldML, worked out from the box's own text on every keystroke.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">Completion</span></code>](source/jvmMain/afield/ml/FieldMLCompletionEngine/#L41) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describeSymbolContext</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">SymbolContextRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">SymbolContextResponse</span></code>](source/jvmMain/afield/ml/FieldMLCompletionEngine/#L85) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">Completion</span></code>](source/jvmMain/afield/ml/FieldMLCompletionEngine/#L79) | The completion list for a caret position, and the span of text it would replace. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describeSymbolContext</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">SymbolContextRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">SymbolContextResponse</span></code>](source/jvmMain/afield/ml/FieldMLCompletionEngine/#L133) | The hover card for whatever is under the caret: a declaration line, a one-word detail saying what kind of thing it is, and whatever documentation there is for it. |
 
 ## FieldMLInterface.kt { #fieldmlinterface-kt }
+
+FieldML as a box language: set a box's Main Language to FieldML and its children hold FieldML
+programs instead of Kotlin.
+
+[`FieldMLExecution`](languages.md#fieldmlinterface-kt-fieldmlexecution) is the `BoxExecution` behind that, one per box. It hands the text to
+[`FieldMLCompiler`](languages.md#fieldmlcompiler-kt-fieldmlcompiler), evaluates the core tree that came back against [`FieldMLRuntimePrelude`](languages.md#fieldmlruntimeprelude-kt-fieldmlruntimeprelude), and
+writes the value and its inferred type into the box as one inline `value : type` line. A program
+that printed something of its own gets no inline line, which is what the file's `TrackingOutput`
+is watching for. `display` does not count as printing, so a box that draws still says what it
+evaluated to.
+
+Nothing survives between runs. Each run compiles its text from scratch and evaluates it against
+a freshly built prelude, so a FieldML box is the script model rather than the accumulating one a
+Datalog box uses. State that has to outlive a run goes in a box property, which is what the
+prelude's `prop` and `once` are for.
+
+Executing and launching differ in one thing, and it is the thing that makes animation work. Both
+compile and evaluate. Launch also hands the result to `ReturnValueRegistry`, the same machinery a
+Kotlin box's return value goes through, so the `Sequence` that `animate` returns is advanced once
+per run loop frame for as long as the box is running, while a plain number is simply the answer.
+The run generation counted around that is how a second launch supersedes the first rather than
+running beside it.
+
+Which boxes are FieldML is decided by `fieldMLTopologyNeedsUpdating`, and the answer is about
+parents: a box runs FieldML because a *parent* carries `isFieldMLRoot` or names `fieldml` as its
+main language, not because it carries the mark itself.
 
 `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt` — [read the source](source/jvmMain/afield/ml/FieldMLInterface/)
 
@@ -1222,30 +1277,32 @@ Lex, parse, infer, lower. The entry point for the box runtime, the completion en
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFieldML</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L240) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFieldMLPlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L254) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fieldMLTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L258) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFieldML</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L317) | Register FieldML with the Main Language menu, and make `isFieldMLRoot` survive a save. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFieldMLPlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L337) | Start watching the box graph, so marking a box propagates to its children without a reload. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fieldMLTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L348) | Attach and detach [`FieldMLExecution`](languages.md#fieldmlinterface-kt-fieldmlexecution) over a set of boxes, from their parents' marks. |
 
 ### Top-level values { #fieldmlinterface-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isFieldMLRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L237) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isFieldMLRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L308) | The mark that makes a box's *children* FieldML boxes. |
 
 ### FieldMLExecution { #fieldmlinterface-kt-fieldmlexecution }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FieldMLExecution</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L45)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FieldMLExecution</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L77)
+
+One FieldML box's runtime: compile, evaluate, and report back to the editor, holding nothing between runs and hopping to the main thread before each one.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L46) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L50) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L54) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L133) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L148) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L152) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">describeSymbolContext</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nc">SymbolContextRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">SymbolContextResponse</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L156) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L159) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L85) | Run the selected text and print what it evaluated to. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L90) | Run the whole box and print what it evaluated to, without offering the result to the launch machinery. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L106) | Run the whole box and keep whatever the result turns out to be alive. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L186) | Run one symbol the editor asked about, as a single-line fragment, and print what it evaluated to. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L208) | Stop whatever this box launched. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L213) | Answer the editor's completion request from [`FieldMLCompletionEngine`](languages.md#fieldmlcompletionengine-kt-fieldmlcompletionengine), which reads the whole box rather than this execution's state. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">describeSymbolContext</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nc">SymbolContextRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">SymbolContextResponse</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L218) | The hover card for the symbol under the caret, from [`FieldMLCompletionEngine`](languages.md#fieldmlcompletionengine-kt-fieldmlcompletionengine). |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ml/FieldMLInterface/#L222) | `fieldml`: what the AI layer and the operation transcript are told a box's `code` property is written in. |
 
 ## FieldMLMacroLayer.kt { #fieldmlmacrolayer-kt }
 
@@ -1284,15 +1341,43 @@ How a Field **source macro** is reached from FieldML — mechanism A of `dev_doc
 
 ## FieldMLRuntimePrelude.kt { #fieldmlruntimeprelude-kt }
 
+The value behind every prelude name: what a FieldML program can call before it declares
+anything.
+
+`FieldMLTypePrelude` gives the same list of names their types; this file implements them, and
+the two are matched by hand rather than derived from one another. `values` builds the map afresh
+for each run, which is how `print`, `thisBox` and the `prop` family come to mean *this* box's
+output and *this* box rather than a global.
+
+Two distinctions in here decide what a FieldML program can get away with:
+
+- **Checking versus coercing.** A native function unpacks its arguments through the `as…`
+  helpers, which refuse a value of the wrong kind and name what they found instead, so
+  anything that reached the runtime as an unchecked `Host` stops here with a sentence rather
+  than a default. The `hostAs…` family is why there are two sets of helpers rather than one:
+  those convert, since saying what a value that arrived through an erased JVM signature
+  really is is the whole of their job.
+- **Reading versus writing a box property.** `prop` and `propOr` search up the box graph, so a
+  value an ancestor wrote is visible; `once` reads only its own box's slot; and `setProp`
+  always writes locally, shadowing an ancestor rather than changing it. Writing also narrows an
+  integer or a float to the JVM width already in the slot, which is what keeps a `prop<Int>`
+  shared with a Kotlin box from throwing `ClassCastException` on the Kotlin side.
+
+`hostTap` is the one name that goes looking in Field's own source rather than at a class: it
+resolves a Kotlin extension function by name through `KotlinSourceIndex` when an index is
+loaded, and by walking `src/jvmMain/kotlin` and `src/personal/kotlin` when none is.
+
 `src/jvmMain/kotlin/afield/ml/FieldMLRuntimePrelude.kt` — [read the source](source/jvmMain/afield/ml/FieldMLRuntimePrelude/)
 
 ### FieldMLRuntimePrelude { #fieldmlruntimeprelude-kt-fieldmlruntimeprelude }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLRuntimePrelude</span></code>](source/jvmMain/afield/ml/FieldMLRuntimePrelude/#L33)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLRuntimePrelude</span></code>](source/jvmMain/afield/ml/FieldMLRuntimePrelude/#L62)
+
+The prelude as values: every name a FieldML program can call before it has declared anything.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">values</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">HasOutput</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FieldMLValue</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/FieldMLRuntimePrelude/#L34) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">values</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">HasOutput</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FieldMLValue</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/FieldMLRuntimePrelude/#L71) | The whole prelude, bound to one run of one box. |
 
 ## Expr.kt { #expr-kt }
 
@@ -2035,23 +2120,45 @@ Constants: `LET`, `TYPE`, `IN`, `IF`, `THEN`, `ELSE`, `FUN`, `MATCH`, `WITH`, `T
 
 ## FieldMLTypePrelude.kt { #fieldmltypeprelude-kt }
 
+The type of every name a FieldML program has before it declares anything: the prelude, as the
+type checker sees it.
+
+`schemes` is the root environment `Inferencer` starts from, so a name here is in scope in every
+FieldML box. Each entry is a [`Scheme`](languages.md#types-kt-scheme) rather than a bare type, because most of the prelude is
+polymorphic and the interesting part is *how* polymorphic: `map` works over any element type,
+`abs` over `Int` or `Float` but not over a string, `dot` over two vectors as long as they are
+the same width. A scheme carries those restrictions on its quantified variables, which is what
+lets one entry stand in for what would otherwise be a pile of overloads.
+
+`FieldMLRuntimePrelude` holds the other half, name for name: the values these types describe.
+The two lists are matched by hand and nothing in the build compares them. What the build does
+guard is the page a reader looks the prelude up in, through
+`FieldMLCheatsheetCoverageTest.everyPreludeNameIsListedWithItsType`, which fails when a name is
+added, removed or retyped without `public/docs/fieldml_cheatsheet.md` following.
+
+The [`THost`](languages.md#types-kt-thost) values at the top are the handful of host types FieldML names. Everything else the
+JVM offers arrives as the opaque `Host`, and the `host…` family of intrinsics is how a program
+says what a value of that type actually is.
+
 `src/jvmMain/kotlin/afield/ml/type/FieldMLTypePrelude.kt` — [read the source](source/jvmMain/afield/ml/type/FieldMLTypePrelude/)
 
 ### FieldMLTypePrelude { #fieldmltypeprelude-kt-fieldmltypeprelude }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLTypePrelude</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L3)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FieldMLTypePrelude</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L26)
+
+The prelude as types: the schemes `Inferencer` starts from, and the five host types FieldML knows by name.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">host</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L4) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">vec2</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L5) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">vec3</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L6) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">vec4</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L7) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fline</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L8) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">box</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L15) | `thisBox` is the receiver most host calls start from, and it really is an `afield.Box` — so typing it as one is what turns the whole `hostGet`/`hostCall` family from opaque into checked in the case a live document hits first. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">isVectorType</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L20) | True for `Vec2`/`Vec3`/`Vec4`, the host types that support arithmetic and `.x`/`.y`/`.z`/`.w`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">vectorComponents</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L23) | Component names readable off a vector type, in order. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">schemes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Scheme</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L87) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">host</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L28) | `Host`: what a value the type checker cannot say anything more specific about has. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">vec2</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L31) | A two-component vector. Arithmetic, `.x`/`.y`, and every `overVector` scheme accept it. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">vec3</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L34) | A three-component vector, and the only width `cross` is defined for. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">vec4</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L37) | A four-component vector, which is also how a colour is written. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fline</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L40) | An `afield.graphics.FLine`, threaded through the drawing prelude so `moveTo`/`lineTo`/`draw` chain in a pipe. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">box</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L47) | `thisBox` is the receiver most host calls start from, and it really is an `afield.Box` — so typing it as one is what turns the whole `hostGet`/`hostCall` family from opaque into checked in the case a live document hits first. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">isVectorType</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L52) | True for `Vec2`/`Vec3`/`Vec4`, the host types that support arithmetic and `.x`/`.y`/`.z`/`.w`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">vectorComponents</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L55) | Component names readable off a vector type, in order. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">schemes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Scheme</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ml/type/FieldMLTypePrelude/#L130) | Every prelude name and its scheme, grouped in declaration order by what it is for: output, vectors and FLines, numbers, lists, drawing, the `host…` intrinsics, and the `prop` family. |
 
 ## HostTypes.kt { #hosttypes-kt }
 
