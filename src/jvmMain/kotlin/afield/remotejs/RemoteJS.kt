@@ -34,9 +34,11 @@ import java.util.concurrent.ConcurrentHashMap
  * [executeRemoteJS] is the language. Its parameter list *is* the semantics, and three of them carry
  * most of the weight:
  *
- *  - `doASTA` routes the source through [Asta] first — Nashorn's parser, used to rewrite the
- *    fragment so that a runtime error in the head can be reported back at the right line *in the
- *    box*. Turn it off and errors arrive without a location.
+ *  - `doASTA` routes the source through [Asta] first, which rewrites each binary operator into a
+ *    call the head's `asta.js` defines, so vector arithmetic in a box means what it looks like.
+ *    That pass also parses, and its diagnostics fill in the line and column of a `SyntaxError` the
+ *    browser reported without one; an error raised at run time keeps its own location. Turn it
+ *    off, as the Kotlin/JS path does, and a box gets neither.
  *  - `lifecycleName` and `launchable` are what make a fragment restartable and time-scrubbable
  *    rather than fire-and-forget, and `timeStart`/`timeEnd` are the window it is live for.
  *  - `handleTo` is the return channel: a head can send values back, dispatched through
