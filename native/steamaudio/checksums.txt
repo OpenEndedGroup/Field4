@@ -1,0 +1,28 @@
+# Steam Audio native artifacts — pinned by content, not by trust in the download.
+#
+# The `fetchNatives` Gradle task downloads the upstream release zip, verifies the zip
+# itself against `zip`, then extracts only the members listed below and verifies each
+# one. Any mismatch fails the build; nothing is written on a bad hash.
+#
+# Every checksum here was taken from the tree that produced the verified HRTF
+# measurements in SCOPE.md, and confirmed byte-identical to the official zip.
+#
+# Format:
+#   url     <download url>
+#   zip     <sha256>  <expected file name>
+#   file    <sha256>  <path inside zip>              <path under native/>
+#
+# To bump the SDK: change `url`/`version`, run `./gradlew refreshNativeChecksums`,
+# then review the resulting diff before committing it.
+
+version 4.8.1
+url     https://github.com/ValveSoftware/steam-audio/releases/download/v4.8.1/steamaudio_4.8.1.zip
+zip     4a0aa5ec1176f38f0b0993a37c2259d9e86f27e22d5e24f83ec4c3cb9a1d5449  steamaudio_4.8.1.zip
+
+file cfab67684fe1ed75a16bb9bccb81c31276b6fb3bad904073407db900045229e7  steamaudio/include/phonon.h                    include/phonon.h
+file ed3a14daa8a32c5884400ff12fe9acaee80b324279450f16083519cfc25270b1  steamaudio/include/phonon_version.h            include/phonon_version.h
+file 7cedf26c7e1fdb378971989236c52af6723246226381f14da855a028f142f92c  steamaudio/lib/osx/libphonon.dylib             macos/libphonon.dylib
+file faf7c4d69e0f104366f6553cda38d3f946f761f7db223baf12663f6fbf2387da  steamaudio/lib/linux-x64/libphonon.so          linux-x64/libphonon.so
+file ca3dbc01dbc24492717011e80f6a51404ca143ae344ca660971d2c983f1e058d  steamaudio/lib/windows-x64/phonon.dll          windows-x64/phonon.dll
+file c7a2c64ef700fb00ca26a71cee527aefafde2b6926b9f40a308489b9769f5612  steamaudio/lib/windows-x64/TrueAudioNext.dll   windows-x64/TrueAudioNext.dll
+file 956acfec2e9b53fb17f161b91a1e4d5172276ce3c45446e81568d40055a0f317  steamaudio/lib/windows-x64/GPUUtilities.dll    windows-x64/GPUUtilities.dll

@@ -1,0 +1,663 @@
+0 | struct (unnamed at phonon.h:1255:9)
+         0 |   IPLSpeakerLayoutType type
+         4 |   IPLint32 numSpeakers
+         8 |   IPLVector3 * speakers
+           | [sizeof=16, align=8]
+
+0 | struct (unnamed at phonon.h:1267:9)
+         0 |   IPLint32 samplingRate
+         4 |   IPLint32 frameSize
+           | [sizeof=8, align=4]
+
+0 | struct (unnamed at phonon.h:1276:9)
+         0 |   IPLint32 numChannels
+         4 |   IPLint32 numSamples
+         8 |   IPLfloat32 ** data
+           | [sizeof=16, align=8]
+
+0 | struct (unnamed at phonon.h:1404:9)
+         0 |   IPLHRTFType type
+         8 |   const char * sofaFileName
+        16 |   const IPLuint8 * sofaData
+        24 |   int sofaDataSize
+        28 |   float volume
+        32 |   IPLHRTFNormType normType
+           | [sizeof=40, align=8]
+
+0 | struct (unnamed at phonon.h:1471:9)
+         0 |   IPLSpeakerLayout speakerLayout
+         0 |     IPLSpeakerLayoutType type
+         4 |     IPLint32 numSpeakers
+         8 |     IPLVector3 * speakers
+           | [sizeof=16, align=8]
+
+0 | struct (unnamed at phonon.h:1477:9)
+         0 |   IPLVector3 direction
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+           | [sizeof=12, align=4]
+
+0 | struct (unnamed at phonon.h:1581:9)
+         0 |   IPLHRTF hrtf
+           | [sizeof=8, align=8]
+
+0 | struct (unnamed at phonon.h:1587:9)
+         0 |   IPLVector3 direction
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+        12 |   IPLHRTFInterpolation interpolation
+        16 |   IPLfloat32 spatialBlend
+        24 |   IPLHRTF hrtf
+        32 |   IPLfloat32 * peakDelays
+           | [sizeof=40, align=8]
+
+0 | struct (unnamed at phonon.h:160:9)
+         0 |   IPLuint32 version
+         8 |   IPLLogFunction logCallback
+        16 |   IPLAllocateFunction allocateCallback
+        24 |   IPLFreeFunction freeCallback
+        32 |   IPLSIMDLevel simdLevel
+        36 |   IPLContextFlags flags
+           | [sizeof=40, align=8]
+
+0 | struct (unnamed at phonon.h:1695:9)
+         0 |   IPLSpeakerLayout speakerLayout
+         0 |     IPLSpeakerLayoutType type
+         4 |     IPLint32 numSpeakers
+         8 |     IPLVector3 * speakers
+        16 |   IPLHRTF hrtf
+           | [sizeof=24, align=8]
+
+0 | struct (unnamed at phonon.h:1704:9)
+         0 |   IPLHRTF hrtf
+           | [sizeof=8, align=8]
+
+0 | struct (unnamed at phonon.h:1794:9)
+         0 |   IPLint32 maxOrder
+           | [sizeof=4, align=4]
+
+0 | struct (unnamed at phonon.h:1800:9)
+         0 |   IPLVector3 direction
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+        12 |   IPLint32 order
+           | [sizeof=16, align=4]
+
+0 | struct (unnamed at phonon.h:1894:9)
+         0 |   IPLSpeakerLayout speakerLayout
+         0 |     IPLSpeakerLayoutType type
+         4 |     IPLint32 numSpeakers
+         8 |     IPLVector3 * speakers
+        16 |   IPLint32 maxOrder
+           | [sizeof=24, align=8]
+
+0 | struct (unnamed at phonon.h:1903:9)
+         0 |   IPLint32 order
+           | [sizeof=4, align=4]
+
+0 | struct (unnamed at phonon.h:1994:9)
+         0 |   IPLHRTF hrtf
+         8 |   IPLint32 maxOrder
+           | [sizeof=16, align=8]
+
+0 | struct (unnamed at phonon.h:2003:9)
+         0 |   IPLHRTF hrtf
+         8 |   IPLint32 order
+           | [sizeof=16, align=8]
+
+0 | struct (unnamed at phonon.h:2097:9)
+         0 |   IPLint32 maxOrder
+           | [sizeof=4, align=4]
+
+0 | struct (unnamed at phonon.h:2103:9)
+         0 |   IPLCoordinateSpace3 orientation
+         0 |     IPLVector3 right
+         0 |       IPLfloat32 x
+         4 |       IPLfloat32 y
+         8 |       IPLfloat32 z
+        12 |     IPLVector3 up
+        12 |       IPLfloat32 x
+        16 |       IPLfloat32 y
+        20 |       IPLfloat32 z
+        24 |     IPLVector3 ahead
+        24 |       IPLfloat32 x
+        28 |       IPLfloat32 y
+        32 |       IPLfloat32 z
+        36 |     IPLVector3 origin
+        36 |       IPLfloat32 x
+        40 |       IPLfloat32 y
+        44 |       IPLfloat32 z
+        48 |   IPLint32 order
+           | [sizeof=52, align=4]
+
+0 | struct (unnamed at phonon.h:2198:9)
+         0 |   IPLSpeakerLayout speakerLayout
+         0 |     IPLSpeakerLayoutType type
+         4 |     IPLint32 numSpeakers
+         8 |     IPLVector3 * speakers
+        16 |   IPLHRTF hrtf
+        24 |   IPLint32 maxOrder
+           | [sizeof=32, align=8]
+
+0 | struct (unnamed at phonon.h:2210:9)
+         0 |   IPLint32 order
+         8 |   IPLHRTF hrtf
+        16 |   IPLCoordinateSpace3 orientation
+        16 |     IPLVector3 right
+        16 |       IPLfloat32 x
+        20 |       IPLfloat32 y
+        24 |       IPLfloat32 z
+        28 |     IPLVector3 up
+        28 |       IPLfloat32 x
+        32 |       IPLfloat32 y
+        36 |       IPLfloat32 z
+        40 |     IPLVector3 ahead
+        40 |       IPLfloat32 x
+        44 |       IPLfloat32 y
+        48 |       IPLfloat32 z
+        52 |     IPLVector3 origin
+        52 |       IPLfloat32 x
+        56 |       IPLfloat32 y
+        60 |       IPLfloat32 z
+        64 |   IPLbool binaural
+           | [sizeof=72, align=8]
+
+0 | struct (unnamed at phonon.h:226:9)
+         0 |   IPLfloat32 x
+         4 |   IPLfloat32 y
+         8 |   IPLfloat32 z
+           | [sizeof=12, align=4]
+
+0 | struct (unnamed at phonon.h:2340:9)
+         0 |   IPLint32 numChannels
+           | [sizeof=4, align=4]
+
+0 | struct (unnamed at phonon.h:2346:9)
+         0 |   IPLDirectEffectFlags flags
+         4 |   IPLTransmissionType transmissionType
+         8 |   IPLfloat32 distanceAttenuation
+        12 |   IPLfloat32[3] airAbsorption
+        24 |   IPLfloat32 directivity
+        28 |   IPLfloat32 occlusion
+        32 |   IPLfloat32[3] transmission
+           | [sizeof=44, align=4]
+
+0 | struct (unnamed at phonon.h:238:9)
+         0 |   IPLfloat32[4][4] elements
+           | [sizeof=64, align=4]
+
+0 | struct (unnamed at phonon.h:244:9)
+         0 |   IPLVector3 minCoordinates
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+        12 |   IPLVector3 maxCoordinates
+        12 |     IPLfloat32 x
+        16 |     IPLfloat32 y
+        20 |     IPLfloat32 z
+           | [sizeof=24, align=4]
+
+0 | struct (unnamed at phonon.h:2489:9)
+         0 |   IPLReflectionEffectType type
+         4 |   IPLint32 irSize
+         8 |   IPLint32 numChannels
+           | [sizeof=12, align=4]
+
+0 | struct (unnamed at phonon.h:2501:9)
+         0 |   IPLReflectionEffectType type
+         8 |   IPLReflectionEffectIR ir
+        16 |   IPLfloat32[3] reverbTimes
+        28 |   IPLfloat32[3] eq
+        40 |   IPLint32 delay
+        44 |   IPLint32 numChannels
+        48 |   IPLint32 irSize
+        56 |   IPLTrueAudioNextDevice tanDevice
+        64 |   IPLint32 tanSlot
+           | [sizeof=72, align=8]
+
+0 | struct (unnamed at phonon.h:253:9)
+         0 |   IPLVector3 center
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+        12 |   IPLfloat32 radius
+           | [sizeof=16, align=4]
+
+0 | struct (unnamed at phonon.h:262:9)
+         0 |   IPLVector3 right
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+        12 |   IPLVector3 up
+        12 |     IPLfloat32 x
+        16 |     IPLfloat32 y
+        20 |     IPLfloat32 z
+        24 |   IPLVector3 ahead
+        24 |     IPLfloat32 x
+        28 |     IPLfloat32 y
+        32 |     IPLfloat32 z
+        36 |   IPLVector3 origin
+        36 |     IPLfloat32 x
+        40 |     IPLfloat32 y
+        44 |     IPLfloat32 z
+           | [sizeof=48, align=4]
+
+0 | struct (unnamed at phonon.h:2676:9)
+         0 |   IPLint32 maxOrder
+         4 |   IPLbool spatialize
+         8 |   IPLSpeakerLayout speakerLayout
+         8 |     IPLSpeakerLayoutType type
+        12 |     IPLint32 numSpeakers
+        16 |     IPLVector3 * speakers
+        24 |   IPLHRTF hrtf
+           | [sizeof=32, align=8]
+
+0 | struct (unnamed at phonon.h:2695:9)
+         0 |   IPLfloat32[3] eqCoeffs
+        16 |   IPLfloat32 * shCoeffs
+        24 |   IPLint32 order
+        28 |   IPLbool binaural
+        32 |   IPLHRTF hrtf
+        40 |   IPLCoordinateSpace3 listener
+        40 |     IPLVector3 right
+        40 |       IPLfloat32 x
+        44 |       IPLfloat32 y
+        48 |       IPLfloat32 z
+        52 |     IPLVector3 up
+        52 |       IPLfloat32 x
+        56 |       IPLfloat32 y
+        60 |       IPLfloat32 z
+        64 |     IPLVector3 ahead
+        64 |       IPLfloat32 x
+        68 |       IPLfloat32 y
+        72 |       IPLfloat32 z
+        76 |     IPLVector3 origin
+        76 |       IPLfloat32 x
+        80 |       IPLfloat32 y
+        84 |       IPLfloat32 z
+        88 |   IPLbool normalizeEQ
+           | [sizeof=96, align=8]
+
+0 | struct (unnamed at phonon.h:2820:9)
+         0 |   IPLfloat32 duration
+         4 |   IPLint32 order
+           | [sizeof=8, align=4]
+
+0 | struct (unnamed at phonon.h:2989:9)
+         0 |   IPLfloat32 duration
+         4 |   IPLint32 order
+         8 |   IPLint32 samplingRate
+           | [sizeof=12, align=4]
+
+0 | struct (unnamed at phonon.h:304:9)
+         0 |   IPLbyte * data
+         8 |   IPLsize size
+           | [sizeof=16, align=8]
+
+0 | struct (unnamed at phonon.h:3149:9)
+         0 |   IPLfloat32 maxDuration
+         4 |   IPLint32 maxOrder
+         8 |   IPLint32 samplingRate
+           | [sizeof=12, align=4]
+
+0 | struct (unnamed at phonon.h:3163:9)
+         0 |   IPLEnergyField energyField
+           | [sizeof=8, align=8]
+
+0 | struct (unnamed at phonon.h:3169:9)
+         0 |   IPLfloat32 duration
+         4 |   IPLint32 order
+           | [sizeof=8, align=4]
+
+0 | struct (unnamed at phonon.h:3180:9)
+         0 |   IPLImpulseResponse impulseResponse
+           | [sizeof=8, align=8]
+
+0 | struct (unnamed at phonon.h:3286:9)
+         0 |   IPLProbeGenerationType type
+         4 |   IPLfloat32 spacing
+         8 |   IPLfloat32 height
+        12 |   IPLMatrix4x4 transform
+        12 |     IPLfloat32[4][4] elements
+           | [sizeof=76, align=4]
+
+0 | struct (unnamed at phonon.h:3305:9)
+         0 |   IPLBakedDataType type
+         4 |   IPLBakedDataVariation variation
+         8 |   IPLSphere endpointInfluence
+         8 |     IPLVector3 center
+         8 |       IPLfloat32 x
+        12 |       IPLfloat32 y
+        16 |       IPLfloat32 z
+        20 |     IPLfloat32 radius
+           | [sizeof=24, align=4]
+
+0 | struct (unnamed at phonon.h:3491:9)
+         0 |   IPLScene scene
+         8 |   IPLProbeBatch probeBatch
+        16 |   IPLSceneType sceneType
+        20 |   IPLBakedDataIdentifier identifier
+        20 |     IPLBakedDataType type
+        24 |     IPLBakedDataVariation variation
+        28 |     IPLSphere endpointInfluence
+        28 |       IPLVector3 center
+        28 |         IPLfloat32 x
+        32 |         IPLfloat32 y
+        36 |         IPLfloat32 z
+        40 |       IPLfloat32 radius
+        44 |   IPLReflectionsBakeFlags bakeFlags
+        48 |   IPLint32 numRays
+        52 |   IPLint32 numDiffuseSamples
+        56 |   IPLint32 numBounces
+        60 |   IPLfloat32 simulatedDuration
+        64 |   IPLfloat32 savedDuration
+        68 |   IPLint32 order
+        72 |   IPLint32 numThreads
+        76 |   IPLint32 rayBatchSize
+        80 |   IPLfloat32 irradianceMinDistance
+        84 |   IPLint32 bakeBatchSize
+        88 |   IPLOpenCLDevice openCLDevice
+        96 |   IPLRadeonRaysDevice radeonRaysDevice
+           | [sizeof=104, align=8]
+
+0 | struct (unnamed at phonon.h:3562:9)
+         0 |   IPLScene scene
+         8 |   IPLProbeBatch probeBatch
+        16 |   IPLBakedDataIdentifier identifier
+        16 |     IPLBakedDataType type
+        20 |     IPLBakedDataVariation variation
+        24 |     IPLSphere endpointInfluence
+        24 |       IPLVector3 center
+        24 |         IPLfloat32 x
+        28 |         IPLfloat32 y
+        32 |         IPLfloat32 z
+        36 |       IPLfloat32 radius
+        40 |   IPLint32 numSamples
+        44 |   IPLfloat32 radius
+        48 |   IPLfloat32 threshold
+        52 |   IPLfloat32 visRange
+        56 |   IPLfloat32 pathRange
+        60 |   IPLint32 numThreads
+           | [sizeof=64, align=8]
+
+0 | struct (unnamed at phonon.h:3790:9)
+         0 |   IPLDistanceAttenuationModelType type
+         4 |   IPLfloat32 minDistance
+         8 |   IPLDistanceAttenuationCallback callback
+        16 |   void * userData
+        24 |   IPLbool dirty
+           | [sizeof=32, align=8]
+
+0 | struct (unnamed at phonon.h:3815:9)
+         0 |   IPLAirAbsorptionModelType type
+         4 |   IPLfloat32[3] coefficients
+        16 |   IPLAirAbsorptionCallback callback
+        24 |   void * userData
+        32 |   IPLbool dirty
+           | [sizeof=40, align=8]
+
+0 | struct (unnamed at phonon.h:3844:9)
+         0 |   IPLfloat32 dipoleWeight
+         4 |   IPLfloat32 dipolePower
+         8 |   IPLDirectivityCallback callback
+        16 |   void * userData
+           | [sizeof=24, align=8]
+
+0 | struct (unnamed at phonon.h:3865:9)
+         0 |   IPLDeviationModelType type
+         8 |   IPLDeviationCallback callback
+        16 |   void * userData
+           | [sizeof=24, align=8]
+
+0 | struct (unnamed at phonon.h:3881:9)
+         0 |   IPLSimulationFlags flags
+         4 |   IPLSceneType sceneType
+         8 |   IPLReflectionEffectType reflectionType
+        12 |   IPLint32 maxNumOcclusionSamples
+        16 |   IPLint32 maxNumRays
+        20 |   IPLint32 numDiffuseSamples
+        24 |   IPLfloat32 maxDuration
+        28 |   IPLint32 maxOrder
+        32 |   IPLint32 maxNumSources
+        36 |   IPLint32 numThreads
+        40 |   IPLint32 rayBatchSize
+        44 |   IPLint32 numVisSamples
+        48 |   IPLint32 samplingRate
+        52 |   IPLint32 frameSize
+        56 |   IPLOpenCLDevice openCLDevice
+        64 |   IPLRadeonRaysDevice radeonRaysDevice
+        72 |   IPLTrueAudioNextDevice tanDevice
+           | [sizeof=80, align=8]
+
+0 | struct (unnamed at phonon.h:3953:9)
+         0 |   IPLSimulationFlags flags
+           | [sizeof=4, align=4]
+
+0 | struct (unnamed at phonon.h:3959:9)
+         0 |   IPLSimulationFlags flags
+         4 |   IPLDirectSimulationFlags directFlags
+         8 |   IPLCoordinateSpace3 source
+         8 |     IPLVector3 right
+         8 |       IPLfloat32 x
+        12 |       IPLfloat32 y
+        16 |       IPLfloat32 z
+        20 |     IPLVector3 up
+        20 |       IPLfloat32 x
+        24 |       IPLfloat32 y
+        28 |       IPLfloat32 z
+        32 |     IPLVector3 ahead
+        32 |       IPLfloat32 x
+        36 |       IPLfloat32 y
+        40 |       IPLfloat32 z
+        44 |     IPLVector3 origin
+        44 |       IPLfloat32 x
+        48 |       IPLfloat32 y
+        52 |       IPLfloat32 z
+        56 |   IPLDistanceAttenuationModel distanceAttenuationModel
+        56 |     IPLDistanceAttenuationModelType type
+        60 |     IPLfloat32 minDistance
+        64 |     IPLDistanceAttenuationCallback callback
+        72 |     void * userData
+        80 |     IPLbool dirty
+        88 |   IPLAirAbsorptionModel airAbsorptionModel
+        88 |     IPLAirAbsorptionModelType type
+        92 |     IPLfloat32[3] coefficients
+       104 |     IPLAirAbsorptionCallback callback
+       112 |     void * userData
+       120 |     IPLbool dirty
+       128 |   IPLDirectivity directivity
+       128 |     IPLfloat32 dipoleWeight
+       132 |     IPLfloat32 dipolePower
+       136 |     IPLDirectivityCallback callback
+       144 |     void * userData
+       152 |   IPLOcclusionType occlusionType
+       156 |   IPLfloat32 occlusionRadius
+       160 |   IPLint32 numOcclusionSamples
+       164 |   IPLfloat32[3] reverbScale
+       176 |   IPLfloat32 hybridReverbTransitionTime
+       180 |   IPLfloat32 hybridReverbOverlapPercent
+       184 |   IPLbool baked
+       188 |   IPLBakedDataIdentifier bakedDataIdentifier
+       188 |     IPLBakedDataType type
+       192 |     IPLBakedDataVariation variation
+       196 |     IPLSphere endpointInfluence
+       196 |       IPLVector3 center
+       196 |         IPLfloat32 x
+       200 |         IPLfloat32 y
+       204 |         IPLfloat32 z
+       208 |       IPLfloat32 radius
+       216 |   IPLProbeBatch pathingProbes
+       224 |   IPLfloat32 visRadius
+       228 |   IPLfloat32 visThreshold
+       232 |   IPLfloat32 visRange
+       236 |   IPLint32 pathingOrder
+       240 |   IPLbool enableValidation
+       244 |   IPLbool findAlternatePaths
+       248 |   IPLint32 numTransmissionRays
+       256 |   IPLDeviationModel * deviationModel
+           | [sizeof=264, align=8]
+
+0 | struct (unnamed at phonon.h:4068:9)
+         0 |   IPLCoordinateSpace3 listener
+         0 |     IPLVector3 right
+         0 |       IPLfloat32 x
+         4 |       IPLfloat32 y
+         8 |       IPLfloat32 z
+        12 |     IPLVector3 up
+        12 |       IPLfloat32 x
+        16 |       IPLfloat32 y
+        20 |       IPLfloat32 z
+        24 |     IPLVector3 ahead
+        24 |       IPLfloat32 x
+        28 |       IPLfloat32 y
+        32 |       IPLfloat32 z
+        36 |     IPLVector3 origin
+        36 |       IPLfloat32 x
+        40 |       IPLfloat32 y
+        44 |       IPLfloat32 z
+        48 |   IPLint32 numRays
+        52 |   IPLint32 numBounces
+        56 |   IPLfloat32 duration
+        60 |   IPLint32 order
+        64 |   IPLfloat32 irradianceMinDistance
+        72 |   IPLPathingVisualizationCallback pathingVisCallback
+        80 |   void * pathingUserData
+           | [sizeof=88, align=8]
+
+0 | struct (unnamed at phonon.h:4105:9)
+         0 |   IPLDirectEffectParams direct
+         0 |     IPLDirectEffectFlags flags
+         4 |     IPLTransmissionType transmissionType
+         8 |     IPLfloat32 distanceAttenuation
+        12 |     IPLfloat32[3] airAbsorption
+        24 |     IPLfloat32 directivity
+        28 |     IPLfloat32 occlusion
+        32 |     IPLfloat32[3] transmission
+        48 |   IPLReflectionEffectParams reflections
+        48 |     IPLReflectionEffectType type
+        56 |     IPLReflectionEffectIR ir
+        64 |     IPLfloat32[3] reverbTimes
+        76 |     IPLfloat32[3] eq
+        88 |     IPLint32 delay
+        92 |     IPLint32 numChannels
+        96 |     IPLint32 irSize
+       104 |     IPLTrueAudioNextDevice tanDevice
+       112 |     IPLint32 tanSlot
+       120 |   IPLPathEffectParams pathing
+       120 |     IPLfloat32[3] eqCoeffs
+       136 |     IPLfloat32 * shCoeffs
+       144 |     IPLint32 order
+       148 |     IPLbool binaural
+       152 |     IPLHRTF hrtf
+       160 |     IPLCoordinateSpace3 listener
+       160 |       IPLVector3 right
+       160 |         IPLfloat32 x
+       164 |         IPLfloat32 y
+       168 |         IPLfloat32 z
+       172 |       IPLVector3 up
+       172 |         IPLfloat32 x
+       176 |         IPLfloat32 y
+       180 |         IPLfloat32 z
+       184 |       IPLVector3 ahead
+       184 |         IPLfloat32 x
+       188 |         IPLfloat32 y
+       192 |         IPLfloat32 z
+       196 |       IPLVector3 origin
+       196 |         IPLfloat32 x
+       200 |         IPLfloat32 y
+       204 |         IPLfloat32 z
+       208 |     IPLbool normalizeEQ
+           | [sizeof=216, align=8]
+
+0 | struct (unnamed at phonon.h:429:9)
+         0 |   IPLOpenCLDeviceType type
+         4 |   IPLint32 numCUsToReserve
+         8 |   IPLfloat32 fractionCUsForIRUpdate
+        12 |   IPLbool requiresTAN
+           | [sizeof=16, align=4]
+
+0 | struct (unnamed at phonon.h:471:9)
+         0 |   void * platform
+         8 |   IPLstring platformName
+        16 |   IPLstring platformVendor
+        24 |   IPLstring platformVersion
+        32 |   void * device
+        40 |   IPLstring deviceName
+        48 |   IPLstring deviceVendor
+        56 |   IPLstring deviceVersion
+        64 |   IPLOpenCLDeviceType type
+        68 |   IPLint32 numConvolutionCUs
+        72 |   IPLint32 numIRUpdateCUs
+        76 |   IPLint32 granularity
+        80 |   IPLfloat32 perfScore
+           | [sizeof=88, align=8]
+
+0 | struct (unnamed at phonon.h:649:9)
+         0 |   IPLint32 frameSize
+         4 |   IPLint32 irSize
+         8 |   IPLint32 order
+        12 |   IPLint32 maxSources
+           | [sizeof=16, align=4]
+
+0 | struct (unnamed at phonon.h:750:9)
+         0 |   IPLint32[3] indices
+           | [sizeof=12, align=4]
+
+0 | struct (unnamed at phonon.h:779:9)
+         0 |   IPLfloat32[3] absorption
+        12 |   IPLfloat32 scattering
+        16 |   IPLfloat32[3] transmission
+           | [sizeof=28, align=4]
+
+0 | struct (unnamed at phonon.h:793:9)
+         0 |   IPLVector3 origin
+         0 |     IPLfloat32 x
+         4 |     IPLfloat32 y
+         8 |     IPLfloat32 z
+        12 |   IPLVector3 direction
+        12 |     IPLfloat32 x
+        16 |     IPLfloat32 y
+        20 |     IPLfloat32 z
+           | [sizeof=24, align=4]
+
+0 | struct (unnamed at phonon.h:805:9)
+         0 |   IPLfloat32 distance
+         4 |   IPLint32 triangleIndex
+         8 |   IPLint32 objectIndex
+        12 |   IPLint32 materialIndex
+        16 |   IPLVector3 normal
+        16 |     IPLfloat32 x
+        20 |     IPLfloat32 y
+        24 |     IPLfloat32 z
+        32 |   IPLMaterial * material
+           | [sizeof=40, align=8]
+
+0 | struct (unnamed at phonon.h:904:9)
+         0 |   IPLSceneType type
+         8 |   IPLClosestHitCallback closestHitCallback
+        16 |   IPLAnyHitCallback anyHitCallback
+        24 |   IPLBatchedClosestHitCallback batchedClosestHitCallback
+        32 |   IPLBatchedAnyHitCallback batchedAnyHitCallback
+        40 |   void * userData
+        48 |   IPLEmbreeDevice embreeDevice
+        56 |   IPLRadeonRaysDevice radeonRaysDevice
+           | [sizeof=64, align=8]
+
+0 | struct (unnamed at phonon.h:931:9)
+         0 |   IPLint32 numVertices
+         4 |   IPLint32 numTriangles
+         8 |   IPLint32 numMaterials
+        16 |   IPLVector3 * vertices
+        24 |   IPLTriangle * triangles
+        32 |   IPLint32 * materialIndices
+        40 |   IPLMaterial * materials
+           | [sizeof=48, align=8]
+
+0 | struct (unnamed at phonon.h:955:9)
+         0 |   IPLScene subScene
+         8 |   IPLMatrix4x4 transform
+         8 |     IPLfloat32[4][4] elements
+           | [sizeof=72, align=8]

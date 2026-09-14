@@ -160,6 +160,61 @@ val ceresRedistributable = layout.buildDirectory.file("ken-ceres-redistributable
 val ceresNative: RegularFile = providers.gradleProperty("ceresLibrary")
     .map { layout.projectDirectory.file(it) }
     .getOrElse(ceresRedistributable.get())
+// Steam Audio's libphonon, which the FFM bindings in afield.four.audio.steamaudio load. Valve ships
+// prebuilt binaries only, and they are large — 113 MB across the three platforms, out of a 173 MB
+// release zip — so nothing is committed here either. A fresh clone unpacks this host's copy once with
+// `fetchSteamAudioNatives`, pinned by SHA-256 in native/steamaudio/checksums.txt.
+// -PsteamaudioLibrary=<path> points every run/test/demo task at one specific library instead, which
+// is how a locally built libphonon gets used — Linux arm64 being the case that needs it, since Valve
+// ships no aarch64 build.
+//
+// Names and directory layout match SteamAudioNatives.Platform, which is what resolves them at runtime.
+fun steamAudioPlatformDirectory(): String {
+    val os = System.getProperty("os.name").lowercase()
+    return when {
+        os.contains("windows") -> "windows-x64"
+        os.contains("mac") || os.contains("darwin") -> "macos"
+        else -> "linux-x64"
+    }
+}
+
+fun steamAudioLibraryName(): String = when (steamAudioPlatformDirectory()) {
+    "windows-x64" -> "phonon.dll"
+    "macos" -> "libphonon.dylib"
+    else -> "libphonon.so"
+}
+
+val steamAudioChecksums = layout.projectDirectory.file("native/steamaudio/checksums.txt")
+val steamAudioNativeTree: Directory = layout.buildDirectory.dir("steamaudio").get()
+val steamAudioLibraryOverride: Provider<String> = providers.gradleProperty("steamaudioLibrary")
+val steamAudioNative: RegularFile = steamAudioLibraryOverride
+    .map { layout.projectDirectory.file(it) }
+    .getOrElse(steamAudioNativeTree.file("${steamAudioPlatformDirectory()}/${steamAudioLibraryName()}"))
+
+/**
+ * How a launched JVM is told where libphonon is.
+ *
+ * Without an override this hands over the whole unpacked tree rather than the one file, because
+ * `SteamAudioNatives` preloads `GPUUtilities.dll` and `TrueAudioNext.dll` from the platform
+ * directory before `phonon.dll` — load order matters on Windows, and the single-file property
+ * deliberately skips it.
+ */
+fun steamAudioJvmArg(): String = if (steamAudioLibraryOverride.isPresent) {
+    "-Dsteamaudio.library.file=${steamAudioNative.asFile.absolutePath}"
+} else {
+    "-Dsteamaudio.library.path=${steamAudioNativeTree.asFile.absolutePath}"
+}
+
+// src/jvmMain/java holds the jextract-generated Steam Audio bindings and nothing else: 77 files of
+// FFM accessors, regenerated rather than edited. Kotlin 2.4 compiles that directory as part of the
+// jvm target, but `compileJvmMainJava` otherwise inherits the toolchain's 25 while `compileKotlinJvm`
+// targets 24, and Gradle rejects the pair outright ("Inconsistent JVM-target compatibility"). FFM has
+// been final since 22, so matching Kotlin at 24 costs the bindings nothing.
+tasks.matching { it.name == "compileJvmMainJava" }.configureEach {
+    this as JavaCompile
+    options.release.set(24)
+}
+
 val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
     .map(String::toBoolean)
     .orElse(true)
@@ -447,6 +502,7 @@ fun requiredRunJvmArgs(): List<String> {
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
+        add(steamAudioJvmArg())
         if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
@@ -735,6 +791,7 @@ kotlin {
                 args += "--enable-native-access=ALL-UNNAMED"
                 args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
                 args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
+                args += steamAudioJvmArg()
 
                 applicationDefaultJvmArgs.set(args)
             }
@@ -1187,6 +1244,13 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // JVM can render too — see the longer note there for why the original test-only scoping was
     // reversed. Both copies are needed and neither is redundant.
     jvmArgs("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
+
+    // Where libphonon is, for the Steam Audio tests. Passed unconditionally and harmlessly: the
+    // property only says where to look, and nothing loads until a test touches the bindings. On a
+    // clone that has never run `fetchSteamAudioNatives` the directory is simply absent, and
+    // `SteamAudioNatives.unavailableReason` says so, which is what lets those tests skip with a
+    // stated reason rather than fail — the same shape as the TetGen and Manifold guards.
+    jvmArgs(steamAudioJvmArg())
 
     // Gradle gives a test worker 512m by default, and that is not enough to hold a ClassGraph scan of
     // Field's classpath. Both of PropMacroRegressionTest's cases were failing with
@@ -3061,6 +3125,86 @@ fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String
             )
         }
     }
+}
+
+// Unpack the pinned Steam Audio libraries for this host into build/steamaudio.
+//
+// Not wired into `check`, for the reason TetGen and Ceres are not: a fresh clone has no network
+// guarantee, and spatial audio is an optional capability. The Steam Audio tests in jvmTest therefore
+// skip with a stated reason when the library is absent rather than failing, so `check` stays green on
+// a clone that has never run this — and stays honest, because the skip names what is missing.
+//
+// The 173 MB release zip is cached outside the build directory by tools/native_download_cache.py, so
+// `clean` costs a re-extract rather than a re-download.
+val fetchSteamAudioNatives = tasks.register<Exec>("fetchSteamAudioNatives") {
+    group = "build"
+    description = "Unpacks the pinned Steam Audio libraries for this host (needs the network once)."
+    workingDir = rootDir
+    inputs.file(steamAudioChecksums)
+        .withPropertyName("steamAudioChecksums")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(steamAudioNativeTree)
+    commandLine(
+        rootPythonCommand + listOf(
+            "tools/fetch_steamaudio_natives.py",
+            "--manifest", steamAudioChecksums.asFile.absolutePath,
+            "--out", steamAudioNativeTree.asFile.absolutePath,
+        )
+    )
+}
+
+/**
+ * Shared configuration for the Steam Audio demos, which render to a file rather than asserting.
+ *
+ * They are `verification`-group runs like the Ceres smokes, not part of `check`: each one writes
+ * audio a person has to listen to on headphones, and `hrtfProbe` prints a table to read rather
+ * than a pass or a fail.
+ */
+fun JavaExec.configureSteamAudioDemoTask(entrypoint: String, taskDescription: String) {
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    group = "verification"
+    description = taskDescription
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set(entrypoint)
+    workingDir = projectDir
+    jvmArgs(requiredRunJvmArgs())
+    // Optional for the same reason as ceresNative: nothing is committed, so on a fresh clone this
+    // file is absent, and a required input would fail at validation time with Gradle's generic
+    // "an input file was expected to be present" instead of naming the command that fixes it.
+    inputs.files(steamAudioNative)
+    doFirst {
+        if (!steamAudioNative.asFile.exists()) {
+            throw GradleException(
+                "No Steam Audio library at ${steamAudioNative.asFile.absolutePath}.\n" +
+                    "Valve ships prebuilt binaries only and they are not committed; unpack this\n" +
+                    "host's copy once with\n" +
+                    "  ./gradlew fetchSteamAudioNatives\n" +
+                    "or point at one you built yourself with\n" +
+                    "  -PsteamaudioLibrary=<path to libphonon>",
+            )
+        }
+    }
+}
+
+tasks.register<JavaExec>("orbitDemo") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.OrbitDemoKt",
+        "Renders a source orbiting the listener's head to build/demo/orbit.wav. Headphones.",
+    )
+}
+
+tasks.register<JavaExec>("caveDemo") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.CaveDemoKt",
+        "Renders the reverberative cave: dynamic planes, live reflections, binaural output. Headphones.",
+    )
+}
+
+tasks.register<JavaExec>("hrtfProbe") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.HrtfProbeKt",
+        "Prints the measured per-azimuth ILD/ITD table for the binaural chain.",
+    )
 }
 
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
