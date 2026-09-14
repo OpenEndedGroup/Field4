@@ -26,8 +26,8 @@ provided both points lie forward and the gap is small. Defaults reject angles be
 0.25 degrees, distances outside 0.05–8 metres, and gaps above 0.03 metres. These editable
 thresholds avoid unstable far-away or divergent intersections; no smoothing hides the raw result.
 
-The scene deliberately chooses a different application world: translation
-`(+0.35, +0.10, -0.20)` metres and a 30-degree yaw. With `W = worldFromLocal`:
+The scene puts its application world somewhere other than LOCAL, so the conversion is never the
+identity: translation `(+0.35, +0.10, -0.20)` metres and a 30-degree yaw. With `W = worldFromLocal`:
 
 ```diffstatic {data-lang=text}
 markerWorld = W * midpointLocal
@@ -64,8 +64,8 @@ The extension tests also exercise native call layouts and lifecycle through synt
 callbacks. These checks establish the conversion and binding contracts, not headset calibration.
 
 The desktop Vulkan reference scene was run and inspected on macOS. The complete physical
-coordinate check above remains to be run on an HTC-capable headset; the desktop preview
-intentionally reports `NO_TRACKING` and hides the binocular marker.
+coordinate check above remains to be run on an HTC-capable headset; with no simulated eyes on the
+desktop preview, `NO_TRACKING` is the right answer there and the binocular marker stays hidden.
 
 The working document is `eyeRayIntersection` in the local AField workspace. Its
 `launch-eye-rays` macro launches the renderer and scene in order. The repository transcript

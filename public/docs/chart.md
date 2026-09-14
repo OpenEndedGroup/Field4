@@ -163,8 +163,8 @@ entries, and the per-datum dots are dropped automatically for a frame with more 
 
 A `Chart` is fixed geometry, so the panel it lands in fits it — and it fits the geometry's *own*
 bounds, which `linesToHTML` stamps on the wrapper as `data-afield-bounds-*`. That has one
-consequence worth knowing before it bites you: anything drawn outside `width` × `height` is not
-cropped, it **shrinks everything else**.
+consequence: anything drawn outside `width` × `height` is not cropped, it **shrinks everything
+else**.
 
 `clip`, on by default, is what stops that. It does two things, because they are one property:
 
@@ -177,10 +177,11 @@ cropped, it **shrinks everything else**.
   lines with an ellipsis past that.
 
 This only matters when you set an explicit `xDomain` or `yDomain`, because a derived domain always
-covers its own data. When you do, the numbers are stark. A cross section 2 × 3 across charted into a
-0.24 × 0.24 window put its outline 5137 px outside a 780 × 440 frame, and the panel drew the figure
-at **9%** of its declared size. A 142-character note measured 1197 px against 711 px of room and
-drew it at **63%**. Both of those shipped on [a published page](tetgen.md).
+covers its own data. A cross section 2 × 3 across charted into a 0.24 × 0.24 window put its outline
+5137 px outside its own plot rectangle, and the panel drew the 780 × 440 figure at **9%** of its
+declared size. A 142-character note measured 1197 px against 711 px of room and drew it at **63%**.
+Both of those shipped on [a published page](tetgen.md). `dev_docs/chart_clip_and_note.md` has the
+before/after pairs.
 
 Set `clip = false` to get that behaviour back — worth it when you are composing a chart with other
 FLine geometry under a shared transform and want the overflow.
@@ -211,14 +212,12 @@ CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests
 ```
 
 They are committed rather than built by the docs runner, so that command has to be re-run to reflect
-a change. Being a FIELD_TEST rather than a script is what keeps them from rotting silently. The
-gallery asserts an ink floor per figure and one for each label gutter, measured against
-`Chart.plotRect()` rather than a fixed strip, since the insets are derived from the widest tick
-label; it checks that the same chart drawn with different data moves a real number of pixels; and it
-fires a bar's registered callback through `FLineClick.toIntersection()`, the same conversion the
-server's `fline-click` route uses. The floors and what they measure at are in
-`dev_docs/chart_primitive.md`. What the gallery does **not** cover is Chromium deciding which `<g>`
-a click landed in; `tools/fline_hit_proof.py` covers that half.
+a change. Being a FIELD_TEST rather than a script is what keeps them from rotting silently: the
+gallery asserts ink floors per figure and per label gutter, that the same chart drawn with different
+data moves a real number of pixels, and that a bar's registered callback fires through
+`FLineClick.toIntersection()`. The floors, what they measure at, and the one thing they do not cover
+— Chromium deciding which `<g>` a click landed in, which `tools/fline_hit_proof.py` covers instead —
+are in `dev_docs/chart_primitive.md`.
 
 The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
 refusals and expectations:

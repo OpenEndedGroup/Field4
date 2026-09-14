@@ -113,7 +113,7 @@ geometry {
 
 Winding is **counter-clockwise as seen from the front**; the head culls back faces, so a face wound
 the other way is invisible. If a shape appears to have holes in it, that's the first thing to check,
-and [the preview](#winding-and-why-a-mesh-can-be-invisible) will check it for you.
+and [the preview](#winding-and-invisible-faces) will check it for you.
 
 Because faces reference vertices by index, you choose your own normals:
 

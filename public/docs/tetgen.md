@@ -501,7 +501,7 @@ This is not a criticism of marching cubes, and the constant here (`0.07 h`) is f
 `0.35–0.40 h` `dev_docs/TETGEN.md` measured for MMG's tetrahedral background grid on the same
 question. The *order* is the finding, and it is the same one at either constant.
 
-### The one place precision is lost, and it is not TetGen
+### Where precision is lost: `TriMesh` stores float32
 
 The bracket's meshed volume differs from Manifold's by `1.6e-9` relative, where the cube's differs by
 `2.7e-15`. That gap is not the mesher. `TriMesh` stores positions as `Float`, so `Solid.toTriMesh()`

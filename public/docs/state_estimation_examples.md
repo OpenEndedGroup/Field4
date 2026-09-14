@@ -345,8 +345,8 @@ the particle so each can carry its own:
 
 Here each particle carries a different Mackey-Glass `beta`, the measurements see
 the current point plus the two previous ones, and the weights gradually favour the
-`beta` whose dynamics explain the data. Partway through, the true `beta` jumps —
-watch the particle cloud chase it.
+`beta` whose dynamics explain the data. Partway through, the true `beta` jumps,
+and the cloud has to find it again from a population that had already settled.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_particle_filter.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static

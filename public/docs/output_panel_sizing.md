@@ -205,7 +205,7 @@ docs figure.
 
 Nor a width: those are pixels in a PNG. The measured version lives in
 `tools/run_ui_regressions.py:3651#id="h2-panel-sizing"`, which asserts geometry rather than
-photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
+photographing it — see [what the regression suite pins](#what-the-regression-suite-pins).
 
 ## Height is measured from the content edge
 
