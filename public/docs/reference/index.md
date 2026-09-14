@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13778 public symbols across 346 source files**, 7495 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13778 public symbols across 346 source files**, 7505 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 23 | 873 | 402 (46%) | Musical time, as a value. |
 | [Audio](audio.md) | 18 | 871 | 257 (29%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 73 | 2218 | 673 (30%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 73 | 2218 | 683 (30%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 1 | 45 | 43 (95%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -138,10 +138,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 0 |  |  |
-| [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 0 |  |  |
+| [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 10 | FieldML's front end behind one call: source text in, and whatever its four stages managed to produce out. |  |
 | [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 0 |  |  |
 | [FieldMLInterface.kt](languages.md#fieldmlinterface-kt) | Languages | 13 | 0 |  |  |
-| [FieldMLMacroLayer.kt](languages.md#fieldmlmacrolayer-kt) | Languages | 10 | 10 |  |  |
+| [FieldMLMacroLayer.kt](languages.md#fieldmlmacrolayer-kt) | Languages | 10 | 10 | Reaching Field's Kotlin source macros from FieldML: a table of every macro `MacroRegistry` registers, with the route to each one, and the expansion that follows the route. |  |
 | [FieldMLRuntimePrelude.kt](languages.md#fieldmlruntimeprelude-kt) | Languages | 2 | 0 |  |  |
 | [FieldMLTypePrelude.kt](languages.md#fieldmltypeprelude-kt) | Languages | 10 | 3 |  |  |
 | [FieldPersistence.kt](audio-ai.md#fieldpersistence-kt) | Audio AI | 5 | 5 | How a Field document remembers audio work: ids and judgements in a box property, and not one sample of audio. |  |
@@ -234,12 +234,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoGenome.kt](languages.md#morphogenome-kt) | Languages | 35 | 22 | The thing a search actually mutates: a MorphoHDL **program, as text**. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoGraal.kt](languages.md#morphograal-kt) | Languages | 17 | 12 | Hosting MorphoHDL's own compiler: one GraalJS context, one lock, and a growth handle per circuit. |  |
 | [MorphoInterface.kt](languages.md#morphointerface-kt) | Languages | 14 | 6 | Field4 language adapter for MorphoHDL, a Python-syntax hardware-description language. | [Somebody else's language, running in Field](../morpho_examples.md) |
-| [MorphoLayout3D.kt](languages.md#morpholayout3d-kt) | Languages | 10 | 9 |  |  |
+| [MorphoLayout3D.kt](languages.md#morpholayout3d-kt) | Languages | 10 | 9 | Placement for a MorphoHDL circuit: every active cell gets a 3D position, from a force-directed layout running on morpho's own Barnes–Hut kernel. |  |
 | [MorphoNetlist.kt](languages.md#morphonetlist-kt) | Languages | 31 | 15 | The compiled circuit as a Kotlin value: packed per-cell metadata, one array per relation, and morpho's own numbering carried across the boundary unchanged. |  |
 | [MorphoProblems.kt](languages.md#morphoproblems-kt) | Languages | 19 | 14 | The search problems this layer was built to ask, and how much of the answer each one gives away. |  |
 | [MorphoSearch.kt](languages.md#morphosearch-kt) | Languages | 31 | 19 | Searching the space of MorphoHDL programs for one that computes something. |  |
 | [MorphoSearchFLines.kt](languages.md#morphosearchflines-kt) | Languages | 11 | 8 | Drawing what a search did, as vector `FLine`s for `afield.stdlib.showPlaneGrid`. | [Somebody else's language, running in Field](../morpho_examples.md) |
-| [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 |  |  |
+| [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 | What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator, plus the per-cell arrival times morpho's own compiler already hands over. |  |
 | [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 |  | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 | Typed decoder for the versioned note document a multi-instrument transcription job leaves behind. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |

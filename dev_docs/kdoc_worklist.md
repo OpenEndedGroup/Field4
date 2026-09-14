@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7495 of 13778 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7505 of 13778 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**846 undocumented entry points** (types, top-level functions and values) and 5128 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**844 undocumented entry points** (types, top-level functions and values) and 5120 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -164,7 +164,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
 | [FabricateMaterialLibrary.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateMaterialLibrary.kt) | Renderers | — | 2 | 14 | 5% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
-| [FieldMLCompiler.kt](../src/jvmMain/kotlin/afield/ml/FieldMLCompiler.kt) | Languages | — | 2 | 8 | 0% |
 | [Lexer.kt](../src/jvmMain/kotlin/afield/ml/lex/Lexer.kt) | Languages | — | 2 | 3 | 0% |
 | [Token.kt](../src/jvmMain/kotlin/afield/ml/lex/Token.kt) | Languages | — | 2 | 3 | 0% |
 | [Parser.kt](../src/jvmMain/kotlin/afield/ml/parse/Parser.kt) | Languages | — | 2 | 3 | 0% |
@@ -391,4 +390,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `WallSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1138` |
 | `PaintSpec` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1145` |
 
-…and **726 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **724 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

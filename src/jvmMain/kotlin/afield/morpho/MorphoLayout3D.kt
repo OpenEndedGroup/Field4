@@ -5,6 +5,19 @@ import java.io.Closeable
 import java.nio.file.Files
 
 /**
+ * Placement for a MorphoHDL circuit: every active cell gets a 3D position, from a force-directed
+ * layout running on morpho's own Barnes–Hut kernel.
+ *
+ * One of the two things Field does with a [MorphoNetlist] snapshot, the other being [MorphoSim];
+ * `MorphoFLines.kt` turns the positions that come out of here into `FLine`s. Layout is stepped
+ * alongside growth rather than run to convergence at the end, and a cell born in a growth step is
+ * seeded at its parent's position, so a circuit that is still expanding is drawable on every frame.
+ *
+ * The parameters are upstream's defaults, and the only behavioural difference from morpho's own
+ * demo is that Field leaves the z axis free.
+ */
+
+/**
  * Force-directed 3D layout for a growing MorphoHDL circuit, computed by morpho's own
  * Barnes–Hut kernel (`graphs_engine/main.wasm`) on GraalWasm.
  *

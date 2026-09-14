@@ -1,6 +1,19 @@
 package afield.morpho
 
 /**
+ * What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator,
+ * plus the per-cell arrival times morpho's own compiler already hands over.
+ *
+ * [MorphoSim] evaluates a [MorphoNetlist] with 64 test vectors packed into the bits of a machine
+ * word, which makes exhausting a small adder's whole input space cheap enough for a unit test.
+ * Morpho's JavaScript has no logic simulator at all, so this side is Field's, written to the LUT
+ * convention of the numpy evaluator in upstream's `tiny_morpho.py`. [MorphoTiming] is the other way
+ * round: a thin reading of morpho's own `updateTimes()`, whose deepest cell is the circuit's
+ * critical path. [MorphoEvaluator] reads both, the simulator for correctness and the arrival times
+ * for depth.
+ */
+
+/**
  * Logic simulation for a compiled MorphoHDL circuit — does the adder actually add?
  *
  * Morpho's JavaScript has no logic simulator. What `viewer.js` animates is [MorphoTiming]: signal

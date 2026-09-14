@@ -7,6 +7,21 @@ import afield.ml.core.FieldMLHostBridge
 import afield.ml.core.FieldMLValue
 
 /**
+ * Reaching Field's Kotlin source macros from FieldML: a table of every macro `MacroRegistry`
+ * registers, with the route to each one, and the expansion that follows the route.
+ *
+ * FieldML is an interpreter, with no Kotlin compile anywhere in its path, so a macro whose output
+ * is generated Kotlin has nothing to hand that output to. Each macro therefore falls into one of
+ * three cases: it rewrites its call site to an ordinary `Box` extension function, which can be
+ * expanded for its side effects and then called reflectively; or it generates a declaration whose
+ * effect FieldML's own prelude implements natively; or it needs a Kotlin compiler, and only its
+ * generated text is available. `dev_docs/FIELDML_HOST_BRIDGE.md` calls this mechanism A.
+ *
+ * The table is a reading of the macro layer, so it can be wrong. A test holds it to the live
+ * contents of `MacroRegistry` in both directions.
+ */
+
+/**
  * How a Field **source macro** is reached from FieldML — mechanism A of `dev_docs/FIELDML_HOST_BRIDGE.md`.
  *
  * ## Why there is anything to do here at all
