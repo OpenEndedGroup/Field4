@@ -308,12 +308,36 @@ class ObstacleField {
     }
 
     /**
-     * Whether a circle of [radius] can travel from ([x0], [y0]) to ([x1], [y1]) without touching a
-     * wall — the exact test [NavGrid.stringPull] shortens a grid path with, and the same one the
-     * integrator uses, which is why a smoothed path does not clip a corner the physics would catch.
+     * Whether a circle of [radius] could stand anywhere along the straight line from ([x0], [y0])
+     * to ([x1], [y1]) — the test [NavGrid.stringPull] shortens a grid path with, and the one
+     * [BehaviourSteering.route] decides it has passed a waypoint on.
+     *
+     * The swept capsule against every wall, computed as a **segment-to-segment distance** and
+     * deliberately *not* as `sweep(…) == null`. The two agree everywhere except one case, and that
+     * case is the one that matters here: [sweep] reports nothing for a circle that is already
+     * overlapping a wall at the start of its move, because a contact at a negative time is a
+     * depenetration problem rather than a collision. Asking `sweep` for clearance from a position
+     * that is already too close therefore gets the answer "clear" about the very wall you are
+     * pressed against.
+     *
+     * That cost a whole evening once. An agent that clipped a corner and ended up against a wall
+     * replanned, and the string-pull — starting from the agent's real position, one unit from the
+     * wall — was told the shortcut straight through that wall was clear. It took it, and the agent
+     * spent the rest of the run grinding along the face of a wall its own route went through.
+     * A distance test has no such hole: the distance from a segment to a wall it starts on is zero,
+     * whichever end you measure from.
      */
-    fun clearPath(x0: Double, y0: Double, x1: Double, y1: Double, radius: Double): Boolean =
-        sweep(x0, y0, x1 - x0, y1 - y0, radius) == null
+    fun clearPath(x0: Double, y0: Double, x1: Double, y1: Double, radius: Double): Boolean {
+        rebuild()
+        for (i in owner.indices) {
+            val d = segmentDistance(
+                x0, y0, x1, y1,
+                packed[i * 4], packed[i * 4 + 1], packed[i * 4 + 2], packed[i * 4 + 3]
+            )
+            if (d < radius - 1e-9) return false
+        }
+        return true
+    }
 
     /**
      * Whether the open segment from ([x0], [y0]) to ([x1], [y1]) crosses any wall — line of sight
@@ -388,6 +412,15 @@ const val WALL_SKIN: Double = 1e-6
 const val PUSH_OUT_PASSES: Int = 4
 
 /**
+ * How much closer to its waypoint [BehaviourSteering.route] has to get to count as having moved.
+ *
+ * An agent at any usable speed closes tenths of a unit per step, so a thousandth is far below real
+ * progress and far above the rounding of a coordinate. Its only job is to stop an agent that is
+ * grinding on a wall from banking a millionth of a unit a step and never being called stalled.
+ */
+const val PROGRESS_EPSILON: Double = 1e-3
+
+/**
  * How many wall responses one integration step may resolve.
  *
  * Four is enough to slide along one wall, into a corner, along the second, and out; past that the
@@ -416,6 +449,27 @@ fun closestPointOnSegment(
     if (t > 1.0) t = 1.0
     out[0] = ax + ex * t
     out[1] = ay + ey * t
+}
+
+/**
+ * The shortest distance between the two closed segments `p`–`q` and `r`–`s`. Zero if they cross.
+ *
+ * Four point-to-segment queries and a crossing test, which is the whole of it: for two segments
+ * that do not cross, the closest pair always has at least one endpoint in it, so the minimum over
+ * the four "endpoint of one against the other" distances is exact rather than approximate.
+ */
+fun segmentDistance(
+    px: Double, py: Double, qx: Double, qy: Double,
+    rx: Double, ry: Double, sx: Double, sy: Double
+): Double {
+    if (segmentsCross(px, py, qx, qy, rx, ry, sx, sy)) return 0.0
+    val o = DoubleArray(2)
+    var best = Double.MAX_VALUE
+    closestPointOnSegment(px, py, rx, ry, sx, sy, o); best = min(best, hypot(px - o[0], py - o[1]))
+    closestPointOnSegment(qx, qy, rx, ry, sx, sy, o); best = min(best, hypot(qx - o[0], qy - o[1]))
+    closestPointOnSegment(rx, ry, px, py, qx, qy, o); best = min(best, hypot(rx - o[0], ry - o[1]))
+    closestPointOnSegment(sx, sy, px, py, qx, qy, o); best = min(best, hypot(sx - o[0], sy - o[1]))
+    return best
 }
 
 /** Whether the two closed segments `p`–`q` and `r`–`s` cross, including touching at a point. */
@@ -699,15 +753,19 @@ class NavGrid internal constructor(
      * Turn a cell path into a short list of world waypoints, dropping every one a circle of
      * [inflate] could have skipped.
      *
-     * This is where the grid's staircase goes. The test is [ObstacleField.clearPath] — the exact
-     * swept test the integrator uses — not a grid ray, so a smoothed leg is passable by the same
-     * criterion the physics will judge it by. Greedy from the front, which is `O(waypoints²)` in the
+     * This is where the grid's staircase goes. The test is [ObstacleField.clearPath] against the
+     * real wall geometry, not a grid ray, so a smoothed leg is passable by a criterion the grid
+     * itself is only an approximation of. Greedy from the front, which is `O(waypoints²)` in the
      * worst case and a few dozen tests in practice; the alternative (funnel) is only worth its
      * complexity on a navigation mesh, where the channel is a sequence of portals rather than a
      * sequence of squares.
      *
      * [startX]/[startY] and [goalX]/[goalY] replace the first and last cell centres, so a route ends
-     * at the place that was asked for rather than at the middle of the cell containing it.
+     * at the place that was asked for rather than at the middle of the cell containing it. The
+     * start may legitimately be closer to a wall than [inflate] — an agent replanning from against
+     * a wall is the ordinary case — and when it is, every shortcut from it fails and the first leg
+     * is the short hop to the first free cell centre. That is the right answer and it is why
+     * [ObstacleField.clearPath] has to be honest about a start that is already too close.
      */
     fun stringPull(
         path: IntArray,

@@ -408,7 +408,13 @@ object AlifeWallsGallery {
         )
         check(
             a.eventSignature() == b.eventSignature(),
-            "determinism: and decision for decision (${a.eventSignature()})"
+            "determinism: and decision for decision (${a.eventSignature()}, over " +
+                "${a.events.size} events)"
+        )
+        check(
+            a.events.size > MAZE_AGENTS,
+            "determinism: on an event log with something in it — ${a.events.size} events across " +
+                "$MAZE_AGENTS agents. An empty log's digest compares equal for the trivial reason."
         )
         check(
             a.routeSearches > 0,
@@ -505,6 +511,23 @@ object AlifeWallsGallery {
             .format("routed", r.arrived, r.n, r.fraction, r.meanArrivalSeconds, r.meanPath, r.contacts))
         println("[alife-walls]   %-8s arrived %3d/%3d = %.3f   mean arrival %6.2f s   mean path %7.1f   wall contacts %5d"
             .format("direct", d.arrived, d.n, d.fraction, d.meanArrivalSeconds, d.meanPath, d.contacts))
+        println("[alife-walls]   routed stranded: ${r.strandedSummary()}")
+        println("[alife-walls]   direct stranded: ${d.strandedSummary()}")
+
+        // The router with the traffic taken away. One agent, no `separate`, everything else the
+        // same. This is what separates "the plan is wrong" from "twelve agents are in each other's
+        // way", and the two have the same arrival fraction and completely different fixes.
+        val solo = soloRoute()
+        println(
+            "[alife-walls]   solo routed agent: arrived at %.2f s over %.0f units, %d contacts"
+                .format(solo[0] / HZ, solo[1], solo[2].toInt())
+        )
+        check(
+            solo[0] > 0,
+            "counterfactual: one routed agent with no traffic arrives — at " +
+                "${f(solo[0] / HZ, 2)} s of a ${f(MAZE_STEPS / HZ, 0)} s budget. With this " +
+                "green, a straggler in the crowded arm is a traffic result and not a routing one."
+        )
 
         check(
             r.fraction >= ROUTED_ARRIVAL_FLOOR,
@@ -568,6 +591,11 @@ object AlifeWallsGallery {
      *
      * Set as a *fraction* of the pooled population rather than per seed, because a per-seed floor on
      * eight seeds is eight chances to be unlucky and the claim is about the arms, not about seed 4.
+     *
+     * Measured 0.990 — 95 of 96 — and left at 0.80 rather than tightened to hug it. The gap is the
+     * fence's whole value: it is there to catch the routing breaking, and the two real bugs this
+     * figure found (see [MAZE_CLEARANCE] and `ObstacleField.clearPath`) both showed up as 0.78, so
+     * 0.80 is already inside the range where a regression is visible.
      */
     private const val ROUTED_ARRIVAL_FLOOR: Double = 0.80
 
@@ -789,19 +817,73 @@ object AlifeWallsGallery {
                 tag = if (routed) "routed" else "direct"
             ) {
                 val goal = point(MAZE_GOAL_X, MAZE_GOAL_Y)
-                moveUntil(
-                    maxSeconds = MAZE_STEPS / HZ,
-                    speed = MAZE_SPEED,
-                    until = { near(goal, MAZE_ARRIVE) }
-                ) {
-                    if (routed) route(goal, clearance = MAZE_CLEARANCE) else seek(goal)
-                    avoidWalls(clearance = 3.0, weight = 0.6)
-                    separate(range = 4.0, weight = 0.4)
+                // Wrapped in a phase, and logging the arrival, so that the run has an event
+                // timeline at all. Without one, `eventSignature()` is the digest of an empty log,
+                // which compares equal across two runs for the trivial reason — and a witness that
+                // agrees because there is nothing to disagree about is not a witness. The log line
+                // carries no text that varies, because `ScriptEvent` already stamps the tick: two
+                // runs that arrived on different steps differ in the signature regardless.
+                phase(if (routed) "route" else "seek") {
+                    val arrived = moveUntil(
+                        maxSeconds = MAZE_STEPS / HZ,
+                        speed = MAZE_SPEED,
+                        until = { near(goal, MAZE_ARRIVE) }
+                    ) {
+                        if (routed) route(goal, clearance = MAZE_CLEARANCE) else seek(goal)
+                        avoidWalls(clearance = 3.0, weight = 0.6)
+                        separate(range = 4.0, weight = 0.4)
+                    }
+                    if (arrived) log("arrived")
                 }
                 rest(2.0)
             }
         }
         return w
+    }
+
+    /**
+     * The same maze with one agent in it and no [afield.stdlib.BehaviourSteering.separate].
+     *
+     * Returns `arrivalStep, pathLength, wallContacts`, with `arrivalStep = 0` for a failure. The
+     * control for the *crowding*: the arm above runs twelve agents into one corridor, and twelve
+     * agents queuing at a gap is a perfectly good reason for a straggler that has nothing to say
+     * about whether the route was right.
+     */
+    private fun soloRoute(): DoubleArray {
+        val w = ScriptWorld(
+            width = ARENA, height = ARENA, fixedStep = 1.0 / HZ, seed = 1L, wrap = false
+        )
+        for ((i, s) in MAZE_WALLS.withIndex()) w.addWall(s[0], s[1], s[2], s[3], name = "barrier $i")
+        val a = w.spawn(
+            MAZE_START_X, MAZE_START_Y, maxSpeed = MAZE_SPEED, radius = MAZE_RADIUS,
+            steerResponse = 0.3, tag = "solo"
+        ) {
+            val goal = point(MAZE_GOAL_X, MAZE_GOAL_Y)
+            moveUntil(maxSeconds = MAZE_STEPS / HZ, speed = MAZE_SPEED, until = { near(goal, MAZE_ARRIVE) }) {
+                route(goal, clearance = MAZE_CLEARANCE)
+                avoidWalls(clearance = 3.0, weight = 0.6)
+            }
+            rest(2.0)
+        }
+        // The plan the drive will make, made once here as well so it can be printed. A route that
+        // is wrong is much easier to see as five coordinates than as a stuck agent.
+        val plan = w.findRoute(
+            MAZE_START_X, MAZE_START_Y, MAZE_GOAL_X, MAZE_GOAL_Y, MAZE_RADIUS + MAZE_CLEARANCE
+        )
+        println(
+            "[alife-walls]   solo plan: " + (plan?.let { p ->
+                (0 until p.size / 2).joinToString(" -> ") { "(%.0f,%.0f)".format(p[it * 2], p[it * 2 + 1]) }
+            } ?: "NO ROUTE")
+        )
+        var arrival = 0
+        repeat(MAZE_STEPS) { s ->
+            w.step()
+            if (arrival == 0 && a.distanceTo(MAZE_GOAL_X, MAZE_GOAL_Y) <= MAZE_ARRIVE) arrival = s + 1
+            if ((s + 1) % 450 == 0) {
+                println("[alife-walls]   solo at %5d: (%.0f, %.0f)".format(s + 1, a.position.x, a.position.y))
+            }
+        }
+        return doubleArrayOf(arrival.toDouble(), w.totalPathLength(), a.wallContacts.toDouble())
     }
 
     /** A box of agents that wander and reflect off the walls — the BOUNCE and seed-sensitivity arm. */
@@ -833,6 +915,8 @@ object AlifeWallsGallery {
         val n: Int,
         val arrived: Int,
         val arrivalSteps: List<Int>,
+        val strandedX: List<Double>,
+        val strandedY: List<Double>,
         val pathTotal: Double,
         val contacts: Int,
         val failures: Int
@@ -842,11 +926,30 @@ object AlifeWallsGallery {
             get() = if (arrivalSteps.isEmpty()) Double.NaN else arrivalSteps.average() / HZ
         val meanPath: Double get() = if (n == 0) 0.0 else pathTotal / n
 
+        /**
+         * Where the agents that did not arrive stopped, as one line.
+         *
+         * Worth printing even when the figure passes. A run whose stragglers are strung out along
+         * the last leg has simply run out of clock, and a run whose stragglers are all in one place
+         * is a run with a trap in it — those are different problems with the same arrival fraction,
+         * and the fraction alone never distinguishes them.
+         */
+        fun strandedSummary(): String {
+            if (strandedX.isEmpty()) return "none"
+            val n = strandedX.size
+            val mx = strandedX.average()
+            val my = strandedY.average()
+            val spread = (0 until n).map { hypot(strandedX[it] - mx, strandedY[it] - my) }.average()
+            return "%d at mean (%.0f, %.0f), mean spread %.0f".format(n, mx, my, spread)
+        }
+
         companion object {
             fun pool(arms: List<ArmResult>): ArmResult = ArmResult(
                 arms.sumOf { it.n },
                 arms.sumOf { it.arrived },
                 arms.flatMap { it.arrivalSteps },
+                arms.flatMap { it.strandedX },
+                arms.flatMap { it.strandedY },
                 arms.sumOf { it.pathTotal },
                 arms.sumOf { it.contacts },
                 arms.sumOf { it.failures }
@@ -865,12 +968,16 @@ object AlifeWallsGallery {
                 if (a.distanceTo(MAZE_GOAL_X, MAZE_GOAL_Y) <= MAZE_ARRIVE) arrivedAt[a.id] = s + 1
             }
         }
-        // Sorted by agent id, so the list is a function of the run and not of a hash map's order.
+        // Read back in agent-id order, so every list is a function of the run and not of a hash
+        // map's iteration.
         val steps = w.actors.mapNotNull { arrivedAt[it.id] }
+        val stranded = w.actors.filter { !arrivedAt.containsKey(it.id) }
         return ArmResult(
             n = w.actors.size,
             arrived = steps.size,
             arrivalSteps = steps,
+            strandedX = stranded.map { it.position.x },
+            strandedY = stranded.map { it.position.y },
             pathTotal = w.totalPathLength(),
             contacts = w.actors.sumOf { it.wallContacts },
             failures = w.failures.size

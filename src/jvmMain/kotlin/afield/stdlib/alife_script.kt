@@ -1846,9 +1846,20 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
      *
      * The route is kept between steps, not recomputed each one. A new search happens when there is
      * no route, when the target has moved more than [repathDistance] from where the current route
-     * was planned to, or when the agent has run out of waypoints short of the target. Searches are
-     * rationed by [ScriptWorld.maxRouteSearchesPerStep]; an agent refused a permit keeps following
-     * the route it has.
+     * was planned to, and — the one that matters most in practice — when the agent **stops making
+     * progress toward the waypoint it is aiming at** for [stallSeconds]. Searches are rationed by
+     * [ScriptWorld.maxRouteSearchesPerStep]; an agent refused a permit keeps following the route it
+     * has and asks again next step.
+     *
+     * The stall clause is not belt and braces, it is the difference between this working and not.
+     * A plan is a straight line between waypoints and an agent is not: it has inertia, it has other
+     * drives blended into it, and it is a disc rather than a point. So it clips corners. Clipping a
+     * corner puts it in contact with a wall, [WallResponse.SLIDE] carries it along the face, and if
+     * the waypoint it is aiming at is now straight through that wall, every subsequent step steers
+     * it into the wall and the tangential component is zero. Without a stall clause there is
+     * nothing that can ever change its mind. Measured, on the maze in `AlifeWallsGallery`: one
+     * agent alone in the arena, no crowding, travelled 100 units and then pressed on the same
+     * corner for 1 566 consecutive steps.
      *
      * **When there is no route at all** — a target sealed behind a closed wall, or an arena with no
      * walls in it — this falls back to exactly [seek]. That is deliberate: a drive that returned
@@ -1857,8 +1868,11 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
      *
      * @param clearance extra room beyond the agent's radius the route must leave. 0 plans the
      *   tightest legal path; a little more keeps an agent off the corners it is technically allowed
-     *   to graze.
+     *   to graze, and it is worth at least matching whatever [avoidWalls] the same agent is running,
+     *   or the two terms disagree round every corner.
      * @param repathDistance how far a moving target may drift before the route is replanned
+     * @param stallSeconds how long the agent may fail to close on its current waypoint before the
+     *   route is thrown away and replanned from where it actually is
      * @param waypointRadius how close counts as having reached a waypoint; the default is derived
      *   from the agent's radius and clearance
      */
@@ -1866,6 +1880,7 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
         t: ScriptTarget,
         clearance: Double = 0.5,
         repathDistance: Double = 8.0,
+        stallSeconds: Double = 0.75,
         waypointRadius: Double = -1.0,
         weight: Double = 1.0
     ) {
@@ -1873,10 +1888,16 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
         require(repathDistance > 0.0 && repathDistance.isFinite()) {
             "route repathDistance must be > 0, got $repathDistance"
         }
+        require(stallSeconds > 0.0 && stallSeconds.isFinite()) {
+            "route stallSeconds must be > 0, got $stallSeconds"
+        }
+        val stallLimit = max(2L, world.ticksFor(stallSeconds))
         var path: DoubleArray? = null
         var cursor = 0
         var plannedX = Double.NaN
         var plannedY = Double.NaN
+        var closest = Double.MAX_VALUE
+        var stalled = 0L
 
         drive(weight) { self, sense ->
             val goal = t.resolve(world, self)
@@ -1885,23 +1906,20 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
                 val wpR = if (waypointRadius > 0.0) waypointRadius else max(inflate * 1.5, 1.5)
 
                 if (!world.wallField.isEmpty) {
-                    val have = path
-                    val exhausted = have != null &&
-                        cursor >= have.size / 2 - 1 &&
-                        hypot(
-                            world.deltaX(self.sx, have[have.size - 2]),
-                            world.deltaY(self.sy, have[have.size - 1])
-                        ) <= wpR &&
-                        hypot(world.deltaX(self.sx, goal.x), world.deltaY(self.sy, goal.y)) > wpR
-                    val stale = have == null ||
-                        exhausted ||
+                    val stale = path == null ||
+                        stalled >= stallLimit ||
                         hypot(goal.x - plannedX, goal.y - plannedY) > repathDistance
                     if (stale && world.takeRoutePermit()) {
-                        val fresh = world.findRoute(self.sx, self.sy, goal.x, goal.y, inflate)
-                        path = fresh
-                        cursor = if (fresh == null) 0 else 1
+                        // Replanned from where the agent IS, not from where it set out. That is the
+                        // whole recovery: a fresh search from against the wall goes back round the
+                        // corner it clipped, whereas re-issuing the old plan would aim it at the
+                        // same wall again.
+                        path = world.findRoute(self.sx, self.sy, goal.x, goal.y, inflate)
+                        cursor = 1
                         plannedX = goal.x
                         plannedY = goal.y
+                        closest = Double.MAX_VALUE
+                        stalled = 0L
                     }
                 }
 
@@ -1911,26 +1929,40 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
                 if (p != null && p.size >= 4) {
                     val n = p.size / 2
                     if (cursor < 1) cursor = 1
-                    // Two ways to be done with a waypoint, and the second one matters more than it
-                    // looks. Reaching it is the obvious one; the other is being able to SEE the next
-                    // one, which means the corner this waypoint was placed to get round is behind
-                    // us. Without it an agent that turns too slowly to pass inside `wpR` circles its
-                    // waypoint forever, which is the standard way a waypoint follower gets stuck and
-                    // it is invisible in every check except a picture. Consecutive waypoints are
-                    // known clear at the full inflated radius — the string-pull established that —
-                    // so advancing one at a time on a plain sight line is sound.
+                    val was = cursor
+                    // Two ways to be done with a waypoint. Reaching it is the obvious one; the
+                    // other is that the NEXT one is already reachable in a straight line, which
+                    // means the corner this waypoint was placed to get round is behind us.
+                    //
+                    // `clearPath` at the full inflated radius, and not a plain sight line: a
+                    // zero-radius sight line lets an agent that can *see* past a corner skip to a
+                    // waypoint it cannot *fit* past, after which it presses on the corner. An agent
+                    // hugging a wall is inside its own inflation radius, so `clearPath` refuses
+                    // every skip until it has room again, which is the conservative answer and the
+                    // one that lets the stall clause above do the recovering.
                     while (cursor < n - 1 &&
-                        world.lineOfSight(self.sx, self.sy, p[(cursor + 1) * 2], p[(cursor + 1) * 2 + 1])
+                        world.wallField.clearPath(
+                            self.sx, self.sy,
+                            p[(cursor + 1) * 2], p[(cursor + 1) * 2 + 1],
+                            inflate
+                        )
                     ) cursor++
                     while (cursor < n - 1 &&
                         hypot(self.sx - p[cursor * 2], self.sy - p[cursor * 2 + 1]) <= wpR
                     ) cursor++
+                    if (cursor != was) { closest = Double.MAX_VALUE; stalled = 0L }
                     aimX = p[cursor * 2]
                     aimY = p[cursor * 2 + 1]
                 }
+
                 val dx = world.deltaX(self.sx, aimX)
                 val dy = world.deltaY(self.sy, aimY)
                 val d = hypot(dx, dy)
+                // Progress is measured against the CLOSEST the agent has ever been to this
+                // waypoint, not against last step's distance. Distance-to-last-step calls a single
+                // slow step a stall and an agent oscillating about a fixed point "progressing" on
+                // every other step; a running minimum does neither.
+                if (d < closest - PROGRESS_EPSILON) { closest = d; stalled = 0L } else stalled++
                 if (d < 1e-9) Vector2d(0.0, 0.0) else Vector2d(dx / d * sense.speed, dy / d * sense.speed)
             }
         }

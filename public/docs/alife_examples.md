@@ -61,6 +61,26 @@ labelling, colour mapping or marching cubes:
 - **`alife_field.kt`** — the [inline `ToHTML` views](#evaluating-one-of-these-in-a-box-the-inline-views),
   kept in their own file so the five above name nothing from Field's visualizer.
 
+Two later files extend the agent side along an axis this page does not walk through. Every system
+above advances a whole population with one call and one parameter block, so two agents differ only
+in their state and never in what they are trying to do:
+
+- **`alife_script.kt`** — [`ScriptWorld`](reference/alife.md#alife-script-kt-scriptworld) gives each
+  agent its own suspending *program* on a fixed-step clock: `forever`, `phase(name)`, `parallel`,
+  `moveUntil`, and steering composed from whichever behaviours are active right now. The same seed
+  gives the same run, bit for bit, across processes.
+- **`alife_walls.kt`** — and an environment for it to run in:
+  [`ScriptObstacle`](reference/alife.md#alife-walls-kt-scriptobstacle), swept circle collision with
+  a per-agent [`WallResponse`](reference/alife.md#alife-walls-kt-wallresponse), `avoidWalls` and
+  `cling`, and a radius-aware [`NavGrid`](reference/alife.md#alife-walls-kt-navgrid) so `route()`
+  can go round a barrier that direct `seek` presses into. On an S-maze, over 96 agents, routed
+  `seek` arrives 0.990 of the time against 0.000 for direct `seek` at the same budget.
+
+Both ship as loadable Field documents rather than as sections here —
+`dev_docs/agents/demos/alife_script/` and `dev_docs/agents/demos/alife_walls/` — because their
+figures are trails and arrival curves rather than rasters, and the point of a scripted agent is
+that you edit its program and re-run it.
+
 Things it does not do, so you are not surprised:
 
 - **CPU only.** These are reference implementations you can read. The GPU story is
