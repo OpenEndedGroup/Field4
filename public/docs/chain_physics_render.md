@@ -89,7 +89,7 @@ Field's own `isWatertight()` and `genus()` read the returned mesh's indices, and
 reads its own half-edge structure. Both are in the readout because two implementations that share no
 code, agreeing about a surface, is evidence about the bridge between them.
 
-## What the tracer refuses, and what the bridge does about it
+## Degenerate triangles at the bridge
 
 The hull of two balls has a fan of triangles where the two hemispheres meet, and a union of several
 hundred of them leaves a noticeable number of those with no area at all.

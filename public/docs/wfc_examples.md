@@ -22,7 +22,7 @@ generated. It also means the failure modes are constraint-solver failure modes: 
 it deadlocks, under-constrain it and you get correct mush, and the interesting work is almost always
 in the rules rather than in the solver.
 
-## What this implementation does, and does not do
+## Source file
 
 `afield.stdlib.wfc` is a single file with no dependencies beyond `java.awt.image` and `ImageIO`. It
 covers:

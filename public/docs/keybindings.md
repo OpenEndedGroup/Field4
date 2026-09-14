@@ -1,4 +1,4 @@
-# Keyboard shortcuts, and how to change them
+# Keyboard shortcuts
 
 Every keyboard shortcut in Field is one line in one file that belongs to you:
 

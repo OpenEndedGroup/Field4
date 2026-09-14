@@ -148,7 +148,7 @@ is *not* resolution-dependent is the identity between the genus and the componen
 components summing to the whole: those hold at every spacing, because they are arithmetic about
 whatever surface was produced rather than measurements of the field.
 
-!!! warning "`parallel = true` does not return the same mesh twice"
+!!! warning "`parallel = true` is nondeterministic"
 
     The readout above uses `parallel = false`, and the reason is not caution. Marched four times on
     this identical field the parallel path returned 5376, 5376, 5374 and 5376 triangles, volumes

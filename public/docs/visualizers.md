@@ -238,10 +238,10 @@ painted **magenta**:
 
 ![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png)
 
-That last one is not a cosmetic nicety. Before this renderer existed, one NaN
-poisoned `min()`/`max()`, `normalized()` returned an all-NaN image, the PNG
-quantiser turned NaN into `0`, and you got a silently **all-black** thumbnail
-captioned `range NaN…NaN`. An image that is wrong should look wrong.
+Magenta because the alternative is silence: one NaN poisons `min()`/`max()`,
+`normalized()` returns an all-NaN image, and the PNG quantiser turns NaN into
+`0`, so a broken image comes back as an **all-black** thumbnail captioned
+`range NaN…NaN`. An image that is wrong should look wrong.
 
 Four-channel images sit on a checkerboard, so transparent black and opaque black
 are different pictures:
@@ -410,7 +410,7 @@ Histograms answer “what values have I seen?”, history answers “how did the
 
 The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
 the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
-[Frames, and what a frame is](animation_time_model.md).
+[Frames and the animation loop](animation_time_model.md).
 
 <!--
 FIELD_TEST
@@ -648,7 +648,7 @@ Some values `.h2` hands straight back to `.h`, because the compact rendering alr
 
 To see all of it at once, insert the **h2 Explorer Examples** template and run its boxes top to bottom.
 
-### Markdown, when the figure is captions and tables
+### Markdown for captions and tables
 
 The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)` — reliably longer than the code it was meant to illustrate, and reaching for a different shade of grey each time.
 

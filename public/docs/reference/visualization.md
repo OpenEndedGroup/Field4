@@ -1388,7 +1388,7 @@ without it the fragment logs to the console and draws nothing.
 
 `src/jvmMain/kotlin/afield/visualization/plotly.kt` — [read the source](source/jvmMain/afield/visualization/plotly/)
 
-**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md), [Where do these things sit, relative to each other?](../projection_examples.md)
+**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md), [Projecting a distance matrix](../projection_examples.md)
 
 ### Top-level functions { #plotly-kt-functions }
 
@@ -1447,7 +1447,7 @@ a string returned from a `Table.format` lambda is trusted HTML and inserted as-i
 
 `src/jvmMain/kotlin/afield/visualization/tables.kt` — [read the source](source/jvmMain/afield/visualization/tables/)
 
-**Used in:** [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How completions are ranked](../completion_ranking.md)
+**Used in:** [Frames and the animation loop](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How completions are ranked](../completion_ranking.md)
 
 ### Top-level functions { #tables-kt-functions }
 

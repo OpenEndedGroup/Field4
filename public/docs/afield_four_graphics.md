@@ -804,7 +804,7 @@ loop {
 }
 ```
 
-Three lines carry the idea. `renderer.renderList += "target" to target` schedules the offscreen pass. `target += "boo" to module` puts the drawing inside that pass instead of on screen. And `target.parameters.clearFirst = true` shows that the target's parameters stay live: you can flip them from the editor while the loop is running, which is the point of doing this in Field rather than in a build.
+Three lines carry the idea. `renderer.renderList += "target" to target` schedules the offscreen pass. `target += "boo" to module` puts the drawing inside that pass instead of on screen. And `target.parameters.clearFirst = true` shows that the target's parameters stay live: you can flip them from the editor while the loop is running, with no rebuild.
 
 The consuming box is a **child** of the producer, and that is the whole binding mechanism:
 
@@ -1471,7 +1471,7 @@ void main() {
 }
 ```
 
-`push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. This is the payoff of the reflected-interface contract this page opened with: at a million particles the shader is still the thing you edit.
+`push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. The reflected-interface contract this page opened with still holds at a million particles: the shader is the thing you edit.
 
 No figure, and the reason is a property of DLA rather than of Field. Aggregation is a race between walker density and canvas area, and the legible window between the two failure modes is narrow. Captured as written, a million walkers over a 4112×2524 window, eight seconds and 600 frames grow a cluster a few pixels across on a field of near-black walkers: correct, and invisible at page scale. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on the first step, so the whole field sticks at once and the picture is uniform magenta noise. A good still needs a density between those and more frames than a docs build should spend, so it is left to run live.
 

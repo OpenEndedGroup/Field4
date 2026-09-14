@@ -1,4 +1,4 @@
-# Where do these things sit, relative to each other?
+# Projecting a distance matrix
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Data](reference/data.md#smile-mds-kt) and [Math](reference/math.md).*
@@ -193,7 +193,7 @@ whether you kept 2 components or 15. It tells you how the components you kept di
 themselves and nothing whatever about how much you threw away. The stress figure above is the number
 that answers that, and you have to compute it yourself.
 
-## A graph distance, and why hops beat straight lines
+## A graph distance: hop count on a KNN spiral
 
 The second case the KDoc advertises. Take 160 points along a two-turn spiral, join each to its four
 nearest neighbours with `vec2KnnGraph` (`graph_connectivity.kt:584#fun vec2KnnGraph(`), and count
@@ -316,8 +316,8 @@ spiral's x-coordinate crosses the same value four times. Against a fitted arc le
 rank, the graph coordinate is linear at Pearson **0.9852** against **0.3238**.
 
 Nothing here is a property of MDS; it is a property of the distance you chose. Both fits are the
-same call with the same options. Change the matrix and the projection answers a different question,
-which is the argument for having the matrix-taking entry point at all.
+same call with the same options. Change the matrix and the projection answers a different question —
+which is why the matrix-taking entry point exists.
 
 What has to be checked is the graph, and the fence checks it: **worst `|i − j|` over an edge = 4**,
 so no edge has jumped between arms. A single shortcut edge would collapse two arms into one and the
@@ -482,7 +482,7 @@ and the default of 30 sits at the end of that range where global distance means 
     The lock also means concurrent t-SNE fits queue rather than parallelise. On a long fit that is
     visible, and it is the price of the guarantee above.
 
-## `positiveCorrection`, and what it actually buys
+## `positiveCorrection`
 
 A cosine distance is not Euclidean. Neither is an edit distance or a hop count. For such a matrix
 the double-centred learning matrix has negative eigenvalues, and classical MDS has nothing to take a

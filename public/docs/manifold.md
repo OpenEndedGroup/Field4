@@ -27,7 +27,7 @@ part.triangleCount // 1052
 display(part.toTriMesh())
 ```
 
-## What "guaranteed" buys you: the numbers are exact
+## The numbers are exact
 
 Manifold measures the **solid** rather than summing over float triangles, so the primitives come back
 to the last digit. That changes how the API feels: the results are arithmetic you can do and assert
@@ -50,7 +50,7 @@ on, instead of a render you eyeball.
 A cube slices to exactly `4.0`, and a 2×2×2 cube split at `z = 0.5` gives halves of exactly `2.0`
 and `6.0`.
 
-## Booleans, and a part you could actually machine
+## Booleans
 
 A chain of these cannot stop being a solid without saying so. Note `Solid.union(list)` rather than
 folding `+` (Manifold plans the whole batch instead of nesting *n−1* operations), and
@@ -161,7 +161,7 @@ Two calls, both in `afield.stdlib`, both documented at length under
 
 `repairToSolid()` welds, drops degenerate and duplicated faces, removes dangling fins, fixes the
 winding, **fills the holes**, and fixes the winding again, then hands back a `MeshRepairResult`
-rather than a mesh, because the interesting part is `unfixed`: the blocking defects still present,
+rather than a mesh, because what you need next is `unfixed`: the blocking defects still present,
 each with the reason it was left alone. `ToyCar.glb` in this repo goes through it and comes out a
 solid you can boolean.
 
@@ -184,7 +184,7 @@ triangles and capping the gap would produce a plausible solid missing an unknown
 
 `TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default.
 
-## 2D: the offset is the other reason to be here
+## 2D sections and offsets
 
 `Section` is Manifold's `CrossSection`, which is [Clipper2](https://github.com/AngusJohnson/Clipper2)
 underneath. Field draws and booleans 2D outlines already, through `FLine` and the Java2D `Area`
@@ -451,7 +451,7 @@ display(swollen.toFLines())
 `TriMesh`'s positions are `Float` and Manifold's `MeshGL` is `float32`, so going **in** is exact and
 coming **out** narrows Manifold's internal doubles to precisely the precision `TriMesh` stores anyway.
 
-### Two meshes, and which one to measure
+### Two forms of `toTriMesh`
 
 `toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
 because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:

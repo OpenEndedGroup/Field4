@@ -944,7 +944,7 @@ Read the last two blocks together: `"bd*4"` and `"bd [sd sd] hh*4"` are the same
 *where*. That is "visual music" read literally rather than metaphorically, and it is why
 mini-notation belongs on the geometry side at all.
 
-### Variation — the part a loop cannot do
+### Variation operators
 
 Repetition is cheap; repetition that *differs* is what reads as alive. These are the operators
 that make bar `n+1` unlike bar `n`, and they are worth reaching for even on material that has

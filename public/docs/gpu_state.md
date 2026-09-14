@@ -144,7 +144,7 @@ simulation for as long as it runs.
 
 ---
 
-## Bindings are lambdas, and where they go
+## Bindings are lambdas
 
 A `ComputeMesh` member holds a lambda, which Field evaluates once per dispatch rather than once at
 assignment:
@@ -389,7 +389,7 @@ Three boxes appear and a window opens. The knobs worth turning, in the order the
 - **The scale inside that program.** Change the `7.0`s in `input [7.0,7.0,7.0,0.048] *` to `3.0` or
   `14.0` — the same field coarser or finer. This is the knob that decides whether the picture reads as
   blobs or as filaments, and the fourth component is the rate it evolves at.
-- **Break it on purpose.** Open `vfield` with `=c` instead of `>c` and the box's `stack.auto` channel
+- **Make it fail.** Open `vfield` with `=c` instead of `>c` and the box's `stack.auto` channel
   opens with `problem: definition \`vfield\` ends with 2 values on the stack, not 1`. Or bind
   `input xyz 2.0 * fbm x 0.5 - 8.0 *` — one 2D `fbm` over a 3D position — and watch the disc collapse
   into the stripes the figure above shows.
@@ -419,5 +419,5 @@ python3 tools/field_backdoor.py --port 9483 --graphics-context \
 - [StackSL Examples](stacksl_examples.md) and the [StackSL
   Cheatsheet](stacksl_cheatsheet.md) — the language in the force slot, its vocabulary, and the arity
   rule the report above is checking.
-- [Frames, and What a Frame Is](animation_time_model.md) — what `frameCounter` is counting, and what
+- [Frames and the Animation Loop](animation_time_model.md) — what `frameCounter` is counting, and what
   a `loop {}` does that makes a binding inside one land late.

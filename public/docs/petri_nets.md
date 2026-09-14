@@ -116,7 +116,7 @@ displayOpen("main")
 :::endfold
 ```
 
-The companion question is the one that matters at two in the morning: **is this about to wedge?**
+The companion question: **is this about to wedge?**
 
 ```diffstatic {data-lang=kotlin}
 net.willDeadlock()      // false — it loops
@@ -467,7 +467,7 @@ that has no Go toolchain, and `D2Layout.available` tells you which of the two yo
 Field prints the build command when a box asks for TALA and cannot find the binary, with an install
 hint when `go` is missing as well.
 
-### Every interleaving, exactly — and the sequence that breaks it
+### Every interleaving, exactly
 
 Both of those answers are narrower than they sound. `willDeadlock()` runs the net forward **under
 its own conflict policy** and reports whether *that one* interleaving wedged; `deadTransitions()`
@@ -578,7 +578,7 @@ So a musical net is nowhere near the wall and a concurrency puzzle can be. Eleve
 16 238 markings in 230 ms and `COMPLETE`; **twelve is past the budget**, and the search says
 `BUDGET` and returns `null` from `canDeadlock` rather than guessing.
 
-The coloured-token row is the one to check. A `petriSong` carries a whole `PatPattern` in each
+The coloured-token row could have gone the other way. A `petriSong` carries a whole `PatPattern` in each
 token's colour, and a strict key distinguishes colours that `signature()` would have merged, so the
 space could have multiplied; but the sections live in separate places and exactly one token
 circulates, so it stays linear. Colour multiplies the state space
@@ -628,43 +628,24 @@ Three limits bound what it will answer:
   on such a net returns an unreduced (and therefore still `exact`) graph, with no complaint and with
   `graph.reduction == PetriReduction.NONE` saying so.
 
-#### The corpus the reduction is checked against
+#### Read and inhibitor arcs break the closure
 
 The three limits above are what the theorem says; the reduction is about eighty lines of code
-deciding what *not* to explore, and a theorem does not check code. So both searches are run over
-generated nets and made to agree, on something sharper than "does a deadlock exist": existence is
-the weakest possible oracle, because a net with three deadlocks agrees on existence while the
-reduction loses two of them. What is compared is the **set** of reachable terminal markings, the
-length of the counterexample, containment of the reduced state set in the full one, and every
-accessor gated on `exact` refusing.
+deciding what *not* to explore, and a theorem does not check code. A differential test runs both
+searches over about fifteen hundred generated nets and compares the **set** of reachable terminal
+markings, the length of the counterexample, containment of the reduced state set in the full one,
+and every accessor gated on `exact` refusing. `dev_docs/PETRI_REDUCTION_AGREEMENT.md` has the
+corpus, the floors and a run's numbers.
 
-The corpus is 1 497 nets over six families across a fixed seed list, half of them plain
-place/transition nets as a control and half saturated with the read arcs, inhibitor arcs, capacities
-and arc weights that are this model's additions to the classical one, which is precisely where the
-classical argument stops being free.
-
-| | |
-| --- | ---: |
-| nets compared | 1 497 |
-| reachable markings across the corpus | 137 001 |
-| markings the reduced search visited | 27 727 — **20.2%** |
-| nets strictly pruned | 840 |
-| nets that can deadlock / cannot | 758 / 739 |
-| nets with two or more distinct deadlocks | 247 |
-| widest single net | 3 465 markings |
-| disagreements | 0 |
-
-The closure has to be symmetric, and that is what the saturated half of the corpus is for. A
-stubborn set must be closed under "this transition may disable that one" as well as under the
-reverse. In a plain place/transition net the two coincide: if firing `t` disables `t'` they share an
-input place, so `t'` is in the set already. They stop coinciding once a transition can starve a
+Half of that corpus is saturated with read arcs, inhibitor arcs, capacities and arc weights,
+because the closure has to be symmetric and those are where it stops being. A stubborn set must be
+closed under "this transition may disable that one" as well as under the reverse. In a plain
+place/transition net the two coincide: if firing `t` disables `t'` they share an input place, so
+`t'` is in the set already. They stop coinciding once a transition can starve a
 **read** arc it does not consume from, or arm an **inhibitor** arc by producing into its place, and a
 one-directional closure can then call a net deadlock-free that the full search wedges in five
 firings, which is the one direction of error this layer exists not to make. A three-transition net
 and a four-transition net pin each case.
-
-The pruning ratio is itself asserted at a floor just under its measured value, because a reduction
-that stopped reducing without saying so would agree with the full search perfectly and prove nothing at all.
 
 #### When the state space is infinite
 
@@ -694,7 +675,7 @@ the monotonicity argument that ω rests on, so each adds a line to `coverability
 `petri_state_space` in the [transcript gallery](agent_transcripts.md) is all of this as five
 runnable boxes.
 
-### A bounded buffer, and a proof that it cannot leak
+### P-invariants on a bounded buffer
 
 A *P-invariant* is a weighted sum of token counts that no transition can change: a conservation
 law, read straight off the incidence matrix. For a producer/consumer buffer that is exactly the
@@ -745,7 +726,7 @@ All three come out of the arcs; nothing declares them.
 
 ---
 
-## What the notation cannot do
+## Limits of the notation
 
 Three limits:
 

@@ -259,12 +259,12 @@ full-sweep circle where it used to need several arcs and a line. The topology of
 changing, not just its shape.
 
 Third, on the way back down the discs re-open and the arcs flatten, and at exactly 1.0 the whole
-diagram snaps back to straight lines. That snap is real rather than a rendering artefact: the type of
-every boundary piece is decided by an *exact* equality of weights, so it is genuinely discontinuous in
-the geometry while looking continuous in the picture.
+diagram snaps back to straight lines. The snap is in the geometry, not in the drawing: the type of
+every boundary piece is decided by an *exact* equality of weights, so it is discontinuous there while
+the picture around it moves smoothly.
 
 The sweep below is an `animate { }` reading `AnimationClock`, Field's frame model, described in
-[Frames, and what a frame is](animation_time_model.md). Writing the sweep against the clock rather
+[Frames and the animation loop](animation_time_model.md). Writing the sweep against the clock rather
 than against `frameNumber` is what makes the recorded clip identical on every build.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/apollonius_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="apollonius-weight-sweep" alt="an Apollonius diagram of five sites with one site's weight rising from 1.0 to 2.7 and falling back, its straight bisectors bowing into circular arcs that grow until two neighbouring cells pinch shut into complete discs, then re-open and flatten"}
@@ -406,22 +406,20 @@ showPlaneGrid(
 
 ![Three panels: the Voronoi cells of six sites recovered as an iso-contour at 0.05, four nested iso levels shrinking each cell inwards, and a cubic FLine outlined by two tube radii](assets/spatial_geometry_examples/contours.png)
 
-The left panel is the sanity check, and it carries a trap. Contouring `d₂ − d₁` at a
-*small positive* level recovers the Voronoi diagram of the six sites (**15 contours, 868 points**)
-from an entirely different algorithm than the panel two sections up. Contouring it at **exactly zero
-finds nothing: 0 contours**, and that is the right answer, not a bug. Marching squares locates *sign
-changes*, and `d₂ − d₁` is non-negative by construction: over that window its range is
-`1.6e-8 … 2.0`. It *touches* zero along the seams and never crosses. A level set that a field only
-grazes is invisible to a marcher, and a smaller epsilon will not rescue it; ask a question the field
-can answer instead. Every distance-gap, every absolute value, every `min`-of-distances field behaves
-this way.
+The left panel contours `d₂ − d₁` at a *small positive* level, which recovers the Voronoi diagram of
+the six sites — **15 contours, 868 points** — from an entirely different algorithm than the panel two
+sections up. Contour the same field at **exactly zero** and you get nothing: **0 contours**, and that
+is correct. Marching squares locates *sign changes*, and `d₂ − d₁` is non-negative by construction
+(over that window its range is `1.6e-8 … 2.0`), so it touches zero along the seams and never crosses.
+A level set a field only grazes is invisible to a marcher, and a smaller epsilon will not rescue it.
+Every distance-gap, every absolute value, every `min`-of-distances field behaves this way, so ask a
+question the field can answer instead.
 
-Ask for 0.05 and you get each cell shrunk inwards by that margin, which is a *better* picture anyway.
-The middle panel is the payoff: raise the level further and the cells shrink with **rounded** corners,
-because the field is smooth where three cells meet. That is a tessellation you cannot get by clipping
-half-planes at any tolerance. The contour count drops from 15 to 6 as the level rises, because at 0.05
-several cells still run out of the sampling window and arrive as open runs, while by 0.35 all six are
-closed loops entirely inside it.
+At 0.05 each cell comes back shrunk inwards by that margin. Raise the level further, as the middle
+panel does, and the cells shrink with **rounded** corners, because the field is smooth where three
+cells meet — a tessellation you cannot get by clipping half-planes at any tolerance. The contour count
+drops from 15 to 6 as the level rises: at 0.05 several cells still run out of the sampling window and
+arrive as open runs, while by 0.35 all six are closed loops entirely inside it.
 
 The right panel is the other entry point. `pointEdgeScalarField2D` builds a field from points and
 edges — or straight from an `FLine`, sampling its cubics — as the union of weighted discs and

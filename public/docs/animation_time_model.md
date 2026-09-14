@@ -1,4 +1,4 @@
-# Frames, and what a frame is
+# Frames and the animation loop
 
 Every animated thing in Field runs on one mechanism. `animate { }` in a box, the ALife evolution
 driver, a subprocess streaming its stdout into an output panel, the renderer's own `start(renderer::run)`
@@ -23,7 +23,7 @@ One property of the loop sets up everything else here:
 
     So if you write motion as a function of `frameNumber` it will run at a different speed on a
     different machine, and at a different speed again while a shader is compiling. Write it as a
-    function of [`AnimationClock.nowSeconds()`](#time-if-you-actually-meant-seconds) instead.
+    function of [`AnimationClock.nowSeconds()`](#time-in-seconds) instead.
 
 ## The loop
 
@@ -396,7 +396,7 @@ spends two frames of it repainting the stopped state in red.
     epoch mechanism and the caller sweep are written up in
     `dev_docs/frames_stop_end_phase.md`.
 
-## Time, if you actually meant seconds
+## Time in seconds
 
 `AnimationClock.nowSeconds()`, in `Runloop.kt`, is the time source to write motion against.
 Ordinarily it is monotonic wall time. Its second mode is the reason it exists:

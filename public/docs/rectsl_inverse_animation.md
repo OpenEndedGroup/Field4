@@ -383,7 +383,7 @@ bit-identical at all 4001 samples of a winding circle. And `atan2` is a **primit
 than `atan(y/x)` with a quadrant fix-up, because a fix-up divides first: `-0.0 / -1.0` is `+0.0`, so
 the answer comes out `+pi` where the truth is `-pi`. Half a turn, from two inputs that compare equal.
 
-## What is still refused, and whether that is permanent
+## What the lowering refuses
 
 A wrong derivative is worse than no derivative, so the lowering never guesses. `Track.toFn()` returns
 `RectSLFnLowering.Refused(why, closable, missing)` rather than a null or a plausible-looking zero.
@@ -453,7 +453,7 @@ error at a 1e-6 relative step, not the gradient's.
 The figure at the top of this page is a CPU raster rather than a GPU capture. Its rectangles are
 sampled from the tracks at the instants shown, but they are not the shader's own answer.
 
-??? aside "Where the oracle is, and how good the two halves of it are"
+??? aside "The characterization corpus"
     The golden is a 64,490-line characterization corpus and `RectSLFnBackendTest` reads it as data.
     Its first 37,057 lines were generated from pre-refactor code, so for those rows the oracle came
     out of a generator nobody can run today. The remaining rows cover the four musicality examples

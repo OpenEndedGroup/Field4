@@ -105,7 +105,7 @@ marker. Line 5 there is line 5 of the box, not line 5 of some string: the offset
 inferred from where the literal sits in the box's own code, because it is zero only when the
 `sonicPi(` call happens to be the first line.
 
-## What is making sound, and where
+## Which line is making sound
 
 Sonic Pi tells its client which line just triggered a note. `play`, `synth`, `sample`, `control`,
 `play_chord` and the `with_fx` / `live_loop` block boundaries each report the caller's line, so the
@@ -384,12 +384,8 @@ sample-accurately, and the lowering emits `Rational(1, 3)` rather than `0.333`.
 
 ![The recorded pattern. Blue is what the pattern asked for, green is what the recording contains.](assets/sonic_pi/pattern_onsets.png)
 
-Two details of the probe are what make a number that exact meaningful. Onsets are refined to the
-sample rather than left at the analysis frame: a flux peak in a 256-sample window can only say which
-*frame* something happened in, and at a resolution of 2.7 ms a measurement coarser than the thing it
-measures will read `0.0 ms` whatever the truth is. And onsets are deduplicated against the pattern's
-own smallest gap, because `bd_haus` has a secondary energy rise 129 ms into its decay that a
-first-past-the-post refractory would report in place of the attack that follows it.
+`dev_docs/SONIC_PI_MEASUREMENTS.md` has how the onset instrument is built, which is what makes a
+figure that small mean anything.
 
 ### A document to open
 

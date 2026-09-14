@@ -17,7 +17,7 @@ comma-separated list of *tags*, and every consumer downstream selects on those t
 are **921**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
 **221**<!--count:logChannelStrings--> distinct channel strings between them, so the
-vocabulary is already large and already load-bearing.
+vocabulary is already large and the channel strings are not easily renamed.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour
 (`PinnedConsole.kt:1024#val LEVELS = listOf("error", "warning", "warn", "info", "debug", "trace")`),
@@ -262,7 +262,7 @@ Muted, and delivered. Four<!--count:consoleMuteDefaults--> channels are muted ou
 box — `info,boxes`, `info,persist`, `info,ai.boxnames` and `debug,boxes` — and every one of
 them is still in the log widget and still in the archive when you go looking for it.
 
-## Blocks, and what the indent actually holds
+## Blocks and the indent
 
 `lblock` brackets a scope with a BEGIN and an END event sharing a `blockId`, so a consumer
 can fold the lines between them:

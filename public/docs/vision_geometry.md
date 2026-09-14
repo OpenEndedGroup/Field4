@@ -343,7 +343,7 @@ you catch a rebuild that only goes wrong at one phase of the motion:
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>
 
-### Winding, and why a mesh can be invisible
+### Winding and invisible faces
 
 The preview culls back faces because the head does. That reproduces the most common way a mesh goes
 wrong: a face wound the other way is simply not there.

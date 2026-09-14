@@ -1,4 +1,4 @@
-# Physics: particles, constraints, and the one number that decides everything
+# Physics: particles, constraints and cloth
 
 Field has a particle solver. `afield.four.physics.SimdVerlet` holds some thousands of particles in
 flat float arrays, pulls them toward each other with distance constraints, and integrates them with
@@ -16,7 +16,7 @@ that **`stiffness` and `iterations` are not two knobs.**
     Open the **`cloth_simdverlet_start`** starting point from Field's welcome screen, also listed in
     the [Agent Transcript Gallery](agent_transcripts.md): a 20 × 10 sheet, an explicit `loop { }`,
     and the debug view, already hanging. Come back here when you want to change the numbers.
-    [Frames, and What a Frame Is](animation_time_model.md#a-physics-system-in-the-loop) has the same
+    [Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop) has the same
     scene as a moving picture, and explains why an integrator wants a fixed `dt`.
 
 ---
@@ -155,7 +155,7 @@ Four different-looking settings, one sheet. The furthest any particle strays fro
 frames. If you were turning `iterations` up expecting the drape to tighten, you were turning
 `stiffness` up by the same factor and would have got there sixteen times cheaper by typing it.
 
-### …and where floating point catches up
+### Where floating point catches up
 
 The equivalence is exact in real arithmetic and *not quite* exact in `float`: adding `k·e` sixteen
 times is not the same rounding as adding `16k·e` once. A hanging sheet amplifies small differences,
@@ -226,7 +226,7 @@ settings are the same cloth for as long as anyone is watching, and are not the s
 If you need a run to reproduce bit-exactly (recording, regression-testing), pin the split as well as
 the product.
 
-### So tune the product
+### Tune the product
 
 Because there is only one number, there is only one ladder to climb. Same sheet, same 400 frames, and
 the worst strain any single constraint reaches at any point in the run: `|length − rest| / rest`,
@@ -347,7 +347,7 @@ rather than a stiffener.
     off. The note itself puts the two about 1.7 times apart on every stable rung. Same ordering,
     same conclusion, two different questions.
 
-### The other end of the band
+### Divergence at the high end
 
 At a high enough product the solve does what explicit integration does: the correction overshoots,
 the overshoot is corrected harder, and the run stops being a number. There is no automatic clamp and
@@ -445,7 +445,7 @@ into the block above; it is cheap, and it goes wrong long before the drawing doe
 
 ---
 
-## Curvature, and why the default looks broken
+## Curvature and the size of its default
 
 Distance constraints alone give you a net, not a fabric. Nothing in them resists *bending*: a sheet
 can fold to a crease and every spring is still at rest length. `Cloth` adds an optional curvature
@@ -706,7 +706,7 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   and correctly instead of quickly and approximately, and
   [tetrahedral meshing](reference/simulation.md#tetgen-kt), which is what stands between a solid and
   a solver that wants elements.
-- **[Frames, and What a Frame Is](animation_time_model.md#a-physics-system-in-the-loop)** — the same
+- **[Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop)** — the same
   cloth as a moving picture, and the argument for a fixed `dt`. It also has the generator layer that
   `addPidPositionController` is written in.
 - **[Agent Transcript Gallery](agent_transcripts.md)** — `cloth_simdverlet_start`, the openable
