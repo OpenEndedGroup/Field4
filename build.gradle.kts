@@ -1916,21 +1916,32 @@ tasks.register<JavaExec>("regenerateAgentTranscriptStartingPoints") {
 // and in loose sidecar files. Field prefers the loose file, so editing one makes the live demo look
 // correct while the canonical portable document silently stays stale. Check every pair byte-for-byte;
 // regenerate through SavingContext's EDN codec rather than hand-editing the serialized document.
+// The comparison is on decoded values, which is blind to spelling — the EDN parser accepts \uXXXX
+// and the printer only ever writes the character — so the guard also requires each metadata.edn to
+// be byte-for-byte what the codec produces. Without that, a hand-authored document passes the guard
+// yet comes back modified from every regenerate, in every branch.
 tasks.register<JavaExec>("checkAgentDemos") {
     group = "verification"
-    description = "Fails when a dev_docs/agents/demos metadata.edn inline fallback differs from its loose sidecar file."
+    description = "Fails when a dev_docs/agents/demos metadata.edn inline fallback differs from its loose sidecar file, or when metadata.edn is not byte-for-byte what Field's EDN codec writes."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.AgentDemoDriftGuard")
 }
 
+// Regenerating writes metadata.edn for every document it visits, and re-encoding is not always
+// byte-identical to what is committed: logging_layer was hand-authored with \uXXXX escapes that the
+// codec re-emits as literal characters, so until 2026-09-14 adding one demo came back with an
+// unrelated file modified — an add/add conflict waiting for two branches that each add a demo.
+// The committed corpus is now all in the codec's own form, so a full run is a no-op on a clean
+// tree; -Ponly=<name>[,<name>] narrows it further, to the document(s) actually being worked on.
 tasks.register<JavaExec>("regenerateAgentDemos") {
     group = "documentation"
-    description = "Refreshes dev_docs/agents/demos metadata.edn inline fallbacks from their loose files through Field's EDN codec."
+    description = "Refreshes dev_docs/agents/demos metadata.edn inline fallbacks from their loose files through Field's EDN codec. Pass -Ponly=<document>[,<document>] to touch only those demos."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.AgentDemoDriftGuard")
     args("--write")
+    (project.findProperty("only") as String?)?.takeIf { it.isNotBlank() }?.let { args("--only", it) }
 }
 
 // Field's automation substrate has Python tests, and until 2026-07-30 nothing ran them. The three

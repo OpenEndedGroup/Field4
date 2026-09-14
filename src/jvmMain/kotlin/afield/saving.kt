@@ -38,6 +38,14 @@ data class InlineFileSnapshot(
     val inline: String,
 )
 
+/**
+ * A document's `metadata.edn` as Field's codec would write it, with the inline fallbacks refreshed.
+ *
+ * [paths] are the sidecars that were folded back in, in document order; [metadataEdn] is the exact
+ * text [SavingContext.refreshInlineFilesFromDisk] would save.
+ */
+data class InlineMetadata(val paths: List<String>, val metadataEdn: String)
+
 private data class BoxRef(val id: String)
 private data class FileRef(val path: String)
 private data class FileInline(val path: String, val inline: String)
@@ -1275,6 +1283,23 @@ class SavingContext {
      * Returns the refreshed relative paths in document order.
      */
     fun refreshInlineFilesFromDisk(directory: String): List<String> {
+        val refreshed = canonicalInlineMetadata(directory)
+        File(File(directory).canonicalFile, METADATA_EDN)
+            .safeSave(refreshed.metadataEdn, createBackup = false, atomic = true)
+        return refreshed.paths
+    }
+
+    /**
+     * What [refreshInlineFilesFromDisk] would write, without writing it.
+     *
+     * Re-encoding is not the identity on a hand-authored artifact: the parser accepts `\uXXXX` in a
+     * string and the printer emits the character itself, so a metadata.edn that was never written by
+     * Field comes back changed with nothing semantically different about it. Comparing this against
+     * the committed bytes is how a guard tells "this document is the codec's own output" from "this
+     * document merely decodes to the same values" — the second one makes `--write` dirty a file
+     * nobody touched.
+     */
+    fun canonicalInlineMetadata(directory: String): InlineMetadata {
         val root = File(directory).canonicalFile
         val metadata = File(root, METADATA_EDN)
         require(metadata.isFile) { "missing $METADATA_EDN in ${root.path}" }
@@ -1302,9 +1327,7 @@ class SavingContext {
         }
 
         val decoded = Edn.read(metadata.readText(), ednCustom)
-        val encoded = Edn.write(refresh(decoded), ednCustom)
-        metadata.safeSave(encoded, createBackup = false, atomic = true)
-        return refreshedPaths
+        return InlineMetadata(refreshedPaths, Edn.write(refresh(decoded), ednCustom))
     }
 
     fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
