@@ -17,6 +17,22 @@ import kotlin.concurrent.withLock
 import kotlin.io.path.exists
 
 /**
+ * Hosting MorphoHDL's own compiler: one GraalJS context, one lock, and a growth handle per circuit.
+ *
+ * Nothing about the language is reimplemented on this side. [MorphoRuntime] evaluates morpho's
+ * parser, compiler and expansion as ES modules, at the upstream commit recorded in
+ * `morpho/PROVENANCE.md`, and [MorphoSession] holds one compiled design that is expanded a budget
+ * at a time. The rest of the package consumes what comes back out: [MorphoNetlist] is the
+ * snapshot, [MorphoSim] evaluates it, [MorphoLayout3D] places it, `MorphoFLines.kt` draws it.
+ *
+ * Crossing the boundary is the expensive part, so both guest scripts exist to make each crossing
+ * carry more. `morpho-field-driver.mjs` flattens the compiler's graph into typed arrays;
+ * `morpho-field-layout.mjs` drives the Barnes–Hut kernel from JavaScript, where its buffers can be
+ * wrapped in views rather than read an element at a time. A guest failure arrives as
+ * [MorphoException], carrying morpho's own source line whenever its parser supplied one.
+ */
+
+/**
  * Hosts MorphoHDL inside Field by running morpho's **own** compiler on GraalJS.
  *
  * Field already depends on `org.graalvm.polyglot:js` and `:wasm` (see `build.gradle.kts`, and

@@ -3,6 +3,21 @@ package afield.morpho
 import java.io.Closeable
 
 /**
+ * The grow-and-draw handle: a compiled MorphoHDL circuit that expands a few cells per frame while
+ * its layout relaxes between expansions.
+ *
+ * `MorphoCircuit.compile` takes a design name and a bus signature and returns something compiled
+ * but not yet expanded. `step` is shaped to be the condition of a run loop, so the recursive
+ * division is watchable rather than already finished; `growFully` is the same circuit with the
+ * watching skipped. Either way the current [MorphoNetlist] and [MorphoTiming] are readable between
+ * steps, which is what lets a neighbouring Kotlin box draw a half-built circuit.
+ *
+ * A morpho box publishes one of these on `Box.morphoCircuit`; a Kotlin box builds its own with
+ * `morphoCircuit(...)` from `MorphoFLines.kt`. It holds a guest-side session and a WASM layout, so
+ * it has to be closed.
+ */
+
+/**
  * A MorphoHDL circuit that is being grown and laid out at the same time — the thing a morpho box
  * holds, and the thing a Kotlin box draws.
  *

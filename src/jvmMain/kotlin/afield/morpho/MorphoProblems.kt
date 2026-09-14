@@ -1,14 +1,26 @@
 package afield.morpho
 
 /**
- * The three search problems this layer was built to ask, in increasing order of how much of the
- * answer is given away.
+ * The search problems this layer was built to ask, and how much of the answer each one gives away.
  *
  * Each one is a [MorphoSpec] (what the circuit must compute, at which widths) plus a
- * [MorphoProgramGenerator] (what a candidate is allowed to be). Keeping them here rather than
- * inside a test means a Field box, the measurement run and the regression tests are all asking
- * *the same question*, which is the only way the numbers in the documentation and the numbers in
- * the assertions can be the same numbers.
+ * [MorphoProgramGenerator] (what a candidate is allowed to be). They live here rather than inside
+ * a test, so a Field box, the measurement run and the regression tests all ask the same question,
+ * and a number quoted in the documentation is a number an assertion also checks.
+ *
+ * They range from `bitwiseXor`, where one broadcast LUT is enough and a failure implicates the
+ * harness rather than the search, through `fullAdderCell`'s eight-vector exhaustive truth table, to
+ * `adderFromScratch`, where the recursion and the base case it falls into are evolved together and
+ * nothing about addition is supplied but the oracle.
+ */
+
+/**
+ * One search problem: what the circuit has to compute, and what a candidate is allowed to be.
+ *
+ * [MorphoSpec] fixes the target and the widths it is scored at; [MorphoProgramGenerator] fixes the
+ * grammar candidates are drawn from and mutated within. Drivers take those two separately, so
+ * holding them in one object is what keeps a control arm and the search it is compared against
+ * sampling the same space.
  */
 class MorphoProblem(
     val name: String,

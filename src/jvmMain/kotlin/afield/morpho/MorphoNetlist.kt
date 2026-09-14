@@ -1,6 +1,20 @@
 package afield.morpho
 
 /**
+ * The compiled circuit as a Kotlin value: packed per-cell metadata, one array per relation, and
+ * morpho's own numbering carried across the boundary unchanged.
+ *
+ * `MorphoSession.netlist` builds one of these out of the GraalJS guest in a handful of bulk copies,
+ * and everything Field does with a circuit reads it from here: [MorphoSim] evaluates it,
+ * [MorphoLayout3D] places it, `MorphoFLines.kt` draws it. It is a snapshot rather than a view, so
+ * growing the circuit produces a new one.
+ *
+ * Cell indices are morpho's, so deactivated cells are still counted and `isActive` decides what is
+ * real. A LUT cell is broadcast across a bus, so the count of active cells, the count of LUTs and
+ * the count of gates are three different numbers.
+ */
+
+/**
  * A snapshot of a MorphoHDL circuit, as produced by morpho's own compiler and copied across the
  * GraalJS boundary by `morpho-field-driver.mjs`.
  *

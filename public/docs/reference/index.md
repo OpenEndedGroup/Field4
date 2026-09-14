@@ -228,15 +228,15 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MidiPat.kt](audio.md#midipat-kt) | Audio | 18 | 12 | The bridge between the pattern algebra and `MidiClip`, plus a piano roll drawn as FLines. |  |
 | [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 |  |  |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
-| [MorphoCircuit.kt](languages.md#morphocircuit-kt) | Languages | 15 | 11 |  |  |
+| [MorphoCircuit.kt](languages.md#morphocircuit-kt) | Languages | 15 | 11 | The grow-and-draw handle: a compiled MorphoHDL circuit that expands a few cells per frame while its layout relaxes between expansions. |  |
 | [MorphoFLines.kt](languages.md#morphoflines-kt) | Languages | 12 | 11 | Drawing a MorphoHDL circuit with Field's FLines. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoGenerator.kt](languages.md#morphogenerator-kt) | Languages | 28 | 11 | Where MorphoHDL programs come from when nobody writes them. |  |
 | [MorphoGenome.kt](languages.md#morphogenome-kt) | Languages | 35 | 22 | The thing a search actually mutates: a MorphoHDL **program, as text**. | [Somebody else's language, running in Field](../morpho_examples.md) |
-| [MorphoGraal.kt](languages.md#morphograal-kt) | Languages | 17 | 12 |  |  |
+| [MorphoGraal.kt](languages.md#morphograal-kt) | Languages | 17 | 12 | Hosting MorphoHDL's own compiler: one GraalJS context, one lock, and a growth handle per circuit. |  |
 | [MorphoInterface.kt](languages.md#morphointerface-kt) | Languages | 14 | 6 | Field4 language adapter for MorphoHDL, a Python-syntax hardware-description language. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoLayout3D.kt](languages.md#morpholayout3d-kt) | Languages | 10 | 9 |  |  |
-| [MorphoNetlist.kt](languages.md#morphonetlist-kt) | Languages | 31 | 15 |  |  |
-| [MorphoProblems.kt](languages.md#morphoproblems-kt) | Languages | 19 | 14 |  |  |
+| [MorphoNetlist.kt](languages.md#morphonetlist-kt) | Languages | 31 | 15 | The compiled circuit as a Kotlin value: packed per-cell metadata, one array per relation, and morpho's own numbering carried across the boundary unchanged. |  |
+| [MorphoProblems.kt](languages.md#morphoproblems-kt) | Languages | 19 | 14 | The search problems this layer was built to ask, and how much of the answer each one gives away. |  |
 | [MorphoSearch.kt](languages.md#morphosearch-kt) | Languages | 31 | 19 | Searching the space of MorphoHDL programs for one that computes something. |  |
 | [MorphoSearchFLines.kt](languages.md#morphosearchflines-kt) | Languages | 11 | 8 | Drawing what a search did, as vector `FLine`s for `afield.stdlib.showPlaneGrid`. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 |  |  |
