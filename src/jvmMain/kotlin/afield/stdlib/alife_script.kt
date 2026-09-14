@@ -1911,6 +1911,17 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
                 if (p != null && p.size >= 4) {
                     val n = p.size / 2
                     if (cursor < 1) cursor = 1
+                    // Two ways to be done with a waypoint, and the second one matters more than it
+                    // looks. Reaching it is the obvious one; the other is being able to SEE the next
+                    // one, which means the corner this waypoint was placed to get round is behind
+                    // us. Without it an agent that turns too slowly to pass inside `wpR` circles its
+                    // waypoint forever, which is the standard way a waypoint follower gets stuck and
+                    // it is invisible in every check except a picture. Consecutive waypoints are
+                    // known clear at the full inflated radius — the string-pull established that —
+                    // so advancing one at a time on a plain sight line is sound.
+                    while (cursor < n - 1 &&
+                        world.lineOfSight(self.sx, self.sy, p[(cursor + 1) * 2], p[(cursor + 1) * 2 + 1])
+                    ) cursor++
                     while (cursor < n - 1 &&
                         hypot(self.sx - p[cursor * 2], self.sy - p[cursor * 2 + 1]) <= wpR
                     ) cursor++
