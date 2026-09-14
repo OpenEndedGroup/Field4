@@ -334,6 +334,20 @@ class SessionInformation(
     @Volatile
     var loading: Boolean = false
 
+    /**
+     * Whether this document was already on disk when it was first opened.
+     *
+     * Set once by `attachDocumentSession`, *before* the load that creates the directory, and
+     * reported to agents as `documentExisted`. Sticky for the life of the session on purpose:
+     * a later `agent-snapshot` should answer the same question the same way.
+     */
+    @Volatile
+    var documentExisted: Boolean = false
+
+    /** Whether the open that produced this session joined a document already held in memory. */
+    @Volatile
+    var attachedToLiveDocument: Boolean = false
+
     // Sessions the agent backdoor created/loaded. Used to skip AI auto box-naming for them — an
     // agent's boxes have deliberate names (e.g. window/sender) that the auto-namer must not rewrite.
     @Volatile

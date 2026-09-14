@@ -1647,6 +1647,26 @@ class FieldBackdoor:
         if self.scratch:
             result["scratchLifetime"] = "invocation"
             result["scratchPortReuse"] = False
+        # `documentExisted` is the fourth and last cause of an inexplicable `boxes: []`, and the
+        # only one the tool used to be unable to name: opening a document that is not there is
+        # how a document gets CREATED in Field, so the server answers `ok` either way and an
+        # agent that meant to open `alife_walls` receives a new empty one that looks identical
+        # to a load that worked. Absent (None) means the server predates the field -- unverified,
+        # not fine, exactly like `serverWorkspace`.
+        existed = payload.get("documentExisted")
+        if existed is None:
+            result["documentExistedKnown"] = False
+        elif not self.scratch and not existed:
+            result["createdNewDocument"] = True
+            print(
+                f"field_backdoor.py: --document {self.document_name} did not exist in the "
+                f"server's workspace; Field created a new EMPTY document at "
+                f"{self.session_key}. If you meant to open an existing one, check "
+                "`serverWorkspace` in `status` and the spelling of the name; pass "
+                "`open --must-exist` to make this a hard error.",
+                file=sys.stderr,
+                flush=True,
+            )
         return result
 
     async def refresh_snapshot(self, timeout: float) -> dict[str, Any]:
@@ -2896,6 +2916,14 @@ def build_command_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="open the named document without writing back to it (not the same as --scratch)",
     )
+    open_parser.add_argument(
+        "--must-exist",
+        action="store_true",
+        help=(
+            "fail instead of creating a new empty document when the name is not in the "
+            "server's workspace. Say this whenever you mean an existing document."
+        ),
+    )
 
     subparsers.add_parser("status", add_help=False)
     subparsers.add_parser("snapshot", add_help=False)
@@ -3214,11 +3242,33 @@ async def dispatch_command(
             timeout=client.default_timeout,
             read_only=getattr(args, "read_only", False),
         )
+        if getattr(args, "must_exist", False):
+            if args.scratch or not args.document:
+                raise BackdoorError("open --must-exist is meaningless with --scratch: a scratch document is new by construction")
+            if data.get("documentExisted") is None:
+                raise BackdoorError(
+                    f"open --must-exist cannot be honoured: the Field on port {client.port} predates "
+                    "`documentExisted` and cannot say whether the document was there. Restart it from "
+                    "this checkout, or drop --must-exist and check boxCount by hand."
+                )
+            if not data.get("documentExisted"):
+                raise BackdoorError(
+                    f"open --must-exist: no document named {args.document!r} in the server's workspace "
+                    f"{client.server_workspace!r}. Field would have created a new empty one at "
+                    f"{data.get('sessionKey')!r}. Check `serverWorkspace` in `status` -- it is the "
+                    "server's, not your --workspace -- and the spelling of the name."
+                )
         if client.graphics_context_enabled:
             data = dict(data)
             data["graphicsContext"] = await client.ensure_graphics_context(timeout=client.default_timeout)
         result = command_result(command_line, True, data=data, events=[])
-        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            documentExisted=data.get("documentExisted"),
+            attachedToLiveDocument=data.get("attachedToLiveDocument"),
+        )
         return result
 
     if args.command == "status":

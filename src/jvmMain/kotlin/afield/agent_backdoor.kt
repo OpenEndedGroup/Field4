@@ -213,8 +213,17 @@ internal fun attachDocumentSession(
         }
     }
 
+    // Probed here and nowhere later: the load below calls `ensureDirectory`, so once it has run
+    // the directory is there whether or not the document was. A scratch target is a freshly
+    // synthesised uuid path and never existed. See `AgentDocumentSnapshot.documentExisted`.
+    val existedOnDisk = !target.scratch && SavingContext.documentExistsOnDisk(target.sessionKey)
+
     val found = documents[target.sessionKey]
     if (found != null) {
+        found.attachedToLiveDocument = true
+        // A live document existed however its bytes got there -- it may have been created in this
+        // Field and not saved yet, in which case the disk probe above says no and is not wrong.
+        found.documentExisted = true
         // Once an agent backdoor has touched a live document, keep it agent-managed even if a
         // browser later attaches to the same session — never downgrade agent protection.
         if (agentManaged) found.agentManaged = true
@@ -263,6 +272,8 @@ internal fun attachDocumentSession(
     }
 
     val info = createSessionInformation(target, agentManaged)
+    info.documentExisted = existedOnDisk
+    info.attachedToLiveDocument = false
     info.loading = !target.scratch
     documents[target.sessionKey] = info
     registerDocumentSession(session, info)
@@ -702,7 +713,9 @@ internal fun buildAgentSnapshot(info: SessionInformation): AgentDocumentSnapshot
         scratch = info.ephemeral,
         sessionKey = info.filename,
         boxes = boxes,
-        readOnly = info.readOnly
+        readOnly = info.readOnly,
+        documentExisted = info.documentExisted,
+        attachedToLiveDocument = info.attachedToLiveDocument
     )
 }
 

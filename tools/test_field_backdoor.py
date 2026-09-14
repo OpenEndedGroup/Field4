@@ -173,6 +173,82 @@ class BoxReferenceTests(unittest.TestCase):
         # `scratch` throws the name away, so there is nothing to warn about.
         self.assertEqual(self.open_capturing_stderr("/tmp/anything", scratch=True), "")
 
+    def open_document_reporting(
+        self, document: str, *, existed: bool | None, scratch: bool = False, must_exist: bool = False
+    ) -> tuple[dict, str]:
+        """Dispatch `open`, with the server's `documentExisted` under the test's control."""
+        from tools.field_backdoor import dispatch_command
+
+        payload = {"documentName": document, "sessionKey": f"/ws/{document}", "boxes": []}
+        if existed is not None:
+            payload["documentExisted"] = existed
+
+        async def reply(_name: str, _payload: dict, *, timeout: float, **_kwargs) -> dict:
+            return {"payload": payload}
+
+        self.client.call_for_single_reply = reply  # type: ignore[assignment]
+        line = f"open {document}"
+        if scratch:
+            line += " --scratch"
+        if must_exist:
+            line += " --must-exist"
+        captured = io.StringIO()
+        with contextlib.redirect_stderr(captured):
+            result = asyncio.run(dispatch_command(self.client, parse_command(line), line))
+        return result, captured.getvalue()
+
+    def test_a_document_field_had_to_invent_is_called_out(self) -> None:
+        """The fourth cause of an unexplained `boxes: []`, and the one that was unnameable.
+
+        Opening a name that is not there is how a document gets CREATED in Field, so the
+        server answers with a snapshot either way and `open` reported `ok: true`. The fact
+        was not missing -- the server logged `file '...' not found; will be created on
+        first save` -- it just never reached the reply. Measured on a live Field on 8802.
+        """
+        result, warning = self.open_document_reporting("alife_walls", existed=False)
+
+        self.assertTrue(result["ok"])  # creating a document is legitimate; saying nothing was not
+        self.assertTrue(result["data"]["createdNewDocument"])
+        self.assertIn("did not exist in the server's workspace", warning)
+        self.assertIn("created a new EMPTY document", warning)
+
+    def test_a_document_that_was_there_says_nothing(self) -> None:
+        result, warning = self.open_document_reporting("alife_walls", existed=True)
+        self.assertEqual(warning, "")
+        self.assertNotIn("createdNewDocument", result["data"])
+
+    def test_a_server_too_old_to_answer_abstains_rather_than_guessing(self) -> None:
+        """Fail open, like `serverWorkspace: null` -- but labelled, so it reads as unverified."""
+        result, warning = self.open_document_reporting("alife_walls", existed=None)
+
+        self.assertEqual(warning, "")
+        self.assertFalse(result["data"]["documentExistedKnown"])
+        self.assertNotIn("createdNewDocument", result["data"])
+
+    def test_must_exist_refuses_a_document_field_would_have_invented(self) -> None:
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("alife_walls", existed=False, must_exist=True)
+
+        message = str(raised.exception)
+        self.assertIn("no document named 'alife_walls'", message)
+        # Names where to look, and that the workspace it resolves against is the server's.
+        self.assertIn("serverWorkspace", message)
+
+    def test_must_exist_is_satisfied_by_a_document_that_was_there(self) -> None:
+        result, _ = self.open_document_reporting("alife_walls", existed=True, must_exist=True)
+        self.assertTrue(result["ok"])
+
+    def test_must_exist_refuses_rather_than_passes_when_it_cannot_be_checked(self) -> None:
+        """An unanswerable guarantee is worse than no guarantee: the point is to fail closed."""
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("alife_walls", existed=None, must_exist=True)
+        self.assertIn("predates", str(raised.exception))
+
+    def test_must_exist_with_scratch_is_a_contradiction_and_says_so(self) -> None:
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("anything", existed=None, scratch=True, must_exist=True)
+        self.assertIn("meaningless with --scratch", str(raised.exception))
+
     def test_status_says_whether_the_request_reached_a_server_at_all(self) -> None:
         # False for an attached server: `--workspace` only ever becomes
         # `--args=--workspace ...` on the launch path, so on this path it decided nothing.
