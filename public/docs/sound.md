@@ -288,7 +288,7 @@ The twelve that are not still carry the point the audit was built to make. `Doug
 runs a plate reverb, a phaser, a resonant lowpass and a soft clipper on real signals, and a plate
 reverb ringing down *is* the thing that page is about; the three Faust clips are a program
 compiled at runtime, two of them a pattern playing it as a polyphonic instrument on
-[Faust](faust.md#what-it-sounds-like-and-the-one-comparison-that-proves-it).
+[Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one).
 
 The reason is the one given above, and adding twenty-six clips is the clearest case for it: a
 primer that plays `bd*4` and `bd(3,8)` and `{bd hh cp}%8` needs a voice that renders identically
