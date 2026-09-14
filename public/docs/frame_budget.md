@@ -430,16 +430,13 @@ still dropping frames needs to know where to look next.
   actually presented. Dividing it by elapsed seconds gives you an iteration rate, which is
   a useful number and is not a measured frame rate.
 
-!!! note "Why there is no figure of the renderer's own spans"
-    The figure above drives `CPUSpan.time` under a label of its own rather than
-    photographing the renderer's labels, and the reason is measurable. A docs capture runs
-    a box in a headless Field with no `Renderer`, and a live interrogation of one during
-    this page's verification reported `CPUSpan.snapshot()` returning **zero labels** — the
-    deques exist and nothing has ever timed anything into them. So there is nothing to
-    photograph from here. The window arithmetic, the percentile indexing and the 500-sample
-    truncation are the renderer's own code and are exercised for real; the `present` and
-    `record_gfx` numbers are not, and you will see those only by running
-    `./gradlew runJvm` with a window open and reading the `perf` line.
+??? note "Seeing the renderer's own spans"
+    `present` and `record_gfx` are the renderer's labels, and you will see them only by
+    running `./gradlew runJvm` with a window open and reading the `perf` line. A docs
+    capture runs a box in a headless Field with no `Renderer`, where `CPUSpan.snapshot()`
+    returns zero labels, so the figure above drives `CPUSpan.time` under a label of its own
+    instead. The window arithmetic, the percentile indexing and the 500-sample truncation
+    are the renderer's own code either way, and are exercised for real.
 
 ## Try it, and the one thing to change
 

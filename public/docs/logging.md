@@ -418,17 +418,13 @@ unavailable, or Mordant reports a legacy Windows console, pinning switches off a
 event scrolls, with would-be-pinned lines tagged `pin` so they stay visible.
 `AFIELD_PIN_DISABLE=1` forces that path.
 
-!!! note "Why there is no figure of the header"
-    The six figures above are captures of real runs in a real Field. There is no figure of
-    the pinned header itself, and there cannot be one from this page: a docs capture drives
-    a box in a headless Field whose stdout is a pipe, which is exactly the condition under
-    which the pinned console switches itself off. The fallback is what would be
-    photographed. `matchedPin` and `PinnedConsoleSink` are private as well, so the
-    row-routing rule above is stated from its source line rather than executed. Run
-    `./gradlew runJvm` in a terminal to see the real thing.
-
-    The build log for this page is itself the evidence for the fallback: every pinned line
-    in it arrives tagged `pin`, as `[pin,info,kotlin,compile] compile=455ms`.
+??? note "Seeing the pinned header"
+    Run `./gradlew runJvm` in a terminal. There is no figure of the header on this page and
+    there cannot be one: a docs capture drives a box in a headless Field whose stdout is a
+    pipe, which is exactly the condition under which the pinned console switches itself
+    off, so the fallback is what would be photographed. `matchedPin` and
+    `PinnedConsoleSink` are private, so the row-routing rule above is stated from its
+    source line rather than executed.
 
 ## Stderr is not part of any of this
 
