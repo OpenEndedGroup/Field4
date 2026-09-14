@@ -249,6 +249,107 @@ class BackdoorClientLogSelectionTests(unittest.TestCase):
         self.assertIsNone(self.picker._latest_backdoor_client_error())
 
 
+class _Diagnoser:
+    """Just enough RunnerState to exercise the liveness branch of the post-mortem."""
+
+    def __init__(self, root, process, *, stop_reason=None):
+        self.repo_root = root
+        self.shared_log_path = root / "field.log"
+        self._shared_field_process = process
+        self._shared_field_jvm_pid = 4242
+        self._shared_field_stop_reason = stop_reason
+        self._shared_field_started_at = None
+        self._last_capture_child_pid = None
+
+    def _collect_jvm_crash_dumps(self):
+        return []
+
+    def _latest_backdoor_client_error(self):
+        return None
+
+    def _save_failure_report(self, *, output_path, report):
+        return None
+
+    diagnose_capture_failure = docs_hooks.RunnerState.diagnose_capture_failure
+
+
+class _FakeChild:
+    """A Popen stand-in whose death can be scheduled relative to the grace window.
+
+    `dies_within` is how long `wait()` takes to reap it; `None` means it never dies.
+    """
+
+    def __init__(self, *, returncode=None, dies_within=None):
+        self.pid = 70196
+        self.returncode = None
+        self._final_returncode = returncode
+        self._dies_within = dies_within
+        self.waited_for = None
+
+    def wait(self, timeout=None):
+        self.waited_for = timeout
+        if self._dies_within is None or (timeout is not None and self._dies_within > timeout):
+            raise subprocess.TimeoutExpired(["field"], timeout)
+        self.returncode = self._final_returncode
+        return self.returncode
+
+    def poll(self):
+        return self.returncode
+
+
+class ServerLivenessAttributionTests(unittest.TestCase):
+    """An externally-killed JVM must not be reported as a healthy server.
+
+    The regression this pins, found by the 2026-09-14 nightly CI run: the liveness branch
+    was a single `process.poll() is None`, sampled immediately after the WebSocket dropped.
+    A SIGKILL from outside the run (a sibling agent on this machine) arrives at the same
+    instant as the drop, so the child was dying but not yet reaped and `poll()` returned
+    None. The post-mortem printed "Field server process: still alive" -- and `log_summary`
+    promotes that very line as "the single most telling line". A healthy server plus a dead
+    socket reads as "the page hung", so suspicion landed on `chain_physics_render.md`, a
+    two-day-old page that had never been certified and that re-captured clean minutes later.
+    """
+
+    def setUp(self):
+        self.tmp = TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "field.log").write_text("server log line\n", encoding="utf-8")
+
+    def _diagnose(self, child, **kwargs):
+        state = _Diagnoser(self.root, child, **kwargs)
+        return state.diagnose_capture_failure(
+            page_path=Path("chain_physics_render.md"),
+            output_path=self.root / "drape.png",
+        )
+
+    def test_a_kill_landing_inside_the_grace_window_is_attributed_not_called_alive(self):
+        text = self._diagnose(_FakeChild(returncode=-9, dies_within=0.0))
+        self.assertNotIn("still alive", text)
+        self.assertIn("EXITED with code -9", text)
+        self.assertIn("SIGKILL", text)
+        self.assertIn("NOT ours", text)
+
+    def test_a_genuinely_healthy_server_is_still_reported_alive(self):
+        text = self._diagnose(_FakeChild(dies_within=None))
+        self.assertIn("still alive", text)
+        # And the claim is now time-qualified rather than instantaneous.
+        self.assertIn("5s after the failure", text)
+
+    def test_the_liveness_probe_actually_waits(self):
+        child = _FakeChild(dies_within=None)
+        self._diagnose(child)
+        self.assertEqual(child.waited_for, 5.0)
+
+    def test_our_own_cleanup_kill_is_still_labelled_as_ours(self):
+        text = self._diagnose(
+            _FakeChild(returncode=-9, dies_within=0.0),
+            stop_reason="stopping shared Field server",
+        )
+        self.assertIn("NOT a mid-capture crash", text)
+        self.assertNotIn("NOT ours", text)
+
+
 class RunnerDigestScopeTests(unittest.TestCase):
     """Diagnostics must be testable without invalidating every successful capture."""
 
