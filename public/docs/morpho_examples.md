@@ -116,59 +116,19 @@ with a `PROVENANCE.md` recording exactly what it is and what was left out.
 
 ---
 
-## Does it actually work? Two oracles
+## Whether the circuits are right
 
-A bridge that produces plausible circuits is worse than no bridge, because you find out late. So the
-netlists are checked two independent ways, neither of which involves looking at a picture.
-
-### Arithmetic
-
-An adder that does not add is broken no matter what any reference says. So each design is compiled
-through GraalJS, its netlist extracted into Kotlin, and simulated against integer arithmetic
-(exhaustively where that is possible).
-
-| design | check | vectors |
-| --- | --- | --- |
-| `ripple_adder(8,8,1)` | `a + b + carry` | **131 072 — exhaustive** |
-| `brent_kung_adder(32,32,1)` | `a + b + carry` | 4 096 random |
-| `wallace_multiplier(16,16)` | `a * b` | 2 048 random |
-| `right_shifter(32,5,1)` | `x >>> s` | 2 048 random |
-
-Exhaustive matters more than it looks: a carry chain is precisely the thing an off-by-one in pin
+Two independent oracles, neither of which involves looking at a picture. The netlists are compiled
+through GraalJS, extracted into Kotlin and simulated against integer arithmetic — exhaustively for
+the 8-bit ripple adder, all 131 072 vectors, because a carry chain is the thing an off-by-one in pin
 indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
-full width.
+full width. And their gate counts are pinned against morpho's *other* implementation,
+`tiny_morpho.py`, which shares no code at all with the JavaScript: the two agree gate for gate on
+the adders, the multiplier optimized and not, and the shifter, and those counts are `assertEquals`
+in `MorphoBridgeTest`, so a recompile that changes one goes red.
 
-The multiplier and the shifter cover what the adders cannot. `Xor3` and `Maj3` are symmetric in
-their inputs: an adder still adds if you feed a LUT's ports in the wrong order, and a transposed
-truth-table index is invisible to it. `Mux2`, the carry-save tree and a positional shift amount are
-not symmetric, and they catch it.
-
-### `tiny_morpho.py`
-
-Arithmetic alone would pass a circuit that is correct and twice the size it should be. So gate
-counts are pinned against morpho's *other* implementation: the Python reference, which shares no
-code at all with the JavaScript. Both were run:
-
-```diffstatic {data-lang=bash}
-uv run --project . --with numpy python src/jvmMain/resources/morpho/tiny_morpho.py
-```
-
-| design | optimize | `tiny_morpho.py` | Field via GraalJS |
-| --- | --- | --- | --- |
-| `ripple_adder(8,8,1)` | yes | 16 | **16** |
-| `ripple_adder(32,32,1)` | yes | 64 | **64** |
-| `brent_kung_adder(32,32,1)` | yes | 190 | **190** |
-| `wallace_multiplier(16,16)` | yes | 872 | **872** |
-| `wallace_multiplier(16,16)` | no | 1086 | **1086** |
-| `right_shifter(32,5,1)` | yes | 160 | **160** |
-
-Two implementations of the same language (one Python and numpy, one JavaScript and a
-struct-of-arrays compiler) agreeing gate for gate is a far sharper instrument than either agreeing
-with itself.
-
-What is **not** compared is netlist *shape*. Python emits a flat op list, JavaScript a
-hierarchical cell graph, and there is no structural comparison between them that would not
-amount to reimplementing one in terms of the other.
+The corpus, both tables, and which of their numbers have a guard are in
+`dev_docs/MORPHO_AGREEMENT.md`.
 
 ---
 
@@ -201,15 +161,10 @@ multiplier still compiles and still simulates: it just answers `29376512` for `6
 instead of `3906059976`. Upstream's convention is the one that makes all six exhaustive multiplier
 checks pass.
 
-??? aside "Read the optimizer, not just the data structure"
+??? aside "Where a netlist's invariants live"
     The netlist's field names describe the representation, not the *invariants*, and the invariants
-    live in whatever last mutated the graph. So the pass that produced a piece of state is the thing
-    to read, not the schema it produced it into.
-
-    Note also which way a disagreement gets resolved. There is a version of this where you
-    "correct" morpho's behaviour to what seems more principled. That would produce a Field that
-    disagrees with morpho about what a MorphoHDL program means, which is the failure mode a bridge
-    exists to avoid.
+    live in whatever last mutated the graph. If something in a netlist looks impossible, read the
+    pass that produced it rather than the schema it produced it into.
 
 The bridge is also a second reader of Field's own shared infrastructure, and that shows up at the
 one point where morpho gives a box back. Reverting a language root to Kotlin *is*
@@ -330,38 +285,24 @@ clip.
 
 ---
 
-## Everything, measured
+## What a circuit costs to compile and simulate
 
-Regenerate with:
+The largest design here, a 4 144-gate `medusa(36,8)`, compiles and fully expands in about 270 ms
+once Graal has warmed up; a 32-bit Brent–Kung adder takes about 50 ms. Relaxing the layout 200 steps
+costs between about 20 ms and 1.5 s depending on size, and you rarely want it in one go —
+`step(grow, relax)` in a `loop` spreads it over frames.
 
-```diffstatic {data-lang=bash}
-./gradlew jvmTest --tests "afield.morpho.MorphoMeasurements" --rerun -i
-```
+Simulation is bit-parallel: each net holds a `Long` whose bit *s* is that net's value for sample
+*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. All
+131 072 vectors of the exhaustive 8-bit adder check evaluate in under 20 ms. This mirrors what
+`tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an array.
 
-| design | cells | gates | nets | depth | expansions | compile+grow | 200 relax steps | z / xy |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ripple_adder(8,8,1)` | 42 | 16 | 82 | 8 | 36 | 1563 ms\* | 588 ms | 0.76 |
-| `ripple_adder(32,32,1)` | 162 | 64 | 386 | 32 | 156 | 142 ms | 1225 ms | 0.92 |
-| `brent_kung_adder(32,32,1)` | 288 | 190 | 608 | 11 | 157 | 46 ms | 634 ms | 1.09 |
-| `wallace_multiplier(16,16)` | 936 | 872 | 3711 | 17 | 886 | 175 ms | 161 ms | 1.33 |
-| `wallace_multiplier(16,16)` unopt | 1150 | 1086 | 3711 | 18 | 1014 | 61 ms | 252 ms | 1.06 |
-| `right_shifter(32,5,1)` | 230 | 160 | 392 | 5 | 227 | 15 ms | 17 ms | 0.73 |
-| `triangle(32)` | 1025 | 992 | 1058 | 62 | 993 | 34 ms | 946 ms | 1.10 |
-| `medusa(36,8)` | 4252 | 4144 | 16726 | 63 | 5491 | 269 ms | 1557 ms | 0.91 |
-
-\* The first row is Graal warming up: it includes JIT-compiling morpho's compiler. Every later row
-is the steady state, which is the number that matters for live coding: a 4 144-gate `medusa`
-compiles and fully expands in 269 ms.
-
-**Simulation throughput.** All 131 072 vectors of the exhaustive 8-bit adder check in **17.8 ms**,
-which is 2 048 passes of 64 samples. Each net holds a `Long` whose bit *s* is that net's value for
-sample *s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`.
-This mirrors what `tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an
-array.
+Cell, gate, net, depth and expansion counts for every design on this page, and the timings above
+with the machine they came from, are in `dev_docs/MORPHO_MEASUREMENTS.md`.
 
 ---
 
-## The WASM engine is 3D, and morpho never uses it that way
+## Circuits laid out in three dimensions
 
 The layout kernel is the most capable thing in the repository, and it is not part of the language.
 
@@ -380,9 +321,9 @@ this.vel[p * 3 + 2] = 0.0;
 ```
 
 The kernel is a 3D solver and the shipped demo pins it flat. Field's driver simply does not do that,
-and the circuits come out as solids. The `z / xy` column above is z extent over the larger of the x
-and y extents, and it runs from 0.73 to 1.33. A 16×16 Wallace multiplier is *taller than it is
-wide*.
+and the circuits come out as solids. `MorphoLayout.flatness()` reports z extent over the larger of
+the x and y extents; across the designs on this page it runs from 0.73 to 1.33, and a 16×16 Wallace
+multiplier is *taller than it is wide*.
 
 Three views of one circuit, sharing a window. The only thing that differs between the panels is
 where the camera is:
@@ -900,7 +841,7 @@ graph into typed arrays, so a netlist crosses into the JVM in a handful of bulk 
 around 10<sup>5</sup> individual polyglot member reads.
 
 `morpho-field-layout.mjs` drives the Barnes–Hut kernel, and drives it from JavaScript rather than
-from Kotlin for a reason worth knowing before you plan the same job. `main.wasm` publishes its
+from Kotlin for a reason that will decide the shape of any similar job. `main.wasm` publishes its
 buffers as `_get_<name>()` and `_len_<name>__<type>()` offset-and-length pairs, a convention meant
 to be wrapped in typed-array views. With views a sync is one bulk `.set()`. Through the polyglot
 buffer API it is roughly 25,000 single-element crossings per frame.
@@ -1039,11 +980,11 @@ Line counts include KDoc, which in this codebase is a substantial fraction of ev
 layer of the previous section is a separate ~2,400 lines on top of all of this, and needed nothing
 from the bridge that was not already there.
 
-Look at the ratio. Of 2,868 lines, registration proper is sixty, and those sixty were a copy. The
-boundary in steps 1 and 2 is 890. Checking it in step 6 is 706. Getting a language *registered* in
-Field is nearly free; what costs is carrying its data across a process boundary, deciding what the
-language should *do* once it is running, and reading the other implementation carefully enough not
-to disagree with it by accident.
+Of 2,868 lines, registration proper is sixty, and those sixty were a copy. The boundary in steps 1
+and 2 is 890. Checking it in step 6 is 706. Getting a language *registered* in Field is nearly free;
+what costs is carrying its data across a process boundary, deciding what the language should *do*
+once it is running, and reading the other implementation carefully enough not to disagree with it
+by accident.
 
 ??? aside "Which harness holds what"
     The checks are `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` and
