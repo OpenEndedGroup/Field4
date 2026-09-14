@@ -1388,7 +1388,7 @@ without it the fragment logs to the console and draws nothing.
 
 `src/jvmMain/kotlin/afield/visualization/plotly.kt` — [read the source](source/jvmMain/afield/visualization/plotly/)
 
-**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md), [Where do these things sit, relative to each other?](../projection_examples.md)
+**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md), [Projecting a distance matrix](../projection_examples.md)
 
 ### Top-level functions { #plotly-kt-functions }
 

@@ -1238,7 +1238,7 @@ The delegate behind `var n by saved { 0 }`: a property that loads itself from di
 
 `src/jvmMain/kotlin/afield/stdlib/smile_mds.kt` — [read the source](source/jvmMain/afield/stdlib/smile_mds/)
 
-**Used in:** [Where do these things sit, relative to each other?](../projection_examples.md)
+**Used in:** [Projecting a distance matrix](../projection_examples.md)
 
 ### Top-level functions { #smile-mds-kt-functions }
 

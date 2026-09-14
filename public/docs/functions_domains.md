@@ -1,4 +1,4 @@
-# Domains: how far does a function reach?
+# Function domains
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
 
