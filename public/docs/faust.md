@@ -249,31 +249,11 @@ the block in chunks that end where the next event begins: apply the writes due a
 `compute` up to the next event, repeat.
 
 This is also why [`FaustDsp.setParam`](#reference)'s queue is *not* used on this path: it drains once per
-`render` call, which is block granularity by construction.
+`render` call, which is block granularity by construction. A per-block write would put a note up to 110
+frames — 2.3 ms — from where it was notated.
 
-Measured offline, on a pattern of seven notes to a cycle so that twelve of fourteen onsets fall *inside* a
-block (`48000/7 = 6857`, and `6857 % 128 = 105`):
-
-| | Frames | ms |
-|---|---|---|
-| median onset error | 1 | 0.021 |
-| jitter (spread about the median) | ±7 | 0.15 |
-| worst absolute error | 8 | 0.17 |
-| **what a per-block parameter write would give** | **up to 110** | **2.3** |
-
-None of that spread is the scheduler. During a gap this program's output is **exactly `0f`** (the envelope
-reaches zero and multiplies the oscillator away). That makes the first non-zero sample of a note an exact
-fact about the render, with no threshold in it, and it **is** the notated frame for 13 of 13 checkable
-notes, worst 0 frames.
-
-The 0–8 spread in the table is the *onset detector* waiting for the attack ramp to clear its amplitude
-threshold, which depends on where the free-running phasor happened to be when the envelope opened. The two
-numbers answer different questions: the scheduler is exact to the sample, and an onset detector on a
-bandlimited sawtooth resolves an attack to within 8.
-
-A patterned *parameter* shows it from the other side, with no attack ramp in the way:
-`pat("0 0 0 1 1 1 1")` on a `level` control rises at frame 20571 (91 frames into a block) and is measured
-at frame **20571, error 0**.
+Offline the first non-zero sample of a note *is* the notated frame, exactly, and so is a patterned
+parameter change. `dev_docs/FAUST_MEASUREMENTS.md` has the numbers and what limits them.
 
 ### `freq`, `gate`, `gain`: found by label, refused when absent
 
@@ -314,65 +294,24 @@ A note claims a voice in this order:
 `peakConcurrency` is how much polyphony a pattern actually asked for: the most voices that ever
 sounded together over a render.
 
-#### A steal clicks, and by how much
+#### Stealing clicks, and `stealReleaseFrames` is the knob
 
-Stealing a voice clicks in most polyphonic synths, and here the click is measured. The statistic is the
-largest sample-to-sample delta across the steal, normalised by the local peak, against the same statistic
-in the same note once it has settled:
+A steal clicks, because Faust's `en.adsr` resets to zero on a trigger rather than continuing from the
+level it was at. The one-sample gate dip that gives the new note its rising edge therefore drops the
+outgoing note's amplitude to zero in a single sample. The dip is not optional: writing `freq` to a voice
+whose gate is already up does not restart the envelope, so without it the stolen voice glides in at the old
+level and no note is heard at all.
 
-| `stealReleaseFrames` | Normalised step across a steal | Stolen note is |
-|---|---|---|
-| `1` (the default) | **2.71×** the settled step | on time |
-| `1440` (30 ms, longer than this program's release) | **0.04×** | 30 ms late |
-
-A normalised step near 1.0 means the largest single-sample jump is as big as the whole local peak, which is
-not a slope: it is the outgoing note's amplitude vanishing in one sample. The cause is that Faust's
-`en.adsr` **resets to zero** on a trigger rather than continuing from the level it was at, so the one-sample
-gate dip that gives the new note its rising edge drops the envelope to 0 before the attack starts.
-
-And the gate dip is not optional. Writing `freq` to a voice whose gate is already up does *not* restart the
-envelope, because Faust triggers on a rising edge. Without the dip a steal writes the new pitch into a voice
-that never re-attacks: the stolen voice glides in at the old envelope level and no note is heard. With the
-dip, the envelope's local peak rises 1.36–1.39× across a steal; without it, 1.00×.
-
-`synth.faust.poly` asserts both ends of the knob, and the default prefers the note being on time.
-Stealing is an overload condition either way.
-
-#### `render` is not allocation-free
-
-An allocation in an audio callback is a GC pause in the audio path (a dropout), and it is invisible to a
-µs-per-block average. Measured with `getCurrentThreadAllocatedBytes` over 4000 blocks:
-
-| | Bytes per 128-frame block |
-|---|---|
-| `FaustVoiceBank`, 8 voices, steady state | 7386 (**923 per voice**) |
-| `FaustVoiceBank`, **1 voice** — the like-for-like comparison | 984 |
-| `FaustDsp`, one voice — the single-voice path above | 1075 |
-
-So one voice of the bank costs **0.92×** what one `FaustDsp` costs, doing the same DSP and paying the same
-once-per-block context enter and queue drain. Fitting the two bank measurements as a line gives **915 bytes
-per voice** and a fixed **69 bytes per block**, which places the source: it is `Value.readBuffer`, the one
-bulk copy per channel per block that gets the samples out of WebAssembly, and it is in both paths.
-Both bank measurements are held to a bound by `synth.faust.poly`.
-
-The `voices = 1` row is here because the obvious comparison is wrong in a way that flatters this code.
-Dividing an 8-voice block by 8 spreads the bank's fixed cost across eight voices while `FaustDsp` pays its
-own once, for one. Measuring 1 and 8 voices in the *same run* and quoting the slope and intercept is what
-makes the claim checkable; two figures from different runs, solved as a pair, will happily imply a negative
-fixed cost per block.
-
-!!! warning "Garbage on the audio thread"
-    ~0.9 KB per voice per block is real GC pressure, and removing it means
-    changing how samples leave WebAssembly for *both* the monophonic and polyphonic paths: a
-    `ByteBuffer`-backed view rather than a copying `readBuffer`, if the polyglot API allows one. That is the
-    next thing to do here.
+`stealReleaseFrames` trades the click against lateness. The default of `1` leaves the new note on time and
+the click measurable; `1440` (30 ms, longer than this program's release) all but removes the click and puts
+the note 30 ms late. Both ends are asserted by `synth.faust.poly`. Stealing is an overload condition either
+way.
 
 ### Rendering a pattern offline
 
 `faustPatternRender` renders a pattern through a bank with no audio device and no window, in 128-frame
-blocks, and through the *same* `render` the audio thread calls. What is measured is what would be heard.
-The onset table above and the spectral proof below are measured through it, by `synth.faust.poly`.
-`Box.showFaustPattern` is the one-liner that puts a player and a waveform in a box's output.
+blocks, and through the *same* `render` the audio thread calls, so what you measure is what would be
+heard. `Box.showFaustPattern` is the one-liner that puts a player and a waveform in a box's output.
 
 Three measurement helpers come with it:
 
@@ -384,73 +323,27 @@ Three measurement helpers come with it:
 * `faustSpectrumPeaks` — the only thing here that can tell polyphony from monophony. Counting attacks
   cannot: a single voice stealing itself produces the same number of them.
 
-??? aside "The assertion that proves polyphony"
-    `pat("[c4,e4,g4]")` is one chord (three events on the same arc, three notes on the same frame)
-    whose fundamentals are 130.81, 164.81 and 196.00 Hz. Nothing else can reach the band 100–230 Hz,
-    because the lowest second harmonic in the chord is 261.6 Hz; every peak there is somebody's
-    fundamental.
-    Rendered at four voices it contains **three** (130.0, 166.2, 196.5 Hz; worst error 0.86 %, all within
-    a factor of 1.14 in level). The identical render at `voices = 1` contains **one**, at 196.5 Hz, and
-    reports `steals == 2`. A monophonic path cannot produce the first result however it is driven.
-
 ### What eight voices cost
 
-`FaustDsp` gives each voice its own GraalVM context, and its KDoc records that the per-block
-`Context.enter` dominates what is left after `compute`, which is the argument for hosting every voice of
-a bank in **one** context. Measured on an M-series Mac, GraalVM CE 25.0.2, every voice sounding, against a
-2667 µs budget for a 128-frame block:
+Eight voices render a 128-frame block in **16.9 µs** against a 2667 µs budget — 158× realtime — and the
+cost is linear in voices, which is what a bank of independent DSPs should be. Sixteen voices build in 6 ms.
+Splitting a block at eight event boundaries costs about 2.2× an undisturbed one and is still 81× realtime
+with a note starting every 0.33 ms, so sub-block scheduling is not where your budget goes.
 
-| Voices | One context | N contexts | Ratio | One context |
-|---|---|---|---|---|
-| 1 | 2.1 µs | 2.5 µs | 1.20× | 1295× realtime |
-| 2 | 4.2 µs | 3.8 µs | 0.91× | 640× realtime |
-| 4 | 8.2 µs | 11.0 µs | 1.34× | 323× realtime |
-| 8 | **16.9 µs** | 22.6 µs | 1.34× | **158× realtime** |
-| 16 | 32.7 µs | 29.7 µs | 0.91× | 82× realtime |
+A bank hosts every voice in one GraalVM context, unlike `FaustDsp`, which gives each voice its own. The
+measurements behind that choice, and the ~0.9 KB per voice per block that `render` still allocates, are in
+`dev_docs/FAUST_MEASUREMENTS.md`.
 
-Each figure is the **median of five timed windows** rather than the mean of one. `render` allocates ~7.4 KB
-per block at eight voices — ~15 MB over a 2000-block window — and an ordinary young collection inside that
-moves the whole average with nothing in the number to say so: a single-window mean reports **238 µs** for
-eight voices in the same output that measures 13.4 µs for the same configuration a few lines later. The
-median leaves the shape legible, and 2.1, 4.2, 8.2, 16.9, 32.7 is **linear in voices**, which is what a bank
-of independent DSPs should be.
+### What you can and cannot do from another thread
 
-At steady state the arrangement barely matters: once Truffle has compiled everything the per-block
-`Context.enter` is a few hundred nanoseconds, and one context and N contexts are within noise of each other
-either way round. Two measurements still make one context the right arrangement:
+`render` takes no lock. `schedule` and `automate` hand work over through lock-free queues that `render`
+drains once at the top of each block, and the audio thread owns the ordered queues outright. Producers pay
+the node allocation on their own thread, where it is harmless.
 
-* **construction** — 6 ms for sixteen voices in one context against 46 ms for sixteen contexts (7.8×),
-  because N contexts each compile the same WebAssembly module again;
-* **sub-block scheduling**, which is the stronger of the two. A block split at eight event boundaries costs
-  33.0 µs against 15.0 µs undisturbed (2.2×), and is still 81× realtime with a note starting every 0.33 ms,
-  which is orders of magnitude denser than music. The N-context arrangement would pay N context entries per
-  *chunk* rather than per block, and `FaustDsp`'s per-block parameter queue could not express the split at
-  all.
-
-These figures are much cheaper than the 60.4 µs quoted for a single `FaustDsp` block below, and both are
-correct: that one is measured after 500 warm-up blocks, these after several seconds of real rendering, by
-which point Truffle has compiled the wasm properly. The first bank built in a process really does cost
-118 µs a block until it warms.
-
-### The audio thread takes no lock
-
-`FaustDsp`'s KDoc states the rule: *no lock on the audio thread*. A callback that can block behind another
-thread has a worst case measured in that thread's scheduling rather than in its own work, and the symptom is a
-dropout, not a slow number.
-
-The bank keeps it. Its two ordered queues (notes and parameter changes) are **owned by the audio thread and
-touched by nothing else**; `schedule` and `automate` hand work over through lock-free
-`ConcurrentLinkedQueue`s, which `render` drains once at the top of each block. Producers pay the node
-allocation on their own thread, where it is harmless.
-
-The shape that does *not* work is one priority queue under a mutex taken by both sides. `render` acquires
-such a lock several times **per chunk**, and a chunk is as short as the gap between two notes, while a
-feeder calling `schedule` with a cycle of notes holds it across one heap insert per note, with the audio
-thread waiting behind the whole batch. Handing over instead of locking costs one thing: work handed over
-*during* a `render` call is seen by the next block, at most 2.67 ms later. That is already the modelled
-case, since notes are scheduled ahead of their frame and one that arrives late is played immediately and
-counted in `lateNotes`. For the same reason `clearSchedule()` takes effect within a block rather than
-instantly.
+The one thing that costs you: work handed over *during* a `render` call is seen by the next block, at most
+2.67 ms later. Notes are scheduled ahead of their frame anyway, and one that arrives late is played
+immediately and counted in `lateNotes`. `clearSchedule()` takes effect within a block rather than
+instantly, for the same reason.
 
 ## The block diagram
 
@@ -506,15 +399,9 @@ opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
 
 The two render figures say different things. Faust's generated code is very fast (7.6µs), and almost
 everything else in the 60.4µs is the cost of crossing between the JVM and WebAssembly once per block:
-entering the context, and copying the output out. How often that crossing happens is the whole cost, and
-`FaustDsp`'s KDoc records three measured arrangements of it:
-
-* a call per *sample* to copy the output: **148µs** a block (18× realtime),
-* one bulk buffer read per *channel* instead: **94µs** (28×),
-* resolving the JS entry points once instead of per block: **60µs** (44×).
-
-So a voice costs a little over 2% of one core, and a handful of Faust boxes is unremarkable. If that
-ever becomes the limit, the next thing to remove is the per-block context entry, not anything in Faust.
+entering the context, and copying the output out. So a voice costs a little over 2% of one core, and a
+handful of Faust boxes is unremarkable. A polyphonic bank is cheaper still, because it crosses once for
+all its voices.
 
 The compiler is the real cost, and three things blunt it:
 
@@ -582,11 +469,11 @@ version bump that changes anything cannot pass unnoticed:
 
 | | |
 |---|---|
-| `synth.faust.smoke` | compile, UI metadata, diagnostics, render, parameter writes, meters, mono fan-out, effects (the input path), block diagram, and the render speed |
+| `synth.faust.smoke` | compile, UI metadata, diagnostics, render, parameter writes, meters, mono fan-out, effects (the input path), block diagram, render speed |
 | `faust.editor-extension.workout` | the shipped `faust.js` under node against the shipped vocabulary — regions, tokenizer, lexical diagnostics, qualified completion, the line arithmetic from both ends |
 | `faust.box.controls` | the compiler reached from inside a real box, generated controls, offline render into an output area |
 | `faust.box.compile-error` | a bad program's line survives the trip, and the compiler recovers afterwards |
-| `synth.faust.poly` | the polyphonic path, 99 deterministic checks: control discovery and its refusal, the onset detector's own sanity, onset timing in samples, pitch in cents, the polyphony-against-monophony spectral proof, a patterned parameter, voice allocation, whether a steal clicks (it does, measurably, and the knob that stops it), how many bytes a block allocates on the audio thread, and absolute real-time budget checks; relative wall-clock ratios remain diagnostic output |
+| `synth.faust.poly` | the polyphonic path — control discovery and its refusal, onset timing, pitch, the spectral polyphony check, patterned parameters, voice allocation and stealing, audio-thread allocation, real-time budgets |
 
 What none of them covers is the launch itself: a box staying lit while sound comes out of a speaker.
 That is the generic audio return-value path, and it needs an audio device.

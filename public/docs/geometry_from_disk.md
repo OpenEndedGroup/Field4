@@ -139,37 +139,28 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
 
 </div>
 
-!!! warning "Mirrors, and where a TRS triple loses one"
+??? aside "Placing instances yourself: `bindMatrix`, not `bindPose`"
 
-    Read `MeshInstance.bindMatrix` rather than `MeshInstance.bindPose` if you are placing instances
-    yourself. `bindPose` is a *translation / rotation / scale* triple and a mirror does not fit in
-    one: `Matrix4f.getScale` is `sqrt(...)` per basis column, so it is never negative. Assimp hands
-    the mirrored node of the four-node scene over as row 1 `[-1 0 0 -3]` with 3×3 determinant
-    **−1.0**, and `bindPose.toMatrix()` returns `[1 0 0 -3]` with determinant **+1.0**. The
-    reflection is gone, and the instance is placed **un-mirrored** (far vertex at `x = -2` instead
-    of `x = -4`) with no error, no warning, and a perfectly plausible-looking mesh. `bindMatrix` is
-    the un-decomposed world matrix, and it is what `assimpToTriMesh` and the GPU paths use.
+    `bindPose` is a translation / rotation / scale triple, and a mirror does not fit in one —
+    `Matrix4f.getScale` is a `sqrt` per basis column, so it is never negative. A mirrored node
+    arrives with 3×3 determinant −1.0 and `bindPose.toMatrix()` gives it back at +1.0: the
+    reflection is gone, the instance is placed un-mirrored, and nothing warns you. `bindMatrix` is
+    the un-decomposed world matrix, and it is what `assimpToTriMesh` and the GPU paths read.
 
-    `FabricateTransform` is *itself* a position/rotation/scale triple, so handing the Fabricate scene
-    graph a true matrix is not enough on its own. `FabricateTransform.set(Matrix4f)` measures its own
-    decomposition and keeps the original matrix when recomposing the triple does not reproduce it, so
-    a mirror or a shear survives and every transform that really is a TRS composes as before. While
-    that override is in force the TRS fields are a lossy summary: mutating them in place does nothing
-    to what is drawn, and `clearMatrix()` is how you go back to composing them.
+    `FabricateTransform` is itself a TRS triple, so `FabricateTransform.set(Matrix4f)` checks its
+    own decomposition and keeps the original matrix when recomposing does not reproduce it. While
+    that override is in force the TRS fields are a lossy summary — mutating them in place does
+    nothing to what is drawn — and `clearMatrix()` goes back to composing them.
 
-    `applyToMesh` on `MeshInstance` defaults its `model` argument to the instance's own node
-    transform, so a glTF scene positioned by its nodes assembles rather than drawing every part at
-    the origin. `PlyModel.applyToMesh` defaults `model` to the identity instead, which is the right
-    default there: PLY has no scene graph and so carries no node transform to drop. Either way
-    `modelView` is the `view * model` the shader claims it is.
+    `MeshInstance.applyToMesh` defaults `model` to the instance's own node transform, so a glTF
+    scene positioned by its nodes assembles instead of stacking every part at the origin.
+    `PlyModel.applyToMesh` defaults to the identity, because PLY has no scene graph to drop.
 
-    Two cases the GPU path leaves alone, both documented at length on `MeshInstance.bindMatrix` in
-    `simpleGLTFSupport.kt`. **Winding is not reversed** for a negative-determinant instance: every
-    Field pipeline sets `VK_CULL_MODE_NONE`, so nothing is culled for facing, and a reflection is
-    orthogonal and therefore its own inverse transpose, so the transformed normal still points
-    outward. `assimpToTriMesh` swaps corners because a `TriMesh` goes on to renderers that *do* cull.
-    And **normals are `mat3(modelView) * n`** rather than the inverse transpose: exact for a rigid,
-    uniformly-scaled or mirrored node, skewed for a non-uniformly scaled one.
+    The GPU path deliberately leaves two things alone, and `MeshInstance.bindMatrix`'s KDoc in
+    `simpleGLTFSupport.kt` has the reasoning: winding is not reversed for a negative-determinant
+    instance (every Field pipeline sets `VK_CULL_MODE_NONE`), and normals are `mat3(modelView) * n`
+    rather than the inverse transpose, which is exact for a rigid, uniformly-scaled or mirrored node
+    and skewed for a non-uniformly scaled one.
 
 ## Writing a file and reading it back
 
@@ -243,29 +234,32 @@ area 12.506493 and volume 4.152741:
 ¹ uvs survive OBJ when the mesh has them; this sphere does not. A `heightfieldMesh` round-trips its
 uvs to within 1e-5.
 
-Reading down the columns:
+The coordinates always survive: area and volume are identical to six decimal places through every
+route, so a mesh whose *shape* changed on a round trip is a bug and not a format.
 
-- **The coordinates always survive.** Area and volume are identical to six decimal places through
-  every route. If a mesh's *shape* changed on a round trip, that is a bug, not a format.
-- **OBJ keeps structure, loses colour.** It indexes positions, normals and uvs separately, so
-  Field's reader emits one vertex per distinct `(position, uv, normal)` corner, which is why a hard-
-  edged cube from a modeller comes back with 24 vertices and not 8, faithfully. There is no
-  standardised per-vertex colour in OBJ, so `withColor` does not make it into the file.
-- **STL keeps nothing but triangles.** It has no vertex sharing at all, so 1280 triangles become
-  3840 unshared vertices and every edge reads as a boundary. `weld(1e-5)` gets the topology back
-  exactly (642 vertices, χ = 2, watertight), but **not** the normals, because STL never stored a
-  per-vertex normal to recover. Re-shade after welding: `shadedNormals(35.0)` is usually right.
-- **A binary STL is exactly `84 + 50n` bytes** — 64,084 here — against 75,625 for the OBJ and
-  324,825 for the ASCII STL, five times the binary for the same 1280 triangles.
-- **PLY is the one that carries colour.** Which is generally why a file is a PLY: it is what
-  photogrammetry and scanners emit. `meshFromAnyFile` routes `.ply` through `PlySupport` rather than
-  Assimp for exactly that reason.
+OBJ keeps structure and loses colour. It indexes positions, normals and uvs separately, so Field's
+reader emits one vertex per distinct `(position, uv, normal)` corner — which is why a hard-edged cube
+from a modeller faithfully comes back with 24 vertices and not 8. There is no standardised
+per-vertex colour in OBJ, so `withColor` never reaches the file. STL keeps nothing but triangles: no
+vertex sharing at all, so 1280 triangles become 3840 unshared vertices and every edge reads as a
+boundary. `weld(1e-5)` recovers the topology exactly but not the normals, because STL never stored
+one per vertex, so re-shade after welding — `shadedNormals(35.0)` is usually right. PLY is the format
+that carries colour, which is generally why a file is a PLY at all: it is what photogrammetry and
+scanners emit, and `meshFromAnyFile` routes `.ply` through `PlySupport` rather than Assimp for that
+reason.
 
-## Two ways the numbers will surprise you
+File size for the same 1280 triangles, with binary STL's exactly `84 + 50n` bytes as the floor:
 
-**The fact sheet is computed, not remembered.** `summary()`, `toFigureHtml()` and the inline
-`toHTML()` card all compute topology on the mesh you hand them and print it as fact. They never lie
-about the object in front of them, which is exactly why a format artefact reads as a property of
+| | bytes |
+|---|---|
+| binary `.stl` | 64,084 |
+| `.obj` | 75,625 |
+| ASCII `.stl` | 324,825 |
+
+## Where the counts come from
+
+`summary()`, `toFigureHtml()` and the inline `toHTML()` card compute topology on the mesh you hand
+them rather than remembering what it was, so a format artefact arrives looking like a property of
 your model:
 
 ```diffstatic {data-lang=kotlin}
@@ -276,13 +270,13 @@ stlToTriMesh(icosphereMesh(3).toStlBinary()).summary()
 // 3840 verts, 1280 tris, extent 2.0000 …, chi=1280, genus 0, open(1280), area 12.5065, …
 ```
 
-Note what is *missing* from the second line: there is no `volume`, because `summary()` only prints
-one for a watertight mesh — and yet `signedVolume()` on that same soup returns 4.152741, exactly
-right. The number was dropped by a rule about topology, not by any loss of geometry. `genus 0` is
-correct too, and not about a sphere: 1280 separate triangles are 1280 discs, each of genus 0.
+The second line has no `volume` at all, because `summary()` only prints one for a watertight mesh —
+yet `signedVolume()` on that same soup returns 4.152741, exactly right. A rule about topology
+dropped the number; no geometry was lost. `genus 0` is correct too, and it is not about a sphere:
+1280 separate triangles are 1280 discs, each of genus 0.
 
-**An unexpected vertex count is usually shading, not the file.** Writing and reading is faithful, so
-if a count looks wrong, look upstream at what shaded the mesh:
+An unexpected vertex count is usually shading rather than the file. Writing and reading are
+faithful, so look upstream at what shaded the mesh:
 
 | | vertices |
 |---|---|
