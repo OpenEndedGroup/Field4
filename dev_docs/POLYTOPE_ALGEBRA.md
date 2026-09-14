@@ -373,6 +373,24 @@ Not done, and deliberately left:
   and dihedral spread; it does not detect a face passing through another face. Adding it would let
   `canonicalize` distinguish "did not converge" from "converged to something self-intersecting",
   which is currently the reader's job.
+
+    There is now a *measurement* for it, though not yet a diagnostic. Slicing the solid and
+    comparing `FillRule.POSITIVE` with `FillRule.EVEN_ODD` layer by layer detects overlap exactly:
+    they agree everywhere on a clean body and differ by twice the overlapped area where the surface
+    crosses itself. The finding that came out of building it is the one this item predicted, on the
+    case this section says is solved: **`relaxWithCeres(canonicalConditions())` on `kkC` reaches
+    tangency spread `2.682e-08` with `NO_ERROR` and genus 0, and the solid it returns overlaps
+    itself by about a tenth of its own volume.** Gauged to signed volume 1, the two fill rules
+    disagree on 130 of 192 layers for an overlap of `0.049855`, and a midpoint Riemann sum over the
+    layer areas converges to `0.90029` — which is `1 - 2(0.049855)` to five decimals, from a second
+    measurement sharing no code with the first. `kkC` as built, and `gC` and `gD` in both their raw
+    and canonical forms, all show 0 of 192 layers disagreeing and an overlap of exactly `0.000000`.
+    So the tail below understates the problem: `kkC` reaches the residual and does not reach a
+    body. Measured by `afield.examples.manifold.PolytopeLayerContours` (`FIELD_TEST` id
+    `manifold.polytope.contours`); written up on `public/docs/chain_ceres_manifold_contours.md`.
+    One route that looked cheaper and reports nothing: intersecting the solid with a box that
+    already contains it returns the same signed volume it went in with, because Manifold's Boolean
+    takes its input's manifoldness as given rather than resolving the crossings.
 - **Coplanarity groups** as a first-class constraint. The vocabulary can express "these faces are
   each planar" but not "these faces share one plane". That is the natural home for the star and
   compound polyhedra, and it is blocked on item 1's boundary model more than on the solver.
