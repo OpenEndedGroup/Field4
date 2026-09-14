@@ -43,36 +43,27 @@ a list of events*, and that both voices below consume exactly the same list.
 
 The last two rows run the path backwards. `patTranscribe` takes a finite buffer and returns pitched
 note events plus the mini-notation that reproduces them, so the output of analysis is the same kind
-of object as the input to synthesis. On a notated scale it recovers 15 of 16 notes with a median
-pitch error of 0.3 cents *(observed; the asserted floors are 14 notes and 3.0 cents)*; on three of
-the corpus cases it returns *exactly* the notated integer sequence, and re-rendering that notation
-and transcribing it again returns the same notes. It is monophonic and says so: a triad is reported
-as `POLYPHONIC` and named as nothing rather than reported as its loudest note, while a sawtooth's
-full harmonic stack is not refused, because timbre is not polyphony. One parameter dominates all
-the thresholds: the register you declare. It sets the analysis window and therefore the shortest
-note that can be resolved, and on identical audio the difference between declaring it and not is
-onset recall 0.91 against 0.03. If you cannot declare one, call `patTranscribeAuto`, which
-estimates it from a cheap wide first pass. Over the twelve cases where a register *can* be
-declared, estimating it is about as good as being told (mean onset recall 0.716 estimated against
-0.690 declared) and far better than leaving the wide default in place, which scores 0.538 *(all
-three observed, not asserted; only their ordering is)*. It also refuses rather than transcribing
-when the first pass says the material is not one line.
+of object as the input to synthesis, and you can feed it straight back to the renderer.
 
-The loop closes all the way round. Feed the emitted notation back through the renderer and listen
-again — notation → sound → notation → sound, every hop a real Field path — and **5 of 10
-re-renderable corpus cases reproduce their own note sequence**. The other five are the cases whose
-first hearing was already incomplete, so the fourth hop works as a validity check on the third
-rather than as a separate accuracy number. Every case is also classified by what it *did* rather
-than how it scored: 4 recovered exactly, 4 within tolerance, 5 refused with a reason, and **0
-confidently wrong**. That last count is a statement about warnings rather than about correctness:
-a wrong output carries a warning naming where it is wrong, and any case carrying a warning
-classifies as refused. So the claim is narrower than nothing being wrong: nothing is wrong
-*silently*. Act on that one, because a plausible parseable wrong answer gets believed where a
-flagged one does not.
+It is monophonic and says so: a triad is reported as `POLYPHONIC` and named as nothing rather than
+reported as its loudest note, while a sawtooth's full harmonic stack is not refused, because timbre
+is not polyphony.
 
-The floors behind these figures are asserted; the figures themselves are measurements. The mechanism
-and the full measurement tables are in `dev_docs/pitch_transcription_roundtrip.md`, which also says
-which figures are held against a floor and which are single observations; the runnable version is the
+One parameter dominates all the thresholds: **the register you declare.** It sets the analysis
+window and therefore the shortest note that can be resolved, and on identical audio the difference
+between declaring it and not is onset recall 0.91 against 0.03. If you cannot declare one, call
+`patTranscribeAuto`, which estimates it from a cheap wide first pass; estimating is about as good
+as being told, and much better than leaving the wide default in place. It refuses rather than
+transcribing when the first pass says the material is not one line.
+
+A wrong output carries a warning naming where it is wrong, and any case carrying a warning is
+classified as a refusal. So the guarantee is a narrow one, and worth stating exactly: an error is
+never silent. Act on that one — a plausible parseable wrong answer gets believed where a flagged
+one does not.
+
+`dev_docs/pitch_transcription_roundtrip.md` has the per-case accuracy table, the four-hop round
+trip, the classification of every corpus case, and which figures are held against an asserted floor
+and which are single observations. The runnable version is the
 [pitch_transcription_roundtrip](agent_transcripts.md) starting point.
 
 ### What that looks like
@@ -95,9 +86,9 @@ twice has the transients but no pitch change at half of them (energy 0.13, pitch
 
 ![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
 
-The figure behind the "0 confidently wrong" count shows what a **refusal** looks like. Three
-simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC` verdict and `pat("~")`: the outlines have no
-bars in them at all, and that is the correct answer rather than a failure. The same audio at 31 ms per
+A **refusal** looks like this. Three simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC`
+verdict and `pat("~")`: the outlines have no bars in them at all, and that is the correct answer
+rather than a failure. The same audio at 31 ms per
 note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not, because the analysis
 window is then longer than the notes; the output is again `pat("~")` rather than a plausible parseable
 wrong one:
