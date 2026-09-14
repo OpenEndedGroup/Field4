@@ -66,8 +66,11 @@ object MorphoRuntime {
      * it. Anything reached by [module] or `root.resolve` belongs here — including the two `.mjs`
      * entry points, the four `js/` files they import, `tiny_morpho.py` (the standard library) and
      * `main.wasm` (read by [MorphoLayout3D]).
+     *
+     * `internal` only so that `MorphoVendoredResourcesTest` can hold the real list — not the
+     * regex's idea of it — against the paths the host and the guest actually ask for.
      */
-    private val VENDORED = listOf(
+    internal val VENDORED = listOf(
         "morpho-field-driver.mjs",
         "morpho-field-layout.mjs",
         "morpho/js/parser.js",
