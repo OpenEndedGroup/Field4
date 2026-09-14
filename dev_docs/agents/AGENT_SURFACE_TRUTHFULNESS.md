@@ -177,10 +177,22 @@ change both were gates on the *grader* with nothing between them and the tool:
 |---|---|---|---|
 | `expect.allowExecutionErrors` | **5** smoke tests (1 in `public/docs/clojure.md`, 4 in `public/docs/ray_tracing_examples.md`) | `collect_execution_problems` | the unconditional failed-results loop in `evaluate_expectations` |
 | `expect-error=true` | **1** docs fence (`public/docs/clojure.md`) | `screenshot_diagnostic` declining to elevate | nothing — until `run` started failing |
+| *(none — written by hand)* | **2** of the **34** UI regressions | — | — |
 
-Both would have broken in the worst way: `field_backdoor.py`'s batch loop returns 1 at the
-first not-ok command, so an un-waived `run` aborts the invocation *before* the
-`screenshot-box` the test exists to take. `waive_execution_verdict()` in
+A **third** harness needed it and has no registry to key it off:
+`tools/run_ui_regressions.py`. Two of its 34 specs drive a deliberately failing box and
+then assert on the error that box produced — `error-fix-import-executes` (an unresolved
+`MorphoCircuit`, so the "add import" fix row has something to fix) and `remote-ar-head`
+(`clearAFr ame()`, asserting that exactly *one* line-1 syntax error appears). It was found
+by sweeping the harness rather than by it breaking. The flag is written into those two
+specs by hand with the reason beside it, and a test pins the exact set so a third cannot
+appear quietly: **30** `run`/`launch` emissions across the 34 specs, **2** waived, **28**
+that must not be.
+
+All of them would have broken in the worst way: `field_backdoor.py`'s batch loop returns 1
+at the first not-ok command, so an un-waived `run` aborts the invocation *before* the
+`screenshot-box` or `page-eval` the test exists to reach — and the failure then names the
+missing assertion rather than the cause. `waive_execution_verdict()` in
 `tools/verification_runtime.py` — the stdlib-only module both harnesses already import — is
 the single spelling of the flag, applied at each harness's one command-list funnel. It
 touches an execution verb and nothing else: a failing `screenshot-box` or `stop` is still a
@@ -333,8 +345,8 @@ trusted.
 - Of the **112** files in `dev_docs/agents/transcripts/`, **0** read a backdoor result's
   `ok`. The 3 lines matching `\bok\b` are Kotlin box code inside the yaml
   (`close_node_demo.yaml:170`, `rectsl_glsl_sdf.yaml:50`, `rectsl_sdf_live.yaml:111`).
-- Python tool suites: **452 passed / 454 run, 2 skipped** — the same 2 pre-existing
-  `tools.test_loc_history` skips. `test_field_backdoor` 47 → 66,
+- Python tool suites: **455 passed / 457 run, 2 skipped** — the same 2 pre-existing
+  `tools.test_loc_history` skips. `test_field_backdoor` 47 → 69,
   `test_verification_runtime` 6 → 12, `test_docs_runner_failure_reporting` 16 → 18,
   `test_run_field_tests_reaper` 30 → 34, `test_discover_field_tests` 11 → 15,
   `test_run_field_tests_ordering` 19 → 24.
