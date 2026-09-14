@@ -82,7 +82,7 @@ relative, because [`Realization3`](polytopes.md#solids-kt-realization3) stores s
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt` — [read the source](source/jvmMain/afield/stdlib/polytope/Canonical/)
 
-**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md)
 
 ### Top-level functions { #canonical-kt-functions }
 
@@ -196,7 +196,7 @@ equivalent; in practice that means a custom [`RealizationConstraint`](polytopes.
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt` — [read the source](source/jvmMain/afield/stdlib/polytope/CeresRealization/)
 
-**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md)
 
 ### Top-level functions { #ceresrealization-kt-functions }
 
@@ -1225,7 +1225,7 @@ correct as *cycles* — a reader checking them does not also have to check their
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/Solids.kt` — [read the source](source/jvmMain/afield/stdlib/polytope/Solids/)
 
-**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md)
 
 ### Top-level functions { #solids-kt-functions }
 

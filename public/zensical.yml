@@ -225,6 +225,7 @@ nav:
     - A Pattern That Moves Particles: chain_pattern_particles.md
     - Three-Dimensional Life, Counted and Traced: chain_life3d_render.md
     - A RectSL Animation as a Solid: chain_rectsl_spacetime.md
+    - A Polytope, Canonicalised and Sliced: chain_ceres_manifold_contours.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - AI Tool-Use History: ai_tool_use_history.md

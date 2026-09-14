@@ -97,7 +97,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [imaging_filters.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt) | Imaging | imaging_examples, visualizers, agent_transcripts | 0 | 6 | 82% |
 | [mesh.kt](../src/jvmMain/kotlin/afield/stdlib/mesh.kt) | Graphics | mesh_examples | 0 | 5 | 89% |
 | [CorpusOperations.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/CorpusOperations.kt) | Audio AI | audio_ai_corpus_microscope | 0 | 5 | 44% |
-| [CeresRealization.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt) | Polytopes | polytope_examples | 0 | 5 | 75% |
+| [CeresRealization.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt) | Polytopes | polytope_examples, chain_ceres_manifold_contours | 0 | 5 | 75% |
 | [Conway.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
 | [Tetgen.kt](../src/jvmMain/kotlin/afield/tetgen/Tetgen.kt) | Simulation | tetgen | 0 | 5 | 68% |
 | [charts.kt](../src/jvmMain/kotlin/afield/visualization/charts.kt) | Visualization | chart, tetgen | 0 | 5 | 91% |
@@ -111,7 +111,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BandAnalysis.kt](../src/jvmMain/kotlin/afield/four/synth/BandAnalysis.kt) | Audio | chain_pattern_particles | 0 | 2 | 70% |
 | [PatMiniNotation.kt](../src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt) | Patterns | pattern_language | 0 | 2 | 88% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
-| [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Polytopes | polytope_examples | 0 | 2 | 95% |
+| [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Polytopes | polytope_examples, chain_ceres_manifold_contours | 0 | 2 | 95% |
 | [MorphoFLines.kt](../src/jvmMain/kotlin/afield/morpho/MorphoFLines.kt) | Languages | morpho_examples | 0 | 1 | 91% |
 | [keyframer.kt](../src/jvmMain/kotlin/afield/stdlib/keyframer.kt) | Graphics | keyframer_examples, interpolants_examples | 0 | 1 | 98% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 93% |
