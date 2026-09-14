@@ -60,32 +60,35 @@ them to a file — you cannot do to those. The way back in is `link-audio-in`, b
 | `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
 | `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
 
-Every audio figure in these docs, all seventeen of them, comes out of the `wav-file` sink, which is
-why they regenerate on a build machine with no sound card.
+Every audio figure in these docs comes out of the `wav-file` sink, which is why they regenerate on
+a build machine with no sound card.
 
-## Isolated spatial audio and offline checks
+## Spatial audio: thread-local contexts, and rendering with no device
 
-`SimpleSpatialAudioEngine(threadLocalContext = true)` keeps an OpenAL context on the
-thread that initializes it. Use its engine and sources on that thread, and destroy
-it there. This mode requires `ALC_EXT_thread_local_context`; it fails initialization
-when the extension is absent. It preserves another thread's ordinary audio output
-and restores a previous thread-local context when destroyed. Close nested contexts
-in reverse creation order. The existing shared engine keeps its default behaviour.
+`spatial-openal` defaults to one shared engine. Two constructor arguments change that, and both
+exist so that spatial audio can happen somewhere other than the speakers of the machine you are
+sitting at.
 
-For deterministic headphone rendering without opening speakers, add
-`loopbackSampleRate = 48000`. Initialize normally, request HRTF, then call
-`renderSamples(output, frames)` with a reusable direct stereo `ShortBuffer`. Only
-that call advances playback. Inspect `hrtfEnabled` and `hrtfStatus` for the actual
-result; a requested mode is not proof that the device enabled it. `sourceCount` and
-`bufferCount` help verify owner cleanup. A scalar `setListener` overload avoids
-allocating temporary vectors for frequent position/orientation updates.
+`SimpleSpatialAudioEngine(threadLocalContext = true)` keeps its OpenAL context on the thread that
+initializes it, so a box can have 3D audio of its own while another thread's ordinary output keeps
+playing. Use the engine and its sources on that thread and destroy it there; destroying it restores
+whichever thread-local context was current before, and nested contexts must close in reverse
+creation order. The mode needs `ALC_EXT_thread_local_context` and fails initialization where the
+extension is absent.
 
-The `audio.spatial.loopback` smoke (`SpatialAudioLoopbackSmoke`) renders through the
-real OpenAL mixer: it checks left/right energy exchanging when the head rotates,
-Doppler under listener motion, source/buffer cleanup, and restoration of both the
-OpenAL context and LWJGL capabilities after nested use. These checks require the
-bundled OpenAL Soft library, but no physical output device. They do not establish
-how an individual listener perceives an HRTF through their headphones.
+`loopbackSampleRate = 48000` renders instead of playing. Initialize as usual, request HRTF, then
+call `renderSamples(output, frames)` with a reusable direct stereo `ShortBuffer`. That call, and
+nothing else, advances playback — so the output is deterministic, and it needs the bundled OpenAL
+Soft library rather than an output device. A test or a docs build can use it.
+
+| member | what it is for |
+| --- | --- |
+| `hrtfEnabled`, `hrtfStatus` | what the device actually did. Asking for HRTF is not proof of getting it |
+| `sourceCount`, `bufferCount` | live object counts, for checking that an owner cleaned up after itself |
+| the scalar `setListener` overload | position and orientation without allocating a vector per update |
+
+The `audio.spatial.loopback` smoke drives both modes through the real mixer;
+`dev_docs/SOUND_PATH_MAP_AGREEMENT.md` lists what it asserts and to what tolerance.
 
 ## The four that bring samples in
 
@@ -197,25 +200,17 @@ Their waveform similarity to each other is **0.9584** — high, because they are
 buffer; not 1.0, because they are not the same lowpass. Every number here is printed by
 `run_field_tests.py --id synth.sound.path.map`, which is where to re-measure them.
 
-### What the three clips do not tell you: loudness
+### Loudness: the three clips are peak-normalized
 
 **All three players above are peak-normalized to 0.9 of full scale, so they compare timbre and not
-level.** That is `fun writeStereo16` being called with `normalizePeak = 0.9f`, and it means every
-committed clip has the identical peak sample value of 29490. Listen to them back to back and they
-will seem to arrive at a matched volume; that is the writer's doing, not the paths'.
+level.** That is `fun writeStereo16` being called with `normalizePeak = 0.9f`. Listen to them back
+to back and they will seem to arrive at a matched volume; that is the writer's doing, not the
+paths'. Do not read anything into their relative loudness.
 
 The level the filters actually produced is in the pre-normalization buffers, and it is not matched at
 all: the dry beat peaks at **2.005** — well past full scale, because ten voices a cycle sum — and the
 two filtered renders at **0.934** and **1.069**. A 12 dB/octave filter removes more energy than a
 6 dB/octave one, and that shows up as level before it is scaled away.
-
-**The centroids in the table are measured on those pre-normalization buffers**, not on the committed
-`.wav`s: `brightnessHz(audio.mono)` runs on the rendered buffer and `writeStereo16` is called
-afterwards. Peak normalization is a single scalar multiply, so the spectral centroid, the rolloff
-slopes and the 0.9584 similarity are the same either way.
-
-The committed bytes make that similarity concrete. The two filtered clips reach their maximum at
-frames **25778** and **25777**, one sample apart, while the dry beat peaks at 22632.
 
 ### The seam claim, as a number
 
@@ -234,38 +229,21 @@ A hand-maintained list of render paths is exactly the artifact that rots, so thi
 against the code in `check`, in the shape [`DocsAudioProvenance`](sound.md#and-the-same-question-asked-of-every-clip-in-the-docs)
 uses: declare, re-derive from the tree, fail on disagreement.
 
-`SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke then asserts five things:
+`SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke re-derives them from the
+tree. Four kinds of drift fail the build: a count that no longer matches `PATHS`; a file that makes
+or moves samples and is not attributed to a declared path; a declared file that has stopped
+carrying the literal it was declared for; and a path this page has dropped from its tables. Each
+path is cited by *symbol* rather than line number, so a rename fails rather than leaving a dead
+citation above.
 
-1. **The counts.** `SOURCE_COUNT = 7`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 9`. If a
-   change adds a path beside the seam instead of on it, `PATHS` grows while `SEAM_COUNT` does not.
-   Read that failure before editing the number.
-2. **Undeclared paths, derived from markers.** Five literals in the tree can only mean "a new way in
-   or out of this process": `alcOpenDevice(` (three files, three genuinely separate OpenAL
-   contexts), `alcCaptureOpenDevice(` (one), `fun renderWav(name: String, outPath: String)` (five —
-   the docs-audio producer contract), `WavFloatArrayWriter.encode` (six) and
-   `override fun generateStereo(` (eight — every node on the seam). Every file carrying one is
-   attributed to a declared path, and a new hit names itself in the failure.
+What that buys you as a reader: if a table above says a path exists, it does, in that file, under
+that name. If a count above disagrees with the tree, you get a build failure rather than a page that
+under-reports what Field can do — which is what happened for a month, with every check green, until
+the seam itself became one of the derivation's markers.
 
-    The fifth was added on 2026-09-12, because the first four missed a whole sample source. A
-    pattern-driven Faust instrument opens no device and writes no WAV, so `FaustPoly.kt` sat in the
-    tree carrying none of these literals: the counts above stayed at six and seven, every check
-    stayed green, and this page under-reported what Field can do. The seam is the one thing a new
-    realtime source cannot avoid, which is why the marker that closes the hole greps for the seam.
-    It still cannot see a source that is off the seam entirely — another `sonic-pi`, another
-    whole-buffer free function — and `SoundPathMap`'s own KDoc says so.
-3. **Stale declarations.** The same check in reverse: a declared file that no longer carries its
-   marker is a citation that has rotted, and fails the same way.
-4. **Every citation on this page resolves.** Each path declares an entry-point *symbol*, not a line
-   number, and the guard greps the file for it. So a rename fails the build instead of leaving a
-   dead symbol in the tables above.
-5. **This page names every path.** Both file and symbol, verbatim, for all sixteen. An omitted row
-   fails.
-
-The comparison figures are checked too: both filters must take the centroid below 0.6× the dry
-buffer's, the two must still correlate above 0.5 with each other, and the gain
-agreement must stay under `1e-6`. `DocsAudioProvenance` separately re-renders all three committed
-`.wav`s through the same `renderWav` contract the docs build uses and correlates them against the
-bytes on disk, so a figure the code has stopped producing fails as well.
+The assertions, the marker literals and the tolerances behind the comparison figures are in
+`dev_docs/SOUND_PATH_MAP_AGREEMENT.md`; `SoundPathMap`'s own KDoc records what the derivation still
+cannot see.
 
 ---
 
