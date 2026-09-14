@@ -147,6 +147,28 @@ In JSON results, inspect `ok`, `timedOut`, and `events`. For
 The launched Java command is omitted unless that inner command receives
 `--include-command`.
 
+**Since 2026-09-14, `ok` for `run` / `launch` / `continue` / `launch-batch` carries the
+box's own verdict.** A box that failed to compile, or threw, gives `ok: false`, process
+exit 1, `data.errors` (each distinct diagnostic) and `data.error` (the same, flattened to
+one string). Before that they reported `ok = not timed_out`, so a hard Kotlin compile
+error returned `ok: true`, `running: false`, exit 0 — with the diagnostic present and
+unread in that same result's `events`. Pass `--no-fail-on-error` when the failure is the
+point: the verdict is waived, `data.errors` is still filled in, and
+`data.executionErrorsIgnored` records the waiver. The smoke catalog's
+`expect.allowExecutionErrors` and a docs fence's `expect-error=true` add it for you.
+
+**`open` says whether the document was already there.** Opening a name that is not in the
+server's workspace is how a document gets *created* in Field, so `open` answers `ok`
+either way — and used to look identical whether it had loaded `alife_walls` or invented
+it. Read `documentExisted` and `attachedToLiveDocument`, both answered by the server;
+`createdNewDocument: true` plus a stderr line appear when a named open invented one, and
+`documentExistedKnown: false` means the server predates those fields, so you have verified
+nothing. Say `open <name> --must-exist` whenever you mean an existing document: it is then
+a hard error, and it fails closed against a server too old to answer.
+
+Both changes, with their populations and their traps:
+[`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md).
+
 `run-jvm-main <entrypoint> [--arg VALUE]... [--timeout N] [--include-command]`.
 **An argument value that begins with a dash must use `--arg=VALUE`**, not
 `--arg VALUE`: argparse refuses a separate value starting with a dash and dies with

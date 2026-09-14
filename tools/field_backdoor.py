@@ -1598,6 +1598,7 @@ class FieldBackdoor:
         scratch: bool,
         timeout: float,
         read_only: bool = False,
+        must_exist: bool = False,
     ) -> dict[str, Any]:
         # read_only is not scratch. scratch throws the document name away and synthesises a new
         # directory under ~/.agent-scratch/; read_only opens the real named document with Field's
@@ -1658,15 +1659,19 @@ class FieldBackdoor:
             result["documentExistedKnown"] = False
         elif not self.scratch and not existed:
             result["createdNewDocument"] = True
-            print(
-                f"field_backdoor.py: --document {self.document_name} did not exist in the "
-                f"server's workspace; Field created a new EMPTY document at "
-                f"{self.session_key}. If you meant to open an existing one, check "
-                "`serverWorkspace` in `status` and the spelling of the name; pass "
-                "`open --must-exist` to make this a hard error.",
-                file=sys.stderr,
-                flush=True,
-            )
+            # Silent under --must-exist: the caller has already said this must not happen and is
+            # about to get a refusal that says the same thing, so advising them to pass the flag
+            # they just passed is noise on top of the real message.
+            if not must_exist:
+                print(
+                    f"field_backdoor.py: --document {self.document_name} did not exist in the "
+                    f"server's workspace; Field created a new EMPTY document at "
+                    f"{self.session_key}. If you meant to open an existing one, check "
+                    "`serverWorkspace` in `status` and the spelling of the name; pass "
+                    "`open --must-exist` to make this a hard error.",
+                    file=sys.stderr,
+                    flush=True,
+                )
         return result
 
     async def refresh_snapshot(self, timeout: float) -> dict[str, Any]:
@@ -3241,6 +3246,7 @@ async def dispatch_command(
             scratch=args.scratch or not args.document,
             timeout=client.default_timeout,
             read_only=getattr(args, "read_only", False),
+            must_exist=getattr(args, "must_exist", False),
         )
         if getattr(args, "must_exist", False):
             if args.scratch or not args.document:

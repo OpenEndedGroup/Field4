@@ -121,6 +121,112 @@ repository-wide guard test uses it so fail-open does not cost that test its teet
 `0` complete, `2` usable but incomplete, `1` fatal. When a requested `--id` matches nothing,
 the runner prints the skip list — the third reason an id can be absent.
 
+## Execution: a box that failed to compile used to report `ok: true`
+
+Landed 2026-09-14 on `nightly/2026-09-14/2-backdoor-compile-truthfulness`, base `2fe5b17b6`.
+
+Found while driving the `alife_script` demo on 2026-09-13: a box with a hard Kotlin compile
+error, run through `field_backdoor.py run`, returned **`ok: true`, `running: false`, process
+exit 0**. An agent that trusted the exit status shipped a demo that does not run, and the
+defect surfaced only because a human asked to see it.
+
+The diagnostics were not missing. They were in the same result:
+
+```json
+{"ok": true, "data": {"running": false}, "events": [ ...,
+  {"name": "output", "kind": "error", "line": 1, "startColumn": 12,
+   "html": "Initializer type mismatch: expected &#39;Int&#39;, actual &#39;String&#39;."} ]}
+```
+
+`dispatch_command`'s `run`/`launch`/`continue`/`launch-batch` branch computed
+`ok = not timed_out` and never read the events it had just collected — while two sibling
+verbs in the same function already graded themselves on exactly these packets: `action` via
+`execution_errors()`, `wait-output` via `_execution_error_event()`. One shared
+`grade_execution()` now does it for all four, so they cannot drift apart again.
+
+`ok` is now **false**, with `data.errors` (list) and `data.error` (flat string). The flat
+key matters: `run_field_tests.collect_execution_problems` and `docs_hooks`'s
+`require_diagnostic` path both use it to tell a *diagnosed* failure from an opaque one, and
+deliberately do not treat a bare "command failed" as proof of broken example code.
+
+**The predicate is `execution_errors()`, reused rather than rewritten, and that is
+load-bearing.** Field encodes "clear this property's stale error marker" as an empty error
+at line −1, and `DatalogExecution` emits one on every success (`ClojureExecution` now does
+too), so a fresh predicate would have failed every clean Datalog and Clojure box.
+
+Cosmetic wart, known and not fixed: the text keeps Field's HTML entities (`&#39;`).
+`execution_errors()` is shared with the `action` verb and with both harnesses' failure text,
+so un-escaping it is a cross-verb change with its own blast radius.
+
+### The escape hatch, and who needed it
+
+`--no-fail-on-error` — same name and meaning as `wait-output`'s, which has had it since the
+docs-capture silent-timeout fix. It suppresses the verdict, never the evidence:
+`data.errors` stays populated and `data.executionErrorsIgnored: true` records the waiver.
+
+Two harnesses have a registered way to say "this box is supposed to fail", and before this
+change both were gates on the *grader* with nothing between them and the tool:
+
+| Flag | Population | What it gated | What it did not gate |
+|---|---|---|---|
+| `expect.allowExecutionErrors` | **5** smoke tests (1 in `public/docs/clojure.md`, 4 in `public/docs/ray_tracing_examples.md`) | `collect_execution_problems` | the unconditional failed-results loop in `evaluate_expectations` |
+| `expect-error=true` | **1** docs fence (`public/docs/clojure.md`) | `screenshot_diagnostic` declining to elevate | nothing — until `run` started failing |
+
+Both would have broken in the worst way: `field_backdoor.py`'s batch loop returns 1 at the
+first not-ok command, so an un-waived `run` aborts the invocation *before* the
+`screenshot-box` the test exists to take. `waive_execution_verdict()` in
+`tools/verification_runtime.py` — the stdlib-only module both harnesses already import — is
+the single spelling of the flag, applied at each harness's one command-list funnel. It
+touches an execution verb and nothing else: a failing `screenshot-box` or `stop` is still a
+failure, pinned by a test in each harness. Neither harness loses a check either: a docs
+fence carrying `expect-error` whose box runs *cleanly* still fails.
+
+## `open` reported success for a document it had invented
+
+The same sweep, run over the whole verb surface. All **37** `args.command` branches in
+`dispatch_command` were enumerated mechanically (a regex over the branch bodies, not by eye).
+**10 of 37** hardcode `ok=True`; **9 of those 10 are honest** — five are backed by a helper
+that raises on a server `ok: false` (`set_property`, `create_box`, `open_playwright`,
+`dispose_graphics_context`, `refresh_snapshot`), four are pure local reads (`boxes`,
+`output`, `sleep`, `status`).
+
+The tenth was `open`, a sharper form of the same disease: there was no server verdict to
+read, because `agent-open-document` has none to give. In Field, opening a name that is not
+there is how a document gets **created**. So an agent that asked for `alife_walls` and
+received a new empty document saw exactly what a successful load looks like — and the one
+symptom it did get, `boxes: []`, already had three documented causes above. The server knew:
+it logs `file '...' not found; will be created on first save`. Precisely the shape of the
+compile-error defect — the fact existed, in a log, and not in the reply.
+
+`AgentDocumentSnapshot` now carries two fields, answered server-side because only the server
+can answer them (it resolves the name against its process-global workspace, which the
+client's `--workspace` does not decide):
+
+| Field | Meaning | absent |
+|---|---|---|
+| `documentExisted` | the document was there before this open. Predicate: `SavingContext.documentExistsOnDisk`, evaluated *before* the load | the Field predates the field — reported as `documentExistedKnown: false`, and you have verified nothing |
+| `attachedToLiveDocument` | this open joined a document the server already held in memory, rather than reading one from disk | as above |
+
+Two traps, both found by measuring rather than by reading:
+
+- **The predicate is metadata presence, not the directory.** `SavingContext.load` calls
+  `ensureDirectory`, so after one open the directory exists whether or not the document did.
+  A first `open` of a new name leaves a directory holding only the seeded `AGENTS.md` and
+  `README.md`; `documentExistsOnDisk` correctly still says no.
+- **`@EncodeDefault` is required on both.** `Message.payload` serialises with the default
+  `Json`, whose `encodeDefaults` is false, so a plain `= false` is *omitted from the wire* —
+  making "the document was not there" and "this Field is too old to say" the same bytes,
+  which is the exact confusion the change exists to end. The first build shipped without it,
+  and a live Field on 8802 reported `documentExistedKnown: false` for a document it had just
+  invented.
+
+Client side, `ok` deliberately stays **true**: creating a document is a legitimate,
+load-bearing use of `open` that the docs runner and every scratch capture depend on. What
+changed is that the tool says so — `createdNewDocument: true` plus a stderr line naming the
+remedy — and that an agent can now demand the other behaviour with **`open --must-exist`**,
+which fails *closed* on a server too old to answer, because an unanswerable guarantee is
+worse than no guarantee.
+
 ## Numbers, with their populations
 
 - `status.workspace` consumers: **0 of 73** files in `tools/` read the key programmatically
@@ -142,6 +248,34 @@ the runner prints the skip list — the third reason an id can be absent.
 - Python tool suites: **403 passed / 405 run, 2 skipped** (the 2 are pre-existing skips in
   `tools.test_loc_history`). `test_field_backdoor` 38 → 47, `test_run_field_tests_reaper`
   13 → 30, `test_discover_field_tests` 4 → 11.
+
+### Added 2026-09-14, for the execution and `open` halves
+
+- Verb surface: **37** `args.command` branches in `dispatch_command`; **10** hardcode
+  `ok=True`; **1 of those 10** (`open`) could report success for something that had failed.
+  Enumerated with a regex over the branch bodies, not by eye.
+- Readers of a backdoor result's `ok` outside `field_backdoor.py`: **41 sites in 8 files**
+  (`grep -rn '\["ok"\]\|\.get("ok"' tools/*.py public/*.py`) — `field_mcp` 2,
+  `field_session` 3, `run_field_tests` 10, `run_desktop_playwright` 1, `run_ui_regressions`
+  8, `docs_hooks` 4, and 13 across two test modules. Hand-classified: the two harnesses that
+  actually grade box execution already failed on these same events independently of `ok`
+  (`run_field_tests.collect_execution_problems`,
+  `docs_hooks.extract_backdoor_execution_error`), so no smoke test or docs capture that
+  passed before can newly fail because of the change — the event was already fatal there.
+- Of the **112** files in `dev_docs/agents/transcripts/`, **0** read a backdoor result's
+  `ok`. The 3 lines matching `\bok\b` are Kotlin box code inside the yaml
+  (`close_node_demo.yaml:170`, `rectsl_glsl_sdf.yaml:50`, `rectsl_sdf_live.yaml:111`).
+- Python tool suites: **432 passed / 434 run, 2 skipped** — the same 2 pre-existing
+  `tools.test_loc_history` skips. `test_field_backdoor` 47 → 64,
+  `test_verification_runtime` 6 → 12, `test_docs_runner_failure_reporting` 16 → 18.
+- Discovery: `python3 tools/discover_field_tests.py` exits **0** with **247 tests, 0
+  skipped**, empty stderr, parsing clean tree-wide. 247 rather than the primary checkout's
+  265 because a worktree lacks the gitignored `src/personal` root — the same 18-test gap
+  recorded as 234 vs 252 above.
+- Smoke, end to end through the real harness on port 8802: **4 passed, 0 failed, 1 skipped**
+  of 5 requested (`docs.clojure.error` — which carries `allowExecutionErrors` —
+  `docs.forth.basic-stack`, `docs.kotlin-overview.printing.println`,
+  `examples.backdoor.println-basic`; `docs.raytracing.uv-gradient` is a `skipOn: darwin`).
 
 ## Reproducing the before/after in one paste
 
@@ -186,6 +320,66 @@ The reaper and discovery halves need no server:
 uv run --project . --group backdoor --frozen python tools/run_field_tests.py \
   --reap-dry-run --port 19542 --id nonexistent.test.id   # prints a reason per pid
 uv run --project . --group backdoor --frozen python tools/run_python_tests.py
+```
+
+## Reproducing the execution and `open` before/after in one paste
+
+`$WT` is a checkout; the base commit for this half is `2fe5b17b6`. Port **8802**, workspace
+under `build/`, so it touches nothing of the human's. Every line below was run.
+
+```bash
+WT=/path/to/your/checkout
+cd "$WT"
+WS=$WT/build/field-automation-workspace; mkdir -p "$WS"
+PORT=8802 AFIELD_SKIP_WORKSPACE_PERSIST=1 AFIELD_FIELD_SH_NO_TERMINAL=1 \
+  ./field.sh --workspace "$WS" > /tmp/field8802.log 2>&1 &
+
+# Never believe a server before checking whose it is: --port will happily start its OWN.
+P=$(lsof -nP -iTCP:8802 -sTCP:LISTEN -t); lsof -a -p "$P" -d cwd -Fn
+
+printf 'val x: Int = "this is not an Int"\nprint("never reached: " + x)\n' > /tmp/broken.kt
+
+# BEFORE: the base-commit tool calls a box that did not compile a success.
+git show 2fe5b17b6:tools/field_backdoor.py > tools/_legacy_run_demo.py
+uv run --project . --group backdoor --frozen python tools/_legacy_run_demo.py --json \
+  --port 8802 --attach-existing --scratch \
+  --command "open --scratch" --command "new-box --name Broken --alias b" \
+  --command "run b --property code --file /tmp/broken.kt --timeout 90"
+#   -> "ok": true, "data": {"running": false}, process exit 0
+#      ...and the diagnostic sitting unread in that same result's 8 events.
+rm tools/_legacy_run_demo.py
+
+# AFTER: same server, same box.
+uv run --project . --group backdoor --frozen python tools/field_backdoor.py --json \
+  --port 8802 --attach-existing --scratch \
+  --command "open --scratch" --command "new-box --name Broken --alias b" \
+  --command "run b --property code --file /tmp/broken.kt --timeout 90"
+#   -> "ok": false, process exit 1,
+#      "errors": ["Initializer type mismatch: expected &#39;Int&#39;, actual &#39;String&#39;."]
+
+# The registered waiver: verdict suppressed, evidence kept.
+#   ... --command "run b --property code --file /tmp/broken.kt --no-fail-on-error"
+#   -> "ok": true, "errors": [ ...same... ], "executionErrorsIgnored": true
+
+# open, both directions. The first invents a document and now says so on stderr.
+uv run --project . --group backdoor --frozen python tools/field_backdoor.py --json \
+  --port 8802 --attach-existing --command "open alife_walls_typo"
+#   -> "documentExisted": false, "attachedToLiveDocument": false,
+#      "createdNewDocument": true, + a stderr line naming the remedy
+uv run --project . --group backdoor --frozen python tools/field_backdoor.py --json \
+  --port 8802 --attach-existing --command "open alife_walls_typo --must-exist"
+#   -> exit 1, "no document named 'alife_walls_typo' in the server's workspace '...'"
+
+# Stop only what you started, after checking its cwd.
+lsof -a -p "$P" -d cwd -Fn | grep -q "^n$WT$" && kill -INT "$P"
+```
+
+The harness halves need no server of your own — `run_field_tests.py` starts and reaps one:
+
+```bash
+uv run --project . --group backdoor --frozen python tools/run_python_tests.py
+uv run --project . --group backdoor --frozen python tools/run_field_tests.py \
+  --port 8802 --id docs.clojure.error        # the allowExecutionErrors path, end to end
 ```
 
 ## Related

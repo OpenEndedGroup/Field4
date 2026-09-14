@@ -234,6 +234,14 @@ class BoxReferenceTests(unittest.TestCase):
         # Names where to look, and that the workspace it resolves against is the server's.
         self.assertIn("serverWorkspace", message)
 
+    def test_must_exist_does_not_also_advise_passing_must_exist(self) -> None:
+        """The refusal supersedes the advisory; printing both told the caller to do what
+        they had just done."""
+        with contextlib.redirect_stderr(io.StringIO()) as captured:
+            with self.assertRaises(BackdoorError):
+                self.open_document_reporting("alife_walls", existed=False, must_exist=True)
+        self.assertEqual(captured.getvalue(), "")
+
     def test_must_exist_is_satisfied_by_a_document_that_was_there(self) -> None:
         result, _ = self.open_document_reporting("alife_walls", existed=True, must_exist=True)
         self.assertTrue(result["ok"])
