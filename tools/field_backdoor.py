@@ -509,6 +509,9 @@ class FieldBackdoor:
         self.document_name: str | None = None
         self.scratch = False
         self.read_only = False
+        # Tri-state on purpose: None is "no server has told us", not "no".
+        self.document_existed: bool | None = None
+        self.attached_to_live_document: bool | None = None
         self.session_key: str | None = None
         self.boxes: dict[str, dict[str, Any]] = {}
         self._running_state_seen: dict[tuple[str, str], tuple[int, bool]] = {}
@@ -1021,6 +1024,11 @@ class FieldBackdoor:
         # Reported by the server rather than echoed back from the request, so a caller can tell
         # that read-only was actually honoured.
         self.read_only = bool(snapshot.get("readOnly"))
+        # Kept as None when the key is absent, because absent means "this Field predates the
+        # field" and must not collapse into "the document was not there". `bool()` here would
+        # have thrown that distinction away exactly as the missing @EncodeDefault did.
+        self.document_existed = snapshot.get("documentExisted")
+        self.attached_to_live_document = snapshot.get("attachedToLiveDocument")
         self.session_key = next_session_key
         self.boxes = {}
         self._running_state_seen = {}
@@ -3305,6 +3313,12 @@ async def dispatch_command(
             "documentName": client.document_name,
             "scratch": client.scratch,
             "readOnly": client.read_only,
+            # The fifth field that can disagree with you, and the one that answers the
+            # `boxCount: 0` you are being told to sanity-check two fields below. Both are
+            # read back from the server's agent-open-document reply; `null` means the
+            # server predates them, which is "unverified", not "no".
+            "documentExisted": client.document_existed,
+            "attachedToLiveDocument": client.attached_to_live_document,
             "scratchLifetime": "invocation" if client.scratch else None,
             "scratchPortReuse": False if client.scratch else None,
             "sessionKey": client.session_key,

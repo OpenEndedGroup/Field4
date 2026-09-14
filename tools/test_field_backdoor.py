@@ -181,7 +181,10 @@ class BoxReferenceTests(unittest.TestCase):
 
         payload = {"documentName": document, "sessionKey": f"/ws/{document}", "boxes": []}
         if existed is not None:
+            # Both or neither, as on the wire: the two fields carry `@EncodeDefault`
+            # together, so a server new enough to send one always sends the other.
             payload["documentExisted"] = existed
+            payload["attachedToLiveDocument"] = False
 
         async def reply(_name: str, _payload: dict, *, timeout: float, **_kwargs) -> dict:
             return {"payload": payload}
@@ -256,6 +259,20 @@ class BoxReferenceTests(unittest.TestCase):
         with self.assertRaises(BackdoorError) as raised:
             self.open_document_reporting("anything", existed=None, scratch=True, must_exist=True)
         self.assertIn("meaningless with --scratch", str(raised.exception))
+
+    def test_status_carries_the_document_existence_answer_too(self) -> None:
+        """`status` is where AGENTS.md sends an agent before editing a real document, and
+        `boxCount: 0` is the symptom it tells them to sanity-check. Now the same result
+        says which of the four causes it was."""
+        self.open_document_reporting("alife_walls", existed=False)
+        data = self.status()
+
+        self.assertIs(data["documentExisted"], False)
+        self.assertIs(data["attachedToLiveDocument"], False)
+
+    def test_status_reports_an_unanswerable_existence_as_null_not_false(self) -> None:
+        self.open_document_reporting("alife_walls", existed=None)
+        self.assertIsNone(self.status()["documentExisted"])
 
     def test_status_says_whether_the_request_reached_a_server_at_all(self) -> None:
         # False for an attached server: `--workspace` only ever becomes
