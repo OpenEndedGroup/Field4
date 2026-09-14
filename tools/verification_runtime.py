@@ -5,6 +5,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import shlex
 import signal
 import socket
 import ssl
@@ -17,6 +18,35 @@ import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Iterator, Mapping, Sequence
+
+#: Backdoor verbs that, since 2026-09-14, grade themselves on the box's own error output
+#: (`grade_execution` in `tools/field_backdoor.py`). Before that they returned `ok: true`
+#: for a box that failed to compile, and the diagnostic reached the caller only as an
+#: unread event in the same result.
+EXECUTION_VERBS_THAT_FAIL_ON_BOX_ERROR = ("run", "launch", "continue", "launch-batch")
+
+
+def waive_execution_verdict(command_line: str) -> str:
+    """Add `--no-fail-on-error` to a backdoor execution verb, leaving anything else alone.
+
+    Two harnesses have a registered way of saying "this box is *supposed* to fail":
+    `expect.allowExecutionErrors` in the smoke catalog, and `expect-error=true` on a docs
+    fence whose figure is a picture of the diagnostic. Both need it, because
+    `field_backdoor.py`'s batch loop returns at the first not-ok command -- so an
+    un-waived `run` would abort the invocation before the screenshot it exists to take.
+
+    It lives here, in the module both harnesses already import, so there is one spelling
+    of the flag rather than three. Waiving the verdict never waives the evidence: the
+    backdoor still fills `data.errors` and sets `executionErrorsIgnored`, and each
+    harness still asserts its own direction (a docs fence carrying `expect-error` whose
+    box ran *cleanly* fails too).
+    """
+    parts = shlex.split(command_line)
+    if not parts or parts[0] not in EXECUTION_VERBS_THAT_FAIL_ON_BOX_ERROR:
+        return command_line
+    if "--no-fail-on-error" in parts:
+        return command_line
+    return shlex.join([*parts, "--no-fail-on-error"])
 
 
 def automation_port_is_available(port: int) -> bool:

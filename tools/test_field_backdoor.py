@@ -173,6 +173,107 @@ class BoxReferenceTests(unittest.TestCase):
         # `scratch` throws the name away, so there is nothing to warn about.
         self.assertEqual(self.open_capturing_stderr("/tmp/anything", scratch=True), "")
 
+    def open_document_reporting(
+        self, document: str, *, existed: bool | None, scratch: bool = False, must_exist: bool = False
+    ) -> tuple[dict, str]:
+        """Dispatch `open`, with the server's `documentExisted` under the test's control."""
+        from tools.field_backdoor import dispatch_command
+
+        payload = {"documentName": document, "sessionKey": f"/ws/{document}", "boxes": []}
+        if existed is not None:
+            # Both or neither, as on the wire: the two fields carry `@EncodeDefault`
+            # together, so a server new enough to send one always sends the other.
+            payload["documentExisted"] = existed
+            payload["attachedToLiveDocument"] = False
+
+        async def reply(_name: str, _payload: dict, *, timeout: float, **_kwargs) -> dict:
+            return {"payload": payload}
+
+        self.client.call_for_single_reply = reply  # type: ignore[assignment]
+        line = f"open {document}"
+        if scratch:
+            line += " --scratch"
+        if must_exist:
+            line += " --must-exist"
+        captured = io.StringIO()
+        with contextlib.redirect_stderr(captured):
+            result = asyncio.run(dispatch_command(self.client, parse_command(line), line))
+        return result, captured.getvalue()
+
+    def test_a_document_field_had_to_invent_is_called_out(self) -> None:
+        """The fourth cause of an unexplained `boxes: []`, and the one that was unnameable.
+
+        Opening a name that is not there is how a document gets CREATED in Field, so the
+        server answers with a snapshot either way and `open` reported `ok: true`. The fact
+        was not missing -- the server logged `file '...' not found; will be created on
+        first save` -- it just never reached the reply. Measured on a live Field on 8802.
+        """
+        result, warning = self.open_document_reporting("alife_walls", existed=False)
+
+        self.assertTrue(result["ok"])  # creating a document is legitimate; saying nothing was not
+        self.assertTrue(result["data"]["createdNewDocument"])
+        self.assertIn("did not exist in the server's workspace", warning)
+        self.assertIn("created a new EMPTY document", warning)
+
+    def test_a_document_that_was_there_says_nothing(self) -> None:
+        result, warning = self.open_document_reporting("alife_walls", existed=True)
+        self.assertEqual(warning, "")
+        self.assertNotIn("createdNewDocument", result["data"])
+
+    def test_a_server_too_old_to_answer_abstains_rather_than_guessing(self) -> None:
+        """Fail open, like `serverWorkspace: null` -- but labelled, so it reads as unverified."""
+        result, warning = self.open_document_reporting("alife_walls", existed=None)
+
+        self.assertEqual(warning, "")
+        self.assertFalse(result["data"]["documentExistedKnown"])
+        self.assertNotIn("createdNewDocument", result["data"])
+
+    def test_must_exist_refuses_a_document_field_would_have_invented(self) -> None:
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("alife_walls", existed=False, must_exist=True)
+
+        message = str(raised.exception)
+        self.assertIn("no document named 'alife_walls'", message)
+        # Names where to look, and that the workspace it resolves against is the server's.
+        self.assertIn("serverWorkspace", message)
+
+    def test_must_exist_does_not_also_advise_passing_must_exist(self) -> None:
+        """The refusal supersedes the advisory; printing both told the caller to do what
+        they had just done."""
+        with contextlib.redirect_stderr(io.StringIO()) as captured:
+            with self.assertRaises(BackdoorError):
+                self.open_document_reporting("alife_walls", existed=False, must_exist=True)
+        self.assertEqual(captured.getvalue(), "")
+
+    def test_must_exist_is_satisfied_by_a_document_that_was_there(self) -> None:
+        result, _ = self.open_document_reporting("alife_walls", existed=True, must_exist=True)
+        self.assertTrue(result["ok"])
+
+    def test_must_exist_refuses_rather_than_passes_when_it_cannot_be_checked(self) -> None:
+        """An unanswerable guarantee is worse than no guarantee: the point is to fail closed."""
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("alife_walls", existed=None, must_exist=True)
+        self.assertIn("predates", str(raised.exception))
+
+    def test_must_exist_with_scratch_is_a_contradiction_and_says_so(self) -> None:
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("anything", existed=None, scratch=True, must_exist=True)
+        self.assertIn("meaningless with --scratch", str(raised.exception))
+
+    def test_status_carries_the_document_existence_answer_too(self) -> None:
+        """`status` is where AGENTS.md sends an agent before editing a real document, and
+        `boxCount: 0` is the symptom it tells them to sanity-check. Now the same result
+        says which of the four causes it was."""
+        self.open_document_reporting("alife_walls", existed=False)
+        data = self.status()
+
+        self.assertIs(data["documentExisted"], False)
+        self.assertIs(data["attachedToLiveDocument"], False)
+
+    def test_status_reports_an_unanswerable_existence_as_null_not_false(self) -> None:
+        self.open_document_reporting("alife_walls", existed=None)
+        self.assertIsNone(self.status()["documentExisted"])
+
     def test_status_says_whether_the_request_reached_a_server_at_all(self) -> None:
         # False for an attached server: `--workspace` only ever becomes
         # `--args=--workspace ...` on the launch path, so on this path it decided nothing.
@@ -659,6 +760,123 @@ class BackdoorLiveCodingStateTests(unittest.TestCase):
         self.assertEqual(sent[0][0], "set-rect")
 
 
+#: The `output` event a live Field on port 8802 emitted on 2026-09-14 for a box whose
+#: `code` was `val x: Int = "this is not an Int"`. Copied verbatim from the reproduction
+#: in `dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md` rather than invented, because the
+#: whole point of these tests is that the packet carrying the diagnostic was already
+#: arriving and the `run` branch was not reading it.
+COMPILE_ERROR_EVENT = {
+    "seq": 35,
+    "messageName": "exec_45b94fbcf59d449fa6a7f95021f53483",
+    "name": "output",
+    "originalName": "output",
+    "payload": {
+        "uid": "box",
+        "line": 1,
+        "html": "Initializer type mismatch: expected &#39;Int&#39;, actual &#39;String&#39;.",
+        "kind": "error",
+        "frame": 30058,
+        "startColumn": 12,
+        "endLine": 1,
+        "endColumn": 13,
+    },
+    "replyContext": {"uid": "box", "command": "run"},
+    "uid": "box",
+    "kind": "error",
+}
+
+
+class ExecutionTruthfulnessTests(unittest.TestCase):
+    """`run` / `launch` / `continue` must not report success for a box that failed.
+
+    Before 2026-09-14 all three computed `ok = not timed_out` and never looked at the
+    events they had just collected, so a box with a hard Kotlin compile error returned
+    `ok: true`, `running: false`, process exit 0 -- while the diagnostic sat unread in
+    the same result's `events`. `action` (`execution_errors`) and `wait-output`
+    (`_execution_error_event`) already graded themselves on exactly these packets.
+    """
+
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.05, logger=_Logger())
+        self.client.boxes["box"] = {"uid": "box", "runningStrands": {}}
+
+    def dispatch(self, command: str, *, events: list[dict], running: bool = False) -> dict:
+        from tools.field_backdoor import dispatch_command
+
+        async def fake(uid: str, *, property_name: str, value, timeout: float):
+            for event in events:
+                self.client.event_log.append(event)
+                self.client._apply_event(event)
+            data = {"uid": uid, "property": property_name, "codeLength": 63, "running": running}
+            return data, events, False
+
+        self.client.run_box = fake  # type: ignore[method-assign]
+        self.client.launch_box = fake  # type: ignore[method-assign]
+        self.client.continue_box = fake  # type: ignore[method-assign]
+        return asyncio.run(dispatch_command(self.client, parse_command(command), command))
+
+    def test_run_reports_failure_for_a_box_that_did_not_compile(self) -> None:
+        result = self.dispatch("run box", events=[COMPILE_ERROR_EVENT])
+
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["timedOut"])
+        self.assertIn("Initializer type mismatch", " ".join(result["data"]["errors"]))
+        # `data["error"]` is the single string the two harnesses print (`run_field_tests`'s
+        # `collect_execution_problems`, `docs_hooks`'s `require_diagnostic` path).
+        self.assertIn("Initializer type mismatch", result["data"]["error"])
+
+    def test_launch_reports_failure_for_a_box_that_did_not_compile(self) -> None:
+        result = self.dispatch("launch box", events=[COMPILE_ERROR_EVENT])
+        self.assertFalse(result["ok"])
+        self.assertIn("Initializer type mismatch", " ".join(result["data"]["errors"]))
+
+    def test_continue_reports_failure_for_a_box_that_did_not_compile(self) -> None:
+        result = self.dispatch("continue box", events=[COMPILE_ERROR_EVENT])
+        self.assertFalse(result["ok"])
+
+    def test_a_clean_run_is_still_ok(self) -> None:
+        output = {
+            "seq": 1,
+            "name": "set-output",
+            "messageName": "set-output",
+            "uid": "box",
+            "payload": {"uid": "box", "channel": "default", "value": "<svg/>"},
+        }
+        result = self.dispatch("run box", events=[output])
+
+        self.assertTrue(result["ok"])
+        self.assertNotIn("errors", result["data"])
+
+    def test_a_cleared_error_is_not_a_failure(self) -> None:
+        """Field clears a stale marker with an empty error at line -1.
+
+        DatalogExecution sends one on every success and ClojureExecution now does too, so
+        reading it as a failure would fail every box that merely ran cleanly.
+        """
+        clear = {
+            "seq": 1,
+            "name": "output",
+            "messageName": "output",
+            "uid": "box",
+            "payload": {"uid": "box", "kind": "error", "line": -1, "property": "code", "html": ""},
+        }
+        result = self.dispatch("run box", events=[clear])
+        self.assertTrue(result["ok"])
+
+    def test_no_fail_on_error_is_the_documented_escape_hatch(self) -> None:
+        """The five smoke tests with `allowExecutionErrors: true` need a way to opt out.
+
+        Same flag name and same meaning as `wait-output --no-fail-on-error`, which has had
+        it since the docs-capture silent-timeout fix.
+        """
+        result = self.dispatch("run box --no-fail-on-error", events=[COMPILE_ERROR_EVENT])
+
+        self.assertTrue(result["ok"])
+        # Opting out of the verdict must not suppress the evidence.
+        self.assertIn("Initializer type mismatch", " ".join(result["data"]["errors"]))
+        self.assertTrue(result["data"]["executionErrorsIgnored"])
+
+
 class MacroAliasTests(unittest.TestCase):
     def test_macro_and_transcript_are_exact_parser_aliases(self) -> None:
         macro = parse_command("macro run demo --scope project --project-name example")
@@ -707,6 +925,113 @@ class VideoCaptureParserTests(unittest.TestCase):
         self.assertEqual(parsed.fps, 20)
         self.assertTrue(parsed.frame_synchronous)
         self.assertTrue(parsed.restart_target)
+
+
+class SmokeCatalogWaiverWiringTests(unittest.TestCase):
+    """`allowExecutionErrors` has to reach the backdoor now, not just the grader.
+
+    It used to be purely a grading concession inside `evaluate_expectations`: a box could
+    error, `run` still said `ok: true`, and only `collect_execution_problems` -- the one
+    thing the flag gates -- would have objected. Since 2026-09-14 `run` itself reports
+    `ok: false`, and two checks OUTSIDE that gate would then fail the test: the
+    unconditional failed-results loop, and `field_backdoor.py`'s batch loop, which returns
+    at the first not-ok command and so would never reach the screenshot.
+
+    Population at the time of writing: 5 tests tree-wide carry the flag (1 in
+    public/docs/clojure.md, 4 in public/docs/ray_tracing_examples.md).
+    """
+
+    def build(self, *, allow: bool) -> list[str]:
+        with tempfile.TemporaryDirectory() as root:
+            snippet = Path(root) / "snippet.kt"
+            snippet.write_text("print(1)\n", encoding="utf-8")
+            cmd, _ = build_backdoor_command(
+                {
+                    "id": "test.waiver",
+                    "runner": "backdoor-box",
+                    "snippet": "print(1)",
+                    "snippetPath": str(snippet),
+                    "timeoutSec": 20.0,
+                    "expect": {"allowExecutionErrors": True} if allow else {},
+                },
+                port=1,
+                workspace=None,
+            )
+        return [cmd[i + 1] for i, value in enumerate(cmd) if value == "--command"]
+
+    def test_a_registered_execution_error_waives_the_run_verdict(self) -> None:
+        commands = self.build(allow=True)
+        runs = [line for line in commands if line.startswith(("run ", "launch "))]
+        self.assertTrue(runs, commands)
+        for line in runs:
+            self.assertIn("--no-fail-on-error", line)
+
+    def test_nothing_but_the_execution_verb_is_waived(self) -> None:
+        """A screenshot or a stop that fails is still a failure, flag or no flag."""
+        commands = self.build(allow=True)
+        others = [line for line in commands if not line.startswith(("run ", "launch "))]
+        for line in others:
+            self.assertNotIn("--no-fail-on-error", line, line)
+
+    def test_an_ordinary_test_is_emitted_exactly_as_before(self) -> None:
+        for line in self.build(allow=False):
+            self.assertNotIn("--no-fail-on-error", line, line)
+
+
+class UiRegressionWaiverWiringTests(unittest.TestCase):
+    """The third harness that runs a box which is supposed to fail.
+
+    Found by sweeping `run_ui_regressions.py` rather than by it breaking: two of the 34
+    regressions drive a deliberately failing box and then assert on the error the box
+    produced -- `error-fix-import-executes` (an unresolved `MorphoCircuit`, so the "add
+    import" fix row has something to fix) and `remote-ar-head` (`clearAFr ame()`, asserting
+    that exactly ONE line-1 syntax error appears). Since 2026-09-14 `run` reports
+    `ok: false` for those, and `field_backdoor.py`'s batch loop returns at the first not-ok
+    command, so both would have failed as "missing page-eval assertion result" -- the
+    assertion never reached. Unlike the smoke catalog and the docs runner, this harness has
+    no `expect`-style registry, so the flag is written into the two specs by hand and
+    guarded here.
+    """
+
+    def specs(self) -> list:
+        import run_ui_regressions  # noqa: PLC0415  (tools/ is on the path at module import)
+
+        # `prepare_generated_files` writes the snippets and page-eval scripts the specs
+        # reference. Redirected to a temp dir so this stays hermetic and touches neither
+        # the work tree nor `build/`.
+        with tempfile.TemporaryDirectory() as root:
+            with mock.patch.object(run_ui_regressions, "GENERATED_ROOT", Path(root)):
+                files = run_ui_regressions.prepare_generated_files()
+            return run_ui_regressions.tests(files, port=1, timeout=30.0)
+
+    def runs_for(self, test_id: str) -> list[str]:
+        for spec in self.specs():
+            if spec.id == test_id:
+                return [line for line in spec.commands if line.startswith(("run ", "launch "))]
+        self.fail(f"no UI regression with id {test_id!r}")
+
+    def test_the_two_error_expecting_regressions_waive_the_verdict(self) -> None:
+        for test_id in ("error-fix-import-executes", "remote-ar-head"):
+            runs = self.runs_for(test_id)
+            self.assertTrue(runs, test_id)
+            waived = [line for line in runs if "--no-fail-on-error" in line]
+            self.assertTrue(waived, f"{test_id}: no run carries the waiver: {runs}")
+
+    def test_remote_ar_head_waives_only_the_deliberate_syntax_error(self) -> None:
+        """Its other two runs are ordinary and must keep failing loudly."""
+        runs = self.runs_for("remote-ar-head")
+        waived = [line for line in runs if "--no-fail-on-error" in line]
+        self.assertEqual(len(waived), 1, runs)
+        self.assertIn("clearAFr ame()", waived[0])
+
+    def test_no_other_regression_quietly_acquired_the_flag(self) -> None:
+        """A waiver is a deliberate, explained act; this is the ratchet on it."""
+        carrying = {
+            spec.id
+            for spec in self.specs()
+            if any("--no-fail-on-error" in line for line in spec.commands)
+        }
+        self.assertEqual(carrying, {"error-fix-import-executes", "remote-ar-head"})
 
 
 def _emitted_command(args: list[str]) -> str:

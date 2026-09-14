@@ -1,9 +1,10 @@
 import os
+import shlex
 import tempfile
 import unittest
 from pathlib import Path
 
-from tools.verification_runtime import field_instance_problem
+from tools.verification_runtime import field_instance_problem, waive_execution_verdict
 
 
 class FieldInstanceIdentityTests(unittest.TestCase):
@@ -119,6 +120,45 @@ class FieldInstanceIdentityTests(unittest.TestCase):
                 allow_stale_source=True,
             )
         self.assertIn("belongs to", problem or "")
+
+
+class WaiveExecutionVerdictTests(unittest.TestCase):
+    """One spelling of `--no-fail-on-error`, shared by the two harnesses that need it."""
+
+    def test_an_execution_verb_gains_the_flag(self) -> None:
+        self.assertEqual(
+            waive_execution_verdict("run @last --property code --timeout 60"),
+            "run @last --property code --timeout 60 --no-fail-on-error",
+        )
+
+    def test_every_execution_verb_is_covered(self) -> None:
+        for verb in ("run", "launch", "continue", "launch-batch"):
+            self.assertIn("--no-fail-on-error", waive_execution_verdict(f"{verb} @last"))
+
+    def test_a_non_execution_verb_is_left_exactly_alone(self) -> None:
+        """A screenshot or a stop must keep failing loudly; only the box's own code is waived."""
+        for line in (
+            "screenshot-box @last /tmp/out.png --timeout 60",
+            "stop @last --timeout 60",
+            "wait-output @last --kind all",
+            "new-box --name Example",
+            "sleep 2",
+        ):
+            self.assertEqual(waive_execution_verdict(line), line)
+
+    def test_it_is_idempotent(self) -> None:
+        once = waive_execution_verdict("run @last")
+        self.assertEqual(waive_execution_verdict(once), once)
+
+    def test_an_empty_line_does_not_crash(self) -> None:
+        self.assertEqual(waive_execution_verdict(""), "")
+
+    def test_quoting_survives_the_round_trip(self) -> None:
+        line = waive_execution_verdict("run @last --file '/tmp/a path/snippet.kt'")
+        self.assertEqual(
+            shlex.split(line),
+            ["run", "@last", "--file", "/tmp/a path/snippet.kt", "--no-fail-on-error"],
+        )
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from tools.run_field_tests import (  # noqa: E402
     build_backdoor_command,
     apply_expected_smoke_failure,
     coverage_snapshot,
+    describe_shadowed_ids,
     describe_unmatched_ids,
     filtered_out_ids,
     load_coverage_state,
@@ -268,3 +269,50 @@ class MainLanguageRootTests(unittest.TestCase):
         self.assertEqual(len([c for c in commands if c.startswith("new-box")]), 1, commands)
         self.assertFalse([c for c in commands if c.startswith("set ") and "mainLanguage" in c])
         self.assertFalse([c for c in commands if c.startswith("connect ")])
+
+
+class ShadowedIdTests(unittest.TestCase):
+    """Q8. A `--id` that names two annotations must not quietly report the first one's result.
+
+    Discovery keeps the first copy, so the requested id MATCHES and
+    `describe_unmatched_ids` -- the only place that would have printed the skip list --
+    is never reached. Before this the runner printed a clean PASS for a test the author
+    of the second annotation had never had run.
+    """
+
+    DUPLICATE_SKIP = {
+        "sourceFile": "src/jvmMain/kotlin/afield/examples/B.kt",
+        "sourceLine": 12,
+        "error": "duplicate test id 'nightly.collide' already declared at .../A.kt:7",
+        "duplicateOf": "nightly.collide",
+    }
+    UNREADABLE_SKIP = {
+        "sourceFile": "src/jvmMain/kotlin/afield/examples/C.kt",
+        "sourceLine": 3,
+        "error": "expected key/value pair",
+    }
+
+    def test_a_requested_id_that_collided_is_refused_and_says_where(self) -> None:
+        message = describe_shadowed_ids({"nightly.collide"}, [self.DUPLICATE_SKIP])
+
+        self.assertIsNotNone(message)
+        self.assertIn("declared TWICE", message)
+        self.assertIn("nightly.collide", message)
+        # Both halves of "where": the copy that was dropped, and how to enumerate the rest.
+        self.assertIn("B.kt:12", message)
+        self.assertIn("--strict", message)
+
+    def test_a_collision_nobody_asked_for_does_not_break_the_run(self) -> None:
+        """The twelve-hour lesson, kept: one duplicate must not make other ids unrunnable."""
+        self.assertIsNone(describe_shadowed_ids({"nightly.something-else"}, [self.DUPLICATE_SKIP]))
+
+    def test_a_full_run_with_no_id_filter_is_untouched(self) -> None:
+        self.assertIsNone(describe_shadowed_ids(set(), [self.DUPLICATE_SKIP]))
+
+    def test_an_unreadable_annotation_is_not_mistaken_for_a_collision(self) -> None:
+        # It has no `duplicateOf`, and its id is exactly what could not be trusted.
+        self.assertIsNone(describe_shadowed_ids({"nightly.collide"}, [self.UNREADABLE_SKIP]))
+
+    def test_no_skips_at_all_is_the_common_case_and_costs_nothing(self) -> None:
+        self.assertIsNone(describe_shadowed_ids({"nightly.collide"}, []))
+        self.assertIsNone(describe_shadowed_ids({"nightly.collide"}, None))

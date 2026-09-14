@@ -32,6 +32,7 @@ from tools.run_field_tests import (  # noqa: E402  (path set up just above)
     _checkout_scope_prefix,
     _command_belongs_to,
     _describe_candidate,
+    _registered_submodules,
     classify_field_jvm_lines,
 )
 
@@ -360,6 +361,62 @@ class CwdCrossCheckTests(unittest.TestCase):
             cwd_lookup=lambda _pid: str(self.nested),
         )
         self.assertEqual([pid for pid, _ in ours], [654])
+
+    def test_a_registered_submodule_is_ours_and_is_not_leaked(self) -> None:
+        """Q7. The walk stops at the innermost `.git`, and a submodule has one.
+
+        Before this, a Field JVM of ours whose cwd sat in `services/field-audio-ai` was
+        demoted to `foreign-cwd` -- and the reaper spares what it does not claim, so it
+        leaked forever. Population in this repository: 1 registered submodule.
+        """
+        submodule = self.primary / "services" / "field-audio-ai"
+        submodule.mkdir(parents=True)
+        (submodule / ".git").write_text("gitdir: ../../.git/modules/services/field-audio-ai\n")
+        (self.primary / ".gitmodules").write_text(
+            '[submodule "services/field-audio-ai"]\n'
+            "\tpath = services/field-audio-ai\n"
+            "\turl = https://github.com/OpenEndedGroup/field-audio-ai.git\n"
+        )
+
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(self.primary),
+            root=self.primary,
+            protected=set(),
+            cwd_lookup=lambda _pid: str(submodule),
+        )
+        self.assertEqual([pid for pid, _ in ours], [654])
+        self.assertEqual(foreign, [])
+
+    def test_an_unregistered_nested_checkout_still_objects_with_a_gitmodules_present(self) -> None:
+        """The pid-654 protection must survive the fix, not be traded for it.
+
+        `.claude/worktrees/<name>/` is not in `.gitmodules`, so it stays foreign even
+        though its `.git` is the same shape as a submodule's and points into the same
+        `<root>/.git`.
+        """
+        (self.primary / ".gitmodules").write_text(
+            '[submodule "services/field-audio-ai"]\n\tpath = services/field-audio-ai\n'
+        )
+
+        ours, foreign = classify_field_jvm_lines(
+            self.lines(self.primary),
+            root=self.primary,
+            protected=set(),
+            cwd_lookup=lambda _pid: str(self.nested),
+        )
+        self.assertEqual(ours, [])
+        self.assertEqual(foreign[0][1].signal, "foreign-cwd")
+
+    def test_a_repository_with_no_gitmodules_behaves_exactly_as_before(self) -> None:
+        self.assertEqual(_registered_submodules(self.primary), set())
+
+    def test_an_absolute_submodule_path_is_ignored_rather_than_trusted(self) -> None:
+        """`.gitmodules` is tracked content; it must not be able to name a path outside
+        the checkout and thereby spare a stranger's JVM."""
+        (self.primary / ".gitmodules").write_text(
+            '[submodule "evil"]\n\tpath = /Users/marc/field4\n'
+        )
+        self.assertEqual(_registered_submodules(self.primary), set())
 
     def test_the_cross_check_never_promotes_a_foreign_jvm(self) -> None:
         # A cwd inside our checkout cannot make a sibling's JVM ours.

@@ -136,6 +136,13 @@ class SkippedAnnotation:
     path: Path
     line_no: int
     reason: str
+    #: The id this annotation declared, when it was well-formed enough to have one and was
+    #: dropped only because another annotation had already claimed it. Structured rather
+    #: than left in `reason` because `run_field_tests.py` has to act on it: a requested
+    #: `--id` that collided still MATCHES the surviving copy, so the runner reports a clean
+    #: PASS for a test it never ran. None for every other skip, where the annotation is
+    #: unreadable and has no trustworthy id to report.
+    duplicate_of: str | None = None
 
     @property
     def message(self) -> str:
@@ -143,7 +150,10 @@ class SkippedAnnotation:
 
     def as_dict(self, repo_root: Path | None = None) -> dict[str, Any]:
         source = _relative_source(self.path, repo_root) if repo_root is not None else str(self.path)
-        return {"sourceFile": source, "sourceLine": self.line_no, "error": self.reason}
+        entry: dict[str, Any] = {"sourceFile": source, "sourceLine": self.line_no, "error": self.reason}
+        if self.duplicate_of is not None:
+            entry["duplicateOf"] = self.duplicate_of
+        return entry
 
 
 def _relative_source(path: Path, repo_root: Path) -> str:
@@ -754,18 +764,28 @@ def discover(
             skipped.extend(unparseable)
             for block in blocks:
                 # Per block, not per file: a bad annotation must not take its neighbours with it.
+                collided: str | None = None
                 try:
                     annotation = validate_annotation(path, block.line_no, block.annotation)
                     annotation_id = str(annotation["id"])
                     previous = seen_ids.get(annotation_id)
                     if previous is not None:
+                        collided = annotation_id
                         raise ParseError(
                             f"{path}:{block.line_no}: duplicate test id '{annotation_id}' already declared at {previous}"
                         )
                     record = dict(annotation)
                     record.update(bind_annotation(path, text, block, annotation))
                 except ParseError as exc:
-                    skipped.append(SkippedAnnotation(path=path, line_no=block.line_no, reason=_unprefixed(exc, path)))
+                    skipped.append(
+                        SkippedAnnotation(
+                            path=path,
+                            line_no=block.line_no,
+                            reason=_unprefixed(exc, path),
+                            duplicate_of=collided,
+                        )
+                    )
+                    collided = None
                     continue
                 seen_ids[annotation_id] = f"{path}:{block.line_no}"
                 record["sourceFile"] = _relative_source(path, repo_root)

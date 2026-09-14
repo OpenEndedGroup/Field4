@@ -179,5 +179,58 @@ class FailOpenDiscoveryTests(unittest.TestCase):
         self.assertEqual(catalog["tests"][0]["sourceFile"], str(self.root / "good.kt"))
 
 
+class DuplicateIdShadowingTests(unittest.TestCase):
+    """Q8, decided 2026-09-14: fail open in discovery, fail LOUD in the runner.
+
+    A duplicate id is not an unreadable annotation. Discovery drops the second copy and
+    warns -- correct, because failing closed over one collision is how `--id <anything>`
+    stayed dead tree-wide for twelve hours. But the requested id then still MATCHES the
+    surviving copy, so `run_field_tests.py` never reaches the unmatched-id report, runs one
+    of the two, and prints PASS. The second test's author is told their test passed.
+    """
+
+    def setUp(self) -> None:
+        self.repo_root = Path(__file__).resolve().parent.parent
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def scan(self, **kwargs) -> dict:
+        return discover(self.repo_root, [str(self.root)], warn_stream=None, **kwargs)
+
+    def write_collision(self) -> dict:
+        (self.root / "a.kt").write_text(GOOD_ANNOTATION.format(id="nightly.collide"))
+        (self.root / "b.kt").write_text(GOOD_ANNOTATION.format(id="nightly.collide"))
+        return self.scan()
+
+    def test_discovery_still_fails_open_and_keeps_the_first(self) -> None:
+        catalog = self.write_collision()
+
+        self.assertEqual([test["id"] for test in catalog["tests"]], ["nightly.collide"])
+        self.assertEqual(len(catalog["skipped"]), 1)
+
+    def test_the_skip_names_the_id_it_collided_with_in_a_field_not_in_prose(self) -> None:
+        """`run_field_tests.py` has to act on this, so it must not have to parse a sentence."""
+        catalog = self.write_collision()
+
+        self.assertEqual(catalog["skipped"][0]["duplicateOf"], "nightly.collide")
+
+    def test_an_unreadable_annotation_carries_no_duplicate_marker(self) -> None:
+        (self.root / "bad.kt").write_text(BAD_ANNOTATION.format(id="nightly.bad"))
+
+        catalog = self.scan()
+
+        self.assertNotIn("duplicateOf", catalog["skipped"][0])
+
+    def test_strict_still_refuses_the_whole_catalog(self) -> None:
+        """CI's behaviour is unchanged: the fail-open half is for interactive runs."""
+        (self.root / "a.kt").write_text(GOOD_ANNOTATION.format(id="nightly.collide"))
+        (self.root / "b.kt").write_text(GOOD_ANNOTATION.format(id="nightly.collide"))
+
+        with self.assertRaises(ParseError) as raised:
+            self.scan(strict=True)
+        self.assertIn("duplicate test id", str(raised.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

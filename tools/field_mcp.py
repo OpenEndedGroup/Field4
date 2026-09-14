@@ -364,6 +364,14 @@ class FieldMcpServer:
             "documentName": client.document_name,
             "scratch": client.scratch,
             "boxCount": len(client.boxes),
+            # Opening a name that is not in the server's workspace CREATES a document, so a
+            # typo used to return `boxCount: 0` and nothing else -- indistinguishable from a
+            # real document that happens to be empty. Both of these are read back from the
+            # server's reply; `null` means it predates them, so you have verified nothing.
+            # Same correction as `field_status` gaining `serverWorkspace` on 2026-09-12:
+            # this tool was not lying, it had no way to answer at all.
+            "documentExisted": client.document_existed,
+            "attachedToLiveDocument": client.attached_to_live_document,
         }
 
     async def tool_snapshot(self, args: dict[str, Any]) -> dict[str, Any]:

@@ -649,7 +649,36 @@ data class AgentDocumentSnapshot(
     val sessionKey: String,
     val boxes: List<AgentBoxSnapshot>,
     /** Reported so a caller can check that `open --read-only` was honoured, rather than assume it. */
-    val readOnly: Boolean = false
+    val readOnly: Boolean = false,
+    /**
+     * Whether this session's document was already there when it was opened.
+     *
+     * Opening a name that does not exist is not an error -- it is how a document gets created --
+     * but from the caller's side it is indistinguishable from a load that worked: both answer
+     * `ok`, and the symptom, `boxes: []`, has three other causes. False for a scratch session,
+     * which by construction never had anything to find.
+     *
+     * The server answers this because only the server can: it resolves the name against its own
+     * process-global workspace, which the client's `--workspace` does not decide. The predicate
+     * is `SavingContext.documentExistsOnDisk`, evaluated before the load -- the load creates the
+     * directory, so afterwards nobody can tell.
+     *
+     * `@EncodeDefault` is load-bearing, not tidiness. `Message.payload` serialises with the
+     * default `Json`, whose `encodeDefaults` is false, so a plain `= false` would be *omitted*
+     * from the wire -- and the client reads an absent key as "this Field predates the field,
+     * you have verified nothing". Without this annotation the alarming case and the
+     * unanswerable case are the same bytes. Verified on a live Field, which is how the first
+     * attempt was caught.
+     */
+    @EncodeDefault
+    val documentExisted: Boolean = false,
+    /**
+     * Whether this open joined a document this Field already held in memory rather than reading
+     * one from disk. Both mean the document existed; they differ in whose edits you are about to
+     * share, which is what matters when attaching to a Field somebody else is using.
+     */
+    @EncodeDefault
+    val attachedToLiveDocument: Boolean = false
 )
 
 @Serializable

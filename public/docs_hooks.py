@@ -35,6 +35,7 @@ from verification_runtime import (
     field_instance_problem,
     run_with_watchdog,
     select_automation_port,
+    waive_execution_verdict,
 )
 from field_languages import MAIN_LANGUAGE_ROOT_LANGUAGES
 
@@ -4726,6 +4727,8 @@ def build_backdoor_command(
             default_target_uid,
             "--timeout", str(options.timeout),
         ]))
+    if options.expects_error:
+        backdoor_commands = [waive_execution_verdict(line) for line in backdoor_commands]
     for command_line in backdoor_commands:
         command.extend(["--command", command_line])
     session_eligible = not options.graphics_context and not is_video and not options.source_image

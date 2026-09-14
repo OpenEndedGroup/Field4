@@ -241,6 +241,46 @@ def _execution_error_key(event: dict[str, Any]) -> tuple[str, str] | None:
     return uid, str(payload.get("property") or "__general__")
 
 
+def grade_execution(
+    client: "FieldBackdoor",
+    data: dict[str, Any],
+    events: list[dict[str, Any]],
+    *,
+    timed_out: bool,
+    fail_on_error: bool,
+) -> tuple[dict[str, Any], bool]:
+    """Fold a box's own error output into an execution verb's ``data`` and ``ok``.
+
+    Until 2026-09-14 ``run``/``launch``/``continue``/``launch-batch`` answered "did this
+    box run?" with ``ok = not timed_out`` and never read the events they had just
+    collected. A box with a hard Kotlin compile error therefore returned ``ok: true``,
+    ``running: false``, process exit 0, with the diagnostic sitting unread in the same
+    result. The two sibling verbs in ``dispatch_command`` already did better: ``action``
+    calls ``execution_errors()`` and ``wait-output`` calls ``_execution_error_event()``.
+    This is the shared form of that, so the four execution verbs cannot drift apart again.
+
+    ``execution_errors()`` -- not a fresh predicate -- is what decides, so Field's
+    "clear the marker" packet (an empty error at line -1, which DatalogExecution emits
+    on every success) stays a non-event here exactly as it already does there.
+
+    ``fail_on_error=False`` suppresses the verdict, never the evidence: ``data["errors"]``
+    is still populated and ``data["executionErrorsIgnored"]`` says the verdict was waived.
+    """
+    problems = client.execution_errors(events)
+    if not problems:
+        return data, not timed_out
+    data = dict(data)
+    data["errors"] = problems
+    if fail_on_error:
+        # One flat string as well as the list: `run_field_tests.collect_execution_problems`
+        # and `docs_hooks`' require_diagnostic path both read `data["error"]` to tell a
+        # diagnosed failure from an opaque one, and a bare "command failed" is not proof.
+        data["error"] = "; ".join(problems)
+        return data, False
+    data["executionErrorsIgnored"] = True
+    return data, not timed_out
+
+
 def playwright_attach_budget(timeout: float | None, default_timeout: float) -> float:
     """Effective wait for a Playwright *attach*.
 
@@ -469,6 +509,9 @@ class FieldBackdoor:
         self.document_name: str | None = None
         self.scratch = False
         self.read_only = False
+        # Tri-state on purpose: None is "no server has told us", not "no".
+        self.document_existed: bool | None = None
+        self.attached_to_live_document: bool | None = None
         self.session_key: str | None = None
         self.boxes: dict[str, dict[str, Any]] = {}
         self._running_state_seen: dict[tuple[str, str], tuple[int, bool]] = {}
@@ -981,6 +1024,11 @@ class FieldBackdoor:
         # Reported by the server rather than echoed back from the request, so a caller can tell
         # that read-only was actually honoured.
         self.read_only = bool(snapshot.get("readOnly"))
+        # Kept as None when the key is absent, because absent means "this Field predates the
+        # field" and must not collapse into "the document was not there". `bool()` here would
+        # have thrown that distinction away exactly as the missing @EncodeDefault did.
+        self.document_existed = snapshot.get("documentExisted")
+        self.attached_to_live_document = snapshot.get("attachedToLiveDocument")
         self.session_key = next_session_key
         self.boxes = {}
         self._running_state_seen = {}
@@ -1558,6 +1606,7 @@ class FieldBackdoor:
         scratch: bool,
         timeout: float,
         read_only: bool = False,
+        must_exist: bool = False,
     ) -> dict[str, Any]:
         # read_only is not scratch. scratch throws the document name away and synthesises a new
         # directory under ~/.agent-scratch/; read_only opens the real named document with Field's
@@ -1607,6 +1656,30 @@ class FieldBackdoor:
         if self.scratch:
             result["scratchLifetime"] = "invocation"
             result["scratchPortReuse"] = False
+        # `documentExisted` is the fourth and last cause of an inexplicable `boxes: []`, and the
+        # only one the tool used to be unable to name: opening a document that is not there is
+        # how a document gets CREATED in Field, so the server answers `ok` either way and an
+        # agent that meant to open `alife_walls` receives a new empty one that looks identical
+        # to a load that worked. Absent (None) means the server predates the field -- unverified,
+        # not fine, exactly like `serverWorkspace`.
+        existed = payload.get("documentExisted")
+        if existed is None:
+            result["documentExistedKnown"] = False
+        elif not self.scratch and not existed:
+            result["createdNewDocument"] = True
+            # Silent under --must-exist: the caller has already said this must not happen and is
+            # about to get a refusal that says the same thing, so advising them to pass the flag
+            # they just passed is noise on top of the real message.
+            if not must_exist:
+                print(
+                    f"field_backdoor.py: --document {self.document_name} did not exist in the "
+                    f"server's workspace; Field created a new EMPTY document at "
+                    f"{self.session_key}. If you meant to open an existing one, check "
+                    "`serverWorkspace` in `status` and the spelling of the name; pass "
+                    "`open --must-exist` to make this a hard error.",
+                    file=sys.stderr,
+                    flush=True,
+                )
         return result
 
     async def refresh_snapshot(self, timeout: float) -> dict[str, Any]:
@@ -2856,6 +2929,14 @@ def build_command_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="open the named document without writing back to it (not the same as --scratch)",
     )
+    open_parser.add_argument(
+        "--must-exist",
+        action="store_true",
+        help=(
+            "fail instead of creating a new empty document when the name is not in the "
+            "server's workspace. Say this whenever you mean an existing document."
+        ),
+    )
 
     subparsers.add_parser("status", add_help=False)
     subparsers.add_parser("snapshot", add_help=False)
@@ -3043,12 +3124,28 @@ def build_command_parser() -> argparse.ArgumentParser:
         exec_parser.add_argument("--value")
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
+        exec_parser.add_argument(
+            "--no-fail-on-error",
+            action="store_true",
+            help=(
+                "Report ok even when the box emits a compile/runtime error. The diagnostics "
+                "still appear in data.errors. Same name and meaning as wait-output's flag."
+            ),
+        )
 
     launch_batch_parser = subparsers.add_parser("launch-batch", add_help=False)
     launch_batch_parser.add_argument("uids", nargs="+")
     launch_batch_parser.add_argument("--property", default="code")
     launch_batch_parser.add_argument("--strand", default="default")
     launch_batch_parser.add_argument("--timeout", type=float)
+    launch_batch_parser.add_argument(
+        "--no-fail-on-error",
+        action="store_true",
+        help=(
+            "Report ok even when a box in the chord emits a compile/runtime error. The "
+            "diagnostics still appear in data.errors."
+        ),
+    )
 
     wait_running_parser = subparsers.add_parser("wait-running", add_help=False)
     wait_running_parser.add_argument("uid")
@@ -3157,12 +3254,35 @@ async def dispatch_command(
             scratch=args.scratch or not args.document,
             timeout=client.default_timeout,
             read_only=getattr(args, "read_only", False),
+            must_exist=getattr(args, "must_exist", False),
         )
+        if getattr(args, "must_exist", False):
+            if args.scratch or not args.document:
+                raise BackdoorError("open --must-exist is meaningless with --scratch: a scratch document is new by construction")
+            if data.get("documentExisted") is None:
+                raise BackdoorError(
+                    f"open --must-exist cannot be honoured: the Field on port {client.port} predates "
+                    "`documentExisted` and cannot say whether the document was there. Restart it from "
+                    "this checkout, or drop --must-exist and check boxCount by hand."
+                )
+            if not data.get("documentExisted"):
+                raise BackdoorError(
+                    f"open --must-exist: no document named {args.document!r} in the server's workspace "
+                    f"{client.server_workspace!r}. Field would have created a new empty one at "
+                    f"{data.get('sessionKey')!r}. Check `serverWorkspace` in `status` -- it is the "
+                    "server's, not your --workspace -- and the spelling of the name."
+                )
         if client.graphics_context_enabled:
             data = dict(data)
             data["graphicsContext"] = await client.ensure_graphics_context(timeout=client.default_timeout)
         result = command_result(command_line, True, data=data, events=[])
-        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            documentExisted=data.get("documentExisted"),
+            attachedToLiveDocument=data.get("attachedToLiveDocument"),
+        )
         return result
 
     if args.command == "status":
@@ -3193,6 +3313,12 @@ async def dispatch_command(
             "documentName": client.document_name,
             "scratch": client.scratch,
             "readOnly": client.read_only,
+            # The fifth field that can disagree with you, and the one that answers the
+            # `boxCount: 0` you are being told to sanity-check two fields below. Both are
+            # read back from the server's agent-open-document reply; `null` means the
+            # server predates them, which is "unverified", not "no".
+            "documentExisted": client.document_existed,
+            "attachedToLiveDocument": client.attached_to_live_document,
             "scratchLifetime": "invocation" if client.scratch else None,
             "scratchPortReuse": False if client.scratch else None,
             "sessionKey": client.session_key,
@@ -3558,8 +3684,22 @@ async def dispatch_command(
             data, events, timed_out = await client.launch_box(args.uid, property_name=args.property, value=value, timeout=timeout)
         else:
             data, events, timed_out = await client.continue_box(args.uid, property_name=args.property, value=value, timeout=timeout)
-        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
-        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
+        data, ok = grade_execution(
+            client,
+            data,
+            events,
+            timed_out=timed_out,
+            fail_on_error=not getattr(args, "no_fail_on_error", False),
+        )
+        result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            timedOut=timed_out,
+            eventCount=len(events),
+            executionErrors=data.get("errors"),
+        )
         return result
 
     if args.command == "launch-batch":
@@ -3576,13 +3716,21 @@ async def dispatch_command(
             strand=args.strand,
             timeout=timeout,
         )
-        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
+        data, ok = grade_execution(
+            client,
+            data,
+            events,
+            timed_out=timed_out,
+            fail_on_error=not getattr(args, "no_fail_on_error", False),
+        )
+        result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
         client.logger.log(
             "command_dispatch_complete",
             commandLine=command_line,
             ok=result["ok"],
             timedOut=timed_out,
             eventCount=len(events),
+            executionErrors=data.get("errors"),
         )
         return result
 

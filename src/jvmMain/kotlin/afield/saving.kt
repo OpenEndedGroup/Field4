@@ -1599,6 +1599,26 @@ class SavingContext {
         const val TRANSCRIPT_EDN = "transcript.edn"
         const val OPERATIONS_YAML = "operations.yaml"
 
+        /**
+         * Whether [load] would find a document at [fn], or would be starting an empty one.
+         *
+         * Opening a name that is not there is not an error in Field -- it is how a document
+         * gets created -- but an agent that asked for `alife_walls` and silently received a
+         * new empty document has no way to tell that from a load that worked, and the
+         * symptom it does see (`boxes: []`) has three other causes. This is the predicate
+         * that separates them, reported as `documentExisted` in [AgentDocumentSnapshot].
+         *
+         * It deliberately mirrors [load]'s own three branches rather than testing for the
+         * directory: [load] calls [ensureDirectory], so by the time anyone could ask
+         * afterwards the directory exists whether or not the document did. Metadata
+         * presence is the fact that survives that.
+         */
+        fun documentExistsOnDisk(fn: String): Boolean {
+            val file = File(fn)
+            if (file.isFile && file.name.endsWith(".edn")) return true
+            return File(file, METADATA_EDN).isFile || File(file, METADATA_JSON).isFile
+        }
+
         private val saveLocks = ConcurrentHashMap<String, Any>()
 
         private val ednCustom = Edn.CustomTypes().apply {
