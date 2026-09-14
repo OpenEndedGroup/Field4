@@ -227,6 +227,51 @@ remedy — and that an agent can now demand the other behaviour with **`open --m
 which fails *closed* on a server too old to answer, because an unanswerable guarantee is
 worse than no guarantee.
 
+## Two harness surfaces, same disease (2026-09-14)
+
+### A JVM in our own submodule was demoted and then leaked
+
+`_nearest_checkout` walks to the *innermost* `.git`, and a submodule has one — a file
+reading `gitdir: ../../.git/modules/...`. So a Field JVM of ours working in
+`services/field-audio-ai` resolved to a checkout that is not `root`, was demoted to
+`foreign-cwd`, and then leaked forever: the reaper spares what it does not claim.
+
+Walking to the *outermost* `.git` instead is the obvious remedy and it is wrong. The
+nested Claude worktrees this cross-check exists for
+(`<primary>/.claude/worktrees/<name>/`) would resolve to the primary and be claimed,
+reopening the hole that SIGKILLed pid 654. The `.git` shape does not separate them either
+— both are files, both point into `<root>/.git`, so the common git dir agrees too.
+
+`.gitmodules` separates them, and nothing else in the tree does: it is the superproject
+saying, in tracked content, "this path is part of me". `_registered_submodules(root)`
+parses it; `_cwd_disagrees` exempts exactly those paths, and an absolute path in
+`.gitmodules` is ignored rather than trusted. Populations measured 2026-09-14: **1**
+registered submodule (present in the primary tree, absent from a fresh worktree, which is
+why no worktree ever saw this), **20+** unregistered nested checkouts under the primary's
+`.claude/worktrees/` that all still object, **0** Field JVMs observed with a cwd inside
+the submodule — a latent hole, not a bleeding one.
+
+### `--id` on a duplicated test id reported PASS for a test that never ran
+
+Discovery fails **open** on a duplicate: it warns, drops the second annotation, catalogs
+the rest. Kept deliberately — failing closed over one collision is how the canonical smoke
+runner stayed dead tree-wide for twelve hours, and that reasoning is right for an
+*unreadable* annotation.
+
+A duplicate is different in kind. It is two well-formed tests claiming one name, and the
+requested id still **matches** — the copy discovery kept. So the runner never reaches
+`describe_unmatched_ids`, the only place that would have printed the skip list; it runs
+one of the two and prints PASS, and the author of the second annotation is told their test
+passed. That is this page's subject exactly, wearing a harness costume.
+
+The decision: loud and **fatal for the requested ids only**. A collision elsewhere in the
+tree still merely warns, so one duplicate cannot make every other id unrunnable, and
+`--strict` — what CI uses — still refuses the whole catalog. `SkippedAnnotation` gains
+`duplicateOf`, surfaced in the catalog as a field rather than left in the prose of
+`error`, because the runner has to act on it and must not parse a sentence. It is absent
+for every other kind of skip, where the annotation's id is precisely what could not be
+trusted.
+
 ## Numbers, with their populations
 
 - `status.workspace` consumers: **0 of 73** files in `tools/` read the key programmatically
@@ -265,9 +310,14 @@ worse than no guarantee.
 - Of the **112** files in `dev_docs/agents/transcripts/`, **0** read a backdoor result's
   `ok`. The 3 lines matching `\bok\b` are Kotlin box code inside the yaml
   (`close_node_demo.yaml:170`, `rectsl_glsl_sdf.yaml:50`, `rectsl_sdf_live.yaml:111`).
-- Python tool suites: **432 passed / 434 run, 2 skipped** — the same 2 pre-existing
+- Python tool suites: **450 passed / 452 run, 2 skipped** — the same 2 pre-existing
   `tools.test_loc_history` skips. `test_field_backdoor` 47 → 64,
-  `test_verification_runtime` 6 → 12, `test_docs_runner_failure_reporting` 16 → 18.
+  `test_verification_runtime` 6 → 12, `test_docs_runner_failure_reporting` 16 → 18,
+  `test_run_field_tests_reaper` 30 → 34, `test_discover_field_tests` 11 → 15,
+  `test_run_field_tests_ordering` 19 → 24.
+- Submodules registered in `.gitmodules`: **1** (`services/field-audio-ai`). Unregistered
+  nested checkouts under the primary's `.claude/worktrees/`: **20+**. Field JVMs observed
+  with a cwd inside the submodule on 2026-09-14: **0**.
 - Discovery: `python3 tools/discover_field_tests.py` exits **0** with **247 tests, 0
   skipped**, empty stderr, parsing clean tree-wide. 247 rather than the primary checkout's
   265 because a worktree lacks the gitignored `src/personal` root — the same 18-test gap
