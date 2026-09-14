@@ -3814,7 +3814,7 @@ run.best.browseGraph(channel = "evolved")
 
 `matchFitness(...)` scores a candidate by how closely it matches a target on a shared time-base, minus an optional `graphMetrics` complexity penalty (parsimony pressure). Supply any `(Fn) -> Double` for a different objective. Like `rewriteUntilStable`, the loop is bounded by `iterations` so a search can never disappear into the animation loop.
 
-#### A worked run (CPU-only, reproducible)
+#### A worked run
 
 Here is one run end to end. `afield.examples.functions.EvolveWorkedExample` performs this exact search on the CPU, with no GPU and no window; the figure below it plots the same run in a box.
 
@@ -3884,25 +3884,9 @@ with(Functions) {
 }
 ```
 
-The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly: the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error. The accepted-mutation trace shows *how*:
+The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly: the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error.
 
-| iteration | accepted mutation | score (−RMSE − penalty) |
-| --- | --- | --- |
-| 0 (seed) | — | -0.8421 |
-| 1 | substituteOp | -0.4024 |
-| 3 | jitter | -0.3572 |
-| 4 | nudge | -0.3209 |
-| 5 | nudge | -0.3148 |
-| 7 | prune | -0.3048 |
-| 8 | prune | -0.2948 |
-| 13 | prune | -0.2844 |
-| 16 | prune | -0.2744 |
-| 17 | jitter | -0.2600 |
-| 18 | nudge | -0.2252 |
-| 19 | prune | -0.1718 |
-| 23 | prune | -0.1568 |
-
-The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Every draw goes through one seeded `Random`, so re-running reproduces this trace and a byte-identical SVG.
+The order the accepted mutations arrive in is what each operator is for. The first one accepted is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step — no amount of `jitter` on a cosine's leaves would have got there. From then on `jitter` and `nudge` walk the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit, because the small `complexityWeight` rewards the simpler graph. The search stops improving well inside its 120-iteration bound, and every draw goes through one seeded `Random`, so it reproduces exactly. The iteration-by-iteration trace is in `dev_docs/FUNCTIONS_EVOLVE_MEASUREMENTS.md`.
 
 #### Variety generation: novelty search for a *set* of gestures
 
@@ -3994,7 +3978,7 @@ with(Functions) {
 }
 ```
 
-Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set: every cell is a different shape, not the same wave rescaled. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike. That is the whole argument for the metric in two runs.
+Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set: every cell is a different shape, not the same wave rescaled. Run the same thing without `normalize` and the reported spread is far larger while the montage degenerates to one spike, because in value space the cheapest way to be novel is to be loud.
 
 **Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document: one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
 
