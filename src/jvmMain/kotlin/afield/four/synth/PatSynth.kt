@@ -20,7 +20,7 @@ import kotlin.math.sqrt
 /**
  * A pattern on the audio seam: `pat(...)` driving Field's own voices in realtime.
  *
- * [Making a sound in Field](../../../../../public/docs/sound_paths.md) divides everything that makes
+ * [Making a sound in Field](../sound_paths.md) divides everything that makes
  * samples by one signature, `render(outL, outR, numFrames, ctx)`, and a path on that seam composes
  * with every other path on it. [patRenderStereo] is not on it: it is a free function that returns a
  * whole buffer, because a pattern has to be *queried* over an arc and there is no "next 128 frames"

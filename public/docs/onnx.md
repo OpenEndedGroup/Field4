@@ -209,7 +209,7 @@ Two design choices, both the opposite of the obvious one:
 
 Six frames of staleness at 60fps looks fine for displacement, parallax and depth-keyed compositing,
 and looks like lag for anything a hand is steering directly. That is the real constraint, and no
-provider flag fixes it — see [what was measured](#what-was-measured-and-what-it-contradicts).
+provider flag fixes it — see [what was measured](#measurements).
 
 ## CLIP: a shared space for pictures and words
 

@@ -76,10 +76,10 @@ in their state and never in what they are trying to do:
   can go round a barrier that direct `seek` presses into. On an S-maze, over 96 agents, routed
   `seek` arrives 0.990 of the time against 0.000 for direct `seek` at the same budget.
 
-Both ship as loadable Field documents rather than as sections here —
-`dev_docs/agents/demos/alife_script/` and `dev_docs/agents/demos/alife_walls/` — because their
-figures are trails and arrival curves rather than rasters, and the point of a scripted agent is
-that you edit its program and re-run it.
+Both are worked through in [section 12](#12-agents-that-run-programs-and-a-world-to-run-them-in),
+and both also ship as loadable Field documents — `dev_docs/agents/demos/alife_script/` and
+`dev_docs/agents/demos/alife_walls/` — because the point of a scripted agent is that you edit its
+program and re-run it.
 
 Things it does not do, so you are not surprised:
 
@@ -1762,6 +1762,187 @@ showSignals(
 ![a dark line plot with three labelled traces: an orange cosine seed of amplitude 1, and a green evolved curve lying exactly on top of the blue target sine of amplitude 0.5, hiding it almost completely along its whole length](assets/alife_examples/evolve-shared-core.png)
 
 A fifth genome costs a `GenomeOps` and an `Objective`.
+
+## 12. Agents that run programs, and a world to run them in
+
+Every system above advances a whole population with one call and one parameter block. A flock is
+`BoidFlock.step(p: BoidParams)` — one function, one rule, applied identically to every agent on every
+tick. That is the right shape for emergence and it is the wrong shape the moment you want *this* agent
+to spend two seconds approaching, half a second feeding, and then go somewhere else.
+
+The reason it is the wrong shape is that a global rule has nowhere to keep "where am I up to". You end
+up encoding each agent's position in its own program as an integer state field and a `when`, which is
+the standard way this is done and also why it is never done twice the same way.
+
+A coroutine has somewhere to keep it: the continuation. So
+[`ScriptWorld`](reference/alife.md#alife-script-kt-scriptworld) gives each agent a suspending program
+on a fixed-step clock, and the program reads as the sequence it is.
+
+### An agent with a program
+
+`forever`, `phase(name)`, `moveFor` and `parallel` compose; `point`, `actor` and `nearest` name things
+to steer at; and the steering inside a `moveFor` block is a set of weighted drives that are summed,
+not a single mode. The clock is fixed-step, so the same seed gives the same run — bit for bit, across
+processes.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-program.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+:::static
+// One agent, one program, three phases. Nothing here is a global mode: the phases are this agent's,
+// and a second agent with a different program would run alongside it on the same clock.
+val w = ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false)
+w.spawn(100.0, 40.0, maxSpeed = 45.0, radius = 1.5) {
+    val centre = point(100.0, 100.0)
+    forever {
+        phase("orbit")   { moveFor(4.0) { orbit(centre, distance = 42.0) } }
+        phase("close in"){ moveFor(2.0) { arrive(centre, slowRadius = 20.0) } }
+        phase("scatter") { moveFor(3.0) { wander(turn = 40.0); avoidEdges(margin = 18.0) } }
+    }
+}
+w.run(1080)                                   // 18 s at 60 Hz
+println("ticks %d   path %.0f units".format(w.tick, w.totalPathLength()))
+println("phases entered, in order:")
+w.events.filter { it.kind == "phase" }.take(6).forEach { println("  tick %5d  %s".format(it.tick, it.detail)) }
+println()
+println("state signature %s   — the same seed gives this same string in any process".format(w.stateSignature()))
+
+:::fold the trail
+lines(*w.trailFLines().toTypedArray(), channel = "program", w = 620.0, h = 320.0, fitToSize = true)
+:::endfold
+```
+
+![a single pale trail on black, drawn as one continuous line: a long straight run in from off-frame, a wide clean circle held for several laps, a straight chord cutting back across it to the middle, and a small tangle of loops near the centre where the wander phase runs](assets/alife_examples/walls-program.png)
+
+One trail, three behaviours, and you can see the joins: the circle is `orbit` holding station, the
+chord across it is `arrive` going more or less straight at the centre once the orbit releases, and
+the tangle is `wander`. They are one agent's program rather than three modes of a world, which is
+the whole distinction this section is about — though note the trail is a single `FLine` in a single
+colour, so the *boundaries* between phases are inferred from the shape rather than drawn. `w.events`
+has them exactly, which is what the printed phase list above is for.
+
+### A wall, and three answers to hitting it
+
+A wall is a line *segment*, and a segment has no thickness — so the obvious collision test, "does the
+agent's new position overlap a wall", is false for any step large enough to step over it, at any speed
+at all. [`ObstacleField.sweep`](reference/alife.md#alife-walls-kt-obstaclefield) solves instead for the
+first moment of contact along the step, which is why a fast agent stops at the wall rather than on the
+far side of it.
+
+What happens at that moment is the agent's own
+[`WallResponse`](reference/alife.md#alife-walls-kt-wallresponse), not the world's.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-response.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+:::static
+// Three agents, one barrier, three answers. The room matters: the arena edge is not a wall (the world
+// just clamps there), so without it the BOUNCE agent parks in a corner and the trail says nothing.
+val w = ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false)
+w.addPolygon(12.0, 12.0, 188.0, 12.0, 188.0, 188.0, 12.0, 188.0, name = "room")
+w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
+
+listOf(WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP).forEachIndexed { i, r ->
+    w.spawn(
+        25.0, 60.0 + i * 25.0, maxSpeed = 90.0, radius = 2.0, steerResponse = 1.0,
+        vx = 90.0, vy = 16.0, wallResponse = r, restitution = 0.9, tag = r.name
+    ) { moveFor(8.0) { keepVelocity() } }
+}
+w.run(420)
+w.actors.forEach {
+    println("%-7s %3d contact(s), ended at %6.1f, %6.1f".format(it.tag, it.wallContacts, it.position.x, it.position.y))
+}
+
+:::fold the three trails, one colour each — SLIDE blue, BOUNCE orange, STOP green
+// FLine.color is an extension property and takes a vec(r, g, b, a); without this the three answers
+// are three identical grey trails and the figure cannot show what the table says.
+val cols = listOf(vec(0.45, 0.78, 1.0, 1.0), vec(1.0, 0.62, 0.28, 1.0), vec(0.55, 0.9, 0.55, 1.0))
+val trails = w.trailFLines().mapIndexed { i, f -> f.also { it.color = cols[i % cols.size] } }
+lines(*(w.obstacleFLines() + trails).toTypedArray(), channel = "walls", w = 620.0, h = 620.0, fitToSize = true)
+:::endfold
+```
+
+![three coloured trails in a square room crossing to a vertical barrier: the blue SLIDE trail runs along the barrier, the orange BOUNCE trail zig-zags back off it and off the room walls, and the green STOP trail ends dead at first contact](assets/alife_examples/walls-response.png)
+
+### What local steering cannot do
+
+`avoidWalls` steers away from nearby geometry and `cling` follows it at a chosen standoff. Both are
+*local*: they read the walls within a radius and push. The decision to go the other way round a
+barrier is not local, and no weight on an avoidance term supplies it —
+[`seek`](reference/alife.md#alife-script-kt-behavioursteering) points at the goal and presses into the
+wall for as long as you let it.
+
+[`NavGrid`](reference/alife.md#alife-walls-kt-navgrid) is the part that plans: a radius-inflated A*
+through the world's obstacles, smoothed with a string-pull against the same swept test the physics
+uses, and then followed waypoint by waypoint. `route(goal)` is that, as a drive.
+
+**The maze below is an S**, open only at the bottom of the first barrier and only at the top of the
+second, so no fixed "always turn left" solves it — and **both arms run `avoidWalls` at the same
+weight**, so this is routing measured against the best local steering available rather than against
+nothing.
+
+??? aside "Why both arms are reported with a travel figure"
+    A margin over a control that never left home would mean nothing. The `mean travel` column is
+    there so you can see the direct arm genuinely crossed the room and was stopped by geometry,
+    rather than sitting still and scoring zero for free.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-routing.png" wait="40.0" timeout="300" capture="box" open-outputs="true" padding="20"}
+:::static
+val GOAL_X = 175.0; val GOAL_Y = 100.0
+val STEPS = 1800                              // 30 s at 60 Hz
+val SEEDS = listOf(1L, 2L, 3L, 4L); val PER_SEED = 8
+
+fun maze(seed: Long, routed: Boolean) = ScriptWorld(width = 200.0, height = 200.0, seed = seed, wrap = false).also { w ->
+    w.addWall(70.0, 45.0, 70.0, 200.0, name = "open at the bottom")
+    w.addWall(130.0, 0.0, 130.0, 155.0, name = "open at the top")
+    val jitter = kotlin.random.Random(seed)   // same jitter in both arms: identical start positions
+    repeat(PER_SEED) {
+        w.spawn(
+            18.0 + jitter.nextDouble(-8.0, 8.0), 100.0 + jitter.nextDouble(-28.0, 28.0),
+            maxSpeed = 35.0, radius = 1.2, steerResponse = 0.3, tag = if (routed) "routed" else "direct"
+        ) {
+            val goal = point(GOAL_X, GOAL_Y)
+            moveUntil(maxSeconds = STEPS / 60.0, speed = 35.0, until = { near(goal, 6.0) }) {
+                if (routed) route(goal, clearance = 3.5) else seek(goal)
+                avoidWalls(clearance = 3.0, weight = 0.6)
+                separate(range = 4.0, weight = 0.4)
+            }
+            rest(2.0)
+        }
+    }
+}
+
+// Stepped in lockstep across seeds rather than run() per seed, so the arrival fraction can be
+// sampled every tick and the two arms share one time base.
+val arrivals = mutableMapOf("routed" to mutableListOf<Double>(), "direct" to mutableListOf<Double>())
+for (routed in listOf(true, false)) {
+    val name = if (routed) "routed" else "direct"
+    val worlds = SEEDS.map { maze(it, routed) }
+    val total = worlds.sumOf { it.actors.size }
+    repeat(STEPS) {
+        worlds.forEach { it.step() }
+        arrivals[name]!! += worlds.sumOf { w ->
+            w.actors.count { it.distanceTo(GOAL_X, GOAL_Y) <= 6.0 }
+        }.toDouble() / total
+    }
+    println("%-7s arrived %.3f of %d   mean travel %.1f".format(
+        name, arrivals[name]!!.last(), total, worlds.sumOf { it.totalPathLength() } / total))
+}
+
+:::fold arrivals over time, both arms
+showSignals(
+    "routed" to arrivals["routed"]!!, "direct" to arrivals["direct"]!!,
+    channel = "arrivals", title = "fraction arrived, ${SEEDS.size} seeds x $PER_SEED agents per arm", yTitle = "of 1"
+)
+:::endfold
+```
+
+![a dark step plot: the blue routed trace climbs from zero at about step 900 to just under 1.0 by step 1800, while the orange direct trace stays flat on zero for the whole run](assets/alife_examples/walls-routing.png)
+
+The same comparison at a larger budget — 8 seeds x 12 agents, 96 per arm, with the floors asserted
+rather than printed — is `AlifeWallsGallery.kt`'s counterfactual, and it reads **0.990 against 0.000**.
+
+Both files ship as loadable Field documents as well, at `dev_docs/agents/demos/alife_script/` and
+`dev_docs/agents/demos/alife_walls/`, because the point of a scripted agent is that you edit its
+program and re-run it. In the `alife_walls` document, change `route(goal, clearance = 3.5)` to `0.5`:
+the plan then runs inside the reach of the `avoidWalls(clearance = 3.0)` the same agent is running,
+the two terms fight round every corner, and the arrival fraction drops by roughly a fifth.
 
 ## Evaluating one of these in a box: the inline views
 
