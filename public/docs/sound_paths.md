@@ -63,6 +63,30 @@ them to a file — you cannot do to those. The way back in is `link-audio-in`, b
 Every audio figure in these docs, all seventeen of them, comes out of the `wav-file` sink, which is
 why they regenerate on a build machine with no sound card.
 
+## Isolated spatial audio and offline checks
+
+`SimpleSpatialAudioEngine(threadLocalContext = true)` keeps an OpenAL context on the
+thread that initializes it. Use its engine and sources on that thread, and destroy
+it there. This mode requires `ALC_EXT_thread_local_context`; it fails initialization
+when the extension is absent. It preserves another thread's ordinary audio output
+and restores a previous thread-local context when destroyed. Close nested contexts
+in reverse creation order. The existing shared engine keeps its default behaviour.
+
+For deterministic headphone rendering without opening speakers, add
+`loopbackSampleRate = 48000`. Initialize normally, request HRTF, then call
+`renderSamples(output, frames)` with a reusable direct stereo `ShortBuffer`. Only
+that call advances playback. Inspect `hrtfEnabled` and `hrtfStatus` for the actual
+result; a requested mode is not proof that the device enabled it. `sourceCount` and
+`bufferCount` help verify owner cleanup. A scalar `setListener` overload avoids
+allocating temporary vectors for frequent position/orientation updates.
+
+The `audio.spatial.loopback` smoke (`SpatialAudioLoopbackSmoke`) renders through the
+real OpenAL mixer: it checks left/right energy exchanging when the head rotates,
+Doppler under listener motion, source/buffer cleanup, and restoration of both the
+OpenAL context and LWJGL capabilities after nested use. These checks require the
+bundled OpenAL Soft library, but no physical output device. They do not establish
+how an individual listener perceives an HRTF through their headphones.
+
 ## The four that bring samples in
 
 | path | what it is | needs | page |

@@ -20,6 +20,9 @@ import org.lwjgl.openal.ALC10.*
 import org.lwjgl.openal.EXTEfx
 import org.lwjgl.openal.EXTEfx.*
 import org.lwjgl.openal.SOFTHRTF
+import org.lwjgl.openal.SOFTLoopback
+import org.lwjgl.openal.EXTThreadLocalContext
+import org.lwjgl.openal.ALCapabilities
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import java.io.ByteArrayOutputStream
@@ -36,9 +39,16 @@ import kotlin.math.sqrt
  * - Loads mono (or stereo-downmixed) WAV files.
  * - Supports 3D positioning with listener orientation.
  * - Optional HRTF enablement (OpenAL Soft).
+ *
+ * @param threadLocalContext isolate this engine on its initializing thread. All calls and destroy
+ * must remain on that thread; requires ALC_EXT_thread_local_context and preserves other contexts.
+ * @param loopbackSampleRate positive for deterministic stereo PCM16 rendering into [renderSamples],
+ * zero for the normal output device. Loopback advances only when samples are requested.
  */
 class SimpleSpatialAudioEngine(
-    private val distanceModel: Int = AL_INVERSE_DISTANCE_CLAMPED
+    private val distanceModel: Int = AL_INVERSE_DISTANCE_CLAMPED,
+    private val threadLocalContext: Boolean = false,
+    val loopbackSampleRate: Int = 0
 ) {
     companion object {
         @Volatile
@@ -77,6 +87,13 @@ class SimpleSpatialAudioEngine(
     private var device: Long = 0
     private var context: Long = 0
     private var initialized: Boolean = false
+    private var ownerThread: Thread? = null
+    private var previousThreadContext = 0L
+    private var previousCapabilities: ALCapabilities? = null
+    private var contextBound = false
+    val sourceCount: Int get() = sources.size
+    val bufferCount: Int get() = buffers.size
+    val outputDevice: String get() = if (device == 0L) "closed" else alcGetString(device, ALC_DEVICE_SPECIFIER) ?: "unknown"
 
     private val sources = mutableSetOf<Int>()
     private val buffers = mutableSetOf<Int>()
@@ -144,24 +161,33 @@ class SimpleSpatialAudioEngine(
      * Initialize OpenAL context and set up default listener state.
      */
     fun initialize(enableHrtf: Boolean = true, deviceName: String? = null): Boolean {
-        if (initialized) return true
-
+        if (initialized) { requireInitialized(); return true }
+        require(loopbackSampleRate == 0 || loopbackSampleRate in 8000..192000)
+        ownerThread = Thread.currentThread()
         try {
             MemoryStack.stackPush().use { stack ->
                 val nameBuf = deviceName?.let { stack.UTF8(it) }
-                device = alcOpenDevice(nameBuf)
+                device = if (loopbackSampleRate > 0) SOFTLoopback.alcLoopbackOpenDeviceSOFT(nameBuf) else alcOpenDevice(nameBuf)
             }
             if (device == 0L) {
                 println("OpenAL: Failed to open device")
                 return false
             }
 
-            val hrtfSupported = alcIsExtensionPresent(device, "ALC_SOFT_HRTF")
-            val attrs = if (enableHrtf && hrtfSupported) {
-                intArrayOf(SOFTHRTF.ALC_HRTF_SOFT, ALC_TRUE, 0)
-            } else {
-                null
+            val alcCapabilities = ALC.createCapabilities(device)
+            check(!threadLocalContext || alcCapabilities.ALC_EXT_thread_local_context) {
+                "OpenAL: isolated context requires ALC_EXT_thread_local_context"
             }
+            val hrtfSupported = alcIsExtensionPresent(device, "ALC_SOFT_HRTF")
+            val attributes = ArrayList<Int>()
+            if (loopbackSampleRate > 0) {
+                attributes.addAll(listOf(ALC_FREQUENCY, loopbackSampleRate,
+                    SOFTLoopback.ALC_FORMAT_CHANNELS_SOFT, SOFTLoopback.ALC_STEREO_SOFT,
+                    SOFTLoopback.ALC_FORMAT_TYPE_SOFT, SOFTLoopback.ALC_SHORT_SOFT))
+            }
+            if (enableHrtf && hrtfSupported) attributes.addAll(listOf(SOFTHRTF.ALC_HRTF_SOFT, ALC_TRUE))
+            attributes.add(0)
+            val attrs = attributes.toIntArray()
 
             context = alcCreateContext(device, attrs)
             if (context == 0L) {
@@ -171,7 +197,12 @@ class SimpleSpatialAudioEngine(
                 return false
             }
 
-            if (!alcMakeContextCurrent(context)) {
+            if (threadLocalContext) {
+                previousThreadContext = EXTThreadLocalContext.alcGetThreadContext()
+                previousCapabilities = if (previousThreadContext != 0L) AL.getCapabilities() else null
+            }
+            val bound = if (threadLocalContext) EXTThreadLocalContext.alcSetThreadContext(context) else alcMakeContextCurrent(context)
+            if (!bound) {
                 println("OpenAL: Failed to make context current")
                 alcDestroyContext(context)
                 alcCloseDevice(device)
@@ -180,7 +211,7 @@ class SimpleSpatialAudioEngine(
                 return false
             }
 
-            val alcCapabilities = ALC.createCapabilities(device)
+            contextBound = true
             AL.createCapabilities(alcCapabilities)
 
             alDistanceModel(distanceModel)
@@ -334,7 +365,11 @@ class SimpleSpatialAudioEngine(
      * Clean up OpenAL resources.
      */
     fun destroy() {
+        check(!threadLocalContext || ownerThread == null || ownerThread === Thread.currentThread()) {
+            "OpenAL: destroy the isolated engine on its owning thread"
+        }
         if (initialized) {
+            requireInitialized()
             sources.forEach { alDeleteSources(it) }
             buffers.forEach { alDeleteBuffers(it) }
             destroyEfx()
@@ -348,7 +383,13 @@ class SimpleSpatialAudioEngine(
         }
 
         if (context != 0L) {
-            alcMakeContextCurrent(0)
+            if (contextBound) {
+                if (threadLocalContext) {
+                    EXTThreadLocalContext.alcSetThreadContext(previousThreadContext)
+                    AL.setCurrentThread(previousCapabilities)
+                } else alcMakeContextCurrent(0)
+            }
+            contextBound = false
             alcDestroyContext(context)
             context = 0
         }
@@ -365,6 +406,18 @@ class SimpleSpatialAudioEngine(
         efxAvailable = false
         efxMaxAuxSends = 0
         initialized = false
+        ownerThread = null
+        previousCapabilities = null
+        previousThreadContext = 0L
+    }
+
+    /** Advance a loopback engine by [frames] stereo frames into caller-owned direct PCM16 storage. */
+    fun renderSamples(output: ShortBuffer, frames: Int) {
+        requireInitialized()
+        require(loopbackSampleRate > 0) { "OpenAL: renderSamples requires a loopback engine" }
+        require(output.isDirect) { "OpenAL: renderSamples requires a direct buffer" }
+        require(frames >= 0 && output.remaining().toLong() >= frames.toLong() * 2)
+        SOFTLoopback.alcRenderSamplesSOFT(device, output, frames)
     }
 
     /**
@@ -575,6 +628,7 @@ class SimpleSpatialAudioEngine(
     }
 
     fun destroySource(source: SoundSource) {
+        requireInitialized()
         if (sources.remove(source.id)) {
             alDeleteSources(source.id)
             sourceNameById.remove(source.id)?.let { sourceByName.remove(it) }
@@ -582,6 +636,7 @@ class SimpleSpatialAudioEngine(
     }
 
     fun destroyBuffer(buffer: SoundBuffer) {
+        requireInitialized()
         if (buffers.remove(buffer.id)) {
             alDeleteBuffers(buffer.id)
             bufferById.remove(buffer.id)
@@ -595,21 +650,22 @@ class SimpleSpatialAudioEngine(
     fun setListener(position: Vec3, forward: Vec3, up: Vec3, velocity: Vec3? = null) {
         requireInitialized()
 
-        val f = Vector3f(forward).normalize()
-        val u = Vector3f(up).normalize()
+        setListener(position.x, position.y, position.z, forward.x, forward.y, forward.z,
+            up.x, up.y, up.z)
+        if (velocity != null) alListener3f(AL_VELOCITY, velocity.x, velocity.y, velocity.z)
+    }
 
-        alListener3f(AL_POSITION, position.x, position.y, position.z)
-        if (velocity != null) {
-            alListener3f(AL_VELOCITY, velocity.x, velocity.y, velocity.z)
-        }
-
+    /** Allocation-free listener update. Forward/up must be finite, nonzero directions. */
+    fun setListener(px: Float, py: Float, pz: Float, fx: Float, fy: Float, fz: Float,
+                    ux: Float, uy: Float, uz: Float) {
+        requireInitialized()
+        val fn = sqrt(fx*fx+fy*fy+fz*fz)
+        val un = sqrt(ux*ux+uy*uy+uz*uz)
+        require(fn.isFinite() && un.isFinite() && fn > 0f && un > 0f)
+        alListener3f(AL_POSITION, px, py, pz)
         val orientation = listenerOrientation ?: error("Listener orientation buffer not initialized")
-        orientation.put(0, f.x)
-        orientation.put(1, f.y)
-        orientation.put(2, f.z)
-        orientation.put(3, u.x)
-        orientation.put(4, u.y)
-        orientation.put(5, u.z)
+        orientation.put(0, fx/fn).put(1, fy/fn).put(2, fz/fn)
+        orientation.put(3, ux/un).put(4, uy/un).put(5, uz/un)
         alListenerfv(AL_ORIENTATION, orientation)
     }
 
@@ -772,8 +828,11 @@ class SimpleSpatialAudioEngine(
         efxInitialized = false
     }
 
-    private fun requireInitialized() {
+    internal fun requireInitialized() {
         check(initialized) { "SimpleSpatialAudioEngine is not initialized" }
+        check(!threadLocalContext || (ownerThread === Thread.currentThread() && EXTThreadLocalContext.alcGetThreadContext() == context)) {
+            "OpenAL: use the isolated engine on its owning thread with its context current"
+        }
     }
 
     private fun decodeSubclipPcm16(
@@ -862,47 +921,57 @@ class SoundSource internal constructor(
 ) {
     var gain: Float = 1.0f
         set(value) {
+            engine.requireInitialized()
             field = value.coerceIn(0.0f, 4.0f)
             alSourcef(id, AL_GAIN, field)
         }
 
     var pitch: Float = 1.0f
         set(value) {
+            engine.requireInitialized()
             field = value.coerceIn(0.125f, 4.0f)
             alSourcef(id, AL_PITCH, field)
         }
 
     var looping: Boolean = false
         set(value) {
+            engine.requireInitialized()
             field = value
             alSourcei(id, AL_LOOPING, if (value) AL_TRUE else AL_FALSE)
         }
 
     fun attachBuffer(buffer: SoundBuffer) {
+        engine.requireInitialized()
         alSourcei(id, AL_BUFFER, buffer.id)
     }
 
     fun detachBuffer() {
+        engine.requireInitialized()
         alSourcei(id, AL_BUFFER, 0)
     }
 
     fun setPosition(position: Vec3) {
+        engine.requireInitialized()
         alSource3f(id, AL_POSITION, position.x, position.y, position.z)
     }
 
     fun setPosition(x: Float, y: Float, z: Float) {
+        engine.requireInitialized()
         alSource3f(id, AL_POSITION, x, y, z)
     }
 
     fun setVelocity(velocity: Vec3) {
+        engine.requireInitialized()
         alSource3f(id, AL_VELOCITY, velocity.x, velocity.y, velocity.z)
     }
 
     fun setVelocity(x: Float, y: Float, z: Float) {
+        engine.requireInitialized()
         alSource3f(id, AL_VELOCITY, x, y, z)
     }
 
     fun setDistanceModel(referenceDistance: Float, maxDistance: Float, rolloffFactor: Float = 1.0f) {
+        engine.requireInitialized()
         alSourcef(id, AL_REFERENCE_DISTANCE, max(0.0001f, referenceDistance))
         alSourcef(id, AL_MAX_DISTANCE, max(0.001f, maxDistance))
         alSourcef(id, AL_ROLLOFF_FACTOR, max(0.0f, rolloffFactor))
@@ -912,28 +981,32 @@ class SoundSource internal constructor(
      * Gets the current playback position in seconds.
      */
     val currentTime: Float
-        get() = alGetSourcef(id, org.lwjgl.openal.AL11.AL_SEC_OFFSET)
+        get() { engine.requireInitialized(); return alGetSourcef(id, org.lwjgl.openal.AL11.AL_SEC_OFFSET) }
 
     /**
      * Sets the current playback position in seconds.
      */
     fun seekTo(timeSeconds: Float) {
+        engine.requireInitialized()
         alSourcef(id, org.lwjgl.openal.AL11.AL_SEC_OFFSET, timeSeconds)
     }
 
     fun play() {
+        engine.requireInitialized()
         alSourcePlay(id)
     }
 
     fun pause() {
+        engine.requireInitialized()
         alSourcePause(id)
     }
 
     fun stop() {
+        engine.requireInitialized()
         alSourceStop(id)
     }
 
-    fun isPlaying(): Boolean = alGetSourcei(id, AL_SOURCE_STATE) == AL_PLAYING
+    fun isPlaying(): Boolean { engine.requireInitialized(); return alGetSourcei(id, AL_SOURCE_STATE) == AL_PLAYING }
 
     fun estimateEnergy(windowSeconds: Float = 0.02f): Float {
         return engine.estimateSourceEnergy(this, windowSeconds)
