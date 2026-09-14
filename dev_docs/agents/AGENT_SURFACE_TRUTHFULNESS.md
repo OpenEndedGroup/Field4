@@ -357,6 +357,10 @@ trusted.
   skipped**, empty stderr, parsing clean tree-wide. 247 rather than the primary checkout's
   265 because a worktree lacks the gitignored `src/personal` root — the same 18-test gap
   recorded as 234 vs 252 above.
+- UI regressions, run against a real browser on port 8802: the **2** specs whose subject
+  is the error both pass — `error-fix-import-executes` (25371 ms) and `remote-ar-head`
+  (23068 ms), 1 passed / 0 failed each. The capture shows the single line-1 diagnostic the
+  second asserts. The other **32** were not run.
 - Smoke, end to end through the real harness on port 8802: **4 passed, 0 failed, 1 skipped**
   of 5 requested (`docs.clojure.error` — which carries `allowExecutionErrors` —
   `docs.forth.basic-stack`, `docs.kotlin-overview.printing.println`,
