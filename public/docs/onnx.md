@@ -405,13 +405,12 @@ zero-copy GPU interop is not reachable from Java without dropping to Panama down
 loaded library. That is fine for everything here: a 518² fp32 depth map is 1.07MB and the copy is
 invisible beside the inference.
 
-!!! note "Treat every millisecond on this page as an observation, not a guarantee"
-    Depth at 266×154 has been observed anywhere between about 60 ms and 95 ms across six runs of one
-    machine, and at 126×70 between about 16 ms and 25 ms; the CLIP vision tower, 31–34 ms per image.
-    The spread is the machine rather than the model: those runs were recorded on 2026-08-15 with a
-    build going alongside them.
-    The numbers burned into the captures above are whatever that capture run measured. The numerics
-    are the part that holds across runs and machines.
+??? note "How much the timings move"
+    Depth at 266×154 has been observed between about 60 ms and 95 ms, and at 126×70 between about
+    16 ms and 25 ms; the CLIP vision tower, 31–34 ms per image — all on one machine, in August
+    2026. The spread is the machine rather than the model, and the numbers burned into the captures
+    above are whatever that capture run measured. The numerics are the part that holds across runs
+    and machines.
 
 ## What the tests cover
 

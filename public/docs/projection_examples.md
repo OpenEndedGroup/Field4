@@ -467,20 +467,22 @@ with the best local structure on the page. At 100 the ratio is nearly right at 3
 recall has fallen below MDS's. So a t-SNE plot cannot be read at all without knowing its perplexity,
 and the default of 30 sits at the end of that range where global distance means least.
 
-!!! note "Reproducibility, and the reason fitting is serialised"
+The seed matters as much. Two fits of the same data at the same seed are **bit-identical**, which is
+what makes a live-coded box redraw the same picture when you re-run it. Two fits at *different*
+seeds are not remotely the same picture: the worst coordinate moves by **30.59** while the reported
+`cost` barely moves at all, 0.1709 against 0.1707 — an equally good answer and a completely
+different plot. If a t-SNE figure is going into something anyone else will read, the seed belongs in
+the caption.
+
+??? note "The lock behind that guarantee"
 
     Smile's t-SNE initialiser draws from `smile.math.MathEx`'s **process-wide** random source, so
     `smileTsne` installs `seed` and runs the fit inside a lock
-    (`smile_mds.kt:156#private val smileTsneLock = Any()`). That cuts both ways. Two fits of the same data at the
-    same seed are **bit-identical**, the worst coordinate difference above being exactly `0.0`, which
-    is what makes a live-coded box redraw the
-    same picture when you re-run it. Two fits at *different* seeds are not remotely the same picture:
-    the worst coordinate moves by **30.59** while the reported `cost` barely moves at all, 0.1709
-    against 0.1707. Equally good answer, completely different plot. If a t-SNE figure is going into
-    something anyone else will read, the seed belongs in the caption.
+    (`smile_mds.kt:156#private val smileTsneLock = Any()`). The worst coordinate difference between
+    two same-seed fits above is exactly `0.0`.
 
     The lock also means concurrent t-SNE fits queue rather than parallelise. On a long fit that is
-    visible, and it is the price of the guarantee above.
+    visible, and it is the price of the guarantee.
 
 ## `positiveCorrection`
 
