@@ -92,7 +92,7 @@ showMesh(
 
 ![The Khronos ToyCar GLB in Field's Three.js viewer: a 1950s saloon model sitting on a heavily draped cloth, correctly shaded with soft folds, above a caption reading 77429 verts, 108936 tris, extent 0.073 x 0.029 x 0.074, chi=1909, open](assets/geometry_from_disk/toycar.png)
 
-The numbers under the picture are the interesting part:
+The caption under the picture is the mesh's own measurements:
 
 - **77,429 vertices, 108,936 triangles** (326,808 indices), summed over the three buckets: ToyCar
   itself at 66,951 vertices, Fabric at 8,959 and Glass at 1,519.
@@ -156,7 +156,7 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
     scene positioned by its nodes assembles instead of stacking every part at the origin.
     `PlyModel.applyToMesh` defaults to the identity, because PLY has no scene graph to drop.
 
-    The GPU path deliberately leaves two things alone, and `MeshInstance.bindMatrix`'s KDoc in
+    The GPU path leaves two things alone, and `MeshInstance.bindMatrix`'s KDoc in
     `simpleGLTFSupport.kt` has the reasoning: winding is not reversed for a negative-determinant
     instance (every Field pipeline sets `VK_CULL_MODE_NONE`), and normals are `mat3(modelView) * n`
     rather than the inverse transpose, which is exact for a rigid, uniformly-scaled or mirrored node
@@ -290,7 +290,7 @@ faithful, so look upstream at what shaded the mesh:
 characteristic becomes its triangle count. Save the *unshaded* mesh and let the renderer crease-shade
 it, or weld after reading.
 
-## PLY, and what a scan carries
+## PLY: colours, point clouds and missing normals
 
 A temp directory again, for the same reason as above; `"square.ply".file` is the form to reach for
 in a document.
@@ -363,10 +363,9 @@ Three details in that output are the ones that bite:
   `red`/`green`/`blue`, gets white written for every vertex by its loader — that carries no
   information and would only override the renderer's own shading with a flat white.
 
-## What genuinely does not exist
+## Missing formats and missing features
 
-The useful half of a page like this. None of the following is hiding somewhere in the tree; if you
-need one, you are building it.
+None of the following is hiding somewhere in the tree; if you need one, you are building it.
 
 **STEP, IGES, BREP — any CAD boundary representation.** There is no CAD kernel on the classpath and no
 STEP parser anywhere. This is the big one, and it is genuinely big: STEP is not a mesh format. A
@@ -464,7 +463,7 @@ println(fixed.report())                    // what was done, and what was not
 if (fixed.isSolid) display(fixed.mesh.toSolid() - drill)
 ```
 
-### The vocabulary, and which defects block a solid
+### Defect severities: what blocks a solid
 
 Each severity below comes from damaging a known-good mesh in exactly one named way and asking
 Manifold whether it accepted the result. The answers are not the ones folklore predicts.
@@ -494,7 +493,7 @@ thing. Tracing a boundary into a ring follows directed half-edges, so **inconsis
 the trace** and a perfectly ordinary hole reports as unwalkable. Run `fixWinding()` and diagnose
 again before believing the exotic reading (two holes meeting at one vertex).
 
-### What the repairs do, and what they do not fix
+### The repair steps, in order
 
 `repairToSolid()` runs these in this order, and the order is causal: each step exists because the
 next would give a wrong answer without it.
@@ -549,14 +548,13 @@ run time you do not have it.
 
 ### Measured against 27 broken meshes
 
-`repaired()` (weld → degenerate → unused → winding) lives in `mesh_topology.kt` and covers a real
-share of the ground, so the comparison below is against a working baseline rather than a straw man.
+`repaired()` (weld → degenerate → unused → winding) lives in `mesh_topology.kt` and already covers a
+real share of the ground, so the comparison below has a working baseline.
 
 The test table is 27 meshes broken in named, deterministic ways, of which **21 are rejected by
-Manifold as-is**; the other six are damaged inputs Manifold accepts unchanged, and counting them
-would inflate everything below. Each row is a damaged copy of a known-good mesh, so the correct
-answer is known, and "repaired" is judged against **the undamaged original** rather than against
-`isValidSolid()`:
+Manifold as-is**; the other six are damaged inputs Manifold accepts unchanged, and they are left out
+of the counts. Each row is a damaged copy of a known-good mesh, so the correct answer is known, and
+"repaired" is judged against **the undamaged original** rather than against `isValidSolid()`:
 
 <div class="field-data-table" markdown>
 
@@ -570,9 +568,9 @@ answer is known, and "repaired" is judged against **the undamaged original** rat
 
 </div>
 
-That split between 15 faithful and 4 merely valid is the point, and it is why the table's holes are
-not all flat. A fan fill is trivially correct on a planar rim, so a table of flat holes measures
-only the easy case and lets "fixes" mean no more than "Manifold accepts it". The four merely-valid
+The split between 15 faithful and 4 merely valid is why the table's holes are not all flat. A fan
+fill is trivially correct on a planar rim, so a table of flat holes measures only the easy case and
+lets "fixes" mean no more than "Manifold accepts it". The four merely-valid
 rows are the curved and non-planar holes that keep the two apart: a hole across a torus's tube (1.5%
 off), one that severs it (4.2% off, genus 1→0), a wide hole over a sphere (1.9% off), and a crowned
 rim (**35%** off).
@@ -636,11 +634,9 @@ showMeshDiagnosis(broken, title = "4 faces removed, plus one unwelded face")
 
 ![A grey wireframed icosphere with a black triangular hole punched through it, seen from a camera pointed straight at the damage. A red halo stains the ring of vertices around the hole, and a second, smaller red patch sits just below and right of it where one face was left unwelded. Beneath the render a legend reads "red = open boundary, orange = non-manifold edge, yellow = pinch vertex", then "645 verts, 1276 tris, 2 blocking" and three defect rows: BLOCKING UNWELDED_VERTICES x3, BLOCKING OPEN_BOUNDARY x12 with edge counts 6, 3, 3, and INFORMATIONAL MULTIPLE_COMPONENTS x2, each with the call that fixes it](assets/geometry_from_disk/mesh_defects.png)
 
-`showMeshDiagnosis` **points the camera at the worst defect** unless you pass a view, and the figure
-above is why that matters: the hole is on the far side of the sphere from the default three-quarter
-view, so aiming at the damage is the only reason it is in shot. A card captioned "4 faces removed"
-over a picture of an unblemished sphere argues that nothing is wrong. `TriMesh.defectFacingView()` is
-that camera, if you want it for your own render.
+`showMeshDiagnosis` **points the camera at the worst defect** unless you pass a view, which is the
+only reason the hole is in shot above: it sits on the far side of the sphere from the default
+three-quarter view. `TriMesh.defectFacingView()` is that camera, if you want it for your own render.
 
 The red halo and the smaller red patch in the picture are the two blocking rows of the list beside
 it, which is the case for a card over a `println`. The colouring is checked on the raster rather than
@@ -722,7 +718,7 @@ live in `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, sixteen tests, w
 covering the OBJ/STL readers themselves: quads, negative indices, the `solid`-prefixed-binary sniff
 trap, uv survival.
 
-??? aside "When these captures go stale, and how to force them"
+??? aside "Forcing these captures to re-run"
     A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
     machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
     `afield.four`, not `afield.stdlib`, so editing *it* does not invalidate these captures on its own.
