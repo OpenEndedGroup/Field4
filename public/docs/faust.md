@@ -114,8 +114,8 @@ Three of those are compromises rather than finished work:
 * **`hbargraph`/`vbargraph` are outputs rather than controls.** They are not in the control group at
   all; `launch.meter("level")` reads the most recent value, sampled once per audio block.
 * **`[scale:log]` is not honoured by the slider's travel.** The declared range is kept and the numbers
-  are right, but a log frequency slider moves linearly. Field's slider has no law parameter yet; the
-  metadata is parsed and available on `FaustControl.scale` for when it does.
+  are right, but a log frequency slider moves linearly. Field's slider has no law parameter; the
+  metadata is parsed and readable on `FaustControl.scale`.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -169,7 +169,7 @@ context.
 Note the second pattern. `Pat` is a rhythm of *anything*, so the filter is patterned exactly as the
 notes are, and both go through the same event timeline.
 
-### What it sounds like, and the one comparison that proves it
+### What it sounds like, at eight voices and at one
 
 Here is that example, rendered offline. Then the same notation with `voices = 1`.
 
@@ -188,36 +188,21 @@ Here is that example, rendered offline. Then the same notation with `voices = 1`
 
 **The same notation, one voice.** Identical pattern, program and gain. The three notes of a chord arrive on the same frame, so two of them steal the only voice there is — and what you hear is the last of the three, with a click where the voice turned over.
 
-A single clip could not have shown you this. A chord and an arpeggio sound different for reasons that
-have nothing to do with voice allocation, so one recording proves nothing about voices — whereas two
-renders of one notation differ **only** in how many voices there were to put the notes on.
+The difference is measurable as well as audible: three of the chord's notes sound at once at
+`voices = 8` and one at `voices = 1`, counted as spectral peaks in the band where only fundamentals
+can sit. Counting attacks would not tell you that, because a single voice stealing itself produces
+exactly the same number of them. Both clips are asserted by `synth.faust.poly.sound`, and the peak
+counts, the band and what limits them are in `dev_docs/FAUST_MEASUREMENTS.md`.
 
-And it is measurable, not just audible. During the first chord the band 100–230 Hz can hold nothing
-but fundamentals: `[c4,ef4,g4]` is 130.81, 155.56 and 196.00 Hz, and the chord's lowest second
-harmonic is 261.6 Hz. So a spectral peak in that band *is* a note sounding, and counting them
-distinguishes polyphony from a voice stealing itself — which counting attacks cannot do, because both
-produce exactly the same number of attacks:
-
-| | peaks in 100–230 Hz | measured | voices sounding at once | voice steals |
-|---|---|---|---|---|
-| `voices = 8` | **3** | 127.3, 160.7, 190.9 Hz | 3 | 0 |
-| `voices = 1` | **1** | 190.9 Hz | 1 | 16 |
-
-The measured frequencies are one FFT bin's worth off the notated ones — 5.9 Hz at this window length
-— which is the resolution, not the tuning.
-
-**Sixteen steals, not twenty-three,** and the difference is the allocator being specific. Twenty-four
-notes on one voice would be twenty-three steals if every note had to take the voice from the one
-before it. But `sustain` is 0.9, so the gate falls a tenth of a beat before the next chord and the
-30 ms release finishes inside that gap: a voice that has stopped moving air is *finished*, and a
-finished voice is reused rather than stolen. What is left is two steals per chord — the second and
-third notes, which arrive on the very same frame as the first and cannot wait for anything — times
-eight chords. The one-voice clip is holding the last note of each chord as notated, which is why its
-single peak is `g4`'s 190.9 Hz and not `c4`'s.
-
-Both clips, both counts and the gap between them are asserted by `synth.faust.poly.sound`; the
-instrument there is one sawtooth per voice rather than the detuned pair, because two sawtooths 0.5%
-apart put a beating pair into the band and the count stops meaning anything.
+**The one-voice render steals sixteen times, not twenty-three**, and the difference is the arithmetic
+you need when you size `voices`. Twenty-four notes on one voice would be twenty-three steals if every note
+had to take the voice from the one before it. But `sustain` is 0.9, so the gate falls a tenth of a
+beat before the next chord and the 30 ms release finishes inside that gap: a voice that has stopped
+moving air is *finished*, and a finished voice is reused rather than stolen. What is left is two
+steals per chord — the second and third notes, which arrive on the very same frame as the first and
+cannot wait for anything — times eight chords. So `steals` counts same-frame collisions, and a
+pattern whose notes have room to release reports far fewer of them than the arithmetic suggests.
+The one-voice clip holds the last note of each chord as notated, not the first.
 
 ### Play it yourself: the `faust_polyphony` starting point
 
@@ -229,12 +214,12 @@ Everything on this page ships as a loadable document — six boxes, on the welco
 *Faust instrument* is the live one and the only box that opens an audio device: `faustPoly(…, voices = 8)`
 playing the pattern above, returned as the box's last expression so the box stays lit while it plays
 and stopping it stops the sound, the feeder thread and the GraalVM context. *Offline, with a plot* is
-the path the clips above came from, safe on any machine. *Three notes at once* is the peak count you
-just read, printed live at four voices and at one. *Onsets, in samples* puts every notated frame
+the path the clips above came from, safe on any machine. *Three notes at once* counts the sounding
+fundamentals for you, at four voices and at one. *Onsets, in samples* puts every notated frame
 beside the frame the audio attacks on. *What it refuses* is a program with no `gate`. *When it runs
 out of voices* renders the same over-subscribed passage at `stealReleaseFrames = 1` and at `1440`,
 with both WAVs playable and the line to edit marked — the knob whose two ends are measured
-[below](#a-steal-clicks-and-by-how-much).
+[below](#stealing-clicks-and-the-stealreleaseframes-trade).
 
 Five of the six are replayed on every CI run by `examples.demo-transcript.exec`, so the boxes cannot
 rot silently; the document itself is regenerated from the transcript by
@@ -279,7 +264,7 @@ The control group a polyphonic launch generates contains the *shared* controls o
 `freq`, `gate` and `gain` are absent: the notes write them on the sample a note begins, and a
 slider fighting the notes for them would look broken.
 
-### Voice allocation, and what it does when it runs out
+### How a note claims a voice
 
 A note claims a voice in this order:
 
@@ -294,7 +279,7 @@ A note claims a voice in this order:
 `peakConcurrency` is how much polyphony a pattern actually asked for: the most voices that ever
 sounded together over a render.
 
-#### Stealing clicks, and `stealReleaseFrames` is the knob
+#### Stealing clicks, and the `stealReleaseFrames` trade
 
 A steal clicks, because Faust's `en.adsr` resets to zero on a trigger rather than continuing from the
 level it was at. The one-sample gate dip that gives the new note its rising edge therefore drops the
@@ -334,7 +319,7 @@ A bank hosts every voice in one GraalVM context, unlike `FaustDsp`, which gives 
 measurements behind that choice, and the ~0.9 KB per voice per block that `render` still allocates, are in
 `dev_docs/FAUST_MEASUREMENTS.md`.
 
-### What you can and cannot do from another thread
+### Calling in from another thread
 
 `render` takes no lock. `schedule` and `automate` hand work over through lock-free queues that `render`
 drains once at the top of each block, and the audio thread owns the ordered queues outright. Producers pay
@@ -360,7 +345,7 @@ process = os.sawtooth(220) : fi.lowpass(2, 1200) * 0.2 <: _,_;
 ```
 
 Faust emits a set of linked SVGs, one per sub-expression; the top-level `process.svg` is the one shown.
-The links between them are file references, so drilling down is not wired up yet.
+The links between them are file references, which Field does not follow, so you see the top level only.
 
 ## Effects, not just synths
 

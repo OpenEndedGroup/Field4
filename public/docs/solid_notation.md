@@ -84,8 +84,8 @@ threeGrid(
 
 ![Six panels in two rows of three: a sphere; a rectangular block drawn with only a few large triangles per face; a cylinder lying at an angle with its flat end visibly faceted into straight segments; a cone seen close to base-on with its apex to the lower left; a torus; and a six-pointed star column seen nearly end-on, its points sweeping round as the extrusion twists. All are flat grey with the triangle wireframe drawn, each framed to its own bounds so the small shapes are not lost beside the large ones](assets/solid_notation/vocabulary.png)
 
-Look at the cylinder and the cone. `cylinder(1.6, 0.7)` with `segments = 64` comes out of the exact
-path as a 64-gon prism, and you can see the straight segments around the flat end. Raise `segments`
+In the cylinder and the cone panels, `cylinder(1.6, 0.7)` with `segments = 64` comes out of the
+exact path as a 64-gon prism, and the straight segments are visible around the flat end. Raise `segments`
 and the silhouette tightens. The field lowering of the same expression has a true circular
 cross-section at every resolution, and is wrong in a different way instead.
 
@@ -592,9 +592,9 @@ turning in frame five.
 
 One detail the strip shows that the final table cannot: `barRadius` gets **worse before it gets
 better**. It goes `0.420 → 0.464` over the first 150 iterations before coming back down through
-`0.356` and `0.290` to `0.281`, which is the fat stub in frame two. Nothing is wrong: while the cube
-is still far too big the rod is the only thing that can carry the target's volume, and it is
-rewarded for thickening until the cube gets out of the way. A per-parameter trace is the only place
+`0.356` and `0.290` to `0.281`, which is the fat stub in frame two. While the cube is still far too
+big the rod is the only thing that can carry the target's volume, and it is rewarded for thickening
+until the cube gets out of the way. A per-parameter trace is the only place
 that shows up; the loss falls at every frame regardless.
 
 The two kinds of parameter differ in time, not only in the final table. The cube reaches its

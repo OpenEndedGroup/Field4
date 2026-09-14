@@ -66,8 +66,8 @@ other box. There is a per-box `_pythonLocals` dictionary, handed to the interpre
 `_local_storage_`, but the exec call that would have used it is commented out directly above the one
 that runs. Two Python boxes are two cells of one notebook, not two notebooks.
 
-State therefore persists between runs, which is the point: import your libraries and load your data
-in one cell, and iterate in another. It also means a name you thought you had deleted is still
+State therefore persists between runs, which is what a notebook is for: import your libraries and
+load your data in one cell, and iterate in another. It also means a name you thought you had deleted is still
 there.
 
 Try it yourself: make a Python root, put two cells under it, bind a name in the first, and read it

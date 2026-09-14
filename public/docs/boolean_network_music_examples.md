@@ -206,7 +206,7 @@ $summary
 :::endfold
 ```
 
-Read the picture and only one of the three layers behaves like an ensemble member. The kick runs the full eight seconds; the shimmer's 64 sixteenth-steps are four seconds long, so it stops dead at the halfway mark; and the snare fires twice, both at time zero, and then not again. That last one is not a bug in the figure but a consequence of how the layers are picked — `maxByOrNull { it.period }` with no minimum, unlike the fence above, which insists on period 6. Two `CHANGE` triggers at step zero and silence after is the signature of a network started on a fixed point: with nothing changing, `active != previous` can only be true on the first step, where there is no previous state to compare against. If you want three live layers, filter the seeds by period the way the first example does.
+Only one of the three layers behaves like an ensemble member. The kick runs the full eight seconds; the shimmer's 64 sixteenth-steps are four seconds long, so it stops dead at the halfway mark; and the snare fires twice, both at time zero, and then not again. That last one is a consequence of how the layers are picked — `maxByOrNull { it.period }` with no minimum, unlike the fence above, which insists on period 6. Two `CHANGE` triggers at step zero and silence after is the signature of a network started on a fixed point: with nothing changing, `active != previous` can only be true on the first step, where there is no previous state to compare against. If you want three live layers, filter the seeds by period the way the first example does.
 
 ![](assets/boolean_network_music_examples/braided_rhythm.png)
 

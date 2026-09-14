@@ -219,10 +219,9 @@ showPlaneGrid(
 
 ![Three panels of the same five sites: equal weights giving straight-line bisectors meeting at a Y junction, mixed weights bowing every one of those edges into a circular arc, and one site at weight 2.6 reducing its two lightest neighbours to complete circular discs](assets/spatial_geometry_examples/apollonius.png)
 
-The middle panel is the point of the family: those are arcs, they bulge *away* from the heavier
-site, and no amount of polygon machinery will produce them. The captions carry the check: at equal
-weights the diagram reports **16 straight bisectors and 0 arcs**, and at mixed weights **18 arcs and
-0 straight**. Not "mostly" either way: the type of every piece is decided by an exact equality of
+In the middle panel those are arcs: they bulge *away* from the heavier site, and no amount of
+polygon machinery will produce them. The captions carry the check: at equal weights the diagram
+reports **16 straight bisectors and 0 arcs**, and at mixed weights **18 arcs and 0 straight**. Not "mostly" either way: the type of every piece is decided by an exact equality of
 weights, so the counts are all-or-nothing. Neither count is 20, the number of ordered site pairs: a
 bisector only becomes a boundary *piece* of a cell where it is actually the nearest tie, and with five
 sites several of the twenty pairs never surface.
@@ -242,9 +241,9 @@ build.
 
 ### Watch the bisector bow
 
-Three still panels at three weights cannot show the bisector becoming a circle; the interesting part
-is between them. So here is the same construction with one number swept: site 1's weight, from 1.0
-up to 2.7 and back, eight seconds there and back.
+Three still panels at three weights cannot show the bisector becoming a circle; the transition is
+between them. Here is the same construction with one number swept: site 1's weight, from 1.0 up to
+2.7 and back, eight seconds there and back.
 
 Watch three things. First, only the edges that **touch site 1** bow. A bisector between two sites of
 *equal* weight stays exactly straight however heavy their neighbour gets, which is why the caption
@@ -883,7 +882,7 @@ showPlaneGrid(
 **The four strategies do not agree, and each disagreement is the reason you would pick that strategy.**
 
 **Ward spends a whole cluster on one point.** The k=3 cut is **1 / 28 / 56**: the stray alone, one blob
-intact, and *two genuine blobs merged into one*. That is not a bug, it is the objective. Agglomerative
+intact, and *two genuine blobs merged into one*. That is the objective doing its job. Agglomerative
 Ward merges whichever pair raises the within-cluster sum of squares least, and merging clusters of
 `n₁`, `n₂` whose centroids are `d` apart costs `n₁n₂/(n₁+n₂) · d²`. Merging two 28-point blobs 2.408
 apart costs `14 · 5.80 = 81.2`. Absorbing the stray into its nearest blob (9.72 away) costs
@@ -991,22 +990,19 @@ println("SINGLE at k=2: largest cluster $singleAtTwoLargest of ${banded.size} �
 ![Eight wide panels of the same two-band point cloud at k=3, two per row: the uncoloured input, then one panel per agglomerative linkage. Single linkage gives each band its own colour and leaves one single-point cluster; every other linkage instead cuts both bands into three vertical slabs coloured left to right](assets/spatial_geometry_examples/linkages.png)
 
 **`SINGLE` is the only one of the seven that finds the bands**, which is the opposite of single
-linkage's reputation. Look at the colours: it returns
-one band of 40, the other band plus two of the stragglers as 42, and the remaining straggler as a
-singleton. Every other linkage ignores the gap entirely and cuts *both* bands into three vertical
-slabs (pink, green, blue left to right) because for a compactness criterion a 10-by-0.3 band is not
-a cluster at all, and three slabs are rounder than two bands.
+linkage's reputation. It returns one band of 40, the other band plus two of the stragglers as 42,
+and the remaining straggler as a singleton. Every other linkage ignores the gap entirely and cuts
+*both* bands into three vertical slabs (pink, green, blue left to right) because for a compactness
+criterion a 10-by-0.3 band is not a cluster at all, and three slabs are rounder than two bands.
 
-That is a claim about colours, so here it is as a count. A pixel
-census of two 780 x 40 strips through the `SINGLE` panel, one along each band, finds 9230 pixels of
-one hue in the upper strip and 9064 of a *different* hue in the lower, with nothing else above noise,
-and 232 pixels of a third hue on the straggler. The same two strips through the `WARD` panel find all
+A pixel census of two 780 x 40 strips through the `SINGLE` panel, one along each band, finds 9230
+pixels of one hue in the upper strip and 9064 of a *different* hue in the lower, with nothing else
+above noise, and 232 pixels of a third hue on the straggler. The same two strips through the `WARD` panel find all
 three hues in *both*: 3251 / 2676 / 1827 above and 3211 / 1957 / 1387 below. One linkage put a colour
 per band; the other put every colour in every band.
 
-Neither is a bug and neither is the better setting. They are answers to different questions, and the
-gap in this data is narrower than the bands are long, so "close" genuinely means two different things
-here.
+Neither is the better setting. They answer different questions, and the gap in this data is
+narrower than the bands are long, so "close" genuinely means two different things here.
 
 The figure also declines to show the failure it was set up for. Single linkage's notorious weakness
 is *chaining*: a thin bridge of points lets it merge two groups that are nowhere near each other.

@@ -297,8 +297,8 @@ size.
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
 the same λ, with μ = −0.63, leave **2.1840** across 1.631, within about 3% of the clean ball this
-noise was added to, and, at 1280 triangles and χ = 2 throughout, just as smooth. Two numbers, and
-they are the argument for Taubin.
+noise was added to, and, at 1280 triangles and χ = 2 throughout, just as smooth. Reach for Taubin
+whenever the volume has to survive the smoothing.
 
 The top row has a second lesson in it. The volume falls 1.2985 → 0.8518 → … → 0.7490
 and does *not* stop at the sphere the icosahedron's vertices sit on, because Loop subdivision
