@@ -21,7 +21,7 @@ Before any of that, the case a slicer hits on every part with a flat top. What d
 when the cutting plane is exactly a face plane, exactly a vertex, exactly the top of the bounding
 box?
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/degenerate.png" wait="8" capture="box" open-outputs="true" w="1100" h="560" padding="16" timeout="180" name="chain-contours-degenerate" requires="manifold" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/degenerate.png" wait="8" capture="box" open-outputs="true" w="1100" h="560" padding="16" timeout="180" name="chain-contours-degenerate" requires="manifold" alt="A thirteen-row table of cuts: each named cut with its z to nine decimals, the area the slice returned, and how many contours it had" embed=true}
 :::static
 import afield.manifold.Solid
 
@@ -80,8 +80,6 @@ Solid.scope {
 markdown("cuts", Table(listOf("the cut", "z", "area", "contours")).rows(rows).h, width = 1040)
 ```
 
-![Every degenerate cut, with its area and contour count](assets/chain_ceres_manifold_contours/degenerate.png)
-
 The rule those thirteen cuts agree on:
 
 > `slice(z)` returns the cross-section of the material **at and above** `z`. A face lying in the
@@ -124,7 +122,7 @@ Orientation is the second confound, and it is measured rather than argued away. 
 survives canonicalisation, so the angle each vertex's direction from the centroid turns through is
 a per-vertex number, and the largest of them says whether one z-ladder cuts both forms comparably.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="14" capture="box" open-outputs="true" w="1240" h="980" padding="16" timeout="360" name="chain-contours-gyro" requires="manifold" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="14" capture="box" open-outputs="true" w="1240" h="980" padding="16" timeout="360" name="chain-contours-gyro" requires="manifold" alt="Two plan views of a 48-layer stack seen from overhead: on the left one orange square, because all of raw gC's layers are the same square; on the right the canonical form's forty-eight nested rings twisting from cyan at the bed to orange at the top. Below them a table of the four forms and a plot of layer area against height, in which gC raw is a flat line at 1 and the other three are domes peaking near 1.25" embed=true}
 :::static
 import afield.manifold.Solid
 import afield.manifold.toSolid
@@ -293,8 +291,6 @@ showSignals(
 )
 ```
 
-![Plan views of gC's raw and canonical layer stacks, with the numbers and the area profiles](assets/chain_ceres_manifold_contours/gyro.png)
-
 The left panel is a single square, forty-eight times. That is not a drawing error.
 
 **`gC`'s raw realization is a cube, exactly.** Gyro applied to the cube adds 6 face-centre vertices
@@ -335,7 +331,7 @@ Every form above passes it. `kkC` — kis applied twice to the cube — does not
 solves. `relaxWithCeres` reaches it, in twelve iterations, and this is where the page stops being
 about contours.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static
 import afield.manifold.FillRule
 import afield.manifold.Solid
@@ -434,8 +430,6 @@ showSignals(
     yTitle = "Σ area·h/n (the volume is 1)",
 )
 ```
-
-![The three kkC embeddings, their diagnostics, their layer sums and the overlap the fill rules find](assets/chain_ceres_manifold_contours/kkc.png)
 
 Read the middle row first, because it is the easy failure. `canonicalize()` takes `kkC`'s signed
 volume of `+26.3032` to **`−254.0791`**, having moved vertex directions by up to `151.6°` on the way.
