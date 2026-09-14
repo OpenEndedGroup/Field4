@@ -91,7 +91,7 @@ cross, the field can only predict their average, and that residual is a property
 rather than of the fit. Loss is therefore not a quality measure here; compare samples instead, with
 `chamferDistance` or by looking.
 
-Two conventions are worth knowing. Training happens in a centred, isotropically scaled frame, since
+Two conventions are chosen for you. Training happens in a centred, isotropically scaled frame, since
 a Gaussian source has to be commensurate with the data and `FLine` coordinates are usually in the
 hundreds; the scaling is one factor rather than one per axis, so a shape keeps its aspect ratio, and
 everything you pass in and get back is in your own coordinates. And 2D against 3D is decided by the
@@ -493,7 +493,7 @@ effective step by about ten and the run diverges.
 `FlowMatchField.losses` records every step, so a loss still falling at the end means the run was cut
 short.
 
-## What this does not do
+## Limits of the method
 
 The field is a deformation, so it cannot change topology: no tearing a loop, no joining two strands,
 no branching. Multiple curves can be carried by one field as long as each has its own source strand
@@ -502,9 +502,9 @@ of the same kind, and they will approach each other without crossing.
 `sample` returns an unordered cloud. Recovering an `FLine` from one is a separate problem, which
 `transport` sidesteps by moving points you already have and keeping their order.
 
-There is no conditioning input: one field carries one distribution onto one other. And this is a
-small model by design — two layers of 64 units suits a few thousand points in two or three
-dimensions and would not suit an image.
+There is no conditioning input: one field carries one distribution onto one other. And it is a small
+model — two layers of 64 units suits a few thousand points in two or three dimensions and would not
+suit an image.
 
 The API is in [Machine learning](reference/machine-learning.md); `VectorMLP` there is the
 multi-output regression head that `flowMatch` trains, which is usable on its own.
