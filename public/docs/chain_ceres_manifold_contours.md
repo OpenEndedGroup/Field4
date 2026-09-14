@@ -11,9 +11,9 @@ the same trunk one stage later and ends in pixels. This one ends in contours, wh
 fake, because a contour has an area and the areas have to add up.
 
 The question the page is here to answer is whether canonicalising a polytope changes the layers you
-would print. It does, and the way it does is worth the trip — but the more useful finding arrived
-sideways. **The layer stack is not only the last stage of this chain. It is a check on the first
-one**, and it catches something the realizer's own diagnostics report as a success.
+would print. It does — by up to 99.8% on a single layer, while moving no contour into or out of
+existence. **The layer stack is also a check on the first stage of the chain**, and it catches
+something the realizer's own diagnostics report as a success.
 
 ## A cut that lands exactly on something
 
@@ -95,9 +95,8 @@ The two touching cubes are the check rather than another example. The rule predi
 that exactly one of the two squares answers and that it is the upper one; the capture reads area
 `1.0000` centred at `x = 1.0000`, on a geometry that shares nothing with the cube the rule came from.
 
-The zero-area contacts are less surprising and worth stating anyway: a cone cut through its apex,
-and a tetrahedron cut on either of its two horizontal edges, all return nothing. A point and a
-segment have no area, so there is no region to hand back.
+Zero-area contacts return nothing: a cone cut through its apex, and a tetrahedron cut on either of
+its two horizontal edges. A point and a segment have no area, so there is no region to hand back.
 
 !!! tip "What this means for a layer ladder"
 
@@ -431,14 +430,14 @@ showSignals(
 )
 ```
 
-Read the middle row first, because it is the easy failure. `canonicalize()` takes `kkC`'s signed
-volume of `+26.3032` to **`−254.0791`**, having moved vertex directions by up to `151.6°` on the way.
+The middle row is the easy failure. `canonicalize()` takes `kkC`'s signed volume of `+26.3032` to
+**`−254.0791`**, having moved vertex directions by up to `151.6°` on the way.
 Manifold reports `NO_ERROR` and genus 0 throughout — a self-intersecting surface is still a
 combinatorial manifold, and `status` is not asked to notice. The sign is enough to refuse it, and
 this page refuses it rather than taking a cube root of a negative number and getting a mirrored
 solid that looks plausible.
 
-The bottom row is the interesting one. `relaxWithCeres(RelaxationPlan.canonicalConditions())` reaches
+In the bottom row, `relaxWithCeres(RelaxationPlan.canonicalConditions())` reaches
 a tangency-radius spread of `2.682e-08` in 12 iterations and about 5 ms on
 `SPARSE_NORMAL_CHOLESKY`, and comes back with signed volume `+12.4853`, `NO_ERROR`, genus 0.
 **Every canonical diagnostic reports a success.** Its layer stack does not agree.
@@ -465,18 +464,16 @@ reports tangency, planarity, centring and dihedral spread; it does not detect a 
 another face. Adding it would let `canonicalize` distinguish "did not converge" from "converged to
 something self-intersecting", which is currently the reader's job.* That paragraph is what this
 section is: a detector for it, assembled out of the slicer, in the two lines `riemann` and `overlap`
-above. It costs a few hundred `slice` calls on a 72-triangle solid and it is the only thing on this
-page that noticed.
+above. It costs a few hundred `slice` calls on a 72-triangle solid.
 
-!!! warning "One Boolean that does not notice"
+??? aside "A Boolean will not find the crossings for you"
 
-    Intersecting the solid with a box that already contains it is the identity on a clean body, and
-    it looked like a cheaper detector: a self-intersecting input should come back re-meshed and
-    smaller. Measured, it returns `1.000000` — the same signed volume it went in with. Manifold's
-    Boolean takes its input's manifoldness as given and does not resolve the crossings, so that
-    route reports nothing. The fill-rule comparison is the one that works.
+    Intersecting the solid with a box that already contains it returns `1.000000` — the same signed
+    volume it went in with, not the smaller re-meshed body a resolved self-intersection would give.
+    Manifold's Boolean takes its input's manifoldness as given and does not resolve crossings, so
+    the identity Boolean reports nothing. The fill-rule comparison is the route that works.
 
-## What crosses each hop, and what does not
+## What crosses each hop
 
 | hop | the call | what crosses | what stops here |
 | --- | --- | --- | --- |

@@ -662,14 +662,14 @@ object StdlibReferenceGenerator {
             "not two ways of doing one thing. Everything above returns geometry, so " +
             "[Graphics](graphics.md) is where it gets drawn.\n\n" +
             "The prose, with pictures: " +
-            "[Physics: particles, constraints, and the one number that decides everything]" +
+            "[Physics: particles, constraints and cloth]" +
             "(../physics.md) for the real-time stack — read it before touching `stiffness`, " +
             "because it and `iterations` are not two knobs — and " +
             "[Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and " +
             "the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and " +
             "the parameter study) and the cloth starting point are in the " +
             "[Agent Transcript Gallery](../agent_transcripts.md); " +
-            "[Frames, and What a Frame Is](../animation_time_model.md) explains why an integrator " +
+            "[Frames and the Animation Loop](../animation_time_model.md) explains why an integrator " +
             "wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose " +
             "this route.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +

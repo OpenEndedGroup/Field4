@@ -11,7 +11,7 @@ is the whole path, from the keystroke to the frame. Start at whichever end you n
 - **What happens between the keystroke and the compiler** — fragments, macro expansion, the
   preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
 - **What happens after the last line evaluates**, when what you returned is a `Frames`, is
-  [Frames, and what a frame is](animation_time_model.md). Launching a box is exactly the case where
+  [Frames and the animation loop](animation_time_model.md). Launching a box is exactly the case where
   that page takes over from this one.
 
 For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the

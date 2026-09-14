@@ -769,7 +769,7 @@ mantissa than a `Double` can hold and comes back changed. And any `Number` that 
 six `NumKind`s, such as a `BigDecimal` or a `BigInteger`, is stored as a plain `DOUBLE` and comes
 back a `Double`: even where the value survives, the **type** does not.
 
-### The files are the history; the manifest is a cache
+### Version history on disk
 
 `<file>.versions` holds one numbered JSON file per save, plus a `manifest.json` carrying the two
 things a file name cannot: each version's note and its timestamp. The two can disagree. A manifest
@@ -895,7 +895,7 @@ back on the stepping path. `fbm` against `noise` is a divergence; `3.0` against 
 Everything outside a site is copied through byte for byte, so a blended program keeps the left one's
 comments and layout.
 
-### Two ways to spend it
+### STATIC and RUNTIME
 
 `CodeBlendMode.STATIC` writes the interpolated numbers into the source: `uv 3.0 * fbm` and
 `uv 8.0 * fbm` become `uv 5.5 * fbm` at `t = 0.5`. It reaches every numeric position, and it costs a
@@ -971,31 +971,7 @@ values of the push constant, and compares both ends against the keyframe they ar
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
   — blending two keys, including code values that step rather than smear.
 
-### What is actually tested
-
-Every number stated on this page is asserted by a suite of 76 tests written against it. A companion
-ledger reflects over the **members of a hand-listed set of `keyframer.kt`'s classes** and requires every
-public one to be classified as either covered or unreachable-with-a-stated-reason. Add a method or a
-property to one of those classes and the build fails until it is accounted for.
-
-The class list itself, and the total below, are maintained by hand. Only the enumeration *within*
-the listed classes is measured. A new **top-level** declaration is invisible to the ledger:
-`enum class KeyDiffKind` (`stdlib/keyframer.kt:1458#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is public, absent from it, and the suite is green
-regardless. The tests exercise it; it simply is not counted, which pushes the figure below down
-rather than up.
-
-**112 of 120 public behavioural declarations are exercised (93.3%).** Data-class members the Kotlin
-compiler generates are excluded, on the same grounds the
-[codebase reference](reference/index.md) excludes them.
-
-The remaining **8** are the ones a unit test cannot reach, for one of two reasons:
-
-| uncovered | why |
-| --- | --- |
-| `target(ModulePointer/ComputeModulePointer/MeshModulePointer, name)` | resolves `module.current.liveUniformStructures`; needs a live `Renderer` |
-| `stackAuto(…)`, all three overloads | writes shader source through `stackAutoShaderSource`; needs a live `Renderer` |
-| `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`) |
-| `Key.copyUpdateCodeToClipboard(…)` | the AWT system clipboard throws on a headless JVM |
-
-That is the whole gap, and the two asides above describe half of it. Closing it needs a renderer in
-the loop, not more unit tests.
+Every number on this page is asserted by `KeyframerTest`, and `KeyframerCoverageTest` holds the
+public surface of `keyframer.kt` to a ledger, so adding a method fails the build until it is
+accounted for. `dev_docs/KEYFRAMER_COVERAGE.md` has the census and the four calls a headless test
+cannot reach.
