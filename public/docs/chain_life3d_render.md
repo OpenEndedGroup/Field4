@@ -150,12 +150,11 @@ whatever surface was produced rather than measurements of the field.
 
 !!! warning "`parallel = true` is nondeterministic"
 
-    The readout above uses `parallel = false`, and the reason is not caution. Marched four times on
-    this identical field the parallel path returned 5376, 5376, 5374 and 5376 triangles, volumes
-    differing in the third decimal place, and **46, 47 or 48** components depending on the run;
-    the sequential path returns the same triangle count, the same component count and a volume
-    identical to the last digit every time. Clusters an edge-length across are marginal, and which
-    way a marginal one goes depends on the order the samples arrive in.
+    The readout above uses `parallel = false`, and the reason is not caution. Marched repeatedly on
+    one identical field the parallel path varies in triangle count, in volume, and in how many
+    components it finds; the sequential path returns the same three numbers every time. Clusters an
+    edge-length across are marginal, and which way a marginal one goes depends on the order the
+    samples arrive in.
 
     The parallel path is roughly three times faster at this size. Take it when the output is going
     to a screen; take the sequential one when a number off it is going to be read.

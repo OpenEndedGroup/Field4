@@ -33,7 +33,7 @@ identity or a closed-form comparison, including the checks that pin the *measure
 against analytic answers), and `stdlib.alife.gallery.slow` is the ~25 s of figures that integrate a
 PDE or an agent population to a statistical verdict.
 
-!!! note "The measurement layer is the interesting part"
+!!! note "The measurement layer"
     `alife.kt` is mostly not automata. It is [`polarization`](reference/alife.md#alife-kt) and its
     random baseline, [`blobShapes`](reference/alife.md#alife-kt) (the isoperimetric ratio that tells
     spots from stripes), [`correlationLength`](reference/alife.md#alife-kt),
@@ -475,7 +475,7 @@ features with ratios of **2.5** and **2.4** and largest shares of **0.64** and *
 less round, and dominated by one connected structure. The `holes` preset is the inverse morphology and
 reads as a single blob at 0.78 coverage with a ratio of **90**.
 
-!!! warning "A calibration, because the statistic has a known bias"
+??? note "The `4/π` perimeter correction"
     The digital "crack perimeter" over-estimates a smooth boundary by about `4/π`, so `blobShapes`
     applies that correction, and the gallery measures a synthetic 40-cell disc to confirm it lands at
     1.00. The correction is asymptotic, so a 10-cell blob reads slightly **under** 1 (hence 0.80 for the
