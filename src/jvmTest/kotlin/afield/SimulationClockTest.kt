@@ -74,8 +74,8 @@ class SimulationClockTest {
         repeat(3) { framer.frame() }
         assertTrue(job.isCompleted)
         assertEquals(1,cleanup)
-        assertEquals(0,clock!!.pendingTimers)
-        assertEquals(0,clock!!.pendingResumes)
+        assertEquals(0,clock.pendingTimers)
+        assertEquals(0,clock.pendingResumes)
     }
 
     @Test fun timeoutAndCooperativeBudgetsUseTheSameClock() {

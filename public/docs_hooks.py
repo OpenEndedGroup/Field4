@@ -653,11 +653,51 @@ class RunnerState:
         sections: list[str] = []
 
         # --- server process liveness ---
+        # A single poll() here races the death it is trying to observe. "No close frame" means
+        # the socket was severed, and when the cause is a SIGKILL from *outside* this run --
+        # a sibling agent on the machine, a stray `killall java` -- the signal and the drop land
+        # together, so the child is dying but not yet reaped and poll() still returns None.
+        # The reader then gets "still alive", which is the one branch of the three that points
+        # away from the truth: a healthy server plus a dead socket reads as "the page hung", and
+        # whichever page happened to be capturing takes the blame. Give the child a moment to be
+        # reaped before believing it survived. 2026-09-14's nightly CI run lost its docs gate
+        # exactly this way, and the page the post-mortem framed was a two-day-old one that had
+        # never been certified -- innocent, and it re-captured clean on the next pass.
+        # Local, not module-level, on purpose: `diagnose_capture_failure` is in
+        # RUNNER_DIAGNOSTIC_ONLY_DEFINITIONS, so everything inside it is invisible to the runner
+        # source digest. A module constant would invalidate every cached capture (Backlog #32).
+        liveness_grace_seconds = 5.0
+
+        def still_alive_after_grace(child) -> bool:
+            """True only if [child] outlives a short grace window, not merely this instant."""
+            try:
+                child.wait(timeout=liveness_grace_seconds)
+            except subprocess.TimeoutExpired:
+                return True
+            except Exception:
+                # A stub or a handle that cannot wait must not break the post-mortem; fall
+                # back to the single poll this replaced.
+                return child.poll() is None
+            return False
+
+        def signal_suffix(code) -> str:
+            """`-9` -> " killed by SIGKILL". Popen reports a signal death as a negative code."""
+            if not isinstance(code, int) or code >= 0:
+                return ""
+            try:
+                return f" killed by {signal.Signals(-code).name}"
+            except ValueError:
+                return f" killed by signal {-code}"
+
         process = self._shared_field_process
         if process is None:
             sections.append("Field server process: not tracked (no runner-owned server handle).")
-        elif process.poll() is None:
-            sections.append(f"Field server process: still alive (pid {process.pid}, jvm pid {self._shared_field_jvm_pid}).")
+        elif still_alive_after_grace(process):
+            sections.append(
+                f"Field server process: still alive (pid {process.pid}, jvm pid "
+                f"{self._shared_field_jvm_pid}) -- confirmed still running "
+                f"{liveness_grace_seconds:g}s after the failure, so the JVM is not the cause."
+            )
         elif self._shared_field_stop_reason is not None:
             # OUR kill, not a crash. `_kill_shared_field_process` / `_stop_shared_field_server`
             # escalate SIGTERM -> SIGKILL, so the exit code is typically 143 or 137 -- and Gradle
@@ -675,9 +715,12 @@ class RunnerState:
             )
         else:
             sections.append(
-                f"Field server process: EXITED with code {process.returncode} "
+                f"Field server process: EXITED with code {process.returncode}"
+                f"{signal_suffix(process.returncode)} "
                 f"(pid {process.pid}, jvm pid {self._shared_field_jvm_pid}) -- the JVM died mid-capture "
-                "(no runner-initiated stop was in progress, so this exit was NOT ours)."
+                "(no runner-initiated stop was in progress, so this exit was NOT ours). A negative "
+                "code is a signal rather than an exit status: SIGKILL means something outside this "
+                "run killed the server, and the capture that was in flight is not implicated."
             )
 
         # --- JVM crash dumps written during this server's lifetime ---

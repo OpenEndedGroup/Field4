@@ -28,8 +28,15 @@ import kotlin.test.assertTrue
  * and rasterizes the rendered element to a PNG with Playwright/chromium. Nothing is
  * hand-drawn or synthesized — the bytes come straight from the visualizer.
  *
- * Assets are written under `public/docs/assets/value_visualizers/`. Run with:
- *   ./gradlew jvmTest --tests 'afield.ValueVisualizerDocCaptureTest'
+ * By default the PNGs go to a temp directory, so an ordinary `jvmTest` run asserts the whole render
+ * path still works without touching the tree. The committed figures — under
+ * `public/docs/assets/value_visualizers/` for `visualizers.md`, and
+ * `public/docs/assets/matrix_algebra/` for the matrix-algebra section of `linear_algebra.md` — are
+ * refreshed only on request, see [docsAssetDir]:
+ *
+ * ```
+ * AFIELD_DOCS_ASSETS=1 ./gradlew jvmTest --tests 'afield.ValueVisualizerDocCaptureTest'
+ * ```
  */
 class ValueVisualizerDocCaptureTest {
 
@@ -40,23 +47,10 @@ class ValueVisualizerDocCaptureTest {
         val layers: List<String>
     )
 
-    private val assetDir: Path by lazy {
-        // Tests run with the working dir at the module root; fall back defensively.
-        val candidates = listOf(
-            Paths.get("public", "docs", "assets", "value_visualizers"),
-            Paths.get(System.getProperty("user.dir"), "public", "docs", "assets", "value_visualizers")
-        )
-        val chosen = candidates.first()
-        Files.createDirectories(chosen)
-        chosen
-    }
+    private val assetDir: Path by lazy { docsAssetDir("public/docs/assets/value_visualizers") }
 
-    /** Assets for the matrix-algebra section (in vector_algebra.md) live in their own folder. */
-    private val matrixAssetDir: Path by lazy {
-        val chosen = Paths.get("public", "docs", "assets", "matrix_algebra")
-        Files.createDirectories(chosen)
-        chosen
-    }
+    /** Assets for the matrix-algebra section of `linear_algebra.md` live in their own folder. */
+    private val matrixAssetDir: Path by lazy { docsAssetDir("public/docs/assets/matrix_algebra") }
 
     /** Absolute path to the shipped webfont directory, resolved from the module root. */
     private val woff2Dir: Path by lazy {
