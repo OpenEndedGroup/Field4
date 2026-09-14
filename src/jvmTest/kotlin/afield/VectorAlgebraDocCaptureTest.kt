@@ -11,8 +11,8 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * Docs-capture harness for the "Vector algebra: swizzles & operators" explainer
- * (`public/docs/vector_algebra.md`).
+ * Docs-capture harness for the "Vector algebra: swizzles & operators" explainer, which lives in
+ * `public/docs/linear_algebra.md`.
  *
  * Like [ValueVisualizerDocCaptureTest], this is NOT a behavioural test: it is the honest
  * capture step for the docs page. Each worked-example value is built with the repository's current
@@ -20,16 +20,17 @@ import kotlin.test.assertTrue
  * whose HTML (with its auto-scaled arrow thumbnails) is rasterized to a PNG by Playwright/
  * chromium. Nothing is hand-drawn or synthesized — the bytes come straight from the visualizer.
  *
- * Assets are written under `public/docs/assets/vector_algebra/`. Run with:
- *   ./gradlew jvmTest --tests 'afield.VectorAlgebraDocCaptureTest'
+ * By default the PNGs go to a temp directory, so an ordinary `jvmTest` run asserts the whole render
+ * path still works without touching the tree. The committed figures under
+ * `public/docs/assets/vector_algebra/` are refreshed only on request — see [docsAssetDir]:
+ *
+ * ```
+ * AFIELD_DOCS_ASSETS=1 ./gradlew jvmTest --tests 'afield.VectorAlgebraDocCaptureTest'
+ * ```
  */
 class VectorAlgebraDocCaptureTest {
 
-    private val assetDir: Path by lazy {
-        val chosen = Paths.get("public", "docs", "assets", "vector_algebra")
-        Files.createDirectories(chosen)
-        chosen
-    }
+    private val assetDir: Path by lazy { docsAssetDir("public/docs/assets/vector_algebra") }
 
     private val woff2Dir: Path by lazy {
         Paths.get(System.getProperty("user.dir"), "src", "jsMain", "resources", "woff2").toAbsolutePath()
