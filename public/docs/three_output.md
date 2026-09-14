@@ -111,27 +111,22 @@ implementation of something with a sign convention in it; it is marked
 `// [viewer-region camera-preset]` in `threejs_viewer.html`, and the build holds the two to each
 other.
 
-!!! warning "`distance` does not mean the same thing in the viewer"
-    The preset supplies the camera's **direction**. It does not supply its **distance**. Having
-    placed the eye, the viewer runs a zoom-to-fit (`fitCameraToBounds`) that slides the eye along the
-    view direction until the geometry's own sampled points fit the frame the viewer was actually
-    given — because a box output is as wide as its column and a figure written for a 560 × 420 canvas
-    arrives in a much wider band.
+??? aside "In the viewer, `distance` is a padding factor"
+    The preset supplies the camera's **direction**; the viewer supplies its own distance. Having
+    placed the eye, it runs a zoom-to-fit (`fitCameraToBounds`) that slides the eye along the view
+    direction until the geometry's sampled points fit the frame the viewer was actually given — a box
+    output is as wide as its column, and a figure written for a 560 × 420 canvas arrives in a much
+    wider band.
 
-    So in the viewer `distance` is a **padding factor**, not an eye distance:
-    `max(1.02, distance / 2.7 × 1.06)`. Two consequences you will meet:
+    So `distance` reaches the viewer as `max(1.02, distance / 2.7 × 1.06)`. Below about 2.6 that
+    clamps to the floor and every value frames identically; above it, raising `distance` shrinks the
+    mesh in the frame.
 
-    * **Below about 2.6 it saturates.** `distance = 1.0` and `distance = 2.0` frame identically,
-      because both clamp to the 1.02 floor. Measured: a `torusMesh(48, 24, 0.62, 0.24)` in a
-      420 × 320 frame spans the same width at both.
-    * **Above it, the mesh shrinks.** The same torus at `distance = 4.0` fills about two thirds of
-      the width it does at `distance = 1.0` — the ratio 1.57 ⁄ 1.02 the formula predicts.
-
-    It is also why one figure is a different composition on the two renderers even at an identical
-    viewpoint. The rasterizer frames the bounding *sphere* in a canvas it chose; the viewer fits the
+    It is also why one figure is a different composition on the two renderers at an identical
+    viewpoint: the rasterizer frames the bounding *sphere* in a canvas it chose, the viewer fits the
     real points to the frame it was handed, so the subject comes out noticeably larger. The toy car
     in [Geometry from disk](geometry_from_disk.md#a-real-glb-in-a-real-output-area) is the case to
-    look at. Neither is wrong. They answer different questions.
+    look at.
 
 ## Contact sheets
 
