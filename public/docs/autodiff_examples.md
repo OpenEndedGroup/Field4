@@ -73,9 +73,9 @@ the *oracle's* accuracy, not the gradient's.
 `minimize` runs SGD with momentum, Adam, or a line-searched L-BFGS over the same exact gradients, all
 deterministic and all recording a start-inclusive loss trajectory that plots directly.
 
-Rosenbrock's curved valley is the classic separator, and the picture is the whole argument for a line
-search: L-BFGS builds a curvature model from its last few steps and walks *along* the valley, while a
-first-order method zig-zags across it.
+Rosenbrock's curved valley is the classic separator between the three. L-BFGS builds a curvature
+model from its last few steps and walks *along* the valley; a first-order method has no such model
+and zig-zags across it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/optimizers.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="600" padding="16"}
 :::static
@@ -249,7 +249,7 @@ cost: the same descent for **801 loss evaluations instead of 6801**. The last li
 the boundary. `sign` is refused, because its derivative is zero wherever it exists, and a fit that
 descends a permanently-zero gradient is worse off than one that is told no.
 
-## Inverse kinematics, because it makes pixels
+## Inverse kinematics on a chain of links
 
 Forward kinematics on a chain of links is a cumulative sum of joint angles and a running position
 (perfectly differentiable), so the *inverse* problem is just L-BFGS on `|tip - target|²`, and the result
@@ -364,7 +364,8 @@ across it.
 ## Where to go next
 
 - `dev_docs/autodiff.md` is the developer-facing account: the tape layout, the kink convention and why
-  it is the internally consistent one, the `Fn`-graph bridge and its honesty guard, the
-  byte-identical-default proof, and an explicit list of what is *not* covered.
+  it is the internally consistent one, the `Fn`-graph bridge and the conditions under which it
+  returns `null` rather than a gradient it cannot vouch for, the byte-identical-default proof, and an
+  explicit list of what is *not* covered.
 - The [agent transcript gallery](agent_transcripts.md) has `autodiff_worked_example`, which is this
   page as an openable document you can edit and re-run.
