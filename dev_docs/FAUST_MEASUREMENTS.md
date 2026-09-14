@@ -144,3 +144,31 @@ fundamental.
 Rendered at four voices it contains **three** (130.0, 166.2, 196.5 Hz; worst error 0.86%, all within
 a factor of 1.14 in level). The identical render at `voices = 1` contains **one**, at 196.5 Hz, and
 reports `steals == 2`. A monophonic path cannot produce the first result however it is driven.
+
+## The eight-voice / one-voice clip pair on the docs page
+
+Moved out of `public/docs/faust.md` on 2026-09-14. The page keeps the result — three notes sound at
+`voices = 8`, one at `voices = 1` — and the allocator arithmetic a caller sizing `voices` acts on.
+This is the evidence behind it.
+
+`pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]")` at `cps = 0.5`, two cycles, rendered once
+at eight voices and once at one with nothing else changed. During the first chord the band
+100–230 Hz can hold nothing but fundamentals: `[c4,ef4,g4]` is 130.81, 155.56 and 196.00 Hz, and the
+chord's lowest second harmonic is 261.6 Hz. So a spectral peak in that band *is* a note sounding.
+
+| | peaks in 100–230 Hz | measured | voices sounding at once | voice steals |
+|---|---|---|---|---|
+| `voices = 8` | **3** | 127.3, 160.7, 190.9 Hz | 3 | 0 |
+| `voices = 1` | **1** | 190.9 Hz | 1 | 16 |
+
+The measured frequencies are one FFT bin's worth off the notated ones — 5.9 Hz at this window
+length — which is the resolution, not the tuning. The one-voice peak is `g4`'s 190.9 Hz rather than
+`c4`'s because a steal leaves the last note of each chord sounding.
+
+Two things constrain how this pair was built. The instrument is one sawtooth per voice rather than
+the detuned pair used elsewhere on the page, because two sawtooths 0.5% apart put a beating pair
+into the band and the count stops meaning anything. And the comparison has to be two renders of one
+notation rather than one recording: a chord and an arpeggio sound different for reasons that have
+nothing to do with voice allocation, so a single clip would settle nothing.
+
+Both clips, both counts and the gap between them are asserted by `synth.faust.poly.sound`.

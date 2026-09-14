@@ -226,7 +226,7 @@ expect:
 (lines [(-> spiral (color 0.98 0.86 0.3 0.9) (thickness 2))] :w 700 :h 350)
 ```
 
-`(.getNodes spiral)` in the middle there is the point: `polyline` handed back a real `FLine`, and
+`(.getNodes spiral)` in the middle there works because `polyline` handed back a real `FLine`, and
 from that moment it is an ordinary JVM object with its own API. Everything on
 [Drawing with FLines](fline_examples.md) is reachable from a Clojure box by interop; `field.core`
 only covers the awkward corners.

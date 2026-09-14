@@ -58,14 +58,32 @@ object MorphoRuntime {
      */
     val root: Path by lazy { materialize() }
 
-    private val VENDORED = listOf(
+    /**
+     * Every resource the guest needs as a real file, plus the attribution that travels with it.
+     *
+     * Two uses, and both of them have to be complete: a missing entry makes [materialize] accept a
+     * dev checkout it should have rejected, and makes a packaged run unpack a tree with a hole in
+     * it. Anything reached by [module] or `root.resolve` belongs here — including the two `.mjs`
+     * entry points, the four `js/` files they import, `tiny_morpho.py` (the standard library) and
+     * `main.wasm` (read by [MorphoLayout3D]).
+     *
+     * `internal` only so that `MorphoVendoredResourcesTest` can hold the real list — not the
+     * regex's idea of it — against the paths the host and the guest actually ask for.
+     */
+    internal val VENDORED = listOf(
         "morpho-field-driver.mjs",
+        "morpho-field-layout.mjs",
         "morpho/js/parser.js",
         "morpho/js/primitives.js",
         "morpho/js/compiler.js",
         "morpho/js/utils.js",
         "morpho/tiny_morpho.py",
         "morpho/graphs_engine/main.wasm",
+        // Nothing loads these two. The jar carries them regardless, so the Apache-2 obligation is
+        // met without them; they are here so the unpacked tree — the copy someone actually looks
+        // at, or copies out — says whose code it is.
+        "morpho/LICENSE",
+        "morpho/PROVENANCE.md",
     )
 
     private fun materialize(): Path {
