@@ -27,7 +27,7 @@ Almost everything below runs on the CPU. `Structure` is constructible bare
 (`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`). A keyframe scope can be exercised, and tested,
 without a GPU anywhere in sight. The exception is
 [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
-targets that need a renderer, which are listed at the [foot of the page](#what-is-actually-tested).
+targets that need a renderer, which `dev_docs/KEYFRAMER_COVERAGE.md` lists.
 
 ## What a scope watches
 
@@ -642,7 +642,7 @@ straight line) once each, where they are defined.
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`), which resolves a renderer from
     the box context. So the *registration* is one of the eight declarations no unit test reaches
-    (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
+    (the full list is in `dev_docs/KEYFRAMER_COVERAGE.md`); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
     (`keyframer.kt:790#fun camera(camera: Camera, keyName: String = "camera") {` dispatches on a `when` with no `else`). A `Vector3f` "camera
