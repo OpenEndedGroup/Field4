@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import signal
@@ -105,6 +106,27 @@ def field_instance_info(
     return payload if isinstance(payload, dict) else None
 
 
+STALENESS_IGNORED_NAMES = frozenset({".DS_Store", "Thumbs.db", "desktop.ini"})
+STALENESS_IGNORED_PATTERNS = ("*.swp", "*.swo", "*~", ".#*", "*.orig", "*.rej")
+STALENESS_IGNORED_DIRECTORIES = frozenset({".git"})
+
+
+def ignored_for_staleness(relative_path: Path) -> bool:
+    """Whether a checkout-relative path is bookkeeping noise rather than compiler input.
+
+    The freshness check exists to catch source that the running JVM never compiled, so a file
+    that cannot change bytecode must not be able to invalidate a server. Finder and Spotlight
+    recreate ``src/.DS_Store`` at unpredictable times, and an editor's swap file moves on every
+    keystroke; counting either as a source edit costs a caller a full restart for nothing.
+    """
+    if STALENESS_IGNORED_DIRECTORIES.intersection(relative_path.parts):
+        return True
+    name = relative_path.name
+    if name in STALENESS_IGNORED_NAMES:
+        return True
+    return any(fnmatch.fnmatch(name, pattern) for pattern in STALENESS_IGNORED_PATTERNS)
+
+
 def field_instance_problem(
     info: dict[str, object] | None,
     repo_root: Path,
@@ -142,13 +164,22 @@ def field_instance_problem(
         candidates = path.rglob("*") if path.is_dir() else (path,)
         for candidate in candidates:
             try:
-                if candidate.is_file() and candidate.stat().st_mtime_ns > newest_mtime:
-                    newest = candidate
-                    newest_mtime = candidate.stat().st_mtime_ns
+                relative = candidate.relative_to(repo_root)
+            except ValueError:
+                relative = Path(candidate.name)
+            if ignored_for_staleness(relative):
+                continue
+            try:
+                if not candidate.is_file():
+                    continue
+                mtime = candidate.stat().st_mtime_ns
             except OSError:
                 continue
+            if mtime > newest_mtime:
+                newest = relative
+                newest_mtime = mtime
     if newest is not None:
-        return f"{newest.relative_to(repo_root)} changed after the server started"
+        return f"{newest} changed after the server started"
     return None
 
 
