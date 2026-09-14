@@ -3,11 +3,14 @@
 Target: `afield.four.audio.steamaudio`, Kotlin/JVM, JDK 25+, Panama FFM.
 Upstream: Steam Audio **4.8.1** (released 2026-02-11), Apache-2.0.
 
+For using the API rather than reading about how it got here, start with
+[STEAMAUDIO_INTEGRATION.md](STEAMAUDIO_INTEGRATION.md).
+
 ## Where this lives
 
-Field is the only home for this code. It was developed in a separate checkout and folded in
-here, placed the way Ceres and TetGen are rather than as a submodule: the code is in Field's own
-tree and its build graph, and only the binaries are fetched.
+Field is the only home for this code. It was developed in a separate checkout, now retired, and
+folded in here the way Ceres and TetGen are rather than as a submodule: the code is in Field's
+own tree and its build graph, and only the binaries are fetched.
 
 | | |
 |---|---|
@@ -25,15 +28,15 @@ yourself (Linux arm64 being the case that needs one).
 
 Not wired into `check`, for the reason TetGen and Ceres are not: a fresh clone has no network
 guarantee. The tests skip with a stated reason via `SteamAudioNatives.isAvailable` instead, so
-`check` is green on a clone that has never fetched the binaries and honest about why. Pure-
-arithmetic cases -- the handedness invariants, the segment transform, the Ambisonic channel
+`check` is green on a clone that has never fetched the binaries and honest about why. The
+pure-arithmetic cases -- the handedness invariants, the segment transform, the Ambisonic channel
 counts -- deliberately keep running, since they need no library.
 
 `src/jvmMain/java` is compiled at release 24 to match `compileKotlinJvm`'s `jvmTarget`; Gradle
 rejects a mismatched pair outright. FFM has been final since 22, so this costs the bindings
 nothing.
 
-Two things from the standalone checkout did **not** come across, both because they presuppose
+Two things from the retired checkout did **not** come across, both because they presuppose
 publishing these bindings as an artifact, which Field does not do:
 
 - `module-info.java`. Adding a module descriptor to `src/jvmMain/java` would make the whole of
@@ -41,9 +44,9 @@ publishing these bindings as an artifact, which Field does not do:
   `--enable-native-access=ALL-UNNAMED` throughout, so this is a change to Field, not to the
   bindings, and belongs with a decision to publish.
 - `PackagingVerifier` is present but has no Gradle task. It checks the classpath-resource
-  extraction path with no `steamaudio.library.path` set, which is the path a published
-  natives jar would take. Every Field task sets that property and there is no natives jar, so
-  there is nothing here for it to verify.
+  extraction path with no `steamaudio.library.path` set, which is the path a published natives
+  jar would take. Every Field task sets that property and there is no natives jar, so there is
+  nothing here for it to verify.
 
 ## What is already in place and verified
 
@@ -269,15 +272,15 @@ correct the HRTF is — demo and test signals need high-frequency content.
 - `./gradlew hrtfProbe` — prints the per-azimuth ILD/ITD table above.
 - `./gradlew caveDemo` — `build/demo/cave.wav`, the reverberative cave. Headphones.
 - `./gradlew pathingDemo` — `build/demo/pathing.wav`, sound arriving by an indirect path.
-- `./gradlew binauralQuality` — binaural spatialisation quality measures.
-- `./gradlew ambisonicDebug` — Ambisonic encode/decode channel behaviour.
+- `./gradlew binauralQuality` — interpolation, Ambisonic order and spatial blend.
 - `./gradlew geometryBenchmark` — scene build and per-frame commit timings.
 - `./gradlew reflectionHandednessProbe` — which ear the *reflected* field arrives from, for a
   reflector on a known side, plus the cave's own response by arrival time.
 
 All sit in the `verification` group but outside `check`, like the Ceres smokes: several produce
 audio a person has to listen to, and the probes print tables to read rather than a pass or a
-fail.
+fail. Every one forwards `-Dsteamaudio.demo.*` overrides -- see
+[STEAMAUDIO_INTEGRATION.md](STEAMAUDIO_INTEGRATION.md) section 8.
 
 ## The cave path — done and measured
 
@@ -564,11 +567,11 @@ says so rather than implying a quality score.
 
 ### Packaging
 
-> **Not active in Field.** This section records the publishing work done in the standalone
-> checkout, and is kept because the findings are real and hard-won. But Field does not publish
-> these bindings: `module-info.java` is not in this tree and `verifyPackaging` has no task --
-> see *Where this lives* above for why. The loader behaviour the findings produced **is** here
-> and is what `readResource` does; the jar layout and module descriptor are not.
+> **Not active in Field.** This records the publishing work done in the retired checkout,
+> kept because the findings are real and hard-won. Field does not publish these bindings:
+> `module-info.java` is not in this tree and `verifyPackaging` has no task -- see *Where
+> this lives* above. The loader behaviour the findings produced **is** here, and is what
+> `readResource` does; the jar layout and module descriptor are not.
 
 `./gradlew packageAll` produces:
 
@@ -593,7 +596,7 @@ assuming it worked:
 2. **`Class.getResourceAsStream` cannot see the natives jar.** It resolves against the calling
    class's *own module*, so a separately published natives jar is invisible — which is the
    whole point of publishing it separately. The loader now tries the class, then the class
-   loader, then the context loader
+   loader, then the context loader.
    (`src/jvmMain/kotlin/afield/four/audio/steamaudio/SteamAudioNatives.kt:325#readResource`).
 
 And a packaging constraint that only showed up on the module path: **the natives jars must go on
@@ -612,3 +615,126 @@ our build rather than the consumer's runtime.
 PanningEffect · VirtualSurroundEffect · AmbisonicsPanningEffect · the struct-layout guard test
 against `phonon-4.8.1-layouts.txt` · CI across the three platforms · raising the cave demo to
 Ambisonic order 2.
+
+---
+
+## Cave at Ambisonic order 2 — and a correction
+
+`AMBISONIC_ORDER` in the cave demo is now **2** (9 channels), overridable with
+`-Dsteamaudio.demo.order=1`, plus `-Dsteamaudio.demo.reflectionsOnly=true` to mute the direct
+path so the reflected field can be compared in isolation.
+
+### The measured benefit here is below the noise floor
+
+I predicted a clear improvement on the strength of `binauralQuality`, which showed order 1
+reaching only 57% of direct binaural's peak ear-balance against order 2's 91%. In this cave
+that does not reproduce. Directional spread of the reflected field, order 1 versus order 2:
+`+4%` early, `+20%` mid, `+46%` late, `-22%` tail — no monotonic pattern, and all on
+standard deviations of 0.26–1.19 dB.
+
+So I rendered order 1 **twice** as a control. Run A versus run B: `-1%`, `+11%`, `+27%`,
+`-15%` — the same magnitude and the same sign pattern as the order difference. The two runs
+are not even the same length (1787904 vs 1782784 samples). **The reflection simulation is
+stochastic, and the order difference in this scene is indistinguishable from run-to-run
+variance.**
+
+Two reasons the probe's result does not carry over:
+
+- **The probe measured a single point source encoded at a known direction** — the best case for
+  Ambisonic order. A cave's late reverb is close to the worst case: a genuinely diffuse field
+  has little direction to sharpen, so a higher order has little to represent.
+- **`HYBRID` reflections synthesise the late tail with a parametric feedback delay network**,
+  not by decoding spherical harmonics. Raising the order can only affect the convolved early
+  portion, which is a minority of the energy in a 1.7-second decay. A `CONVOLUTION` reflection
+  type would be order-dependent throughout.
+
+### What this does not change
+
+Order 2 stays the default. The controlled measurement of a directional source is real and
+large, and it is the case that matters for early reflections off a nearby plane or a pathed
+route through a doorway — both directional, both order-sensitive. 9 channels against 4 is a
+modest cost at these ray counts, where `runReflections` dominates the budget.
+
+What changed is the *claim*: order 2 is justified for directional content, **not** on the
+strength of an audible improvement to diffuse cave reverb, which I asserted and then could not
+demonstrate. Renders of both orders are provided, full mix and reflections-only, at identical
+normalisation so they A/B directly.
+
+### Worth following up
+
+If diffuse-tail sharpness turns out to matter by ear, the lever is the reflection *type*, not
+the order: `CONVOLUTION` keeps the whole response in the Ambisonic domain where order applies,
+at materially higher cost than `HYBRID`. Measuring that trade is a separate exercise.
+
+---
+
+## Final configuration: CONVOLUTION + Ambisonic order 2
+
+Recorded as `QualityPreset.HIGHEST`, and now the default for both the library and the cave demo.
+
+### CONVOLUTION over HYBRID — a correction to my own earlier advice
+
+I had documented `HYBRID` as "usually the right answer for a large reverberant space", on the
+reasoning that parameterising the late tail saves the cost of convolving it. **Measured, that is
+wrong.** Hybrid pays for the convolution *and* the feedback network, and comes out more
+expensive at every duration tested:
+
+| duration | CONVOLUTION p95 | HYBRID p95 |
+|---|---|---|
+| 1 s | 221 µs | 284 µs |
+| 3 s | 555 µs | 622 µs |
+| 6 s | 1066 µs | 1138 µs |
+| 10 s | 1764 µs | 1823 µs |
+
+No crossover in that range, and the early-reflection structure is indistinguishable (crest
+factor 3.86 for both, ~515 discrete early peaks each). Convolution's tail is *less* linear in
+decay (r² 0.68 against 0.92) — which is the point: a real convolved response decays irregularly,
+where a feedback delay network produces an artificially smooth exponential.
+
+Confirmed by ear: convolution has the nicer tail, and `PARAMETRIC` is audibly glitchy. The
+likely mechanism for the glitching is that the network is re-driven by simulated reverb times
+that step at the simulation rate (~15 Hz) rather than cross-fading, unlike convolution which
+interpolates between impulse responses. `PARAMETRIC` remains the right choice for distant or
+background sources at roughly a fifth the cost.
+
+The library defaults for `ReflectionEffect` and `SimulationSettings.reflectionType` are now
+`CONVOLUTION`, and the `ReflectionEffectType` KDoc carries the measurement.
+
+### Ambisonic order 2, with the evidence stated honestly
+
+Under `HYBRID` the order made no measurable difference, and the user could not ABX it — which
+is consistent, because hybrid's parametric tail cannot be order-dependent. Under `CONVOLUTION`
+the whole response stays in the Ambisonic domain, and order 2 improves the reflected field's
+directional spread in **every** arrival window: +6% early, +21% mid, +49% late, +17% tail.
+That coherence of sign is the signal; the earlier hybrid measurement had mixed signs, matching
+the noise control.
+
+Cost: median 281 → 648 µs, p95 559 → 1227 µs. **2.3× per block**, 5.2% → 11.4% of a 512-sample
+budget.
+
+`QualityPreset.HIGHEST`'s KDoc states the strength of this evidence rather than overselling it:
+consistent in sign, comparable in magnitude to the run-to-run variance of a stochastic ray
+tracer, and not ABX-tested under convolution. It is the right choice when quality is the
+priority; it is not a free win.
+
+### Presets
+
+`QualityPreset.HIGHEST` / `BALANCED` / `ECONOMY`, each carrying the measured per-block cost and
+a sources-per-core estimate, so the delivering agent does not have to re-derive any of it.
+
+| preset | config | p95 per source | % of block | sources/core |
+|---|---|---|---|---|
+| `HIGHEST` | CONVOLUTION, order 2 | 1227 µs | 11.5% | ~8 |
+| `BALANCED` | CONVOLUTION, order 1 | 559 µs | 5.2% | ~19 |
+| `ECONOMY` | PARAMETRIC, order 1 | 101 µs | 0.9% | ~100 |
+
+Per source before a `ReflectionMixer`, which shares one decode across many.
+
+## Handoff
+
+[INTEGRATION.md](INTEGRATION.md) is the document for whoever wires this into the engine:
+dependency coordinates, the two native-access gotchas, the coordinate mapping and why not to
+hand-roll it, the threading table, the signal chain with measured settings, pathing's probe
+dependency, lifetime rules, known gaps, and the command list.
+
+34 tests green; `build`, `packageAll` and `verifyPackaging` all pass.

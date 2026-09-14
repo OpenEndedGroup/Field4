@@ -3168,6 +3168,19 @@ fun JavaExec.configureSteamAudioDemoTask(entrypoint: String, taskDescription: St
     mainClass.set(entrypoint)
     workingDir = projectDir
     jvmArgs(requiredRunJvmArgs())
+    // The demos read these to vary Ambisonic order, reflection type, reverb duration and which
+    // half of the chain to render, and name their output file after whichever were set. Forwarded
+    // rather than redeclared per task so every demo takes the same knobs:
+    //   ./gradlew caveDemo -Dsteamaudio.demo.reflectionType=parametric
+    for (key in listOf(
+        "steamaudio.demo.order",
+        "steamaudio.demo.reflectionType",
+        "steamaudio.demo.reflectionsOnly",
+        "steamaudio.demo.pathingOnly",
+        "steamaudio.demo.duration",
+    )) {
+        providers.systemProperty(key).orNull?.let { systemProperty(key, it) }
+    }
     // Optional for the same reason as ceresNative: nothing is committed, so on a fresh clone this
     // file is absent, and a required input would fail at validation time with Gradle's generic
     // "an input file was expected to be present" instead of naming the command that fixes it.
@@ -3211,13 +3224,6 @@ tasks.register<JavaExec>("binauralQuality") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.BinauralQualityProbeKt",
         "Reports binaural spatialisation quality measures for the HRTF chain.",
-    )
-}
-
-tasks.register<JavaExec>("ambisonicDebug") {
-    configureSteamAudioDemoTask(
-        "afield.examples.steamaudio.AmbisonicDebugKt",
-        "Prints the Ambisonic encode/decode channel behaviour, for diagnosing the reflected bus.",
     )
 }
 

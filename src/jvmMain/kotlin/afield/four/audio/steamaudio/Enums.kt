@@ -305,13 +305,31 @@ public enum class DeviationModelType(override val value: Int) : NativeEnum {
 
 /** The algorithm a [ReflectionEffect] uses to render reflections. */
 public enum class ReflectionEffectType(override val value: Int) : NativeEnum {
-    /** Convolution with a full impulse response. Most accurate, most expensive. */
+    /**
+     * Convolution with the full simulated impulse response.
+     *
+     * The accurate option, and -- measured -- also cheaper than [HYBRID] at every reverb
+     * duration from 1 to 10 seconds. See [ReflectionEffect] for the numbers.
+     */
     CONVOLUTION(0),
 
-    /** A feedback delay network driven by reverb decay times. Cheapest. */
+    /**
+     * A feedback delay network driven by simulated reverb decay times. By far the cheapest,
+     * around five times less per block than [CONVOLUTION].
+     *
+     * Loses early-reflection detail, and can glitch audibly on a foreground source because the
+     * network is re-driven by reverb times that step at the simulation rate. Good for distant
+     * and background sources.
+     */
     PARAMETRIC(1),
 
-    /** Convolution for early reflections, parametric for the late tail. */
+    /**
+     * Convolution for early reflections, a feedback delay network for the late tail.
+     *
+     * Intended to save the cost of convolving a long tail. Measured, it does not: it pays for
+     * both stages and comes out more expensive than plain [CONVOLUTION] at every duration
+     * tested. See [ReflectionEffect].
+     */
     HYBRID(2),
 
     /** Convolution on the GPU via AMD TrueAudio Next. Requires a [TrueAudioNextDevice]. */

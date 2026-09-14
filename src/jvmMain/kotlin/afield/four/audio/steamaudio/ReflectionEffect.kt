@@ -156,14 +156,30 @@ public class ReflectionEffectParams private constructor(
  *
  * ### Choosing a type
  *
- * - [ReflectionEffectType.CONVOLUTION] convolves with the full simulated impulse response.
- *   Most accurate and most expensive; cost scales with [irSize] and with source count.
+ * - [ReflectionEffectType.CONVOLUTION] convolves the full simulated impulse response.
+ *   **The default, and measurement says it should be.** See below.
  * - [ReflectionEffectType.PARAMETRIC] drives a feedback delay network from the simulated RT60s.
- *   Far cheaper, and for a long diffuse tail it is hard to tell apart.
+ *   Around five times cheaper (67 us against 281 us median per block, measured), and the right
+ *   choice for distant or background sources. It loses the early reflection detail -- 389
+ *   discrete early peaks against 515 -- and because the network is driven by reverb times that
+ *   jump at the simulation rate rather than cross-fading, it can audibly glitch on a
+ *   foreground source.
  * - [ReflectionEffectType.HYBRID] convolves the early reflections and goes parametric for the
- *   late tail. **For a large reverberant space this is usually the right answer**: early
- *   reflections carry the spatial impression, the late tail carries the decay, and only the
- *   former needs the accuracy.
+ *   late tail. The premise is that this saves the cost of convolving a long tail. **Measured,
+ *   it does not**: it is more expensive than plain convolution at every duration tested,
+ *   because it pays for the convolution *and* the feedback network.
+ *
+ *   | duration | CONVOLUTION p95 | HYBRID p95 |
+ *   |---|---|---|
+ *   | 1 s | 221 us | 284 us |
+ *   | 3 s | 555 us | 622 us |
+ *   | 6 s | 1066 us | 1138 us |
+ *   | 10 s | 1764 us | 1823 us |
+ *
+ *   One source, order 1, 512-sample blocks at 48 kHz on a 10-core machine. There is no
+ *   crossover in that range, and the early-reflection structure is indistinguishable from
+ *   convolution's. Prefer [ReflectionEffectType.CONVOLUTION] unless you measure otherwise on
+ *   your own content.
  * - [ReflectionEffectType.TRUE_AUDIO_NEXT] is convolution on AMD GPU hardware.
  *
  * ### Sharing work across sources with a mixer
@@ -267,7 +283,7 @@ public class ReflectionEffect private constructor(
         public operator fun invoke(
             context: SteamAudioContext,
             audioSettings: AudioSettings,
-            type: ReflectionEffectType = ReflectionEffectType.HYBRID,
+            type: ReflectionEffectType = ReflectionEffectType.CONVOLUTION,
             duration: Float = 2.0f,
             ambisonicOrder: Int = 1,
         ): ReflectionEffect {
@@ -360,7 +376,7 @@ public class ReflectionMixer private constructor(
         public operator fun invoke(
             context: SteamAudioContext,
             audioSettings: AudioSettings,
-            type: ReflectionEffectType = ReflectionEffectType.HYBRID,
+            type: ReflectionEffectType = ReflectionEffectType.CONVOLUTION,
             duration: Float = 2.0f,
             ambisonicOrder: Int = 1,
         ): ReflectionMixer {

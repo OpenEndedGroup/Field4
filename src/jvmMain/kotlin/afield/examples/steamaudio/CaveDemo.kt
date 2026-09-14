@@ -17,6 +17,7 @@ import afield.four.audio.steamaudio.InstancedMesh
 import afield.four.audio.steamaudio.Material
 import afield.four.audio.steamaudio.Matrix4x4
 import afield.four.audio.steamaudio.OcclusionType
+import afield.four.audio.steamaudio.QualityPreset
 import afield.four.audio.steamaudio.ReflectionEffect
 import afield.four.audio.steamaudio.ReflectionEffectParams
 import afield.four.audio.steamaudio.ReflectionEffectType
@@ -66,11 +67,52 @@ import kotlin.math.sin
 private const val SAMPLING_RATE = 48_000
 private const val FRAME_SIZE = 512
 
-/** Ambisonic order for the reflected field. Order 1 (4 channels) suits a diffuse tail. */
-private const val AMBISONIC_ORDER = 1
+/**
+ * Ambisonic order for the reflected field. Order 1 is 4 channels, order 2 is 9.
+ *
+ * Order 1, on measurement. `./gradlew binauralQuality` shows a large effect for a *single
+ * directional source* -- order 1 reaches only 57% of direct binaural's peak ear-balance against
+ * order 2's 91% -- but that does not carry over here, and both of the cases in these demos were
+ * checked:
+ *
+ *  - **Diffuse cave reverb**: rendering order 1 twice varies as much as order 1 versus order 2
+ *    does (the reflection simulation is stochastic), so the difference is below the noise
+ *    floor. Confirmed by listening: not ABX-able.
+ *  - **A pathed arrival**, which does have a definite direction: the pathed field's ear balance
+ *    measures -5.72, -5.79 and -5.61 dB at orders 1, 2 and 3. Flat.
+ *
+ * A single dominant direction is carried almost entirely by the first-order components, and a
+ * diffuse field has little direction to sharpen either way. Raise this only with a measurement
+ * that justifies it. Overridable: `-Dsteamaudio.demo.order=2`.
+ */
+private val AMBISONIC_ORDER: Int =
+    System.getProperty("steamaudio.demo.order")?.toInt() ?: QualityPreset.HIGHEST.ambisonicOrder
+
+/**
+ * Render only the reflected field, muting the direct path.
+ *
+ * The direct path dominates level and ear balance, so comparing Ambisonic orders on the full
+ * mix measures mostly the part that did not change. This isolates the half that did.
+ */
+private val REFLECTIONS_ONLY: Boolean =
+    System.getProperty("steamaudio.demo.reflectionsOnly")?.toBoolean() ?: false
 
 /** How long a reverb tail to simulate and render, in seconds. */
-private const val REVERB_DURATION = 3.0f
+private val REVERB_DURATION: Float =
+    System.getProperty("steamaudio.demo.duration")?.toFloat() ?: 3.0f
+
+/**
+ * Which reflection algorithm to render with, overridable via `-Dsteamaudio.demo.reflectionType`.
+ *
+ * `HYBRID` convolves early reflections and drives a parametric feedback delay network for the
+ * late tail. `CONVOLUTION` convolves the whole impulse response, which keeps the entire
+ * response in the Ambisonic domain and is the accurate option -- at a cost that scales with
+ * duration times channel count, paid on the audio thread every block.
+ */
+private val REFLECTION_TYPE: ReflectionEffectType =
+    System.getProperty("steamaudio.demo.reflectionType")
+        ?.let { ReflectionEffectType.valueOf(it.uppercase()) }
+        ?: QualityPreset.HIGHEST.reflectionType
 
 /**
  * How often the simulation runs, in Hz.
@@ -86,12 +128,22 @@ private val CAVE = Box(Vector3(-10f, -2f, -13f), Vector3(10f, 7f, 13f))
 
 fun main() {
     val settings = AudioSettings(samplingRate = SAMPLING_RATE, frameSize = FRAME_SIZE)
-    val output = Path.of("build/demo/cave.wav")
+    val suffix = buildString {
+        if (System.getProperty("steamaudio.demo.order") != null) append("-order$AMBISONIC_ORDER")
+        if (System.getProperty("steamaudio.demo.reflectionType") != null) {
+            append("-${REFLECTION_TYPE.name.lowercase()}")
+        }
+        if (REFLECTIONS_ONLY) append("-reflections")
+    }
+    val output = Path.of("build/demo/cave$suffix.wav")
     Files.createDirectories(output.parent)
 
     println("Steam Audio ${SteamAudio.VERSION} - reverberant cave demo")
     println("  ${settings.samplingRate} Hz, block ${settings.frameSize}, " +
-        "Ambisonic order $AMBISONIC_ORDER, reverb ${REVERB_DURATION}s")
+        "$REFLECTION_TYPE, order $AMBISONIC_ORDER " +
+        "(${SteamAudio.ambisonicChannelCount(AMBISONIC_ORDER)} channels), " +
+        "reverb ${REVERB_DURATION}s" +
+        if (REFLECTIONS_ONLY) ", REFLECTIONS ONLY" else "")
 
     SteamAudioContext().use { context ->
         Arena.ofShared().use { arena ->
@@ -166,7 +218,7 @@ fun main() {
                 // ---------------------------------------------------------------------------------
                 val simulationSettings = SimulationSettings(
                     flags = SimulationFlags.DIRECT or SimulationFlags.REFLECTIONS,
-                    reflectionType = ReflectionEffectType.HYBRID,
+                    reflectionType = REFLECTION_TYPE,
                     // A big dark space needs plenty of rays, or surfaces get missed and the
                     // reverb flickers as things move.
                     maxNumRays = 8192,
@@ -194,7 +246,7 @@ fun main() {
                                 BinauralEffect(context, settings, hrtf).use { binaural ->
                                     ReflectionEffect(
                                         context, settings,
-                                        type = ReflectionEffectType.HYBRID,
+                                        type = REFLECTION_TYPE,
                                         duration = REVERB_DURATION,
                                         ambisonicOrder = AMBISONIC_ORDER,
                                     ).use { reflection ->
@@ -354,6 +406,13 @@ private class CaveRenderer(
     private var simulationRuns = 0
     private var peak = 0f
 
+    /** Per-block cost of the reflection + decode stage, for the audio-thread budget. */
+    private val applyCostsNanos = ArrayList<Long>(4096)
+
+    private fun recordApplyCost(nanos: Long) {
+        applyCostsNanos.add(nanos)
+    }
+
     private val blocksPerSimulation =
         (settings.samplingRate / (FRAME_SIZE * SIMULATION_HZ)).toInt().coerceAtLeast(1)
 
@@ -407,6 +466,19 @@ private class CaveRenderer(
 
         println("  rendered $blocksRendered blocks, $simulationRuns simulation runs, " +
             "peak ${"%.3f".format(peak)}")
+
+        if (applyCostsNanos.isNotEmpty()) {
+            val sorted = applyCostsNanos.sorted()
+            val budgetMicros = FRAME_SIZE * 1_000_000.0 / SAMPLING_RATE
+            fun at(fraction: Double) = sorted[(sorted.size * fraction).toInt()
+                .coerceAtMost(sorted.size - 1)] / 1000.0
+            println(
+                "  reflection+decode per block: median %.0f us, p95 %.0f us, max %.0f us "
+                    .format(at(0.5), at(0.95), at(0.999)) +
+                    "(block budget %.0f us -> %.1f%% at p95)"
+                        .format(budgetMicros, at(0.95) / budgetMicros * 100),
+            )
+        }
     }
 
     /** Renders [seconds] of audio, calling [update] once per simulation tick. */
@@ -469,11 +541,14 @@ private class CaveRenderer(
         )
         binauralParams.setDirection(direction.x, direction.y, direction.z)
         binaural.apply(binauralParams, shaped, directStereo)
+        if (REFLECTIONS_ONLY) directStereo.clear()
 
         // Reflections: mono dry in, Ambisonic out, decoded binaurally to stereo.
+        val applyStart = System.nanoTime()
         reflection.apply(reflectionParams, dry, ambisonic)
         decodeParams.orientation = listener
         decode.apply(decodeParams, ambisonic, reflectedStereo)
+        recordApplyCost(System.nanoTime() - applyStart)
 
         emit()
     }

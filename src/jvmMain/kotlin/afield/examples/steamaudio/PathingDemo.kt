@@ -70,14 +70,28 @@ import java.nio.file.Path
  */
 private const val SAMPLING_RATE = 48_000
 private const val FRAME_SIZE = 512
-private const val AMBISONIC_ORDER = 1
+/**
+ * Ambisonic order for the pathed field, overridable with `-Dsteamaudio.demo.order`.
+ *
+ * Unlike a diffuse reverb tail, a pathed arrival has a definite direction -- the opening it
+ * came through -- so this is the case where order should matter.
+ */
+private val AMBISONIC_ORDER: Int = System.getProperty("steamaudio.demo.order")?.toInt() ?: 1
+
+/** Mute the direct path, leaving only the pathed contribution. */
+private val PATHING_ONLY: Boolean =
+    System.getProperty("steamaudio.demo.pathingOnly")?.toBoolean() ?: false
 
 /** Probe spacing, in metres. Closer spacing finds more routes but costs bake time and memory. */
 private const val PROBE_SPACING = 1.5f
 
 fun main() {
     val settings = AudioSettings(samplingRate = SAMPLING_RATE, frameSize = FRAME_SIZE)
-    val output = Path.of("build/demo/pathing.wav")
+    val suffix = buildString {
+        if (System.getProperty("steamaudio.demo.order") != null) append("-order$AMBISONIC_ORDER")
+        if (PATHING_ONLY) append("-pathonly")
+    }
+    val output = Path.of("build/demo/pathing$suffix.wav")
     Files.createDirectories(output.parent)
 
     // Both ears in the plane of the geometry; the extrusion is the acoustic thickness.
@@ -377,6 +391,7 @@ private class PathingRenderer(
         )
         binauralParams.setDirection(direction.x, direction.y, direction.z)
         binaural.apply(binauralParams, shaped, directStereo)
+        if (PATHING_ONLY) directStereo.clear()
 
         // Pathed contribution: the route around through the doorway.
         if (pathingEnabled) {

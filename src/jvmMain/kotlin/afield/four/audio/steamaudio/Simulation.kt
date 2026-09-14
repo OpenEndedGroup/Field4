@@ -36,7 +36,7 @@ public data class SimulationSettings(
     /** Ray tracer backend. Must match the [Scene] type. */
     public val sceneType: SceneType = SceneType.DEFAULT,
     /** Reflection algorithm. Must match the [ReflectionEffect] type. */
-    public val reflectionType: ReflectionEffectType = ReflectionEffectType.HYBRID,
+    public val reflectionType: ReflectionEffectType = ReflectionEffectType.CONVOLUTION,
     /** Maximum occlusion samples for volumetric occlusion. */
     public val maxNumOcclusionSamples: Int = 16,
     /** Maximum rays cast per reflection simulation. */
