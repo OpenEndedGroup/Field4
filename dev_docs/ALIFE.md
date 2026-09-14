@@ -350,15 +350,79 @@ Three things learned building it, all of which look like bugs in the layer and a
 - **A gentle `wander` does not undo a flock.** At 60 Hz, `turn = 6.0` random-walks a heading under a
   radian across five seconds, so a phase meant to scatter preserves the alignment it inherited.
 
-Targets (`point`, `actor`, `nearest`, `centroid`) belong to `BehaviourScope`, and inside a steering
-block the receiver is `BehaviourSteering`, which does not expose them — so build a target in the
-program and pass it into the block rather than writing it inline. This is a sharp edge worth filing
-down; until it is, it is the first thing a new script trips over.
+Targets (`point`, `actor`, `nearest`, `centroid`) belong to `BehaviourScope`. Inside a steering
+block the receiver is `BehaviourSteering`, and until 2026-09-14 that class did not expose them, so
+`moveFor(4.0) { orbit(point(x, y)) }` failed to compile and every script hoisted its targets by
+hand — the first thing a new script tripped over. `BehaviourSteering` now re-exports the four
+constructors and `self`/`rng`/`time`/`world` as one-line delegates. The `@ALifeBehaviour`
+`DslMarker` stays where it is: it is what stops a `wait` appearing inside a steering block, which
+would be a suspension inside the *construction* of a drive list and is a much subtler mistake than
+the one it was causing.
 
 Verification is `AlifeScriptGallery` (`FIELD_TEST stdlib.alife.script.gallery`), and the method —
 what each figure asserts, the floors in both directions, and the four bugs the harness found in the
 code it was written for — is in `dev_docs/alife_scripted_behaviour_measurement.md`. The loadable
 demo is `dev_docs/agents/demos/alife_script/`.
+
+## A world with walls — `alife_walls.kt`
+
+`ScriptWorld` shipped as a bare rectangle. `avoidEdges(margin)` pushed away from the four sides of
+the arena and that was the whole of the environment; everything else an agent could steer around
+was another agent. `alife_walls.kt` adds obstacles, the collision that stops an agent crossing one,
+the local steering that reads them, and the navigation that goes round them.
+
+- **Obstacles are a flat soup of line segments** — `ScriptObstacle`, `ObstacleField`, built through
+  `ScriptWorld.addWall` / `addRect` / `addPolygon` / `addPolyline` / `addDisc`. Not solids: the only
+  predicate collision needs is "is this swept circle crossing a wall", and a soup takes an open
+  wall, a concave room, a fence with a gap in it and two crossing shapes with no point-in-polygon
+  test and no winding rule. The price is that there is no "inside", so an agent that *starts* inside
+  a closed shape stays there; `spawn` pushes it out to the nearest surface rather than teleporting.
+  Obstacles require `wrap = false`, because a segment does not wrap and a swept test across the seam
+  would be quietly wrong.
+- **Collision is swept**, with a per-actor `WallResponse` — `SLIDE` (default), `BOUNCE` with
+  `restitution`, `STOP` — resolved up to four times per step, leftover displacement dropped rather
+  than applied. A world with no obstacles takes the original two-line Euler path, so every existing
+  determinism signature is unchanged bit for bit.
+- **`avoidWalls(clearance, weight)` and `cling(distance, clockwise, weight)`** are local steering in
+  the existing weighted-drive idiom. `cling` is `orbit` with the thing being orbited read off the
+  geometry instead of passed in.
+- **`route(target, …)`** plans: a radius-inflated occupancy grid, 8-connected A\* with no corner
+  cutting, then a string-pull against the real wall geometry. Direct `seek` is untouched and is the
+  control arm.
+- **`gradient(field, towards)`** climbs a `ScalarField` — chemotaxis, phototaxis — and
+  `ScriptSense.canSee` / `visibleNeighbours` put a wall between two agents.
+
+A grid rather than a visibility graph, and the reason is *construction* rather than search: a
+visibility graph over a segment soup needs its corners offset outward by the agent radius, and "the
+offset corner" is undefined where two segments cross, nearly touch or are collinear — exactly the
+geometry a user draws by accident. A grid has no corners to reason about, and the one thing it gets
+wrong (paths that staircase along cell centres) the string-pull removes.
+
+Three things learned building it, all of which presented as "the routing does not work":
+
+- **A plan is a straight line between waypoints and an agent is not.** It has inertia, other drives
+  blended in, and a radius, so it clips corners. Clipping puts it against a wall, `SLIDE` carries it
+  along the face, and if its waypoint is now through that wall every step steers into the wall with
+  zero tangential component. `route` therefore replans when it stops closing on its waypoint for
+  `stallSeconds`. Measured before that clause existed: one agent alone in the arena, no crowding,
+  travelled 100 units and then pressed on the same corner for 1 566 consecutive steps.
+- **A clearance test built on the swept collision has a hole in it.** `ObstacleField.sweep` reports
+  nothing for a circle that is *already* overlapping, because a contact at a negative time is a
+  depenetration problem rather than a collision — so asking it for clearance from a position that is
+  already too close gets the answer "clear" about the very wall you are pressed against. The
+  string-pull then happily shortcut straight through a wall. `ObstacleField.clearPath` is a
+  segment-to-segment distance test for this reason, and fixing it moved the maze counterfactual from
+  0.781 to 0.990 arrived over 96 agents.
+- **Plan outside your own avoidance range.** `route(clearance = c)` puts the path `radius + c` from
+  every wall; `avoidWalls(clearance = a)` pushes on anything within `radius + a`. With `c < a` the
+  two terms disagree the whole way round every corner: 163 wall contacts per agent, against 78 once
+  they agreed.
+
+Verification is `AlifeWallsGallery` (`FIELD_TEST stdlib.alife.walls.gallery`) — 55 checks including
+a swept-against-discrete tunnelling pair at 30 radii of displacement per step, cross-JVM
+determinism signatures, and the maze counterfactual with floors on both arms. The method and the
+numbers with their populations are in `dev_docs/ALIFE_WALLS.md`. The loadable demo is
+`dev_docs/agents/demos/alife_walls/`.
 
 ## The bridges out, and one thing `isoContourFLines` does not promise
 

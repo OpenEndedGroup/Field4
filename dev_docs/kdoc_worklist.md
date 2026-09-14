@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7419 of 13682 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 7494 of 13778 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**847 undocumented entry points** (types, top-level functions and values) and 5111 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**847 undocumented entry points** (types, top-level functions and values) and 5128 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -75,6 +75,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
 | [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
 | [MorphoGenome.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGenome.kt) | Languages | morpho_examples | 0 | 13 | 62% |
+| [alife_walls.kt](../src/jvmMain/kotlin/afield/stdlib/alife_walls.kt) | ALife | alife_examples | 0 | 12 | 72% |
 | [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | sound_paths | 0 | 11 | 70% |
 | [alife.kt](../src/jvmMain/kotlin/afield/stdlib/alife.kt) | ALife | alife_examples | 0 | 11 | 76% |
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
@@ -198,9 +199,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SpeechEmbeddingMds.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpeechEmbeddingMds.kt) | Audio AI | — | 0 | 42 | 22% |
 | [KratosStudy.kt](../src/jvmMain/kotlin/afield/kratos/KratosStudy.kt) | Simulation | — | 0 | 39 | 45% |
 | [Dyn4jScene.kt](../src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt) | Simulation | — | 0 | 26 | 39% |
+| [alife_script.kt](../src/jvmMain/kotlin/afield/stdlib/alife_script.kt) | ALife | — | 0 | 26 | 80% |
 | [FabricatePassChain.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassChain.kt) | Renderers | — | 0 | 23 | 54% |
 | [PatPitchDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatPitchDetection.kt) | Patterns | — | 0 | 23 | 51% |
-| [alife_script.kt](../src/jvmMain/kotlin/afield/stdlib/alife_script.kt) | ALife | — | 0 | 21 | 78% |
 | [DatalogEngine.kt](../src/jvmMain/kotlin/afield/datalog/DatalogEngine.kt) | Languages | — | 0 | 19 | 43% |
 | [RectSLPatternOps.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPatternOps.kt) | Languages | — | 0 | 18 | 14% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |

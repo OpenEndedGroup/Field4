@@ -193,6 +193,34 @@ class ScriptSense internal constructor(
     /** Offset from [self] to ([x], [y]), taking the shorter way round if the world wraps. */
     fun delta(x: Double, y: Double): Vector2d =
         Vector2d(world.deltaX(self.sx, x), world.deltaY(self.sy, y))
+
+    /**
+     * Whether nothing blocks the straight line from [self] to [other] — both read off the pre-step
+     * snapshot, so it agrees with the positions every other query in this class reports.
+     *
+     * True in a world with no walls, which is the useful default rather than a special case: a
+     * script written with `canSee` runs unchanged in an empty arena.
+     */
+    fun canSee(other: ScriptActor): Boolean = world.canSee(self, other)
+
+    /**
+     * Whether nothing blocks the straight line from [self] to ([x], [y]).
+     *
+     * A **point** query with no radius — a sight line, not a corridor. For "could I fit through
+     * there" ask [ScriptWorld.wallField]'s `clearPath` with the agent's radius.
+     */
+    fun canSee(x: Double, y: Double): Boolean = world.lineOfSight(self.sx, self.sy, x, y)
+
+    /**
+     * Live agents other than [self] within [range] that [self] can also *see* — neighbours with the
+     * wall between them removed.
+     *
+     * Costs a segment-crossing test per candidate on top of [neighbours]'s `O(N)`, so it is the
+     * verb for a sensing behaviour rather than for a flocking term applied to hundreds of agents.
+     */
+    fun visibleNeighbours(range: Double): List<ScriptActor> =
+        if (world.wallField.isEmpty) neighbours(range)
+        else neighbours(range).filter { world.canSee(self, it) }
 }
 
 /**
@@ -229,6 +257,11 @@ fun interface ScriptTarget {
  *   the default 0.25 gives a visible arc without the overshoot a spring would.
  * @property rng this agent's own random stream, seeded from the world seed and the agent id. Per-agent
  *   rather than shared, so inserting an agent does not reshuffle every other agent's future.
+ * @property wallResponse what happens when this agent's swept path meets one of the world's
+ *   obstacles. [WallResponse.SLIDE] by default — see `alife_walls.kt`. Irrelevant in a world with no
+ *   obstacles, where the integrator does not even look.
+ * @property restitution how much of the normal velocity survives a [WallResponse.BOUNCE], in `0..1`.
+ *   Ignored by the other two responses.
  */
 class ScriptActor internal constructor(
     val world: ScriptWorld,
@@ -238,7 +271,9 @@ class ScriptActor internal constructor(
     val maxSpeed: Double,
     val radius: Double,
     val steerResponse: Double,
-    val tag: String
+    val tag: String,
+    val wallResponse: WallResponse = WallResponse.SLIDE,
+    val restitution: Double = 0.8
 ) {
     internal var x: Double = x
     internal var y: Double = y
@@ -263,6 +298,16 @@ class ScriptActor internal constructor(
 
     internal val motors = LinkedHashMap<Long, MotorSet>()
     internal var parallelCount: Int = 0
+
+    /**
+     * How many times this agent's swept path has been stopped, deflected or reflected by a wall.
+     *
+     * The readout that distinguishes "went round the barrier" from "never met it": an arm of a
+     * counterfactual whose agents record zero contacts has not been tested by the geometry at all.
+     */
+    var wallContacts: Int = 0
+        internal set
+
     internal val trailX = ArrayList<Double>()
     internal val trailY = ArrayList<Double>()
     internal val phaseStack = ArrayList<String?>()
@@ -384,6 +429,15 @@ internal class Sleeper(
  *   hand-rolled `forever` over an empty body would still spin).
  * @property recordTrails whether to accumulate per-agent trails for [trailFLines]. On by default
  *   because the trail is the picture; turn it off for long runs where only the final state matters.
+ * @property maxRouteSearchesPerStep how many [BehaviourSteering.route] drives may run a fresh A\*
+ *   in one step. A grid search is the one thing in this file that is not `O(1)` per agent, and a
+ *   population that all repaths on the same tick is the frame that drops. Agents over the budget
+ *   keep steering to the route they already have and try again next step; the budget is spent in
+ *   agent-id order, so which agents get it is reproducible.
+ * @property maxRouteExpansions cells one A\* may expand before giving up. A search that hits this
+ *   returns no route rather than a bad one, and the drive falls back to a direct seek.
+ * @property maxNavCells the cap on a [NavGrid]'s cell count. Exceeding it enlarges the cells and
+ *   sets [NavGrid.coarse] rather than allocating a grid proportional to the arena.
  */
 class ScriptWorld(
     val width: Double = 200.0,
@@ -393,13 +447,19 @@ class ScriptWorld(
     val wrap: Boolean = true,
     val maxParallelPerActor: Int = 8,
     val maxResumptionsPerStep: Int = 200_000,
-    val recordTrails: Boolean = true
+    val recordTrails: Boolean = true,
+    val maxRouteSearchesPerStep: Int = 8,
+    val maxRouteExpansions: Int = 20_000,
+    val maxNavCells: Int = 40_000
 ) {
     init {
         require(width > 0.0 && height > 0.0) { "world must be positive, got ${width}x$height" }
         require(fixedStep > 0.0 && fixedStep.isFinite()) { "fixedStep must be > 0, got $fixedStep" }
         require(maxParallelPerActor >= 1) { "maxParallelPerActor must be >= 1, got $maxParallelPerActor" }
         require(maxResumptionsPerStep >= 1) { "maxResumptionsPerStep must be >= 1" }
+        require(maxRouteSearchesPerStep >= 1) { "maxRouteSearchesPerStep must be >= 1" }
+        require(maxRouteExpansions >= 16) { "maxRouteExpansions must be >= 16" }
+        require(maxNavCells >= 64) { "maxNavCells must be >= 64" }
     }
 
     private val population = ArrayList<ScriptActor>()
@@ -438,6 +498,129 @@ class ScriptWorld(
         private set
 
     // ------------------------------------------------------------------------------------------
+    // Walls
+    // ------------------------------------------------------------------------------------------
+
+    /**
+     * The world's walls. See `alife_walls.kt` for what they are and why they are segments.
+     *
+     * Public so a drive can query it; add through [addWall] and friends so the navigation cache is
+     * invalidated with it.
+     */
+    val wallField: ObstacleField = ObstacleField()
+
+    private val navGrids = LinkedHashMap<Long, NavGrid>()
+    private var routeBudget = 0
+    private val settleScratch = DoubleArray(2)
+
+    /** Total A\* searches run since the world began — the cost readout for a routed population. */
+    var routeSearches: Long = 0L
+        private set
+
+    /** Searches refused this run because [maxRouteSearchesPerStep] was already spent. */
+    var routeSearchesDeferred: Long = 0L
+        private set
+
+    /** The walls, in the order they were added. */
+    val obstacles: List<ScriptObstacle> get() = wallField.obstacles
+
+    /**
+     * Add [o] to the world.
+     *
+     * **Obstacles need a bounded world.** A segment does not wrap, so on a torus the swept test
+     * would be right in the middle of the arena and quietly wrong across the seam — an agent would
+     * pass through a wall that, in the wrapped metric every other part of this class uses, it was
+     * heading straight into. Refusing is better than being wrong in one place. Build the world with
+     * `wrap = false`.
+     */
+    fun addObstacle(o: ScriptObstacle): ScriptObstacle {
+        require(!wrap) {
+            "obstacles need a bounded world: build the ScriptWorld with wrap = false. " +
+                "A wall segment does not wrap, so a swept test across the seam would be wrong."
+        }
+        wallField.add(o)
+        navGrids.clear()
+        return o
+    }
+
+    /** A single straight wall from ([x0], [y0]) to ([x1], [y1]). */
+    fun addWall(x0: Double, y0: Double, x1: Double, y1: Double, name: String = "wall"): ScriptObstacle =
+        addObstacle(ScriptObstacle(name, doubleArrayOf(x0, y0, x1, y1), closed = false))
+
+    /** An open run of points, `x, y, x, y, …` — a corridor side, a curved barrier. */
+    fun addPolyline(vararg points: Double, name: String = "polyline"): ScriptObstacle =
+        addObstacle(ScriptObstacle(name, points, closed = false))
+
+    /** A closed outline, `x, y, x, y, …`. Its interior is unreachable, not solid — see the file KDoc. */
+    fun addPolygon(vararg points: Double, name: String = "polygon"): ScriptObstacle =
+        addObstacle(ScriptObstacle(name, points, closed = true))
+
+    /** An axis-aligned box with its lower-left corner at ([x], [y]). */
+    fun addRect(x: Double, y: Double, w: Double, h: Double, name: String = "rect"): ScriptObstacle {
+        require(w > 0.0 && h > 0.0) { "addRect needs a positive size, got ${w}x$h" }
+        return addObstacle(
+            ScriptObstacle(name, doubleArrayOf(x, y, x + w, y, x + w, y + h, x, y + h), closed = true)
+        )
+    }
+
+    /** A round pillar, approximated by [segments] sides. */
+    fun addDisc(
+        cx: Double,
+        cy: Double,
+        radius: Double,
+        segments: Int = 24,
+        name: String = "disc"
+    ): ScriptObstacle =
+        addObstacle(ScriptObstacle(name, discPoints(cx, cy, radius, segments), closed = true))
+
+    /** Every wall's outline, for drawing the world the agents are in. */
+    fun obstacleFLines(z: Number = 0): List<FLine> = obstacles.map { it.outline(z) }
+
+    /**
+     * The navigation grid for a circle of [inflate], built on first ask and cached.
+     *
+     * Cached per **quantised** radius (to `1e-3`), which is what makes a population of like-sized
+     * agents share one grid instead of building a near-identical one each. Adding a wall clears the
+     * cache.
+     */
+    fun navGrid(inflate: Double): NavGrid {
+        require(inflate > 0.0 && inflate.isFinite()) { "nav inflate must be > 0, got $inflate" }
+        val key = Math.round(inflate * 1000.0)
+        return navGrids.getOrPut(key) {
+            NavGrid.build(width, height, wallField, key / 1000.0, maxNavCells)
+        }
+    }
+
+    /**
+     * A route for a circle of [inflate] from ([sx], [sy]) to ([gx], [gy]) as `x, y, x, y, …`, or
+     * `null` if there is no way through.
+     *
+     * The whole pipeline: grid, A\*, string-pull. Call it directly to plan once; [BehaviourSteering]
+     * `route` is this with a cache and a budget in front of it.
+     */
+    fun findRoute(sx: Double, sy: Double, gx: Double, gy: Double, inflate: Double): DoubleArray? {
+        val grid = navGrid(inflate)
+        routeSearches++
+        val cells = grid.route(sx, sy, gx, gy, maxRouteExpansions) ?: return null
+        if (cells.size == 1) return doubleArrayOf(sx, sy, gx, gy)
+        return grid.stringPull(cells, wallField, sx, sy, gx, gy)
+    }
+
+    /** Spend one of this step's route-search permits, or return false. Called in agent-id order. */
+    internal fun takeRoutePermit(): Boolean {
+        if (routeBudget <= 0) { routeSearchesDeferred++; return false }
+        routeBudget--
+        return true
+    }
+
+    /** Whether a straight sight line from ([x0], [y0]) to ([x1], [y1]) is unobstructed. */
+    fun lineOfSight(x0: Double, y0: Double, x1: Double, y1: Double): Boolean =
+        wallField.isEmpty || wallField.lineOfSight(x0, y0, x1, y1)
+
+    /** Whether [a] can see [b] — both on snapshot positions, so it agrees with what drives read. */
+    fun canSee(a: ScriptActor, b: ScriptActor): Boolean = lineOfSight(a.sx, a.sy, b.sx, b.sy)
+
+    // ------------------------------------------------------------------------------------------
     // Population
     // ------------------------------------------------------------------------------------------
 
@@ -472,15 +655,23 @@ class ScriptWorld(
         vx: Double = 0.0,
         vy: Double = 0.0,
         tag: String = "",
+        wallResponse: WallResponse = WallResponse.SLIDE,
+        restitution: Double = 0.8,
         program: suspend BehaviourScope.() -> Unit
     ): ScriptActor {
         require(x.isFinite() && y.isFinite()) { "spawn needs finite coordinates, got ($x, $y)" }
         require(maxSpeed.isFinite() && maxSpeed > 0.0) { "maxSpeed must be > 0, got $maxSpeed" }
+        require(radius > 0.0 && radius.isFinite()) { "radius must be > 0, got $radius" }
         require(vx.isFinite() && vy.isFinite()) { "spawn needs a finite velocity, got ($vx, $vy)" }
         require(steerResponse > 0.0 && steerResponse <= 1.0) {
             "steerResponse must be in (0, 1], got $steerResponse"
         }
-        val a = ScriptActor(this, population.size, x, y, maxSpeed, radius, steerResponse, tag)
+        require(restitution >= 0.0 && restitution <= 1.0) {
+            "restitution must be in [0, 1], got $restitution"
+        }
+        val a = ScriptActor(
+            this, population.size, x, y, maxSpeed, radius, steerResponse, tag, wallResponse, restitution
+        )
         val m = hypot(vx, vy)
         if (m > maxSpeed) { a.vx = vx / m * maxSpeed; a.vy = vy / m * maxSpeed } else { a.vx = vx; a.vy = vy }
         a.svx = a.vx; a.svy = a.vy
@@ -531,7 +722,17 @@ class ScriptWorld(
     fun deltaY(from: Double, to: Double): Double =
         if (wrap) wrappedDelta(from, to, height) else to - from
 
-    /** Put [a] back inside the arena: wrap if the world is a torus, otherwise clamp. */
+    /**
+     * Put [a] back inside the arena: wrap if the world is a torus, otherwise clamp, and then — if
+     * the world has walls — out of any wall it is overlapping.
+     *
+     * The second half is depenetration, not collision: collision is [ObstacleField.sweep] and
+     * happens during the move. This is for the cases where no move happened — an agent placed inside
+     * a pillar by [spawn] or [ScriptActor.placeAt], or one clamped at the arena edge into a wall
+     * that runs along it. Pushing to the nearest surface is the only choice that is a function of
+     * where the agent is; teleporting it to a free cell would be a function of the navigation grid,
+     * which the agent may not have one of.
+     */
     internal fun confine(a: ScriptActor) {
         if (wrap) {
             a.x = wrapInto(a.x, width)
@@ -541,6 +742,12 @@ class ScriptWorld(
             if (a.y < 0.0) { a.y = 0.0; if (a.vy < 0.0) a.vy = 0.0 }
             if (a.x > width) { a.x = width; if (a.vx > 0.0) a.vx = 0.0 }
             if (a.y > height) { a.y = height; if (a.vy > 0.0) a.vy = 0.0 }
+            if (!wallField.isEmpty) {
+                if (wallField.pushOut(a.x, a.y, a.radius, settleScratch)) {
+                    a.x = settleScratch[0]
+                    a.y = settleScratch[1]
+                }
+            }
         }
     }
 
@@ -694,6 +901,9 @@ class ScriptWorld(
 
     private fun integrate() {
         snapshot()
+        // Refilled before any drive runs, and spent in agent-id order below, so which agents get to
+        // repath on a busy tick is a property of the scenario rather than of the schedule.
+        routeBudget = maxRouteSearchesPerStep
         for (a in population) {
             if (!a.alive) continue
             var dx = 0.0
@@ -734,10 +944,76 @@ class ScriptWorld(
             a.vy += (desY - a.vy) * a.steerResponse
             val s = hypot(a.vx, a.vy)
             if (s > a.maxSpeed) { a.vx = a.vx / s * a.maxSpeed; a.vy = a.vy / s * a.maxSpeed }
-            a.x += a.vx * fixedStep
-            a.y += a.vy * fixedStep
+            if (wallField.isEmpty) {
+                a.x += a.vx * fixedStep
+                a.y += a.vy * fixedStep
+            } else {
+                sweepMove(a)
+            }
             confine(a)
         }
+    }
+
+    /**
+     * Move [a] by one step's worth of its velocity, stopping, sliding or bouncing at the first wall
+     * the *swept* circle meets — and then at the next one, up to [WALL_RESPONSE_ITERATIONS] times.
+     *
+     * Swept and not discrete, and that is the whole point of the routine: a wall here is a line
+     * segment with no thickness, so "does the new position overlap a wall" is false for every wall
+     * an agent crosses cleanly, at any speed. Solving for the first contact instead means a 600
+     * units/s agent — ten units of displacement in a 1/60 s step — stops at the barrier rather than
+     * appearing on the far side of it. `AlifeWallsGallery.figureTunnelling` runs exactly that, with
+     * a discrete integrator beside it that fails.
+     *
+     * After a contact the agent is placed [WALL_SKIN] outside the surface rather than on it, so the
+     * next iteration's sweep does not start in contact with the wall it has just resolved.
+     *
+     * The remaining displacement is **dropped** if the iteration budget runs out. An agent wedged
+     * where three walls meet should stop there; spending the leftover motion unchecked is how a
+     * body ends up inside geometry, and it is much harder to see than a body that stalled.
+     */
+    private fun sweepMove(a: ScriptActor) {
+        var px = a.x
+        var py = a.y
+        var rx = a.vx * fixedStep
+        var ry = a.vy * fixedStep
+        var iteration = 0
+        while (true) {
+            if (rx == 0.0 && ry == 0.0) break
+            val hit = wallField.sweep(px, py, rx, ry, a.radius)
+            if (hit == null) { px += rx; py += ry; break }
+            a.wallContacts++
+            px += rx * hit.t + hit.nx * WALL_SKIN
+            py += ry * hit.t + hit.ny * WALL_SKIN
+            val remX = rx * (1.0 - hit.t)
+            val remY = ry * (1.0 - hit.t)
+            when (a.wallResponse) {
+                WallResponse.STOP -> {
+                    a.vx = 0.0; a.vy = 0.0
+                    rx = 0.0; ry = 0.0
+                }
+                WallResponse.SLIDE -> {
+                    val dr = remX * hit.nx + remY * hit.ny
+                    rx = remX - hit.nx * dr
+                    ry = remY - hit.ny * dr
+                    val dv = a.vx * hit.nx + a.vy * hit.ny
+                    a.vx -= hit.nx * dv
+                    a.vy -= hit.ny * dv
+                }
+                WallResponse.BOUNCE -> {
+                    val k = 1.0 + a.restitution
+                    val dr = remX * hit.nx + remY * hit.ny
+                    rx = remX - hit.nx * dr * k
+                    ry = remY - hit.ny * dr * k
+                    val dv = a.vx * hit.nx + a.vy * hit.ny
+                    a.vx -= hit.nx * dv * k
+                    a.vy -= hit.ny * dv * k
+                }
+            }
+            if (++iteration >= WALL_RESPONSE_ITERATIONS) break
+        }
+        a.x = px
+        a.y = py
     }
 
     // ------------------------------------------------------------------------------------------
@@ -1238,7 +1514,26 @@ class BehaviourScope internal constructor(
 @ALifeBehaviour
 class BehaviourSteering internal constructor(private val scope: BehaviourScope) {
     private val drives = ArrayList<WeightedDrive>()
-    private val world = scope.world
+
+    /** The world being steered in. */
+    val world: ScriptWorld = scope.world
+
+    /**
+     * The agent being steered.
+     *
+     * Exposed because the `@ALifeBehaviour` [DslMarker] hides the enclosing [BehaviourScope]'s
+     * `self` — deliberately, since the mistake it stops is a `wait` inside a steering block — but
+     * the *properties* of the agent are exactly what a steering block needs at construction time.
+     * `orbit(target, clockwise = self.id % 2 == 0)` is the canonical use, and until this existed it
+     * did not compile.
+     */
+    val self: ScriptActor get() = scope.self
+
+    /** This agent's own random stream — for a choice made once, when the behaviour starts. */
+    val rng: Random get() = scope.rng
+
+    /** Simulation seconds at the moment the behaviour started, i.e. when this block ran. */
+    val time: Double get() = scope.time
 
     internal fun build(): List<WeightedDrive> = drives.toList()
 
@@ -1449,4 +1744,289 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
             }
         }
     }
+
+    // ------------------------------------------------------------------------------------------
+    // Walls — see alife_walls.kt
+    // ------------------------------------------------------------------------------------------
+
+    /**
+     * Push away from any wall within [clearance] of the agent's *surface*, weighted by how close it
+     * is — the wall counterpart of [separate], and written in the same shape for the same reason.
+     *
+     * **Local steering, not navigation.** This term knows about the walls near the agent and nothing
+     * about where the agent is trying to get to, so it will happily hold an agent against the near
+     * side of a barrier for as long as something else is pulling it that way. The verb for "reach
+     * that place, going round whatever is in the way" is [route]. Both at once is the usual
+     * arrangement: the route says which way, this keeps the corners comfortable.
+     *
+     * Does nothing in a world with no walls, so a script can be written once for both.
+     *
+     * @param clearance how far out from the agent's own radius the repulsion reaches
+     */
+    fun avoidWalls(clearance: Double = 6.0, weight: Double = 1.2) {
+        require(clearance.isFinite() && clearance > 0.0) { "avoidWalls clearance must be > 0, got $clearance" }
+        val cp = DoubleArray(2)
+        drive(weight) { self, sense ->
+            val field = world.wallField
+            if (field.isEmpty) Vector2d(0.0, 0.0) else {
+                val range = self.radius + clearance
+                val segs = field.segments()
+                var ax = 0.0
+                var ay = 0.0
+                var i = 0
+                while (i < segs.size) {
+                    closestPointOnSegment(self.sx, self.sy, segs[i], segs[i + 1], segs[i + 2], segs[i + 3], cp)
+                    val dx = self.sx - cp[0]
+                    val dy = self.sy - cp[1]
+                    val d = hypot(dx, dy)
+                    if (d < range && d > 1e-12) {
+                        val f = 1.0 - d / range
+                        ax += dx / d * f
+                        ay += dy / d * f
+                    }
+                    i += 4
+                }
+                val m = hypot(ax, ay)
+                if (m < 1e-9) Vector2d(0.0, 0.0) else Vector2d(ax / m * sense.speed, ay / m * sense.speed)
+            }
+        }
+    }
+
+    /**
+     * Follow the nearest wall, holding [distance] between the agent's surface and it — wall
+     * following, the same blend of a tangential term and a radial correction that [orbit] is.
+     *
+     * [clockwise] is which way along the wall, and a population that all clings the same way never
+     * meets itself coming back; pass `self.id % 2 == 0` for a script that wants both. Nothing
+     * outside [range] pulls at all, so an agent in the middle of an open arena using only this term
+     * coasts, which is the honest answer — there is no wall to follow.
+     *
+     * @param distance the gap to hold between the agent's surface and the wall
+     * @param range how far away a wall can be and still be the one that is followed
+     */
+    fun cling(
+        distance: Double = 1.0,
+        clockwise: Boolean = true,
+        range: Double = 25.0,
+        weight: Double = 1.0
+    ) {
+        require(distance.isFinite() && distance > 0.0) { "cling distance must be > 0, got $distance" }
+        require(range.isFinite() && range > 0.0) { "cling range must be > 0, got $range" }
+        val sign = if (clockwise) 1.0 else -1.0
+        val near = DoubleArray(5)
+        drive(weight) { self, sense ->
+            val field = world.wallField
+            if (field.isEmpty || !field.nearestInto(self.sx, self.sy, range, near)) Vector2d(0.0, 0.0) else {
+                val d = near[0]
+                val nx = near[3]
+                val ny = near[4]
+                if (hypot(nx, ny) < 1e-9) Vector2d(0.0, 0.0) else {
+                    val standoff = self.radius + distance
+                    val tx = ny * sign
+                    val ty = -nx * sign
+                    val pull = ((standoff - d) / standoff * 2.0).coerceIn(-1.5, 1.5)
+                    val cx = tx + nx * pull
+                    val cy = ty + ny * pull
+                    val m = hypot(cx, cy)
+                    if (m < 1e-9) Vector2d(0.0, 0.0) else Vector2d(cx / m * sense.speed, cy / m * sense.speed)
+                }
+            }
+        }
+    }
+
+    /**
+     * Head for [t] **along a route**: a radius-aware A\* through the world's walls, smoothed, and
+     * followed waypoint by waypoint.
+     *
+     * This is the verb [seek] is not. `seek` points at the target and pushes, which is correct and
+     * cheap when there is a straight line, and when there is a barrier in the way it presses into
+     * the barrier for as long as the behaviour lasts — no amount of [avoidWalls] fixes that, because
+     * avoidance is local and the decision to go the *other* way round a wall is not. The margin
+     * between the two on a maze is `AlifeWallsGallery`'s counterfactual.
+     *
+     * The route is kept between steps, not recomputed each one. A new search happens when there is
+     * no route, when the target has moved more than [repathDistance] from where the current route
+     * was planned to, and — the one that matters most in practice — when the agent **stops making
+     * progress toward the waypoint it is aiming at** for [stallSeconds]. Searches are rationed by
+     * [ScriptWorld.maxRouteSearchesPerStep]; an agent refused a permit keeps following the route it
+     * has and asks again next step.
+     *
+     * The stall clause is not belt and braces, it is the difference between this working and not.
+     * A plan is a straight line between waypoints and an agent is not: it has inertia, it has other
+     * drives blended into it, and it is a disc rather than a point. So it clips corners. Clipping a
+     * corner puts it in contact with a wall, [WallResponse.SLIDE] carries it along the face, and if
+     * the waypoint it is aiming at is now straight through that wall, every subsequent step steers
+     * it into the wall and the tangential component is zero. Without a stall clause there is
+     * nothing that can ever change its mind. Measured, on the maze in `AlifeWallsGallery`: one
+     * agent alone in the arena, no crowding, travelled 100 units and then pressed on the same
+     * corner for 1 566 consecutive steps.
+     *
+     * **When there is no route at all** — a target sealed behind a closed wall, or an arena with no
+     * walls in it — this falls back to exactly [seek]. That is deliberate: a drive that returned
+     * zero would leave the agent standing still with no indication of why, and "press toward it"
+     * remains the best available answer when there is no way round.
+     *
+     * @param clearance extra room beyond the agent's radius the route must leave. 0 plans the
+     *   tightest legal path; a little more keeps an agent off the corners it is technically allowed
+     *   to graze, and it is worth at least matching whatever [avoidWalls] the same agent is running,
+     *   or the two terms disagree round every corner.
+     * @param repathDistance how far a moving target may drift before the route is replanned
+     * @param stallSeconds how long the agent may fail to close on its current waypoint before the
+     *   route is thrown away and replanned from where it actually is
+     * @param waypointRadius how close counts as having reached a waypoint; the default is derived
+     *   from the agent's radius and clearance
+     */
+    fun route(
+        t: ScriptTarget,
+        clearance: Double = 0.5,
+        repathDistance: Double = 8.0,
+        stallSeconds: Double = 0.75,
+        waypointRadius: Double = -1.0,
+        weight: Double = 1.0
+    ) {
+        require(clearance >= 0.0 && clearance.isFinite()) { "route clearance must be >= 0, got $clearance" }
+        require(repathDistance > 0.0 && repathDistance.isFinite()) {
+            "route repathDistance must be > 0, got $repathDistance"
+        }
+        require(stallSeconds > 0.0 && stallSeconds.isFinite()) {
+            "route stallSeconds must be > 0, got $stallSeconds"
+        }
+        val stallLimit = max(2L, world.ticksFor(stallSeconds))
+        var path: DoubleArray? = null
+        var cursor = 0
+        var plannedX = Double.NaN
+        var plannedY = Double.NaN
+        var closest = Double.MAX_VALUE
+        var stalled = 0L
+
+        drive(weight) { self, sense ->
+            val goal = t.resolve(world, self)
+            if (goal == null) Vector2d(0.0, 0.0) else {
+                val inflate = self.radius + clearance
+                val wpR = if (waypointRadius > 0.0) waypointRadius else max(inflate * 1.5, 1.5)
+
+                if (!world.wallField.isEmpty) {
+                    val stale = path == null ||
+                        stalled >= stallLimit ||
+                        hypot(goal.x - plannedX, goal.y - plannedY) > repathDistance
+                    if (stale && world.takeRoutePermit()) {
+                        // Replanned from where the agent IS, not from where it set out. That is the
+                        // whole recovery: a fresh search from against the wall goes back round the
+                        // corner it clipped, whereas re-issuing the old plan would aim it at the
+                        // same wall again.
+                        path = world.findRoute(self.sx, self.sy, goal.x, goal.y, inflate)
+                        cursor = 1
+                        plannedX = goal.x
+                        plannedY = goal.y
+                        closest = Double.MAX_VALUE
+                        stalled = 0L
+                    }
+                }
+
+                val p = path
+                var aimX = goal.x
+                var aimY = goal.y
+                if (p != null && p.size >= 4) {
+                    val n = p.size / 2
+                    if (cursor < 1) cursor = 1
+                    val was = cursor
+                    // Two ways to be done with a waypoint. Reaching it is the obvious one; the
+                    // other is that the NEXT one is already reachable in a straight line, which
+                    // means the corner this waypoint was placed to get round is behind us.
+                    //
+                    // `clearPath` at the full inflated radius, and not a plain sight line: a
+                    // zero-radius sight line lets an agent that can *see* past a corner skip to a
+                    // waypoint it cannot *fit* past, after which it presses on the corner. An agent
+                    // hugging a wall is inside its own inflation radius, so `clearPath` refuses
+                    // every skip until it has room again, which is the conservative answer and the
+                    // one that lets the stall clause above do the recovering.
+                    while (cursor < n - 1 &&
+                        world.wallField.clearPath(
+                            self.sx, self.sy,
+                            p[(cursor + 1) * 2], p[(cursor + 1) * 2 + 1],
+                            inflate
+                        )
+                    ) cursor++
+                    while (cursor < n - 1 &&
+                        hypot(self.sx - p[cursor * 2], self.sy - p[cursor * 2 + 1]) <= wpR
+                    ) cursor++
+                    if (cursor != was) { closest = Double.MAX_VALUE; stalled = 0L }
+                    aimX = p[cursor * 2]
+                    aimY = p[cursor * 2 + 1]
+                }
+
+                val dx = world.deltaX(self.sx, aimX)
+                val dy = world.deltaY(self.sy, aimY)
+                val d = hypot(dx, dy)
+                // Progress is measured against the CLOSEST the agent has ever been to this
+                // waypoint, not against last step's distance. Distance-to-last-step calls a single
+                // slow step a stall and an agent oscillating about a fixed point "progressing" on
+                // every other step; a running minimum does neither.
+                if (d < closest - PROGRESS_EPSILON) { closest = d; stalled = 0L } else stalled++
+                if (d < 1e-9) Vector2d(0.0, 0.0) else Vector2d(dx / d * sense.speed, dy / d * sense.speed)
+            }
+        }
+    }
+
+    /**
+     * Climb (or descend) a [ScalarField] — chemotaxis, phototaxis, thermotaxis, whichever the field
+     * means.
+     *
+     * A central difference at ±[probe] in each axis, normalised, so the *steepness* of the field
+     * does not become a second speed control and a field in arbitrary units works without being
+     * scaled first. [probe] is the agent's sensing baseline and it matters: too small and the
+     * difference is lost in the field's own rounding, too large and the agent reads the average
+     * slope of a region rather than the slope where it is.
+     *
+     * This is a *gradient* sensor, not a search: it finds a local maximum and has nothing to say
+     * about the global one. A field with two lamps in it will split a population between them, which
+     * is the correct and interesting behaviour, not a bug to weight away.
+     *
+     * @param towards true to climb, false to descend (seek the dark)
+     */
+    fun gradient(
+        field: ScalarField,
+        towards: Boolean = true,
+        probe: Double = 2.0,
+        weight: Double = 1.0
+    ) {
+        require(probe.isFinite() && probe > 0.0) { "gradient probe must be > 0, got $probe" }
+        val sign = if (towards) 1.0 else -1.0
+        drive(weight) { self, sense ->
+            val gx = (field.at(self.sx + probe, self.sy) - field.at(self.sx - probe, self.sy)) / (2.0 * probe)
+            val gy = (field.at(self.sx, self.sy + probe) - field.at(self.sx, self.sy - probe)) / (2.0 * probe)
+            val m = hypot(gx, gy)
+            if (m < 1e-12) Vector2d(0.0, 0.0)
+            else Vector2d(gx / m * sign * sense.speed, gy / m * sign * sense.speed)
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Targets, delegated from the enclosing scope
+    // ------------------------------------------------------------------------------------------
+    //
+    // R3c. Targets are constructed by BehaviourScope, and `moveFor { }`'s receiver is this class, so
+    // `moveFor(4.0) { orbit(point(x, y)) }` — the obvious line, and the first line most scripts try
+    // — failed to compile with "cannot be called in this context with an implicit receiver". The
+    // @ALifeBehaviour DslMarker is doing its job there and should not be relaxed: it is what stops a
+    // `wait` appearing inside a steering block. So the constructors are re-exported here instead,
+    // which is a handful of one-line delegates and makes the obvious line the working line.
+
+    /** A fixed point. See [BehaviourScope.point]. */
+    fun point(p: Vector2d): ScriptTarget = scope.point(p)
+
+    /** A fixed point. See [BehaviourScope.point]. */
+    fun point(x: Double, y: Double): ScriptTarget = scope.point(x, y)
+
+    /** Another agent, resolving to nothing once it is dead. See [BehaviourScope.actor]. */
+    fun actor(other: ScriptActor): ScriptTarget = scope.actor(other)
+
+    /** The nearest live agent within [range] satisfying [accept]. See [BehaviourScope.nearest]. */
+    fun nearest(
+        range: Double = max(world.width, world.height),
+        accept: (ScriptActor) -> Boolean = { true }
+    ): ScriptTarget = scope.nearest(range, accept)
+
+    /** The centroid of the live agents satisfying [accept]. See [BehaviourScope.centroid]. */
+    fun centroid(accept: (ScriptActor) -> Boolean = { true }): ScriptTarget = scope.centroid(accept)
 }
