@@ -491,6 +491,51 @@ def _nearest_checkout(path: str) -> Path | None:
     return None
 
 
+def _registered_submodules(root: Path) -> set[Path]:
+    """Absolute paths of the submodules ``root`` declares in its own ``.gitmodules``.
+
+    The discriminator for the one false positive `_nearest_checkout` can produce. A
+    submodule carries its own ``.git`` -- a file reading `gitdir: ../../.git/modules/...`
+    -- so walking up from a cwd inside one stops there rather than at ``root``, and a JVM
+    of OURS working in a submodule is demoted to `foreign-cwd` and then leaked forever,
+    since the reaper spares what it does not claim.
+
+    Only `.gitmodules` separates that from the case the walk exists for. A nested
+    independent checkout (`<root>/.claude/worktrees/<name>/`, the shape that got pid 654
+    SIGKILLed) also has a `.git` *file*, also resolves to a strict descendant of ``root``,
+    and also points back into `<root>/.git` -- so neither the file-versus-directory shape
+    nor the common git dir tells them apart. `.gitmodules` is the superproject saying, in
+    tracked content, "this path is part of me".
+
+    Measured population in this repository: **1** registered submodule
+    (`services/field-audio-ai`, checked out in the primary tree and absent from a fresh
+    worktree), against **20+** unregistered nested checkouts under the primary's
+    `.claude/worktrees/`, every one of which must keep objecting. **0** Field JVMs were
+    observed with a cwd inside the submodule on 2026-09-14, so this closes a latent hole
+    rather than a bleeding one.
+
+    Parsed rather than shelled out to: `git submodule status` wants a working tree and a
+    subprocess per call, and this runs inside a classifier that is otherwise pure.
+    """
+    try:
+        text = (root / ".gitmodules").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return set()
+    paths: set[Path] = set()
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if not sep or key.strip() != "path":
+            continue
+        relative = value.strip()
+        if not relative or os.path.isabs(relative):
+            continue
+        try:
+            paths.add((root / relative).resolve())
+        except OSError:
+            continue
+    return paths
+
+
 def _cwd_disagrees(pid: int, root: Path, cwd_lookup: Callable[[int], str | None]) -> Attribution | None:
     """A second, independent opinion that can only ever SPARE a JVM.
 
@@ -516,9 +561,17 @@ def _cwd_disagrees(pid: int, root: Path, cwd_lookup: Callable[[int], str | None]
     if checkout is None:
         return None
     try:
-        if checkout == root.resolve():
-            return None
+        resolved_root = root.resolve()
     except OSError:
+        return None
+    if checkout == resolved_root:
+        return None
+    # A submodule of ours is ours. Without this the walk stops at the submodule's own
+    # `.git`, the comparison above fails, and one of our own JVMs working in
+    # `services/field-audio-ai` is demoted to foreign and leaked forever. Registered
+    # submodules only -- an unregistered nested checkout is the pid-654 case and must
+    # keep objecting. See `_registered_submodules`.
+    if checkout in _registered_submodules(resolved_root):
         return None
     return Attribution(False, "foreign-cwd", f"{cwd} is inside checkout {checkout}")
 
@@ -939,6 +992,52 @@ def filtered_out_ids(
 ) -> set[str]:
     """Requested `--id`s the catalog knows but `--tag`/`--runner` removed."""
     return (requested & catalog_ids(catalogued)) - catalog_ids(selected)
+
+
+def describe_shadowed_ids(
+    requested_ids: set[str],
+    skipped: list[dict[str, Any]] | None,
+) -> str | None:
+    """Refuse a `--id` that names two annotations, one of which discovery dropped.
+
+    Q8, decided deliberately. Discovery fails **open** on a duplicate id -- it warns, skips
+    the second annotation, and catalogs the rest -- because failing closed is how
+    `run_field_tests.py --id <anything>` stayed dead tree-wide for twelve hours over one
+    malformed annotation. That reasoning is right for an *unreadable* annotation and this
+    does not touch it.
+
+    A duplicate is different in kind, and the difference is exactly tonight's subject. It is
+    not a local parse problem; it is two well-formed tests claiming one name. The requested
+    id still MATCHES -- the surviving copy -- so the runner never reaches the
+    unmatched-id path that would have printed the skip list, runs one of the two, and
+    reports **PASS**. The author of the second test is told that their test passed. That is
+    a surface reporting success for something that never ran.
+
+    So: loud and fatal for the *requested* ids only. A collision elsewhere in the tree still
+    only warns, which keeps the twelve-hour lesson intact -- one duplicate cannot make every
+    other id unrunnable. `--strict` discovery (what CI uses) still refuses the whole catalog.
+    """
+    if not requested_ids or not skipped:
+        return None
+    shadowed = [
+        item
+        for item in skipped
+        if isinstance(item, dict) and str(item.get("duplicateOf") or "") in requested_ids
+    ]
+    if not shadowed:
+        return None
+    lines = [
+        f"{len(shadowed)} requested --id value(s) are declared TWICE, and discovery kept only "
+        "the first. Running would report a result for one annotation under a name that means "
+        "two, so this refuses instead:",
+    ]
+    for item in sorted(shadowed, key=lambda entry: str(entry.get("duplicateOf"))):
+        lines.append(
+            f"  - {item.get('duplicateOf')}: dropped copy at "
+            f"{item.get('sourceFile')}:{item.get('sourceLine')} — {item.get('error')}"
+        )
+    lines.append("Rename one of them. `python3 tools/discover_field_tests.py --strict` lists every collision.")
+    return "\n".join(lines)
 
 
 def describe_unmatched_ids(
@@ -2023,6 +2122,12 @@ def run(args: argparse.Namespace) -> int:
     # "N passed" for fewer tests than were asked for reads as a clean run. Both
     # reasons an id can go missing are refused; they are reported apart, because
     # "your --tag excluded it" and "it does not exist" call for different fixes.
+    # Checked before the unmatched-id report, because a shadowed id is not missing: it
+    # matches the copy discovery kept, so nothing below would ever mention it.
+    shadowed = describe_shadowed_ids(requested_ids, list(catalog.get("skipped") or []))
+    if shadowed:
+        raise SystemExit(shadowed)
+
     filtered = filtered_out_ids(catalogued, selected, requested_ids)
     if missing or filtered:
         raise SystemExit(
