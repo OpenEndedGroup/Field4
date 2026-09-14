@@ -192,7 +192,7 @@ subdirectory
 (`src/jvmMain/kotlin/afield/FileWatchManager.kt:175#val key = path.register(`), so nothing under
 `files/` is watched at all.
 
-## The autosave guard, and why a save can decline
+## The autosave guard
 
 An autosave — a `save` with no message — that carries fewer boxes than the `metadata.edn` already on
 disk is refused rather than written, when the document has at least four boxes and at least a

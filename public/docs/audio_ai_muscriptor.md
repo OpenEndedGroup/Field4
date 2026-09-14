@@ -1,23 +1,5 @@
 # Multi-instrument transcription with MuScriptor
 
-## Milestone: what has actually been checked
-
-The small checkpoint has completed a headless job on an 8.192-second Sonic Pi recording.
-The first adapter returned 48 notes in about 2.6 seconds; MIDI, MessagePack, preview,
-and repeat-request caching were verified. Comparison with the waveform and spectrum found
-useful pulse timing and support for several pitches, but did **not** establish an accurate score.
-Piano and bass labels on electronic sounds are model hypotheses, not source instrumentation.
-The archived filename alone does not prove which version of the Sonic Pi code made the audio.
-
-That inspection also found two onsets after the recording ended and five offsets past it.
-Worker v2 discards out-of-range notes and clips surviving offsets to the source duration in
-both numerical artifacts and performance MIDI. Its new revision invalidates old cache entries.
-Re-running that recording with v2 produced 46 notes; all numerical note boundaries and all
-MIDI events were verified to lie within 8.192 seconds, with matching note counts.
-Performance MIDI uses source-relative timing, without an added bar-alignment delay.
-MuScriptor 0.3.0 does not expose beat quantization: the optional quantized artifact is absent.
-Use the synchronized source and piano roll to judge timing and pitch before treating results as a score.
-
 MuScriptor closes a useful loop in Field Audio: a mixed recording becomes an inspectable,
 instrument-labelled note sequence and ordinary MIDI. The integration keeps Field in charge of the
 source window, job, cache key, artifacts, visualization, and subsequent composition. MuScriptor
@@ -46,10 +28,24 @@ MessagePack times before Field draws them, while the correction remains recorded
 The MIDI writer applies the same correction through MuScriptor's beat-grid path, so moving the shared
 playhead between waveform and score does not introduce the model's small systematic lag.
 
-MuScriptor does **not** infer velocity. Field therefore draws these notes at uniform opacity rather
-than quietly inventing dynamics. Its tokenizer also cannot represent two simultaneous notes with the
-same pitch and instrument, and the upstream authors caution that dense mixes, unusual timbres,
-processed recordings, and exact offsets remain difficult.
+## Limits of a transcription
+
+A transcription is a set of model hypotheses, not a score. Read it against the synchronized
+waveform and piano roll before you treat it as one — on a short Sonic Pi recording the pulse timing
+and several of the pitches came out useful and the score as a whole did not.
+
+The instrument labels are hypotheses too. "Piano" and "bass" on an electronic source describe what
+the model heard, not what made the sound, and the `instruments` allow-list below is the way to say
+so up front.
+
+MuScriptor does **not** infer velocity, so Field draws these notes at uniform opacity rather than
+inventing dynamics. Its tokenizer cannot represent two simultaneous notes with the same pitch and
+instrument. MuScriptor 0.3.0 does not expose beat quantization at all, which is why the quantized
+artifact above is a handle rather than a file. And the upstream authors caution that dense mixes,
+unusual timbres, processed recordings, and exact offsets remain difficult.
+
+What has been run end to end, and the out-of-range-note fix that followed it, is in
+`dev_docs/MUSCRIPTOR_VERIFICATION.md`.
 
 ## Install and start the worker
 
@@ -62,8 +58,8 @@ uvx hf auth login
 ./scripts/run-muscriptor-worker.sh
 ```
 
-The first real request downloads that revision's checkpoint. The normal smoke test is intentionally
-model-free; the opt-in form downloads and exercises a real checkpoint:
+The first real request downloads that revision's checkpoint. The normal smoke test never touches a
+model; the opt-in form downloads and exercises a real checkpoint:
 
 ```diffstatic {data-lang=bash}
 ./scripts/test-muscriptor-worker.sh
@@ -153,7 +149,7 @@ client.musicTranscription(result).thenAccept { transcription ->
   deterministic default.
 - `beamSize`: beam search width; one is the default.
 - `preludeForcing`: carries unfinished notes across each five-second chunk boundary. Leave it on
-  unless deliberately trading continuity for batched throughput.
+  unless you are trading continuity for batched throughput.
 - `batchSize`: values above one require `preludeForcing = false`.
 - `tempoDetection`: required, best effort, or off. When a grid is found, its measured model-onset correction is applied
   to the source-relative note timeline.
