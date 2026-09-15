@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13778 public symbols across 346 source files**, 7588 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13778 public symbols across 346 source files**, 7627 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -23,7 +23,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 404 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
-| [Patterns](patterns.md) | 23 | 873 | 402 (46%) | Musical time, as a value. |
+| [Patterns](patterns.md) | 23 | 873 | 441 (50%) | Musical time, as a value. |
 | [Audio](audio.md) | 18 | 871 | 257 (29%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2218 | 766 (34%) | Field's small languages, from the host side. |
@@ -65,9 +65,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [autodiff_geometry.kt](math.md#autodiff-geometry-kt) | Math | 78 | 72 | Differentiable geometry: tracked vectors, planar inverse kinematics on an `FLine` chain, and a differentiable circle packing — the part of the AD layer whose results are drawable. | [Differentiating Functions](../autodiff_examples.md) |
 | [autodiff_optimize.kt](math.md#autodiff-optimize-kt) | Math | 45 | 44 | Gradient-descent optimizers that consume the exact gradients from `autodiff.kt` — `sgd`, `adam` and `lbfgs`, behind one `minimize` front door. | [Differentiating Functions](../autodiff_examples.md) |
 | [BandAnalysis.kt](audio.md#bandanalysis-kt) | Audio | 10 | 7 |  | [A pattern that moves particles](../chain_pattern_particles.md) |
-| [BeatLaunch.kt](patterns.md#beatlaunch-kt) | Patterns | 8 | 0 |  |  |
+| [BeatLaunch.kt](patterns.md#beatlaunch-kt) | Patterns | 8 | 7 | Quantised launching: `.onBeat(…)` holds any launchable value until the next boundary of a `PatClock`'s grid, and `waitForBeat(…)` is the same wait spelled as a suspend call for code inside `frames { }` or `loop { }`. |  |
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
-| [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 1 |  | [Boolean network music examples](../boolean_network_music_examples.md) |
+| [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 21 | Gives a `BooleanNetwork`'s states a duration, which is all it takes to read one as music. | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 20 |  |  |
 | [CandidateBoard.kt](audio-ai.md#candidateboard-kt) | Audio AI | 1 | 1 | The candidate board: the instrument for choosing between the alternatives a generation produced. |  |
 | [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 42 | 40 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
@@ -259,7 +259,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 5 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [Parser.kt](languages.md#parser-kt) | Languages | 5 | 0 |  |  |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 | The parameter-application algebra: combining patterns of different types, and choosing whose rhythm survives. | [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
-| [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 0 |  |  |
+| [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 11 | The transport everything scheduled in `afield.four.synth` reads: one monotonic number that can be paused, sought and subdivided, so that patterns, Boolean networks and audio launches share a single notion of the current time. |  |
 | [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 | Compositional structure: the transforms that build a piece out of a pattern, and the pitch vocabulary — scales, named chords, and voice leading. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How completions are ranked](../completion_ranking.md), [Faust](../faust.md) |
 | [PatCondense.kt](patterns.md#patcondense-kt) | Patterns | 26 | 15 | The shortest mini-notation expression that plays a given rhythm. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 | Bridge from `pat(...)` into scalar functions (`Functions.Fn`). |  |
@@ -276,7 +276,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatKolakoski.kt](patterns.md#patkolakoski-kt) | Patterns | 7 | 7 | Kolakoski rhythms: a bar whose own run lengths are written into it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatMiniNotation.kt](patterns.md#patmininotation-kt) | Patterns | 17 | 15 | The **mini-notation catalogue**: the forms a `pat("…")` string can take, one entry each, with the piano roll and the audio clip the documentation publishes under it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 | Where a rendered pattern's notes actually start, measured from the audio. |  |
-| [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 0 |  |  |
+| [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 1 | The step between `pat("bd sd").respond { … }` and a pattern that is actually playing: the return-value handler that recognises a `PatResponseSpec` coming back from a box and runs it. |  |
 | [PatPianoRollGallery.kt](patterns.md#patpianorollgallery-kt) | Patterns | 17 | 14 | Headless **piano-roll gallery** for the pattern language, drawing the operators defined across `TidalPatterns.kt`, `PatSignals.kt`, `PatAlgebra.kt` and `PatComposition.kt`. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatPitchDetection.kt](patterns.md#patpitchdetection-kt) | Patterns | 49 | 25 | What pitch a rendered pattern is actually sounding, measured from the audio. |  |
 | [PatSignals.kt](patterns.md#patsignals-kt) | Patterns | 29 | 29 | Continuous (signal) patterns, and the discretisers that turn them back into events. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md) |
