@@ -4,7 +4,7 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it, so it is queried rather than stored, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-23 source file(s), 873 public symbol(s), 402 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 963 public symbol(s), 461 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1266,6 +1266,311 @@ A tiny deterministic synth voice: one oscillator, one exponential-decay envelope
 | <code class="highlight"><span class="k">val</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">sustain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">attack</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+## PatSpatial.kt { #patspatial-kt }
+
+A pattern placed in space: `pat(...)` -> [`DoughEngine`](synthesis.md#dough-kt-doughengine) -> Steam Audio HRTF, in realtime.
+
+Three subsystems that do not know about each other, joined by two coercions and one thread:
+
+| | what it is | what this file asks of it |
+| --- | --- | --- |
+| [`PatPattern`](patterns.md#tidalpatterns-kt-patpattern) | Tidal-style pattern language, polyphonic by construction | query a cycle, read the annotations |
+| [`DoughEngine`](synthesis.md#dough-kt-doughengine) | the Strudel/superdough wasm synth, 32 voices | one engine per spatial source |
+| `afield.four.audio.steamaudio` | Steam Audio 4.8.1 over FFM | direct path plus HRTF, per source, per block |
+
+### The tag is the spatial parameter
+
+A pattern's named parameters ride on `PatEvent.annotations`, and `with` writes any key at all into
+that map, so the pattern language needed no extension to describe where a sound is. Six keys are
+read here and every other key is forwarded to Dough untouched:
+
+| tag | means | default |
+| --- | --- | --- |
+| `spat` | which spatial source -- i.e. which Dough engine -- the event plays on | `"0"` |
+| `az` | azimuth in degrees; 0 ahead, +90 to the right | 0 |
+| `elev` | elevation in degrees; +90 overhead | 0 |
+| `dist` | distance in metres | 1.5 |
+| `occl` | occlusion, 0 clear to 1 fully blocked | 0 |
+| `air` | 1 to apply air absorption over distance, 0 for none | 1 |
+
+```diffstatic {data-lang=kotlin}
+patSpatial(
+    pat("bd ~ sd ~, hh*8").with(
+        paramOf("spat", pat("<kit hats>")),
+        param("az", sine().range(-70.0, 70.0)),
+        param("dist", "1 3 1 6"),
+    ),
+    cps = 2.0,
+)
+```
+
+Because `az` can take a *continuous* pattern, `sine()` sampled per event is a source that moves
+between notes; and because the placement is held on the source rather than the note, the same
+pattern's next event on that `spat` group moves the whole group. The tags do not decorate the
+sound, they aim it.
+
+### Why one Dough engine per source, and what it costs the pattern
+
+Steam Audio spatialises a **mono** signal -- a direction is a property of a whole buffer.
+[`DoughEngine`](synthesis.md#dough-kt-doughengine) mixes its 32 voices to stereo and `MAX_ORBITS` is 1, so there is no way to pull two
+separable signals out of one engine. Hence one engine per `spat` group, which is also why `spat`
+exists at all rather than every event getting its own position.
+
+Two consequences worth stating plainly:
+
+- **A pattern's `pan` is overridden.** Every event is sent with `pan/0`, which puts all of that
+  engine's energy in its left channel, and that channel *is* the mono source signal. Panning is
+  lossless this way (no `0.5*(L+R)` summing) but `pan` as a musical parameter is gone: `az`
+  replaces it, and it is a better parameter.
+- **Note onsets quantise to a Dough block**, 128 frames or 2.9 ms at 44.1 kHz. Dough takes an
+  event through `evaluate()` and applies it at the next `dsp()`, so unlike [`PatSynthBank`](patterns.md#patsynth-kt-patsynthbank) -- which
+  is sample-exact, and proves it by rendering bit-identically at four buffer sizes -- this path
+  cannot place a note inside a block. That is a property of Dough's event API, not of the
+  scheduler.
+
+### Why Dough is not on the audio thread
+
+`PatSynth` puts the pattern *query* on a feeder thread because querying allocates, and keeps
+synthesis on the audio thread because Field's own voices are a fixed amount of float arithmetic.
+Neither half of that argument survives here. [`DoughEngine`](synthesis.md#dough-kt-doughengine) is GraalWasm: every block enters a
+polyglot context, and the JIT and the collector get a say in how long that takes.
+
+[`PatSpatialBudgetProbe`](patterns.md#patspatialbudgetprobe-kt-patspatialbudgetprobe) measures it: four sources, 128 frames, 44.1 kHz, a 2.902 ms budget, 8000
+blocks with the first tenth dropped as warmup. Two runs on the same machine, the second while
+other work was loading it:
+
+| | idle | under load |
+| --- | --- | --- |
+| median block | 0.120 ms | 0.117 ms |
+| p99 | 1.170 ms | 2.951 ms |
+| p99.9 | 2.405 ms | 9.522 ms |
+| worst block | 12.705 ms | **36.631 ms** |
+| blocks over budget | 3 of 7200 | 74 of 7200 |
+
+Read the two columns together, because the pair is the finding. The **median is flat** -- the
+arithmetic of four wasm engines and eight Steam Audio effects is 4% of a block either way, so
+nothing here needs optimising. The **tail moves by a factor of three** with load the audio thread
+has no say over. A path whose median fits twenty-five times over and which still misses one block
+in a hundred is not a path to shave down; it is one to decouple.
+
+So [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom) renders on its own thread into [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring), and the audio thread's entire
+job is a bounded copy out of that ring. A ring holding more milliseconds than the worst stall
+turns a dropout into a dip in `PatSpatialRing.fill`, and `PatSpatialRing.underruns` is the number
+that says whether that held.
+
+The one stall the ring cannot absorb is booting a [`DoughEngine`](synthesis.md#dough-kt-doughengine), at 130-500 ms. That is what
+`PatSpatialRoom.prescanCycles` exists for, and what `PatSpatialRoom.lateSourceBoots` counts when
+a `spat` tag turns up too late to have been prescanned.
+
+### What actually limits this, measured
+
+Not the arithmetic. On a ten-core machine at load average 33 -- twenty-odd agent sessions and a
+Gradle daemon at 180% CPU -- [`PatSpatialEngineSmoke`](patterns.md#patspatialenginesmoke-kt-patspatialenginesmoke) recorded the render thread producing 1274 of
+the 1500 blocks a four-second window needed, while being **busy only 1399 ms of those 4000**. A
+thread that is idle two thirds of the time and still misses its deadline is not a thread that
+needs faster code; it is a thread that is not being scheduled. Per-block Dough cost came out 4.5x
+its idle figure in the same run.
+
+Two things follow, and both are in the code rather than in advice:
+
+- `PatSpatialRoom.busyMsTotal` against elapsed time separates the two ways of falling behind.
+  Near 100% busy with underruns means the work does not fit and this design is wrong. Far below
+  it means the machine is oversubscribed, and [`PatSpatialEngineSmoke`](patterns.md#patspatialenginesmoke-kt-patspatialenginesmoke) says so instead of failing.
+- The ring is sized for the scheduler's stalls, not for this code's, which is why it defaults to
+  341 ms rather than the ~40 ms the arithmetic alone would justify.
+
+Raising the render thread's priority was tried and reverted; the comment in
+`PatSpatialRoom.start` records what it did instead of helping.
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatial/)
+
+### Top-level functions { #patspatial-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSpatialEventsForArc</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">arc</span><span class="p">:</span> <span class="nc">PatArc</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">originFrame</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;saw&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialEvent</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L209) | The events of `pattern` over `arc`, as Dough events with placements. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSpatial</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">maxSources</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">ringFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16384</span><span class="p">,</span> <span class="n">targetFillFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12288</span><span class="p">,</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">hrtfInterpolation</span><span class="p">:</span> <span class="nc">HrtfInterpolation</span> <span class="o">=</span> <span class="nc">HrtfInterpolation</span><span class="p">.</span><span class="nc">BILINEAR</span><span class="p">,</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;saw&quot;</span><span class="p">,</span> <span class="n">prescanCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">wasmPath</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">Paths</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="s">&quot;./src/jvmMain/resources/dough.wasm&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSpatialLaunch</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1042) | Play `pattern` through Dough, placed in space by Steam Audio, in realtime. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPatSpatialReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1088) | Teach Field that a [`PatSpatialLaunch`](patterns.md#patspatial-kt-patspatiallaunch) is something a box can be running. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showPatSpatial</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSpatialLaunch</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1134) | Play `pattern` in space and put a live waveform and spectrum in this box's output. |
+
+### PatSpatialPlacement { #patspatial-kt-patspatialplacement }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatSpatialPlacement</span><span class="p">(</span><span class="k">val</span> <span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">elevationDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="k">val</span> <span class="n">occlusion</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">airAbsorption</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L153)
+
+Where a spatial source is, in Steam Audio's listener-relative frame. Metres and degrees.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span></code> | Azimuth in degrees: 0 ahead, +90 to the listener's right. |
+| <code class="highlight"><span class="k">val</span> <span class="n">elevationDeg</span><span class="p">:</span> <span class="nc">Double</span></code> | Elevation in degrees: 0 at ear height, +90 overhead. |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance in metres. Clamped to `MIN_DISTANCE` so a source cannot land inside the head. |
+| <code class="highlight"><span class="k">val</span> <span class="n">occlusion</span><span class="p">:</span> <span class="nc">Double</span></code> | Occlusion, 0 clear to 1 fully blocked. |
+| <code class="highlight"><span class="k">val</span> <span class="n">airAbsorption</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether the direct path loses high frequencies over distance. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">direction</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L166) | Unit direction in Steam Audio's convention: -Z ahead, +X right, +Y up. |
+
+### PatSpatialEvent { #patspatial-kt-patspatialevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatSpatialEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceKey</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doughEvent</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">placement</span><span class="p">:</span> <span class="nc">PatSpatialPlacement</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L189)
+
+One pattern event, resolved into a Dough event and a placement, stamped with its start frame.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span></code> | Absolute frame on `PatSpatialRoom.framesRendered`'s clock. |
+| <code class="highlight"><span class="k">val</span> <span class="n">sourceKey</span><span class="p">:</span> <span class="nc">String</span></code> | The `spat` tag: which source this plays on. |
+| <code class="highlight"><span class="k">val</span> <span class="n">doughEvent</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code> | The Dough event, already carrying `pan/0`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">placement</span><span class="p">:</span> <span class="nc">PatSpatialPlacement</span></code> | Where the source moves to when this event starts. |
+
+### PatSpatialRing { #patspatial-kt-patspatialring }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PatSpatialRing</span><span class="p">(</span><span class="n">requestedFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L285)
+
+A single-producer single-consumer ring of interleaved stereo frames.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">capacityFrames</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L288) | Frames of headroom. Rounded up to a power of two. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fill</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L296) | Frames written but not yet consumed. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">room</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L299) | Frames the writer may add right now. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">underruns</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L303) | Frames the audio thread asked for and the ring could not supply. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">minFill</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L308) | Lowest fill the audio thread has ever seen, in frames. How close this came to a dropout. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">write</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L324) | Write `n` frames from `l` and `r`. Called only by the render thread. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">readInto</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L340) | Add `n` frames into `outL` and `outR`. Called only by the audio thread. |
+
+### PatSpatialSource { #patspatial-kt-patspatialsource }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialSource</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">engine</span><span class="p">:</span> <span class="nc">DoughEngine</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">direct</span><span class="p">:</span> <span class="nc">DirectEffect</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">binaural</span><span class="p">:</span> <span class="nc">BinauralEffect</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">directParams</span><span class="p">:</span> <span class="nc">DirectEffectParams</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">binauralParams</span><span class="p">:</span> <span class="nc">BinauralEffectParams</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">dry</span><span class="p">:</span> <span class="nc">AudioBuffer</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">shaped</span><span class="p">:</span> <span class="nc">AudioBuffer</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">stereo</span><span class="p">:</span> <span class="nc">AudioBuffer</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L371)
+
+One spatial source: a Dough engine, and the Steam Audio effects that place its output.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">notesPlayed</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L392) | Notes started on this source. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">placement</span><span class="p">:</span> <span class="nc">PatSpatialPlacement</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L396) | Where this source is right now, as the render thread last placed it. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">activeVoices</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L408) | Voices sounding in this source's engine, as the render thread last published them. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">peakVoices</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L413) | The most voices ever seen sounding at once on this source. A sampled chord shows up here. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L416) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L422) |  |
+
+### PatSpatialRoom { #patspatial-kt-patspatialroom }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialRoom</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span><span class="p">,</span> <span class="k">val</span> <span class="n">wasmPath</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSources</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetFillFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hrtfInterpolation</span><span class="p">:</span> <span class="nc">HrtfInterpolation</span><span class="p">,</span> <span class="k">val</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">prescanCycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L441)
+
+The render thread: pattern in, spatialised stereo into a [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring).
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">wasmPath</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxSources</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetFillFrames</span><span class="p">:</span> <span class="nc">Int</span></code> | Frames the render thread tries to keep in the ring. Its tolerance for its own stalls. |
+| <code class="highlight"><span class="k">val</span> <span class="n">hrtfInterpolation</span><span class="p">:</span> <span class="nc">HrtfInterpolation</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">prescanCycles</span><span class="p">:</span> <span class="nc">Int</span></code> | Cycles scanned up front for `spat` tags, so their engines boot before any audio is due. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">framesRendered</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L465) | Frames the render thread has produced. The clock a [`PatSpatialEvent`](patterns.md#patspatial-kt-patspatialevent) is stamped on. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">cyclesQueried</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L469) | Cycles of `pattern` queried so far. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">ready</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L479) | True once Steam Audio is up, every prescanned engine has booted, and the ring has filled. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">failure</span><span class="p">:</span> <span class="nc">Throwable</span><span class="o">?</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L484) | Non-null if the render thread died; the reason it died. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">lateSourceBoots</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L497) | Engines booted after the ring was already feeding an audio thread. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">worstBlockMs</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L502) | Longest single block the render thread has taken, in milliseconds. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">blocksRendered</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L507) | Blocks rendered since the ring first filled. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">slowBlocks</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L512) | Blocks that took longer than 5 ms -- longer than the audio they produced. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">stallBlocks</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L517) | Blocks that took longer than 50 ms, which no reasonable ring depth absorbs repeatedly. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">slowBlockMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L522) | Total milliseconds spent in blocks over 5 ms. How much lateness there is to absorb. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">busyMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L533) | Milliseconds this thread spent doing its own work since the ring filled. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">queryMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L537) | Where the render thread spends its time, split by stage, in milliseconds. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">eventMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L541) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">synthMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L545) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">spatialiseMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L549) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sources</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialSource</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L553) | Sources that exist, in the order their `spat` tags were first seen. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">turnListener</span><span class="p">(</span><span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L561) | Turn the listener's head to `azimuthDeg`, from any thread. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">listenerAzimuthDeg</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L567) | The listener's heading in degrees, as the render thread last applied it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L845) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isRunning</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L851) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L853) |  |
+
+### PatSpatialBank { #patspatial-kt-patspatialbank }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialBank</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nf">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L878)
+
+The audio thread's end of the chain: drain a [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring) into the output.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L887) | Frames the audio thread has pulled. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L889) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L901) |  |
+
+### PatSpatialLaunch { #patspatial-kt-patspatiallaunch }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialLaunch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSpatialBank</span><span class="p">,</span> <span class="k">val</span> <span class="n">room</span><span class="p">:</span> <span class="nc">PatSpatialRoom</span><span class="p">)</span> <span class="p">:</span> <span class="nf">StereoNode</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L916)
+
+A spatialised pattern, as one thing a box can return.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSpatialBank</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">room</span><span class="p">:</span> <span class="nc">PatSpatialRoom</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">tap</span><span class="p">:</span> <span class="nc">StereoScope</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L922) | A tap on this launch's own output, fed from the audio thread. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L924) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sources</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialSource</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L929) | The spatial sources the pattern's `spat` tags have brought into being. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">turnListener</span><span class="p">(</span><span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L932) | Turn the listener's head. Positive is to the right. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">underruns</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L935) | Frames the audio thread asked for and the ring could not supply. Zero is the whole point. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">awaitReady</span><span class="p">(</span><span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">20</span><span class="n">&#95;000L</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L949) | Block until the render thread has Steam Audio up and has filled the ring, or `timeoutMs`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">advanceOffline</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L968) | Pull `frames` through the bank and into `tap`, for when nothing else is pulling it. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L991) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L995) |  |
+
+## PatSpatialBudgetProbe.kt { #patspatialbudgetprobe-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatialBudgetProbe.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/)
+
+### PatSpatialBudgetProbe { #patspatialbudgetprobe-kt-patspatialbudgetprobe }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialBudgetProbe</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L40)
+
+Measures the cost of one [`DoughEngine`](synthesis.md#dough-kt-doughengine) per spatial source, against one audio block's deadline.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L47) |  |
+
+## PatSpatialEngineSmoke.kt { #patspatialenginesmoke-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatialEngineSmoke.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/)
+
+### PatSpatialEngineSmoke { #patspatialenginesmoke-kt-patspatialenginesmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialEngineSmoke</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L29)
+
+Plays a spatialised pattern through the real [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine), and checks its thread pulled it.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L32) |  |
+
+## PatSpatialSmokeTest.kt { #patspatialsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatialSmokeTest.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/)
+
+### PatSpatialSmokeTest { #patspatialsmoketest-kt-patspatialsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialSmokeTest</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L29)
+
+Proves the whole route -- pattern language, Dough, Steam Audio HRTF -- on real audio, in realtime.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L132) |  |
 
 ## PatSynth.kt { #patsynth-kt }
 
