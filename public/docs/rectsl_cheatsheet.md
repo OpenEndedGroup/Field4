@@ -2,6 +2,11 @@
 
 RectSL is Field's rectangle scene language. It creates animated rectangle geometry on the CPU, samples exact object state for analysis, and lowers sampled scenes into `afield.four` buffers. StackSL is the material language: RectSL decides where rectangles are and what object/material metadata they carry; StackSL decides how a material shades.
 
+Every section below carries a short snippet and a pointer into
+[RectSL examples](rectsl_examples.md), where the same words appear as complete, rendered
+clips. The snippets here are fragments — they assume a scene header and are compiled
+inside one — so when you want a program to copy and run, follow the pointer.
+
 A RectSL string starts with `#rectsl` when embedded in Kotlin:
 
 ```diffstatic {data-lang=kotlin}
@@ -74,6 +79,21 @@ active object. The arrow is part of the word, not optional punctuation.
 | `->fit cover` | `--` | Preserve aspect ratio and cover target. |
 | `->fit stretch` | `--` | Stretch wall coordinates to target. |
 
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 1600 900 pixels    # or `12 8 meters`, or `12 8 abstract`
+->fit cover               # contain | cover | stretch
+->background 0x0a0a12
+->duration 4
+->fps 30
+
+"mark" rect  0 0 ->xy  200 ->square  0xffcc33 solid ->fill ;
+```
+
+Worked: [Kaleidoscope](rectsl_examples.md#kaleidoscope) for `->background`,
+[Grid field](rectsl_examples.md#grid-field) for `pixels` with `->fit cover`, and
+[Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `->fit stretch`.
+
 ## Objects and groups
 
 | Word | Stack | Notes |
@@ -91,6 +111,20 @@ active object. The arrow is part of the word, not optional punctuation.
 | `copy`, `clone` | `-- object` | Shallow copy of the active object. |
 | `copy-deep`, `clone-deep` | `-- object` | Deep copy of a group and its descendants. |
 | `->group-selected` | `selection [id] -- group` | Reparents selected objects into a new group. |
+
+```diffstatic {data-lang=rectsl}
+"orbit" group
+  "cell" rect  0 0 ->xy  1.2 ->square  "petal" ->tag ;
+  "cell" ->select clone  2.5 0 ->xy ;
+end
+
+"orbit" ->select copy-deep  "twin" ->rename  0 -3 ->translate ;
+all rects  '( "petal" tagged? ) filter  "petals" ->group-selected ;
+```
+
+Worked: [Groups, selections, and StackSL material](rectsl_examples.md#groups-selections-and-stacksl-material),
+and [Selection & logic](rectsl_examples.md#selection-logic), which walks the whole
+tree and exercises `rect?`, `group?`, `id` and `copy-deep` in one scene.
 
 ## Geometry and ordering
 
@@ -118,6 +152,32 @@ active object. The arrow is part of the word, not optional punctuation.
 | `->layer` | `number|string|track --` | Draw layer. Higher layers render later. |
 | `->front`, `->back` | `--` | Move active object/selection within its layer. |
 
+```diffstatic {data-lang=rectsl}
+"mark" rect
+  0 0 ->xy  2 0.6 ->wh
+  '( 0=-5  4=5 ) ->x              # a quote in a channel is a track
+  '( 0=0   4=6.28318 ) ->rot
+  0.8 ->scale  0.7 ->alpha
+  2 ->layer  0.2 ->z  ->front
+  0.5 ->appear  3.5 ->vanish
+;
+
+"dart" rect  1.1 0.26 ->wh       # drawn along its own +x, so it reads as an arrow
+  '( 0=-5  4=5 ) ->x  '( 0=-3  2=3  4=-3 ) ->y
+  ->face-travel                   # rotation taken from its own travel
+;
+
+"bullet" rect  0.42 ->square  '( 0=-8  2.5=8 ) ->x
+  24 '( -3 f 6 * + ->y   i 0.18 *  2.5 ->live ) array
+;
+```
+
+Worked: [Named tracks and draw layers](rectsl_examples.md#named-tracks-and-draw-layers)
+for `->layer`/`->z`, [Facing the way you travel](rectsl_examples.md#facing-the-way-you-travel)
+for `->face-travel` and `->face-travel-at`, and
+[Spawning and despawning](rectsl_examples.md#spawning-and-despawning-life-windows)
+for `->appear`/`->vanish`/`->live`.
+
 ## Paint and material
 
 | Word | Stack | Notes |
@@ -132,6 +192,33 @@ active object. The arrow is part of the word, not optional punctuation.
 | `->shader` | `x y z w --` | Sets per-rect shader data. |
 
 Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape is genuinely shader-only.
+
+Note that `rgb`, `rgba` and `material` read their arguments *forward* from the source
+rather than off the stack, so they are written prefix: `rgb 0.9 0.4 0.2`, not
+`0.9 0.4 0.2 rgb`.
+
+```diffstatic {data-lang=rectsl}
+material tint '(
+  uv 4.0 * sin abs
+)
+
+"panel" rect  0.5 0.5 ->nxy  0.8 0.4 ->nwh
+  rgb 0.12 0.34 0.62  solid ->fill
+;
+
+"chip" rect  0 -2.6 ->xy  1 ->square
+  0xffcc33 0xff2266  -0.5 0  0.5 0  linear ->fill   # two-colour ramp across the rect
+  0.1 0.2 0.5 0 ->shader                            # per-rect data its material reads
+  tint ->material
+;
+
+"ghost" rect  3 -2.6 ->xy  1 ->square  rgba 0.9 0.4 0.2 0.5 solid ->fill ;
+```
+
+Worked: [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `rgb`/`rgba`/`->shader`,
+[Gradient sweep](rectsl_examples.md#gradient-sweep) for `linear`, and
+[Groups, selections, and StackSL material](rectsl_examples.md#groups-selections-and-stacksl-material)
+for a material on a whole selection.
 
 ## Tracks
 
@@ -161,6 +248,25 @@ time and value of a key to read the pairing aloud: `0=0.2` means "0.2 at time
 | `alpha-track` | `-- track` | Pushes alpha track. |
 | `z-track`, `layer-track` | `-- track` | Pushes ordering tracks. |
 
+A named track is defined once and referenced by many rects; the `*-track` accessors
+read a channel's curve back out so it can be reshaped and assigned again.
+
+```diffstatic {data-lang=rectsl}
+linear-track "rise" '( 0=-3  2=0  4=3 )
+hold-track "pulse" '( 0=0.2  2=1  3=0.45 )
+
+"bar" rect  0 0 ->xy  0.7 1.8 ->wh
+  "rise" track-ref ->y
+  "pulse" track-ref smooth ->alpha
+  '( 0=0.6  2=1.6  4=0.6 ) tcb  -0.4 0 0 tcb!  ->scale
+  alpha-track  0.1 value+  0 1 clamp-values  ->alpha   # read it back, reshape, reassign
+;
+```
+
+Worked: [Named tracks and draw layers](rectsl_examples.md#named-tracks-and-draw-layers),
+and [Key lenses](rectsl_examples.md#key-lenses), which sets and re-reads every animated
+channel in turn.
+
 ## Track transforms
 
 | Word | Stack | Notes |
@@ -183,6 +289,21 @@ time and value of a key to read the pairing aloud: `0=0.2` means "0.2 at time
 | `ease-out` | `scalar -- track` | Quadratic ease-out. |
 | `ease-in-out` | `scalar -- track` | Symmetric ease-in/out. |
 | `ease-smoothstep`, `smooth` | `scalar -- track` | Hermite smoothstep. |
+
+One motion, warped only in time. Rows of the same sweep fall into a round:
+
+```diffstatic {data-lang=rectsl}
+"plain"   rect  0  3 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) ->x ;
+"delayed" rect  0  1 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) 1.5 delay-time ->x ;
+"faster"  rect  0 -1 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) 1.4 time* ->x ;
+"bounced" rect  0 -3 ->xy  1 ->square  '( 0=-8  1=8  2=-8 ) 2 pingpong-time ->x ;
+"eased"   rect  0 -5 ->xy  1 ->square  '( 0=-8  2=8 ) ease-in-out 2 loop-time ->x ;
+```
+
+Worked: [Time canon](rectsl_examples.md#time-canon) for the retiming words side by side,
+[Easing ladder](rectsl_examples.md#easing-ladder) for the easings pulling apart, and
+[Key lenses](rectsl_examples.md#key-lenses) for `value+`, `clamp-values` and the
+`keys-before`/`keys-after`/`keys-between` window filters.
 
 ## Selection and transforms
 
@@ -210,6 +331,27 @@ time and value of a key to read the pairing aloud: `0=0.2` means "0.2 at time
 | `->pingpong-all-time` | `period --` | Ping-pong every track. |
 | `->stagger-time` | `stepSeconds --` | Increasing time delay over selection order. |
 
+Build first, then sort the scene out by logic:
+
+```diffstatic {data-lang=rectsl}
+"pip" rect  0 0 ->xy  0.8 ->square  "spark" ->tag
+  '( 0=0  4=6.28318 ) ->rot
+  9 '( fc abs 0.7 *  0.3 +  ->alpha ) array
+  1.4 0 ->stagger
+;
+
+"pip" ->select clone  "mirrored" ->rename  3 ->mirror-x-at  ->front ;
+all rects  '( 0.9 ->opacity* ) each ;
+all  '( "spark" tagged? ) filter  '( 1.2 ->scale ) map ;
+"pip" ->select  2 ->loop-all-time ;
+```
+
+Worked: [Selection & logic](rectsl_examples.md#selection-logic) for the tree-walking and
+filtering words, [Whole-timeline transforms](rectsl_examples.md#whole-timeline-transforms)
+for the `*-all-time` family and `->stagger`,
+[Stagger cascade](rectsl_examples.md#stagger-cascade) for `->stagger-time`, and
+[Kaleidoscope](rectsl_examples.md#kaleidoscope) for the mirrors with `->front`/`->back`.
+
 ## Loops and blocks
 
 | Word | Stack | Notes |
@@ -221,6 +363,23 @@ time and value of a key to read the pairing aloud: `0=0.2` means "0.2 at time
 | `range` | `start end quote --` | Runs quote for each integer in `[start, end)`, or descending when `end < start`. |
 | `i` | `-- number` | Current loop index/value. |
 | `loop-count`, `n` | `-- number` | Count for the current loop. |
+
+```diffstatic {data-lang=rectsl}
+8 '(
+  "cell" rect  i 3.5 -  2.2 *  3 ->xy  1.2 ->square
+    i 2 >=  i 6 <=  and  not  0.55 *  0.45 +  ->alpha
+    '( 0.9 ->opacity* ) apply
+) times
+
+0 6 '( "dot" rect  i 2 * 6 -  0 ->xy  0.6 ->square ) range
+
+4 '( "tick" rect  i loop-count 1 - /  8 *  4 -  -3 ->xy  0.5 ->square ) repeat
+```
+
+Worked: [Selection & logic](rectsl_examples.md#selection-logic) for `times` with the
+comparison words, [Grid field](rectsl_examples.md#grid-field) for `grid`'s cell context,
+and [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `loop-count`, `apply`
+and `defer`.
 
 ## Array primitives
 
@@ -244,19 +403,27 @@ Array primitives *reproduce a subexpression with modification*: the Fischinger i
 | `cols`, `rows` | `-- number` | Grid dimensions inside `grid`. |
 | `colc`, `rowc` | `-- number` | Centered column/row: `col-(cols-1)/2`, `row-(rows-1)/2`. |
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=rectsl}
 # eight petals fanned around a centre, each rotated to face outward
-"petal" rect  0.4 1.2 wh
-  8 3 '( f0 tau * rot ) radial
+"petal" rect  0.4 1.2 ->wh
+  8 3 '( f0 tau * ->rot ) radial
 ;
 
 # a centered grid whose cell alpha ripples with distance from the middle
 5 3 '(
-  "c" rect  colc 1.4 *  rowc 1.4 *  xy  1 square
-    colc abs rowc abs max  0.4 *  1 swap - alpha
-  ;
-) grid
+  "c" rect  colc 1.4 *  rowc 1.4 * ->xy  1 ->square
+    colc abs rowc abs max  0.4 *  1 swap -  ->alpha
+  ) grid
 ```
+
+Worked: [Reproduction with modification](rectsl_examples.md#reproduction-with-modification-array-primitives)
+runs the whole family as animated clips —
+[Radial bloom](rectsl_examples.md#radial-bloom),
+[Grid ripple](rectsl_examples.md#grid-ripple),
+[Spiral shards](rectsl_examples.md#spiral-shards),
+[arc/spiral/sunflower](rectsl_examples.md#more-array-generators-arc-spiral-sunflower),
+and [Splitting](rectsl_examples.md#splitting-one-shell-becomes-a-spray) with its
+[recursive cascade](rectsl_examples.md#recursive-splitting-a-cascade).
 
 ## Data visualization
 
@@ -289,15 +456,16 @@ Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0
 | `heat`, `heatmap` | `data cols rows name -- selection` | Row-major grid heatmap filling the wall (row 0 at top); each cell coloured with colormap `name` by its normalized value. Pushes the selection of cells. |
 | `scatter` | `xdata ydata name -- selection` | Plot `(->x, ->y)` points as small squares, each axis normalized to the wall; colour follows normalized `->y` through colormap `name`. Pushes the selection of points. |
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=rectsl}
 # a colour legend: 24 thin rects sweeping one colormap across the wall
-"swatch" rect  0.6 3 wh
-  24 '( fc 11 * 0 offset  "viridis" f colormap solid fill ) array
+"swatch" rect  0.6 3 ->wh
+  24 '( fc 11 *  0 ->offset  "viridis" f colormap solid ->fill ) array
 ;
 
 # a bar chart from literal data, staggered fade-in, coloured by value
-'( 3 7 2 9 5 8 4 6 ) data "magma" bars
-  '( '( 0=0 0.6=1 ) ease-out alpha ) each  0.08 stagger-time
+'( 3 7 2 9 5 8 4 6 ) data  normalize  "magma" bars
+  '( '( 0=0 0.6=1 ) ease-out ->alpha ) each
+  0.08 ->stagger-time
 
 # a heatmap of a computed field (linspace + data-map fill the grid)
 0 1 48 linspace  '( 6 * sin 1 + ) data-map  8 6 "turbo" heat
@@ -310,6 +478,13 @@ Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0
   dup extent drop drop  dup dmin drop  dup dmax drop
   dup data-len drop  dup 2 data-at drop  normalize "coolwarm" bars
 ```
+
+Worked: [Data visualization](rectsl_examples.md#data-visualization) renders each of these
+on its own — [Colormap legend](rectsl_examples.md#colormap-legend),
+[Bar chart from data](rectsl_examples.md#bar-chart-from-data),
+[Heatmap of a computed field](rectsl_examples.md#heatmap-of-a-computed-field),
+[Scatter plot](rectsl_examples.md#scatter-plot), and
+[Reading a Data value](rectsl_examples.md#reading-a-data-value).
 
 ### Plotting layer
 
@@ -328,11 +503,15 @@ The chart idioms above each normalize by their own extent and fill the wall. The
 | `colorbar` | `name -- selection` | A continuous colour ramp for `name` in the right margin, with min/mid/max numerals from the y domain. |
 | `legend` | `count name -- selection` | A key of `count` discrete colour swatches sampling colormap `name`, stacked top-right. |
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 16 10 abstract
+->duration 3
+->fps 30
+
 # one shared domain, axes underneath, three series overlaid, plus legends
-wall 16 10 abstract
-0 10 xdomain   0 1 ydomain     # or `0 10 0 1 ->domain` in one go
-0.12 0.14 0.12 0.06 margins    # or just `->frame` for sensible defaults
+0 10 ->xdomain   0 1 ->ydomain      # or `0 10  0 1 ->domain` in one go
+0.12 0.14 0.12 0.06 ->margins       # or just `->frame` for sensible defaults
 axes
 0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
 0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
@@ -340,6 +519,9 @@ axes
 "viridis" colorbar
 5 "turbo" legend
 ```
+
+Worked: [A plotted figure](rectsl_examples.md#a-plotted-figure-shared-domain-axes-overlaid-series-legends),
+which shows the same figure both with `->frame`/`->domain` and with the axes set by hand.
 
 ## Musicality — the pattern language as scene structure
 
@@ -370,6 +552,15 @@ it as a musician would. The two spellings of tempo commute: `->tempo` remembers 
 | `cycle-secs` | `-- seconds` | The length of one cycle. |
 | `scene-cycles` | `-- number` | How many cycles the scene lasts. |
 
+```diffstatic {data-lang=rectsl}
+->tempo 120          # a 4/4 bar at two seconds
+->beats-per-cycle 4
+->duration-cycles 4  # …so the piece is eight seconds long, unwritten
+
+"beat" rect  0.6 ->square  1 beats 8 *   2 cycles 4 * ->xy ;
+"cyc"  rect  0.6 ->square  cycle-secs 4 *  scene-cycles 1 - ->xy ;
+```
+
 ### `pat`: one copy per event
 
 | Word | Stack | Notes |
@@ -385,6 +576,36 @@ it as a musician would. The two spellings of tempo commute: `->tempo` remembers 
 | `param?` | `key -- bool` | `1` when the event carries that parameter. |
 
 `i`, `n`, `f`, `f0`, `fc` and `ic` work inside a `pat` body exactly as they do inside `array`.
+
+```diffstatic {data-lang=rectsl}
+->tempo 120
+->duration-cycles 4
+
+# one template, sixteen strikes: four a bar, each alive for its own quarter
+"kick" rect  1.3 ->square  0xff5a3c solid ->fill
+  "bd*4" '(
+      step 1.5 -  4.2 * ->x
+      '( 0=5.5  0.34=0 ) ease-out ->y
+      '( 0=0  0.10=1  0.5=0 ) linear ->alpha
+  ) pat
+;
+
+# the per-event context: which atom, how long, which cycle, what it carries
+"ctx" rect  0.5 ->square
+  "bd:2 sd cp*2" '(
+      t 2 * 9 - ->x
+      cyc 2 *  step 0.4 *  +  3 - ->y
+      "n" param 0.1 *  0.4 + ->alpha
+      "bd:2" atom? 0.4 * ->rotate
+      dur 3 *  0.3 + ->scale
+      atom ->tag
+  ) pat
+;
+```
+
+Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) is `pat` at its plainest
+against a clock; [The rest of the surface](rectsl_examples.md#the-rest-of-the-surface)
+puts every per-event context word on screen at once.
 
 ### Patterns as values
 
@@ -408,6 +629,23 @@ name still errors rather than silently becoming zero.
 | `kolakoski` | `steps rotation -- pattern` | A Kolakoski rhythm as events. The terms of the self-describing word `1 2 2 1 1 2 …` read as alternating on/off run lengths, so the figure's own run lengths spell the word back: `x..xx.x..x..xx.x` over sixteen steps. |
 | `kolakoski-gaps` | `steps rotation -- pattern` | `kolakoski`, reading each term as the gap to the next onset instead of a run length: `xx.x.xxx.xx.x.xx` — eleven onsets in sixteen steps against the run reading's eight, and never more than one rest between hits. |
 | `hold-pat` | `signal -- track` | Sample-and-hold: a rest keeps the previous value instead of falling to zero. Pure — it looks backwards, it does not remember. |
+
+```diffstatic {data-lang=rectsl}
+->tempo 90
+->duration-cycles 4
+
+"smooth"    rect  1 ->square   sine 12 * 6 -  ->x   3.4 ->y   sine tau * ->rot ;
+"stepped"   rect  1 ->square   sine 8 segment  12 *  6 -  ->x   1.6 ->y ;
+"steps"     rect  0.9 ->square  "0 3 -3 6" ->x   -0.2 ->y ;   # a string with numbers is mini-notation
+"held"      rect  0.9 ->square  "-6 ~ 6" mini nums hold-pat ->x   -2 ->y ;
+"remapped"  rect  0.8 ->square  tri -5 5 pat-range ->x   -3.6 ->y ;
+"quantised" rect  0.8 ->square  saw 0.25 quantise 16 * 8 -  ->x   -4.6 ->y ;
+"noisy"     rect  0.8 ->square  7 perlin bipolar 6 *  ->x   4.4 ->y ;
+```
+
+Worked: [Signals, stepped and smooth](rectsl_examples.md#signals-stepped-and-smooth), and
+[Kolakoski rhythms](rectsl_examples.md#kolakoski-rhythms) for `kolakoski`/`kolakoski-gaps`
+against `euclid`.
 
 ### Pattern transforms
 
@@ -440,6 +678,22 @@ applies its transform to a different slice of the bar on every cycle, so there i
 to hand the quote, and a pattern holding a live interpreter would be re-entered from the render
 loop. `iter` gives the same walking feel without a quote.
 
+```diffstatic {data-lang=rectsl}
+->cps 1
+->duration-cycles 8
+
+"plain"     rect  0.7 ->square  "bd*3" '( f0 14 * 7 -  4.2 ->xy ) pat ;
+"faster"    rect  0.7 ->square  "bd*3" mini 3 '( 2 fast ) every '( f0 14 * 7 -  2.4 ->xy ) pat ;
+"walking"   rect  0.7 ->square  "bd sd hh cp" mini 4 iter '( f0 14 * 7 -  0.6 ->xy ) pat ;
+"echoed"    rect  0.7 ->square  "bd*3" mini 1 8 '( 2 ply ) off '( f0 14 * 7 -  -1.2 ->xy ) pat ;
+"swung"     rect  0.7 ->square  "bd*8" mini 4 swing '( f0 14 * 7 -  -3 ->xy ) pat ;
+"sometimes" rect  0.7 ->square  "bd*4" mini 0.5 '( press ) sometimes-by '( f0 14 * 7 -  -4.6 ->xy ) pat ;
+```
+
+Worked: [Variation operators](rectsl_examples.md#variation-operators) is exactly this scene
+animated; [The rest of the surface](rectsl_examples.md#the-rest-of-the-surface) covers the
+transforms not shown here.
+
 ### Variation on a selection
 
 These apply the same ideas to scene objects rather than to rhythms, which makes them useful on
@@ -453,6 +707,30 @@ material that has nothing to do with patterns.
 | `->degrade` | `selection p -- selection` | Deterministic per-object, per-cycle dropout. |
 | `->stagger-swing` | `selection step amount -- selection` | `->stagger-time`, with every odd copy pushed a further `amount` of a step late. |
 
+```diffstatic {data-lang=rectsl}
+->tempo 90
+->duration-cycles 4
+
+"flash" rect  16 9 ->wh  0 0 ->xy  0xffffff solid ->fill  0 ->alpha  ->back
+  selected 4 '( 0.14 ->alpha ) ->every      # only on every fourth bar
+;
+"twin" rect  0.7 ->square  5 2.6 ->xy
+  selected '( 0.45 ->alpha ) ->jux           # a mirrored, dimmer partner
+;
+"echo" rect  0.6 ->square  '( 0=-8  4=8 ) linear ->x  0.4 ->y
+  selected 0.5 '( 0.4 ->alpha ) ->off        # a delayed, transformed copy
+;
+"row" rect  0.5 ->square  -7 -5.4 ->xy
+  8 '( ic 1.6 * 0 ->offset ) array
+  0.12 0.6 ->stagger-swing
+  0.25 ->degrade
+;
+```
+
+Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) for `->every` and
+`->euclid`; [Signals, stepped and smooth](rectsl_examples.md#signals-stepped-and-smooth)
+for `->jux`, `->off`, `->stagger-swing` and `->degrade`.
+
 ### Rhythm in space
 
 | Word | Stack | Notes |
@@ -460,6 +738,26 @@ material that has nothing to do with patterns.
 | `strip` | `[template] pattern quote -- selection` | Lay one copy per event **across the wall** instead of across time. One cycle spans the wall; each copy is centred on its event and as wide as the event is long. The body sees the same `t`/`dur`/`step`/`atom` context a `pat` body does. |
 | `->euclid` | `selection pulses steps rotation -- selection` | Keep the Euclidean onsets of a selection and hide the rest. The off-steps are hidden rather than deleted — RectSL has no node removal. |
 | `->kolakoski` | `selection steps rotation -- selection` | The same layout on the Kolakoski figure — its run-length reading, which is the one that reads as a rhythm along a row. Turn `steps` up past the selection and the mask wraps, as `->euclid`'s does. |
+
+```diffstatic {data-lang=rectsl}
+->tempo 120
+->duration-cycles 2
+
+# the same notation, spent on *where* instead of on *when*
+"tick" rect  0.34 ->square
+  "bd [sd sd] hh*4" '( -3.9 ->y  0.55 ->alpha ) strip
+;
+
+# sixteen slots laid out in space; the figure decides which stay lit
+"slot" rect  0.55 1.8 ->wh
+  16 '( f 15 *  7.5 -  2.8 ->xy ) array
+  16 0 ->kolakoski        # or `5 16 0 ->euclid`
+;
+```
+
+Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) reads `pat` and `strip`
+side by side on the same string; [Kolakoski rhythms](rectsl_examples.md#kolakoski-rhythms)
+compares the two maskings.
 
 ## Distribution curves (Functions bridge)
 
@@ -475,17 +773,37 @@ Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afie
 | `reflect` | `Fn -- Fn` | Mirror a curve about `0.5`: `reflect(->x) = fn(1-x)`. |
 | `tile` | `Fn k -- Fn` | Repeat a curve `k` times across `[0, 1]`. |
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=rectsl}
 # alpha eased across the array with an elastic overshoot
-"c" rect  1 square
-  9 '( ic 1.4 * 0 offset  f "elastic-out" ease alpha ) array
+"c" rect  1 ->square
+  9 '( ic 1.4 *  0 ->offset   f "elastic-out" ease ->alpha ) array
 ;
 
 # a gaussian falloff and reproducible noise scatter, sampled at f
-"c" rect  0.6 square
-  12 '( ic 1.1 * 0 offset  gaussian f sample alpha  7 noise f sample 2 * rotate ) array
+"d" rect  0.6 ->square  0 -3 ->xy
+  12 '(
+    ic 1.1 *  0 ->offset
+    gaussian f sample ->alpha
+    7 noise f sample  2 *  ->rotate
+  ) array
+;
+
+# `reflect` mirrors a curve about 0.5; `tile` repeats it k times across the array
+"e" rect  0.4 ->square  0 3 ->xy
+  16 '(
+    ic 0.9 *  0 ->offset
+    gaussian 3 tile  f sample  2 *  0.2 +  ->scale
+    7 noise reflect  f sample  0.3 *  0 ->translate
+  ) array
 ;
 ```
+
+Worked: [Distribution curves](rectsl_examples.md#distribution-curves-the-functions-bridge)
+for the [gaussian comb](rectsl_examples.md#gaussian-comb) and
+[eased orbit](rectsl_examples.md#eased-orbit),
+[Curve transforms](rectsl_examples.md#curve-transforms) for `tile` and `reflect`, and
+[Evolving a distribution](rectsl_examples.md#evolving-a-distribution-toward-a-target) for
+what the graph-backed curves buy you.
 
 Note: `gaussian`/`noise`/`fbm` here build CPU `Fn` curves on the RectSL stack; the `fbm`/`palette` seen inside `material '( … )` quotes are StackSL GPU words in a separate language: same names, different context.
 
@@ -493,10 +811,10 @@ Note: `gaussian`/`noise`/`fbm` here build CPU `Fn` curves on the RectSL stack; t
 
 For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a `with(Functions){ … }` scope) anywhere a value is expected. Whatever the Kotlin returns — a Number, an `Fn`, or a `Track<Double>` — is pushed onto the stack: the whole `Functions` API is available inline. The escape also sees the array context (`i`, `n`, `f`, `f0`, `fc`, `ic`) and can vary per copy:
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=rectsl}
 # a curve sampled at f, and a per-copy value computed straight in Kotlin
-"c" rect  1 square
-  9 '( {{ i * 1.2 }} 0 offset  {{ sin(2) through gain(0.5) }} f sample alpha ) array
+"c" rect  1 ->square
+  9 '( {{ i * 1.2 }} 0 ->offset   {{ sin(2) through gain(0.5) }} f sample ->alpha ) array
 ;
 ```
 
@@ -523,6 +841,25 @@ Cost: each unique escape is compiled to a lambda **once** (~76 ms of K2 compile,
 | `<`, `lt`, `<=`, `lte`, `>`, `gt`, `>=`, `gte`, `=`, `eq`, `!=`, `<>`, `neq` | `a b -- bool` | Numeric/string comparisons where supported. |
 | `and`, `or`, `not` | `bool... -- bool` | Boolean operators using nonzero truth. |
 | `pi`, `tau` | `-- number` | Constants. |
+
+```diffstatic {data-lang=rectsl}
+12 7 '(
+  "c" rect
+    colc 1.1 *  rowc 1.1 * ->xy
+    colc dup *  rowc dup *  +  sqrt                 # distance from the middle
+    dup  0 5 smoothstep  neg 1 +  0.05 max  0 1 clamp  0.9 *  0.1 +  ->alpha
+    5 min  neg 5 +  5 /  0.4 pow  0.4 *  0.4 +  ->square
+    col cols 1 - /  row rows 1 - /  over  +  0.5 *  swap drop
+    4 *  ceil  4 /  pi *  ->rot
+  ) grid
+```
+
+Worked: [Grid field](rectsl_examples.md#grid-field) is this scene animated, and
+[Selection & logic](rectsl_examples.md#selection-logic) covers the comparison and
+boolean words. The whole
+[operator-coverage set](rectsl_examples.md#operator-coverage-the-rest-of-the-language)
+is guaranteed to exercise every word in this cheatsheet at least once — a test fails
+if that stops being true.
 
 ## Lowering to GLSL: a scene as a signed distance field
 
