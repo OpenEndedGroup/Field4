@@ -323,16 +323,16 @@ What has to be checked is the graph, and the fence checks it: **worst `|i − j|
 so no edge has jumped between arms. A single shortcut edge would collapse two arms into one and the
 rho above would fall off a cliff. Raise `k` until that happens and you can watch it go.
 
-## MDS or t-SNE? Measure what each one destroys
+## MDS against t-SNE
 
 The usual advice is that MDS preserves global distances and t-SNE preserves local neighbourhoods.
-That is true, and it is also two measurements, because the *size* of the distortion is what decides
-whether a picture can be believed.
+Both are true; what decides whether you can read a number off the picture is how big each
+distortion is.
 
 Three Gaussian clusters of sixty points each in twelve dimensions, with unit spread and centres
-placed so that one fact is checkable: cluster 1 is 10 away from cluster 0 and cluster 2 is 40 away. So one true fact
-about the data is that clusters 0 and 2 are about four times further apart than clusters 0 and 1,
-and either projection either keeps that or does not.
+placed so that one fact is checkable: cluster 1 is 10 away from cluster 0 and cluster 2 is 40 away.
+So one true fact about the data is that clusters 0 and 2 are about four times further apart than
+clusters 0 and 1, and either projection keeps that or it does not.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/mds_versus_tsne.png" wait="10.0" capture="box" open-outputs="true" w="1020" h="900" padding="16"}
 :::static
