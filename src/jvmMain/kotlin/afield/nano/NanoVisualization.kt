@@ -4,25 +4,88 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /**
+ * Runs a Nano program and hands back its final machine state, either as data or as a self-contained
+ * HTML panel for a box's output area.
+ *
+ * Nothing in the repository calls these; they exist for a Kotlin box sitting next to a Nano box, so
+ * a document can show a register file and 32 bytes of RAM without reaching into [NanoVM] itself.
+ * `nanoRunReportHtml` is the one-liner and `nanoRunReport` is the same run with the state left as a
+ * [NanoRunReport] to read or render differently.
+ *
+ * The two kinds of failure a Nano program can have come back by different routes. Source that will
+ * not assemble throws `NanoAssemblyException` from either entry point, because there is no machine
+ * state to report. A program that assembles and then faults at run time fills `runtimeError` and
+ * returns everything else, because the registers and RAM at the point of the fault are what a
+ * reader wants; `nanoRunReportHtml` turns that into a thrown `IllegalStateException` by default,
+ * and `throwOnRuntimeError = false` gets the panel with the error drawn into it instead. A program
+ * that never halts is neither: `maxSteps` bounds the run and `halted` comes back false.
+ *
+ * `RNG` draws from `Random` unless `rngSeed` is given, so a program using it is reproducible only
+ * when seeded.
+ *
+ * The rendered panel distinguishes three things about a RAM cell, and only two of them survive this
+ * route. A cell whose value differs from the program byte loaded there is drawn as mutated, and the
+ * cell under the program counter is drawn as current. `changedRegisters` and `changedRam` draw what
+ * the most recent step touched, and only a single-step caller fills them, so a panel from
+ * `nanoRunReport` shows accumulated mutation and never per-step change.
+ */
+
+/**
  * Snapshot of a Nano execution, suitable for HTML rendering in Field output areas.
+ *
+ * A value over copies: the program bytes are copied in and the register, RAM and output arrays are
+ * taken as lists, so a report does not track a [NanoVM] that keeps running. Note that a `data class`
+ * holding a `ByteArray` gets a generated `equals` that compares that array by identity, not by
+ * content.
  */
 data class NanoRunReport(
+    /** The assembly this ran, kept so the panel can show it with a line highlighted. Null when unknown. */
     val source: String?,
+    /** The assembled bytes. The first 32 of these are also RAM's initial contents. */
     val program: ByteArray,
+    /** Instructions executed. Reaching the step bound is how a program that never stops shows up here. */
     val steps: Int,
+    /** Every byte `OUT` emitted, in order, masked to 0–255. */
     val outputs: List<Int>,
+    /** The four registers r0 to r3, each 0–255. */
     val registers: List<Int>,
+    /** All 32 bytes of RAM. Nano's addresses wrap, so there is no out-of-range cell. */
     val ram: List<Int>,
+    /** The program counter where the machine stopped. */
     val pc: Int,
+    /** The address the panel highlights, which defaults to [pc] but need not be it for a single step. */
     val focusPc: Int = pc,
+    /** The source line the panel highlights, resolved through the assembler's map, or null. */
     val focusLine: Int? = null,
+    /**
+     * Whether the machine stopped on its own, by `HLT` or by a fault.
+     *
+     * False means the run hit its step bound instead, so a false here and a `runtimeError` of null
+     * together say the program was still going.
+     */
     val halted: Boolean,
+    /** Zero flag as the last arithmetic left it. */
     val flagZ: Boolean,
+    /** Carry flag as the last arithmetic left it. */
     val flagC: Boolean,
+    /** Sign flag as the last arithmetic left it. */
     val flagS: Boolean,
+    /** Overflow flag as the last arithmetic left it. */
     val flagO: Boolean,
+    /**
+     * Registers the most recent step wrote, for the panel to highlight.
+     *
+     * Empty for a whole-program run, which has no most recent step worth pointing at.
+     */
     val changedRegisters: Set<Int> = emptySet(),
+    /** RAM addresses the most recent step wrote. Empty for a whole-program run, like [changedRegisters]. */
     val changedRam: Set<Int> = emptySet(),
+    /**
+     * The VM fault that stopped the run, already formatted with its address, or null.
+     *
+     * A fault does not invalidate the rest of the report: the state here is the state at the point
+     * it happened.
+     */
     val runtimeError: String? = null
 )
 
@@ -91,6 +154,18 @@ fun nanoRunReportHtml(
     )
 }
 
+/**
+ * Renders a report as one self-contained HTML block, ready to hand to a box's output area.
+ *
+ * Everything is inline style, so the block needs no stylesheet to travel with it. The accents are
+ * `var()` references to Field's own cyan and orange with literal fallbacks, so the panel follows
+ * the editor's theme where it can; the greys around them are literal and assume a dark one. The
+ * width is the smaller of 510px and the viewport less a margin, which is what keeps it inside an
+ * output area narrower than that.
+ *
+ * The program bytes, the source and the disassembly are each optional. Turning them off matters for
+ * a long program, since the last two render one row per line.
+ */
 fun NanoRunReport.toHtml(
     title: String? = null,
     includeSource: Boolean = true,
