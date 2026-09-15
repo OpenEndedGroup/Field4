@@ -345,47 +345,24 @@ carry a roughly constant offset and a few milliseconds of jitter, where a compil
 sample-accurate. The offset is the same for every event, so it reads as latency rather than as loose
 rhythm; the jitter is what you would hear.
 
-### How the lowering is checked
+### What the compiled path buys you
 
-`synth.sonic-pi.patterns` is a differential oracle, and it reads the emitted *text* rather than the
-emitter's own event list. Comparing the emitter against the pattern would only prove the emitter can
-enumerate; everything that can reach a listener lives in the gap between that list and the text (a
-third rendered as `0.333333`, a `sleep` delta that does not accumulate back to the position it came
-from, a missing pad at the end of the loop so the second bar arrives early). So the program is parsed
-back and compared to the pattern's own `PatQ` positions, with no floating point in the comparison.
-
-```diffstatic {data-lang=text}
-:::static
-55 patterns x 3 tempos, 346 events, agreement exact in PatQ
-53/53 = 100.0% of the Sonic Pi-meaningful Pat surface
-44 aliases: 40 sample, 2 synth — all present
-```
-
-None of that says Sonic Pi then *does* what the program says. `sonicpi.pattern.timing` answers that
-on the real engine with `pat("bd ~ [bd bd bd] bd")` at a quarter cycle per second: a triplet inside
-a binary bar, chosen so that a detector cannot pass by accident. It runs twice: once at `amp: 0`,
-measuring Sonic Pi's own line-activity reports, and once audible at a master volume of 0.15,
-recorded through Sonic Pi's recorder and analysed in process. It skips loudly on machines without
-Sonic Pi; `FIELD_SONIC_PI_REQUIRED=1` turns that skip (or a boot that never becomes ready) into a
-failure on machines whose job is to exercise the external engine.
-
-```diffstatic {data-lang=text}
-:::static
-flash: recall 1.000, mean |error| 2.114 ms, worst 5.038 ms   (bound asserted at 25 ms)
-
-observed intervals (samples): [96000, 16000, 16000, 16000, 48000, 96000, 16000, 16000, 16000, 48000]
-pattern  intervals (samples): [96000, 16000, 16000, 16000, 48000, 96000, 16000, 16000, 16000, 48000]
-audio: recall 1.000, worst 0.000 ms                          (bound asserted at 2 ms)
-```
-
-Every one of eleven onsets across eight seconds, triplets included, landed on exactly the sample the
-pattern's rational schedule names. There is nothing left to drift: SuperCollider schedules bundles
-sample-accurately, and the lowering emits `Rational(1, 3)` rather than `0.333`.
+Recorded from a real Sonic Pi 5: eleven onsets across eight seconds of
+`pat("bd ~ [bd bd bd] bd")`, triplets included, each landing on exactly the sample the pattern's
+rational schedule names.
 
 ![The recorded pattern. Blue is what the pattern asked for, green is what the recording contains.](assets/sonic_pi/pattern_onsets.png)
 
-`dev_docs/SONIC_PI_MEASUREMENTS.md` has how the onset instrument is built, which is what makes a
-figure that small mean anything.
+There is nothing left to drift: SuperCollider schedules bundles sample-accurately, and the lowering
+emits `Rational(1, 3)` rather than `0.333`. That is the difference the `drive` path's UDP hop gives
+up, and the reason to reach for `compile` when a figure has to land.
+
+Two probes hold it, and both skip on a machine without Sonic Pi installed:
+`synth.sonic-pi.patterns` parses the emitted program back and compares it to the pattern's own
+`PatQ` positions, and `sonicpi.pattern.timing` records the audible run and measures the onsets.
+`FIELD_SONIC_PI_REQUIRED=1` turns the skip, or a boot that never becomes ready, into a failure on a
+machine whose job is to exercise the external engine. The instrument, the bounds each probe asserts
+and its last printed run are in `dev_docs/SONIC_PI_MEASUREMENTS.md`.
 
 ### A document to open
 
@@ -567,7 +544,7 @@ That grace period has a consequence which presents as a mystery: a Sonic Pi star
 abandoned holds the cue port for the whole of it, pushing the *next* boot onto a random cue port. If
 `oscCues` is not 4560, suspect a stranded daemon rather than a configuration change.
 
-## Two symptoms that mislead
+## `Invalid token: 0`, and a stop that takes a second and a half
 
 **A shifted OSC argument reads as a rejected token.** OSC pads every string and typetag to a multiple
 of four bytes, adding *nothing* when the length is already aligned. Pad an already-aligned `,is`
