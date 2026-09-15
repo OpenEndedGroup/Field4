@@ -5,40 +5,184 @@ import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 
+/**
+ * The FieldML runtime: it walks a lowered [CoreExpr] tree and returns the [FieldMLValue] the tree
+ * evaluates to.
+ *
+ * This is the last stage of the pipeline. [Lowerer] hands over a tree whose lambdas are already
+ * curried and whose source ranges are already gone, so nothing here can report a position and a
+ * box blames the fragment it ran rather than the subexpression that failed. An [Evaluator] holds
+ * the prelude it was constructed with and builds a fresh root scope for every `evaluate`, so two
+ * runs of the same box share no state.
+ *
+ * Most of the value shapes are what their names say. Two are not. `HostValue` wraps an arbitrary
+ * JVM object, which is how a FieldML box reaches Field at all: [FieldMLHostBridge] both produces
+ * and consumes these, and `Vec2`, `Vec3` and `Vec4` are `HostValue`s holding the mutable linalg
+ * vector types rather than a FieldML shape of their own. Arithmetic on them and access to their
+ * `x`, `y`, `z` and `w` components are therefore special-cased here, component-wise between
+ * vectors of equal width and broadcast against a scalar, and always into a freshly allocated
+ * vector, because the linalg types are mutable and a FieldML value is not. `FactoryValue` is the
+ * other: [RuntimeEnv] calls its `create` on every lookup, so each mention of the name is a
+ * separate value while a `let`-bound name is one value. The prelude uses this once, for `fline`,
+ * and needs to, because `moveTo` and `lineTo` mutate the line they are handed and return it.
+ *
+ * `hostToFieldMLValue` and `fieldMLValueToHost` are the conversion pair at the JVM boundary, and
+ * they are not inverses. A tuple leaves as a plain `List` and comes back a list, so a round trip
+ * through the host loses the distinction the type checker made; records, unit and the numeric
+ * shapes survive one. Closures, native functions, partially applied constructors and ADT values
+ * leave as themselves rather than as anything JVM-shaped, which is what lets the bridge's SAM
+ * proxy apply one later.
+ *
+ * Scope is a chain of [RuntimeEnv]s with one parent each. A `let` always makes a child; a
+ * recursive one evaluates its own body in the scope that will hold the name, and a plain one
+ * evaluates in the parent, so `let x = x + 1` reads the outer `x`. A match makes one child per
+ * case it tries, and a value matching no case fails at this point: nothing earlier checks
+ * exhaustiveness, and this runtime error is the only mention of it in FieldML.
+ *
+ * Two failures here have their cause somewhere else. The walk is directly recursive with no
+ * trampoline, so deep FieldML recursion arrives as a JVM `StackOverflowError` and not as a FieldML
+ * diagnostic. And an unknown runtime name means the two halves of the prelude have drifted apart:
+ * [Inferencer] already rejects any name `FieldMLTypePrelude.schemes` does not list, so a name that
+ * type-checked and then went missing is one `FieldMLRuntimePrelude.values` does not define.
+ */
+
+/**
+ * Everything a FieldML expression can evaluate to.
+ *
+ * The literal shapes fix FieldML's numeric width: its `Int` is a JVM `Long` and its `Float` a JVM
+ * `Double`, one of each, which is why calling into Kotlin needs the conversion ladder
+ * [FieldMLHostBridge] scores with.
+ */
 sealed interface FieldMLValue {
+    /** A FieldML `Int`. There is only one integer width, and it is 64-bit. */
     data class IntValue(val value: Long) : FieldMLValue
+
+    /** A FieldML `Float`. There is only one floating-point width, and it is 64-bit. */
     data class FloatValue(val value: Double) : FieldMLValue
+
+    /** A FieldML `Bool`. */
     data class BoolValue(val value: Boolean) : FieldMLValue
+
+    /** A FieldML `String`. */
     data class StringValue(val value: String) : FieldMLValue
+
+    /**
+     * A fixed-width tuple, whose elements may have different types.
+     *
+     * Structurally identical to [ListValue], and separate from it because the type checker treats
+     * them differently. Nothing downstream of `fieldMLValueToHost` can tell them apart.
+     */
     data class TupleValue(val elements: List<FieldMLValue>) : FieldMLValue
+
+    /** A list of any length, whose elements all have one type. */
     data class ListValue(val elements: List<FieldMLValue>) : FieldMLValue
+
+    /** A record, keyed by field name. This is also what a JVM `Map` arrives as. */
     data class RecordValue(val fields: Map<String, FieldMLValue>) : FieldMLValue
+
+    /**
+     * A fully applied data constructor: the constructor's name and its arguments.
+     *
+     * A zero-arity constructor is one of these immediately; anything wider becomes a
+     * [ConstructorValue] first and turns into this once its last argument arrives.
+     */
     data class AdtValue(val tag: String, val arguments: List<FieldMLValue>) : FieldMLValue
+
+    /** The one value of FieldML's unit type, and what a Kotlin `Unit` or a null arrives as. */
     data object UnitValue : FieldMLValue
+
+    /**
+     * An arbitrary JVM object, opaque to FieldML itself.
+     *
+     * This is the whole of FieldML's reach into Field: a `Box`, an `FLine`, an `Img`, a linalg
+     * vector. `hostGet` reads members off one, `hostCall` calls methods on one, and the vector
+     * widths get component arithmetic on top. The type checker knows such a value only by the host
+     * type it was given.
+     */
     data class HostValue(val value: Any?) : FieldMLValue
+
+    /**
+     * A prelude function, implemented in Kotlin, taking exactly one argument.
+     *
+     * Multi-argument prelude entries are curried into nested ones, so they compose with FieldML's
+     * own one-argument application and partial application works on them unchanged.
+     */
     data class NativeFunctionValue(val name: String, val apply: (FieldMLValue) -> FieldMLValue) : FieldMLValue
+
+    /**
+     * A prelude entry that is a new value on every mention rather than a shared one.
+     *
+     * [RuntimeEnv] resolves it by calling `create`, so a factory is never itself the result of
+     * looking a name up. This exists for prelude values whose members mutate them in place.
+     */
     data class FactoryValue(val name: String, val create: () -> FieldMLValue) : FieldMLValue
+
+    /**
+     * A FieldML function: one parameter, an unevaluated body, and the scope it was written in.
+     *
+     * Every FieldML function has exactly one parameter by the time it gets here, because lowering
+     * curries the multi-parameter ones.
+     */
     data class ClosureValue(val parameter: String, val body: CoreExpr, val env: RuntimeEnv) : FieldMLValue
+
+    /**
+     * A data constructor part-way through being applied, holding the arguments it has so far.
+     *
+     * Applying the last one yields an [AdtValue]; applying fewer yields another of these, so a
+     * constructor can be passed around half-filled like any other function.
+     */
     data class ConstructorValue(val tag: String, val arity: Int, val arguments: List<FieldMLValue> = emptyList()) : FieldMLValue
 }
 
+/**
+ * One FieldML scope: the names bound here, and the scope to fall back on for the rest.
+ *
+ * Scopes form a chain, one link per `let`, per function call and per match case tried, and
+ * shadowing is what falling back up the chain gives for free. A [FieldMLValue.ClosureValue] keeps a
+ * reference to the scope it was written in, which is what makes a FieldML function a closure and
+ * what makes a recursive `let` able to find itself.
+ */
 class RuntimeEnv(
     private val parent: RuntimeEnv? = null,
     private val values: MutableMap<String, FieldMLValue> = mutableMapOf(),
 ) {
+    /** A new scope that falls back on this one. */
     fun child(): RuntimeEnv = RuntimeEnv(this)
 
+    /** Binds a name in this scope, shadowing any binding of it further up the chain. */
     fun define(name: String, value: FieldMLValue) {
         values[name] = value
     }
 
+    /**
+     * The value of a name, searching up the chain, resolving a [FieldMLValue.FactoryValue] as it
+     * goes.
+     *
+     * Failing here is a prelude problem rather than a program problem: [Inferencer] has already
+     * rejected every name the type prelude does not list, so a name that reaches this point and is
+     * missing is one the runtime prelude does not define.
+     */
     fun lookup(name: String): FieldMLValue {
         val value = values[name] ?: return parent?.lookup(name) ?: error("Unknown FieldML runtime name '$name'")
         return if (value is FieldMLValue.FactoryValue) value.create() else value
     }
 }
 
+/**
+ * Evaluates lowered FieldML trees against one prelude.
+ *
+ * Cheap to construct and safe to reuse: the prelude is read per call, not held as mutable state.
+ */
 class Evaluator(private val prelude: Map<String, FieldMLValue> = emptyMap()) {
+    /**
+     * Walks [expr] and returns what it evaluates to, starting from a fresh scope holding the
+     * prelude.
+     *
+     * Every call starts clean, so nothing a previous call bound is visible to this one. Failures
+     * arrive as an `IllegalStateException` with no source position, because lowering has already
+     * dropped the ranges; a deep enough recursion arrives as a `StackOverflowError` instead, since
+     * the walk is the JVM stack.
+     */
     fun evaluate(expr: CoreExpr): FieldMLValue {
         val env = RuntimeEnv()
         prelude.forEach { (name, value) -> env.define(name, value) }
@@ -118,6 +262,17 @@ private fun evalFieldML(expr: CoreExpr, env: RuntimeEnv): FieldMLValue =
         }
     }
 
+/**
+ * Applies one argument to one callable value, which is all application FieldML has.
+ *
+ * A closure binds its parameter in a child of the scope it captured and evaluates its body. A
+ * native function runs its Kotlin. A constructor collects the argument and yields either a
+ * finished [FieldMLValue.AdtValue] or a wider partial one. Anything else is not callable and
+ * fails here.
+ *
+ * Public because the host bridge needs it: a FieldML function handed to a Kotlin parameter becomes
+ * a proxy, and the proxy feeds its arguments in one at a time through this.
+ */
 fun applyFieldMLFunction(function: FieldMLValue, argument: FieldMLValue): FieldMLValue =
     when (function) {
         is FieldMLValue.ClosureValue -> {
@@ -287,6 +442,15 @@ private fun FieldMLValue.asDouble(): Double =
         else -> error("Expected number")
     }
 
+/**
+ * Unwraps a FieldML value into the JVM value a Kotlin caller should see.
+ *
+ * Literals unwrap to their boxed primitives, a record to a `Map`, a `HostValue` to whatever it was
+ * holding, and both tuples and lists to a `List` — which is where the round trip with
+ * `hostToFieldMLValue` stops being faithful, since a tuple comes back a list. The callable shapes
+ * and a finished ADT value are returned as themselves, so that the host bridge can still recognise
+ * a function it is expected to adapt.
+ */
 fun fieldMLValueToHost(value: FieldMLValue): Any? =
     when (value) {
         is FieldMLValue.IntValue -> value.value
@@ -305,6 +469,15 @@ fun fieldMLValueToHost(value: FieldMLValue): Any? =
         is FieldMLValue.ConstructorValue -> value
     }
 
+/**
+ * Wraps a JVM value as the nearest FieldML value, falling back to an opaque
+ * [FieldMLValue.HostValue].
+ *
+ * Every integral width collapses to FieldML's one `Int` and both floating widths to its one
+ * `Float`, so the width a Kotlin method declared does not survive the return trip. A null and a
+ * `Unit` both arrive as unit, a `List` as a list and a `Map` as a record with its keys stringified.
+ * Anything else stays a JVM object that FieldML can only pass along or reach into with `hostGet`.
+ */
 fun hostToFieldMLValue(value: Any?): FieldMLValue =
     when (value) {
         null -> FieldMLValue.UnitValue
@@ -325,6 +498,14 @@ fun hostToFieldMLValue(value: Any?): FieldMLValue =
         else -> FieldMLValue.HostValue(value)
     }
 
+/**
+ * Renders a value the way FieldML source would spell it, for a box's output and for `show`.
+ *
+ * Tuples print in parentheses and lists in brackets, so this is the one path out of the runtime
+ * that keeps them apart. A `HostValue` prints its object's `toString`, so what a box
+ * shows for one is whatever Kotlin decided. The callable shapes have no source spelling and print
+ * as an angle-bracketed placeholder naming the kind.
+ */
 fun renderFieldMLValue(value: FieldMLValue): String =
     when (value) {
         is FieldMLValue.IntValue -> value.value.toString()
