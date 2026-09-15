@@ -63,8 +63,9 @@ class PatClock internal constructor(
          * The one process-wide clock, created on first call with `rate` 1.0 and the label
          * `"global"`.
          *
-         * With [started] left true this also calls `start` on it, which on a clock that is already
-         * running re-anchors it. Pass false to read the shared clock without disturbing it.
+         * With [started] left true this also calls [start] on it, which starts a clock that is
+         * stopped and leaves the reading of one that is already running alone. Pass false to read
+         * the shared clock without starting it either.
          */
         fun shared(started: Boolean = true): PatClock {
             val existing = shared
@@ -104,14 +105,20 @@ class PatClock internal constructor(
     /**
      * Start accumulating time, optionally setting the reading to [at] first.
      *
-     * Resuming a paused clock continues from where it stopped. Calling this on a clock that is
-     * already running re-anchors it against its source without folding in the time since the last
-     * anchor, so the reading goes back to what it was when the clock was last started, sought or
-     * reset. Pass [at] when you want that jump to be a chosen one.
+     * The reading never moves on its own here. Resuming a paused clock continues from where it
+     * stopped, and calling this on a clock that is already running keeps the reading it has: the
+     * time since the last anchor is folded in before the clock is re-anchored against its source.
+     * A bare `start()` is therefore safe to call on a clock someone else is already scheduling
+     * against, which is what makes a bare `musicClock()` safe.
+     *
+     * Pass [at] to set the reading, or use [seek] and [reset], when you do want it to jump.
      */
     fun start(at: Number? = null): PatClock = apply {
         synchronized(lock) {
-            at?.let { accumulated = it.toDouble() }
+            // nowLocked() is the reading in all three cases: `accumulated` for a clock that is
+            // paused or has never run, and the accrued reading for one that is running. Folding it
+            // in before re-anchoring is what keeps start() from discarding the elapsed time.
+            accumulated = at?.toDouble() ?: nowLocked()
             sourceAnchor = sourceNow()
             running = true
         }
