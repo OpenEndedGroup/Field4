@@ -761,10 +761,10 @@ Three separate facts are visible in that one picture:
    scalar varies. Restrict the selector and you get selective *and* non-uniform kis, which is what
    the loadable demo at the bottom of this page does.
 
-## Realization: three verbs, three promises
+## Realization: `realize`, `relax` and `canonicalize`
 
-Everything above this point is combinatorics. Turning it into coordinates is a separate decision,
-and the library keeps it as three separate calls precisely because they promise different things:
+Everything above this point is combinatorics. Turning it into coordinates is a separate decision, and
+it is three separate calls because they promise different things:
 
 | verb | what you give it | what it promises |
 |---|---|---|
@@ -791,18 +791,16 @@ attributes are untouched: the result is `copy(realization = solved)` and nothing
 `solveRealization()` survives as a wrapper that compiles its five weights into
 `RelaxationPlan.regularize()`, and is what the figure below calls.
 
-!!! warning "The limits of relaxation"
-
-    From the source:
-
-    > *This is a general constraint relaxation, not a claim of a unique Conway "canonical form". The
-    > defaults are useful for the symmetric finite polyhedra produced here. Disable common-radius or
-    > common-edge constraints for deliberately irregular objects.*
+!!! warning "`relax` is a local least-squares pass"
 
     Levenberg–Marquardt from the supplied embedding is a **local** method, and the `referenceWeight`
-    term biases it toward where it started. Nothing here checks for self-intersection or
-    inversion; degenerate faces are *reported*, not repaired. If you want the canonical form, ask
-    for it by name; that is the next section.
+    term biases it toward where it started, so what you get is a general constraint relaxation and
+    not the unique Conway canonical form. Nothing here checks for self-intersection or inversion,
+    and degenerate faces are *reported* rather than repaired.
+
+    The defaults suit the symmetric finite polyhedra this page produces. For a shape that is meant
+    to be irregular, turn the common-radius and edge-tangency families off. For the canonical form,
+    ask for it by name: that is the next section.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/realization.png" wait="3.0" capture="box" open-outputs="true" w="1220" h="780" padding="14"}
 :::static
