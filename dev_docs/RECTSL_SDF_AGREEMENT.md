@@ -31,11 +31,37 @@ pixel→wall mapping is recovered from the shader's own answers rather than assu
 distinct feature signature — groups, named easings, and each distinct rect count get covered rather
 than one hand-picked shape. `maxScenes` defaults to 8 and `times` to `0.0, 0.41, 1.7`.
 
-**The guard is `maxAbsError < 1e-5`** (`RectSLGalleryHarness.kt:381`). A recent run observed a max of
-`2.47e-06` wall units with a mean under `1e-06`, over roughly 51,000 points. Those two figures are
-`lprintln`ed, not asserted: they are an observation of one run on one machine, and the committed
-guarantee is the 1e-5 floor. The cheatsheet says "about `1e-6` of a wall unit" and cites the floor,
-which is the claim that has a guard behind it.
+The pixel→wall mapping is fitted from the shader's own answers and its residual held to the
+encoding's own step, rather than re-derived on the CPU — which is how this sort of check otherwise
+ends up agreeing with itself.
+
+**The guard is `maxAbsError < 1e-5`** (`RectSLGalleryHarness.kt:381`), and the harness refuses to
+write a single image if the probe and the sampler disagree.
+
+**Do not retype the per-pass numbers.** The report is regenerated on every page re-capture and
+committed as `public/docs/assets/rectsl/rectsl-sdf-agreement.txt`. Cite that path; derive totals
+from it if you need them. As committed on 2026-09-14 it carries **12 passes over 63,343 points**,
+worst `max |GPU-CPU|` `4.941e-06` on the `far (±32)` pass — which cannot resolve better than its own
+24-bit encoding step of `3.815e-06`, and is checked against that rather than against 1e-6. The near
+passes are the ones the 1e-6 claim is about.
+
+Retyping it went wrong three ways at once, which is why the rule above is in bold:
+
+| | passes | points | gradient-sweep max |
+|---|---|---|---|
+| the committed report | 12 | 63,343 | `2.416e-06` |
+| `rectsl_examples.md`, until 2026-09-16 | 11 | "61,000" | `2.47e-06` |
+| `rectsl_cheatsheet.md`, until 2026-09-16 | "eleven programs" | "51,000" | `2.47e-06` |
+
+The examples page carried a hand-copied 11-row table whose counts disagreed with the report row by
+row (`near` 5246 against 5277, `mirrored-orbit` 1910 against 1895, `rising-bars` 3025 against 2942)
+and which was missing the `musicality-four-to-the-floor` pass entirely. The cheatsheet's total was
+low by twelve thousand. No test read any of it: the counts are the points at which the probe found
+the field near zero, so they move with the scene, and every published figure was a snapshot of some
+earlier run.
+
+The committed guarantee is the 1e-5 floor. Both pages now say "about `1e-6` of a wall unit" and
+leave the digits to the report.
 
 The residual is float-versus-double and nothing else: the sampler works in `double` and a shader in
 `float`, so expect about `1e-6` of a wall unit rather than the ulp.
@@ -80,9 +106,11 @@ discontinuous anyway.
 
 ## Open
 
-- The observed `2.47e-06` has no guard at its own magnitude: the floor is `1e-5`, so the pixel
-  agreement can degrade fourfold without any test noticing. Dropping the floor to `5e-6` would cost
-  nothing against today's numbers and would make the published sentence self-guarding.
+- The observed near-pass agreement has no guard at its own magnitude: the floor is `1e-5`, so the
+  pixel agreement can degrade fivefold without any test noticing. Dropping the floor to `5e-6` would
+  cost nothing against today's numbers and would make the published sentence self-guarding — but
+  note the `far` passes legitimately reach `4.9e-06`, so the floor has to be per-pass, keyed on the
+  encoding step each pass reports, rather than one number for all twelve.
 - The gallery's per-class deviation figures (0.31%, 0.005%, 0.96 → 0.97) are all `lprintln`ed by
   `RectSLSdfBakeTest`'s `report`, not asserted. `ALIASED` is the one class where that is arguably
   right — the point of the classification is that no rate improves it.
