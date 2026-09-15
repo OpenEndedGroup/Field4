@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13778 public symbols across 346 source files**, 7627 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13778 public symbols across 346 source files**, 7683 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -16,7 +16,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 27 | 542 | 201 (37%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 27 | 821 | 358 (43%) | Making a shape behave. |
+| [Simulation](simulation.md) | 27 | 821 | 414 (50%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 398 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -188,10 +188,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [InteractiveSolving.kt](solvers.md#interactivesolving-kt) | Solvers | 43 | 28 | The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and over at interactive rates. |  |
 | [interpolants.kt](math.md#interpolants-kt) | Math | 10 | 10 | `smoothTo` wraps a target-producing lambda so that reading it eases toward the target instead of jumping to it. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
 | [JobMonitor.kt](audio-ai.md#jobmonitor-kt) | Audio AI | 3 | 3 | The job monitor: the service's own live view of every durable job, embedded in a box output. | [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Short-time spectral spaces](../audio_ai_spectral_embeddings.md) |
-| [JoltCameraFrustumPlanes.kt](simulation.md#joltcamerafrustumplanes-kt) | Simulation | 21 | 0 |  |  |
-| [JoltDebugDrawing.kt](simulation.md#joltdebugdrawing-kt) | Simulation | 0 | 0 |  |  |
-| [JoltPhysicsBootstrap.kt](simulation.md#joltphysicsbootstrap-kt) | Simulation | 2 | 1 |  |  |
-| [JoltPhysicsWorld.kt](simulation.md#joltphysicsworld-kt) | Simulation | 116 | 1 |  |  |
+| [JoltCameraFrustumPlanes.kt](simulation.md#joltcamerafrustumplanes-kt) | Simulation | 21 | 21 | Walls for what the camera can see: six static Jolt planes, kept on the view frustum as it moves. |  |
+| [JoltDebugDrawing.kt](simulation.md#joltdebugdrawing-kt) | Simulation | 0 | 0 | Wireframes for the Jolt collision shapes: what `JoltPhysicsWorld.debugWireLines3D` is made of. |  |
+| [JoltPhysicsBootstrap.kt](simulation.md#joltphysicsbootstrap-kt) | Simulation | 2 | 2 | Getting the jolt-jni native library loaded, which has to happen once per JVM before any Jolt call. |  |
+| [JoltPhysicsWorld.kt](simulation.md#joltphysicsworld-kt) | Simulation | 116 | 35 | Rigid bodies in three dimensions, from the Jolt physics engine: the 3D counterpart to `Dyn4jScene`, and a different tool from `SimdVerlet`, which has no notion of a rigid body at all. |  |
 | [JSONLineServer.kt](data.md#jsonlineserver-kt) | Data | 32 | 1 | A TCP listener that turns newline-delimited JSON into a value a box can read each frame. |  |
 | [jsonparsing.kt](data.md#jsonparsing-kt) | Data | 18 | 12 | Two related things: a small hand-written JSON reader, and a macro that generates a typed parser from a terse schema. |  |
 | [JSONProcess.kt](data.md#jsonprocess-kt) | Data | 14 | 0 | Runs an external command and reads newline-delimited JSON from its stdout. |  |
