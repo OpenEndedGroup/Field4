@@ -15,6 +15,10 @@ compiler and upstream's layout kernel, byte-identical to
 and supplies only the things a language needs from an environment rather than from itself:
 simulation, drawing, and somewhere to be typed.
 
+To write MorphoHDL rather than read about it, start at [Using it](#using-it): a `morpho` box takes
+upstream's source directly, and `MorphoGraal` compiles a design from Kotlin in a few lines. The
+sections before it are what the four figures below are showing you.
+
 ---
 
 ## What it looks like
@@ -179,7 +183,7 @@ then asserts the property is absent rather than present-and-null.
 
 ## Depth: why there are two adders
 
-The clearest thing the bridge produces is a table. Morpho's timing pass (`updateTimes()`,
+Morpho's timing pass (`updateTimes()`,
 upstream's own, and what its viewer animates) gives per-cell signal arrival, and the deepest cell
 is the critical path.
 
@@ -947,44 +951,14 @@ assertions live in `MorphoMeasurements` and run under `./gradlew jvmMeasurements
 
 ### What it cost
 
-The plumbing, step by step:
+Getting a language *registered* in Field is nearly free: of the bridge's 2,868 lines, registration
+proper is sixty, and those sixty were a copy. What costs is the other three things — carrying the
+language's data across a process boundary, deciding what running the language should *do*, and
+reading the other implementation carefully enough not to disagree with it by accident. The boundary
+in steps 1 and 2 is 890 lines and checking it in step 6 is 706.
 
-<div class="field-data-table" markdown>
-
-| step | file | lines |
-| --- | --- | --- |
-| 1. host the foreign runtime | `MorphoGraal.kt` | 273 |
-| 1. guest-side drivers | `morpho-field-driver.mjs`, `morpho-field-layout.mjs` | 446 |
-| 2. the netlist crossing the boundary | `MorphoNetlist.kt` | 171 |
-| 3–4. registration, and what a box does | `MorphoInterface.kt` | 426 |
-| 5. editor grammar | `morpho.js` | 105 |
-| 6. tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
-| 6. measurement run | `MorphoMeasurements.kt` | 78 |
-
-</div>
-
-And what morpho left to its host, which is this language's bill rather than the template's:
-
-<div class="field-data-table" markdown>
-
-| what Field supplies | file | lines |
-| --- | --- | --- |
-| logic simulation | `MorphoSim.kt` | 192 |
-| 3D force layout | `MorphoLayout3D.kt` | 111 |
-| grow-and-draw handle | `MorphoCircuit.kt` | 121 |
-| drawing | `MorphoFLines.kt` | 317 |
-
-</div>
-
-Line counts include KDoc, which in this codebase is a substantial fraction of every file. The search
-layer of the previous section is a separate ~2,400 lines on top of all of this, and needed nothing
-from the bridge that was not already there.
-
-Of 2,868 lines, registration proper is sixty, and those sixty were a copy. The boundary in steps 1
-and 2 is 890. Checking it in step 6 is 706. Getting a language *registered* in Field is nearly free;
-what costs is carrying its data across a process boundary, deciding what the language should *do*
-once it is running, and reading the other implementation carefully enough not to disagree with it
-by accident.
+`dev_docs/MORPHO_MEASUREMENTS.md` has the file-by-file counts for both halves: the plumbing, and
+what morpho left to its host.
 
 ??? aside "Which harness holds what"
     The checks are `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` and
