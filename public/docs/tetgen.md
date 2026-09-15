@@ -42,7 +42,7 @@ it is the cheaper thing to do. Structural mechanics cannot work that way, becaus
 names in `StructuralMechanicsApplication` finding not one matching `embedded`, `shifted` or `sbm`.
 `structural.bodyFitted` therefore needs a mesh whose boundary really is the part's surface.
 
-There is a second reason, and it is the one that decided the choice rather than merely forcing it.
+A second reason decided the choice, rather than merely forcing it.
 Sampling a distance function onto grid nodes destroys a sharp edge *before the mesher ever sees it*.
 Refining the grid only buys a smaller rounded radius. Structural stress concentrates at exactly
 those edges. [The sharp edge](#the-sharp-edge) below measures both halves of that on this machine.

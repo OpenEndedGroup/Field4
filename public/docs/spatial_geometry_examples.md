@@ -226,7 +226,7 @@ weights, so the counts are all-or-nothing. Neither count is 20, the number of or
 bisector only becomes a boundary *piece* of a cell where it is actually the nearest tie, and with five
 sites several of the twenty pairs never surface.
 
-The third panel is the case that will bite you if you assume a cell is a ring. Raise one site to
+The third panel shows a cell that is not a ring at all. Raise one site to
 weight 2.6 and it does not merely take a larger share: **two** of its light neighbours end up
 *entirely enclosed*, and their cells are complete discs bounded by a single full-sweep arc. The heavy
 site's own cell is then the region **outside** those two discs, which is why the diagram reports four

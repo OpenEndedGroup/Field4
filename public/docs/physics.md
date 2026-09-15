@@ -28,7 +28,7 @@ the force accumulators `ax`, `ay`, `az`, and an optional `invMass`. A particle i
 of those at once, not an object. `SimdVerlet.State3.empty()` gives you an empty one; the simulation
 grows it as things are added.
 
-Two consequences of that layout will catch you:
+Two consequences of that layout:
 
 - **`invMass == 0` means pinned.** There is no `pinned` flag. Infinite mass is how a particle is
   nailed down, and it is why `Cloth.pin` needs a state that actually has an `invMass` array.
@@ -50,7 +50,7 @@ rest lengths, four stiffnesses, in parallel arrays. Four because that is exactly
 up/down/left/right neighbourhood of an interior particle in a grid: a cloth's whole topology fits
 with nothing spare.
 
-*Directed* is the word that matters. A constraint `i → j` writes its correction **only to `i`**. It
+*Directed* is literal: a constraint `i → j` writes its correction **only to `i`**. It
 never scatters back to `j`, and that restriction is what makes the solve fast: with no scatter
 writes, disjoint particle ranges can be solved on separate threads with a scratch buffer each, and
 the whole inner loop vectorises through the JDK Incubator Vector API.

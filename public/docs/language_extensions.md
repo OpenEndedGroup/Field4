@@ -283,7 +283,7 @@ without becoming part of the editor bindings.
 
 FieldML is what a promoted language looks like. It is a main language rather
 than an embedded region, so it does not use the registry described above.
-Instead it takes the built-in route, and the contrast is the useful part:
+Instead it takes the built-in route, which replaces all three of the registry hooks above:
 
 - **Highlighting** comes from a registered Monaco language rather than an
   embedded-region matcher. `src/commonMain/resources/fieldml.js` calls

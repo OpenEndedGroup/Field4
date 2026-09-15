@@ -929,7 +929,7 @@ by parsing the buffer with morpho's own parser, so it offers whatever cells the 
 written instead of a fixed list — and none of it ran, because Field's suggest widget gates on
 `DEFAULT_LANGUAGES` (`fieldSuggest.js:8#const DEFAULT_LANGUAGES = new Set([`) and morpho was absent.
 
-Both mistakes were live at once, which is the part worth copying down. The grammar was registered as
+Both mistakes were live at once. The grammar was registered as
 `morpho` while boxes ask for `morphohdl`, so the model was `plaintext` and the id in the completion
 list would not have matched anyway. Two lists, two silent failures, and a `complete` implementation
 that had never once been called. `SmallLanguageAnatomyTest` now derives every main language's
