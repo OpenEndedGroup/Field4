@@ -191,8 +191,12 @@ object PathTraceTestMain {
             check(sceneBuffers.members.map { it.name }.takeLast(2) == listOf("emitterTable","emitterLookup"))
             check(shader.ubos.map { it.name }.toSet() == setOf("Frame", "SceneBuffers"))
             val frameUbo = shader.ubos.single { it.name == "Frame" }
-            check(frameUbo.size == 288) { "Frame size ${frameUbo.size}" }
-            check(frameUbo.members.last().name == "emitters")
+            // 352 since 6327c9c08 (2026-09-12) appended the participating medium's four vec4s
+            // -- medium, mediumOptions, mediumLow, mediumHigh -- after `emitters`, which was the
+            // tail when this was pinned at 288. 288 + 4*16 = 352, so the growth is exactly the
+            // declared block and nothing silently repacked around it.
+            check(frameUbo.size == 352) { "Frame size ${frameUbo.size}" }
+            check(frameUbo.members.last().name == "mediumHigh")
             check(shader.accelerationStructures.size == if (hardware) 1 else 0)
             println("PASS path-tracing shader hardware=$hardware, SceneBuffers=${sceneBuffers.size}, Frame=${frameUbo.size}")
         }
