@@ -291,3 +291,11 @@
   from { opacity: 0.35; height: 1.32em; }
   to { opacity: 0; height: 0; margin: 0; padding: 0; }
 }
+
+/* Two scopes the RectSL grammar uses that nothing else here did. Both hues are the
+   editor's own, from `src/commonMain/resources/field.css`, so a snippet on the page reads
+   as the same language it does in a box: purple for the words that *write* (mutators,
+   quotes, paint) and amber for the symbolic operators. Additive — no existing scope
+   changes colour, so no other language's fences move. */
+.code-diff-pre .hljs-symbol { color: #cba6f7; }
+.code-diff-pre .hljs-operator { color: #ffcf66; }
