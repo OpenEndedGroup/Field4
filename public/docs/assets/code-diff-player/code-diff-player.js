@@ -4,6 +4,7 @@
   let forthRegistered = false;
   let morphoRegistered = false;
   let clojureRegistered = false;
+  let rectslRegistered = false;
 
   // A declared `data-lang` that highlight.js does not know is rendered PLAIN, never guessed.
   //
@@ -265,6 +266,107 @@
     clojureRegistered = true;
   }
 
+  // RectSL, for `data-lang=rectsl` fences. Written rather than aliased to `forth` (which is how
+  // StackSL is handled above) because the two differ on the one thing that matters most: RectSL
+  // comments with `#` and Forth does not, so a Forth alias would tokenise every `# eight petals
+  // fanned around a centre` as code and light up `centre`-shaped words inside it -- the exact
+  // failure the note at the top of this file measured on GLSL-as-perl.
+  //
+  // The valuable part is lexical rather than a word list. RectSL says what a word does in its
+  // spelling: `->name` is a mutator, and the cheatsheet's own Model section leads with "the arrow
+  // is part of the word, not optional punctuation". So the mutator rule is a regex, not a list,
+  // and a word added to the language is coloured correctly on the day it is added. `'( … )`
+  // quotes, `0x` colour literals, `"ids"` and `#` comments are likewise shape, not vocabulary.
+  //
+  // The word list below is the ordinary (non-arrow) vocabulary, generated from the `word("…")`
+  // registrations in `src/jvmMain/kotlin/afield/rectsl/` -- 229 of them, which is every word the
+  // VM has. An unlisted word falls through as plain text, which is the right failure: uncoloured,
+  // not miscoloured.
+  //
+  // Deliberately not attempted: colouring a whole `'( … )` quote as a unit, and the editor's
+  // amber/blue split between operator words and structural ones. Both need more than a line of
+  // context -- a quote spans lines and `highlightLine` colours one at a time -- and the editor
+  // does do them (`src/commonMain/resources/rectsl.js`, decoration-based, whole-buffer).
+  function registerRectSLLanguage() {
+    if (!window.hljs || rectslRegistered || hljs.getLanguage("rectsl")) {
+      rectslRegistered = true;
+      return;
+    }
+
+    hljs.registerLanguage("rectsl", function(hljs) {
+      // A RectSL word may end in `?`, `!`, `*` or `+` (`atom?`, `tcb!`, `time*`, `value+`) and may
+      // carry digits and hyphens inside it (`f0`, `ease-in-out`, `kolakoski-gaps`).
+      const WORD = /[a-z][a-z0-9-]*[?!*+]?/;
+      return {
+        name: "RectSL",
+        aliases: ["rect-sl"],
+        case_insensitive: false,
+        keywords: {
+          $pattern: WORD,
+          keyword:
+            // scene tree, selection, and the words that walk or filter it
+            "rect group end end-group id rect? group? copy clone copy-deep clone-deep " +
+            "all roots selected children descendants rects groups tagged tagged? each map filter where " +
+            // loops, arrays, and the per-copy context they publish
+            "times repeat range apply defer i n loop-count array grid radial arc spiral phyllotaxis sunflower " +
+            "f f0 fc ic col row cols rows colc rowc " +
+            // the Functions bridge
+            "ease ease-in ease-out ease-in-out ease-smoothstep smooth gaussian noise fbm sample reflect tile " +
+            // tracks, and reading a channel's curve back out
+            "tcb linear hold tcb! track linear-track hold-track track-ref free-param " +
+            "x-track y-track w-track h-track rot-track rotation-track scale-x-track scale-y-track " +
+            "alpha-track z-track layer-track " +
+            "delay-time scale-time reverse-time loop-time pingpong-time time+ time* snap-time " +
+            "value+ value* clamp-values keys-before keys-after keys-between " +
+            // data and the chart / plotting layers
+            "data linspace normalize extent dmin dmax data-len data-at data-map colormap cmap " +
+            "bars heat heatmap scatter axes line plot area points colorbar legend " +
+            // the musical layer: clock, events, patterns, and their transforms
+            "beats cycles cycle-secs scene-cycles pat strip t dur cyc step atom atom? param param? " +
+            "mini sine cosine saw isaw tri square rand perlin nums texts segment pat-range " +
+            "quantise quantize bipolar euclid kolakoski kolakoski-gaps hold-pat " +
+            "fast slow rev palindrome iter iter-back ply stut linger pat-rot shuffle degrade-by " +
+            "swing swing-by press press-by pat-delay every off superimpose inside outside " +
+            "sometimes-by stack-pat cat-pat " +
+            // stack shuffles and scalar math
+            "dup drop swap over add sub mul div mod pow min max neg negate abs floor ceil fract " +
+            "sqrt sin cos clamp sat saturate mix lerp smoothstep eq neq lt lte gt gte and or not",
+          // Red, with the numbers: `pi` and `tau` are constants, and the unit and fit words are
+          // the closest thing the language has to an enum. None is a registered word -- `->wall`
+          // and `->fit` read them forward out of the source -- so they exist only here.
+          literal: "pi tau meters meter m pixels pixel px abstract units unit contain cover stretch"
+        },
+        contains: [
+          // `#` to end of line, which also covers the `#rectsl` header -- it *is* a comment.
+          { scope: "comment", begin: /#/, end: /$/, relevance: 0 },
+          hljs.QUOTE_STRING_MODE,
+          // The mutators, by shape rather than by name. Ends with an optional `*` for `->opacity*`.
+          { scope: "symbol", begin: /->[a-z][a-z0-9-]*\*?/, relevance: 10 },
+          // A quote's delimiters. Only the delimiters: what is inside them is ordinary RectSL and
+          // should keep reading as itself.
+          { scope: "symbol", begin: /'\(|\)/, relevance: 10 },
+          // Paint, which the editor also colours as a writer rather than as vocabulary.
+          { scope: "symbol", begin: /\b(?:solid|rgba?|material)\b/, relevance: 0 },
+          // Colour literals, before the number rule so `0xffaa33` is not read as `0` then a word.
+          { scope: "number", begin: /\b0[xX][0-9a-fA-F]+\b/, relevance: 10 },
+          { scope: "number", begin: /-?\b(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?\b/, relevance: 0 },
+          // The symbolic operators, longest first so `<=` is not read as `<` then `=`. `=` is also
+          // the optional separator inside a track key (`0=0.2`), which is the same colour either way.
+          { scope: "operator", begin: /<=|>=|!=|<>|[-+*/<>=]/, relevance: 0 },
+          // `: name … ;` — the name being defined, and the delimiters that frame a definition or
+          // close a rect body.
+          {
+            begin: [/:/, /\s+/, WORD],
+            beginScope: { 1: "operator", 3: "title.function" },
+            relevance: 10
+          },
+          { scope: "operator", begin: /;/, relevance: 0 }
+        ]
+      };
+    });
+    rectslRegistered = true;
+  }
+
   /**
    * Register every grammar this repo adds to highlight.js.
    *
@@ -276,6 +378,7 @@
     registerForthLanguage();
     registerMorphoLanguage();
     registerClojureLanguage();
+    registerRectSLLanguage();
   }
 
   function ensureHighlight() {

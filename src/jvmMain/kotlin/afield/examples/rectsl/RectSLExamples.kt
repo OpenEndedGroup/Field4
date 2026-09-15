@@ -123,6 +123,7 @@ object RectSLExamples {
         checkArrayGenerators()
         checkGalleryWorkspace()
         checkPublicDocsExamples()
+        checkCheatsheetSnippets()
         checkCheatsheetCoverage()
         println("rectsl examples passed")
     }
@@ -385,11 +386,35 @@ object RectSLExamples {
     }
 
     /** Compile every complete RectSL listing shown on the public examples page. */
-    private fun checkPublicDocsExamples() {
-        val file = File(System.getProperty("user.dir"), "public/docs/rectsl_examples.md")
+    private fun checkPublicDocsExamples() =
+        compileDocsPage("public/docs/rectsl_examples.md", "example", wrapFragments = false)
+
+    /**
+     * Compile the short snippets on the cheatsheet page too.
+     *
+     * The cheatsheet's job is to be scanned, so its snippets are *fragments*: three or
+     * four lines showing one section's words in use, with no scene header. That is the
+     * reason they had rotted into a spelling the VM never had (`1 square` for
+     * `1 ->square`) — nothing compiled them. A fragment gets [SNIPPET_PREAMBLE]
+     * prepended and is then held to exactly the same standard as a full listing, so a
+     * cheatsheet snippet cannot claim a syntax that does not parse.
+     */
+    private fun checkCheatsheetSnippets() =
+        compileDocsPage("public/docs/rectsl_cheatsheet.md", "cheatsheet snippet", wrapFragments = true)
+
+    /** The scene a cheatsheet fragment is compiled inside. A snippet may override any of it. */
+    private val SNIPPET_PREAMBLE = """
+        #rectsl
+        ->wall 16 9 abstract
+        ->duration 4
+        ->fps 30
+    """.trimIndent() + "\n"
+
+    private fun compileDocsPage(relative: String, label: String, wrapFragments: Boolean) {
+        val file = File(System.getProperty("user.dir"), relative)
         if (!file.exists()) return
         val blocks = rectslCodeBlocks(file.readText())
-        check(blocks.isNotEmpty()) { "public RectSL examples page has no RectSL code blocks" }
+        check(blocks.isNotEmpty()) { "$relative has no `data-lang=rectsl` code blocks" }
 
         val placeholderCurves = with(Functions) {
             val curve = gaussian(mean = 0.5, sigma = 0.16, amplitude = 1.0)
@@ -397,7 +422,9 @@ object RectSLExamples {
         }
         var escapeEngine: KotlinScriptEngine? = null
         try {
-            blocks.forEachIndexed { index, (fence, source) ->
+            blocks.forEachIndexed { index, (fence, body) ->
+                val wrapped = wrapFragments && "->wall" !in body
+                val source = if (wrapped) SNIPPET_PREAMBLE + body else body
                 val result = if ("{{" in source) {
                     val engine = escapeEngine
                         ?: KotlinInterface2(filePrefix = "RECTSL_DOCS_ESCAPE_").also { escapeEngine = it }
@@ -409,9 +436,11 @@ object RectSLExamples {
                     // Name the fence and quote its first line: a block that is not meant
                     // to be a program at all is the likeliest reason to land here, and
                     // the diagnostics alone read as a language error.
-                    "public RectSL example ${index + 1} failed to compile.\n" +
+                    "public RectSL $label ${index + 1} failed to compile.\n" +
+                        "  page: $relative\n" +
                         "  fence: ```$fence\n" +
-                        "  first line: ${source.lineSequence().firstOrNull { it.isNotBlank() }?.trim()}\n" +
+                        "  first line: ${body.lineSequence().firstOrNull { it.isNotBlank() }?.trim()}\n" +
+                        (if (wrapped) "  (compiled inside the standard snippet preamble)\n" else "") +
                         "  ${result.diagnostics.joinToString("\n  ")}\n" +
                         "If this block is not a RectSL program, do not label it `data-lang=rectsl`."
                 }
@@ -419,7 +448,7 @@ object RectSLExamples {
         } finally {
             escapeEngine?.dispose()
         }
-        println("rectsl public docs compiled ${blocks.size} worked example(s)")
+        println("rectsl $relative compiled ${blocks.size} block(s)")
     }
 
     // ── cheatsheet coverage guard ────────────────────────────────────────────────

@@ -52,6 +52,7 @@ class DoughEngine(
     private var framebufferLength = -1
     private var framePointer = -1
     private var pcmPointer = -1
+    private var activeVoicesPointer = -1
 
     init {
         host.engine = this
@@ -140,6 +141,22 @@ class DoughEngine(
         }
     }
 
+    /**
+     * How many of [MAX_VOICES] are sounding, or null if the engine did not report the pointer.
+     *
+     * The wasm module has always mirrored `active_voices`; reading it is how a caller can tell
+     * polyphony from a single loud voice without analysing the audio.
+     */
+    fun activeVoices(): Int? {
+        if (activeVoicesPointer < 0) return null
+        context.enter()
+        return try {
+            bindings.getMember("doughGetInt32").execute(activeVoicesPointer).asInt()
+        } finally {
+            context.leave()
+        }
+    }
+
     fun framebufferCopy(): FloatArray {
         if (framebufferPointer < 0 || framebufferLength <= 0) return FloatArray(0)
 
@@ -175,6 +192,7 @@ class DoughEngine(
         framebufferLength = map["framebuffer_length"] ?: -1
         framePointer = map["frame"] ?: -1
         pcmPointer = map["pcm"] ?: -1
+        activeVoicesPointer = map["active_voices"] ?: -1
     }
 
     private fun parsePath(path: String): Map<String, String> {
