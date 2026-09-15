@@ -37,9 +37,8 @@ showImgGrid(
 ![The word Handgloves in white sans-serif on black, every counter open](assets/typography_examples/word.png)
 
 AWT did not draw that raster. `rasterizeText` is a scanline fill over the contours *this family*
-extracted, so a legible picture is evidence about the extraction, the winding and the layout rather
-than about `Graphics2D.drawString`. It has to work that way in any case: `imaging_field.kt` will not
-touch AWT text in-process, which is why `montage` burns its captions in with a 5×7 bitmap table.
+extracted, and it has to be: `imaging_field.kt` will not touch AWT text in-process, which is why
+`montage` burns its captions in with a 5×7 bitmap table.
 
 ## The winding convention, and the control arm
 
@@ -353,29 +352,28 @@ showMesh(
 
 ![An extruded lowercase o as a ring you can see through beside an extruded l as a solid slab, and the word mesh extruded in 3D](assets/typography_examples/mesh.png)
 
-The two panel labels are composed by the box, calling `genus()` and `isWatertight()` on the mesh it
-is about to draw, so they cannot describe some other mesh. **Genus 1 for `o` and 0 for `l`** is a 2D
-count (rings nested at odd depth) agreeing with a 3D one (χ over the mesh's vertices, edges and
-faces), and the volume matches the ink area times the depth to `8.7e-16` relative, a shoelace sum
-agreeing with the divergence theorem to the last bit of a double. A dropped cap triangle, a wall
-wound the wrong way or an unpunched counter breaks one of the two. (The fact line under the `word`
-panel is the *renderer's* own, computed by `showMesh` from what it was handed; a `showMeshGrid` sheet
-does not carry one, and [Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter) says
-why.)
+**Genus 1 for `o` and 0 for `l`**: a 2D count — rings nested at odd depth — agreeing with a 3D one,
+χ over the mesh's vertices, edges and faces. The extruded volume agrees with the ink area times the
+depth in the same way, a shoelace sum against the divergence theorem. Either identity breaks on a
+dropped cap triangle, a wall wound the wrong way or an unpunched counter, which is why
+`TypographyTest.extrudedGenusEqualsHoleCount` and `extrudedVolumeMatchesInkAreaTimesDepth` hold both
+over a list of letters rather than over the two in the figure.
+
+(The fact line under the `word` panel is the *renderer's* own, computed by `showMesh` from what it
+was handed; a `showMeshGrid` sheet does not carry one, and
+[Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter) says why.)
 
 Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
 rather than merely odd shading. A GPU fails it the same way.
 
-!!! warning "Don't reach for `flatShaded()` here"
+??? aside "`flatShaded()` and the figure's fact line"
 
     It un-welds every triangle into its own three vertices, so the copy is no longer topologically
-    anything, and the single-mesh `showMesh` computes `topology()` on whatever you hand it and
-    prints the answer *as fact* in the figure's fact line (`TriMesh.threeFacts()` on the viewer path,
-    `TriMesh.toFigureHtml` on the CPU one, one shared sentence). Pass it a flat-shaded `o` and that
-    line reads `open (N boundary loop(s))` right beside a title stating the mesh is closed.
-    You don't need it either way: both renderers prepare the mesh through the same step, which
-    already applies `shadedNormals` to one that arrives without normals, and an extrusion is
-    all creases so it comes out faceted anyway.
+    anything — and `showMesh` computes `topology()` on whatever you hand it and prints the answer
+    *as fact* in the figure's fact line. Pass it a flat-shaded `o` and that line reads
+    `open (N boundary loop(s))` beside a title stating the mesh is closed. You do not need it in any
+    case: both renderers apply `shadedNormals` to a mesh that arrives without normals, and an
+    extrusion is all creases, so it comes out faceted anyway.
 
 ## Letters in the SDF family
 
@@ -456,10 +454,10 @@ showPlaneGrid(
 
 ![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-**143** points at spacing 18 and **558** at 4.5: a `3.90×` rise for a 4× finer spacing, near enough
-to linear that the resampler is walking arc length and not emitting one point per stored vertex. From
-here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
-[Spatial Artificial Life](alife_examples.md) will happily eat a headline.
+Halving the spacing twice roughly quadruples the count, as the first panel's caption reports: near
+enough to linear that the resampler is walking arc length and not emitting one point per stored
+vertex. From here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the
+agents in [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
 
 ## Loading a font
 
@@ -478,7 +476,7 @@ machine's logical `SansSerif` and `Serif`. Build them somewhere else and the pic
 and are equally correct. Every claim on this page is therefore about a *structural* property rather
 than a particular curve.
 
-### One platform caveat, and its symptom
+### Reading outlines in a JVM you launched yourself
 
 A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
 `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
