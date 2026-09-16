@@ -1,4 +1,4 @@
-# Field on Apple Vision Pro — work in progress
+# Field on Apple Vision Pro
 
 !!! warning "Work in progress"
     This is an early snapshot of Field's native **visionOS** front end. Some pieces are
@@ -28,7 +28,21 @@ over the paired canvas instead of covering Monaco.
 
 ---
 
-## Native 3D FLine viewer — working
+## Trying it
+
+The visionOS app is a standalone Xcode project (visionOS 26 SDK) that points at a running Field
+server. In short:
+
+1. Start a Field server and build/run the visionOS app against it.
+2. In Field, run a box with `threeLines(myLines, editable = true)`.
+3. In the headset, open the **FLine 3D** viewer — it discovers the live view and renders it. Toggle
+   **Edit** to grab the handles.
+4. With a head attached, `println(visionPoseLatencyReport())` from any box prints the whole chain.
+   With no head attached it prints the same table empty, which is a useful thing to see first.
+
+---
+
+## Native 3D FLine viewer
 
 The first native island: a RealityKit viewer for **FLines** (Field's line/geometry primitive), the
 native equivalent of the in-browser three.js viewer. It subscribes to every live FLine view on the
@@ -117,21 +131,14 @@ Field's Kotlin side sees MSL as a real language: `msl` is a box property with it
 highlighting and completion (the ABI structs, the `u_NAME` uniforms *that box* declares, and snippets
 for both entry points), and it saves beside the box as a `.metal` file.
 
-**What's verified where.** The simplest case (one shader, one built-in cube, uniforms on the
-compositor clock) runs on a physical Vision Pro, and a Kotlin edit reaches a changed image with no
-perceptible lag.
-
-Most of the three-part structure can be checked without a headset, because it is orthogonal to what
-a simulator can't do. A script drives the real app in the **visionOS simulator** and asserts on the
-status messages the head sends back over the wire: that Apple's Metal compiler accepts the generated
-shader preamble, that Kotlin-built geometry arrives as the mesh the builder's arithmetic predicts,
-that a shader-only reload leaves the script and geometry running, and that a broken shader reports
-the author's own line number. All of that passes. Per-eye separation, spatial input and display
-timing are device work, and this slice of the system barely touches them.
+The simplest case — one shader, one built-in cube, uniforms on the compositor clock — runs on a
+physical Vision Pro, and a Kotlin edit reaches a changed image with no perceptible lag. The rest of
+the three-part structure is exercised in the visionOS simulator rather than on a device, which the
+status table below says row by row.
 
 ---
 
-## RTT streaming — working (mono)
+## Streaming the rendered scene as video
 
 For everything that isn't lines (the full Vulkan-rendered scene), Field streams the render target
 to the headset as native video. On macOS the Vulkan RTT is backed directly by an IOSurface that
@@ -147,7 +154,7 @@ window.
 
 ---
 
-## RTT + stereo — working
+## One half-frame per eye
 
 The capture and encode path produces **side-by-side stereo frames**, and a Camera Index Switch
 ShaderGraph material samples the left half of the frame for the left eye and the right half for the
@@ -284,8 +291,9 @@ link estimates the contention, not the offset.
 Read the spans, not the total. Two of them are costs Field chooses to pay:
 
 - the receiver's **jitter buffer** holds frames, so that network jitter becomes smoothness
-  instead of dropped frames (`RTTStream.swift:77#static let bufferFrames`; set `FIELD4_RTT_BUFFER=0`
-  for the unbuffered comparison);
+  instead of dropped frames — it reports as `head: jitter buffer hold (deliberate)`
+  (`RTTStream.swift:77#static let bufferFrames`; set `FIELD4_RTT_BUFFER=0` for the unbuffered
+  comparison);
 - **`submit to encoded` includes the render fence**
   (`VisionPoseLatency.kt:60#const val SUBMIT_TO_ENCODED`), which puts scene complexity there rather
   than somewhere misleading.
@@ -319,47 +327,15 @@ that table whether or not they hold samples. "No pong yet" therefore stays disti
 offset is zero", and the lower-bound caveat is printed by the code rather than remembered by a
 reader.
 
-An empty table only teaches you the shape of the table, though. Here is the same readout with the
-stages populated, printed by the `visionpose.latency` smoke test, which drives a **synthetic head**
-with a known clock offset and known one-way delays and needs no hardware:
-
-```diffstatic {data-lang=text}
-vision pose/stream latency
-  head clock = host clock +1234567.547 ms (best RTT 10.69 ms, 7 pongs)
-  --- this machine ---
-  pose uplink transit                    (no samples)
-  pose age when latched                  (no samples)
-  latch to frame submit                  p50    4.00  p95    4.00  max    8.00  n=2
-  submit to encoded (incl. render fence) p50   11.00  p95   11.00  max   11.00  n=1
-  --- the head ---
-  head: jitter buffer hold (deliberate)  p50   33.40  p95   50.10  max   66.80  n=900
-  head: POSE to texture (motion-to-photon lower bound) p50   72.50  p95   98.20  max  140.00  n=900
-  note: the head's last observable moment is the texture upload, so any motion-to-photon figure above is short by up to one compositor frame.
-```
-
-**Read that for its structure, not its magnitudes.** A table like this invites being quoted as a
-benchmark. Which figure is which:
-
-- The **span values are fixtures.** `33.40`, `72.50`, `n=900`, the `4`/`8`/`11` ms host samples: the
-  test writes those in, so they say nothing about how fast anything is. What they demonstrate is that
-  a device-reported span survives the wire intact, that percentiles and counts land in the right
-  columns, and that a *negative* span is dropped rather than counted as zero. `submit to encoded`
-  shows `n=1` from two recorded samples, one of which was negative, and counting it would have
-  pulled every percentile down with nothing to show why.
-- The **clock offset is recovered, not written in.** The synthetic head is built at an offset of
-  `+1234567.890 ms`; the estimator recovered `+1234567.547 ms` from seven round trips on this
-  machine without ever being told the answer. It is the only measured figure in either table, and
-  the first one to check, because a wrong offset does not fail; it produces a *plausible* latency.
-  The smoke's own bound is a loose 20 ms: a sign slip would be out by twice the offset and a missing
-  halving by the offset itself, and what fits inside that window is host scheduling noise on a
-  shared machine.
-- The **`best RTT 10.69 ms`** is against a synthetic path of two 5 ms crossings, with the head's own
-  2 ms hold correctly excluded rather than charged to the network.
-
-So the arithmetic is checked and nothing else is. **No span in either table has ever been measured
-against real hardware.** The head defines five<!--count:visionPoseDeviceSpans--> spans of its own and
-the fixture above exercises two of them; on the visionOS simulator the device's spans stay empty
-regardless, because there is no video stream there to time.
+**No span on this page has ever been measured against real hardware.** The `visionpose.latency`
+smoke drives a synthetic head with a known clock offset and known one-way delays, so what it checks
+is the arithmetic: that a device-reported span survives the wire intact, that a negative span is
+dropped rather than counted as zero, and that the offset estimator recovers an offset it was never
+told — a wrong offset does not fail, it produces a *plausible* latency. The head defines
+five<!--count:visionPoseDeviceSpans--> spans of its own and that smoke exercises two of them; on the
+visionOS simulator the device's spans stay empty regardless, because there is no video stream there
+to time. Its populated readout, and which of those figures are written in rather than measured, are
+in `dev_docs/VISION_LATENCY_MEASUREMENTS.md`.
 
 ---
 
@@ -463,6 +439,11 @@ Read the third column first: it is the one that decays.
 Three<!--count:visionPoseSmokeTests--> of those rows lean on smoke tests that run without a headset,
 and they are named in the reference below so you can run them yourself.
 
+The screenshots on this page are from the visionOS simulator, which can't drive spatial gestures and
+throttles the immersive scene. Spatial-input feel and video smoothness are best judged on real
+hardware. They remain the active on-device verification items, alongside real head motion, true
+per-eye separation, controller input, and every latency span on this page.
+
 ---
 
 ## Reference — where this lives
@@ -471,21 +452,8 @@ Cross-checked against source on every `docsGates` run, so a rename here breaks t
 rotting unnoticed. The Swift rows are here because this is a two-machine protocol, and a page citing
 only the Kotlin end would be describing one side of it.
 
-**How this list is derived, and where it is blind.** The Kotlin half is the closure over the
-`import afield.*` symbols of every `FIELD_TEST` tagged `visionos`, resolved to declaring files; the
-wire half comes from the channel set `ServerSurfaceLedgerTest` scrapes out of Kotlin source and
-set-equality-matches against `dev_docs/server_surface_inventory.md`; the Swift half is every
-`.swift` file the Xcode project compiles, which is *every* file under `Field4Vision/`, because the
-project uses a filesystem-synchronized group and `project.pbxproj` contains no `.swift` strings at
-all, so anyone reading sources out of that file gets an empty list.
-
-**The tag enumerator does not see the OpenXR side-by-side path at all.** `ImGuiVrPanelSmokeTest` is
-the only `FIELD_TEST` in the tree that constructs a `SideBySideStereoTarget`, and it carries no
-`tags:` line, so `tags: […visionos…]` is a *visionOS* census, not an XR one, and `OpenXRHmdTarget`
-and `SideBySideStereoTarget` reach this table only through the import closure. Two things sit
-outside every census here: `SimpleSpatialAudio.setListenerFromSideBySide` drives spatial audio off
-the stereo target and nothing classifies it as XR, and `src/jsVision/` is two tracked files in no
-Gradle compilation — not a client, and with no rows below.
+How the list is derived, and the two things that sit outside every census it draws on, are in
+`dev_docs/vision_frontend.md`.
 
 <div class="field-data-table" markdown>
 
@@ -558,22 +526,3 @@ WebXR](ar_reference.md)** for the browser-based sibling, **[ImGui as a VR
 panel](imgui_vr_panel.md)** for the same side-by-side stereo path on the desktop, and
 **[afield.four Graphics](afield_four_graphics.md)** for `FieldRTTStreamer`, the producer half of the
 streaming spine.
-
----
-
-## Trying it
-
-The visionOS app is a standalone Xcode project (visionOS 26 SDK) that points at a running Field
-server. In short:
-
-1. Start a Field server and build/run the visionOS app against it.
-2. In Field, run a box with `threeLines(myLines, editable = true)`.
-3. In the headset, open the **FLine 3D** viewer — it discovers the live view and renders it. Toggle
-   **Edit** to grab the handles.
-4. With a head attached, `println(visionPoseLatencyReport())` from any box prints the whole chain.
-   With no head attached it prints the same table empty, which is a useful thing to see first.
-
-The screenshots above are from the visionOS simulator, which can't drive spatial gestures and
-throttles the immersive scene. Spatial-input feel and video smoothness are best judged on real
-hardware. They remain the active on-device verification items, alongside real head motion, true
-per-eye separation, controller input, and every latency span on this page.

@@ -310,3 +310,24 @@ submit block, where a newer pose would silently substitute itself.
 Keep observed test history in the owning component's README or artifacts. This
 architecture note should state current seams and decisions, not accumulate
 machine-specific anecdotes or speculative platform research.
+
+## How `public/docs/vision.md`'s reference table is derived, and where it is blind
+
+Displaced from that page on 2026-09-16: it is a statement about the census, not about the system,
+and a reader arriving to use the visionOS front end does not need it.
+
+The Kotlin half is the closure over the `import afield.*` symbols of every `FIELD_TEST` tagged
+`visionos`, resolved to declaring files; the wire half comes from the channel set
+`ServerSurfaceLedgerTest` scrapes out of Kotlin source and set-equality-matches against
+`dev_docs/server_surface_inventory.md`; the Swift half is every `.swift` file the Xcode project
+compiles, which is *every* file under `Field4Vision/`, because the project uses a
+filesystem-synchronized group and `project.pbxproj` contains no `.swift` strings at all, so anyone
+reading sources out of that file gets an empty list.
+
+**The tag enumerator does not see the OpenXR side-by-side path at all.** `ImGuiVrPanelSmokeTest` is
+the only `FIELD_TEST` in the tree that constructs a `SideBySideStereoTarget`, and it carries no
+`tags:` line, so `tags: […visionos…]` is a *visionOS* census, not an XR one, and `OpenXRHmdTarget`
+and `SideBySideStereoTarget` reach that table only through the import closure. Two things sit
+outside every census: `SimpleSpatialAudio.setListenerFromSideBySide` drives spatial audio off the
+stereo target and nothing classifies it as XR, and `src/jsVision/` is two tracked files in no
+Gradle compilation — not a client, and with no rows on the page.
