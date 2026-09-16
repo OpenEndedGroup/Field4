@@ -14,6 +14,34 @@ import afield.stdlib.vec
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * An [AbletonSet] drawn as a timeline: a row of clip rectangles per track, an automation curve
+ * under it per envelope, at a fixed number of pixels per beat.
+ *
+ * `AbletonSet.toDebugFLines` is the call and returns a flat list of `FLine`s; `debugFLineMap` is
+ * the same drawing under one key, for a box that publishes its lines as a map. Both take an
+ * [AbletonSetFLineDebugOptions] or a builder block, and `abletonSetFLineDebugOptions` builds one
+ * on its own.
+ *
+ * Geometry is beats times `pixelsPerBeat` along x and a stack of fixed-height lanes along y: a
+ * track takes `clipLaneHeight` plus one `automationLaneHeight` per envelope it carries, with
+ * `trackGap` between tracks. The drawing is at least sixteen beats wide however short the set is,
+ * and `includeMainTrack` decides whether the set's main track is drawn beside its ordinary ones.
+ * An envelope is sampled at `automationSamples` points across that width, and within its lane a
+ * higher value sits at a smaller y, normalised by the envelope's declared range, falling back to
+ * the spread of its own events, then to a unit interval around its manual value, then to 0 to 1.
+ * `includeGuides` rules a line under each track's clip row and another under the track;
+ * `markAutomationEvents` ticks each envelope event at its own time.
+ *
+ * Colour comes from Live's track colour index into a palette of 32, with a golden-ratio hue as the
+ * fallback for a track that has no index or a negative one, and a disabled clip is drawn at a
+ * lower alpha rather than omitted. Every line carries `ableton.*` properties naming the track,
+ * clip, envelope or event it was drawn from, so the picture can be queried as well as looked at.
+ *
+ * There is no connection to a running Live here. The input is an [AbletonSet] parsed off disk, so
+ * the drawing works on a machine that has never had Live installed.
+ */
+
 data class AbletonSetFLineDebugOptions(
     val pixelsPerBeat: Double = 0.5,
     val clipLaneHeight: Double = 18.0,
