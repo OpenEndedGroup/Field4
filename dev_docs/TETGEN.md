@@ -103,6 +103,19 @@ Three things in that build are load-bearing:
 One more, found the hard way while measuring: **TetGen truncates output filenames at the first
 dot**, so `body_h0.0625.off` writes its result to `body_h0.1.mesh`.
 
+### Why the skipped-facet files are not relocated
+
+Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
+`tetgen-tmpfile_skipped.face` in the process's current working directory. `Q` does not suppress
+them and `TETLIBRARY` does not redirect them; `public/docs/tetgen.md` tells a user to expect them,
+and `TetgenWorkingDirectoryLitterTest` pins the behaviour.
+
+`chdir` around the call is the obvious fix and it is worse than the problem. The working directory
+is process-global, so moving it under a mesh running on a background thread moves it for every
+relative path in the session — including whatever the user's own boxes are reading. Nothing short of
+patching TetGen's own file handling fixes this properly, which is why the documented behaviour is
+the behaviour.
+
 ## The structural formulation
 
 `structural.bodyFitted` runs a small-displacement element on the supplied mesh, with a clamp region,

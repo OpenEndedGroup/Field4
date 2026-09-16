@@ -220,7 +220,7 @@ On that bracket at `targetEdgeLength = 3.0`: 66,489 elements, median radius rati
 `0.0362`, and **4** elements below `0.05`. A long thin tail under a healthy median is the normal
 shape for Delaunay refinement, so judge a mesh by its tail rather than by its median.
 
-### The `quality` argument buys less than you would think
+### Choosing the `quality` bound
 
 TetGen's own default bound is `1.414`; `Tetgen.tetrahedralize` defaults to `1.2`. Swept on the same
 bracket at `targetEdgeLength = 5.0`, timing the median of three runs:
@@ -538,10 +538,10 @@ you are pushing a repaired scan through both, `TriMesh.diagnose()` reporting `IN
 matters to the Manifold half and not to this one.
 
 The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
-neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. That is worth
-knowing precisely because it is the shape of the mistake you will actually make — a mesh off disk
-with an unwelded or over-welded seam produces a plausible solid of the wrong size, and nothing in
-this path will tell you. Compare `mesh.volume()` against `Solid.volume` before you trust a result.
+neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
+shape the mistake takes in practice: a mesh off disk with an unwelded or over-welded seam produces a
+plausible solid of the wrong size, and nothing in this path will tell you. Compare `mesh.volume()`
+against `Solid.volume` before you trust a result.
 
 ??? aside "The fatal path"
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
@@ -557,7 +557,7 @@ this path will tell you. Compare `mesh.volume()` against `Solid.volume` before y
     collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
     wrapper's; the line in your terminal is TetGen's.
 
-!!! warning "And it writes files into your working directory"
+!!! warning "A refused surface leaves two files in your working directory"
     Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
     `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
     it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
@@ -566,11 +566,9 @@ this path will tell you. Compare `mesh.volume()` against `Solid.volume` before y
     They are TetGen's own debugging aid and they are genuinely useful — the pair from a failed
     Boolean is a Medit-readable dump of exactly which facets tangled — but nothing asks before
     writing them. `TetgenWorkingDirectoryLitterTest` pins the behaviour and cleans up after itself.
-    The obvious fix, `chdir` around the call, is worse than the problem: the working directory is
-    process-global, and moving it under a mesh running on a background thread moves it for every
-    relative path in the session.
+    Field does not relocate them; `dev_docs/TETGEN.md` says why.
 
-### `preserveSurface` is a trap on a Boolean result
+### `preserveSurface` on a Boolean result
 
 `preserveSurface = true` is TetGen's `-Y`: forbid Steiner points on the boundary, so the output
 surface is the input surface, triangle for triangle. It is off by default and should stay off unless
