@@ -85,6 +85,7 @@ run {
 
     // The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and
     // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the
-    // source. In the committed measurement it did not — the round trip is exactly zero — but the
-    // guard in `StackSLFitFigureTest` allows 1e-4 for that reason rather than demanding zero.
+    // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit
+    // round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a
+    // Float near 1. That is why the guard allows 1e-4 rather than demanding zero.
 }

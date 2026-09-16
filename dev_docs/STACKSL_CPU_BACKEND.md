@@ -300,6 +300,15 @@ alongside its result), and control flow is a returned `Flow` rather than an exce
 returns from inside a loop, and a 512×512 render evaluates that `return` 1.3 million times per
 program).
 
+## Differentiating it
+
+Since 2026-09-16 the interpreter is generic in its scalar (`GlslScalars<V>`), so the same parse tree
+and the same control flow that produce the `Float` reference also produce `d(pixel)/d(literal)` on a
+reverse-mode AD tape. The `Float` path is byte-identical — measured, over all 31 gallery programs —
+and the differentiable pass's *primal* is bit-identical to it, because every AD node rounds to
+`Float` where the `Float` path rounds. `dev_docs/STACKSL_DIFFERENTIABLE.md` has the mechanism, the
+populations and the floors.
+
 ## The loadable demo
 
 `public/docs/assets/stacksl_cpu_demo/` — open the directory as a Field document; two boxes, press
