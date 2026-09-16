@@ -26,20 +26,8 @@ displaced by nothing at all. A flock of 400 agents reaches a polarization of 0.6
 independent headings would give 0.044, and the same initial state with the alignment term zeroed
 reaches 0.073.
 
-`afield.examples.stdlib.AlifeGallery` renders the eighteen figures below in CI and asserts, for each,
-the statistic its control arm fails; the numbers printed here are the numbers it asserts. It runs in
-two tiers. `stdlib.alife.gallery` is the fast one (~6 s, everything whose evidence is an exact
-identity or a closed-form comparison, including the checks that pin the *measurement* functions
-against analytic answers), and `stdlib.alife.gallery.slow` is the ~25 s of figures that integrate a
-PDE or an agent population to a statistical verdict.
-
-!!! note "The measurement layer"
-    `alife.kt` is mostly not automata. It is [`polarization`](reference/alife.md#alife-kt) and its
-    random baseline, [`blobShapes`](reference/alife.md#alife-kt) (the isoperimetric ratio that tells
-    spots from stripes), [`correlationLength`](reference/alife.md#alife-kt),
-    [`topShare`](reference/alife.md#alife-kt) and
-    [`massRadiusDimension`](reference/alife.md#alife-kt). They are what the rest of the family makes
-    its claims through.
+`afield.examples.stdlib.AlifeGallery` renders the figures below in CI and asserts, for each, the
+statistic its control arm fails, so the numbers printed here are the numbers it asserts.
 
 ## Source files
 
@@ -48,7 +36,13 @@ Six dependency-free files built on the existing [imaging](imaging_examples.md) a
 labelling, colour mapping or marching cubes:
 
 - **`alife.kt`** — [`IntGrid`](reference/alife.md#alife-kt-intgrid), the toroidal-or-bounded integer
-  lattice; the grid↔[`Img`](imaging_examples.md) bridges; and the measurement layer.
+  lattice; the grid↔[`Img`](imaging_examples.md) bridges; and, mostly, the measurement layer that
+  the rest of the family makes its claims through —
+  [`polarization`](reference/alife.md#alife-kt) and its random baseline,
+  [`blobShapes`](reference/alife.md#alife-kt) (the isoperimetric ratio that tells spots from
+  stripes), [`correlationLength`](reference/alife.md#alife-kt),
+  [`topShare`](reference/alife.md#alife-kt) and
+  [`massRadiusDimension`](reference/alife.md#alife-kt).
 - **`alife_ca.kt`** — [`LifeRule`](reference/alife.md#alife-ca-kt-liferule) parsed from `B3/S23`,
   named Life patterns, exact cycle detection, cyclic multi-state CA, Wolfram's elementary 1-D rules as
   a space-time raster, and a 3-D life-like CA on [`IntVolume`](reference/alife.md#alife-ca-kt-intvolume).
