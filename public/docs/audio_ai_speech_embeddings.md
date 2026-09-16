@@ -14,35 +14,6 @@ Neither backend is a transcript or a sentence-meaning model. WavLM's middle and 
 organize phonetic structure, but spoken meaning needs a separate ASR or language embedding lane.
 Both report a position in a learned speech space every 20 ms; neither reports a word.
 
-## What one job records
-
-The worker converts the selected source range to 16 kHz mono without replacing the original,
-processes long recordings in overlapping contextual chunks, and stores:
-
-- the full 50 Hz × 768 frame embedding as float16;
-- raw and smoothed 20 ms WebRTC voice activity;
-- frame energy in dBFS and embedding novelty;
-- four worker-side classical-MDS coordinates over cosine distance for immediate previews;
-- a MessagePack artifact containing the full float16 frame vectors and float64 frame times for Field;
-- the pinned model revision, WavLM layer, chunking, resampling, source format, and worker revision.
-
-The preferred live-coding path downloads the binary artifact, selects a time range before expanding
-the tensor into JVM objects, optionally mean-pools a wider temporal context, constructs distances,
-and runs fixed-seed Smile t-SNE in Field. `poolMillis` controls how much evidence contributes to each
-point; `hopMillis` independently controls point spacing. Both round to the native 20 ms grid, and
-omitting them preserves the original 50 Hz vectors. Pooling happens before `maxFrames` sampling, so
-changing the range, pool, hop, dimensions, distance, perplexity, or seed never reruns either neural
-model. Exact MDS remains available through `speechEmbeddingSmilePreview`; Smile's
-[t-SNE](https://haifengl.github.io/manifold.html#t-sne) is the better first view for short-time local
-neighbourhoods. The worker projection remains an immediate cached preview and a useful provenance
-reference.
-
-MDS is a navigational view, not the model's latent space. Its axes are specific to one operation;
-do not compare coordinate 0 numerically between emotion2vec and WavLM, or between two independently
-fitted recordings. Use the stored 768-dimensional vectors for retrieval or cross-recording
-distance. The worker fixes eigenvector signs so an identical cached request has an identical view,
-but rotations of a newly fitted corpus still have no semantic name.
-
 ## Start the optional worker
 
 From the Field Audio AI checkout (or Field4's `services/field-audio-ai` submodule):
@@ -139,19 +110,48 @@ client.assetsByFilename("*near_drowning*").thenCompose { matches ->
 
 Re-running the unchanged box returns the cached neural results: source identity, exact range, model
 revision, layer, chunking, MDS parameters, and preprocessing are part of the operation hash.
-Change any of those inputs—or set `forceRegenerate = true`—to make a new operation.
-The settings above produce 250 overlapping points in the first ten seconds: each point averages 500
-ms of evidence, while a new point arrives every 40 ms (25 Hz), just faster than a 24 fps display. This
-smooths frame-level jitter without turning the path into sparse half-second steps. Set both parameters
-to `null` for the original 50 Hz vectors. Changing Field-side range, pooling, sampling, or distance
-only recomputes the projection locally. Exact classical MDS is quadratic in memory and cubic in
-compute, so do not set `maxFrames` to the recording's full 13,690 raw frames; use temporal pooling and
-a practical hop, a short exact window, or the worker's all-frame landmark projection instead.
-For this 13,690-frame recording, a 40 ms hop yields 6,845 pooled points; set
-`maxFrames = 7_000` to retain that complete 25 Hz path. It is still a substantial t-SNE fit, but its
-pairwise matrix has roughly one quarter as many entries as the 13,690-point raw-frame version.
-As with every t-SNE plot, local proximity is the evidence: global distances, rotations, and the
-individual axis values are not semantically stable.
+Change any of those inputs—or set `forceRegenerate = true`—to make a new operation. Changing a
+Field-side range, pooling, sampling or distance recomputes the projection locally and leaves the
+cached analysis where it is.
+
+The settings above give 250 points across the first ten seconds: each averages 500 ms of evidence,
+and a new one arrives every 40 ms, just faster than a 24 fps display. That smooths frame-level
+jitter without turning the path into sparse half-second steps. Set both parameters to `null` for the
+original 50 Hz vectors. Raising `maxFrames` toward the recording's full raw frame count is the one
+expensive move, because an exact fit grows with the square of the point count: pool to a practical
+hop, take a short exact window, or use the worker's all-frame landmark projection instead. As with
+every t-SNE plot, local proximity is the evidence, and global distances, rotations and the
+individual axis values are not.
+
+## What one job records
+
+The worker converts the selected source range to 16 kHz mono without replacing the original,
+processes long recordings in overlapping contextual chunks, and stores:
+
+- the full 50 Hz × 768 frame embedding as float16;
+- raw and smoothed 20 ms WebRTC voice activity;
+- frame energy in dBFS and embedding novelty;
+- four worker-side classical-MDS coordinates over cosine distance for immediate previews;
+- a MessagePack artifact containing the full float16 frame vectors and float64 frame times for Field;
+- the pinned model revision, WavLM layer, chunking, resampling, source format, and worker revision.
+
+`poolMillis` controls how much evidence contributes to each point; `hopMillis` independently
+controls point spacing. Both round to the native 20 ms grid, and omitting them preserves the
+original 50 Hz vectors. Pooling happens before `maxFrames` sampling, so changing the range, pool,
+hop, dimensions, distance, perplexity, or seed never reruns either neural model. Exact MDS remains
+available through `speechEmbeddingSmilePreview`; Smile's
+[t-SNE](https://haifengl.github.io/manifold.html#t-sne) is the better first view for short-time local
+neighbourhoods, and the worker's own projection stays as an immediate cached preview and a
+provenance reference.
+
+MDS is a navigational view, not the model's latent space. Its axes are specific to one operation;
+do not compare coordinate 0 numerically between emotion2vec and WavLM, or between two independently
+fitted recordings. Use the stored 768-dimensional vectors for retrieval or cross-recording
+distance. The worker fixes eigenvector signs so an identical cached request has an identical view,
+but rotations of a newly fitted corpus still have no semantic name.
+
+Frame counts for `near_drowning.wav` and the cost of an exact fit at each pooling setting are in
+`dev_docs/AUDIO_EMBEDDING_PROJECTION_MEASUREMENTS.md`.
 
 The loadable `audio_ai_speech_embeddings` operation transcript contains this live box, a durable
 job monitor, and a model-free synchronized renderer calibration. Continue with the
