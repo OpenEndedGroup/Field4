@@ -206,7 +206,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KratosSession.kt](simulation.md#kratossession-kt) | Simulation | 68 | 20 | The JVM side of the Kratos link: finding a worker, opening a session on it, and asking for solves. |  |
 | [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
 | [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 |  |  |
-| [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 |  |  |
+| [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 | One parameter study over a heated part, in the three sizes a demo has to exist in. |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 0 |  |  |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 0 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
@@ -241,7 +241,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoSearchFLines.kt](languages.md#morphosearchflines-kt) | Languages | 11 | 8 | Drawing what a search did, as vector `FLine`s for `afield.stdlib.showPlaneGrid`. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 | What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator, plus the per-cell arrival times morpho's own compiler already hands over. |  |
 | [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Somebody else's language, running in Field](../morpho_examples.md) |
-| [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 |  | [Springs, dampers, and a character with mass](../movement_examples.md) |
+| [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 | Typed decoder for the versioned note document a multi-instrument transcription job leaves behind. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
@@ -331,7 +331,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SimdVerletColliders.kt](simulation.md#simdverletcolliders-kt) | Simulation | 60 | 32 | Collision shapes for `SimdVerlet`: the world layer of the particle solver. | [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints and cloth](../physics.md) |
 | [SimdVerletDebugLines.kt](simulation.md#simdverletdebuglines-kt) | Simulation | 1 | 1 |  |  |
 | [SimdVerletDyn4jBridge.kt](simulation.md#simdverletdyn4jbridge-kt) | Simulation | 22 | 10 | Runs a `SimdVerlet` particle simulation and a `Dyn4jScene` in one frame, so that chosen particles collide with rigid bodies as circles while the rest stay ordinary particles. |  |
-| [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 |  |  |
+| [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 | Tearing for `SimdVerlet`: retiring over-stretched distance constraints, and the two measurements that say where to set the threshold. |  |
 | [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 | Wind for `SimdVerlet`: per-particle drag, per-quad cloth aerodynamics, and the reproducible gust field both of them sample. |  |
 | [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 2 |  |  |
 | [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 12 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
