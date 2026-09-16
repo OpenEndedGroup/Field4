@@ -1,18 +1,10 @@
 # AI documentation polish
 
 Field can generate short documentation for Kotlin completion entries that lack
-useful source KDoc. Those generated records are cached at
-`<checkout>/.field/filestore/generated_completion_docs.json`: one cache per
-checkout, seeded on first use from the machine-global `~/.afield/filestore`, and
-relocated by `AFIELD_FILESTORE_DIR` or `-Dafield.filestore.dir`.
-
-A record's key hashes the prompt version together with the declaration name,
-source path, line, and source hash, so a record survives only while all five
-still match. Editing the declaration retires its record; bumping
-`COMPLETION_DOC_PROMPT_VERSION` retires every record at once.
-
-Each record stores the source name, path, line, hash, generated documentation,
-model, and creation time.
+useful source KDoc. Those generated records live in a cache, and *polishing* is
+the step that promotes them: an AI agent reads the cache, writes real KDoc
+beside the declarations in `src/`, and Field regenerates its reference pages
+from whatever reached source.
 
 ## Polishing the cache into source KDoc
 
@@ -29,9 +21,8 @@ instructions require documentation-only edits: keep signatures and behavior
 unchanged, prefer concise KDoc beside the declaration, and change only cache
 entries it has actually handled.
 
-The cache is preserved after a normal run. Entries disappear or change only if
-the polishing agent explicitly edits them; the CLI does not clear the cache as
-a blanket post-processing step.
+The cache survives a normal run: an entry disappears or changes only where the
+polishing agent edited it.
 
 After the agent process ends, the Gradle task runs `generateCodebaseReference`
 as its final step. This keeps `public/docs/reference/` and
@@ -75,3 +66,16 @@ worktree.
 
 Use `AFIELD_COMPLETION_DOC_POLISH_MODEL` to override the configured flagship
 model for this task.
+
+## The record cache
+
+The cache is `<checkout>/.field/filestore/generated_completion_docs.json`: one
+per checkout, seeded on first use from the machine-global `~/.afield/filestore`,
+and relocated by `AFIELD_FILESTORE_DIR` or `-Dafield.filestore.dir`. Each record
+carries the declaration's name, path, line and source hash alongside the
+generated documentation, the model that wrote it, and when.
+
+A record's key hashes the prompt version together with the declaration name,
+source path, line and source hash, so a record survives only while all of those
+still match. Editing the declaration retires its record; bumping
+`COMPLETION_DOC_PROMPT_VERSION` retires every record at once.

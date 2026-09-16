@@ -1,6 +1,7 @@
 # Guide chat development runbook
 
-The user guide and example are in `public/docs/guide_chat.md`. Exact bridge behavior is documented
+The user guide and example are the "Per-slide chat" section of
+`public/docs/interactive_guides.md`. Exact bridge behavior is documented
 on `chat()` in `src/jvmMain/kotlin/afield/server/chat.kt`; chat-ID resolution is documented on the
 two `withChat` APIs in `src/jvmMain/kotlin/afield/SlideShow.kt`.
 

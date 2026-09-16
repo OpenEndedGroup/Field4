@@ -27,28 +27,31 @@ part.triangleCount // 1052
 display(part.toTriMesh())
 ```
 
-## The numbers are exact
+## Measuring a solid
 
-Manifold measures the **solid** rather than summing over float triangles, so the primitives come back
-to the last digit. That changes how the API feels: the results are arithmetic you can do and assert
-on, instead of a render you eyeball.
+Manifold measures the **solid** rather than summing over float triangles, so `Solid.cube(2,3,4).volume`
+is `24.0` and not `23.999998`. That changes how the API feels: the results are arithmetic you can do
+and assert on, instead of a render you eyeball.
 
-| what | Field says | closed form |
+<div class="field-data-table" markdown>
+
+| you want | on a `Solid` | on a `Section` |
 |---|---|---|
-| `Solid.cube(2,3,4).volume` | `24.0` | `24` |
-| `.surfaceArea` | `52.0` | `52` |
-| `.triangleCount` | `12` | the minimal closed mesh, not 24 |
-| a 2×2×2 cube ∪ the same shifted by 1 | `12.0` | `12` |
-| ∩ of the two | `4.0` | `4` |
-| `\|a\| + \|b\| − \|a ∩ b\|` | `= \|a ∪ b\|` | inclusion–exclusion |
-| an L of area 3, extruded by 2 | `6.0` | `6` |
-| a 2×2 square `offset(0.5, MITER)` | `9.0` | `8 + 4(0.5²)` |
-| the same with `BEVEL` | `8.5` | `8 + 4(0.5²/2)` |
-| the same with `ROUND` | `8.78540` | `8 + π(0.5²)` |
-| a square profile revolved off-axis | `4.71192` | Pappus: `2πRA = 4.71239` |
+| how much material | `volume` | `area` |
+| how much skin | `surfaceArea` | — |
+| how many holes | `genus` | `contourCount` |
+| the mesh size | `triangleCount`, `vertexCount` | `vertexCount` |
+| the extent | `bounds`, an `AxisAlignedBoundingBox3D` | `bounds`, a corner pair |
+| the clearance between two of them | `minGap(other, searchLength)` | — |
+| whether it worked | `status`, `isEmpty` | `isEmpty` |
 
-A cube slices to exactly `4.0`, and a 2×2×2 cube split at `z = 0.5` gives halves of exactly `2.0`
-and `6.0`.
+</div>
+
+Two of those will read oddly the first time. `triangleCount` on a cube is `12`, the minimal closed
+mesh rather than the 24 a per-face mesh would have; and `genus` counts holes through the solid, so
+the four-bore plate above is genus 4 before you count anything by hand. The whole census of Field's
+answers against their closed forms — including what each `JoinType` does to the area of an offset
+square — is in `dev_docs/MANIFOLD_AGREEMENT.md`.
 
 ## Booleans
 
@@ -345,8 +348,8 @@ Measured on this machine, a unit sphere at `edgeLength = 0.04` (465k samples, 40
 | `parallel = true` | 82 ms | 10 |
 | `parallel = false` | 151 ms | 1 |
 
-1.84×, from a Kotlin closure invoked concurrently by nine threads the JVM never created. Two
-consequences follow, and the binding covers both:
+1.84×, from a Kotlin closure invoked concurrently by nine threads the JVM never created. Those
+threads, and the C++ frames between them and your code, have two consequences:
 
 - **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
   through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
@@ -523,20 +526,18 @@ than an FFM `Arena`. A confined `Arena` is thread-confined and a `Solid` built i
 read from the runloop thread; a shared one costs a thread handshake to close. `malloc` has neither
 problem, and the `Cleaner` sits behind it.
 
-!!! note "FFM does not check your descriptors"
-    A `size_t` declared as an `int`, a struct return declared as a pointer, an argument in the wrong
-    position — all of them compile, link, and return *something*. The failure mode is a plausible
-    wrong number, not an error.
+??? aside "If you are writing FFM descriptors yourself"
+    Nothing checks them. A `size_t` declared as an `int`, a struct return declared as a pointer, an
+    argument in the wrong position — all of them compile, link, and return *something*. The failure
+    mode is a plausible wrong number, not an error.
 
-    Two places in this API where the header is the only warning. `manifold_slice` and
+    Two places in this API where `manifoldc.h` is the only warning. `manifold_slice` and
     `manifold_project` return `ManifoldPolygons*`, **not** `ManifoldCrossSection*`; since every
     constructor here builds into memory the caller allocated, handing `slice` a cross-section-sized
-    buffer constructs the wrong object in it, and the first read aborts the process inside libc++ with
-    `mutex lock failed` and no Java stack at all. And `manifold_ray_cast` reports its hit distance as a
-    **fraction of the origin-to-end segment**, so a hit 4 units away on a ray of length `1e4` arrives
-    as `4.0e-4`, a number that looks like "at the origin" and is not wrong enough to notice. A
-    closed-form expectation catches that class of mistake and a tolerance does not, which is why
-    almost every assertion behind this page is a closed form.
+    buffer constructs the wrong object in it, and the first read aborts the process inside libc++
+    with `mutex lock failed` and no Java stack at all. And `manifold_ray_cast` reports its hit
+    distance as a **fraction of the origin-to-end segment**, so a hit 4 units away on a ray of
+    length `1e4` arrives as `4.0e-4`.
 
 ## Installing it
 
@@ -552,8 +553,9 @@ On Linux, your package manager or a source build with `-DMANIFOLD_CBIND=ON`. The
 you built your own. `ManifoldLibrary.describe()` reports what was found, and
 `ManifoldLibrary.isAvailable` is cheap enough to branch on in a box.
 
-Verify it end to end with the smoke, which checks 123 closed-form facts and skips cleanly, exit code 0,
-if the library is absent:
+Verify it end to end with the smoke. It checks every volume, area, genus and offset on this page
+against its closed form, prints how many checks it ran, and skips cleanly with exit code 0 if the
+library is absent:
 
 ```diffstatic {data-lang=bash}
 ./gradlew smokeManifold

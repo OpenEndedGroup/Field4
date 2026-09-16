@@ -281,11 +281,10 @@ front ends.
 Three things the viewer cannot do, in order of how hard they are to work around.
 
 **It is deterministic, and a GPU is not.** The pixel-exact proofs compare against it, and a GPU
-capture cannot play that role: driver, vendor and antialiasing all move under you. Six test classes
-assert on its output, and what they assert is pixel *statistics* rather than golden images: counts of
-red defect-overlay pixels, coverage fractions, painted-area bounds, outward-versus-flipped diffs.
-Every one of them needs the same input to produce the same number twice, which only the CPU
-rasterizer can promise.
+capture cannot play that role: driver, vendor and antialiasing all move under you. The tests that
+read its output assert pixel *statistics* rather than golden images — counts of red defect-overlay
+pixels, coverage fractions, painted-area bounds, outward-versus-flipped diffs — and every one of them
+needs the same input to produce the same number twice.
 
 **It needs no WebGL context.** The inline value-visualizer card that appears when a box ends on a
 `TriMesh` uses it: an iframe per mesh in a list of values would run straight into the ~16-context
@@ -387,39 +386,36 @@ One divergence the figure shows and nothing else records: in the Three.js panel 
 drawn across the hole. The rasterizer's depth-tested wireframe is culled with its surface, so its
 hole is bare. The *surfaces* agree, which is the diagnostic; the overlays do not.
 
-<!-- INSPECTOR-MESH-LIMITATION: this section describes the viewer at 90230b1f4, where mesh drawables
-     are not registered as interactive objects. If mesh picking lands in the viewer, this whole
-     section is what needs rewriting — nothing else on this page depends on it. -->
+## Measuring and sectioning a solid
 
-## What the viewer will not do for a mesh, yet
-
-The Three.js output area is also an **instrument**: `threeInspect(...)` adds a measurement tool, a
-section plane with a real cut outline, and an explode scrubber. That is documented, with figures, in
+The Three.js output area is also an **instrument**. `inspect(...)` inside a `three { }` scene, and
+`Box.threeInspect(...)` for lines alone, add a measurement tool, a section plane with a real cut
+outline, and an explode scrubber; the tools themselves are documented, with figures, in
 [FLine examples](fline_examples.md#the-3d-output-area-as-an-instrument-threeinspect).
 
-All three of them are, today, **FLine-only**. A mesh drawable is drawn and nothing else. Reading
-`threejs_viewer.html` as it stands:
+A mesh is not pickable by default, because a solid filling the frame would sit in front of every
+annotation it was drawn to explain. Ask for it with `mesh(car, pickable = true)`, or let an
+`onClick` or a `hoverColor` imply it, and pair that with `inspect(...)` on the same scene: the flag
+is what lets the ray find the solid and the toolbar is what draws the dimension. A hit arrives as a
+`ThreeSurfaceHit`, resolved to a vertex, an edge or a triangle, so a dimension runs from a corner of
+the solid to an annotation beside it — which is the scene `three` exists for.
 
-- `addPayloadDrawables` builds each drawable's slot and pushes it to `payloadGeometrySlots.drawables`.
-  It never pushes to `interactiveObjects`, and `interactiveObjects` is the only array the raycast
-  looks at — so **a mesh cannot be hovered, clicked or measured.** Only FLines can.
-- `inspectorMovableSlots` returns the three batched FLine buffers and nothing else, so **the explode
-  scrubber does not move a mesh.**
-- `inspectorClippableMaterials` likewise, so **a section plane does not cut a mesh** — it clips the
-  FLines around it and the solid stays whole.
+What you aim at is decided by true perpendicular distance in the hit triangle's plane, within a snap
+radius of 0.14 of that triangle's own longest edge, and a corner is tested before an edge. So
+**a sliver has no clickable interior**: every point of a triangle ten long and half a unit tall
+falls inside its own snap radius of an edge or a corner.
 
-The payload is ready for it: `ThreeDrawable` already carries `callbackId`, `hoverColor`, `topology`
-and `group` fields with exactly the meanings their `ThreeInteractiveObject` counterparts have, and
-the viewer has not been taught to use them. Until it is, put a `TriMesh` you want to *interrogate* through `toFLines(...)` and hand the lines to
-`threeInspect`, or keep it on the CPU path and use `showMeshDiagnosis`.
+The section plane cuts a mesh, wireframe overlay included. The explode scrubber does not:
+`inspectorMovableSlots` returns the three batched FLine buffers and nothing else, so an explode moves
+the annotations and leaves the solid where it is. Put the solid through `toFLines(...)` if you need it
+to come apart.
 
 ## The payload both kinds of scene share
 
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` are the FLine half, and a payload with an empty
-`drawables` list carries none of the mesh keys. Two `ThreeSceneTest` cases hold both halves on every
-build: *an FLine payload carries none of the new keys* and *a mesh scene does carry them*. That is
-what lets the editable path, the inspector and the tests that pin the payload share one format with
-the mesh scenes above.
+`drawables` list carries none of the mesh keys at all, so nothing reading an FLine-only scene has to
+know meshes exist. That is what lets the editable path, the inspector and the mesh scenes above share
+one format.
 
 Three.js itself is **vendored**, not fetched: `src/commonMain/resources/vendor/three/0.184.0/`. A
 viewer works offline and a docs capture does not depend on a CDN.

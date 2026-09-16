@@ -12,12 +12,18 @@ pattern all the way down the **first two**, and **every audio figure below says 
 produced it.** The third has a page of its own,
 [Faust: a box that is a signal processor](faust.md#a-pattern-plays-it).
 
-Three counts the voices a *pattern* can drive. Seven things in Field make samples by one route or
-another, and [Making a sound in Field: every path there is](sound_paths.md) maps all seven and helps
-you pick.
+Three counts the pattern voices that can render **offline**. There is a fourth that cannot, and it is
+excluded from the sentence above by the "no audio device, no realtime engine" clause rather than by
+being less of a voice: `patSpatial` plays a pattern through dough and places each `spat` group in
+space with Steam Audio's HRTF, in realtime only. Where it puts a note is written in the pattern as an
+`az`/`dist` tag, which is the thing about it worth reading — see
+[A pattern in space](pat_spatial.md).
 
-A third of the audio published elsewhere in these docs is the first voice below, and the rest is
-not. [What this means for the audio
+Eight things in Field make samples by one route or another, and
+[Making a sound in Field: every path there is](sound_paths.md) maps all eight and helps you pick.
+
+**Three quarters** of the audio published elsewhere in these docs is the first voice below — 36 of
+the 48 clips on other pages — and the rest is not. [What this means for the audio
 elsewhere](#what-this-means-for-the-audio-elsewhere-in-these-docs) has the breakdown, measured
 clip by clip.
 
@@ -256,30 +262,25 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 ## What this means for the audio elsewhere in these docs
 
 The audit described at the bottom of this page sweeps every published clip and measures each one.
-The corpus is forty-three clips across five pages, and it breaks down like this:
+The corpus is fifty-one clips across eight pages, and it breaks down like this:
 
 <div class="field-data-table" markdown>
 
 | how many | family | where |
 | --- | --- | --- |
-| 31 | the stand-in synth (`patVoice`) | 29 on [Patterns & Rhythm](pattern_language.md), 1 here, 1 on [Sound paths](sound_paths.md) |
+| 37 | the stand-in synth (`patVoice`) | 29 on [Patterns & Rhythm](pattern_language.md), 3 on [A cellular automaton you can hear](chain_ca_sound.md), 3 on [A pattern that moves particles](chain_pattern_particles.md), 1 here, 1 on [Sound paths](sound_paths.md) |
 | 1 | real Dirt-Samples one-shots | here |
 | 1 | real samples + the stand-in per unmatched event | here |
 | 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
 | 3 | a **Faust** program compiled at runtime | 1 on [Sound paths](sound_paths.md), 2 on [Faust](faust.md) |
+| 2 | the **dough wasm engine** driven by a pattern | 2 on [A pattern in space](pat_spatial.md) |
 
 </div>
 
 That first row used to read 5, and this section used to open by saying the stand-in is *not* what
-you are hearing on most of the site. It no longer can: twenty-six of those thirty-one are the
+you are hearing on most of the site. It no longer can: twenty-six of those thirty-seven are the
 mini-notation cards on [Patterns & Rhythm](pattern_language.md), one clip per form of the notation,
-and they arrived in a single commit. The stand-in is now most of the audio here by a wide margin.
-
-The twelve that are not still carry the point the audit was built to make. `DoughDspSoundDocs`
-runs a plate reverb, a phaser, a resonant lowpass and a soft clipper on real signals, and a plate
-reverb ringing down *is* the thing that page is about; the three Faust clips are a program
-compiled at runtime, two of them a pattern playing it as a polyphonic instrument on
-[Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one).
+and they arrived in a single commit. The stand-in is now three quarters of the audio here.
 
 The reason is the one given above, and adding twenty-six clips is the clearest case for it: a
 primer that plays `bd*4` and `bd(3,8)` and `{bd hh cp}%8` needs a voice that renders identically
@@ -287,10 +288,20 @@ on a clean checkout with no sample library anywhere near it, and whose onsets ca
 of the rendered audio* and checked against the schedule — which is what every one of those
 twenty-six asserts.
 
-The nine that never touch `patVoice` are still the interesting minority, and the largest of them
-is standing in for nothing at all. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant
-lowpass and a soft clipper on real signals; a plate reverb ringing down *is* the thing that page is
-about.
+The fourteen that never touch `patVoice` are still the interesting minority, and the largest group
+of them is standing in for nothing at all: `DoughDspSoundDocs` runs a plate reverb, a phaser, a
+resonant lowpass and a soft clipper on real signals, and a plate reverb ringing down *is* the thing
+that page is about. Three are a Faust program compiled at runtime, two of those a pattern playing
+it as a polyphonic instrument on
+[Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one).
+
+The last two are the odd ones out, and you will want to know that before going looking for the rest
+of their path. They are the dough wasm engine driven by a pattern, published on
+[A pattern in space](pat_spatial.md) — and they are **half a path on purpose**: the mono source
+Steam Audio is handed, not the spatialised output, because that half is realtime-only and needs a
+binary this repository does not carry. That page
+[explains the absent figure](pat_spatial.md#what-there-is-no-figure-of-and-why) rather than
+publishing a substitute for it.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the homepage
 banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player sets `muted` and
@@ -332,40 +343,16 @@ A loadable Field document with all of this side by side is committed at
 
 ---
 
-## How the provenance claim is checked
+## How the "Voice:" captions are checked
 
-Every sentence on this page in the form *"Voice: …"* is a machine-readable claim.
+Every sentence on this page in the form *"Voice: …"* is checked rather than written. On each build,
+`SoundProvenanceGuardTest` decodes the committed `.wav` under each figure and compares it against a
+fresh render: a clip captioned as the stand-in has to match one, and a clip captioned as real
+samples has to not. So a figure whose producing code changed underneath it fails the build, instead
+of keeping a caption that has become false. The check needs no sample library, which is why it runs
+on a machine that has never downloaded one.
 
-`SoundRenderPathDocs` declares a `Voice` per figure, and a build guard then reads *this file*, pairs each
-audio fence with its figure, and requires:
-
-* every fence names a figure the renderer knows, and every figure appears on the page once;
-* the figure's declared label appears verbatim beside its fence — so the prose and the code
-  cannot drift apart in silence;
-* **the committed `.wav` is decoded and correlated against a stand-in render of the same
-  pattern.** A figure claiming the stand-in must match it (measured 1.0000). A figure claiming
-  samples must not (measured 0.0565 and 0.1588 for the sample-backed events of the two above);
-  and a mixed figure's fallback events must be audibly present in it (measured 0.8074).
-
-The correlation needs no sample library. A build machine with no 400MB third-party download still
-catches the day a "real drums" figure becomes bursts of white noise; a reader would not, because the
-caption underneath it would go on saying samples.
-
-### And the same question, asked of every clip in the docs
-
-`DocsAudioProvenance` widens all of that to the whole corpus, and runs on every build. It sweeps every
-page for `audio=` fences, re-renders each asset through the *same* `renderWav(name, path)` contract the
-docs build drives over the backdoor, and correlates the result against the committed bytes. Three
-assertions:
-
-* **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
-  until somebody states which family it belongs to;
-* **every committed clip still matches what its producer renders today** — all forty-one
-  currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation. This is
-  the assertion that catches a published figure whose producing code has changed underneath it.
-  `56b124131` is the last time two of them had to be repaired by hand;
-* **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
-  cannot become a place to put problems unnoticed. It has one entry, the banner loop.
-
-The corpus audit prints its whole table:
+The same sweep runs over every audio clip in these docs, which is what makes the table above
+measured rather than inventoried. The method, the correlation figures and the pinned family counts
+are in `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`; the audit prints its whole table with
 `run_field_tests.py --id synth.docs.audio.provenance`.

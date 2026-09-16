@@ -36,6 +36,39 @@ The `z / xy` column is z extent over the larger of the x and y extents — `Morp
 It is on the page because the shipped upstream driver pins z to zero and Field's does not; a value
 near 1 means the layout genuinely occupies three dimensions.
 
+## The line-count census
+
+Displaced from `public/docs/morpho_examples.md`'s `### What it cost` on 2026-09-15. The page keeps
+the conclusion drawn from these — registration proper is sixty lines and those sixty were a copy,
+so what a foreign language costs a host is the data boundary, the decision about what running the
+language means, and reading the other implementation carefully enough not to disagree with it by
+accident. Line counts include KDoc, which in this codebase is a substantial fraction of every file.
+
+The plumbing, step by step, against the six steps the page walks through:
+
+| step | file | lines |
+| --- | --- | --- |
+| 1. host the foreign runtime | `MorphoGraal.kt` | 273 |
+| 1. guest-side drivers | `morpho-field-driver.mjs`, `morpho-field-layout.mjs` | 446 |
+| 2. the netlist crossing the boundary | `MorphoNetlist.kt` | 171 |
+| 3–4. registration, and what a box does | `MorphoInterface.kt` | 426 |
+| 5. editor grammar | `morpho.js` | 105 |
+| 6. tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
+| 6. measurement run | `MorphoMeasurements.kt` | 78 |
+
+And what morpho left to its host, which is this language's bill rather than the template's:
+
+| what Field supplies | file | lines |
+| --- | --- | --- |
+| logic simulation | `MorphoSim.kt` | 192 |
+| 3D force layout | `MorphoLayout3D.kt` | 111 |
+| grow-and-draw handle | `MorphoCircuit.kt` | 121 |
+| drawing | `MorphoFLines.kt` | 317 |
+
+Of 2,868 lines, registration proper is sixty, the boundary in steps 1 and 2 is 890, and checking it
+in step 6 is 706. The search layer is a separate ~2,400 lines on top of all of this, and needed
+nothing from the bridge that was not already there.
+
 ## Simulation throughput
 
 All 131 072 vectors of the exhaustive 8-bit adder check evaluate in **17.8 ms**, which is 2 048

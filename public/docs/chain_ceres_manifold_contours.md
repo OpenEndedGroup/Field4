@@ -430,7 +430,7 @@ showSignals(
 )
 ```
 
-The middle row is the easy failure. `canonicalize()` takes `kkC`'s signed volume of `+26.3032` to
+The middle row fails outright. `canonicalize()` takes `kkC`'s signed volume of `+26.3032` to
 **`−254.0791`**, having moved vertex directions by up to `151.6°` on the way.
 Manifold reports `NO_ERROR` and genus 0 throughout — a self-intersecting surface is still a
 combinatorial manifold, and `status` is not asked to notice. The sign is enough to refuse it, and

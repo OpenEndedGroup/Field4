@@ -1,10 +1,44 @@
 @file:afield.CompletionCategory("Patterns")
+/**
+ * The step between `pat("bd sd").respond { … }` and a pattern that is actually playing: the
+ * return-value handler that recognises a [PatResponseSpec] coming back from a box and runs it.
+ *
+ * `respond` is a builder. It captures the pattern, the cycles-per-second, the clock and the
+ * callback into a spec and returns, having started nothing. This file is the other half, and the
+ * arrangement is what makes a responder behave like every other launchable value in Field: it runs
+ * because the box's last expression is one, it can be bundled with `+`, it can be wrapped in
+ * `.onBeat`, and stopping the box stops it.
+ *
+ * The loop it runs is short, and three of its rules shape what a callback sees:
+ *
+ * - **Events that share a start time go out together.** The iterator is drained into a bucket of
+ *   events within a nanosecond of each other, the wait happens once, and then the whole bucket is
+ *   dispatched. A chord is a chord rather than a queue of near-simultaneous notes.
+ * - **Events already in the past are dropped, not played late.** An event whose start has gone by
+ *   is skipped, which is how a pattern joined mid-flight, or one whose callback overran, catches
+ *   up instead of falling further behind.
+ * - **`ahead` shifts the callback, not the schedule.** The wait targets `start - ahead`, so a
+ *   callback that has to buy latency somewhere else, a sample player with its own scheduling
+ *   queue, gets the event early and still knows its real time from `event.start`.
+ *
+ * Dispatch is on the run loop unless `dispatchOnMain = false`, so a callback may touch boxes,
+ * properties and graphics without hopping threads itself.
+ */
+
 package afield.four.synth
 
 import afield.*
 import kotlinx.coroutines.*
 import kotlin.math.absoluteValue
 
+/**
+ * Teaches box execution about [PatResponseSpec]. Called once during return-value registration, not
+ * from box code.
+ *
+ * The coroutine it launches is registered as one of the box's jobs and re-checks the box's run
+ * generation on every pass, including from inside the wait, so a re-run or a stop ends the pattern
+ * within a poll of the wait loop rather than leaving it playing under a superseded generation.
+ */
 @RunsAt(returnValueRegistration, priority = 11)
 fun registerPatPatternReturnValue() {
     ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->

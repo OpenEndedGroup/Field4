@@ -67,17 +67,12 @@ active object. The arrow is part of the word, not optional punctuation.
 
 ## Scene words
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `->wall meters` | `width height --` | Sets physical wall size in meters. |
-| `->wall pixels` | `width height --` | Sets wall size in pixel units. |
-| `->wall abstract` | `width height --` | Sets wall size in arbitrary units. |
-| `->duration` | `seconds --` | Scene duration in seconds. |
-| `->fps` | `framesPerSecond --` | Sampling/render frame rate. |
-| `->background` | `color --` or `0xrrggbb ->background` | Sets scene background. |
-| `->fit contain` | `--` | Preserve aspect ratio and fit inside target. |
-| `->fit cover` | `--` | Preserve aspect ratio and cover target. |
-| `->fit stretch` | `--` | Stretch wall coordinates to target. |
+Every scene opens by saying how big the wall is, in what units, and how long the clip
+runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into,
+on a near-black background, four seconds at thirty frames a second — then one gold
+200-pixel square in the middle of it. Change `pixels` to `meters` and nothing about the
+geometry changes; the unit is a statement about what the numbers mean, which the
+renderer and the `afield.four` lowering both read.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -94,7 +89,47 @@ Worked: [Kaleidoscope](rectsl_examples.md#kaleidoscope) for `->background`,
 [Grid field](rectsl_examples.md#grid-field) for `pixels` with `->fit cover`, and
 [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `->fit stretch`.
 
+Every word here is **prefix**: it reads its arguments forward out of the source rather
+than off the stack, so there is nothing to push first. `->background` is the one
+hybrid — a colour *literal* after it is read forward, anything else comes off the stack.
+
+| Word | Reads | Notes |
+| --- | --- | --- |
+| `->wall meters` | `->wall <w> <h> meters` | Physical wall size in meters. `meter`/`m` also accepted. |
+| `->wall pixels` | `->wall <w> <h> pixels` | Wall size in pixel units. `pixel`/`px` also accepted. |
+| `->wall abstract` | `->wall <w> <h> abstract` | Wall size in arbitrary units. `units`/`unit` also accepted. |
+| `->duration` | `->duration <seconds>` | Scene duration in seconds. |
+| `->fps` | `->fps <framesPerSecond>` | Sampling/render frame rate. |
+| `->background` | `->background <0xrrggbb>`, or `color ->background` | Sets scene background. |
+| `->fit contain` | `->fit contain` | Preserve aspect ratio and fit inside target. |
+| `->fit cover` | `->fit cover` | Preserve aspect ratio and cover target. |
+| `->fit stretch` | `->fit stretch` | Stretch wall coordinates to target. |
+
 ## Objects and groups
+
+A scene is a tree of named rects and groups, and the names are how you get back to
+anything after you have moved on. Below: a group `orbit` holding two squares — one
+authored, one a `clone` of it shifted along +x, both tagged `petal`. Then the whole
+group is deep-copied into a `twin` three units lower, and finally every `petal`
+anywhere in the scene (four of them now, two per copy) is gathered out of its
+existing parent into a new group `petals`.
+
+`clone` copies the active object; `copy-deep` copies a group *and its descendants*, so
+the `twin` gets its own cells rather than sharing them.
+
+```diffstatic {data-lang=rectsl}
+"orbit" group
+  "cell" rect  0 0 ->xy  1.2 ->square  "petal" ->tag ;
+  "cell" ->select clone  2.5 0 ->xy ;
+end
+
+"orbit" ->select copy-deep  "twin" ->rename  0 -3 ->translate ;
+all rects  '( "petal" tagged? ) filter  "petals" ->group-selected ;
+```
+
+Worked: [Groups, selections, and StackSL material](rectsl_examples.md#groups-selections-and-stacksl-material),
+and [Selection & logic](rectsl_examples.md#selection-logic), which walks the whole
+tree and exercises `rect?`, `group?`, `id` and `copy-deep` in one scene.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -112,45 +147,19 @@ Worked: [Kaleidoscope](rectsl_examples.md#kaleidoscope) for `->background`,
 | `copy-deep`, `clone-deep` | `-- object` | Deep copy of a group and its descendants. |
 | `->group-selected` | `selection [id] -- group` | Reparents selected objects into a new group. |
 
-```diffstatic {data-lang=rectsl}
-"orbit" group
-  "cell" rect  0 0 ->xy  1.2 ->square  "petal" ->tag ;
-  "cell" ->select clone  2.5 0 ->xy ;
-end
-
-"orbit" ->select copy-deep  "twin" ->rename  0 -3 ->translate ;
-all rects  '( "petal" tagged? ) filter  "petals" ->group-selected ;
-```
-
-Worked: [Groups, selections, and StackSL material](rectsl_examples.md#groups-selections-and-stacksl-material),
-and [Selection & logic](rectsl_examples.md#selection-logic), which walks the whole
-tree and exercises `rect?`, `group?`, `id` and `copy-deep` in one scene.
-
 ## Geometry and ordering
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `->xy` | `x y --` | Center position in wall coordinates. |
-| `->nxy` | `nx ny --` | Normalized position in `[-1, 1]` wall space. |
-| `->x`, `->y` | `scalar --` | Constant or animated coordinate. A quote becomes a TCB track. |
-| `->wh` | `width height --` | Rect size. |
-| `->nwh` | `nw nh --` | Normalized size relative to wall dimensions. |
-| `->w`, `->h` | `scalar --` | Width or height. |
-| `->square` | `size --` | Sets width and height together. |
-| `->rot`, `->rotation` | `scalar --` | Rotation in radians. |
-| `->rotate` | `scalar --` | Adds rotation to the active object/selection. |
-| `->face-travel` | `--` | Auto-orient: sets rotation to the heading of the object's own x/y tracks (local +x points along travel). |
-| `->face-travel-at` | `offset --` | Like `->face-travel`, but adds a fixed angle offset (correct for how the art is drawn). |
-| `->scale` | `scalar --` | Uniform scale. |
-| `->scale-xy` | `sx sy --` | Nonuniform scale. |
-| `->alpha` | `scalar --` | Opacity. |
-| `->opacity*` | `factor --` | Multiplies opacity. |
-| `->appear` | `t --` | Hard-gate visibility on: invisible before `t`, unchanged from `t`. |
-| `->vanish` | `t --` | Hard-gate visibility off: unchanged before `t`, invisible from `t`. |
-| `->live` | `birth life --` | Emitter primitive: play the object's animation from `birth` (local time 0 = `birth`) and show it only during `[birth, birth+life]`. |
-| `->z` | `scalar --` | Per-rect depth metadata. |
-| `->layer` | `number|string|track --` | Draw layer. Higher layers render later. |
-| `->front`, `->back` | `--` | Move active object/selection within its layer. |
+Three rects, three different ways of being animated. `mark` sets each channel by hand:
+it slides from x=-5 to x=+5 while turning a full revolution, at eight-tenths scale and
+seven-tenths opacity, on draw layer 2 and at the front of it — and it exists only
+between t=0.5 and t=3.5. Wherever a channel takes a number it also takes a quote, and
+the quote becomes a keyed track; that is the whole of how motion is written.
+
+`dart` gives up authoring rotation at all: it travels a curve in x and y, and
+`->face-travel` reads its heading back out of those two tracks by finite difference, so
+an elongated rect reads as an arrowhead pointing where it is going. `bullet` authors
+*one* crossing and then `->live` fires 24 copies of it down 24 lanes, each starting
+0.18 s after the last and alive for 2.5 s — an emitter with no simulation in it.
 
 ```diffstatic {data-lang=rectsl}
 "mark" rect
@@ -178,24 +187,42 @@ for `->face-travel` and `->face-travel-at`, and
 [Spawning and despawning](rectsl_examples.md#spawning-and-despawning-life-windows)
 for `->appear`/`->vanish`/`->live`.
 
-## Paint and material
-
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `rgb` | `r g b -- color` | Builds an RGB color from 0..1 channels. |
-| `rgba` | `r g b a -- color` | Builds an RGBA color from 0..1 channels. |
-| `solid` | `color -- paint` | Solid fill paint. |
-| `linear` | `color0 color1 x0 y0 x1 y1 -- paint` | CPU-baked two-color fill across the rect. |
-| `->fill` | `paint --` | Assigns fill paint. |
-| `material name '( ... )` | `--` | Compiles the quote source as a named StackSL rect material. |
-| `name ->material` | `materialName --` | Assigns a material defined earlier in the program, or a built-in one, to the active rect/selection. |
-| `->shader` | `x y z w --` | Sets per-rect shader data. |
+| `->xy` | `x y --` | Center position in wall coordinates. |
+| `->nxy` | `nx ny --` | Normalized position in `[-1, 1]` wall space. |
+| `->x`, `->y` | `scalar --` | Constant or animated coordinate. A quote becomes a TCB track. |
+| `->wh` | `width height --` | Rect size. |
+| `->nwh` | `nw nh --` | Normalized size relative to wall dimensions. |
+| `->w`, `->h` | `scalar --` | Width or height. |
+| `->square` | `size --` | Sets width and height together. |
+| `->rot`, `->rotation` | `scalar --` | Rotation in radians. |
+| `->rotate` | `scalar --` | Adds rotation to the active object/selection. |
+| `->face-travel` | `--` | Auto-orient: sets rotation to the heading of the object's own x/y tracks (local +x points along travel). |
+| `->face-travel-at` | `offset --` | Like `->face-travel`, but adds a fixed angle offset (correct for how the art is drawn). |
+| `->scale` | `scalar --` | Uniform scale. |
+| `->scale-xy` | `sx sy --` | Nonuniform scale. |
+| `->alpha` | `scalar --` | Opacity. |
+| `->opacity*` | `factor --` | Multiplies opacity. |
+| `->appear` | `t --` | Hard-gate visibility on: invisible before `t`, unchanged from `t`. |
+| `->vanish` | `t --` | Hard-gate visibility off: unchanged before `t`, invisible from `t`. |
+| `->live` | `birth life --` | Emitter primitive: play the object's animation from `birth` (local time 0 = `birth`) and show it only during `[birth, birth+life]`. |
+| `->z` | `scalar --` | Per-rect depth metadata. |
+| `->layer` | `number|string|track --` | Draw layer. Higher layers render later. |
+| `->front`, `->back` | `--` | Move active object/selection within its layer. |
 
-Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape is genuinely shader-only.
+## Paint and material
 
-Note that `rgb`, `rgba` and `material` read their arguments *forward* from the source
-rather than off the stack, so they are written prefix: `rgb 0.9 0.4 0.2`, not
-`0.9 0.4 0.2 rgb`.
+A rect is filled in one of three ways, and all three are here. `panel` takes a flat
+mid-blue built channel-by-channel, and places itself in normalised wall space — dead
+centre, four-fifths of the wall wide and two-fifths tall — rather than in wall units.
+`chip` takes a gold-to-magenta ramp baked across its own width on the CPU, *and* a
+StackSL material `tint` on top of it, fed four numbers of its own through `->shader`
+that the shader body can read. `ghost` shows the shorthand: a colour with alpha in it,
+no track needed.
+
+The `material tint '( … )` body is StackSL, not RectSL — a fragment program, compiled
+and checked with the rest of Field's shader stack.
 
 ```diffstatic {data-lang=rectsl}
 material tint '(
@@ -220,6 +247,24 @@ Worked: [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `rgb`/`rgba`
 [Groups, selections, and StackSL material](rectsl_examples.md#groups-selections-and-stacksl-material)
 for a material on a whole selection.
 
+`rgb`, `rgba` and `material` are **prefix**: they read their arguments forward out of the
+source, not off the stack. So it is `rgb 0.9 0.4 0.2`, never `0.9 0.4 0.2 rgb` — and no
+expression can be spliced into those slots, only literals. Everything else in the table
+is stack-based as written, `linear` included.
+
+| Word | Stack / reads | Notes |
+| --- | --- | --- |
+| `rgb` | `rgb <r> <g> <b>` → `-- color` | Builds an RGB color from three 0..1 literals. |
+| `rgba` | `rgba <r> <g> <b> <a>` → `-- color` | Builds an RGBA color from four 0..1 literals. |
+| `solid` | `color -- paint` | Solid fill paint. |
+| `linear` | `color0 color1 x0 y0 x1 y1 -- paint` | CPU-baked two-color fill across the rect. |
+| `->fill` | `paint --` | Assigns fill paint. |
+| `material` | `material <name> '( ... )` | Compiles the quote source as a named StackSL rect material. |
+| `name ->material` | `materialName --` | Assigns a material defined earlier in the program, or a built-in one, to the active rect/selection. |
+| `->shader` | `x y z w --` | Sets per-rect shader data. |
+
+Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape is genuinely shader-only.
+
 ## Tracks
 
 Track quotes are flat `time value` pairs. An optional `=` may sit between the
@@ -231,25 +276,16 @@ time and value of a key to read the pairing aloud: `0=0.2` means "0.2 at time
 '( 0=-1  2=0  4=1 ) linear
 ```
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `tcb` | `quote -- track` | Smooth scalar track using TCB interpolation. |
-| `linear` | `quote -- track` | Linear scalar track. |
-| `hold` | `quote -- track` | Step/hold scalar track. |
-| `tcb!` | `track tension continuity bias -- track` | Sets default TCB parameters. |
-| `track` | `name quote --` or `track name quote` | Defines a named TCB track. |
-| `linear-track` | `linear-track name quote` | Prefix word defining a named linear track. |
-| `hold-track` | `hold-track name quote` | Prefix word defining a named hold track. |
-| `track-ref` | `name -- track` | Pushes a named track for reuse. |
-| `x-track`, `y-track` | `-- track` | Pushes the active x/y track. |
-| `w-track`, `h-track` | `-- track` | Pushes width/height tracks. |
-| `rot-track`, `rotation-track` | `-- track` | Pushes rotation track. |
-| `scale-x-track`, `scale-y-track` | `-- track` | Pushes scale tracks. |
-| `alpha-track` | `-- track` | Pushes alpha track. |
-| `z-track`, `layer-track` | `-- track` | Pushes ordering tracks. |
+A track can also be named once and referred to by many rects, which is how several
+objects come to share one motion rather than four copies of it that drift apart. Below,
+`rise` is a straight ramp from -3 to +3 and `pulse` is a stepped envelope; `bar` drives
+its y from the first and its opacity from the second, with `smooth` softening the steps
+into an eased curve on the way in. Its scale gets a TCB curve slackened by `tcb!`.
 
-A named track is defined once and referenced by many rects; the `*-track` accessors
-read a channel's curve back out so it can be reshaped and assigned again.
+The last line is the other direction: `alpha-track` reads the opacity curve *back off*
+the rect, lifts every key by 0.1, clamps the result into `[0, 1]`, and assigns it again.
+Every animated channel can be read as well as written, which is what makes a track a
+value rather than a side effect.
 
 ```diffstatic {data-lang=rectsl}
 linear-track "rise" '( 0=-3  2=0  4=3 )
@@ -267,7 +303,47 @@ Worked: [Named tracks and draw layers](rectsl_examples.md#named-tracks-and-draw-
 and [Key lenses](rectsl_examples.md#key-lenses), which sets and re-reads every animated
 channel in turn.
 
+The three definition words are **prefix**: `track`, `linear-track` and `hold-track` read
+a name and a quote forward out of the source. Everything else here is stack-based.
+
+| Word | Stack / reads | Notes |
+| --- | --- | --- |
+| `tcb` | `quote -- track` | Smooth scalar track using TCB interpolation. |
+| `linear` | `quote -- track` | Linear scalar track. |
+| `hold` | `quote -- track` | Step/hold scalar track. |
+| `tcb!` | `track tension continuity bias -- track` | Sets default TCB parameters. |
+| `track` | `track <name> '( ... )` | Defines a named TCB track. |
+| `linear-track` | `linear-track <name> '( ... )` | Defines a named linear track. |
+| `hold-track` | `hold-track <name> '( ... )` | Defines a named hold track. |
+| `track-ref` | `name -- track` | Pushes a named track for reuse. |
+| `x-track`, `y-track` | `-- track` | Pushes the active x/y track. |
+| `w-track`, `h-track` | `-- track` | Pushes width/height tracks. |
+| `rot-track`, `rotation-track` | `-- track` | Pushes rotation track. |
+| `scale-x-track`, `scale-y-track` | `-- track` | Pushes scale tracks. |
+| `alpha-track` | `-- track` | Pushes alpha track. |
+| `z-track`, `layer-track` | `-- track` | Pushes ordering tracks. |
+
 ## Track transforms
+
+A track is a value, so it can be bent before it is assigned. All five rects below ride
+the *same* three-key sweep from x=-8 to x=+8; only the time axis differs. `delayed`
+starts a second and a half late, `faster` runs its keys 1.4× closer together, `bounced`
+plays forward then backward over a two-second period, and `eased` shapes the
+interpolation with a Penner curve and then loops it. Stacked in rows, one motion falls
+into a round — which is the cheapest way to see what a retiming word actually did.
+
+```diffstatic {data-lang=rectsl}
+"plain"   rect  0  3 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) ->x ;
+"delayed" rect  0  1 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) 1.5 delay-time ->x ;
+"faster"  rect  0 -1 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) 1.4 time* ->x ;
+"bounced" rect  0 -3 ->xy  1 ->square  '( 0=-8  1=8  2=-8 ) 2 pingpong-time ->x ;
+"eased"   rect  0 -5 ->xy  1 ->square  '( 0=-8  2=8 ) ease-in-out 2 loop-time ->x ;
+```
+
+Worked: [Time canon](rectsl_examples.md#time-canon) for the retiming words side by side,
+[Easing ladder](rectsl_examples.md#easing-ladder) for the easings pulling apart, and
+[Key lenses](rectsl_examples.md#key-lenses) for `value+`, `clamp-values` and the
+`keys-before`/`keys-after`/`keys-between` window filters.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -290,22 +366,38 @@ channel in turn.
 | `ease-in-out` | `scalar -- track` | Symmetric ease-in/out. |
 | `ease-smoothstep`, `smooth` | `scalar -- track` | Hermite smoothstep. |
 
-One motion, warped only in time. Rows of the same sweep fall into a round:
+## Selection and transforms
+
+Build first, then sort the scene out by logic. `pip` is one spinning square tagged
+`spark`, reproduced nine times by `array` — each copy's opacity set from its centred
+fraction, so the row is brightest at the ends — and then spread 1.4 units apart by
+`->stagger`. The next four lines never name an individual rect again: a mirrored clone
+is folded across the axis x=3 and pushed to the front of its layer; every rect in the
+scene is dimmed a further 10%; every object *tagged* `spark` is scaled up; and the
+original's whole timeline is made to loop every two seconds.
+
+A selection is a value like a track is: `all`, `rects`, `children` and `descendants`
+produce one, `filter` narrows it, and `each`/`map` run a quote against every member.
+Which is how an operation applies to nine copies you never gave names to.
 
 ```diffstatic {data-lang=rectsl}
-"plain"   rect  0  3 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) ->x ;
-"delayed" rect  0  1 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) 1.5 delay-time ->x ;
-"faster"  rect  0 -1 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) 1.4 time* ->x ;
-"bounced" rect  0 -3 ->xy  1 ->square  '( 0=-8  1=8  2=-8 ) 2 pingpong-time ->x ;
-"eased"   rect  0 -5 ->xy  1 ->square  '( 0=-8  2=8 ) ease-in-out 2 loop-time ->x ;
+"pip" rect  0 0 ->xy  0.8 ->square  "spark" ->tag
+  '( 0=0  4=6.28318 ) ->rot
+  9 '( fc abs 0.7 *  0.3 +  ->alpha ) array
+  1.4 0 ->stagger
+;
+
+"pip" ->select clone  "mirrored" ->rename  3 ->mirror-x-at  ->front ;
+all rects  '( 0.9 ->opacity* ) each ;
+all  '( "spark" tagged? ) filter  '( 1.2 ->scale ) map ;
+"pip" ->select  2 ->loop-all-time ;
 ```
 
-Worked: [Time canon](rectsl_examples.md#time-canon) for the retiming words side by side,
-[Easing ladder](rectsl_examples.md#easing-ladder) for the easings pulling apart, and
-[Key lenses](rectsl_examples.md#key-lenses) for `value+`, `clamp-values` and the
-`keys-before`/`keys-after`/`keys-between` window filters.
-
-## Selection and transforms
+Worked: [Selection & logic](rectsl_examples.md#selection-logic) for the tree-walking and
+filtering words, [Whole-timeline transforms](rectsl_examples.md#whole-timeline-transforms)
+for the `*-all-time` family and `->stagger`,
+[Stagger cascade](rectsl_examples.md#stagger-cascade) for `->stagger-time`, and
+[Kaleidoscope](rectsl_examples.md#kaleidoscope) for the mirrors with `->front`/`->back`.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -331,38 +423,16 @@ Worked: [Time canon](rectsl_examples.md#time-canon) for the retiming words side 
 | `->pingpong-all-time` | `period --` | Ping-pong every track. |
 | `->stagger-time` | `stepSeconds --` | Increasing time delay over selection order. |
 
-Build first, then sort the scene out by logic:
-
-```diffstatic {data-lang=rectsl}
-"pip" rect  0 0 ->xy  0.8 ->square  "spark" ->tag
-  '( 0=0  4=6.28318 ) ->rot
-  9 '( fc abs 0.7 *  0.3 +  ->alpha ) array
-  1.4 0 ->stagger
-;
-
-"pip" ->select clone  "mirrored" ->rename  3 ->mirror-x-at  ->front ;
-all rects  '( 0.9 ->opacity* ) each ;
-all  '( "spark" tagged? ) filter  '( 1.2 ->scale ) map ;
-"pip" ->select  2 ->loop-all-time ;
-```
-
-Worked: [Selection & logic](rectsl_examples.md#selection-logic) for the tree-walking and
-filtering words, [Whole-timeline transforms](rectsl_examples.md#whole-timeline-transforms)
-for the `*-all-time` family and `->stagger`,
-[Stagger cascade](rectsl_examples.md#stagger-cascade) for `->stagger-time`, and
-[Kaleidoscope](rectsl_examples.md#kaleidoscope) for the mirrors with `->front`/`->back`.
-
 ## Loops and blocks
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `apply` | `quote --` | Evaluate a quote immediately. |
-| `defer` | `quote -- quote` | No-op marker; quotes are already values. |
-| `times` | `count quote --` | Runs quote `count` times and pushes the index before each run. |
-| `repeat` | `count quote --` | Runs quote `count` times. Use `i`, `n`, or `loop-count` inside. |
-| `range` | `start end quote --` | Runs quote for each integer in `[start, end)`, or descending when `end < start`. |
-| `i` | `-- number` | Current loop index/value. |
-| `loop-count`, `n` | `-- number` | Count for the current loop. |
+Three loops, three shapes of the same idea. `times` runs its body eight times with the
+index in `i`, so the first row is eight cells spread 2.2 units apart — and their opacity
+comes out of a *predicate* rather than a curve: cells 2 through 6 are dimmed, the rest
+bright, written with comparisons and `not`. `range` counts over an explicit interval.
+`repeat` does the same but reaches for `loop-count` to normalise its index into `[0, 1]`
+first, which is how a loop places things by fraction rather than by step.
+
+`apply` runs a quote right there, which is useful when a modifier wants to be grouped.
 
 ```diffstatic {data-lang=rectsl}
 8 '(
@@ -381,27 +451,29 @@ comparison words, [Grid field](rectsl_examples.md#grid-field) for `grid`'s cell 
 and [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `loop-count`, `apply`
 and `defer`.
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `apply` | `quote --` | Evaluate a quote immediately. |
+| `defer` | `quote -- quote` | No-op marker; quotes are already values. |
+| `times` | `count quote --` | Runs quote `count` times and pushes the index before each run. |
+| `repeat` | `count quote --` | Runs quote `count` times. Use `i`, `n`, or `loop-count` inside. |
+| `range` | `start end quote --` | Runs quote for each integer in `[start, end)`, or descending when `end < start`. |
+| `i` | `-- number` | Current loop index/value. |
+| `loop-count`, `n` | `-- number` | Count for the current loop. |
+
 ## Array primitives
 
 Array primitives *reproduce a subexpression with modification*: the Fischinger idea of one shape multiplied into a rhythm of copies, each shifted in space, time, size, or colour. Inside any `repeat`/`range`/`array`/`grid`/`radial` body the per-copy context words below are available; combine them with `mix`, `->offset`, `->rotate`, `->polar`, and `->delay-all-time` to vary each copy.
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `array` | `[template] count quote -- selection` | Reproduce a template object `count` times, running `quote` on each copy with array context. Element 0 is the template itself; the rest are fresh clones (deep for groups). Template is the active object, or a rect/group taken from the stack. Pushes the selection of all copies. |
-| `radial` | `[template] count radius quote -- selection` | Like `array`, but each copy is first placed on a circle of `radius` at angle `ordinal/count · tau`, then `quote` runs. |
-| `arc` | `[template] count radius start sweep quote -- selection` | Aimed spread: places `count` copies on an arc of `radius`, from angle `start` across `sweep` radians (endpoints inclusive), then runs `quote`. |
-| `spiral` | `[template] count r0 r1 turns quote -- selection` | Places `count` copies on a spiral: radius ramps `r0`→`r1` while the angle sweeps `turns · tau`. |
-| `phyllotaxis`, `sunflower` | `[template] count scale quote -- selection` | Golden-angle sunflower: copy `i` at angle `i · 137.5°` and radius `scale · √i`. |
-| `grid` | `cols rows quote -- selection` | Runs `quote` `cols·rows` times to build fresh cells, with grid context available. Close each cell with `;` like `repeat`. Pushes the selection of created objects. |
-| `->split` | `[template] count t quote -- selection` | At time `t` the template vanishes and `count` shards are born at its split-point position (sampled from its tracks). Each shard's flight is authored by `quote` around the origin in split-relative local time (array context available), then placed at the split point. Pushes the shard selection. |
-| `->polar` | `angle radius --` | Place the active object on a circle: `x = radius·cos angle`, `y = radius·sin angle`. |
-| `f` | `-- number` | Normalized fraction `ordinal/(n-1)` in `[0, 1]`; `0` for a single element. Pairs with `mix`. |
-| `f0` | `-- number` | Cyclic fraction `ordinal/n` in `[0, 1)`; handy for rings (`f0 tau *`). |
-| `fc` | `-- number` | Centered fraction `2f-1` in `[-1, 1]`. |
-| `ic` | `-- number` | Centered index `ordinal - (n-1)/2`, symmetric around 0. |
-| `col`, `row` | `-- number` | Current column/row inside `grid`. |
-| `cols`, `rows` | `-- number` | Grid dimensions inside `grid`. |
-| `colc`, `rowc` | `-- number` | Centered column/row: `col-(cols-1)/2`, `row-(rows-1)/2`. |
+The first scene below is one tall thin rect reproduced eight times around a circle of
+radius 3, each copy turned by its own share of a full turn (`f0 tau *`) so the whole
+thing reads as a flower rather than eight rects that happen to be in a ring. The second
+builds a 5×3 grid and gives each cell an opacity from its own distance out from the
+centre — `colc`/`rowc` are the *centred* column and row, so the middle cell is 0 — which
+is the shortest way to a field that falls off from the middle.
+
+Neither loop names a copy. The body sees only its position in the array (`f0` here,
+`colc`/`rowc` there), and everything else follows from that.
 
 ```diffstatic {data-lang=rectsl}
 # eight petals fanned around a centre, each rotated to face outward
@@ -425,36 +497,36 @@ runs the whole family as animated clips —
 and [Splitting](rectsl_examples.md#splitting-one-shell-becomes-a-spray) with its
 [recursive cascade](rectsl_examples.md#recursive-splitting-a-cascade).
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `array` | `[template] count quote -- selection` | Reproduce a template object `count` times, running `quote` on each copy with array context. Element 0 is the template itself; the rest are fresh clones (deep for groups). Template is the active object, or a rect/group taken from the stack. Pushes the selection of all copies. |
+| `radial` | `[template] count radius quote -- selection` | Like `array`, but each copy is first placed on a circle of `radius` at angle `ordinal/count · tau`, then `quote` runs. |
+| `arc` | `[template] count radius start sweep quote -- selection` | Aimed spread: places `count` copies on an arc of `radius`, from angle `start` across `sweep` radians (endpoints inclusive), then runs `quote`. |
+| `spiral` | `[template] count r0 r1 turns quote -- selection` | Places `count` copies on a spiral: radius ramps `r0`→`r1` while the angle sweeps `turns · tau`. |
+| `phyllotaxis`, `sunflower` | `[template] count scale quote -- selection` | Golden-angle sunflower: copy `i` at angle `i · 137.5°` and radius `scale · √i`. |
+| `grid` | `cols rows quote -- selection` | Runs `quote` `cols·rows` times to build fresh cells, with grid context available. Close each cell with `;` like `repeat`. Pushes the selection of created objects. |
+| `->split` | `[template] count t quote -- selection` | At time `t` the template vanishes and `count` shards are born at its split-point position (sampled from its tracks). Each shard's flight is authored by `quote` around the origin in split-relative local time (array context available), then placed at the split point. Pushes the shard selection. |
+| `->polar` | `angle radius --` | Place the active object on a circle: `x = radius·cos angle`, `y = radius·sin angle`. |
+| `f` | `-- number` | Normalized fraction `ordinal/(n-1)` in `[0, 1]`; `0` for a single element. Pairs with `mix`. |
+| `f0` | `-- number` | Cyclic fraction `ordinal/n` in `[0, 1)`; handy for rings (`f0 tau *`). |
+| `fc` | `-- number` | Centered fraction `2f-1` in `[-1, 1]`. |
+| `ic` | `-- number` | Centered index `ordinal - (n-1)/2`, symmetric around 0. |
+| `col`, `row` | `-- number` | Current column/row inside `grid`. |
+| `cols`, `rows` | `-- number` | Grid dimensions inside `grid`. |
+| `colc`, `rowc` | `-- number` | Centered column/row: `col-(cols-1)/2`, `row-(rows-1)/2`. |
+
 ## Data visualization
 
 Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots. All three emit ordinary rects: `each`, `->stagger-time`, `group` and tracks all still apply to the result.
 
-### Colormaps
-
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `colormap`, `cmap` | `name t -- color` | Look up a named ramp at `t` in `[0, 1]` (clamped). Pushes a `Color` usable anywhere colour is (`solid`, `linear`, `->fill`, `rgb`). Names: `viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm` (diverging), `grayscale`. |
-
-### Data
-
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `data` | `quote -- data` | Run `quote` and collect every `Number` it leaves into a `Data` list (`'( 3 1 4 1 5 ) data`, or computed: `'( 8 times [ i i * ] ) data`). |
-| `linspace` | `lo hi count -- data` | `count` evenly spaced values from `lo` to `hi` inclusive. |
-| `normalize` | `data -- data` | Rescale a list to `[0, 1]` by its own min/max (a flat list maps to `0.5`). |
-| `extent` | `data -- min max` | Push the list's minimum then maximum. |
-| `dmin`, `dmax` | `data -- number` | Minimum / maximum of a list. |
-| `data-len` | `data -- number` | Number of values. |
-| `data-at` | `data i -- number` | Value at index `i` (clamped to range). |
-| `data-map` | `data quote -- data` | Transform each value through `quote` (the value is on the stack; `i`/`f` array context is available). |
-
-### Chart idioms
-
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `bars` | `data name -- selection` | Bottom-anchored bar chart spanning the wall; bar height and colour both from the value normalized by the list's extent, coloured with colormap `name`. Pushes the selection of bars. |
-| `heat`, `heatmap` | `data cols rows name -- selection` | Row-major grid heatmap filling the wall (row 0 at top); each cell coloured with colormap `name` by its normalized value. Pushes the selection of cells. |
-| `scatter` | `xdata ydata name -- selection` | Plot `(->x, ->y)` points as small squares, each axis normalized to the wall; colour follows normalized `->y` through colormap `name`. Pushes the selection of points. |
+Five figures, each one line of real work. The first is a colormap made visible: 24 thin
+rects laid across the wall, each filled with `viridis` sampled at its own fraction. The
+second is a bar chart of eight literal numbers — and because `bars` hands back a
+*selection*, the next two lines fade the bars in and stagger that fade 0.08 s per bar, so
+a static chart becomes an animated one without touching the chart word. The third
+computes its own field (48 samples of a sine) and tiles it into an 8×6 heatmap; the
+fourth plots y against x; the last reads a list's min, max, length and one element
+without consuming it, then charts it anyway.
 
 ```diffstatic {data-lang=rectsl}
 # a colour legend: 24 thin rects sweeping one colormap across the wall
@@ -486,22 +558,44 @@ on its own — [Colormap legend](rectsl_examples.md#colormap-legend),
 [Scatter plot](rectsl_examples.md#scatter-plot), and
 [Reading a Data value](rectsl_examples.md#reading-a-data-value).
 
+### Colormaps
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `colormap`, `cmap` | `name t -- color` | Look up a named ramp at `t` in `[0, 1]` (clamped). Pushes a `Color` usable anywhere colour is (`solid`, `linear`, `->fill`, `rgb`). Names: `viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm` (diverging), `grayscale`. |
+
+### Data
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `data` | `quote -- data` | Run `quote` and collect every `Number` it leaves into a `Data` list (`'( 3 1 4 1 5 ) data`, or computed: `'( 8 times [ i i * ] ) data`). |
+| `linspace` | `lo hi count -- data` | `count` evenly spaced values from `lo` to `hi` inclusive. |
+| `normalize` | `data -- data` | Rescale a list to `[0, 1]` by its own min/max (a flat list maps to `0.5`). |
+| `extent` | `data -- min max` | Push the list's minimum then maximum. |
+| `dmin`, `dmax` | `data -- number` | Minimum / maximum of a list. |
+| `data-len` | `data -- number` | Number of values. |
+| `data-at` | `data i -- number` | Value at index `i` (clamped to range). |
+| `data-map` | `data quote -- data` | Transform each value through `quote` (the value is on the stack; `i`/`f` array context is available). |
+
+### Chart idioms
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `bars` | `data name -- selection` | Bottom-anchored bar chart spanning the wall; bar height and colour both from the value normalized by the list's extent, coloured with colormap `name`. Pushes the selection of bars. |
+| `heat`, `heatmap` | `data cols rows name -- selection` | Row-major grid heatmap filling the wall (row 0 at top); each cell coloured with colormap `name` by its normalized value. Pushes the selection of cells. |
+| `scatter` | `xdata ydata name -- selection` | Plot `(->x, ->y)` points as small squares, each axis normalized to the wall; colour follows normalized `->y` through colormap `name`. Pushes the selection of points. |
+
 ### Plotting layer
 
 The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `->domain` (or let the first series adopt its own extent) and optional `->frame`/`->margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. `bars`, `heat` and `scatter` do not read that frame; they keep normalizing by their own extent, and the two sets of words sit side by side in one scene. RectSL has no text primitive, so tick and colorbar labels are numerals drawn as a 3×5 grid of rects: numbers only, no titles or series names.
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `->domain` | `x0 x1 y0 y1 --` | Set an explicit shared x and y data domain. Series and `axes` map data → the plot frame through it. |
-| `->xdomain`, `->ydomain` | `lo hi --` | Set just the x (or y) domain. |
-| `->margins` | `l r b t --` | Reserve plot-frame margins as wall fractions (left/right/bottom/top) — room for axis labels and a colorbar. |
-| `->frame` | `--` | Apply sensible default margins (used only when none are set, so an explicit `->margins` wins). |
-| `axes` | `-- selection` | Draw x/y axis rules, nice-number ticks, numeric tick labels (in the margins), and faint gridlines for the current domain. Draw it *before* the series so they paint on top. |
-| `line`, `plot` | `xdata ydata name -- selection` | Polyline through the shared domain as rotated thin rects, coloured along colormap `name` by point order. |
-| `area` | `xdata ydata name -- selection` | Column-filled area from the `->y = 0` baseline to each sample, coloured by normalized `->y`. |
-| `points` | `xdata ydata name -- selection` | Domain-aware scatter (shares the frame with other series); colour follows normalized `->y`. |
-| `colorbar` | `name -- selection` | A continuous colour ramp for `name` in the right margin, with min/mid/max numerals from the y domain. |
-| `legend` | `count name -- selection` | A key of `count` discrete colour swatches sampling colormap `name`, stacked top-right. |
+One figure, three series. The domain is stated once — x from 0 to 10, y from 0 to 1 — and
+margins are reserved around it, which is where the tick numerals go. `axes` draws the
+rules, nice-number ticks and gridlines *first*, so the data paints over them. Then the
+same 40-sample sine appears as a filled area, a cosine as a polyline, and a coarser
+12-sample sine as points; all three land in the one coordinate system, so they can be
+compared rather than merely stacked. A continuous colour bar and a five-swatch key
+finish it.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -523,6 +617,19 @@ axes
 Worked: [A plotted figure](rectsl_examples.md#a-plotted-figure-shared-domain-axes-overlaid-series-legends),
 which shows the same figure both with `->frame`/`->domain` and with the axes set by hand.
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `->domain` | `x0 x1 y0 y1 --` | Set an explicit shared x and y data domain. Series and `axes` map data → the plot frame through it. |
+| `->xdomain`, `->ydomain` | `lo hi --` | Set just the x (or y) domain. |
+| `->margins` | `l r b t --` | Reserve plot-frame margins as wall fractions (left/right/bottom/top) — room for axis labels and a colorbar. |
+| `->frame` | `--` | Apply sensible default margins (used only when none are set, so an explicit `->margins` wins). |
+| `axes` | `-- selection` | Draw x/y axis rules, nice-number ticks, numeric tick labels (in the margins), and faint gridlines for the current domain. Draw it *before* the series so they paint on top. |
+| `line`, `plot` | `xdata ydata name -- selection` | Polyline through the shared domain as rotated thin rects, coloured along colormap `name` by point order. |
+| `area` | `xdata ydata name -- selection` | Column-filled area from the `->y = 0` baseline to each sample, coloured by normalized `->y`. |
+| `points` | `xdata ydata name -- selection` | Domain-aware scatter (shares the frame with other series); colour follows normalized `->y`. |
+| `colorbar` | `name -- selection` | A continuous colour ramp for `name` in the right margin, with min/mid/max numerals from the y domain. |
+| `legend` | `count name -- selection` | A key of `count` discrete colour swatches sampling colormap `name`, stacked top-right. |
+
 ## Musicality — the pattern language as scene structure
 
 RectSL's array primitives distribute copies in *space*. The musical layer distributes them in
@@ -541,16 +648,11 @@ A cycle is the pattern language's bar. `->cps` states cycles per second directly
 it as a musician would. The two spellings of tempo commute: `->tempo` remembers its bpm, so
 `->beats-per-cycle` re-derives from it whichever order they appear in.
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `->cps` | *(prefix)* `->cps 2` | Cycles per second. Default `1`, so a cycle is a second and a scene that never mentions the clock is unaffected. |
-| `->tempo` | *(prefix)* `->tempo 120` | Beats per minute; `cps = bpm / 60 / beatsPerCycle`. |
-| `->beats-per-cycle` | *(prefix)* `->beats-per-cycle 3` | Beats in a cycle. Four (a 4/4 bar) by default. |
-| `->duration-cycles` | *(prefix)* `->duration-cycles 8` | Scene duration in cycles rather than seconds. Set the tempo first. |
-| `beats` | `n -- seconds` | Convert beats to seconds. |
-| `cycles` | `n -- seconds` | Convert cycles to seconds. |
-| `cycle-secs` | `-- seconds` | The length of one cycle. |
-| `scene-cycles` | `-- number` | How many cycles the scene lasts. |
+Below, no time in the program is written in seconds. `->tempo 120` with four beats to
+the cycle makes a bar two seconds long, and `->duration-cycles 4` makes the clip four
+bars — eight seconds, nowhere stated. The two rects then *compute* positions out of
+musical units: one beat is 0.5 s, two cycles is 4 s, `cycle-secs` is 2, and
+`scene-cycles` is 4. Change the tempo and every one of those numbers moves with it.
 
 ```diffstatic {data-lang=rectsl}
 ->tempo 120          # a 4/4 bar at two seconds
@@ -561,21 +663,33 @@ it as a musician would. The two spellings of tempo commute: `->tempo` remembers 
 "cyc"  rect  0.6 ->square  cycle-secs 4 *  scene-cycles 1 - ->xy ;
 ```
 
+The four scene-level clock words are **prefix**: they read a number forward out of the
+source. The four conversions are ordinary stack words.
+
+| Word | Stack / reads | Notes |
+| --- | --- | --- |
+| `->cps` | `->cps <n>` | Cycles per second. Default `1`, so a cycle is a second and a scene that never mentions the clock is unaffected. |
+| `->tempo` | `->tempo <bpm>` | Beats per minute; `cps = bpm / 60 / beatsPerCycle`. |
+| `->beats-per-cycle` | `->beats-per-cycle <n>` | Beats in a cycle. Four (a 4/4 bar) by default. |
+| `->duration-cycles` | `->duration-cycles <n>` | Scene duration in cycles rather than seconds. Set the tempo first. |
+| `beats` | `n -- seconds` | Convert beats to seconds. |
+| `cycles` | `n -- seconds` | Convert cycles to seconds. |
+| `cycle-secs` | `-- seconds` | The length of one cycle. |
+| `scene-cycles` | `-- number` | How many cycles the scene lasts. |
+
 ### `pat`: one copy per event
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `pat` | `[template] pattern quote -- selection` | Reproduce the template **once per event**, each copy `->live` for exactly that event's window. The quote authors the copy's flight in *local* time (0 is its own birth), like `->split`. Anything the quote creates is given the same window, so `pat` composes with `array`, `grid` and `->split`. An all-rests pattern shows nothing. |
-| `t` | `-- seconds` | This event's onset. |
-| `dur` | `-- seconds` | This event's length — its *whole*, not a fragment. |
-| `cyc` | `-- number` | Which cycle the onset falls in. |
-| `step` | `-- number` | Index within the cycle, restarting at each bar line. |
-| `atom` | `-- string` | The event's mini-notation value: `bd`, `808:4`, `c'maj7`. |
-| `atom?` | `name -- bool` | `1` when this event's atom is `name`. |
-| `param` | `key -- number` | A named parameter carried on the event (`gain`, `pan`, `n`, `note`, …). |
-| `param?` | `key -- bool` | `1` when the event carries that parameter. |
+`pat` is `array` indexed by rhythm instead of by ordinal. `"bd*4"` is four events a bar,
+so over four bars the `kick` template below becomes sixteen copies — one per strike, each
+alive for exactly its own quarter-note and no longer. Its body is authored in *local*
+time, where 0 is that copy's own birth: every strike drops from y=5.5 to 0 over 0.34 s
+and flashes up and out over half a second. `step` is the index within the bar, so the
+sixteen strikes also march across the wall and restart at each bar line.
 
-`i`, `n`, `f`, `f0`, `fc` and `ic` work inside a `pat` body exactly as they do inside `array`.
+The second rect reads the event rather than just counting it: which sample name fired
+(`atom`, `atom?`), how long its whole is (`dur`), which cycle it fell in (`cyc`), and any
+parameter the notation attached to it (`"n" param`). `"bd:2 sd cp*2"` carries a `2` on the
+first event, which is where that opacity comes from.
 
 ```diffstatic {data-lang=rectsl}
 ->tempo 120
@@ -607,6 +721,20 @@ Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) is `pat` at it
 against a clock; [The rest of the surface](rectsl_examples.md#the-rest-of-the-surface)
 puts every per-event context word on screen at once.
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `pat` | `[template] pattern quote -- selection` | Reproduce the template **once per event**, each copy `->live` for exactly that event's window. The quote authors the copy's flight in *local* time (0 is its own birth), like `->split`. Anything the quote creates is given the same window, so `pat` composes with `array`, `grid` and `->split`. An all-rests pattern shows nothing. |
+| `t` | `-- seconds` | This event's onset. |
+| `dur` | `-- seconds` | This event's length — its *whole*, not a fragment. |
+| `cyc` | `-- number` | Which cycle the onset falls in. |
+| `step` | `-- number` | Index within the cycle, restarting at each bar line. |
+| `atom` | `-- string` | The event's mini-notation value: `bd`, `808:4`, `c'maj7`. |
+| `atom?` | `name -- bool` | `1` when this event's atom is `name`. |
+| `param` | `key -- number` | A named parameter carried on the event (`gain`, `pan`, `n`, `note`, …). |
+| `param?` | `key -- bool` | `1` when the event carries that parameter. |
+
+`i`, `n`, `f`, `f0`, `fc` and `ic` work inside a `pat` body exactly as they do inside `array`.
+
 ### Patterns as values
 
 `mini` turns text into a rhythm; the signal words build continuous patterns. Both coerce to a
@@ -614,21 +742,14 @@ track wherever RectSL wants one: `sine ->alpha` and `"0 0.25 0.5" ->rot` need no
 word. A bare string is read as mini-notation **only when it contains numbers**, so a misplaced
 name still errors rather than silently becoming zero.
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `mini` | `text -- pattern` | Parse mini-notation. |
-| `sine`, `cosine`, `saw`, `isaw`, `tri`, `square` | `-- signal` | Continuous signals over `[0,1]`, one cycle long. |
-| `rand`, `perlin` | `seed -- signal` | Deterministic noise — granularity-free, identical on any machine. |
-| `nums` | `pattern -- signal` | Read a rhythm's atoms as numbers. |
-| `texts` | `signal -- pattern` | The other direction. |
-| `segment` | `signal n -- signal` | Sample a continuous signal into `n` events per cycle — how a smooth curve becomes stepped. |
-| `pat-range` | `signal lo hi -- signal` | Remap `[0,1]` to `[lo,hi]`. (`range` is already the loop word.) |
-| `quantise`, `quantize` | `signal step -- signal` | Round values to a grid. |
-| `bipolar` | `signal -- signal` | `[0,1]` to `[-1,1]`. |
-| `euclid` | `pulses steps rotation -- pattern` | A Euclidean rhythm as events — the onsets only, not a mask. |
-| `kolakoski` | `steps rotation -- pattern` | A Kolakoski rhythm as events. The terms of the self-describing word `1 2 2 1 1 2 …` read as alternating on/off run lengths, so the figure's own run lengths spell the word back: `x..xx.x..x..xx.x` over sixteen steps. |
-| `kolakoski-gaps` | `steps rotation -- pattern` | `kolakoski`, reading each term as the gap to the next onset instead of a run length: `xx.x.xxx.xx.x.xx` — eleven onsets in sixteen steps against the run reading's eight, and never more than one rest between hits. |
-| `hold-pat` | `signal -- track` | Sample-and-hold: a rest keeps the previous value instead of falling to zero. Pure — it looks backwards, it does not remember. |
+Seven rects, seven kinds of pattern, all of them assigned straight into `->x` with no
+conversion word. `smooth` takes a raw sine, scaled to span the wall, and a second copy of
+it into rotation. `stepped` is the *same* sine put through `segment 8`, which samples it
+eight times a bar — so it holds, then snaps, which is the quality that reads as musical
+rather than as easing. `steps` is a bare mini-notation string of numbers. `held` uses
+`hold-pat` so the rest in `"-6 ~ 6"` keeps the previous value instead of dropping to
+zero. The last three remap a triangle into `[-5, 5]`, round a saw onto a quarter grid,
+and centre seeded Perlin noise around zero.
 
 ```diffstatic {data-lang=rectsl}
 ->tempo 90
@@ -647,9 +768,52 @@ Worked: [Signals, stepped and smooth](rectsl_examples.md#signals-stepped-and-smo
 [Kolakoski rhythms](rectsl_examples.md#kolakoski-rhythms) for `kolakoski`/`kolakoski-gaps`
 against `euclid`.
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `mini` | `text -- pattern` | Parse mini-notation. |
+| `sine`, `cosine`, `saw`, `isaw`, `tri`, `square` | `-- signal` | Continuous signals over `[0,1]`, one cycle long. |
+| `rand`, `perlin` | `seed -- signal` | Deterministic noise — granularity-free, identical on any machine. |
+| `nums` | `pattern -- signal` | Read a rhythm's atoms as numbers. |
+| `texts` | `signal -- pattern` | The other direction. |
+| `segment` | `signal n -- signal` | Sample a continuous signal into `n` events per cycle — how a smooth curve becomes stepped. |
+| `pat-range` | `signal lo hi -- signal` | Remap `[0,1]` to `[lo,hi]`. (`range` is already the loop word.) |
+| `quantise`, `quantize` | `signal step -- signal` | Round values to a grid. |
+| `bipolar` | `signal -- signal` | `[0,1]` to `[-1,1]`. |
+| `euclid` | `pulses steps rotation -- pattern` | A Euclidean rhythm as events — the onsets only, not a mask. |
+| `kolakoski` | `steps rotation -- pattern` | A Kolakoski rhythm as events. The terms of the self-describing word `1 2 2 1 1 2 …` read as alternating on/off run lengths, so the figure's own run lengths spell the word back: `x..xx.x..x..xx.x` over sixteen steps. |
+| `kolakoski-gaps` | `steps rotation -- pattern` | `kolakoski`, reading each term as the gap to the next onset instead of a run length: `xx.x.xxx.xx.x.xx` — eleven onsets in sixteen steps against the run reading's eight, and never more than one rest between hits. |
+| `hold-pat` | `signal -- track` | Sample-and-hold: a rest keeps the previous value instead of falling to zero. Pure — it looks backwards, it does not remember. |
+
 ### Pattern transforms
 
-Time transforms that work on rhythms and signals alike.
+Time transforms that work on rhythms and signals alike. Repetition is cheap; repetition
+that *differs* is what reads as alive, and these are the operators that make bar `n+1`
+unlike bar `n`.
+
+Six rows, all the same three-hit figure, each varied a different way. `plain` is the
+reference. `faster` doubles its speed but only on cycles 0, 3, 6…, so the row lurches
+once every three bars. `walking` rotates the bar a further quarter each cycle — the
+walking feel, with no quote needed. `echoed` superimposes a copy shifted an eighth of a
+cycle, with each of *its* events doubled. `swung` delays every second subdivision of an
+eighth-note grid in exact rational time, so the row is swung yet still quantised.
+`sometimes` squeezes a deterministic half of its events into the back of their own slots,
+turning four-on-the-floor off-beat without moving the grid.
+
+```diffstatic {data-lang=rectsl}
+->cps 1
+->duration-cycles 8
+
+"plain"     rect  0.7 ->square  "bd*3" '( f0 14 * 7 -  4.2 ->xy ) pat ;
+"faster"    rect  0.7 ->square  "bd*3" mini 3 '( 2 fast ) every '( f0 14 * 7 -  2.4 ->xy ) pat ;
+"walking"   rect  0.7 ->square  "bd sd hh cp" mini 4 iter '( f0 14 * 7 -  0.6 ->xy ) pat ;
+"echoed"    rect  0.7 ->square  "bd*3" mini 1 8 '( 2 ply ) off '( f0 14 * 7 -  -1.2 ->xy ) pat ;
+"swung"     rect  0.7 ->square  "bd*8" mini 4 swing '( f0 14 * 7 -  -3 ->xy ) pat ;
+"sometimes" rect  0.7 ->square  "bd*4" mini 0.5 '( press ) sometimes-by '( f0 14 * 7 -  -4.6 ->xy ) pat ;
+```
+
+Worked: [Variation operators](rectsl_examples.md#variation-operators) is exactly this scene
+animated; [The rest of the surface](rectsl_examples.md#the-rest-of-the-surface) covers the
+transforms not shown here.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -678,34 +842,19 @@ applies its transform to a different slice of the bar on every cycle, so there i
 to hand the quote, and a pattern holding a live interpreter would be re-entered from the render
 loop. `iter` gives the same walking feel without a quote.
 
-```diffstatic {data-lang=rectsl}
-->cps 1
-->duration-cycles 8
-
-"plain"     rect  0.7 ->square  "bd*3" '( f0 14 * 7 -  4.2 ->xy ) pat ;
-"faster"    rect  0.7 ->square  "bd*3" mini 3 '( 2 fast ) every '( f0 14 * 7 -  2.4 ->xy ) pat ;
-"walking"   rect  0.7 ->square  "bd sd hh cp" mini 4 iter '( f0 14 * 7 -  0.6 ->xy ) pat ;
-"echoed"    rect  0.7 ->square  "bd*3" mini 1 8 '( 2 ply ) off '( f0 14 * 7 -  -1.2 ->xy ) pat ;
-"swung"     rect  0.7 ->square  "bd*8" mini 4 swing '( f0 14 * 7 -  -3 ->xy ) pat ;
-"sometimes" rect  0.7 ->square  "bd*4" mini 0.5 '( press ) sometimes-by '( f0 14 * 7 -  -4.6 ->xy ) pat ;
-```
-
-Worked: [Variation operators](rectsl_examples.md#variation-operators) is exactly this scene
-animated; [The rest of the surface](rectsl_examples.md#the-rest-of-the-surface) covers the
-transforms not shown here.
-
 ### Variation on a selection
 
 These apply the same ideas to scene objects rather than to rhythms, which makes them useful on
 material that has nothing to do with patterns.
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `->every` | `selection k quote -- selection` | Let the quote take effect only on cycles `0, k, 2k, …`. Both versions of every track are kept and chosen between per sample, so *any* mutator becomes conditional. |
-| `->off` | `selection seconds quote -- selection` | Superimpose a delayed, transformed echo. |
-| `->jux` | `selection quote -- selection` | A mirrored twin, transformed by the quote — left/right being the spatial reading of stereo pan. |
-| `->degrade` | `selection p -- selection` | Deterministic per-object, per-cycle dropout. |
-| `->stagger-swing` | `selection step amount -- selection` | `->stagger-time`, with every odd copy pushed a further `amount` of a step late. |
+`flash` is the one a loop cannot do: a full-wall white rect at zero opacity, sitting
+behind everything, which comes up to 0.14 *only on every fourth bar*. Both versions of
+the track are kept and chosen between per sample, so any mutator can be made conditional
+this way. `twin` gets a mirrored, dimmer partner — left and right being the spatial
+reading of stereo pan. `echo` gets a copy of itself half a second late and fainter. `row`
+is eight copies whose entry times are staggered, with every odd one pushed a further
+0.6 of a step late — swing applied to space — and then a deterministic quarter of them
+dropped out, per object, per cycle.
 
 ```diffstatic {data-lang=rectsl}
 ->tempo 90
@@ -731,13 +880,25 @@ Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) for `->every` 
 `->euclid`; [Signals, stepped and smooth](rectsl_examples.md#signals-stepped-and-smooth)
 for `->jux`, `->off`, `->stagger-swing` and `->degrade`.
 
-### Rhythm in space
-
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `strip` | `[template] pattern quote -- selection` | Lay one copy per event **across the wall** instead of across time. One cycle spans the wall; each copy is centred on its event and as wide as the event is long. The body sees the same `t`/`dur`/`step`/`atom` context a `pat` body does. |
-| `->euclid` | `selection pulses steps rotation -- selection` | Keep the Euclidean onsets of a selection and hide the rest. The off-steps are hidden rather than deleted — RectSL has no node removal. |
-| `->kolakoski` | `selection steps rotation -- selection` | The same layout on the Kolakoski figure — its run-length reading, which is the one that reads as a rhythm along a row. Turn `steps` up past the selection and the mask wraps, as `->euclid`'s does. |
+| `->every` | `selection k quote -- selection` | Let the quote take effect only on cycles `0, k, 2k, …`. Both versions of every track are kept and chosen between per sample, so *any* mutator becomes conditional. |
+| `->off` | `selection seconds quote -- selection` | Superimpose a delayed, transformed echo. |
+| `->jux` | `selection quote -- selection` | A mirrored twin, transformed by the quote — left/right being the spatial reading of stereo pan. |
+| `->degrade` | `selection p -- selection` | Deterministic per-object, per-cycle dropout. |
+| `->stagger-swing` | `selection step amount -- selection` | `->stagger-time`, with every odd copy pushed a further `amount` of a step late. |
+
+### Rhythm in space
+
+`strip` is `pat` spending the subdivision on *where* rather than on *when*: one cycle
+spans the wall, and each copy is centred on its event and as wide as the event is long.
+So `"bd [sd sd] hh*4"` comes out as a ruler — one wide mark, two half-width, four
+quarter-width — from the same string that `pat` would read as a rhythm. That is visual
+music read literally rather than metaphorically, and it is why mini-notation belongs on
+the geometry side at all.
+
+The second rect lays sixteen equal slots across the wall and then lets the figure decide
+which stay lit. The off-steps are hidden rather than deleted; RectSL has no node removal.
 
 ```diffstatic {data-lang=rectsl}
 ->tempo 120
@@ -759,19 +920,27 @@ Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) reads `pat` an
 side by side on the same string; [Kolakoski rhythms](rectsl_examples.md#kolakoski-rhythms)
 compares the two maskings.
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `strip` | `[template] pattern quote -- selection` | Lay one copy per event **across the wall** instead of across time. One cycle spans the wall; each copy is centred on its event and as wide as the event is long. The body sees the same `t`/`dur`/`step`/`atom` context a `pat` body does. |
+| `->euclid` | `selection pulses steps rotation -- selection` | Keep the Euclidean onsets of a selection and hide the rest. The off-steps are hidden rather than deleted — RectSL has no node removal. |
+| `->kolakoski` | `selection steps rotation -- selection` | The same layout on the Kolakoski figure — its run-length reading, which is the one that reads as a rhythm along a row. Turn `steps` up past the selection and the mask wraps, as `->euclid`'s does. |
+
 ## Distribution curves (Functions bridge)
 
 Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md), a tested library of easings, distributions and noise defined over `[0, 1]`. That is exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
 
-| Word | Stack | Notes |
-| --- | --- | --- |
-| `ease` | `->x name -- ->x` / `track name -- track` | Shape a value through a named Penner easing. `name` is any of `linear`, `quad-in/out/in-out`, `cubic-…`, `quart-…`, `quint-…`, `sine-…`, `expo-…`, `circ-…`, `back-…`, `elastic-…`, `bounce-…`, `smoothstep`, `smootherstep`. A constant eases to a number; a keyed track eases its interpolation. |
-| `gaussian` | `-- Fn` | A bell curve centred at `0.5` — bright in the middle of the array, dark at the edges. |
-| `noise` | `seed -- Fn` | Seeded value-noise curve — deterministic, reproducible scatter. |
-| `fbm` | `seed -- Fn` | Seeded fractal (fBm) noise curve — richer, multi-octave scatter. |
-| `sample` | `Fn x -- number` | Evaluate a curve at `x` (use the array fraction `f`). |
-| `reflect` | `Fn -- Fn` | Mirror a curve about `0.5`: `reflect(->x) = fn(1-x)`. |
-| `tile` | `Fn k -- Fn` | Repeat a curve `k` times across `[0, 1]`. |
+Three arrays, three distributions. The first spreads nine copies evenly and eases their
+opacity across the array with an elastic overshoot, so the fade overshoots and settles
+rather than ramping. The second is spaced evenly too, but takes its opacity from a
+gaussian *sampled at the array fraction* — bright in the middle, dark at the edges — and
+its rotation from seeded value noise, which is scatter you get the same every run. The
+third shows the two curve combinators: `tile 3` repeats one bell into a comb of three
+identical bumps across sixteen copies, and `reflect` mirrors a noise curve about 0.5
+before it nudges each copy sideways.
+
+`f` is the array fraction, already in `[0, 1]`, which is exactly the domain these curves
+are defined over. That is the whole of the bridge.
 
 ```diffstatic {data-lang=rectsl}
 # alpha eased across the array with an elastic overshoot
@@ -805,6 +974,16 @@ for the [gaussian comb](rectsl_examples.md#gaussian-comb) and
 [Evolving a distribution](rectsl_examples.md#evolving-a-distribution-toward-a-target) for
 what the graph-backed curves buy you.
 
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `ease` | `->x name -- ->x` / `track name -- track` | Shape a value through a named Penner easing. `name` is any of `linear`, `quad-in/out/in-out`, `cubic-…`, `quart-…`, `quint-…`, `sine-…`, `expo-…`, `circ-…`, `back-…`, `elastic-…`, `bounce-…`, `smoothstep`, `smootherstep`. A constant eases to a number; a keyed track eases its interpolation. |
+| `gaussian` | `-- Fn` | A bell curve centred at `0.5` — bright in the middle of the array, dark at the edges. |
+| `noise` | `seed -- Fn` | Seeded value-noise curve — deterministic, reproducible scatter. |
+| `fbm` | `seed -- Fn` | Seeded fractal (fBm) noise curve — richer, multi-octave scatter. |
+| `sample` | `Fn x -- number` | Evaluate a curve at `x` (use the array fraction `f`). |
+| `reflect` | `Fn -- Fn` | Mirror a curve about `0.5`: `reflect(->x) = fn(1-x)`. |
+| `tile` | `Fn k -- Fn` | Repeat a curve `k` times across `[0, 1]`. |
+
 Note: `gaussian`/`noise`/`fbm` here build CPU `Fn` curves on the RectSL stack; the `fbm`/`palette` seen inside `material '( … )` quotes are StackSL GPU words in a separate language: same names, different context.
 
 ### Kotlin escape (experimental)
@@ -821,6 +1000,35 @@ For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a
 Cost: each unique escape is compiled to a lambda **once** (~76 ms of K2 compile, plus ~5 ms), then **invoked per use** as a plain JVM call. An escape inside an `array` body pays that compile once rather than per copy. It needs a live Kotlin engine. A Field box has one (or pass it via `compileRectSL(source, engine = …)`), so escapes work while live-editing. Inside a long-running graphics render the box's *own* engine is unusable: it is busy running the render behind a single-threaded REPL. The render harness therefore pre-warms every escape on a separate idle engine before the render starts (`prewarmRectSLEscapes` → `compileRectSL(…, precompiledEscapes = …)`) and then only invokes cached lambdas. Gallery `.rectsl` programs get a dedicated engine of their own and can carry escapes too: see the `inline-functions` example.
 
 ## Stack and scalar operators
+
+One `grid`, and every number in it computed rather than typed. Each cell knows its own
+centred column and row, so `colc dup * rowc dup * + sqrt` is its distance out from the
+middle — and from that one quantity the cell derives its opacity (a smoothstepped falloff,
+floored at 0.05 and clamped), its size (a power curve of the same distance, so cells
+shrink outward non-linearly), and its rotation (the two axes averaged, then quantised to
+quarter-turns of π, so the field reads as banded rather than smooth).
+
+`dup`, `over`, `swap` and `drop` are how a value gets used twice without being named.
+There are no variables here; the stack *is* the working set.
+
+```diffstatic {data-lang=rectsl}
+12 7 '(
+  "c" rect
+    colc 1.1 *  rowc 1.1 * ->xy
+    colc dup *  rowc dup *  +  sqrt                 # distance from the middle
+    dup  0 5 smoothstep  neg 1 +  0.05 max  0 1 clamp  0.9 *  0.1 +  ->alpha
+    5 min  neg 5 +  5 /  0.4 pow  0.4 *  0.4 +  ->square
+    col cols 1 - /  row rows 1 - /  over  +  0.5 *  swap drop
+    4 *  ceil  4 /  pi *  ->rot
+  ) grid
+```
+
+Worked: [Grid field](rectsl_examples.md#grid-field) is this scene animated, and
+[Selection & logic](rectsl_examples.md#selection-logic) covers the comparison and
+boolean words. The whole
+[operator-coverage set](rectsl_examples.md#operator-coverage-the-rest-of-the-language)
+is guaranteed to exercise every word in this cheatsheet at least once — a test fails
+if that stops being true.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -841,25 +1049,6 @@ Cost: each unique escape is compiled to a lambda **once** (~76 ms of K2 compile,
 | `<`, `lt`, `<=`, `lte`, `>`, `gt`, `>=`, `gte`, `=`, `eq`, `!=`, `<>`, `neq` | `a b -- bool` | Numeric/string comparisons where supported. |
 | `and`, `or`, `not` | `bool... -- bool` | Boolean operators using nonzero truth. |
 | `pi`, `tau` | `-- number` | Constants. |
-
-```diffstatic {data-lang=rectsl}
-12 7 '(
-  "c" rect
-    colc 1.1 *  rowc 1.1 * ->xy
-    colc dup *  rowc dup *  +  sqrt                 # distance from the middle
-    dup  0 5 smoothstep  neg 1 +  0.05 max  0 1 clamp  0.9 *  0.1 +  ->alpha
-    5 min  neg 5 +  5 /  0.4 pow  0.4 *  0.4 +  ->square
-    col cols 1 - /  row rows 1 - /  over  +  0.5 *  swap drop
-    4 *  ceil  4 /  pi *  ->rot
-  ) grid
-```
-
-Worked: [Grid field](rectsl_examples.md#grid-field) is this scene animated, and
-[Selection & logic](rectsl_examples.md#selection-logic) covers the comparison and
-boolean words. The whole
-[operator-coverage set](rectsl_examples.md#operator-coverage-the-rest-of-the-language)
-is guaranteed to exercise every word in this cheatsheet at least once — a test fails
-if that stops being true.
 
 ## Lowering to GLSL: a scene as a signed distance field
 
@@ -964,9 +1153,9 @@ draw order are dropped.
 Visibility is not dropped: a rect gated to zero by `->appear`, `->vanish`, or
 `->live` contributes no silhouette, exactly as it draws nothing on the CPU.
 
-### What you get for the trade
+### What a distance field can do that a quad cannot
 
-Things a rasterized quad cannot do, all of which are one line over the same float:
+All of these are one line over the same float:
 
 ```diffstatic {data-lang=glsl}
 float d = scene(p, t);
@@ -1046,74 +1235,33 @@ wraps it in a look, and draws it with a fullscreen triangle and a clock.
 
 ### Fidelity
 
-The emitted **geometry** is checked against the CPU sampler to `1e-9` across the
-whole gallery, and every gallery scene is **compiled through shaderc** as part of
-the build: a shader that will not compile fails the build rather than the
-pipeline.
+The shape is exact and the arithmetic is not quite, in a way you can plan around.
 
-The **pixels** are checked too. `RectSLGalleryHarness.measureSdfAgreement` renders
-a probe shader that reports `scene(p, t)` as a 24-bit fixed-point number instead
-of drawing it, reads the framebuffer back, and compares it against
-`program.sample(t)`. The probe also reports `p.x` and `p.y`, on channels of their
-own, so the pixel→wall mapping is recovered from the shader's own answers rather
-than assumed. `measureGallerySdfAgreement` then repeats it across a spread of the
-real gallery, one scene per distinct feature signature: groups, named easings and
-every rect count get covered rather than one hand-picked shape. Measured over 51,000
-points and eleven programs: **max 2.47e-06** wall units, mean under 1e-06. That is
-the one unavoidable difference, and it is exactly what it should be. The sampler
-works in `double` and a shader in `float`; expect about `1e-6` of a wall unit, not
-the ulp.
+The emitted geometry is checked against the CPU sampler to `1e-9` across the whole
+gallery, and every gallery scene is compiled through shaderc as part of the build,
+so a shader that will not compile fails the build rather than the pipeline. On a
+GPU the sampler works in `double` and the shader in `float`, so expect the two to
+part company at about `1e-6` of a wall unit; the guard is `1e-5`.
 
-**What is approximated: two kinds of track.** `->degrade`'s dropout gate is neither
-of them, despite being a 64-bit integer hash. It lowers **exactly**: a 64-bit value
-is a `uvec2` lane pair, `umulExtended` gives the exact 32×32→64 product the
-multiplies need, and the final `k / 2^53 < probability` test is an integer
-comparison in disguise. The threshold folds to an exact 53-bit integer on the CPU
-and is compared with an unsigned 64-bit `<`, with no float anywhere in the
-decision. `ordinal` and the salt are known at emit time, so two of the three hash
-inputs fold to a single literal. The only residual difference is which cycle `t`
-belongs to, since `floor(t · cps)` runs in `float` here and `double` there: a
-disagreement possible only within about an ulp of a cycle boundary, where the gate
-is discontinuous anyway.
+Almost nothing needs approximating, for the reason
+[above](#why-so-little-of-the-language-has-to-come-along): easings, time warps and
+TCB tracks all reach the shader as closed forms. Even `->degrade` lowers exactly —
+its 64-bit hash is a `uvec2` lane pair and its threshold test is an integer
+comparison in disguise.
 
-The two that remain baked are the pattern queries: rational arithmetic over a
-mini-notation tree, an interpreter rather than a formula, and a different kind of
-problem. Nothing here can be lowered even in principle. A `PatPattern` is a
-`(PatArc) -> List<PatEvent>` lambda, so the emitter cannot tell a `"bd*4"` from a
-`sine` from the outside, let alone find a closed form for it. It samples them, and
-what the sampling costs depends on which of the two the track turns out to be.
-`emitSdf` returns one `RectSLSdfBake` per sampled track (the classification, the
-rate, and the measurement it made of itself), and the sentence in `notes` is that
-report read aloud.
+The one thing that is sampled is a **pattern query**, and it has to be: a
+`PatPattern` is a `(PatArc) -> List<PatEvent>` lambda, so from the outside the
+emitter cannot tell a `"bd*4"` from a `sine`, let alone find a closed form for it.
+`emitSdf` returns one `RectSLSdfBake` per sampled track — the classification, the
+rate, and the measurement it made of itself — and the sentence in `sdf.notes` is
+that report read aloud. Three classifications, and what each means for you:
 
-A **rhythm** is piecewise constant, so the only question is *where its edges are*,
-and each edge is found by bisection rather than snapped to the sample grid. It
-lands within a microsecond, which is the resolution `PatTrack` works at anyway: it
-quantises its query to a millionth of a cycle. `"1 ~ 3"` therefore steps at
-0.666667s rather than at two thirds, and the emitted step has to land on the same
-side of that, or every frame instant sitting on the exact rational shows the next
-value early. The five stepped bakes in the gallery disagree with their own sampler
-at no instant the emitter probes, and the two focused cases in `RectSLSdfBakeTest` agree
-across a grid 40× finer than the bake.
+| `fidelity` | the track | what to expect |
+| --- | --- | --- |
+| `STEPPED` | a rhythm: `"bd*4"`, `"0 3 -3 6"`, `segment`, `quantise`, `square` | exact away from an edge, and each edge is found by bisection rather than snapped to the sample grid. It lands within a microsecond, which is `PatTrack`'s own query resolution |
+| `SAMPLED` | a signal: `sine`, `cosine`, `tri`, `perlin`, `saw`, `isaw` | a hold chain and a ramp are both built and the closer one emitted. Small but not zero; no plateaus means no exactness to claim |
+| `ALIASED` | `rand` | it hashes the instant, so it has no value *between* samples. Raising the rate does not help and lowering it does not hurt. Reported rather than fixed, because no rate fixes it |
 
-A **signal** (`sine`, `tri`, `perlin`) has no plateaus and so no exactness to
-claim. Both a hold chain and a ramp through the samples are built and measured, and
-the closer one is emitted: for `sine` over a 0-to-1 range that is the ramp, at
-0.000024 against the staircase's 0.0086; for `saw` and `isaw` it is the staircase,
-because a straight line would smear the once-a-cycle wrap across a whole interval.
-The gallery's seven sampled tracks are worst-case **0.31%** of what the track does
-at all, and the ramps among them are under 0.005%.
-
-`rand` is neither a rhythm nor a signal. It hashes the reduced rational instant it
-is handed, so it has no value *between* samples: bake it eight times finer and the
-deviation does not fall (0.96 → 0.97 of a 0-to-1 range). That is what an `ALIASED`
-bake reports: the deviation matters, *and* halving the rate does not make it worse.
-Raising it would not make it better either. One gallery track is in that state,
-`3 rand 0.2 quantize` in the musicality-surface example, and it is reported rather
-than fixed because no rate fixes it.
-
-The gate's lowering is held to a stronger standard than that, because it can be:
-6720 (ordinal, cycle, probability, salt) points agree **bit for bit** with the CPU
-track, and the pixel differential then covers a `->degrade` scene end to end, where
-a wrong hash would not be a small numeric error but a *different set of rectangles*,
-so it shows up at the scale of the wall rather than at 1e-6.
+`dev_docs/RECTSL_SDF_AGREEMENT.md` carries the probe-shader design, the per-class
+deviation figures, the `->degrade` hash census, and which of all of it is asserted
+rather than printed.

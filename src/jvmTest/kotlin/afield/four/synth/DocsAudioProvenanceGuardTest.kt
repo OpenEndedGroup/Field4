@@ -63,6 +63,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 7,
             Origin.FAUST to 3,
+            Origin.DOUGH_WASM to 2,
         )
         assertEquals(
             expected,
@@ -202,7 +203,14 @@ class DocsAudioProvenanceGuardTest {
          * [FaustPolySoundDocs]). The six newest are the two chain pages, and they added no new
          * family: both drive [patVoice], one through [patRenderStereo] and one through a
          * [PatSynthBank] rendered block by block.
+         *
+         * The two newest are [PatSpatialSoundDocs]', and they brought [Origin.DOUGH_WASM] with them.
+         * They are also the only pair in the corpus that is deliberately **half a path**: they
+         * publish the mono source `pat-spatial` hands Steam Audio, because the spatialised half is
+         * realtime-only and needs a binary this repository does not carry, so this very audit could
+         * not re-render it. Worth stating next to the count: the corpus is now bounded by what can
+         * be re-derived, and one of Field's render paths falls outside that boundary by design.
          */
-        const val EXPECTED_FENCE_COUNT = 49
+        const val EXPECTED_FENCE_COUNT = 51
     }
 }

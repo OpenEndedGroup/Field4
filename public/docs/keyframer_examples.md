@@ -293,7 +293,7 @@ scope.interpolate(cool, warm, 0.25)()
 
 ![A radial fan of forty-eight wedges on black, every wedge the same light blue, rendered in a native Vulkan window](assets/keyframer_examples/gpu_tint.png)
 
-The fan is blue, and that is the whole argument. The mesh colours are all `(1, 1, 1, 1)`; a fan that
+The fan is blue. The mesh colours are all `(1, 1, 1, 1)`; a fan that
 is *any* colour other than white can only have got it from the uniform, and an unwritten uniform
 would have left it black.
 

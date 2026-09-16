@@ -680,7 +680,7 @@ The scene is an ordinary one. One animated template, six copies from
 Six rects, ten emitted curves, a 7.8KB fragment shader. Nothing in the scene text
 knows about any of what follows.
 
-### What a distance buys that a coverage mask does not
+### What each look does
 
 A `RectSLSdfLook` is data (fill, outline width, glow falloff, contour spacing,
 bevel depth and light, motion-blur samples and shutter, blend radius, carve), and
@@ -711,8 +711,8 @@ distance <em>outside</em> the shape, which coverage cannot express at all.</figc
 <img src="../assets/rectsl/rectsl-sdf-contours.png" alt="iso-distance contour lines"
      style="width:100%;border-radius:6px;">
 <figcaption><code>contours</code> — iso-distance lines: rounded at convex corners,
-creased at concave ones, and continuing <em>inside</em> the shape, which a mask
-has no way to do.</figcaption>
+creased at concave ones, and continuing <em>inside</em> the shape, because the
+distance is signed.</figcaption>
 </figure>
 <figure style="margin:0;">
 <img src="../assets/rectsl/rectsl-sdf-relief.png" alt="per-pixel normals, lit"
@@ -726,7 +726,7 @@ where the copies meet under <code>min</code>.</figcaption>
      style="width:100%;border-radius:6px;">
 <figcaption><code>blend</code> — the same scene with <code>min</code> replaced by
 <code>smin(·,·,0.55)</code>: the six copies fuse into one body. Compare the
-creases in <code>relief</code>: RectSL itself has no vocabulary for this.</figcaption>
+creases in <code>relief</code>.</figcaption>
 </figure>
 <figure style="margin:0;">
 <img src="../assets/rectsl/rectsl-sdf-carve.png" alt="a second scene subtracted from the first"
@@ -763,7 +763,7 @@ asking the question:
 <img src="../assets/rectsl/rectsl-sdf-zoom.png" alt="a 1x render magnified beside a 4x render"
      style="width:100%;max-width:820px;border-radius:8px;">
 
-### What it costs — the same scene, both ways
+### The raster path and the field, side by side
 
 Left: the ordinary raster path (`RectSLRenderRunner`). Right: the distance field.
 Same program, same instant, same wall, composited side by side in one pass of the
@@ -783,51 +783,26 @@ Visibility is *not* dropped. A rect gated to zero by `->appear`, `->vanish` or
 
 ### Checking the field against the CPU sampler
 
-Before it draws any of the looks, the harness renders a *probe* shader: the same
-field, reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing it. It
-reads the framebuffer back and compares it against `program.sample(t)`, the CPU
-sampler the raster path draws from, and refuses to write a single image if the two
-disagree.
+None of the images above gets written unless the shader and the CPU agree. Before
+it draws any of the looks, the harness renders a *probe* shader — the same field,
+reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing it —
+reads the framebuffer back, and compares it against `program.sample(t)`, the same
+sampler the raster path draws from. `double` on the CPU against `float` in a
+shader agrees to about 1e-6 of a wall unit, which is what that difference is worth
+and not the ulp.
 
-The pixel→wall mapping is not re-derived on the CPU, which is how this sort of
-check usually ends up agreeing with itself. The probe reports `p.x` and `p.y` as
-well, so the mapping is fitted from the shader's own answers and its residual is
-held to the encoding's own step. The comparison runs on the scene above, on a
-second scene built from `->degrade` and a mini-notation pattern (the two tracks
-whose fidelity is not free), and then on a spread of the real gallery. A gallery
-scene earns its place in that spread by bringing a new feature signature (groups,
-named easings, a forced bake, an order of magnitude more rects), since each of
-those is a different branch of `emitRect`:
+The full report — every pass, its point count and its worst disagreement — is
+regenerated on each re-capture and committed beside the images as
+`assets/rectsl/rectsl-sdf-agreement.txt`. `dev_docs/RECTSL_SDF_AGREEMENT.md` has
+how the probe recovers the pixel→wall mapping and how a scene earns its place in
+the gallery spread.
 
-```diffstatic {data-lang=console}
-near (±1 wall unit):        5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
-far  (±32):                14600 points, max 4.46e-06, mean 1.64e-06  (step 3.82e-06)
-baked near (±1):            2541 points, max 1.03e-06, mean 3.32e-07
-baked far  (±32):          10512 points, max 4.93e-06, mean 1.80e-06
-gallery/mirrored-orbit:     1910 points, max 1.50e-06
-gallery/rising-bars:        3025 points, max 1.66e-06
-gallery/orbit-petals:       3135 points, max 1.71e-06
-gallery/gradient-sweep:     2810 points, max 2.47e-06
-gallery/pinwheel:           4914 points, max 1.81e-06
-gallery/wave-lattice:       7688 points, max 1.92e-06
-gallery/selection-logic:    4728 points, max 1.87e-06
-```
-
-So the claim, across eleven passes and 61,000 sample points, is that `double` on
-the CPU against `float` in a shader agrees to about 1e-6 of a wall unit, not to
-the ulp. The far pass cannot resolve better than its own encoding step and is
-checked against that rather than against 1e-6.
-
-The full report is committed alongside the images as
-`assets/rectsl/rectsl-sdf-agreement.txt`, and is regenerated every time the page
-re-captures.
-
-The `->degrade` half of that second scene is the most sensitive row in the table,
-and it does not look it. `->degrade` is a 64-bit integer hash, and it is
-*lowered*, not sampled; if the shader's hash disagreed with the CPU's by a single
-bit, a different set of rectangles would vanish and the disagreement would be the
-size of a rectangle, not 1e-6. Reading 1.03e-06 there means every copy the CPU
-drops on that cycle is the copy the GPU drops. See
+The most sensitive pass is the one that looks least like it. One of them is built
+from `->degrade` and a mini-notation pattern, and `->degrade` is a
+64-bit integer hash that is *lowered* rather than sampled. If the shader's hash
+disagreed with the CPU's by a single bit, a different set of rectangles would
+vanish: the disagreement would be the size of a rectangle, not 1e-6. Reading 1e-6
+there means every copy the CPU drops on that cycle is the copy the GPU drops. See
 [the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity) for how a 64-bit
 hash fits in a shader that has no 64-bit integers.
 

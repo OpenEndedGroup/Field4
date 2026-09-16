@@ -72,10 +72,10 @@ keepAlive()                   // ask the head to keep ticking frames
 `onStart`/`onFrame`/`onStop`/`keepAlive` are inert during a plain Execute; they come alive on
 **Launch**, and the head runs registered `onStop` callbacks exactly once on relaunch or Stop.
 
-## Worked example 1 — vectors (the "real Kotlin" proof)
+## Worked example 1 — a vector type with operators
 
-Here is the smallest example that shows the whole idea. This is a `remoteAR` box. It declares a
-Kotlin `data class` with two `operator fun`s and uses them:
+The smallest box that shows the whole idea. This one is `remoteAR`, and it declares a Kotlin
+`data class` with two `operator fun`s and uses them:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -138,8 +138,8 @@ var vectors = function (_) {
 ```
 
 A `data class` also generates `equals`, `hashCode`, `copy`, and `component1`/`component2`, but this
-box never calls them, so whole-program dead-code elimination dropped them. That is why a trivial Kotlin/JS box is a few KB and not the ~600 KB of an untree-shaken
-stdlib.
+box never calls them, so whole-program dead-code elimination dropped them: what is above is the
+whole module, not an excerpt of a larger one.
 
 ## Worked example 2 — ring (real THREE geometry, animated)
 
@@ -167,12 +167,11 @@ onFrame { frame ->
 log("ring installed: ${ring.size} boxes")
 ```
 
-Everything here is grounded in the real bound surface: `vec(x, y, z)` returns a `THREE.Vector3`;
-`addBox(name, size)` places a mesh and returns it; `box.position` is a `THREE.Vector3` with `.set(...)`;
-`box.rotation` is a `THREE.Euler` with a mutable `.y`. To see the ring turn, open this box with a
-browser WebXR head connected.
+`vec(x, y, z)` returns a `THREE.Vector3`; `addBox(name, size)` places a mesh and returns it;
+`box.position` is a `THREE.Vector3` with `.set(...)`; `box.rotation` is a `THREE.Euler` with a
+mutable `.y`. To see the ring turn, open this box with a browser WebXR head connected.
 
-The THREE vector operators are real Kotlin operators, so this compiles and runs:
+The overloads reach THREE's own vector types too, so this compiles and runs:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -186,8 +185,8 @@ log("$shifted then $doubled")
 ## Worked example 3 — bells (Tone.js computer music)
 
 `// {{ tone }}` routes to a head that has [Tone.js](https://tonejs.github.io/) loaded. The bound
-surface is a genuinely useful synthesis slice: the synth family, core effects, the `Param` value
-type, and `Transport` scheduling. This box schedules a four-note arpeggio:
+surface covers the synth family, core effects, the `Param` value type, and `Transport` scheduling.
+This box schedules a four-note arpeggio:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -221,9 +220,9 @@ onStart {
 ```
 
 `Tone.PolySynth()`, `Tone.Reverb(decay)`, `connect`/`toDestination`/`dispose`, `getTransport()`,
-`transport.bpm.value`, `scheduleRepeat(callback, "8n")`, and `triggerAttackRelease(note, duration,
-time)` are all real bound names. The `onStop` block is important: it cancels the scheduled event and
-disposes the audio nodes so a relaunch doesn't stack a second arpeggio on top.
+`transport.bpm.value`, `scheduleRepeat(callback, "8n")` and `triggerAttackRelease(note, duration,
+time)` are the names that box uses. The `onStop` block is the part to copy: it cancels the scheduled
+event and disposes the audio nodes, so a relaunch doesn't stack a second arpeggio on top.
 
 !!! warning "Audio needs a real head and a gesture"
     Web audio will not start without a user gesture. Run this example in a browser head and click

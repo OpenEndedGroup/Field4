@@ -84,9 +84,9 @@ events for the life of the JVM, and a leaked sink that throws is merely swallowe
 than noticed — `LogDispatcher.log` wraps each sink in `runCatching`, so a broken sink fails
 silently forever.
 
-## The one thing to get right: three matchers, one word
+## Channel matching: three mechanisms, three rules
 
-Everything downstream selects on tags, and here is the part that will catch you. **Three
+Everything downstream selects on tags. **Three
 mechanisms select on the channel, and all three match differently.**
 
 | Mechanism | What it compares | Rule | Case |
@@ -210,7 +210,7 @@ channel string (`"info,kotlin"`) rather than the bare tag.
 
 ## Muting is a console policy, not a filter
 
-The second thing to get right. Muting a channel does **not** drop the event. Both console
+The second thing to get right, after the matchers above. Muting a channel does **not** drop the event. Both console
 sinks check the mute set and return early —
 `Logging.kt:95#if (ConsoleMute.isMuted(event.channel)) return` for plain stdout and
 `PinnedConsole.kt:316#if (ConsoleMute.isMuted(event.channel)) return` for the pinned

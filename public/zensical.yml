@@ -124,6 +124,7 @@ nav:
     - Sound & Music:
       - Patterns & Rhythm: pattern_language.md
       - Making a Sound, Every Path There Is: sound_paths.md
+      - A Pattern in Space (HRTF): pat_spatial.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md

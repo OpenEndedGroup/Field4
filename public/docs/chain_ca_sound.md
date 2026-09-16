@@ -5,12 +5,12 @@ One row or one column of the result becomes a step mask. `patCondense` searches 
 mini-notation that plays that mask. `patRenderStereo` plays the notation through a small
 deterministic voice, offline, into a `.wav`.
 
-The third step is where the measurement is. `patCondense` is the mini-notation parser run backwards,
-and the length of what it returns is a number about the rhythm it was given: a rhythm with structure
-gets a much shorter spelling than one without. So the notation a CA's row condenses to is a
-statement about the rule, and the audio is that statement played.
+The third step is the one that says something. `patCondense` is the mini-notation parser run
+backwards, and the length of what it returns is a number about the rhythm it was given: a rhythm
+with structure gets a much shorter spelling than one without. So the notation a CA's row condenses
+to is a statement about the rule, and the audio is that statement played.
 
-## The same rule, twice, with the answers known in advance
+## Rule 90 and rule 30, as bars
 
 Rule 90 is `left XOR right`. From a single live cell its space-time diagram is Pascal's triangle
 mod 2, which is where the second column of the figure below comes from: `binomialParity` computes
@@ -148,8 +148,8 @@ showPatRollOf(
 
 ## Six rules, one denominator
 
-The same 32-step centre column, taken from six rules, condensed with the same atom. This is the
-measurement the two audio clips above are one comparison from.
+The same 32-step centre column, taken from six rules, condensed with the same atom — the two clips
+above are one row of this.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true}
 :::static

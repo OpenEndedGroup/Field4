@@ -52,6 +52,24 @@ TetGen is handed Manifold's triangulation, whose edges are exact, and constrains
 Measured through the Kotlin binding, a `2 x 3 x 4` cube meshes to a volume of `23.999999999999936`
 against an exact `24.0` — a relative error of `2.7e-15`.
 
+#### The same split against marching cubes, per resolution
+
+The table above compares against MMG's level set. `public/docs/tetgen.md`'s sharp-edge figure runs
+the same split against Field's own marching cubes, on a `2`-across body, and reaches the same
+finding at a better constant — so the *order* is the property, not either implementation's
+constant. Displaced here from that page on 2026-09-15; the page keeps the finding and the `0.07 h`.
+
+| cell size `h` | box, worst error | sphere, worst error |
+|---|---|---|
+| 0.4 | 0.030303 = 0.0758 h | 0.010447 = 0.0261 h |
+| 0.2 | 0.015000 = 0.0750 h | 0.002789 = 0.0139 h |
+| 0.1 | 0.006699 = 0.0670 h | 0.000698 = 0.0070 h |
+| 0.05 | 0.003160 = 0.0632 h | 0.000166 = 0.0033 h |
+
+Halving `h` divides the sphere's error by four (second order) and the box's by two (first order),
+and the box's ratio to `h` barely moves across a factor of eight in resolution. Against this,
+TetGen's worst node on the same box lies `0.0` outside the true surface.
+
 ### And "incremental meshing" turned out to be the wrong question
 
 A full re-tetrahedralization of a realistic body is ~0.2 s. Against a Kratos structural solve, that
@@ -84,6 +102,19 @@ Three things in that build are load-bearing:
 
 One more, found the hard way while measuring: **TetGen truncates output filenames at the first
 dot**, so `body_h0.0625.off` writes its result to `body_h0.1.mesh`.
+
+### Why the skipped-facet files are not relocated
+
+Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
+`tetgen-tmpfile_skipped.face` in the process's current working directory. `Q` does not suppress
+them and `TETLIBRARY` does not redirect them; `public/docs/tetgen.md` tells a user to expect them,
+and `TetgenWorkingDirectoryLitterTest` pins the behaviour.
+
+`chdir` around the call is the obvious fix and it is worse than the problem. The working directory
+is process-global, so moving it under a mesh running on a background thread moves it for every
+relative path in the session — including whatever the user's own boxes are reading. Nothing short of
+patching TetGen's own file handling fixes this properly, which is why the documented behaviour is
+the behaviour.
 
 ## The structural formulation
 

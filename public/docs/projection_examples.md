@@ -187,7 +187,7 @@ what squeezing a nineteen-dimensional structure into two costs. Ask for more dim
 improves the way you would expect: `dimensions = 3` gives r = 0.9258 and stress 0.1547,
 `dimensions = 4` gives 0.9500 and 0.1146. Nothing forces you to draw all the dimensions you fit.
 
-And `proportion` sums to **1.0000** here, which is the trap. It is the retained eigenvalues divided
+And `proportion` sums to **1.0000** here, which is not the reassurance it looks like. It is the retained eigenvalues divided
 by *their own* L1 norm (`smile_mds.kt:454#val norm = proportion.sumOf { abs(it) }`), so it sums to 1
 whether you kept 2 components or 15. It tells you how the components you kept divide up between
 themselves and nothing whatever about how much you threw away. The stress figure above is the number
@@ -323,16 +323,16 @@ What has to be checked is the graph, and the fence checks it: **worst `|i − j|
 so no edge has jumped between arms. A single shortcut edge would collapse two arms into one and the
 rho above would fall off a cliff. Raise `k` until that happens and you can watch it go.
 
-## MDS or t-SNE? Measure what each one destroys
+## MDS against t-SNE
 
 The usual advice is that MDS preserves global distances and t-SNE preserves local neighbourhoods.
-That is true, and it is also two measurements, because the *size* of the distortion is what decides
-whether a picture can be believed.
+Both are true; what decides whether you can read a number off the picture is how big each
+distortion is.
 
 Three Gaussian clusters of sixty points each in twelve dimensions, with unit spread and centres
-placed so that one fact is checkable: cluster 1 is 10 away from cluster 0 and cluster 2 is 40 away. So one true fact
-about the data is that clusters 0 and 2 are about four times further apart than clusters 0 and 1,
-and either projection either keeps that or does not.
+placed so that one fact is checkable: cluster 1 is 10 away from cluster 0 and cluster 2 is 40 away.
+So one true fact about the data is that clusters 0 and 2 are about four times further apart than
+clusters 0 and 1, and either projection keeps that or it does not.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/mds_versus_tsne.png" wait="10.0" capture="box" open-outputs="true" w="1020" h="900" padding="16"}
 :::static

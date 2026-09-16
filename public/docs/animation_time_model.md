@@ -185,8 +185,8 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     only return-based way to end a frame program.
 
     It follows from `job?.cancel()` preceding `yield()`, and
-    `FramesSemanticsTest.frameNeverReturnsFalse` pins it across all three stop routes. That pin
-    earns its keep: the end phase lives in that `catch`, so a `frame()` that started returning
+    `FramesSemanticsTest.frameNeverReturnsFalse` pins it across all three stop routes — which
+    matters because the end phase lives in that `catch`, so a `frame()` that started returning
     `false` would exit `eachFrame` through its loop condition and stop running `.end { }`
     altogether.
 
@@ -378,22 +378,17 @@ which stops at `x == 39`, eleven frames after the button. Draw from there rather
 assigning: the end phase is where the wind-down goes, and the disc animation further down this page
 spends two frames of it repainting the stopped state in red.
 
-!!! warning "Not a `finally`, and not the place for an OS resource"
+!!! warning "If something must be released the moment stop is pressed"
 
-    Everything above is about *cancellation*, which is the only route into `atEnd`. A body that
-    returned, or that threw, never re-enters `frame()` and so never reaches the end phase at all.
-    Those are the two `no` rows in the figure above.
+    Cancellation is the only route into `atEnd`. A body that returned, or that threw, never
+    re-enters `frame()` and so never reaches the end phase at all — the two `no` rows in the figure
+    above. So **if something must be released the instant a person presses stop, or must be
+    released even when the animation ends by returning, do not rely on `.end { }`.**
 
-    So a box carries `stopHooks` as well: a short, synchronous teardown list
-    `stopTrackedJobs` drains before it returns. `Box.streamProcess` — the only place in Field's own
-    source that installs an `atEnd`, to `proc.destroy()` an external command — registers its kill
-    there, and keeps the `atEnd` too, so the child dies whether the process was still running when
-    you pressed stop or had already exited on its own. `terminateProcess` is idempotent because both
-    can fire for one stop.
-
-    The rule for your own code: **if something must be released the instant a person presses stop,
-    or must be released even when the animation ends by returning, do not rely on `.end { }`.** The
-    epoch mechanism and the caller sweep are written up in
+    Use the box's `stopHooks` instead: a short, synchronous teardown list `stopTrackedJobs` drains
+    before it returns. `Box.streamProcess`, the one place in Field's own source that installs an
+    `atEnd`, registers its kill in both, so an external command dies whether it was still running
+    at stop or had already exited. The epoch mechanism and the caller sweep are in
     `dev_docs/frames_stop_end_phase.md`.
 
 ## Time in seconds

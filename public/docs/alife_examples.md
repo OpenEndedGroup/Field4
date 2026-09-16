@@ -26,20 +26,8 @@ displaced by nothing at all. A flock of 400 agents reaches a polarization of 0.6
 independent headings would give 0.044, and the same initial state with the alignment term zeroed
 reaches 0.073.
 
-`afield.examples.stdlib.AlifeGallery` renders the eighteen figures below in CI and asserts, for each,
-the statistic its control arm fails; the numbers printed here are the numbers it asserts. It runs in
-two tiers. `stdlib.alife.gallery` is the fast one (~6 s, everything whose evidence is an exact
-identity or a closed-form comparison, including the checks that pin the *measurement* functions
-against analytic answers), and `stdlib.alife.gallery.slow` is the ~25 s of figures that integrate a
-PDE or an agent population to a statistical verdict.
-
-!!! note "The measurement layer"
-    `alife.kt` is mostly not automata. It is [`polarization`](reference/alife.md#alife-kt) and its
-    random baseline, [`blobShapes`](reference/alife.md#alife-kt) (the isoperimetric ratio that tells
-    spots from stripes), [`correlationLength`](reference/alife.md#alife-kt),
-    [`topShare`](reference/alife.md#alife-kt) and
-    [`massRadiusDimension`](reference/alife.md#alife-kt). They are what the rest of the family makes
-    its claims through.
+`afield.examples.stdlib.AlifeGallery` renders the figures below in CI and asserts, for each, the
+statistic its control arm fails, so the numbers printed here are the numbers it asserts.
 
 ## Source files
 
@@ -48,7 +36,13 @@ Six dependency-free files built on the existing [imaging](imaging_examples.md) a
 labelling, colour mapping or marching cubes:
 
 - **`alife.kt`** — [`IntGrid`](reference/alife.md#alife-kt-intgrid), the toroidal-or-bounded integer
-  lattice; the grid↔[`Img`](imaging_examples.md) bridges; and the measurement layer.
+  lattice; the grid↔[`Img`](imaging_examples.md) bridges; and, mostly, the measurement layer that
+  the rest of the family makes its claims through —
+  [`polarization`](reference/alife.md#alife-kt) and its random baseline,
+  [`blobShapes`](reference/alife.md#alife-kt) (the isoperimetric ratio that tells spots from
+  stripes), [`correlationLength`](reference/alife.md#alife-kt),
+  [`topShare`](reference/alife.md#alife-kt) and
+  [`massRadiusDimension`](reference/alife.md#alife-kt).
 - **`alife_ca.kt`** — [`LifeRule`](reference/alife.md#alife-ca-kt-liferule) parsed from `B3/S23`,
   named Life patterns, exact cycle detection, cyclic multi-state CA, Wolfram's elementary 1-D rules as
   a space-time raster, and a 3-D life-like CA on [`IntVolume`](reference/alife.md#alife-ca-kt-intvolume).
@@ -102,8 +96,7 @@ four generations. The block is a still life. The blinker has period two. And the
 cells) runs for 1103 generations, peaks at a population of 319 at generation 821, and settles to 116
 cells, six of which are gliders still flying away.
 
-That last one has a subtlety worth the space, because it is the difference between a check and a
-flattering approximation. Those figures are about an *unbounded* board. On a board with walls the
+Those R-pentomino figures are about an *unbounded* board. On a board with walls the
 gliders are destroyed, and the system instead becomes exactly periodic at generation 1164 with 110
 cells. Both answers are correct; they are answers to different questions. So the box below runs on a
 620-wide board (wide enough that no glider can reach an edge in 1103 generations) and asserts
@@ -1432,9 +1425,9 @@ search that works.
 
 A soliton, meaning alive and in one piece and moving, is the thing continuous Lenia is famous for, and it is
 three measurements Field already had. Every term of the score is read off `leniaRun`, which classifies a
-run as DEATH, BOUNDED or SATURATION from the mean field value and reports a wrapped centroid drift. The
-phase is measured rather than asserted, which matters because the failure mode here is a rule that scores
-well by saturating the grid and sitting still.
+run as DEATH, BOUNDED or SATURATION from the mean field value and reports a wrapped centroid drift. That
+matters because the failure mode here is a rule that scores well by saturating the grid and
+sitting still.
 
 Against 220 evaluations of the control at the same seed, evolution finds a rule **17.2 % better**:
 `2.09372` against `1.78636`, a margin of `0.3074`. The evolved rule is measured `BOUNDED` with one blob
@@ -1502,11 +1495,11 @@ that is 24 birth bits and 25 survival bits: a fixed-length bit string, and there
 parents can be recombined across. `LifeRuleGenome.crossover` is uniform crossover over the rule table:
 real recombination rather than a graft.
 
-The radius is a lesson about controls rather than about cellular automata. At radius 1 the rule space is
+The radius decides whether evolution has anything to do. At radius 1 the rule space is
 2¹⁷, a few hundred *independent* draws land near the optimum on their own, and evolution wins by only
 3 %. At radius 2 the space is 2⁴⁹ and the margin is **27.4 %**, `0.54436` against `0.42744`. A control
-arm that nearly wins is telling you the problem is easy rather than that the search is good, and running
-the control is the only way to find that out.
+arm that nearly wins is telling you the problem is easy rather than that the search is good, so run
+the control arm at whatever radius you pick.
 
 The figure below reads oddly until you notice what the first panel is. The control is the best of 400
 *independent* draws, so it is a high bar early on: the evolved run's first two record holders score
@@ -1858,7 +1851,7 @@ lines(*(w.obstacleFLines() + trails).toTypedArray(), channel = "walls", w = 620.
 
 ![three coloured trails in a square room crossing to a vertical barrier: the blue SLIDE trail runs along the barrier, the orange BOUNCE trail zig-zags back off it and off the room walls, and the green STOP trail ends dead at first contact](assets/alife_examples/walls-response.png)
 
-### What local steering cannot do
+### Routing around a barrier
 
 `avoidWalls` steers away from nearby geometry and `cling` follows it at a chosen standoff. Both are
 *local*: they read the walls within a radius and push. The decision to go the other way round a

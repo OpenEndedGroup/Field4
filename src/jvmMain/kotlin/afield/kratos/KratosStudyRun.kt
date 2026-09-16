@@ -7,6 +7,30 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 /**
+ * One parameter study over a heated part, in the three sizes a demo has to exist in.
+ *
+ * [KratosStudyDemo] is the experiment as a spec: the design space, the objective, the two reported
+ * metrics and a closed-form check on the answer. It owns no runner of its own, because three things
+ * have to agree on the same experiment: the full run below, the catalog smoke beside it, and the
+ * loadable document in `dev_docs/agents/transcripts/kratos_parameter_study.yaml`. [KratosStudyRun]
+ * is that full run, driving a real Kratos worker through a coarse grid, a refinement seeded from
+ * it, a global search against a random control, and finally the fine grid the figures are drawn
+ * from. [KratosStudySmokeTest] is the same code path at catalog size, and is the version the test
+ * catalog runs.
+ *
+ * The two design axes are one geometric (how far the arm extends) and one material (its
+ * conductivity), and the study treats them identically. Because `thermal.stationary` is embedded,
+ * moving the geometric axis reclassifies the same background grid rather than remeshing it: both
+ * the full run and the smoke assert that the grid is built exactly once across a whole sweep, so a
+ * sweep over a shape costs what a sweep over a coefficient costs.
+ *
+ * The objective is one whose answer can be checked rather than admired. Stationary conduction is
+ * linear in the source and inverse in the conductivity, so the designs that put a target
+ * temperature at a chosen point form a curve with a closed form, and
+ * [KratosStudyDemo.verifyValley] holds every column of the sampled grid against it.
+ */
+
+/**
  * The flagship study, as a reusable spec: **which arm length and which conductivity put a chosen
  * temperature at a chosen point in the part?**
  *

@@ -714,9 +714,9 @@ what a torus is.
     | `afield.stdlib.revolveMesh` | **Y** | `(radius, y)` |
     | `afield.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
 
-    Measured on one asymmetric profile: Manifold's comes back with bounds
-    `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)` and `revolveMesh`'s with `(-1.6, 0.0, -1.6)…(1.6, 0.8, 1.6)`.
     Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
+    The bounds each one returns for the same asymmetric profile are in
+    `dev_docs/SOLIDSL_AGREEMENT.md`.
 
     `manifold_revolve` takes no axis argument at all. There is nothing to set here: the axis is
     Manifold's, and this package follows it.

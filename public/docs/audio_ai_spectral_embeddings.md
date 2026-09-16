@@ -34,39 +34,6 @@ formant, resonant background sound, or spectral emphasis slides in frequency: it
 proportion to how far mass moves. MFCCs suppress fine spectral detail and make broad envelope
 changes easier to see. Log-mel retains the most directly inspectable band structure.
 
-## What the durable job stores
-
-The worker mixes the requested range to mono, resamples a private analysis copy to 22.05 kHz, and
-uses a 2,048-sample FFT with a default 882-sample hop. The hop is exactly 40 ms, or 25 frames per
-second. It stores:
-
-- 64 Slaney-normalized mel power bands, normalized to unit mass per frame;
-- the same 64 bands in absolute log-power dB with an 80 dB range;
-- 20 MFCCs computed from that log-mel representation;
-- energy in dBFS, spectral centroid, flatness, 85% rolloff, and mel-distribution flux;
-- float64 frame times and float16 matrices in a versioned MessagePack artifact;
-- source format, channel mix, resampling, librosa version, FFT, hop, frequency limits, and every
-  other resolved parameter.
-
-The source asset remains unchanged. The NPZ is the full numerical analysis; the service endpoint
-downsamples only the five scalar curves for browser-safe previews. Field downloads the dense
-MessagePack artifact when it needs to build a space.
-
-## Temporal pooling and projection
-
-`poolMillis` controls how much centered acoustic evidence contributes to one point. `hopMillis`
-controls how often a new point is emitted. They are independent: a 200 ms pool with a 40 ms hop
-gives overlapping local context at 25 updates per second. Pooling happens before `maxFrames`
-sampling. Mel distributions are averaged and renormalized; log-mel and MFCC vectors use ordinary
-means.
-
-MDS and t-SNE are views, not new audio features. MDS tries to preserve global pairwise distances;
-t-SNE is usually more revealing for local state changes but its axes, rotation, and long-range
-geometry have no stable meaning. Field's Smile bridge accepts explicit symmetric distance matrices,
-which lets mel Wasserstein drive either algorithm exactly. The normalized mel transport distance is
-the integral of the absolute difference between two cumulative mel distributions, on a shared
-0–1 mel-bin axis.
-
 ## Complete Field workflow
 
 This box finds the already imported `near_drowning.wav` or imports it, displays the source, submits
@@ -147,8 +114,42 @@ client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
 
 The whole-file job for this 273.82-second recording produces 6,846<!--derive: 273.82/0.04--> frames. A ten-second projection
 at a 40 ms hop has about 250<!--derive: 10000/40--> points and is comfortable for exact pairwise distances.
-Longer t-SNE fits are quadratic in memory and expensive; use `maxFrames`, a longer hop, or a selected
-range. Changing those Field-side choices does not invalidate or rerun the cached analysis.
+Longer fits get expensive quickly; reach for `maxFrames`, a longer hop, or a selected range.
+Changing those Field-side choices does not invalidate or rerun the cached analysis. The cost at
+each setting is in `dev_docs/AUDIO_EMBEDDING_PROJECTION_MEASUREMENTS.md`.
+
+## What the durable job stores
+
+The worker mixes the requested range to mono, resamples a private analysis copy to 22.05 kHz, and
+uses a 2,048-sample FFT with a default 882-sample hop. The hop is exactly 40 ms, or 25 frames per
+second. It stores:
+
+- 64 Slaney-normalized mel power bands, normalized to unit mass per frame;
+- the same 64 bands in absolute log-power dB with an 80 dB range;
+- 20 MFCCs computed from that log-mel representation;
+- energy in dBFS, spectral centroid, flatness, 85% rolloff, and mel-distribution flux;
+- float64 frame times and float16 matrices in a versioned MessagePack artifact;
+- source format, channel mix, resampling, librosa version, FFT, hop, frequency limits, and every
+  other resolved parameter.
+
+The source asset remains unchanged. The NPZ is the full numerical analysis; the service endpoint
+downsamples only the five scalar curves for browser-safe previews. Field downloads the dense
+MessagePack artifact when it needs to build a space.
+
+## Temporal pooling and projection
+
+`poolMillis` controls how much centered acoustic evidence contributes to one point. `hopMillis`
+controls how often a new point is emitted. They are independent: a 200 ms pool with a 40 ms hop
+gives overlapping local context at 25 updates per second. Pooling happens before `maxFrames`
+sampling. Mel distributions are averaged and renormalized; log-mel and MFCC vectors use ordinary
+means.
+
+MDS and t-SNE are views, not new audio features. MDS tries to preserve global pairwise distances;
+t-SNE is usually more revealing for local state changes but its axes, rotation, and long-range
+geometry have no stable meaning. Field's Smile bridge accepts explicit symmetric distance matrices,
+which lets mel Wasserstein drive either algorithm exactly. The normalized mel transport distance is
+the integral of the absolute difference between two cumulative mel distributions, on a shared
+0–1 mel-bin axis.
 
 Load the `audio_ai_spectral_embeddings` operation transcript for the executable version, a durable
 job monitor, and a model-free visualizer calibration. See [Audio AI analysis](audio_ai_analysis.md)

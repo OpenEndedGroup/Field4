@@ -121,31 +121,23 @@ A density curve is an analysis-and-ranking target rather than a direct MusicGen 
 service measures every candidate, persists per-lane scores, and the Field browser presents them
 alongside listening and human ratings.
 
-Start with the executable [gesture board](audio_ai_gesture_board.md), then use source-window motion,
-parameter sweeps and candidate comparison around it. The complete
-[beat and pitch analysis workflow](audio_ai_analysis.md) shows source lookup, submission, live
-progress, cached result retrieval and synchronized librosa/pYIN/Basic Pitch views.
+## The rest of Field Audio AI
 
-For speech and field recordings, [speech-reactive learned spaces](audio_ai_speech_embeddings.md)
-adds emotion2vec and WavLM Base+ behind the same durable operation boundary. Its dual phase
-portraits let a recording drive t-SNE axes 0×1 and 2×3 while the ordinary waveform player remains
-the transport and shared time authority.
-The preferred path transfers those vectors as binary MessagePack, temporally pools them at a
-user-selected context and hop, and computes the display in Field through Smile, so projection
-choices stay live-code parameters rather than neural jobs.
+Start with the [gesture board](audio_ai_gesture_board.md): it is the shortest runnable path from a
+drawing to eight candidates.
 
-For a fast, inspectable complement, [short-time spectral spaces](audio_ai_spectral_embeddings.md)
-retain normalized mel mass, absolute log-mel, MFCC, and scalar spectral trajectories in one cached
-librosa job. Field can then compare exact mel-Wasserstein, log-mel, and cepstral distances with MDS
-or t-SNE. These views use the same synchronized playhead contract as speech spaces, but require no
-model checkpoint or GPU.
+| Page | Start here when you want to |
+| --- | --- |
+| [Gesture board](audio_ai_gesture_board.md) | draw a shape in time and generate toward it |
+| [Beat and pitch analysis](audio_ai_analysis.md) | find the beats, the tempo, or what note is sounding |
+| [Speech-reactive learned spaces](audio_ai_speech_embeddings.md) | move a recording of speech through emotion2vec or WavLM |
+| [Short-time spectral spaces](audio_ai_spectral_embeddings.md) | do the same with no model and no GPU |
+| [MuScriptor transcription](audio_ai_muscriptor.md) | turn a mixed recording into labelled notes and MIDI |
+| [Corpus microscope](audio_ai_corpus_microscope.md) | find the other stretches that sound like this one |
+| [EnCodec microscope](audio_ai_codec.md) | work on the codec tokens themselves |
+| [Recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation) | put any of it on a shared playhead |
 
-[MuScriptor multi-instrument transcription](audio_ai_muscriptor.md) turns a mixed recording into
-instrument-labelled note events, performance and optional quantized MIDI, and a synchronized
-instrument-coloured piano roll. The three revision-pinned model sizes remain behind the same
-`analysis.transcribe_music` operation and a separate gated-weight worker.
-
-Move from analysis into source-derived navigation with the
-[corpus microscope](audio_ai_corpus_microscope.md), then continue with the
-[EnCodec reconstruction microscope](audio_ai_codec.md) and the
-[recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation).
+The analysis pages share one contract. The job that measures a
+recording is durable and content-addressed; everything downstream of it — the time range, the
+pooling, the distance, the projection — is an ordinary Field-side parameter that recomputes
+locally. Changing how you look at a recording does not re-run the analysis.

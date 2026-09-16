@@ -4,11 +4,37 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it, so it is queried rather than stored, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-23 source file(s), 873 public symbol(s), 402 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 963 public symbol(s), 500 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## BeatLaunch.kt { #beatlaunch-kt }
+
+Quantised launching: `.onBeat(…)` holds any launchable value until the next boundary of a
+[`PatClock`](patterns.md#patclock-kt-patclock)'s grid, and `waitForBeat(…)` is the same wait spelled as a suspend call for code
+inside `frames { }` or `loop { }`.
+
+A grid here is two numbers against a clock. `every` is the spacing, in that clock's units, and
+`offset` slides the whole grid, so `every = 4, offset = 1` puts boundaries at 1, 5, 9 and so on.
+`preroll` moves only the wake-up, not the boundary: waking a little early is how work that takes
+time can still land on the beat, and the value reported back is always the boundary itself.
+
+`.onBeat` is an extension on `T`, not on any launch type, so it wraps whatever it is given,
+including a bundle built with `+`. It returns a [`BeatLaunchSpec`](patterns.md#beatlaunch-kt-beatlaunchspec), which does nothing on its own.
+The handler registered at the bottom of this file recognises that spec when it arrives as a
+box's last expression, waits, and then hands the value it was wrapping back to the normal launch
+machinery. A bundle wrapped once therefore starts as a unit:
+
+    (audio { saw * 0.05f } +
+        pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
+            __m("pat").patHighlight(event)
+        }).onBeat(every = 4, preroll = 0.02)
+
+Because the wait runs as a job owned by the box, stopping the box before the boundary arrives
+cancels the launch rather than deferring it.
+
+A boundary the clock is already sitting on, within `1e-6` of a clock unit, counts as reached, so
+`.onBeat` on the downbeat starts now rather than a full period later.
 
 `src/jvmMain/kotlin/afield/four/synth/BeatLaunch.kt` — [read the source](source/jvmMain/afield/four/synth/BeatLaunch/)
 
@@ -16,22 +42,57 @@ Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles 
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatClock</span><span class="p">.</span><span class="nf">nextBeat</span><span class="p">(</span><span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="n">now</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L74) |  |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nc">PatClock</span><span class="p">.</span><span class="nf">awaitBeat</span><span class="p">(</span><span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L85) |  |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">waitForBeat</span><span class="p">(</span><span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span> <span class="o">=</span> <span class="nf">currentPatClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L106) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">T</span><span class="p">.</span><span class="nf">onBeat</span><span class="p">(</span><span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span> <span class="o">=</span> <span class="nf">currentPatClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">BeatLaunchSpec</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L134) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">T</span><span class="p">.</span><span class="nf">onNextBeat</span><span class="p">(</span><span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span> <span class="o">=</span> <span class="nf">currentPatClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">BeatLaunchSpec</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L147) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerBeatLaunchReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L158) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatClock</span><span class="p">.</span><span class="nf">nextBeat</span><span class="p">(</span><span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="n">now</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L117) | The next grid boundary at or after `from`, without waiting for it. |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nc">PatClock</span><span class="p">.</span><span class="nf">awaitBeat</span><span class="p">(</span><span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L138) | Suspend until the next grid boundary, and return the boundary's time. |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">waitForBeat</span><span class="p">(</span><span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span> <span class="o">=</span> <span class="nf">currentPatClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L170) | `awaitBeat` against the box's own clock, for `frames { }` and `loop { }` bodies that want to line up with the grid mid-flight: |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">T</span><span class="p">.</span><span class="nf">onBeat</span><span class="p">(</span><span class="n">every</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span> <span class="o">=</span> <span class="nf">currentPatClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">BeatLaunchSpec</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L214) | Hold this value until the next boundary of `clock`'s `every` / `offset` grid, then launch it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">T</span><span class="p">.</span><span class="nf">onNextBeat</span><span class="p">(</span><span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span> <span class="o">=</span> <span class="nf">currentPatClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">BeatLaunchSpec</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L228) | `onBeat` on the plainest grid there is: every 1 unit of `clock`, with no offset. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerBeatLaunchReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L248) | Teaches box execution about [`BeatLaunchSpec`](patterns.md#beatlaunch-kt-beatlaunchspec). Called once during return-value registration, not from box code. |
 
 ### BeatLaunchSpec { #beatlaunch-kt-beatlaunchspec }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">BeatLaunchSpec</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">every</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L117)
+[<code class="highlight"><span class="k">class</span> <span class="nc">BeatLaunchSpec</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">every</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">preroll</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L188)
+
+A launchable value with a grid attached, waiting to be returned from a box.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L124) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BeatLaunch/#L195) |  |
 
 ## BooleanNetworkSequencing.kt { #booleannetworksequencing-kt }
+
+Gives a [`BooleanNetwork`](data.md#booleannetworks-kt-booleannetwork)'s states a duration, which is all it takes to read one as music.
+
+[`BooleanNetwork`](data.md#booleannetworks-kt-booleannetwork) itself is untimed: it is a list of nodes whose update rules all fire at once,
+and `step` takes one state vector to the next. Everything here is an extension on that class, so
+the dependency runs one way only. Nothing in the network model knows about clocks, notes or
+boxes, and the network can be built, explored and drawn without any of this.
+
+A timed run is a [`BooleanNetworkStep`](patterns.md#booleannetworksequencing-kt-booleannetworkstep) per update: the state, the state before it, and a start
+and duration in seconds. One node is one lane, indexed as the network indexes its nodes, and
+[`BooleanTriggerMode`](patterns.md#booleannetworksequencing-kt-booleantriggermode) decides what counts as an event on a lane. Choosing the mode does most of
+the musical work, because a node that stays on for six steps is six notes under `ACTIVE` and one
+under `RISING_EDGE`.
+
+There are three ways out, in increasing order of commitment:
+
+- `scheduledSteps` and `scheduledDrivenSteps` hand back the raw timed states as an `Iterator`,
+  for anything that wants to read the rhythm itself.
+- `scheduledNotes` and `asNoteProcess` take a mapper from a step to [`ScheduledNote`](patterns.md#sequencing-kt-schedulednote)s and give
+  back an iterator or a [`NoteProcess`](patterns.md#sequencing-kt-noteprocess), which is the same thing a hand-written sequence produces,
+  so `notesBetween` and `pianoRollSvg` work on it unchanged.
+- `respond` and `respondAhead` build a [`BooleanNetworkResponseSpec`](patterns.md#booleannetworksequencing-kt-booleannetworkresponsespec), which runs the network
+  against a [`PatClock`](patterns.md#patclock-kt-patclock) in real time and calls back per step. Returning one from a box is what
+  starts it.
+
+The `Driven` half of each pair takes a [`BooleanNetworkStateDriver`](patterns.md#booleannetworksequencing-kt-booleannetworkstatedriver), a lambda that writes into the
+state vector before the network reads it. The network then updates from the forced value as
+though it had produced it, which is how an oscillator, a MIDI input or a second network gets to
+be one of the lanes.
+
+Leaving `steps` null makes every one of these iterators infinite. That is the right answer for a
+responder and the wrong one for anything that collects, so pass a bound when you are building a
+list.
 
 `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt` — [read the source](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/)
 
@@ -41,31 +102,35 @@ Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles 
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledSteps</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">BooleanNetworkStep</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L134) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledDrivenSteps</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">BooleanNetworkStateDriver</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">BooleanNetworkStep</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L146) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledNotes</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L187) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledDrivenNotes</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">BooleanNetworkStateDriver</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L203) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">asNoteProcess</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">historyRetentionSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">defaultPastSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">defaultFutureSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoteProcess</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L221) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">asDrivenNoteProcess</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">historyRetentionSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">defaultPastSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">defaultFutureSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">BooleanNetworkStateDriver</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoteProcess</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L248) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">respond</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">offsetSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">dispatchOnMain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span> <span class="o">=</span> <span class="nf">defaultBooleanNetworkClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseScope</span><span class="p">.</span><span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseSpec</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L328) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">respondAhead</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">offsetSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">dispatchOnMain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span> <span class="o">=</span> <span class="nf">defaultBooleanNetworkClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseScope</span><span class="p">.</span><span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseSpec</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L356) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerBooleanNetworkResponseReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L377) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledSteps</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">BooleanNetworkStep</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L214) | Run the network from `initialState` and yield one [`BooleanNetworkStep`](patterns.md#booleannetworksequencing-kt-booleannetworkstep) per update, each `stepDuration` seconds long and starting at `startSeconds`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledDrivenSteps</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">BooleanNetworkStateDriver</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">BooleanNetworkStep</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L234) | `scheduledSteps` with an outside hand on the state vector. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledNotes</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L283) | `scheduledSteps` with a `mapper` from each step to the notes it should sound, flattened into one note iterator. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">scheduledDrivenNotes</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">BooleanNetworkStateDriver</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Iterator</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L300) | `scheduledNotes` over a driven run: `driver` writes the state, `mapper` reads the step. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">asNoteProcess</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">historyRetentionSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">defaultPastSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">defaultFutureSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoteProcess</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L327) | The mapped run as a [`NoteProcess`](patterns.md#sequencing-kt-noteprocess), which is what the piano-roll and playback tooling takes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">asDrivenNoteProcess</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">historyRetentionSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">defaultPastSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">defaultFutureSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">BooleanNetworkStateDriver</span><span class="p">,</span> <span class="n">mapper</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">ScheduledNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoteProcess</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L360) | `asNoteProcess` over a driven run. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">respond</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">offsetSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">dispatchOnMain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span> <span class="o">=</span> <span class="nf">defaultBooleanNetworkClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseScope</span><span class="p">.</span><span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseSpec</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L470) | Build a real-time run of this network that calls `callback` once per step, for a box to return. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">respondAhead</span><span class="p">(</span><span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">offsetSeconds</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">dispatchOnMain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span> <span class="o">=</span> <span class="nf">defaultBooleanNetworkClock</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseScope</span><span class="p">.</span><span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseSpec</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L506) | `respond` with `ahead` promoted to a required second argument, for the common case of driving something that needs its events a little early: |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerBooleanNetworkResponseReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L536) | Teaches box execution about [`BooleanNetworkResponseSpec`](patterns.md#booleannetworksequencing-kt-booleannetworkresponsespec). Called once during return-value registration, not from box code. |
 
 ### BooleanTriggerMode { #booleannetworksequencing-kt-booleantriggermode }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BooleanTriggerMode</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L14)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BooleanTriggerMode</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L60)
+
+What counts as a lane firing on a given step, given the lane's state now and on the step before.
 
 Constants: `ACTIVE`, `RISING_EDGE`, `FALLING_EDGE`, `CHANGE`.
 
 ### BooleanNetworkStateDriver { #booleannetworksequencing-kt-booleannetworkstatedriver }
 
-[<code class="highlight"><span class="k">typealias</span> <span class="nc">BooleanNetworkStateDriver</span> <span class="o">=</span> <span class="p">(</span><span class="n">stepIndex</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L25)
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">BooleanNetworkStateDriver</span> <span class="o">=</span> <span class="p">(</span><span class="n">stepIndex</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L71)
 
 Mutates the Boolean state that will be emitted for a scheduled step before the network advances. Useful for forcing clock lanes or other external inputs.
 
 ### BooleanNetworkStep { #booleannetworksequencing-kt-booleannetworkstep }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BooleanNetworkStep</span><span class="p">(</span><span class="k">val</span> <span class="n">stepIndex</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">previousState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L28)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BooleanNetworkStep</span><span class="p">(</span><span class="k">val</span> <span class="n">stepIndex</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">previousState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L89)
+
+One update of a Boolean network, placed in time: the state it emitted, the state before it, and the seconds it occupies.
 
 | Declaration | Summary |
 | --- | --- |
@@ -74,16 +139,18 @@ Mutates the Boolean state that will be emitted for a scheduled step before the n
 | <code class="highlight"><span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">previousState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="o">?</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L40) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">isActive</span><span class="p">(</span><span class="n">lane</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L43) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">wasActive</span><span class="p">(</span><span class="n">lane</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L45) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fires</span><span class="p">(</span><span class="n">lane</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">BooleanTriggerMode</span> <span class="o">=</span> <span class="nc">BooleanTriggerMode</span><span class="p">.</span><span class="nc">ACTIVE</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L47) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lanes</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">BooleanTriggerMode</span> <span class="o">=</span> <span class="nc">BooleanTriggerMode</span><span class="p">.</span><span class="nc">ACTIVE</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L58) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L61) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L102) | When the next step begins. Steps are contiguous, so this is also the following `start`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">isActive</span><span class="p">(</span><span class="n">lane</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L106) | Whether `lane` is on now. A lane outside the network's range is off rather than an error. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">wasActive</span><span class="p">(</span><span class="n">lane</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L109) | Whether `lane` was on one step ago. False on the first step, which has nothing to compare. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fires</span><span class="p">(</span><span class="n">lane</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">BooleanTriggerMode</span> <span class="o">=</span> <span class="nc">BooleanTriggerMode</span><span class="p">.</span><span class="nc">ACTIVE</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L112) | Whether `lane` counts as an event under `mode`. See [`BooleanTriggerMode`](patterns.md#booleannetworksequencing-kt-booleantriggermode) for the four. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lanes</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">BooleanTriggerMode</span> <span class="o">=</span> <span class="nc">BooleanTriggerMode</span><span class="p">.</span><span class="nc">ACTIVE</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L128) | Every lane firing under `mode`, in ascending lane order. The usual body of a step mapper: |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L131) |  |
 
 ### BooleanNetworkResponseScope { #booleannetworksequencing-kt-booleannetworkresponsescope }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">BooleanNetworkResponseScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">BooleanNetwork</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">launchInstant</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">launchNanoTime</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="nc">System</span><span class="p">.</span><span class="nf">nanoTime</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L277)
+[<code class="highlight"><span class="k">class</span> <span class="nc">BooleanNetworkResponseScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">BooleanNetwork</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">launchInstant</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">launchNanoTime</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="nc">System</span><span class="p">.</span><span class="nf">nanoTime</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L396)
+
+The receiver a `respond` callback runs against: the box it belongs to, the network and settings it was launched with, and `now`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -94,17 +161,19 @@ Mutates the Boolean state that will be emitted for a scheduled step before the n
 | <code class="highlight"><span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">launchInstant</span><span class="p">:</span> <span class="nc">Instant</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">launchElapsed</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L287) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L290) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L293) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">launchElapsed</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L407) | Seconds of wall time since the responder started, whether or not there is a clock. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L411) | The timeline this responder is scheduling against: `clock`'s reading, or `launchElapsed`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L414) |  |
 
 ### BooleanNetworkResponseSpec { #booleannetworksequencing-kt-booleannetworkresponsespec }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">BooleanNetworkResponseSpec</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">BooleanNetwork</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">offsetSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">dispatchOnMain</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">callback</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseScope</span><span class="p">.</span><span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L304)
+[<code class="highlight"><span class="k">class</span> <span class="nc">BooleanNetworkResponseSpec</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">BooleanNetwork</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">initialState</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">stepDuration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">offsetSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">dispatchOnMain</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">clock</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">ahead</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">callback</span><span class="p">:</span> <span class="nc">BooleanNetworkResponseScope</span><span class="p">.</span><span class="p">(</span><span class="nc">BooleanNetworkStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L431)
+
+A clocked Boolean-network run, built and not yet started.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L315) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/BooleanNetworkSequencing/#L442) |  |
 
 ## CaSoundDocs.kt { #casounddocs-kt }
 
@@ -197,7 +266,7 @@ cycles, so this only matters if you call `events(...)` with a partial arc by han
 
 `src/jvmMain/kotlin/afield/four/synth/PatAlgebra.kt` — [read the source](source/jvmMain/afield/four/synth/PatAlgebra/)
 
-**Used in:** [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md)
+**Used in:** [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md)
 
 ### Top-level functions { #patalgebra-kt-functions }
 
@@ -280,37 +349,65 @@ A named parameter pattern waiting to be attached to some atoms.
 
 ## PatClock.kt { #patclock-kt }
 
+The transport everything scheduled in `afield.four.synth` reads: one monotonic number that can be
+paused, sought and subdivided, so that patterns, Boolean networks and audio launches share a
+single notion of the current time.
+
+A [`PatClock`](patterns.md#patclock-kt-patclock) reports that number as `now`, in the clock's own units. The shared clock advances
+one unit per second of wall time, so a unit is a second until you say otherwise. There is no
+tempo field: a faster grid comes from `subdivide`, which returns a child reading exactly `factor`
+times its parent and following the parent's pauses and seeks.
+
+The constructor is internal, so a box reaches a clock two ways. `musicClock()` returns the one
+process-wide clock, built on first call. `Box.patClock` is an inherited property, and the
+metaroot is given the shared clock when it is created, so a box reads whatever its nearest
+ancestor holds. Assigning `patClock` writes locally, which puts that box and everything under it
+on a different timeline and leaves the rest of the document on the old one.
+
+Every scheduling entry point in this package spells its `clock` default the same way, the box's
+inherited `patClock` and then the shared clock. The two `respond` families accept `null` there
+instead, and their callback scope then measures time as seconds since the launch, which nothing
+can pause or seek.
+
+Each method synchronises on one lock and returns the clock, so a setup line reads as one
+expression:
+
+    val clock = musicClock().reset(started = true)
+    val sixteenths = clock.subdivide(4.0, label = "16ths")
+
 `src/jvmMain/kotlin/afield/four/synth/PatClock.kt` — [read the source](source/jvmMain/afield/four/synth/PatClock/)
 
 ### Top-level functions { #patclock-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">musicClock</span><span class="p">(</span><span class="n">started</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L106) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">musicClock</span><span class="p">(</span><span class="n">started</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L222) | The shared clock, started unless you say otherwise. |
 
 ### Top-level values { #patclock-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">patClock</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L104) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">patClock</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L213) | The clock this box schedules against, inherited from the nearest ancestor that has one. |
 
 ### PatClock { #patclock-kt-patclock }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">PatClock</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">rate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatClock/#L7)
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatClock</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">PatClock</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">rate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatClock/#L49)
+
+A pausable, seekable clock: `now` is the reading the clock was last set to plus the time that has passed since, scaled by `rate` and accumulated only while the clock is running.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">rate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isRunning</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatClock/#L42) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatClock/#L45) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="nc">Number</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L48) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">pause</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L56) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">toggle</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L63) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">seek</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L67) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">started</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L74) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">subdivide</span><span class="p">(</span><span class="n">factor</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">started</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">isRunning</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L82) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatClock/#L92) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isRunning</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatClock/#L93) | Whether the clock is currently accumulating time. A paused clock still reports its `now`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatClock/#L102) | The clock's current reading, in the clock's own units. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="nc">Number</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L116) | Start accumulating time, optionally setting the reading to `at` first. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pause</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L128) | Stop accumulating time, keeping the current reading. `start` resumes from there. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">toggle</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L136) | `pause` when running, `start` when not. The two calls are not atomic with each other. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">seek</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L147) | Jump the reading to `time`, leaving the running state alone. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">started</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L160) | Set the reading to zero and the running state to `started`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">subdivide</span><span class="p">(</span><span class="n">factor</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">started</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">isRunning</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatClock</span></code>](source/jvmMain/afield/four/synth/PatClock/#L182) | A child clock running `factor` times as fast as this one, seeded so that it reads `this.now * factor`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatClock/#L192) |  |
 
 ## PatComposition.kt { #patcomposition-kt }
 
@@ -875,13 +972,37 @@ How an observed onset train compared with the schedule it was supposed to realis
 
 ## PatPatternReturnValue.kt { #patpatternreturnvalue-kt }
 
+The step between `pat("bd sd").respond { … }` and a pattern that is actually playing: the
+return-value handler that recognises a [`PatResponseSpec`](patterns.md#tidalpatterns-kt-patresponsespec) coming back from a box and runs it.
+
+`respond` is a builder. It captures the pattern, the cycles-per-second, the clock and the
+callback into a spec and returns, having started nothing. This file is the other half, and the
+arrangement is what makes a responder behave like every other launchable value in Field: it runs
+because the box's last expression is one, it can be bundled with `+`, it can be wrapped in
+`.onBeat`, and stopping the box stops it.
+
+The loop it runs is short, and three of its rules shape what a callback sees:
+
+- **Events that share a start time go out together.** The iterator is drained into a bucket of
+  events within a nanosecond of each other, the wait happens once, and then the whole bucket is
+  dispatched. A chord is a chord rather than a queue of near-simultaneous notes.
+- **Events already in the past are dropped, not played late.** An event whose start has gone by
+  is skipped, which is how a pattern joined mid-flight, or one whose callback overran, catches
+  up instead of falling further behind.
+- **`ahead` shifts the callback, not the schedule.** The wait targets `start - ahead`, so a
+  callback that has to buy latency somewhere else, a sample player with its own scheduling
+  queue, gets the event early and still knows its real time from `event.start`.
+
+Dispatch is on the run loop unless `dispatchOnMain = false`, so a callback may touch boxes,
+properties and graphics without hopping threads itself.
+
 `src/jvmMain/kotlin/afield/four/synth/PatPatternReturnValue.kt` — [read the source](source/jvmMain/afield/four/synth/PatPatternReturnValue/)
 
 ### Top-level functions { #patpatternreturnvalue-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPatPatternReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatPatternReturnValue/#L9) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPatPatternReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatPatternReturnValue/#L43) | Teaches box execution about [`PatResponseSpec`](patterns.md#tidalpatterns-kt-patresponsespec). Called once during return-value registration, not from box code. |
 
 ## PatPianoRollGallery.kt { #patpianorollgallery-kt }
 
@@ -1266,6 +1387,321 @@ A tiny deterministic synth voice: one oscillator, one exponential-decay envelope
 | <code class="highlight"><span class="k">val</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">sustain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">attack</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+## PatSpatial.kt { #patspatial-kt }
+
+A pattern placed in space: `pat(...)` -> [`DoughEngine`](synthesis.md#dough-kt-doughengine) -> Steam Audio HRTF, in realtime.
+
+Three subsystems that do not know about each other, joined by two coercions and one thread:
+
+| | what it is | what this file asks of it |
+| --- | --- | --- |
+| [`PatPattern`](patterns.md#tidalpatterns-kt-patpattern) | Tidal-style pattern language, polyphonic by construction | query a cycle, read the annotations |
+| [`DoughEngine`](synthesis.md#dough-kt-doughengine) | the Strudel/superdough wasm synth, 32 voices | one engine per spatial source |
+| `afield.four.audio.steamaudio` | Steam Audio 4.8.1 over FFM | direct path plus HRTF, per source, per block |
+
+### The tag is the spatial parameter
+
+A pattern's named parameters ride on `PatEvent.annotations`, and `with` writes any key at all into
+that map, so the pattern language needed no extension to describe where a sound is. Six keys are
+read here and every other key is forwarded to Dough untouched:
+
+| tag | means | default |
+| --- | --- | --- |
+| `spat` | which spatial source -- i.e. which Dough engine -- the event plays on | `"0"` |
+| `az` | azimuth in degrees; 0 ahead, +90 to the right | 0 |
+| `elev` | elevation in degrees; +90 overhead | 0 |
+| `dist` | distance in metres | 1.5 |
+| `occl` | occlusion, 0 clear to 1 fully blocked | 0 |
+| `air` | 1 to apply air absorption over distance, 0 for none | 1 |
+
+```diffstatic {data-lang=kotlin}
+patSpatial(
+    pat("bd ~ sd ~, hh*8").with(
+        paramOf("spat", pat("<kit hats>")),
+        param("az", sine().range(-70.0, 70.0)),
+        param("dist", "1 3 1 6"),
+    ),
+    cps = 2.0,
+)
+```
+
+Because `az` can take a *continuous* pattern, `sine()` sampled per event is a source that moves
+between notes; and because the placement is held on the source rather than the note, the same
+pattern's next event on that `spat` group moves the whole group. The tags do not decorate the
+sound, they aim it.
+
+### Why one Dough engine per source, and what it costs the pattern
+
+Steam Audio spatialises a **mono** signal -- a direction is a property of a whole buffer.
+[`DoughEngine`](synthesis.md#dough-kt-doughengine) mixes its 32 voices to stereo and `MAX_ORBITS` is 1, so there is no way to pull two
+separable signals out of one engine. Hence one engine per `spat` group, which is also why `spat`
+exists at all rather than every event getting its own position.
+
+Two consequences worth stating plainly:
+
+- **A pattern's `pan` is overridden.** Every event is sent with `pan/0`, which puts all of that
+  engine's energy in its left channel, and that channel *is* the mono source signal. Panning is
+  lossless this way (no `0.5*(L+R)` summing) but `pan` as a musical parameter is gone: `az`
+  replaces it, and it is a better parameter.
+- **Note onsets quantise to a Dough block**, 128 frames or 2.9 ms at 44.1 kHz. Dough takes an
+  event through `evaluate()` and applies it at the next `dsp()`, so unlike [`PatSynthBank`](patterns.md#patsynth-kt-patsynthbank) -- which
+  is sample-exact, and proves it by rendering bit-identically at four buffer sizes -- this path
+  cannot place a note inside a block. That is a property of Dough's event API, not of the
+  scheduler.
+
+### Why Dough is not on the audio thread
+
+`PatSynth` puts the pattern *query* on a feeder thread because querying allocates, and keeps
+synthesis on the audio thread because Field's own voices are a fixed amount of float arithmetic.
+Neither half of that argument survives here. [`DoughEngine`](synthesis.md#dough-kt-doughengine) is GraalWasm: every block enters a
+polyglot context, and the JIT and the collector get a say in how long that takes.
+
+[`PatSpatialBudgetProbe`](patterns.md#patspatialbudgetprobe-kt-patspatialbudgetprobe) measures it: four sources, 128 frames, 44.1 kHz, a 2.902 ms budget, 8000
+blocks with the first tenth dropped as warmup. Two runs on the same machine, the second while
+other work was loading it:
+
+| | idle | under load |
+| --- | --- | --- |
+| median block | 0.120 ms | 0.117 ms |
+| p99 | 1.170 ms | 2.951 ms |
+| p99.9 | 2.405 ms | 9.522 ms |
+| worst block | 12.705 ms | **36.631 ms** |
+| blocks over budget | 3 of 7200 | 74 of 7200 |
+
+Read the two columns together, because the pair is the finding. The **median is flat** -- the
+arithmetic of four wasm engines and eight Steam Audio effects is 4% of a block either way, so
+nothing here needs optimising. The **tail moves by a factor of three** with load the audio thread
+has no say over. A path whose median fits twenty-five times over and which still misses one block
+in a hundred is not a path to shave down; it is one to decouple.
+
+So [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom) renders on its own thread into [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring), and the audio thread's entire
+job is a bounded copy out of that ring. A ring holding more milliseconds than the worst stall
+turns a dropout into a dip in `PatSpatialRing.fill`, and `PatSpatialRing.underruns` is the number
+that says whether that held.
+
+The one stall the ring cannot absorb is booting a [`DoughEngine`](synthesis.md#dough-kt-doughengine), at 130-500 ms. That is what
+`PatSpatialRoom.prescanCycles` exists for, and what `PatSpatialRoom.lateSourceBoots` counts when
+a `spat` tag turns up too late to have been prescanned.
+
+### What actually limits this, measured
+
+Not the arithmetic. On a ten-core machine at load average 33 -- twenty-odd agent sessions and a
+Gradle daemon at 180% CPU -- [`PatSpatialEngineSmoke`](patterns.md#patspatialenginesmoke-kt-patspatialenginesmoke) recorded the render thread producing 1274 of
+the 1500 blocks a four-second window needed, while being **busy only 1399 ms of those 4000**. A
+thread that is idle two thirds of the time and still misses its deadline is not a thread that
+needs faster code; it is a thread that is not being scheduled. Per-block Dough cost came out 4.5x
+its idle figure in the same run.
+
+Two things follow, and both are in the code rather than in advice:
+
+- `PatSpatialRoom.busyMsTotal` against elapsed time separates the two ways of falling behind.
+  Near 100% busy with underruns means the work does not fit and this design is wrong. Far below
+  it means the machine is oversubscribed, and [`PatSpatialEngineSmoke`](patterns.md#patspatialenginesmoke-kt-patspatialenginesmoke) says so instead of failing.
+- The ring is sized for the scheduler's stalls, not for this code's, which is why it defaults to
+  341 ms rather than the ~40 ms the arithmetic alone would justify.
+
+Raising the render thread's priority was tried and reverted; the comment in
+`PatSpatialRoom.start` records what it did instead of helping.
+
+### Where this is written up for a reader
+
+`public/docs/pat_spatial.md` — the page that decides *whether* to use this, rather than how it
+works. It carries the same tables and the same measurements, plus the two things this file cannot
+hold: [`PatSpatialSoundDocs`](audio.md#patspatialsounddocs-kt-patspatialsounddocs)' published clips of the mono source, and the argument for why the
+spatialised output has no clip and cannot have one. It is also declared in [`SoundPathMap`](audio.md#soundpathmap-kt-soundpathmap) as the
+`pat-spatial` path, which is what keeps that page and this file from drifting apart.
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatial/)
+
+**Used in:** [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md)
+
+### Top-level functions { #patspatial-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSpatialEventsForArc</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">arc</span><span class="p">:</span> <span class="nc">PatArc</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">originFrame</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;saw&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialEvent</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L217) | The events of `pattern` over `arc`, as Dough events with placements. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patSpatial</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">maxSources</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">ringFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16384</span><span class="p">,</span> <span class="n">targetFillFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12288</span><span class="p">,</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">hrtfInterpolation</span><span class="p">:</span> <span class="nc">HrtfInterpolation</span> <span class="o">=</span> <span class="nc">HrtfInterpolation</span><span class="p">.</span><span class="nc">BILINEAR</span><span class="p">,</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;saw&quot;</span><span class="p">,</span> <span class="n">prescanCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">wasmPath</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">Paths</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="s">&quot;./src/jvmMain/resources/dough.wasm&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSpatialLaunch</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1050) | Play `pattern` through Dough, placed in space by Steam Audio, in realtime. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPatSpatialReturnValue</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1096) | Teach Field that a [`PatSpatialLaunch`](patterns.md#patspatial-kt-patspatiallaunch) is something a box can be running. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showPatSpatial</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSpatialLaunch</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1142) | Play `pattern` in space and put a live waveform and spectrum in this box's output. |
+
+### PatSpatialPlacement { #patspatial-kt-patspatialplacement }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatSpatialPlacement</span><span class="p">(</span><span class="k">val</span> <span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">elevationDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="k">val</span> <span class="n">occlusion</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">airAbsorption</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L161)
+
+Where a spatial source is, in Steam Audio's listener-relative frame. Metres and degrees.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span></code> | Azimuth in degrees: 0 ahead, +90 to the listener's right. |
+| <code class="highlight"><span class="k">val</span> <span class="n">elevationDeg</span><span class="p">:</span> <span class="nc">Double</span></code> | Elevation in degrees: 0 at ear height, +90 overhead. |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance in metres. Clamped to `MIN_DISTANCE` so a source cannot land inside the head. |
+| <code class="highlight"><span class="k">val</span> <span class="n">occlusion</span><span class="p">:</span> <span class="nc">Double</span></code> | Occlusion, 0 clear to 1 fully blocked. |
+| <code class="highlight"><span class="k">val</span> <span class="n">airAbsorption</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether the direct path loses high frequencies over distance. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">direction</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L174) | Unit direction in Steam Audio's convention: -Z ahead, +X right, +Y up. |
+
+### PatSpatialEvent { #patspatial-kt-patspatialevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatSpatialEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceKey</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doughEvent</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">placement</span><span class="p">:</span> <span class="nc">PatSpatialPlacement</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L197)
+
+One pattern event, resolved into a Dough event and a placement, stamped with its start frame.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Long</span></code> | Absolute frame on `PatSpatialRoom.framesRendered`'s clock. |
+| <code class="highlight"><span class="k">val</span> <span class="n">sourceKey</span><span class="p">:</span> <span class="nc">String</span></code> | The `spat` tag: which source this plays on. |
+| <code class="highlight"><span class="k">val</span> <span class="n">doughEvent</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code> | The Dough event, already carrying `pan/0`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">placement</span><span class="p">:</span> <span class="nc">PatSpatialPlacement</span></code> | Where the source moves to when this event starts. |
+
+### PatSpatialRing { #patspatial-kt-patspatialring }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PatSpatialRing</span><span class="p">(</span><span class="n">requestedFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L293)
+
+A single-producer single-consumer ring of interleaved stereo frames.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">capacityFrames</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L296) | Frames of headroom. Rounded up to a power of two. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fill</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L304) | Frames written but not yet consumed. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">room</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L307) | Frames the writer may add right now. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">underruns</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L311) | Frames the audio thread asked for and the ring could not supply. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">minFill</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L316) | Lowest fill the audio thread has ever seen, in frames. How close this came to a dropout. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">write</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L332) | Write `n` frames from `l` and `r`. Called only by the render thread. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">readInto</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L348) | Add `n` frames into `outL` and `outR`. Called only by the audio thread. |
+
+### PatSpatialSource { #patspatial-kt-patspatialsource }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialSource</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">engine</span><span class="p">:</span> <span class="nc">DoughEngine</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">direct</span><span class="p">:</span> <span class="nc">DirectEffect</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">binaural</span><span class="p">:</span> <span class="nc">BinauralEffect</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">directParams</span><span class="p">:</span> <span class="nc">DirectEffectParams</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">binauralParams</span><span class="p">:</span> <span class="nc">BinauralEffectParams</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">dry</span><span class="p">:</span> <span class="nc">AudioBuffer</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">shaped</span><span class="p">:</span> <span class="nc">AudioBuffer</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">stereo</span><span class="p">:</span> <span class="nc">AudioBuffer</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L379)
+
+One spatial source: a Dough engine, and the Steam Audio effects that place its output.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">notesPlayed</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L400) | Notes started on this source. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">placement</span><span class="p">:</span> <span class="nc">PatSpatialPlacement</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L404) | Where this source is right now, as the render thread last placed it. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">activeVoices</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L416) | Voices sounding in this source's engine, as the render thread last published them. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">peakVoices</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L421) | The most voices ever seen sounding at once on this source. A sampled chord shows up here. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L424) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L430) |  |
+
+### PatSpatialRoom { #patspatial-kt-patspatialroom }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialRoom</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span><span class="p">,</span> <span class="k">val</span> <span class="n">wasmPath</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSources</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetFillFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hrtfInterpolation</span><span class="p">:</span> <span class="nc">HrtfInterpolation</span><span class="p">,</span> <span class="k">val</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">prescanCycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L449)
+
+The render thread: pattern in, spatialised stereo into a [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring).
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">wasmPath</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxSources</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetFillFrames</span><span class="p">:</span> <span class="nc">Int</span></code> | Frames the render thread tries to keep in the ring. Its tolerance for its own stalls. |
+| <code class="highlight"><span class="k">val</span> <span class="n">hrtfInterpolation</span><span class="p">:</span> <span class="nc">HrtfInterpolation</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultSound</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">prescanCycles</span><span class="p">:</span> <span class="nc">Int</span></code> | Cycles scanned up front for `spat` tags, so their engines boot before any audio is due. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">framesRendered</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L473) | Frames the render thread has produced. The clock a [`PatSpatialEvent`](patterns.md#patspatial-kt-patspatialevent) is stamped on. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">cyclesQueried</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L477) | Cycles of `pattern` queried so far. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">ready</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L487) | True once Steam Audio is up, every prescanned engine has booted, and the ring has filled. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">failure</span><span class="p">:</span> <span class="nc">Throwable</span><span class="o">?</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L492) | Non-null if the render thread died; the reason it died. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">lateSourceBoots</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L505) | Engines booted after the ring was already feeding an audio thread. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">worstBlockMs</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L510) | Longest single block the render thread has taken, in milliseconds. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">blocksRendered</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L515) | Blocks rendered since the ring first filled. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">slowBlocks</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L520) | Blocks that took longer than 5 ms -- longer than the audio they produced. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">stallBlocks</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L525) | Blocks that took longer than 50 ms, which no reasonable ring depth absorbs repeatedly. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">slowBlockMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L530) | Total milliseconds spent in blocks over 5 ms. How much lateness there is to absorb. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">busyMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L541) | Milliseconds this thread spent doing its own work since the ring filled. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">queryMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L545) | Where the render thread spends its time, split by stage, in milliseconds. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">eventMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L549) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">synthMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L553) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">spatialiseMsTotal</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L557) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sources</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialSource</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L561) | Sources that exist, in the order their `spat` tags were first seen. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">turnListener</span><span class="p">(</span><span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L569) | Turn the listener's head to `azimuthDeg`, from any thread. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">listenerAzimuthDeg</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L575) | The listener's heading in degrees, as the render thread last applied it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L853) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isRunning</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L859) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L861) |  |
+
+### PatSpatialBank { #patspatial-kt-patspatialbank }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialBank</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nf">StereoNode</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L886)
+
+The audio thread's end of the chain: drain a [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring) into the output.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">ring</span><span class="p">:</span> <span class="nc">PatSpatialRing</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">masterGain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L895) | Frames the audio thread has pulled. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L897) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L909) |  |
+
+### PatSpatialLaunch { #patspatial-kt-patspatiallaunch }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatSpatialLaunch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSpatialBank</span><span class="p">,</span> <span class="k">val</span> <span class="n">room</span><span class="p">:</span> <span class="nc">PatSpatialRoom</span><span class="p">)</span> <span class="p">:</span> <span class="nf">StereoNode</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L924)
+
+A spatialised pattern, as one thing a box can return.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">bank</span><span class="p">:</span> <span class="nc">PatSpatialBank</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">room</span><span class="p">:</span> <span class="nc">PatSpatialRoom</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">tap</span><span class="p">:</span> <span class="nc">StereoScope</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L930) | A tap on this launch's own output, fed from the audio thread. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generateStereo</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L932) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sources</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialSource</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L937) | The spatial sources the pattern's `spat` tags have brought into being. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">turnListener</span><span class="p">(</span><span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L940) | Turn the listener's head. Positive is to the right. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">underruns</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L943) | Frames the audio thread asked for and the ring could not supply. Zero is the whole point. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">awaitReady</span><span class="p">(</span><span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">20</span><span class="n">&#95;000L</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L957) | Block until the render thread has Steam Audio up and has filled the ring, or `timeoutMs`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">advanceOffline</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L976) | Pull `frames` through the bank and into `tap`, for when nothing else is pulling it. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L999) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/PatSpatial/#L1003) |  |
+
+## PatSpatialBudgetProbe.kt { #patspatialbudgetprobe-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatialBudgetProbe.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/)
+
+### PatSpatialBudgetProbe { #patspatialbudgetprobe-kt-patspatialbudgetprobe }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialBudgetProbe</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L40)
+
+Measures the cost of one [`DoughEngine`](synthesis.md#dough-kt-doughengine) per spatial source, against one audio block's deadline.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L47) |  |
+
+## PatSpatialEngineSmoke.kt { #patspatialenginesmoke-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatialEngineSmoke.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/)
+
+### PatSpatialEngineSmoke { #patspatialenginesmoke-kt-patspatialenginesmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialEngineSmoke</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L29)
+
+Plays a spatialised pattern through the real [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine), and checks its thread pulled it.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L32) |  |
+
+## PatSpatialSmokeTest.kt { #patspatialsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/PatSpatialSmokeTest.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/)
+
+### PatSpatialSmokeTest { #patspatialsmoketest-kt-patspatialsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialSmokeTest</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L29)
+
+Proves the whole route -- pattern language, Dough, Steam Audio HRTF -- on real audio, in realtime.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L132) |  |
 
 ## PatSynth.kt { #patsynth-kt }
 

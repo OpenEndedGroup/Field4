@@ -402,7 +402,7 @@ tracer.maxBounces = 8                                  // a collision spends one
 
 Changing any of them resets accumulation.
 
-**The bounce budget is the one that will surprise you.** A collision in the medium is
+**A medium spends your bounce budget.** A collision in the medium is
 an interaction like a surface hit, and it spends one of `maxBounces`. A medium dense
 enough to scatter a path three or four times therefore has that many fewer bounces
 left for surfaces, and a dense enough medium makes the image *darken* rather than
@@ -659,7 +659,9 @@ window glass or thickness-dependent absorption.
 
 For solid glass, roughness above 0.001 enables single-scattering GGX reflection and
 transmission with matching direction PDFs and environment MIS. Very rough glass
-can lose energy through the microfacet model's omitted multiple scattering. Ideal
+loses energy through the microfacet model's omitted multiple scattering, and it is worth
+knowing how much before you reach for a high value: a frosted slab under a unit white
+environment holds about 0.98 of it at roughness 0.35 and about 0.82 at 0.6. Ideal
 glass paths use delta-event MIS handling, and roulette accounts for refraction's
 radiance scaling. Each bounce still follows one stochastic ray, on either backend.
 
@@ -928,36 +930,18 @@ thousands of small lamps still spends most of its shadow rays on lamps that cann
 reach the shading point.
 The intended interactive resolution is a workload choice, not a frame-rate guarantee.
 
-## Verification and export
+## Getting pixels back out
 
-`PathTraceTestMain` checks scene/BVH packing, environment distributions, and actual
-shader compilation/reflection for both backends. `PathTraceGpuSmoke.run(renderer)`
-checks GPU readback against known HDR colours, material placement, image orientation,
-workgroup edge pixels, accumulation resets, and white-furnace energy/convergence.
-glTF checks cover embedded/external texture equivalence, UV orientation, transforms,
-colour spaces, material channels, normal maps and alpha coverage.
-Glass checks cover slab transmission, Beer–Lambert thickness, both faces of a thin
-pane, a camera inside glass, total internal reflection, and convergence at three
-frosted roughnesses. Clamp checks cover indirect luminance, colour preservation,
-accumulation reset, and preservation of direct HDR lighting. It also compares backends when a
-ray-query device is available. Run the suspend smoke from a launched renderer child:
+You can run the GPU checks against your own machine — they cover readback colours, material
+placement, image orientation, accumulation resets, white-furnace energy, glTF textures and
+transforms, the glass models, and the clamp. `dev_docs/PATH_TRACING_MEASUREMENTS.md` says what each
+one covers. From a launched renderer child:
 
 ```diffstatic {data-lang=kotlin}
 val renderer: Renderer = fromContext()
 val verify: suspend () -> Unit = { PathTraceGpuSmoke.run(renderer) }
 start(verify)
 ```
-
-`PathTraceTemporalGpuSmoke.runFog(renderer)` checks the exponential fog curve,
-clear distance, background controls, fog-setting resets and dense-to-clear camera
-motion with retained history. It also checks premultiplied silhouette coverage
-with pixel jitter and depth of field, with temporal reuse both enabled and disabled.
-
-`PathTraceEmitterGpuSmoke.run(renderer, directory)` checks emitter sampling: that it
-is inert with no emitters, that its pdf matches the environment sampler in absolute
-terms, that its two arms compose without double counting, and that it reduces RMSE by
-an asserted factor at an equal sample budget. It writes the before/after captures on
-the way past.
 
 `tracer.readLinear()` returns the actual GPU RGBA accumulation buffer as floats;
 alpha holds primary visibility coverage. RGB is premultiplied by alpha; `samples`
@@ -975,58 +959,21 @@ The glass model follows the
 The optional traversal uses the
 [Khronos ray-query interface](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_ray_query.txt).
 
-## Noise comparison
+## What a frame costs
 
-A compute-backend check on the M1 Max rendered the same sunset material study at
-320 × 180 and 1,024 samples per pixel. In the foreground floor patch (x 10–309,
-y 125–174), a strong speck means red radiance more than 0.1 above the median of
-its eight neighbouring pixels:
+On an Apple M1 Max through MoltenVK, at 640 × 360 with one sample per frame, the bundled
+three-sphere opaque scene traces in about **4.3 ms**, and the glass study — ten bounces through
+clear, absorbing, frosted and thin panes — in about **10 ms**. Both are GPU module time and exclude
+presentation, and both describe that scene on that machine; use them to pick a resolution and a
+sample budget, not as a benchmark.
 
-| Setting | Strong specks | Largest red excess | Mean red radiance |
-| --- | ---: | ---: | ---: |
-| Previous sampler | 20 | 1.288 | 0.27255 |
-| Filtered environment + visible-normal GGX, unclamped | 9 | 1.970 | 0.27236 |
-| Same sampler, `indirectClamp = 10f` | 0 | 0.044 | 0.27206 |
+`indirectClamp = 10f` is the cheapest thing you can do about caustic specks. On the sunset material
+study it took a patch from twenty strong specks to none, for about 0.14% off the patch's mean
+radiance — bias you can measure but not see. Sampling improvements alone do not remove those
+outliers, which is why the clamp exists.
 
-Sampling changes alone do not remove rare caustic outliers; the largest one in
-this particular unclamped run was worse. The optional clamp addresses that tail.
-At 16,384 samples, the patch's mean red radiance changed from 0.27244 unclamped to
-0.27206 with the clamp (about −0.14%). This is a scene-specific measurement, not a
-bound on clamp bias in other scenes.
-
-The unit-environment frosted slab at roughness 0.6 and 2,048 samples had spatial
-variance 0.0000187 with visible-normal sampling, versus 0.000250 previously, while
-its mean remained about 0.815. Glass and white-furnace checks run with clamping
-disabled, or with exclusively direct lighting, to test the actual sampler.
-
-## Measured baseline
-
-Before the transmission extension, on an Apple M1 Max using MoltenVK, the bundled
-opaque three-sphere scene (6,626 triangles)
-at 640 × 360, one sample per frame and five bounces measured **4.28 ms median / 6.26 ms
-p95** for the GPU tracing module. These are GPU timestamp measurements after 30 warmup
-samples, across 1,666 module samples; they exclude display, presentation and unrelated
-application work. They describe this scene and machine, not every workload.
-
-The GPU white-furnace check measured mean radiance 0.9985 under unit white illumination;
-central-patch variance fell from 0.00625 to 0.00000224 as accumulation increased from
-about 8 to 1,024 samples. Hardware ray-query execution was unavailable on this Mac;
-both shader variants compiled, and the GPU smoke compares their outputs automatically
-when a ray-query device is available.
-
-The glass study (7,222 triangles), measured on the same Apple M1 Max at 640 × 360,
-one sample per frame and ten bounces, took **10.12 ms median / 10.89 ms p95** for
-GPU tracing across 2,189 samples after 30 warmup samples. This excludes presentation
-and other application work. The captured scene includes clear, absorbing, frosted
-and thin glass, with traced caustics that remain visibly noisy under the sunset sun.
-
-GPU slab checks measured white-environment radiance 1.00005 for clear glass. Red
-transmission through an index-matched absorbing slab was 0.50007 at unit thickness
-and 0.25012 at double thickness. Thin-pane measurements agreed from either face.
-At roughness 0.35, the frosted slab's mean was 0.97649 and spatial variance fell
-from 0.00640 at about eight samples to 0.0000177 at 2,048 samples. At roughness 0.6,
-the mean fell to 0.81528: the single-scattering approximation loses appreciable
-energy at high roughness. Total internal reflection produced no leaked radiance.
+`dev_docs/PATH_TRACING_MEASUREMENTS.md` has the per-setting speck counts, the white-furnace and
+slab-transmission agreement, and the sample counts and warmup behind the two timings.
 
 ## Reading a running tracer
 
