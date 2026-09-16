@@ -3,9 +3,9 @@
 Nancy and Final Out at Candlestick Park are two recordings sitting on disk. Pick six seconds of
 Nancy, and the corpus microscope finds the stretches of either recording that sound most like it,
 having already cut both into overlapping windows at 1.5, 3, 6 and 12 seconds and measured every
-one. Those windows are recorded as boundaries and offsets; the audio itself is never rewritten. How
-closeness gets judged stays yours to set, because the distance is five separate measurements with
-a weight each rather than one similarity number.
+one. Those windows are recorded as boundaries and offsets; the audio itself is never rewritten.
+Closeness is yours to set: the distance is five separate measurements with a weight each, not one
+similarity number.
 
 ## What each window is measured by
 
@@ -17,10 +17,11 @@ a weight each rather than one similarity number.
 | rhythm | onset strength, peak density and local tempo statistics |
 | dynamics | RMS centre, spread and range |
 
-Full 71-dimensional vectors stay in content-addressed NPZ assets. SQLite stores their segment
-identity and source adjacency. The browser receives only bounded metadata, audio handles and short
-splice-preview handles; waveform envelopes continue to load at the resolution of the visible
-window.
+Each group is pooled over the window, and the five together are the vector a query is matched
+against. The browser never receives one: it gets bounded metadata, audio handles and short
+splice-preview handles, and waveform envelopes load at the resolution of the visible window. Where
+the vectors and the segment adjacency are actually stored is in
+`dev_docs/AUDIO_CORPUS_MICROSCOPE.md`.
 
 ## Submit and monitor the index
 
