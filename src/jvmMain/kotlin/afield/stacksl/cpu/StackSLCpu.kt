@@ -106,6 +106,21 @@ object StackSLCpu {
     const val FRAG_UV_ORIGIN_IS_TOP_LEFT = false
 
     /**
+     * `fragUV` for pixel ([x], [y]) of a [width] by [height] raster, at the pixel centre — which
+     * is where a rasteriser evaluates a fullscreen triangle's interpolants.
+     *
+     * Stated once and read by every render path, so a second one cannot quietly pick a different
+     * flip. That this flip was *wrong* here until 2026-08-30 while agreeing with an oracle that
+     * was wrong the same way ([FRAG_UV_ORIGIN_IS_TOP_LEFT] has the story) is the reason it is a
+     * function rather than three lines repeated per caller.
+     */
+    fun fragUvAt(x: Int, y: Int, width: Int, height: Int): GlslValue {
+        val vTopDown = (y + 0.5f) / height
+        val v = if (FRAG_UV_ORIGIN_IS_TOP_LEFT) vTopDown else 1.0f - vTopDown
+        return GlslValue.vec2((x + 0.5f) / width, v)
+    }
+
+    /**
      * The compile options a `{{ stack.auto.<slot> }}` expansion uses.
      *
      * These are a deliberate, literal copy of the ones in
@@ -156,13 +171,24 @@ object StackSLCpu {
                 "StackSL program does not compile:\n" + errors.joinToString("\n") { it.toString() }
             )
         }
+        return substituteSlot(template, result.glsl, slot)
+    }
+
+    /**
+     * Put [glsl] into [template] at `{{ stack.auto.<slot> }}`.
+     *
+     * Separate from [expandStackAuto] because a wired program's GLSL comes out of
+     * [StackSLWires.lift] already compiled and lowered, and substituting it must not go back
+     * through the compiler with different options.
+     */
+    fun substituteSlot(template: String, glsl: String, slot: String = "program"): String {
         val tag = Regex("""\{\{\s*stack\.auto\.${Regex.escape(slot)}\s*}}""")
         if (!tag.containsMatchIn(template)) {
             throw IllegalArgumentException("template has no {{ stack.auto.$slot }} slot")
         }
         // The lambda overload of `replace` treats its result literally, so the emitted GLSL goes
         // in byte for byte; the `String` overload would interpret `$` and `\` inside it.
-        return tag.replace(template) { result.glsl }
+        return tag.replace(template) { glsl }
     }
 
     /**
@@ -201,11 +227,9 @@ object StackSLCpu {
         val stream = if (parallel) rows.parallel() else rows
         stream.forEach { y ->
             val invocation = shader.newInvocation(uniforms, samplers)
-            // Honour the one stated convention; see [FRAG_UV_ORIGIN_IS_TOP_LEFT].
-            val vTopDown = (y + 0.5f) / height
-            val v = if (FRAG_UV_ORIGIN_IS_TOP_LEFT) vTopDown else 1.0f - vTopDown
             for (x in 0 until width) {
-                invocation.setGlobal(fragUvName, GlslValue.vec2((x + 0.5f) / width, v))
+                // Honour the one stated convention; see [fragUvAt].
+                invocation.setGlobal(fragUvName, fragUvAt(x, y, width, height))
                 perPixel?.invoke(x, y, invocation)
                 val ok = invocation.runMain()
                 val base = (y * width + x) * 4
