@@ -162,14 +162,19 @@ so that only the nearer parts of the photograph survive, as islands. Two answers
 only if the triangle count, the component count *and* the volume to twelve places all agree, so this
 counting cannot report a reproducibility that is not there.
 
-- `parallel = false` returned **one distinct answer in eight, in every one of the five regimes** —
-  volume equal to twelve decimal places, triangle and component counts equal as integers.
-- `parallel = true` did not, and it got worse as the field fragmented: **4/8, 3/8 and 8/8** distinct
-  across the three regimes in the figure. Note the first row. That regime is a single solid block,
-  the easy case, and the parallel path still gave four different answers in eight runs. On a more
-  heavily blurred version of the same photograph its single-block regime did come back 1/8, which is
-  the useful negative result: *"parallel is fine on simple shapes"* is not a rule you can lean on,
-  because which field is simple enough is not something you can see in advance.
+- `parallel = false` returns **one distinct answer in eight, on every row, in every regime** — volume
+  equal to twelve decimal places, triangle and component counts equal as integers. That column is the
+  invariant, and it has held on every run of this figure.
+- `parallel = true` does not, and it is worst in the most fragmented regime. **The exact ratios in
+  that column are not quoted here on purpose**, because this figure is recaptured on every docs build
+  and they come out different each time — which is the claim, demonstrated rather than asserted.
+  Read the numbers off the figure above; what is stable about them is that the last column is never
+  `1/8` and the middle one always is.
+- Note the first row in particular. That regime is a single solid block, the easy case, and the
+  parallel path still disagrees with itself there. On a more heavily blurred version of the same
+  photograph the single-block regime *did* come back `1/8`, which is the useful negative result:
+  *"parallel is fine on simple shapes"* is not a rule you can lean on, because which field is simple
+  enough is not something you can see in advance.
 - Worse than the KDoc says, in one respect, and this one is not in the table. At an intermediate
   floor the parallel path returned **one component on all eight runs** where the sequential path
   returned **two**. It does not only wobble around the right answer — it can agree with itself on a

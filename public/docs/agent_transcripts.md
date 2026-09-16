@@ -1043,9 +1043,10 @@ Manifold and Field's own divergence-theorem sum agree on to the last digit despi
 checking that the union got bigger, and shows the frame's genus going 1 → 0 as the plaque plugs its
 window. *Levelset* marches the same depth field as an independent second construction of the same
 solid — the two agree to about one marching cell — and then puts a recorded claim back on the bench:
-eight runs each way, in two regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
-answer in eight every time; `parallel = true` returns up to eight, and at one floor it returns the
-wrong component count on all eight runs rather than a noisy one. Every picture is `TriMesh.renderPng`
+eight runs each way, in three regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
+answer in eight on every row, every time; `parallel = true` never does, and at one floor it returns
+the wrong component count on all eight runs rather than a noisy one. That figure is recaptured on
+every docs build and its last column reads differently each time, which is the point. Every picture is `TriMesh.renderPng`
 — a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
 
 ![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
