@@ -11,17 +11,17 @@ classes** (`SURFACE`) and requires every public one to be classified as either e
 classes fails the build until it is accounted for.
 
 The three figures are asserted, not printed
-(`KeyframerCoverageTest.kt:358`–`360`, `assertEquals`):
+(`KeyframerCoverageTest.kt:359`–`361`, `assertEquals`):
 
 | | |
 | --- | --- |
-| total public behavioural declarations | 120 |
-| covered by `KeyframerTest` | 112 (93.3%) |
+| total public behavioural declarations | 121 |
+| covered by `KeyframerTest` | 113 (93.4%) |
 | unreachable in a headless unit test | 8 |
 
 Data-class members the Kotlin compiler generates are excluded, on the same grounds the codebase
 reference excludes them. A further assertion guards the *category*: "unreachable" must mean a live
-`Renderer` or the AWT clipboard, and nothing else (`KeyframerCoverageTest.kt:370`).
+`Renderer` or the AWT clipboard, and nothing else (`KeyframerCoverageTest.kt:375`).
 
 ## The eight
 
@@ -39,9 +39,9 @@ these from the caller's side.
 
 The class list itself, and the total, are maintained by hand. Only the enumeration *within* the
 listed classes is measured, so a new **top-level** declaration is invisible to it:
-`enum class KeyDiffKind` (`stdlib/keyframer.kt:1458#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`)
+`enum class KeyDiffKind` (`stdlib/keyframer.kt:1473#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`)
 is public, absent from `SURFACE`, and the suite is green regardless. `KeyframerTest` exercises it;
-it simply is not counted, which pushes 93.3% down rather than up.
+it simply is not counted, which pushes 93.4% down rather than up.
 
 ## Open
 

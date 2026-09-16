@@ -1105,6 +1105,21 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     }
 
     /**
+     * [key] as the same pretty JSON [saveKey] writes, without writing anything.
+     *
+     * For the caller who wants the file and not the history: [saveKey] is always additive, so it
+     * leaves a `<path>.versions` directory with one numbered snapshot beside every file it writes.
+     * That is right for a key you keep pushing on and wrong for a write-once key — a sweep archive
+     * of ten thousand blends does not want ten thousand one-entry histories
+     * ([KeyframeSweep] writes its `key.json` through this). The text is interchangeable either way:
+     * `Files.writeString(path, scope.encodeKeyJson(key))` produces a file [loadKey] reads and
+     * [KeyframeCollection] browses.
+     *
+     * Drops exactly what [saveKey] drops — nulls and types [KValue.fromAny] does not recognise.
+     */
+    fun encodeKeyJson(key: Key): String = json.encodeToString(key.toDTO())
+
+    /**
      * Write [key] to [path] as pretty JSON, creating parent directories — and, every time, also append a
      * numbered copy to a `<path>.versions` directory with a manifest row carrying [note] and a timestamp.
      * Saving is therefore always additive history, never just an overwrite; nothing prunes it, so a

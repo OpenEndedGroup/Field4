@@ -970,6 +970,11 @@ values of the push constant, and compares both ends against the keyframe they ar
 
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
   — blending two keys, including code values that step rather than smear.
+- [Sweeping a keyframe space overnight](keyframe_autosweep.md) — the collection noun for all of this.
+  Once a directory of saved keys is a *space* rather than a list of looks, `KeyframeSweep` spends the
+  night visiting the points in it nobody clicked on: a random blend of a few keys per pass, sometimes
+  extrapolated past the hull they span, each one rendered into its own directory beside the key that
+  produced it and a manifest of what went into it.
 
 Every number on this page is asserted by `KeyframerTest`, and `KeyframerCoverageTest` holds the
 public surface of `keyframer.kt` to a ledger, so adding a method fails the build until it is

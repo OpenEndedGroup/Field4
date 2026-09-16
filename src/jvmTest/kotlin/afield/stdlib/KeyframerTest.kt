@@ -13,6 +13,7 @@ import afield.stdlib.linalg.Vector4f
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.deleteExisting
+import kotlin.io.path.exists
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.readText
@@ -24,6 +25,7 @@ import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -886,6 +888,31 @@ class KeyframerTest {
         assertTrue(loaded["voice"] is StackSLString)
         assertEquals("a look", loaded["label"])
         assertEquals("box-7", (loaded["block"] as SourceBackedBlock<*>).boxId)
+    }
+
+    @Test
+    fun encodeKeyJsonIsTheSameTextSaveKeyWritesWithoutTheVersionHistory() {
+        val dir = tempDir()
+        val scope = KeyframeScope(schemaVersion = 3)
+        val key = scope.Key(mutableMapOf("gain" to 0.25f, "label" to "a look", "aNull" to null))
+
+        val saved = dir.resolve("saved.json")
+        scope.saveKey(saved, key)
+
+        val encoded = dir.resolve("encoded.json")
+        encoded.writeText(scope.encodeKeyJson(key))
+
+        assertEquals(saved.readText(), encoded.readText(), "the same bytes saveKey would have written")
+        assertFalse(
+            dir.resolve("encoded.json.versions").exists(),
+            "encodeKeyJson leaves no version history — that is the whole reason it exists"
+        )
+        assertTrue(dir.resolve("saved.json.versions").exists(), "…while saveKey still always writes one")
+
+        // And the text is a key, not just a string: it loads, and the unsupported null is gone.
+        val loaded = scope.loadKey(encoded)
+        assertEquals(setOf("gain", "label"), loaded.values.keys)
+        assertEquals(0.25f, loaded["gain"])
     }
 
     @Test

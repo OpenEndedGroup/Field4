@@ -379,6 +379,10 @@ object DemoTranscriptExecSmokeTest {
         // FabricatePassChainTest, and the pixels (including the fluid actually advancing with no
         // input) by the four.simulation-chain.smoke jvm-main.
         "four_simulation_chain",
+        // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
+        // keyframe blends, so it wants a device CI does not own. The sweeper's arithmetic is covered
+        // without one by KeyframeSweepTest, and its pixels by the keyframe.sweep.smoke jvm-main.
+        "keyframe_autosweep",
         "recstl_playground",
         "gpu_state",
         "threebox",

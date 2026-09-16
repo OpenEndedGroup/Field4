@@ -44,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 113 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 114 transcripts on every build, at three
 depths. 65 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-41 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+42 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1518,6 +1518,24 @@ draw box reading the same allocation. The companion page is [GPU State](gpu_stat
 ![40,000 GPU particles held on a noise field, warm where the field is fast and cool where it is slow, with density voids where it diverges](assets/gpu_state/particle-field.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn)
+
+### keyframe_autosweep
+
+An overnight explorer of a keyframe space. A renderer, a rig whose live state is ten keyframe lanes,
+the sweep, and a box for the morning after. Each pass draws two or three keys from a directory,
+blends them at random weights — sometimes past either end of the hull they span — applies the blend,
+and hands a fresh directory to a `suspend` callback that renders a still and a short clip into it,
+beside the blended key as ordinary key JSON and a manifest of what went in at what weight. Twelve
+renders here, at about 8,300 an hour on an M-series laptop, so the box finishes while you watch; the
+sweep it is a scale model of runs until the disk floor, the clock or the morning stops it. Two of its
+ten lanes are awkward on purpose, because they are the two a blend cannot simply average: `palette`
+is a name with no midpoint, so it is taken whole from one parent and the manifest records which, and
+`grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
+outside its own range — where the target clamps it and the key keeps the number, so the archive still
+records the point that was visited. The morning box needs no renderer at all: an archive describes
+itself. The companion page is [Keyframe autosweeping](keyframe_autosweep.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframe_autosweep/metadata.edn)
 
 ### threebox
 
