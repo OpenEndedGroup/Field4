@@ -15,6 +15,7 @@ import kotlin.test.assertTrue
  */
 class MegaTextureLayoutTest {
 
+    /** The square ladder, as the old `minPageSize shl level` shorthand expresses it. */
     private fun layout(
         imageCount: Int = 1500,
         minPageSize: Int = 8,
@@ -22,17 +23,42 @@ class MegaTextureLayoutTest {
         atlasEdge: Int = 2048,
         layersPerLevel: Int = 2,
         maxBaseLevelLayers: Int = 64
-    ) = MegaTextureLayout(imageCount, minPageSize, levels, atlasEdge, layersPerLevel, maxBaseLevelLayers)
+    ) = MegaTextureLayout(
+        imageCount = imageCount,
+        levels = levels,
+        atlasEdge = atlasEdge,
+        layersPerLevel = layersPerLevel,
+        maxBaseLevelLayers = maxBaseLevelLayers,
+        topPageWidth = minPageSize shl (levels - 1)
+    )
+
+    /** A rectangular ladder whose top page is exactly a source frame. */
+    private fun filmLayout(
+        imageCount: Int = 1639,
+        levels: Int = 8,
+        atlasEdge: Int = 2048,
+        layersPerLevel: Int = 2,
+        sourceWidth: Int = 1920,
+        sourceHeight: Int = 798
+    ) = MegaTextureLayout(
+        imageCount = imageCount,
+        levels = levels,
+        atlasEdge = atlasEdge,
+        layersPerLevel = layersPerLevel,
+        maxBaseLevelLayers = 64,
+        topPageWidth = sourceWidth,
+        topPageHeight = sourceHeight
+    )
 
     @Test
     fun pagesTileTheLayerExactly() {
         val l = layout()
         for (level in 0 until l.levels) {
             assertEquals(
-                l.atlasEdge / l.pageSize(level), l.pagesPerRow[level],
-                "level $level should fit ${l.atlasEdge / l.pageSize(level)} pages across"
+                l.atlasEdge / l.pageWidth(level), l.pagesPerRow[level],
+                "level $level should fit ${l.atlasEdge / l.pageWidth(level)} pages across"
             )
-            assertEquals(l.pagesPerRow[level] * l.pagesPerRow[level], l.pagesPerLayer[level])
+            assertEquals(l.pagesPerRow[level] * l.pagesPerColumn[level], l.pagesPerLayer[level])
         }
         assertEquals(256, l.pagesPerRow[0], "2048 / 8")
         assertEquals(4, l.pagesPerRow[6], "2048 / 512")
@@ -92,8 +118,8 @@ class MegaTextureLayoutTest {
                 val where = Triple(l.layerOf(level, slot), l.pageX(level, slot), l.pageY(level, slot))
                 assertTrue(seen.add(where), "level $level slot $slot collides at $where")
                 assertTrue(
-                    where.second + l.pageSize(level) <= l.atlasEdge &&
-                            where.third + l.pageSize(level) <= l.atlasEdge,
+                    where.second + l.pageWidth(level) <= l.atlasEdge &&
+                            where.third + l.pageHeight(level) <= l.atlasEdge,
                     "level $level slot $slot runs off the layer at $where"
                 )
             }
@@ -219,6 +245,113 @@ class MegaTextureLayoutTest {
         // and it is the one the design guarantees can.
         val l = layout(imageCount = 1_000_000)
         assertEquals(0, l.ceilingFor(IntArray(l.levels).also { it[6] = 1_000_000 }))
+    }
+
+    // ---------------------------------------------------------------- rectangular (film) pages
+
+    /**
+     * The top page is the source frame exactly, which is the whole point of [filmLayout].
+     *
+     * A square ladder cannot do this. To reach 1920 across it has to go to 2048, and a 1920×798
+     * frame in a 2048×2048 page leaves 63% of every byte as padding — at every level, not just
+     * the top.
+     */
+    @Test
+    fun theTopPageIsTheSourceFrame() {
+        val l = filmLayout()
+        assertEquals(1920, l.pageWidth(l.levels - 1))
+        assertEquals(798, l.pageHeight(l.levels - 1))
+        assertEquals(1920 * 798 * 4, l.pageBytes(l.levels - 1))
+    }
+
+    /**
+     * Each level down is the one above halved and rounded up, in both axes.
+     *
+     * The rounding is the reason each level carries its own size: 798 has a single factor of two
+     * in it, so a base-and-double ladder cannot produce this sequence at all.
+     */
+    @Test
+    fun levelsHalveDownFromTheTop() {
+        val l = filmLayout(levels = 8)
+        assertEquals(listOf(15, 30, 60, 120, 240, 480, 960, 1920), (0 until 8).map { l.pageWidth(it) })
+        assertEquals(listOf(7, 13, 25, 50, 100, 200, 399, 798), (0 until 8).map { l.pageHeight(it) })
+    }
+
+    @Test
+    fun aRectangularLayerPacksInBothAxes() {
+        val l = filmLayout(levels = 8, atlasEdge = 2048)
+        // The top page is 1920x798: one across, two down, so two pages to a layer — which a
+        // square 2048 page could not manage at all.
+        assertEquals(1, l.pagesPerRow[7])
+        assertEquals(2, l.pagesPerColumn[7])
+        assertEquals(2, l.pagesPerLayer[7])
+    }
+
+    /**
+     * The saving, measured, at equal atlas: 2.5× as many full-resolution pages.
+     *
+     * Held at the same `atlasEdge` and the same layer count on purpose, because that is the
+     * comparison the saving actually is — a 1920×798 page is 2.5 times smaller than the 2048×2048
+     * page a square ladder needs to reach 1920, so two and a half times as many fit in the same
+     * layer. Comparing across different atlas sizes proved nothing: at 2048 against 4096 both come
+     * out at four pages, which is how this test first failed.
+     */
+    @Test
+    fun rectangularPagesHoldMoreOfTheSameSourceThanSquareOnes() {
+        val film = filmLayout(levels = 8, atlasEdge = 4096, layersPerLevel = 1)
+        val square = layout(imageCount = 1639, minPageSize = 8, levels = 9, atlasEdge = 4096, layersPerLevel = 1)
+
+        // Full resolution either way: the top page is at least as wide as a 1920 frame.
+        assertTrue(film.pageWidth(film.levels - 1) >= 1920)
+        assertTrue(square.pageWidth(square.levels - 1) >= 1920)
+
+        val filmTop = film.pagesPerLayer[film.levels - 1]
+        val squareTop = square.pagesPerLayer[square.levels - 1]
+        assertEquals(10, filmTop, "1920x798 pages in a 4096 layer: 2 across, 5 down")
+        assertEquals(4, squareTop, "2048x2048 pages in a 4096 layer: 2 across, 2 down")
+        assertTrue(
+            filmTop >= squareTop * 2,
+            "rectangular should hold at least twice as many; got $filmTop against $squareTop"
+        )
+    }
+
+    /**
+     * A page larger than an atlas layer is refused rather than half-stored.
+     *
+     * `pagesPerRow` clamps to one rather than zero, so without the check the layout believed a
+     * 1920-wide page fitted a 1024-wide layer, `pageX` returned 0, and the upload would have asked
+     * for columns that were not there.
+     */
+    @Test
+    fun aPageTooBigForItsLayerIsRefused() {
+        assertFailsWith<IllegalArgumentException> {
+            filmLayout(levels = 5, atlasEdge = 1024)
+        }
+    }
+
+    @Test
+    fun rectangularSlotsAlsoTileWithoutOverlap() {
+        val l = filmLayout(levels = 5, atlasEdge = 2048, layersPerLevel = 2)
+        for (level in 0 until l.levels) {
+            val seen = mutableSetOf<Triple<Int, Int, Int>>()
+            for (slot in 0 until l.pageCapacity[level]) {
+                val where = Triple(l.layerOf(level, slot), l.pageX(level, slot), l.pageY(level, slot))
+                assertTrue(seen.add(where), "level $level slot $slot collides at $where")
+                assertTrue(
+                    where.second + l.pageWidth(level) <= l.atlasEdge &&
+                            where.third + l.pageHeight(level) <= l.atlasEdge,
+                    "level $level slot $slot runs off the layer at $where"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun aSquareTopPageStillGivesTheSquareLadder() {
+        // The default has to keep working: minPageSize=8 over 7 levels is 8..512, square.
+        val l = layout()
+        assertEquals(listOf(8, 16, 32, 64, 128, 256, 512), (0 until 7).map { l.pageWidth(it) })
+        assertEquals((0 until 7).map { l.pageWidth(it) }, (0 until 7).map { l.pageHeight(it) })
     }
 
     /**

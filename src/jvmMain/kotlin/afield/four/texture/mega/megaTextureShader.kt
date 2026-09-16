@@ -38,8 +38,8 @@ import afield.four.util.Resolver
  * - `vertex` — `declarations` + `functions`, for a vertex stage that wants `megaAspect` to shape a
  *   quad to its picture.
  *
- * Plus `imageCount`, `levels`, `minPageSize`, `atlasEdge` and `maxPageSize` as bare numbers, for
- * shader code that wants to do its own arithmetic.
+ * Plus `imageCount`, `levels`, `atlasEdge`, `basePageWidth`, `basePageHeight`, `topPageWidth` and
+ * `topPageHeight` as bare numbers, for shader code that wants to do its own arithmetic.
  */
 fun megaTextureTemplate(mega: MegaTexture): Map<String, Any> =
     megaTextureTemplate(mega.layout, mega.config)
@@ -59,8 +59,10 @@ fun megaTextureTemplate(layout: MegaTextureLayout, config: MegaTextureConfig): M
     "all" to Resolver { megaAllSource(layout, config) },
     "imageCount" to layout.imageCount.toString(),
     "levels" to layout.levels.toString(),
-    "minPageSize" to layout.minPageSize.toString(),
-    "maxPageSize" to layout.pageSize(layout.levels - 1).toString(),
+    "basePageWidth" to layout.pageWidth(0).toString(),
+    "basePageHeight" to layout.pageHeight(0).toString(),
+    "topPageWidth" to layout.topPageWidth.toString(),
+    "topPageHeight" to layout.topPageHeight.toString(),
     "atlasEdge" to layout.atlasEdge.toString()
 )
 
@@ -92,10 +94,17 @@ layout(set = ${config.descriptorSet}, binding = ${config.feedbackBinding}, std43
     uint megaWanted[];
 };
 
-const uint  megaImageCount  = ${layout.imageCount}u;
-const int   megaLevels      = ${layout.levels};
-const int   megaMinPageSize = ${layout.minPageSize};
-const float megaAtlasEdge   = ${layout.atlasEdge}.0;
+const uint  megaImageCount   = ${layout.imageCount}u;
+const int   megaLevels       = ${layout.levels};
+const float megaAtlasEdge    = ${layout.atlasEdge}.0;
+
+// The page ladder, as the two ends of it. Pages are not square in general — for a film set they
+// are the shape of a frame — and they are not a shift apart either, because halving 798 twice
+// gives 200 and not 199.5. So the top page is the source size and every level below it is that
+// halved and rounded up, which is what `megaLevelForPixels` inverts.
+const float megaTopPageWidth  = ${layout.topPageWidth}.0;
+const float megaTopPageHeight = ${layout.topPageHeight}.0;
+const float megaBasePageWidth = ${layout.pageWidth(0)}.0;
 const uint  megaResidentBit  = ${"0x%xu".format(MegaTextureLayout.RESIDENT_BIT)};
 const int   megaLevelShift   = ${MegaTextureLayout.LEVEL_SHIFT};
 const uint  megaLayerMask    = ${"0x%xu".format(MegaTextureLayout.MAX_LAYER)};
@@ -186,13 +195,20 @@ float megaScreenPixels(vec2 uv) {
     vec2 ddx = dFdx(uv);
     vec2 ddy = dFdy(uv);
     float perPixel = max(max(abs(ddx.x), abs(ddx.y)), max(abs(ddy.x), abs(ddy.y)));
-    return (perPixel > 0.0) ? 1.0 / perPixel : float(megaMinPageSize << (megaLevels - 1));
+    return (perPixel > 0.0) ? 1.0 / perPixel : megaTopPageWidth;
 }
 
-/** The smallest level whose page is at least this many pixels across. */
+/**
+ * The smallest level whose page is at least this many pixels across.
+ *
+ * Counted down from the top rather than up from the base, because that is how the ladder is
+ * built: the top page is the source width, and level `n` below it is that width over `2^n`. So
+ * the number of halvings that still leaves enough width is `floor(log2(top / wanted))`, and the
+ * level is that many steps below the top.
+ */
 int megaLevelForPixels(float pixelsAcross) {
-    float exact = log2(max(pixelsAcross, 1.0) / float(megaMinPageSize));
-    return clamp(int(ceil(exact)), 0, megaLevels - 1);
+    float halvings = floor(log2(megaTopPageWidth / max(pixelsAcross, 1.0)));
+    return clamp(megaLevels - 1 - int(halvings), 0, megaLevels - 1);
 }
 
 /** Tell the CPU this image wants this level. Coarser requests never undo finer ones. */
