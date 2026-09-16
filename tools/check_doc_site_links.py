@@ -113,6 +113,53 @@ def read_config(config_yml: Path) -> tuple[str, str]:
     return str(config.get("site_url", "") or "/"), str(config.get("site_dir", "") or "site")
 
 
+# Recorded 2026-09-16, on the first run of this guard over the whole built site. Each entry is a
+# reference that was already broken under the published prefix at cb4377a6c, on a page this guard's
+# author must not edit, so gating on it would only mean never gating at all. They are reported on
+# every run and do not fail; `stale_known_unresolved` fails when an entry stops reproducing, so the
+# list cannot quietly become permanent. Anything NOT listed here fails now.
+#
+# This is a debt, not a policy. Each entry names who can retire it.
+KNOWN_UNRESOLVED = {
+    "/offline.html": (
+        "The offline viewer link on 134 pages (`agent_transcripts.md`, `afield_four_graphics.md`) is "
+        "written server-absolute as `/offline.html?file=/field4/...`. Both halves assume the site is "
+        "served at the server root with `field4/` visible as a subdirectory; under `site_url`'s "
+        "`/Field4/` prefix the correct pair is `/Field4/offline.html?file=/Field4/...`. Note also the "
+        "case mismatch: the query says `/field4/` (the local `site_dir`) against a published "
+        "`/Field4/`, which 404s on any case-sensitive host. Owner: whoever holds agent_transcripts.md."
+    ),
+    "/extensions/remote_ar/index.html": (
+        "`ar_reference.md:45` iframes a path served by a *running Field instance* "
+        "(`https://FIELD_HOST:9092/extensions/remote_ar/index.html`), not by the docs site. It is "
+        "dead on the published site by nature rather than by mistake; it wants either an absolute "
+        "URL or a note saying it only works beside a live Field."
+    ),
+    "/Field4/reference/3,8": (
+        "`public/docs/reference/patterns.md:2295` shows `pat(\"[bd cp](3,8) hh!2\")` in a block that "
+        "lost code-block status (it is indented 7 spaces inside already-indented KDoc output, so the "
+        "relative indent is 3 — one short), and markdown then read the pat figure `[bd cp](3,8)` as a "
+        "link. Origin: the KDoc at `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:75`; "
+        "`PatCondense.kt:589` writes the same figure in backticks and is immune. Fix belongs in the "
+        "KDoc plus a reference regeneration, both outside this branch's ownership."
+    ),
+}
+
+# The source mirror (`reference/source/**`) is the one generated docs tree that is not committed:
+# `build_zensical_docs.py:generate_source_pages` renders it per build and needs a compiled Kotlin
+# tree, so `--no-source-pages` (or a machine without one) legitimately produces a site with none of
+# it. The committed `reference/*.md` pages link into it regardless, so its absence shows up as
+# several hundred missing targets that say nothing about the page that referenced them. Treated as a
+# build-configuration fact when the whole subtree is absent, and as ordinary failures when it exists
+# — so a mirror that is present but incomplete still gates.
+SOURCE_MIRROR_PREFIX = "reference/source/"
+
+
+def stale_known_unresolved(unresolved: set[str]) -> list[str]:
+    """Entries in `KNOWN_UNRESOLVED` that no longer reproduce, and so should be deleted."""
+    return sorted(entry for entry in KNOWN_UNRESOLVED if entry not in unresolved)
+
+
 def split_srcset(value: str) -> list[str]:
     """The URLs in a `srcset`, dropping the width/density descriptors."""
     return [part.strip().split()[0] for part in value.split(",") if part.strip()]
@@ -256,20 +303,33 @@ def main() -> int:
                 if url_path:
                     wanted[url_path].append((page.relative_to(site_dir).as_posix(), stripped))
 
+    # Absent as a whole subtree, or merely incomplete? Only the first is a build-configuration fact.
+    source_mirror_built = (site_dir / SOURCE_MIRROR_PREFIX).is_dir()
+
     escapes: list[tuple[str, str, str]] = []
     missing: list[tuple[str, str, str]] = []
+    known: list[tuple[str, str, str]] = []
+    source_mirror_absent: list[str] = []
+    unresolved_paths: set[str] = set()
     for url_path in sorted(wanted):
         page_rel, ref = wanted[url_path][0]
         # `prefix.rstrip("/")` is the site root itself. The theme links back to it as `./..`
         # from every page (463 of them), which normalises to `/Field4` with no trailing slash —
         # inside the site, not an escape. Only treating it as such stops the guard reporting
         # its own most common reference as a failure.
-        if url_path != prefix.rstrip("/") and not url_path.startswith(prefix):
-            escapes.append((url_path, page_rel, ref))
-            continue
-        if url_path == prefix.rstrip("/"):
+        inside = url_path == prefix.rstrip("/") or url_path.startswith(prefix)
+        if inside and url_path == prefix.rstrip("/"):
             url_path = prefix
-        if not site_path(site_dir, prefix, url_path).is_file():
+        if inside and site_path(site_dir, prefix, url_path).is_file():
+            continue
+        unresolved_paths.add(url_path)
+        if url_path in KNOWN_UNRESOLVED:
+            known.append((url_path, page_rel, ref))
+        elif not inside:
+            escapes.append((url_path, page_rel, ref))
+        elif not source_mirror_built and url_path[len(prefix):].startswith(SOURCE_MIRROR_PREFIX):
+            source_mirror_absent.append(url_path)
+        else:
             missing.append((url_path, page_rel, ref))
 
     print(
@@ -290,7 +350,7 @@ def main() -> int:
         print(f"  of the {total_refs} local refs, {absolute_refs} are site-absolute "
               f"(prefix baked in by the theme from site_url) and "
               f"{total_refs - absolute_refs} are relative")
-        print(f"  {len(wanted) - len(escapes) - len(missing)} of {len(wanted)} distinct "
+        print(f"  {len(wanted) - len(unresolved_paths)} of {len(wanted)} distinct "
               f"target(s) resolve to a file inside the prefix")
 
     def report(title: str, rows: list[tuple[str, str, str]], explain: str) -> None:
@@ -323,10 +383,47 @@ def main() -> int:
             "Fix: correct the ref, or generate/commit the target.",
         )
 
-    if escapes or missing:
+    if source_mirror_absent:
+        print(
+            f"\nNOTE — {len(source_mirror_absent)} target(s) under {prefix}{SOURCE_MIRROR_PREFIX} "
+            f"are absent because this build did not generate the source mirror.\n"
+            f"That tree is rendered per build and not committed "
+            f"(build_zensical_docs.py:generate_source_pages), so `--no-source-pages` or a machine "
+            f"with no\ncompiled Kotlin tree legitimately omits it. Not gating. Build without "
+            f"--no-source-pages to check these."
+        )
+
+    if known:
+        print(f"\nKNOWN GAP — {len(known)} reference(s) were already broken under the prefix "
+              f"and are grandfathered:\n")
+        for url_path, page_rel, ref in known:
+            referrers = wanted[url_path]
+            print(f"  {url_path}  (as {ref} on {page_rel}"
+                  + (f" +{len(referrers) - 1} more page(s)" if len(referrers) > 1 else "") + ")")
+            print(f"      {KNOWN_UNRESOLVED[url_path]}")
+        print("\nThese are listed in KNOWN_UNRESOLVED and do not fail. Each owes a fix.")
+
+    # The ledger describes the real published site, so it can only be graded against the real
+    # published site. Over a synthetic fixture, or at a different prefix (where the same debt has
+    # different URLs), every entry would look "no longer reproducing" and the staleness check would
+    # fire on a site that simply is not the one the ledger is about. Caught by this guard's own
+    # test suite, which is the correct place to have caught it.
+    grading_the_real_site = args.site_dir is None and args.prefix is None
+    stale = stale_known_unresolved(unresolved_paths) if grading_the_real_site else []
+    if stale:
+        print(f"\nFAIL — {len(stale)} KNOWN_UNRESOLVED entr(y/ies) no longer reproduce:\n")
+        for entry in stale:
+            print(f"  {entry}")
+        print("\nThe reference now resolves (or is gone). Delete the entry — an exception that "
+              "outlives\nits cause is how a grandfathered list becomes a policy.")
+
+    if escapes or missing or stale:
         return 1
-    print(f"OK — all {len(wanted)} distinct local reference(s) across {len(pages)} built "
-          f"page(s) resolve inside {prefix!r}.")
+    resolved = len(wanted) - len(unresolved_paths)
+    print(f"OK — {resolved} of {len(wanted)} distinct local reference(s) across {len(pages)} built "
+          f"page(s) resolve inside {prefix!r}"
+          + (f"; {len(known)} known gap(s) and {len(source_mirror_absent)} un-generated "
+             f"source-mirror target(s) above, not gating." if known or source_mirror_absent else "."))
     return 0
 
 

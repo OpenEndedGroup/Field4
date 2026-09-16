@@ -817,6 +817,24 @@ def run(args: argparse.Namespace) -> int:
         emit_offline_viewer(site_dir=site_dir)
         copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)
         print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
+
+        # Only now, after the offline viewer and the verbatim copies are in place, is the site dir
+        # what a browser will actually see -- so this has to run last rather than beside
+        # check_doc_assets.py above. That one asks whether an asset is committed and reads the
+        # markdown; this one asks whether every reference on every built page resolves under
+        # `site_url`'s path prefix, and reads the rendered HTML. Warn on every build; gate under
+        # --strict, the same trade check_doc_assets.py makes.
+        # Our own stdout is block-buffered when the build log is redirected, while the child writes
+        # straight through; without this the guard's report lands *above* the lines that caused it.
+        sys.stdout.flush()
+        link_check = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "check_doc_site_links.py")],
+            cwd=repo_root,
+            check=False,
+        ).returncode
+        if link_check != 0 and args.strict:
+            print("Doc site link check failed (see above). Failing because --strict.", file=sys.stderr)
+            return link_check
     return returncode
 
 
