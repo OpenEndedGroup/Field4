@@ -1,7 +1,9 @@
 # Interactive guides: developer map
 
-The canonical authoring guide is `public/docs/interactive_guides.md`; chat setup is
-`public/docs/guide_chat.md`. Runnable examples are in
+The canonical authoring guide is `public/docs/interactive_guides.md`, chat setup included — its
+"Setting up the chat server" section. `public/docs/guide_chat.md` was folded into that page by
+`4e478e34c` on 2026-07-20; this line and `GUIDE_CHAT_QUICKSTART.md`'s first line went on pointing
+at it until 2026-09-16. Runnable examples are in
 `src/jvmMain/kotlin/afield/examples/slideshow_example.kt`.
 
 Implementation ownership:
