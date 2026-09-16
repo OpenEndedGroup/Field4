@@ -15,6 +15,26 @@ import kotlin.math.max
 import kotlin.math.sin
 
 /**
+ * Springs, dampers, and a steerable character built out of four of them.
+ *
+ * Two layers, and the lower one is useful alone. [Springs] holds the primitives as one-line
+ * functions over `Float` and `Vector2f`: exponential dampers, critically damped springs, an angle
+ * spring that takes the short way round, and the decay that hides a jump. [MovementState] stacks
+ * four of those into a character with a position, a velocity and a facing, driven by a desired
+ * velocity and tuned through [MovementParams].
+ *
+ * Half-life is the parameter throughout: the time a spring takes to close half the distance to its
+ * goal. That is what makes these tunable by eye, rather than by bisecting a stiffness against a
+ * damping ratio. Every step is the analytic solution of the spring's equation rather than a
+ * numerical integration, so one step of `dt` and ten steps of `dt / 10` land in the same place and
+ * the motion does not change with frame rate.
+ *
+ * All of it is plain arithmetic on the CPU, with no renderer and no solver underneath. Both layers
+ * follow Daniel Holden's ["Spring-It-On"](https://theorangeduck.com/page/spring-roll-call) and
+ * ["A New Movement Model"](https://theorangeduck.com/page/new-movement-model).
+ */
+
+/**
  * Critically damped springs and dampers — the pieces [MovementState] is built from, and worth having
  * on their own for anything that should arrive at a value without a hard edge.
  *

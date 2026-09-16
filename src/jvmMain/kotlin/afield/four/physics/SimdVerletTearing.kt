@@ -4,6 +4,26 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
+ * Tearing for [SimdVerlet]: retiring over-stretched distance constraints, and the two measurements
+ * that say where to set the threshold.
+ *
+ * [Tearing] retires a constraint once it has been stretched past a fraction of its rest length, so
+ * a sheet under load rips instead of stretching forever. It runs as a constraint-edit pass,
+ * registered by [SimdVerlet.addTearing] on a bare simulation or by [Cloth.enableTearing] on a
+ * [Cloth]. Both hand back the live object, so a threshold can be retuned or an edge cut by hand
+ * between frames, and the cloth version additionally drops the curvature stencil at each lip of a
+ * tear, without which the curvature force goes on flattening the sheet across a rip the solver has
+ * already made.
+ *
+ * Strain is `(distance - rest) / rest` throughout, so a threshold is a fraction rather than a
+ * length, and it can be read off a measurement instead of found by bisection.
+ * [SimdVerlet.peakStrain] is that measurement over a whole simulation: a threshold below the strain
+ * a sheet settles at tears it while it hangs at rest. [SimdVerlet.liveEdgeCount] counts surviving
+ * edges the way the debug drawing does, a symmetric pair counted once, so a line lost from the
+ * picture and an edge torn in the solver are the same number.
+ */
+
+/**
  * Constraint tearing: retiring a distance constraint that has been stretched past a strain
  * threshold, so a sheet under load rips instead of stretching forever.
  *

@@ -4,20 +4,24 @@ import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.targets.RenderToTexture
 
-/*
- * Materializes a planned FabricatePassChain onto the GPU, through the post stack that already
- * exists.
+/**
+ * Materializes a planned pass chain onto the GPU, through the post stack that already exists.
  *
- * The division of labour is the point. FabricatePassChain.plan decides *everything* — every
- * resolution, every format, which texture every sampler reads, which passes could share a target.
- * This file decides *nothing*; it walks the plan and calls Bundle.addShaderEffect with sizes already
- * resolved to FabricatePassSize.Absolute, so there is no second, subtly different implementation of
- * the arithmetic sitting where only a GPU can reach it. That matters more here than it usually does,
+ * The division of labour is strict. [FabricatePassChain.plan] decides *everything*: every
+ * resolution, every format, which texture every sampler reads, which passes can share a target.
+ * This file decides *nothing*. It walks the plan and calls
+ * [StandardRenderer.Bundle.addShaderEffect] with sizes already resolved to
+ * [FabricatePassSize.Absolute], so there is no second, subtly different implementation of the
+ * arithmetic sitting where only a GPU can reach it. That matters more here than it usually would,
  * because a resolution bug in a pass chain renders a picture that looks *fine*.
  *
- * The passes land in the same FabricatePostStack as everything else, so FabricateFrameGraph
- * schedules them, postStack.output() is the chain's output, insertBefore/remove still work on them
- * by name, and a chain composes with addBloom and setToneMapping rather than replacing them.
+ * The passes land in the same [FabricatePostStack] as everything else, so [FabricateFrameGraph]
+ * schedules them, the stack's `output()` is the chain's output, `insertBefore` and `remove` still
+ * work on them by name, and a chain composes with `addBloom` and `setToneMapping` rather than
+ * replacing them.
+ *
+ * [FabricateBuiltChain] comes back holding the plan, the built effects and the chain input, and is
+ * how a push constant is retuned afterwards without a rebuild or a reallocation.
  */
 
 /**
