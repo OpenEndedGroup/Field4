@@ -3,8 +3,8 @@
 You want to hear something. There is more than one way, and this page maps all of them.
 
 **Seven things in Field make samples. Five things carry samples out of the process. Four bring them
-in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `7` and
-[the build fails](#how-the-map-is-checked) if `PATHS` disagrees.
+in.** A path that arrives in the tree and not in the tables below
+[fails the build](#whether-this-map-is-complete), so the counts are worth trusting.
 
 ---
 
@@ -223,27 +223,21 @@ seam, no adapter in between. `SoundPathMap.SEAM_AGREEMENT_CEILING` pins it at `1
 
 ---
 
-## How the map is checked
+## Whether this map is complete
 
-A hand-maintained list of render paths is exactly the artifact that rots, so this one is checked
-against the code in `check`, in the shape [`DocsAudioProvenance`](sound.md#and-the-same-question-asked-of-every-clip-in-the-docs)
-uses: declare, re-derive from the tree, fail on disagreement.
+For anything on the seam it is, and not because somebody keeps it up to date. If a table above names
+a path, that path exists, in that file, under that name: `SoundPathMap` declares them, the
+`synth.sound.path.map` smoke re-derives them from the tree on every `check`, and each entry point is
+cited by *symbol* rather than by line number, so a rename fails the build instead of leaving a dead
+citation above. A path Field grows and this page has not listed fails too, which is the direction
+that actually went wrong — for a month the page under-reported what Field could do with every check
+green, until the seam itself became one of the things the derivation looks for.
 
-`SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke re-derives them from the
-tree. Four kinds of drift fail the build: a count that no longer matches `PATHS`; a file that makes
-or moves samples and is not attributed to a declared path; a declared file that has stopped
-carrying the literal it was declared for; and a path this page has dropped from its tables. Each
-path is cited by *symbol* rather than line number, so a rename fails rather than leaving a dead
-citation above.
-
-What that buys you as a reader: if a table above says a path exists, it does, in that file, under
-that name. If a count above disagrees with the tree, you get a build failure rather than a page that
-under-reports what Field can do — which is what happened for a month, with every check green, until
-the seam itself became one of the derivation's markers.
-
-The assertions, the marker literals and the tolerances behind the comparison figures are in
-`dev_docs/SOUND_PATH_MAP_AGREEMENT.md`; `SoundPathMap`'s own KDoc records what the derivation still
-cannot see.
+Off the seam the derivation is blind, and the two shapes it cannot find are both listed above
+anyway: a player in another process, like `sonic-pi`, and a whole-buffer free function, like
+`patRenderStereo`. Those are here because somebody declared them. The marker literals, the
+assertions and the tolerances behind the comparison figures are in
+`dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
 
 ---
 
