@@ -156,6 +156,16 @@ object PhotoToSolidChain {
      * over the same triangles is to take the relief as `plaque − frame`. Their volumes then add to
      * the union's exactly, which [volume] reports and [main] checks.
      *
+     * **Both meshes carry no normals, and that is not an oversight.** [Solid.toTriMesh] with
+     * `normals = true` splits a vertex wherever two faces disagree about the surface direction,
+     * which is what a renderer wants and what makes the mesh *not a manifold*: being manifold is a
+     * property of the indices, and two vertices at the same position sharing an edge nowhere reads
+     * as a seam of holes. Handing such a mesh back to [TriMesh.toSolid] gets a refusal —
+     * `UNWELDED_VERTICES x598, OPEN_BOUNDARY x1186, chi=7 in 11 components` on this very object,
+     * and `MeshDiagnosis` names `weld(1e-6)` as the fix. So these ship unsplit, which keeps
+     * `toSolid` legal, and the two render bridges that need normals add them themselves:
+     * [TriMesh.renderPng] calls [TriMesh.shadedNormals] for you, and a path tracer should too.
+     *
      * @param grid the relief's grid width. One vertex per pixel at 266 is 70k grid points, and a
      *   Boolean over that is minutes rather than seconds, so the depth map is resampled first — the
      *   resolution decision belongs here, visible, before any topology exists to get wrong.
@@ -165,6 +175,8 @@ object PhotoToSolidChain {
         val frame: TriMesh,
         val footprintZ: Double,
         val volume: Double,
+        /** The relief plaque's own volume, *before* the frame — what a marched level set should match. */
+        val plaqueVolume: Double,
         val genus: Int,
         val parts: Int,
         val depth: Img,
@@ -193,10 +205,11 @@ object PhotoToSolidChain {
             val frame = frameAround(WIDTH, footprintZ).checked("the frame")
             val mounted = (solid + frame).checked("the mounted plaque")
             Mounted(
-                relief = (solid - frame).toTriMesh(normals = true),
-                frame = frame.toTriMesh(normals = true),
+                relief = (solid - frame).toTriMesh(),
+                frame = frame.toTriMesh(),
                 footprintZ = footprintZ,
                 volume = mounted.volume,
+                plaqueVolume = solid.volume,
                 genus = mounted.genus,
                 parts = mounted.decompose().size,
                 depth = small,

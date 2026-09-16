@@ -1,0 +1,159 @@
+name: photo_to_solid_chain
+description: >
+  A photograph becomes a printable solid, as four pure-compute boxes — no Window, no Renderer, no
+  GPU. The route crosses four families that do not import one another: DepthAnything (ONNX) predicts
+  monocular depth, the imaging family normalises and smooths it, `Img.toReliefMesh` closes it into a
+  watertight relief plaque, and Manifold does an exact Boolean against a picture frame.
+    1. photo_depth     — the committed photograph and its depth map side by side, with the model's
+                         own raw window printed. The window moves with resolution, so it is read off
+                         the run rather than remembered.
+    2. photo_plaque    — the depth map as a closed relief. Prints chi = 2, zero boundary loops and
+                         the exact vertex/triangle counts against reliefMesh's closed form, then
+                         draws the plaque three ways through the AWT-free CPU rasteriser.
+    3. photo_boolean   — the frame is genus 1, the mounted plaque is genus 0, and inclusion-exclusion
+                         (union + intersection = A + B) is checked rather than asserted. Draws the
+                         two disjoint halves and the assembly.
+    4. photo_levelset  — marches the same depth field as a level set and compares the volume against
+                         the grid triangulation, then runs `Solid.levelSet` eight times each way to
+                         measure whether `parallel = true` is reproducible. `parallel = false` comes
+                         back identical to the last digit in every regime; `parallel = true` does
+                         not, and how badly depends on the field. The table is the evidence.
+  Every number comes from `afield.examples.chain.PhotoToSolidChain`, which CI runs as the FIELD_TEST
+  `chain.photo-to-solid`, so the boxes are the short readable form of something already guarded.
+  Replay this into a fresh Field with the agent backdoor (field_run_transcript) and execute the four
+  boxes in order. The first is the slow one — about 1.4s to load 99MB of ONNX weights from
+  ~/.afield/onnx/models, once per JVM; after that inference is about 130ms. Executed end-to-end by
+  examples.demo-transcript.exec. The page is public/docs/chain_photo_to_solid.md.
+operations:
+  - create:
+      box: photo_depth
+      name: a photograph, and how far away everything in it is
+      frame: { x: 60.0, y: 60.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.PhotoToSolidChain
+
+          // No depth camera anywhere. One still photograph in, one single-channel map out.
+          val photo = imgFromFile(PhotoToSolidChain.PHOTO, 3).scaleBy(0.45)
+          val (depth, model) = PhotoToSolidChain.depthMapOf(photo)
+
+          // The output is inverse *relative* depth in arbitrary units, so it has to be normalised
+          // against a window; depthMapOf does that against this frame's own range and prints it.
+          // Larger means NEARER, which is why the near floor is the bright band at the bottom.
+          println("photo ${photo.width}x${photo.height} -> depth ${depth.width}x${depth.height}")
+          println("${model.lastInferenceMs}ms on ${model.activeProvider}, input forced to a multiple of 14")
+
+          showImgGrid(
+              "photograph ${photo.width}x${photo.height}" to photo,
+              "depth ${depth.width}x${depth.height} — bright is near" to depth.colormap("inferno"),
+              columns = 2,
+              cellSide = 520,
+          )
+  - create:
+      box: photo_plaque
+      name: the depth map as a closed relief plaque
+      frame: { x: 60.0, y: 400.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.PhotoToSolidChain
+
+          // toReliefMesh is the hop that did not exist until this page: toHeightfieldMesh returns a
+          // *disc* — one boundary loop, chi = 1 — and Manifold refuses an open sheet.
+          val mount = PhotoToSolidChain.mount()
+          val relief = mount.relief
+          val topo = relief.topology()
+          println("relief ${relief.vertexCount} vertices, ${relief.triangleCount} triangles")
+          println("watertight=${topo.isWatertight} manifold=${topo.isManifold} chi=${topo.eulerCharacteristic}")
+          println("boundary loops=${topo.boundaryLoops.size} — a plaque has none, a heightfield has one")
+          println("volume ${"%.6f".format(relief.volume())}, and Manifold agrees to the last digit")
+
+          // The CPU rasteriser is AWT-free (PngEncoder), so it is safe inside a live box on macOS.
+          // Three angles, because a relief read from one is a picture and read from three is a shape.
+          fun view(yaw: Double, pitch: Double) =
+              imgFromBytes(relief.renderPng(MeshView(yawDegrees = yaw, pitchDegrees = pitch, width = 760, height = 560)))
+
+          showImgGrid(
+              "from above — the room, inside out" to view(0.0, 72.0),
+              "three-quarter" to view(34.0, 30.0),
+              "along the rim — the base slab" to view(88.0, 8.0),
+              columns = 3,
+              cellSide = 460,
+          )
+  - create:
+      box: photo_boolean
+      name: mounted in a frame, and what the Boolean owes
+      frame: { x: 60.0, y: 760.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.PhotoToSolidChain
+          import afield.manifold.Solid
+          import afield.manifold.toSolid
+
+          val mount = PhotoToSolidChain.mount()
+          println(mount.summary())
+
+          // Booleans, with the identities any two solids owe each other checked rather than trusted.
+          Solid.scope {
+              val plaque = mount.relief.toSolid() + mount.frame.toSolid()
+              val frame = PhotoToSolidChain.frameAround(2.0, mount.footprintZ)
+              val union = plaque + frame
+              val meet = plaque and frame
+              println("frame genus ${frame.genus} — a slab with a window is a torus")
+              println("mounted genus ${union.genus} in ${union.decompose().size} part — the plaque plugs it")
+              println("union %.9f + meet %.9f = %.9f".format(union.volume, meet.volume, union.volume + meet.volume))
+              println("plaque %.9f + frame %.9f = %.9f".format(plaque.volume, frame.volume, plaque.volume + frame.volume))
+              println("inclusion-exclusion holds to ${"%.2e".format(kotlin.math.abs((union.volume + meet.volume) - (plaque.volume + frame.volume)))}")
+          }
+
+          // mount()'s meshes carry NO normals on purpose — splitting a vertex at a crease is what a
+          // renderer wants and is exactly what stops toSolid() accepting the mesh back. renderPng
+          // adds them itself, so nothing here has to care.
+          fun draw(m: TriMesh, yaw: Double = 30.0, pitch: Double = 34.0) =
+              imgFromBytes(m.renderPng(MeshView(yawDegrees = yaw, pitchDegrees = pitch, width = 760, height = 560)))
+
+          showImgGrid(
+              "relief = plaque - frame" to draw(mount.relief),
+              "the frame, genus 1" to draw(mount.frame),
+              "assembled, genus 0" to draw(triMesh { add(mount.relief); add(mount.frame) }),
+              columns = 3,
+              cellSide = 460,
+          )
+  - create:
+      box: photo_levelset
+      name: "the same solid, marched — and is parallel = true reproducible?"
+      frame: { x: 60.0, y: 1120.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.PhotoToSolidChain
+          import afield.manifold.Solid
+          import afield.manifold.toSolid
+
+          // Two independent constructions of the same object: the grid triangulation, and a marched
+          // level set of the same depth field. Compared against EACH OTHER, not against a constant.
+          val mount = PhotoToSolidChain.mount()
+          val edge = 2.0 / 128
+          Solid.scope {
+              // plaqueVolume, not volume: the field describes the plaque, and `volume` is the plaque
+              // UNION the frame. Comparing against the wrong one of those reads as a 7% disagreement.
+              val marched = PhotoToSolidChain.marchedPlaque(mount.depth, mount.footprintZ, edge, parallel = false)
+              val apart = kotlin.math.abs(marched.volume - mount.plaqueVolume) / mount.plaqueVolume
+              println("grid %.9f, marched %.9f — %.3f%% apart at edgeLength %.4f"
+                  .format(mount.plaqueVolume, marched.volume, apart * 100, edge))
+              println("two constructions that share no code, agreeing to about one marching cell")
+          }
+
+          // Solid.levelSet's KDoc says parallel = true is not reproducible. Eight runs each way, in
+          // two regimes. `floor` erodes the plaque into islands, which is the only thing that changes.
+          println()
+          println("the plaque's own field:")
+          println("  " + PhotoToSolidChain.reproducibilityCensus(mount.depth, mount.footprintZ, 2.0 / 64, -0.12))
+          println("eroded to islands:")
+          println("  " + PhotoToSolidChain.reproducibilityCensus(mount.depth, mount.footprintZ, 2.0 / 64, 0.14))
+  - execute: { box: photo_depth, property: code }
+  - execute: { box: photo_plaque, property: code }
+  - execute: { box: photo_boolean, property: code }
+  - execute: { box: photo_levelset, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 500
