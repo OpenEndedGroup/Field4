@@ -3206,6 +3206,14 @@ tasks.register<JavaExec>("orbitDemo") {
     )
 }
 
+tasks.register<JavaExec>("headTrackedDemo") {
+    configureSteamAudioDemoTask(
+        "afield.examples.steamaudio.HeadTrackedPatternDemoKt",
+        "Renders a pattern placed in a room, heard from a head that turns and walks, to " +
+            "build/demo/head-tracked.wav. Realtime, so it takes as long as it lasts. Headphones.",
+    )
+}
+
 tasks.register<JavaExec>("caveDemo") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.CaveDemoKt",
