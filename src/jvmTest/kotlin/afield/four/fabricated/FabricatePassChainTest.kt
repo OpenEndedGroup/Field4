@@ -369,6 +369,37 @@ class FabricatePassChainTest {
         assertNotEquals(flat.plannedBytes, deep.plannedBytes)
     }
 
+    // --- re-declaring a chain ---
+
+    @Test
+    fun replanningTheSameDeclarationIsIdenticalSoATargetCanBeReused() {
+        // The CPU half of `addPassChain` being idempotent. `addShaderEffect` decides whether to reuse
+        // a pass's existing target by comparing its width, height, format and mip count against the
+        // freshly planned shape, so that decision is only sound if planning the same declaration
+        // twice gives the same shapes. Asserting it here means the GPU-side reuse rule rests on
+        // something checked rather than assumed.
+        val declaration = FabricatePassLibrary.stableFluid(resolution = 128, iterations = 4)
+        val first = FabricatePassChain.plan(declaration, 512, 512, srgb)
+        val second = FabricatePassChain.plan(declaration, 512, 512, srgb)
+        assertEquals(first.passes.map { it.name }, second.passes.map { it.name })
+        assertEquals(first.passes.map { it.shape }, second.passes.map { it.shape })
+        assertEquals(first.plannedBytes, second.plannedBytes)
+    }
+
+    @Test
+    fun changingTheResolutionChangesEveryShapeSoNoTargetCanBeReused() {
+        // The other half of the rule, and the one worth stating: a shape that differs is what makes
+        // the builder allocate rather than carry over, which for a persistent pass is exactly the
+        // "you get a new, empty fluid" behaviour. If the shapes did *not* differ, editing the
+        // resolution would silently do nothing.
+        val small = FabricatePassChain.plan(FabricatePassLibrary.stableFluid(resolution = 128, iterations = 4), 512, 512, srgb)
+        val large = FabricatePassChain.plan(FabricatePassLibrary.stableFluid(resolution = 256, iterations = 4), 512, 512, srgb)
+        assertEquals(small.passes.map { it.name }, large.passes.map { it.name }, "the names are what get replaced")
+        small.passes.zip(large.passes).forEach { (a, b) ->
+            assertNotEquals(a.shape, b.shape, "${a.name} kept its shape across a resolution change")
+        }
+    }
+
     // --- persistent passes: the one reference that may point forwards ---
 
     private fun state(name: String, resolution: Int = 64) = FabricatePassSpec(

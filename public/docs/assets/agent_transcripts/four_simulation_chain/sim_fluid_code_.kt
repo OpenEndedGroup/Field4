@@ -1,96 +1,84 @@
 import afield.four.fabricated.FabricatePassChain
 import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.addPassChain
 import afield.four.util.DownResult
 import afield.four.util.MouseEvent
 import afield.four.util.MouseEvents
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector3f
 
 prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
 
-val r: Renderer = fromContext()
-val b: StandardRenderer.Bundle = fromContext()
+// Twenty-seven passes, declared every run. `addPassChain` replaces passes of the same
+// name, and reuses a target whose shape has not changed — so editing a shader or a number
+// and hitting run remakes the chain without dropping the fluid, while changing
+// `resolution` gives you a new, empty one. That is why there is no `once` here: wrapping
+// the declaration in one would mean a resolution you edited never took effect.
+//
+// `renderer` and `bundle` come from the parent boxes' `prop<>`s through the preamble, so
+// there is nothing to fetch.
+fluid = bundle.addPassChain(
+    FabricatePassLibrary.stableFluid(
+        prefix = "fluid",
+        resolution = 256,
+        iterations = 20,
+        dyeDissipation = 0.99f,
+        vorticity = 24f
+    ) + FabricatePassLibrary.composite(
+        // The chain otherwise ends on the 256x256 simulation grid; this rejoins at full
+        // resolution, and it is the same `composite` the aperture chain uses. It belongs
+        // to *this* chain rather than a second `addPassChain` call: chain input is
+        // `postStack.output()` at call time, so in a later call `CHAIN_INPUT` would mean
+        // this chain's own output and naming `fluid-dye` would fail.
+        name = "fluid-show",
+        blurred = "fluid-dye",
+        sharp = FabricatePassChain.CHAIN_INPUT,
+        blend = 0f,
+        gain = 1f,
+        add = 1f
+    ),
+    printReport = true
+)
+// The frame graph has to re-sync before the new passes are scheduled.
+bundle.attachTo(renderer)
+bundle.present(renderer = renderer)
 
-// Twenty-seven passes, declared once. `fluid-velocity` and `fluid-dye` are persistent, so
-// they get ping-pong targets that survive the frame; everything between them is scratch
-// the planner packs onto five shared slots. `printReport` prints the whole thing — read it
-// before believing the picture, because a chain planned at the wrong resolution renders
-// something perfectly plausible.
-once.fluid {
-    // The composite is part of **this** chain, not a second `addPassChain` call, and that
-    // is not a style preference. `addPassChain` plans against `postStack.output()` at the
-    // moment it is called, so in a later call `CHAIN_INPUT` means *this chain's output* —
-    // and a composite in that later chain naming `fluid-dye` as its blurred input fails
-    // with "fluid-dye is not a pass in this chain". Declaring both together is what makes
-    // `sharp = CHAIN_INPUT` mean the full-resolution frame the fluid is being laid over.
-    val c = b.addPassChain(
-        FabricatePassLibrary.stableFluid(
-            prefix = "fluid",
-            resolution = 256,
-            iterations = 20,
-            dyeDissipation = 0.99f,
-            vorticity = 24f
-        ) + FabricatePassLibrary.composite(
-            // The chain otherwise ends on the 256² simulation grid; this rejoins at full
-            // resolution, and it is the same `composite` the aperture chain uses.
-            name = "fluid-show",
-            blurred = "fluid-dye",
-            sharp = FabricatePassChain.CHAIN_INPUT,
-            blend = 0f,
-            gain = 1f,
-            add = 1f
-        ),
-        renderer = r,
-        printReport = true
-    )
+// ── painting ──
+//
+// A lambda *binds*: the supplier is re-read every time the push buffer is written, so
+// these four lines are the whole animation and the drag handler below only moves a `var`.
+// `fluid[name]` sets every pass that declares `name`, which is why one assignment reaches
+// both the force pass and the dye pass — `stableFluid` gives them the same names on
+// purpose.
+var paintAt = vec(0.5, 0.5)
+var paintPush = vec(0, 0)
+var paintMass = 0f
 
-    // ── painting. Nothing in the library reads a mouse; the splat is push constants,
-    //    which is the seam that keeps the chain a declaration. The `force` and `dye`
-    //    passes deliberately share these names, so one handler drives both.
-    //
-    //    The `onDown` is not optional even though it does nothing: MouseEvents only polls
-    //    the buttons some handler has *asked* about (`buttonsRequested = down.keys +
-    //    up.keys`), and `onDrag` only fires while a button is down — so with no
-    //    down-handler registered for "left", no drag ever arrives and the fluid sits there
-    //    looking broken.
-    //    And the lambdas name their parameter type on purpose. `onDown` and `onUp` are
-    //    each overloaded on `() -> Boolean` and a `(MouseEvent) -> …` form, and a bare
-    //    `{ true }` is an overload resolution ambiguity — everywhere, not just in a box;
-    //    the only other caller in the repo, OrbitControls, types its parameter too.
-    //    Typing the parameter is what resolves it.
-    val mouse = MouseEvents(r)
-    mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
-    mouse.onDrag("fluid-paint") { ev ->
-        val u = (ev.pos.x / r.window.width.toFloat()).coerceIn(0f, 1f)
-        val v = (ev.pos.y / r.window.height.toFloat()).coerceIn(0f, 1f)
-        listOf("fluid-force", "fluid-dye").forEach { pass ->
-            c.setPush(pass, "splatCenter", Vector2f(u, v))
-            c.setPush(pass, "splatVelocity", Vector2f(ev.delta.x * 30f, ev.delta.y * 30f))
-            c.setPush(pass, "splatColor", Vector3f(0.35f, 0.8f, 1.0f))
-            c.setPush(pass, "splatRadius", 0.04f)
-            c.setPush(pass, "splatMass", 0.05f)
-        }
-        true                       // returning false *removes* the handler
-    }
-    // Stop injecting the moment the button comes up, or the last splat keeps pumping
-    // forever at wherever the drag happened to end.
-    mouse.onUp("left", "fluid-paint") { _: MouseEvent ->
-        listOf("fluid-force", "fluid-dye").forEach { pass ->
-            c.setPush(pass, "splatVelocity", Vector2f(0f, 0f))
-            c.setPush(pass, "splatMass", 0f)
-        }
-        true
-    }
+fluid["splatCenter"] = { paintAt }
+fluid["splatVelocity"] = { paintPush }
+fluid["splatMass"] = { paintMass }
+fluid["splatColor"] = vec(0.35, 0.8, 1.0)
+fluid["splatRadius"] = 0.04f
 
-    b.attachTo(r)
-    b.present(renderer = r)
-    c
+// Handlers are held by name, so re-running replaces them rather than stacking a second
+// copy — no `once` needed here either.
+//
+// The `onDown` is not optional even though it does nothing: MouseEvents only polls the
+// buttons some handler has *asked* about (`buttonsRequested = down.keys + up.keys`), and
+// `onDrag` only fires while a button is down, so without it no drag ever arrives and the
+// fluid sits there looking broken. And both lambdas name their parameter type because
+// `onDown`/`onUp` are overloaded on `() -> Boolean` and a `(MouseEvent) -> ...` form, and a
+// bare `{ true }` is ambiguous — everywhere, not just in a box.
+val mouse = MouseEvents(renderer)
+mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
+mouse.onDrag("fluid-paint") { ev ->
+    paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
+    paintPush = vec(ev.delta.x * 30, ev.delta.y * 30)
+    paintMass = 0.05f
+    true                       // returning false *removes* the handler
 }
-
-// ── live knobs. Edit a number, hit run. No rebuild, no reallocation. ──
-fluid.setPush("fluid-dye", "dissipation", 0.99f)
-fluid.setPush("fluid-force", "vorticity", 24f)
+mouse.onUp("left", "fluid-paint") { _: MouseEvent ->
+    paintPush = vec(0, 0)      // or the last splat pumps forever where the drag ended
+    paintMass = 0f
+    true
+}
 
 println("drag in the window to paint. state fields: ${fluid.stateNames()}")
