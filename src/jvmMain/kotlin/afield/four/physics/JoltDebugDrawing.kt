@@ -12,8 +12,25 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 
-// Wireframe FLine builders for the Jolt shapes, consumed by
-// JoltPhysicsWorld.debugWireLines3D; see JoltPhysicsWorld.kt for the physics API.
+/**
+ * Wireframes for the Jolt collision shapes: what `JoltPhysicsWorld.debugWireLines3D` is made of.
+ *
+ * Nothing here is public, which is why this page lists no declarations for it. The file holds one
+ * builder per case of [JoltShape], an axes gizmo, and the transform and colour steps that follow,
+ * all of them `internal` to [JoltPhysicsWorld]'s use. Each builder draws in the shape's own local
+ * space, centred on the origin, and `transformLines` is what carries the result out to a body's
+ * pose.
+ *
+ * The drawings are outlines rather than meshes, because they are there to be seen through while
+ * something else is rendered inside them. A sphere is three great circles, not a tessellation. A
+ * capsule is a ring at each end, a ring at the waist when there is a cylinder to have one, and two
+ * stadium profiles at right angles. An infinite plane becomes a square patch around the point on it
+ * nearest the origin, with a stub along the normal, which points away from the solid side.
+ *
+ * `colorForBodyName` hashes the name and lifts each channel away from black, which is what keeps a
+ * body the same colour from run to run without anyone choosing one.
+ */
+
 private const val TAU = 2.0 * PI
 
 internal fun wireCuboid(width: Double, height: Double, depth: Double): List<FLine> {

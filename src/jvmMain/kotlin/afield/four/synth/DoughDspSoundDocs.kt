@@ -24,31 +24,41 @@ expect:
 */
 
 /**
- * Headless **offline sound-render harness** for the dough DSP ports in [DoughDsp], and the only
- * source behind the `audio="…"` docs-capture mode (see `public/docs_hooks.py`).
+ * Headless **offline sound-render harness** for the dough DSP ports in `DoughDsp.kt`: every audible
+ * example on the docs page is produced by running one of those primitives on the CPU.
  *
- * Every scene in [SCENES] is produced by actually *running* a primitive on the CPU — a pluck into
- * [PlateReverb], a sawtooth through a sweeping [Phaser] / [ChamberlinLowpass], an oscillator gated
- * by [CurvedADSR], a sine driven through [SoftDistort], and raw [ZawOsc] / [PulzeOsc] tones — never
- * a synthesized or hand-authored waveform. There is no realtime engine, JACK device, GPU or Field
- * window: signals are block-rendered into a `FloatArray` exactly like [DoughDspPlotGallery], then
- * written to a real 16-bit PCM WAV via [WavFloatArrayWriter]. The render is deterministic, so the
- * committed docs `.wav` regenerates byte-stably at docs-build.
+ * Each scene in [SCENES] renders a real graph. A pluck into [PlateReverb], a sawtooth through a
+ * sweeping [Phaser] or [ChamberlinLowpass], an oscillator gated by [CurvedADSR], a sine driven
+ * through [SoftDistort], raw [ZawOsc] and [PulzeOsc] tones: none of them is a synthesized or
+ * hand-authored waveform. There is no realtime engine, no audio device, no GPU and no Field window.
+ * Signals are block-rendered into a `FloatArray`, the same way [DoughDspPlotGallery] renders the
+ * samples it plots, then written to a 16-bit PCM WAV through [WavFloatArrayWriter]. The render is
+ * deterministic, so a committed docs `.wav` regenerates byte-stably at docs-build.
  *
- * The public building blocks are the top-level `dough*` helpers below ([doughRenderMono],
- * [doughRenderStereoMono], [doughRenderGated], [doughPluckEnv], and the plot-shaping
- * [doughAbsEnvelope] / [doughShortTimeRms] / [doughShortTimeBrightness] / [doughWaveWindow]). They
- * are the SAME functions the docs page's runner blocks call, so the code a reader sees construct a
- * primitive and plot it is exactly the code that runs — and it builds the identical graph the
- * `audio=` WAV is rendered from. `afield.four.synth` is auto-imported into every box, so a docs
- * fence can call them unqualified.
+ * This is the default renderer for the `audio="…"` docs-capture mode (see `public/docs_hooks.py`). A
+ * fence can name a different one with `audio-renderer=`; `CaSoundDocs` and `FaustPolySoundDocs` are
+ * two harnesses of this shape that other pages reach that way.
  *
- * As a FIELD_TEST (`synth.dough-dsp.sound`) it renders every scene to a temp dir and asserts real
- * correctness (a valid WAV header on disk, plus per-scene sample-level checks: the reverb tail
- * decays, the ADSR rhythm has silent gaps, the filter sweep gets brighter, the drive sweep adds
- * harmonics, the raw oscillator is periodic). It writes NO committed assets during the test.
+ * The public building blocks are the top-level `dough*` helpers below: [doughRenderMono],
+ * [doughRenderStereoMono], [doughRenderGated] and [doughPluckEnv] to render, then
+ * [doughAbsEnvelope], [doughShortTimeRms], [doughShortTimeBrightness] and [doughWaveWindow] to shape
+ * what is plotted. The docs page's runner blocks call those same functions, so the code a reader sees
+ * building a primitive and plotting it is the code that ran, and the graph it builds is the graph the
+ * `audio=` WAV was rendered from. `afield.four.synth` is auto-imported into every box, so a docs
+ * fence calls them unqualified.
+ *
+ * As a FIELD_TEST (`synth.dough-dsp.sound`) it renders every scene to a temp dir and checks the
+ * samples it got: a valid WAV header on disk whose declared sample rate and data size agree with the
+ * bytes, and then per scene, that the reverb tail decays, that the ADSR rhythm has silent gaps, that
+ * the filter sweep gets brighter, that the drive sweep adds harmonics, and that the raw oscillator is
+ * periodic. It writes no committed assets while doing that.
  *
  * Add a sound by appending one [Scene] to [SCENES].
+ */
+
+/**
+ * The catalogue of rendered scenes, the two entry points the docs page calls, and the FIELD_TEST that
+ * renders every scene and checks it.
  */
 object DoughDspSoundDocs {
 
@@ -64,6 +74,13 @@ object DoughDspSoundDocs {
         val yTitle: String? = null,
     )
 
+    /**
+     * One audible example: what to render, what to plot from it, and what has to be true of it.
+     *
+     * [render] is called once per use and returns fresh samples, so the WAV the docs page embeds and
+     * the plot it draws alongside come from two separate renders of the same graph. [verify] carries
+     * the claim the scene is making about the primitive, and runs only under the FIELD_TEST.
+     */
     class Scene(
         val name: String,
         val title: String,

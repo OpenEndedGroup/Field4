@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13869 public symbols across 350 source files**, 7648 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13869 public symbols across 350 source files**, 7774 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -16,14 +16,14 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 27 | 542 | 201 (37%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 27 | 821 | 358 (43%) | Making a shape behave. |
+| [Simulation](simulation.md) | 27 | 821 | 414 (50%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 398 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 25 | 1059 | 405 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
-| [Patterns](patterns.md) | 27 | 963 | 461 (47%) | Musical time, as a value. |
+| [Synthesis](synthesis.md) | 25 | 1059 | 436 (41%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Patterns](patterns.md) | 27 | 963 | 500 (51%) | Musical time, as a value. |
 | [Audio](audio.md) | 18 | 871 | 257 (29%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2218 | 766 (34%) | Field's small languages, from the host side. |
@@ -65,9 +65,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [autodiff_geometry.kt](math.md#autodiff-geometry-kt) | Math | 78 | 72 | Differentiable geometry: tracked vectors, planar inverse kinematics on an `FLine` chain, and a differentiable circle packing — the part of the AD layer whose results are drawable. | [Differentiating Functions](../autodiff_examples.md) |
 | [autodiff_optimize.kt](math.md#autodiff-optimize-kt) | Math | 45 | 44 | Gradient-descent optimizers that consume the exact gradients from `autodiff.kt` — `sgd`, `adam` and `lbfgs`, behind one `minimize` front door. | [Differentiating Functions](../autodiff_examples.md) |
 | [BandAnalysis.kt](audio.md#bandanalysis-kt) | Audio | 10 | 7 |  | [A pattern that moves particles](../chain_pattern_particles.md) |
-| [BeatLaunch.kt](patterns.md#beatlaunch-kt) | Patterns | 8 | 0 |  |  |
+| [BeatLaunch.kt](patterns.md#beatlaunch-kt) | Patterns | 8 | 7 | Quantised launching: `.onBeat(…)` holds any launchable value until the next boundary of a `PatClock`'s grid, and `waitForBeat(…)` is the same wait spelled as a suspend call for code inside `frames { }` or `loop { }`. |  |
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
-| [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 1 |  | [Boolean network music examples](../boolean_network_music_examples.md) |
+| [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 21 | Gives a `BooleanNetwork`'s states a duration, which is all it takes to read one as music. | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 20 |  |  |
 | [CandidateBoard.kt](audio-ai.md#candidateboard-kt) | Audio AI | 1 | 1 | The candidate board: the instrument for choosing between the alternatives a generation produced. |  |
 | [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 42 | 40 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
@@ -105,9 +105,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 | Offline rendering of a pattern through the **real** Dirt sample library. | [Sound: from a pattern to something you can hear](../sound.md) |
 | [DirtSamples.kt](audio.md#dirtsamples-kt) | Audio | 59 | 4 | The TidalCycles Dirt-Samples collection loaded, indexed, and played from Field. | [Boolean network music examples](../boolean_network_music_examples.md) |
-| [Dough.kt](synthesis.md#dough-kt) | Synthesis | 21 | 1 |  | [Making a sound in Field: every path there is](../sound_paths.md) |
+| [Dough.kt](synthesis.md#dough-kt) | Synthesis | 21 | 16 | dough itself, run as WebAssembly inside GraalVM, and the two wrappers that hand its output to Field's audio engine. | [Making a sound in Field: every path there is](../sound_paths.md) |
 | [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 | Native Kotlin ports of low-level DSP from dough, carrying dough's AGPL-3.0 terms. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
-| [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 13 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
+| [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 14 | Headless **offline sound-render harness** for the dough DSP ports in `DoughDsp.kt`: every audible example on the docs page is produced by running one of those primitives on the CPU. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [Dyn4jScene.kt](simulation.md#dyn4jscene-kt) | Simulation | 43 | 17 | A 2D rigid-body scene: dyn4j's `World` behind a Kotlin surface that addresses bodies by handle, with a converter from Field's own drawing into collision geometry. |  |
 | [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
@@ -137,7 +137,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 18 |  |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
-| [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 0 |  |  |
+| [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 15 | The file that opens an audio device: the OpenAL output stream Field plays through, the optional capture stream `audioInput()` reads from, and the mixer that sums every registered patch into it. |  |
 | [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 10 | FieldML's front end behind one call: source text in, and whatever its four stages managed to produce out. |  |
 | [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 3 | Completion and hover for a FieldML box: what the editor offers under the caret, and what the card over a symbol says. |  |
 | [FieldMLInterface.kt](languages.md#fieldmlinterface-kt) | Languages | 13 | 13 | FieldML as a box language: set a box's Main Language to FieldML and its children hold FieldML programs instead of Kotlin. |  |
@@ -188,10 +188,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [InteractiveSolving.kt](solvers.md#interactivesolving-kt) | Solvers | 43 | 28 | The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and over at interactive rates. |  |
 | [interpolants.kt](math.md#interpolants-kt) | Math | 10 | 10 | `smoothTo` wraps a target-producing lambda so that reading it eases toward the target instead of jumping to it. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
 | [JobMonitor.kt](audio-ai.md#jobmonitor-kt) | Audio AI | 3 | 3 | The job monitor: the service's own live view of every durable job, embedded in a box output. | [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Short-time spectral spaces](../audio_ai_spectral_embeddings.md) |
-| [JoltCameraFrustumPlanes.kt](simulation.md#joltcamerafrustumplanes-kt) | Simulation | 21 | 0 |  |  |
-| [JoltDebugDrawing.kt](simulation.md#joltdebugdrawing-kt) | Simulation | 0 | 0 |  |  |
-| [JoltPhysicsBootstrap.kt](simulation.md#joltphysicsbootstrap-kt) | Simulation | 2 | 1 |  |  |
-| [JoltPhysicsWorld.kt](simulation.md#joltphysicsworld-kt) | Simulation | 116 | 1 |  |  |
+| [JoltCameraFrustumPlanes.kt](simulation.md#joltcamerafrustumplanes-kt) | Simulation | 21 | 21 | Walls for what the camera can see: six static Jolt planes, kept on the view frustum as it moves. |  |
+| [JoltDebugDrawing.kt](simulation.md#joltdebugdrawing-kt) | Simulation | 0 | 0 | Wireframes for the Jolt collision shapes: what `JoltPhysicsWorld.debugWireLines3D` is made of. |  |
+| [JoltPhysicsBootstrap.kt](simulation.md#joltphysicsbootstrap-kt) | Simulation | 2 | 2 | Getting the jolt-jni native library loaded, which has to happen once per JVM before any Jolt call. |  |
+| [JoltPhysicsWorld.kt](simulation.md#joltphysicsworld-kt) | Simulation | 116 | 35 | Rigid bodies in three dimensions, from the Jolt physics engine: the 3D counterpart to `Dyn4jScene`, and a different tool from `SimdVerlet`, which has no notion of a rigid body at all. |  |
 | [JSONLineServer.kt](data.md#jsonlineserver-kt) | Data | 32 | 1 | A TCP listener that turns newline-delimited JSON into a value a box can read each frame. |  |
 | [jsonparsing.kt](data.md#jsonparsing-kt) | Data | 18 | 12 | Two related things: a small hand-written JSON reader, and a macro that generates a typed parser from a terse schema. |  |
 | [JSONProcess.kt](data.md#jsonprocess-kt) | Data | 14 | 0 | Runs an external command and reads newline-delimited JSON from its stdout. |  |
@@ -259,7 +259,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 5 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [Parser.kt](languages.md#parser-kt) | Languages | 5 | 0 |  |  |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 | The parameter-application algebra: combining patterns of different types, and choosing whose rhythm survives. | [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
-| [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 0 |  |  |
+| [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 11 | The transport everything scheduled in `afield.four.synth` reads: one monotonic number that can be paused, sought and subdivided, so that patterns, Boolean networks and audio launches share a single notion of the current time. |  |
 | [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 | Compositional structure: the transforms that build a piece out of a pattern, and the pitch vocabulary — scales, named chords, and voice leading. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How completions are ranked](../completion_ranking.md), [Faust](../faust.md) |
 | [PatCondense.kt](patterns.md#patcondense-kt) | Patterns | 26 | 15 | The shortest mini-notation expression that plays a given rhythm. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 | Bridge from `pat(...)` into scalar functions (`Functions.Fn`). |  |
@@ -276,7 +276,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatKolakoski.kt](patterns.md#patkolakoski-kt) | Patterns | 7 | 7 | Kolakoski rhythms: a bar whose own run lengths are written into it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatMiniNotation.kt](patterns.md#patmininotation-kt) | Patterns | 17 | 15 | The **mini-notation catalogue**: the forms a `pat("…")` string can take, one entry each, with the piano roll and the audio clip the documentation publishes under it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 | Where a rendered pattern's notes actually start, measured from the audio. |  |
-| [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 0 |  |  |
+| [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 1 | The step between `pat("bd sd").respond { … }` and a pattern that is actually playing: the return-value handler that recognises a `PatResponseSpec` coming back from a box and runs it. |  |
 | [PatPianoRollGallery.kt](patterns.md#patpianorollgallery-kt) | Patterns | 17 | 14 | Headless **piano-roll gallery** for the pattern language, drawing the operators defined across `TidalPatterns.kt`, `PatSignals.kt`, `PatAlgebra.kt` and `PatComposition.kt`. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatPitchDetection.kt](patterns.md#patpitchdetection-kt) | Patterns | 49 | 25 | What pitch a rendered pattern is actually sounding, measured from the audio. |  |
 | [PatSignals.kt](patterns.md#patsignals-kt) | Patterns | 29 | 29 | Continuous (signal) patterns, and the discretisers that turn them back into events. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md) |
