@@ -91,7 +91,8 @@ prose — which makes the page a second copy with no assertion behind it.
     map is the fix and would be cheap: the table's first column is the count and its second names
     the family. Until then, anyone editing that table should read `EXPECTED_FENCE_COUNT` rather
     than counting.
-- **The page also carried "all forty-one currently score 1.0000."** Forty-one appears nowhere in
-  either guard; 51 is the total and 50 is the total less the one allowlisted asset. It was
-  transcription with no guard behind it, and has been deleted rather than corrected to a number
-  that would rot the same way.
+- **"All of them currently score 1.0000" is printed, not asserted.** The page carried this as a
+  count — "all forty-one", corrected to "all fifty-one" by `bd64dcdad` — and the count was the
+  third number in the same paragraph with nothing behind it. The assertion is against
+  `REPRODUCIBILITY_FLOOR`; the tally of how many currently sit at 1.0000 is output. The sentence is
+  gone from the page rather than corrected again.
