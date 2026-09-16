@@ -3,6 +3,28 @@ package afield.four.fabricated
 import afield.four.texture.vkFormatBytesPerPixel
 
 /**
+ * The vocabulary for declaring a chain of post passes that are not all the same shape, and the pure
+ * planner that resolves one.
+ *
+ * A chain is a list of [FabricatePassSpec]. Each spec names its pass, carries its fragment shader,
+ * and says how big it wants to be ([FabricatePassSize]), in what format, which earlier pass feeds
+ * its primary sampler, and which other earlier passes it wants bound to named samplers. A size may
+ * be absolute, a fraction of the pass's own input, or a fraction of the texture entering the chain,
+ * which is what lets one chain hold a full-resolution pass, a quarter-resolution blur and a
+ * half-float intermediate.
+ *
+ * [FabricatePassChain.plan] turns that list into a [FabricatePassChainPlan] without making a Vulkan
+ * call: it resolves every target shape and every sampler binding, works out which pass last reads
+ * each pass's output, and puts two passes on the same physical target when their outputs never
+ * overlap in time *and* their shapes match. Being arithmetic and reachability rather than GPU state
+ * is what lets `FabricatePassChainTest` exercise all of it on the CPU, which this layer needs more
+ * than most: a resolution resolved one texel wrong renders a picture that looks entirely plausible.
+ *
+ * [FabricatePassChainPlan.report] prints the resolution it arrived at — every pass with its shape,
+ * samplers and target slot, and the memory total against one full-resolution target per pass.
+ */
+
+/**
  * Declarative, **heterogeneous** pass chains for [FabricatePostStack] — every pass may have its own
  * resolution, its own format, and its own named inputs.
  *

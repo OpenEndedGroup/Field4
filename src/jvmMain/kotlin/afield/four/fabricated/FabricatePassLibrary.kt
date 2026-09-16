@@ -4,6 +4,23 @@ import afield.stdlib.linalg.Vector2f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
 
 /**
+ * Worked multi-resolution passes, as lists of [FabricatePassSpec] ready to hand to a chain.
+ *
+ * Six recipes and two chains assembled from them: a downsample pyramid, a separable Gaussian blur, a
+ * disc aperture blur, an upsample-and-add, a bright pass and a composite, then
+ * [FabricatePassLibrary.apertureChain] and [FabricatePassLibrary.bloomPyramid]. Every one returns
+ * specs rather than touching the GPU, so a chain can be composed from several of them, planned,
+ * printed and asserted on before anything is allocated, and a caller can splice a rung, reorder one
+ * or drop one.
+ *
+ * Four of the fragment shaders live here as string constants; the separable blur reuses the nine-tap
+ * kernel the bloom chain already ships rather than keeping a second copy in step with it. All of
+ * them follow the post-stack conventions: a fullscreen triangle, `vUv` texel-aligned so `v = 0` is
+ * image row 0, the primary input bound as `sourceTex`, and every offset scaled by the source's texel
+ * size, so a pass reads its input's texels rather than assuming its own resolution matches.
+ */
+
+/**
  * A library of worked multi-resolution passes, expressed as [FabricatePassSpec] fragments.
  *
  * These are the passes a real-time 2D lighting or depth-of-field effect is actually made of, and the
