@@ -10,6 +10,43 @@ import com.ableton.link.LinkAudioSource
 import com.ableton.link.SessionState
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Ableton Link from inside Field: a tempo, beat and phase shared with every Link peer on the
+ * network, and audio published to and taken from them.
+ *
+ * [LinkAudioInterface] is the whole surface and there is one of it per process. `shared` opens it
+ * or hands back the one already open, `currentOrNull` asks whether there is one without opening
+ * one, and `destroyShared` closes it so that the next `shared` builds a new one. Boxes usually
+ * arrive through `abletonLink`, `linkTiming`, `linkAudioOut`, `linkAudioIn` and
+ * `linkAudioInStereo` in `synth.kt`, none of which ask the caller for an interface.
+ *
+ * The timing half is a session state every peer on the network shares. `setTempo`, `setPlaying`
+ * and `requestBeat` write into it, `enableStartStopSync` decides whether transport start and stop
+ * travel with it, and [LinkTimingSnapshot] is the read: tempo, beat, phase, peer count and Link's
+ * own microsecond clock, all taken at one instant. [FieldAudioEngine] takes a snapshot per audio
+ * block and hangs it on the [SynthContext] every [Signal] renders against, which is where
+ * `linkBeat`, `linkPhase` and `linkTempo` come from. [ParamScope] re-exposes the same values, so a
+ * [Param] expression can read them too.
+ *
+ * The audio half is Link Audio, which carries sound between peers of that same session.
+ * `enableAudioOutput` publishes a named channel and `FieldAudioEngine.enableLinkOutput` is what
+ * points the mix at it; `channels` lists the channels the session is carrying, and `monoInput` and
+ * `stereoInput` subscribe to one of them and hand back a [Signal] the graph uses like any other
+ * source. Sonic Pi's `link_audio` reads a channel published this way, and
+ * [Sonic Pi](../sonic_pi.md) covers that end of it, including the Link visibility setting that has
+ * to be on before either side can see the other.
+ *
+ * There are two `SessionState`s here because Link has two. One is captured and committed under a
+ * lock for calls arriving from a box or the UI; the other is captured inside the audio block, so
+ * that the beat the block starts on and the buffer rendered for it are committed together.
+ * `linkAudioCommits`, `linkAudioCommitFailures` and `linkAudioInvalidBuffers` count how that goes,
+ * and they are live-graph children along with the peer count and the channel list, so an open
+ * interface can be walked by a live-graph query.
+ *
+ * None of the Link bindings are Kotlin — `com.ableton.link` comes from `libs/ableton-link-ffm.jar`,
+ * over a native Link library the build points at with the `ableton.link.library` system property.
+ */
+
 data class LinkTimingSnapshot(
     val enabled: Boolean,
     val audioEnabled: Boolean,

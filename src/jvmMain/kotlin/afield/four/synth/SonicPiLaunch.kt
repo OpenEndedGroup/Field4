@@ -17,6 +17,26 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * The handle Field holds while Sonic Pi is playing, and the registration that ties it to a box's
+ * lifecycle.
+ *
+ * `SonicPi.kt` sends the code and returns a [SonicPiLaunch] naming the Sonic Pi job that resulted;
+ * this file is what makes returning one from a box mean anything. `registerSonicPiLaunchReturnValue`
+ * adds a handler to the return-value registry which runs a coroutine registered as one of the box's
+ * jobs, reports the box as running while Sonic Pi says the job is alive and this launch is still
+ * the box's current one, and stops the job on the way out. That stop runs `NonCancellable`,
+ * because the usual reason for reaching it is that the box was stopped and the stop still has to
+ * get to Sonic Pi.
+ *
+ * Which job is the awkward part, and `awaitJobId` is where it is settled: it waits for an id
+ * different from the one that was current when the code was sent, so a re-running box cannot
+ * mistake the job it just replaced for its own.
+ *
+ * The handler polls the job every 50 ms, which is also the rate the sounding lines are sampled at
+ * to decorate the box while `showActivity` is set.
+ */
+
 private const val SONIC_PI_LAUNCH_POLL_MILLIS = 50L
 private const val SONIC_PI_JOB_START_TIMEOUT_MILLIS = 15_000L
 
