@@ -300,7 +300,7 @@ of their path. They are the dough wasm engine driven by a pattern, published on
 [A pattern in space](pat_spatial.md) — and they are **half a path on purpose**: the mono source
 Steam Audio is handed, not the spatialised output, because that half is realtime-only and needs a
 binary this repository does not carry. That page
-[explains the absent figure](pat_spatial.md#what-there-is-no-figure-of-and-why) rather than
+[explains the absent figure](pat_spatial.md#why-there-is-no-clip-of-the-output) rather than
 publishing a substitute for it.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the homepage
