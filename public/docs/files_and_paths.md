@@ -146,11 +146,11 @@ It holds the most recent `FileManager.maxAccessHistoryEntries` lookups, 1024 by 
 emptied when the session's file manager is first created, so it is a recent-activity log rather than
 a complete one.
 
-## One piece of trivia
+## `abslutePath`, the misspelling that still works
 
-`String.abslutePath`, misspelled, resolves exactly as `absolutePath` does. It is deprecated rather
-than deleted because a live-coded document is a file on somebody's disk, not a call site that can be
-recompiled. If you meet it in old box code, it does nothing different.
+`String.abslutePath` resolves exactly as `absolutePath` does. It is deprecated rather than deleted
+because a live-coded document is a file on somebody's disk, not a call site that can be recompiled.
+If you meet it in old box code, it does nothing different.
 
 ---
 
