@@ -4,12 +4,14 @@ import afield.manifold.Solid
 import afield.manifold.toSolid
 import afield.onnx.DepthAnything
 import afield.stdlib.Img
+import afield.stdlib.MeshView
 import afield.stdlib.TriMesh
 import afield.stdlib.gaussianBlur
 import afield.stdlib.imgFromFile
 import afield.stdlib.AxisAlignedBoundingBox3D
 import afield.stdlib.Vec3
 import afield.stdlib.reliefMesh
+import afield.stdlib.renderPng
 import afield.stdlib.resize
 import afield.stdlib.saveStl
 import afield.stdlib.scaleBy
@@ -143,6 +145,63 @@ object PhotoToSolidChain {
         val outer = Solid.cube(outerX, BASE, outerZ, center = true)
         val window = Solid.cube(footprintX - overlap, BASE * 4, footprintZ - overlap, center = true)
         return (outer - window).translated(0.0, -BASE / 2, 0.0)
+    }
+
+    /**
+     * The whole route in one value: the photograph's relief and the frame it is mounted in, as two
+     * *disjoint* meshes plus the numbers the hops owed each other.
+     *
+     * Disjoint on purpose. The union is the object, but a renderer wants the relief and the frame to
+     * carry different materials, and the way to get that without two coincident surfaces fighting
+     * over the same triangles is to take the relief as `plaque − frame`. Their volumes then add to
+     * the union's exactly, which [volume] reports and [main] checks.
+     *
+     * @param grid the relief's grid width. One vertex per pixel at 266 is 70k grid points, and a
+     *   Boolean over that is minutes rather than seconds, so the depth map is resampled first — the
+     *   resolution decision belongs here, visible, before any topology exists to get wrong.
+     */
+    data class Mounted(
+        val relief: TriMesh,
+        val frame: TriMesh,
+        val footprintZ: Double,
+        val volume: Double,
+        val genus: Int,
+        val parts: Int,
+        val depth: Img,
+    ) {
+        /** One line, for a box that wants to print what it just built. */
+        fun summary(): String =
+            "relief ${relief.triangleCount} tris + frame ${frame.triangleCount} tris, " +
+                "volume %.6f, genus $genus in $parts part".format(volume)
+    }
+
+    /**
+     * [Mounted] for the photograph that ships with Field. See [PHOTO].
+     *
+     * @param blurSigma the smoothing applied to the depth map before it becomes geometry. `0.7` is
+     *   about the smallest that still keeps the plaque's walls climbable rather than vertical; the
+     *   default in [depthMapOf] is deliberately softer, for a field that is going to be marched.
+     */
+    fun mount(grid: Int = 176, longestSide: Int = 266, blurSigma: Double = 0.7): Mounted {
+        val photo = imgFromFile(PHOTO, 3).scaleBy(0.45)
+        val (depth, _) = depthMapOf(photo, longestSide, blurSigma)
+        val small = depth.resize(grid, (grid * depth.height) / depth.width)
+        val footprintZ = WIDTH * small.height / small.width
+        val plaque = small.toReliefMesh(scale = RELIEF, width = WIDTH, baseThickness = BASE)
+        return Solid.scope {
+            val solid = plaque.toSolid().checked("the plaque")
+            val frame = frameAround(WIDTH, footprintZ).checked("the frame")
+            val mounted = (solid + frame).checked("the mounted plaque")
+            Mounted(
+                relief = (solid - frame).toTriMesh(normals = true),
+                frame = frame.toTriMesh(normals = true),
+                footprintZ = footprintZ,
+                volume = mounted.volume,
+                genus = mounted.genus,
+                parts = mounted.decompose().size,
+                depth = small,
+            )
+        }
     }
 
     /**
@@ -317,6 +376,19 @@ object PhotoToSolidChain {
                 ),
             )
 
+            // [mount] is the one-call form the boxes and the page use, and it splits the object in
+            // two so the two halves can take different materials. The split has to be exact or the
+            // render is of a different shape than the arithmetic above describes.
+            val split = mount()
+            check(
+                "mount()'s two disjoint halves add up to the whole",
+                near(split.relief.volume() + split.frame.volume(), split.volume, 1e-7) &&
+                    split.genus == 0 && split.parts == 1,
+                "relief %.9f + frame %.9f = %.9f against union %.9f; genus ${split.genus}, ${split.parts} part"
+                    .format(split.relief.volume(), split.frame.volume(),
+                        split.relief.volume() + split.frame.volume(), split.volume),
+            )
+
             // ---- the census: g = 1 - k, re-measured on plaques -----------------------------
             val spread = WIDTH * 1.5
             val census = (1..4).map { k ->
@@ -333,12 +405,21 @@ object PhotoToSolidChain {
             )
 
             // ---- printable ----------------------------------------------------------------
-            val stl = File(System.getProperty("java.io.tmpdir"), "photo-to-solid-plaque.stl")
+            // Into build/, not into the tree: a test that writes a tracked file fails the tree-write
+            // guard, and quite right too.
+            val out = File("build/chain-photo-to-solid").apply { mkdirs() }
+            val stl = File(out, "photo-to-solid-plaque.stl")
             mounted.toTriMesh(normals = true).saveStl(stl)
             check(
                 "the mounted plaque writes an STL", stl.length() > 0,
-                "${stl.length()} bytes at ${stl.absolutePath}",
+                "${stl.length()} bytes at ${stl.path}",
             )
+            // Look at it. `renderPng` is the AWT-free CPU rasteriser, so this is the same picture the
+            // boxes draw, and a figure nobody opens is not evidence.
+            for ((label, mesh) in listOf("relief" to split.relief, "frame" to split.frame)) {
+                File(out, "$label.png").writeBytes(mesh.renderPng(MeshView(width = 900, height = 620), label))
+            }
+            println("  figures in ${out.path}: relief.png, frame.png, ${stl.name}")
         }
 
         // The recorded claim was first seen on a field that marched to 46, 47 or 48 components, so
