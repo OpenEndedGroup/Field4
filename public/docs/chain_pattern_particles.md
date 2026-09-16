@@ -44,7 +44,7 @@ patSynth(pat("bd ~ sd ~, hh*8"), cps = 2.0)
 Stopping the box stops the voices and the feeder thread. `PatSynthLaunch` is also a
 `StereoRenderable`, so it goes into a larger graph wherever a `Signal` would.
 
-## The property that makes it a scheduler rather than a quantiser
+## Every note starts on its own frame
 
 A scheduler that started each note at the top of whichever block it fell in would sound fine, pass
 every level and onset check, and be wrong. The symptom is that its output changes when the engine's
@@ -89,7 +89,7 @@ offbeats, and sixteen hats:
 // Offline-rendered by PatSynthDocs.renderWav("seam-bands").
 ```
 
-## Four numbers, measured with Field's own filters
+## The four numbers the shader reads
 
 `BandSplit` pushes a window of samples through a bank of `Biquad` band-passes and returns the RMS of
 each. Nothing about it is new DSP: it is the same `Biquad` a box would put in a signal chain, with
