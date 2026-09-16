@@ -194,15 +194,13 @@ can sit. Counting attacks would not tell you that, because a single voice steali
 exactly the same number of them. Both clips are asserted by `synth.faust.poly.sound`, and the peak
 counts, the band and what limits them are in `dev_docs/FAUST_MEASUREMENTS.md`.
 
-**The one-voice render steals sixteen times, not twenty-three**, and the difference is the arithmetic
-you need when you size `voices`. Twenty-four notes on one voice would be twenty-three steals if every note
-had to take the voice from the one before it. But `sustain` is 0.9, so the gate falls a tenth of a
-beat before the next chord and the 30 ms release finishes inside that gap: a voice that has stopped
-moving air is *finished*, and a finished voice is reused rather than stolen. What is left is two
-steals per chord — the second and third notes, which arrive on the very same frame as the first and
-cannot wait for anything — times eight chords. So `steals` counts same-frame collisions, and a
-pattern whose notes have room to release reports far fewer of them than the arithmetic suggests.
-The one-voice clip holds the last note of each chord as notated, not the first.
+`steals` counts same-frame collisions, not notes that ran out of voices, so it reports far fewer
+than you would expect from the note count. A voice whose gate has fallen and whose release has
+finished is *finished*, and a finished voice is reused rather than stolen — so on this pattern only
+the second and third note of each chord, which arrive on the very same frame as the first, steal
+anything at all. Read it as a count of simultaneity when you size `voices`. The worked arithmetic
+for this render is in `dev_docs/FAUST_MEASUREMENTS.md`. The one-voice clip holds the last note of
+each chord as notated, not the first.
 
 ### Play it yourself: the `faust_polyphony` starting point
 
