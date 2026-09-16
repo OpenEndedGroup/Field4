@@ -4,7 +4,7 @@ You want to hear something. There is more than one way, and this page maps all o
 
 **Seven things in Field make samples. Five things carry samples out of the process. Four bring them
 in.** A path that arrives in the tree and not in the tables below
-[fails the build](#whether-this-map-is-complete), so the counts are worth trusting.
+[fails the build](#where-the-list-comes-from), so the counts are worth trusting.
 
 ---
 
@@ -200,44 +200,32 @@ Their waveform similarity to each other is **0.9584** — high, because they are
 buffer; not 1.0, because they are not the same lowpass. Every number here is printed by
 `run_field_tests.py --id synth.sound.path.map`, which is where to re-measure them.
 
-### Loudness: the three clips are peak-normalized
+??? aside "Do not compare the three clips by loudness"
 
-**All three players above are peak-normalized to 0.9 of full scale, so they compare timbre and not
-level.** That is `fun writeStereo16` being called with `normalizePeak = 0.9f`. Listen to them back
-to back and they will seem to arrive at a matched volume; that is the writer's doing, not the
-paths'. Do not read anything into their relative loudness.
+    All three players above are peak-normalized to 0.9 of full scale, so they compare timbre and
+    not level. That is `fun writeStereo16` being called with `normalizePeak = 0.9f`. Listen to
+    them back to back and they will seem to arrive at a matched volume; that is the writer's
+    doing, not the paths'. The levels the filters actually produced, and the rest of the
+    comparison's arithmetic, are in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
 
-The level the filters actually produced is in the pre-normalization buffers, and it is not matched at
-all: the dry beat peaks at **2.005** — well past full scale, because ten voices a cycle sum — and the
-two filtered renders at **0.934** and **1.069**. A 12 dB/octave filter removes more energy than a
-6 dB/octave one, and that shows up as level before it is scaled away.
-
-### The seam claim, as a number
-
-A lowpass shows the paths differ. It cannot show the stronger claim, that they are driven
-identically; a gain can. The same buffer, multiplied by 0.5 by the graph (`Signal * 0.5f`) and by
-Faust (`process = _,_ : *(0.5), *(0.5);`), over 44100 samples:
-
-**worst per-sample disagreement 0.000e+00** — bit-equal. Two entirely separate implementations, one
-seam, no adapter in between. `SoundPathMap.SEAM_AGREEMENT_CEILING` pins it at `1e-6`.
+A lowpass shows that the paths differ. Feed the same buffer a plain gain instead — 0.5 by the
+graph, 0.5 by Faust — and the two are bit-equal, which is the stronger claim: two separate
+implementations on one seam, with no adapter in between.
 
 ---
 
-## Whether this map is complete
+## Where the list comes from
 
-For anything on the seam it is, and not because somebody keeps it up to date. If a table above names
-a path, that path exists, in that file, under that name: `SoundPathMap` declares them, the
-`synth.sound.path.map` smoke re-derives them from the tree on every `check`, and each entry point is
-cited by *symbol* rather than by line number, so a rename fails the build instead of leaving a dead
-citation above. A path Field grows and this page has not listed fails too, which is the direction
-that actually went wrong — for a month the page under-reported what Field could do with every check
-green, until the seam itself became one of the things the derivation looks for.
+Everything on the seam is here, and not because somebody keeps the page up to date. If a table
+above names a path, that path exists, in that file, under that name: the `synth.sound.path.map`
+smoke re-derives the list from the tree on every `check`, and cites each entry point by *symbol*,
+so a rename fails the build rather than leaving a dead citation.
 
-Off the seam the derivation is blind, and the two shapes it cannot find are both listed above
-anyway: a player in another process, like `sonic-pi`, and a whole-buffer free function, like
-`patRenderStereo`. Those are here because somebody declared them. The marker literals, the
-assertions and the tolerances behind the comparison figures are in
-`dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
+Off the seam the derivation is blind, and both of the shapes it cannot find are listed above
+anyway, because somebody declared them: a player in another process, like `sonic-pi`, and a
+whole-buffer free function, like `patRenderStereo`. A third of either kind could be added to Field
+tomorrow and this page would not notice. The marker literals, the assertions and the tolerances
+are in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
 
 ---
 

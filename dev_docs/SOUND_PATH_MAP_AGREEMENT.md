@@ -53,6 +53,16 @@ buffers, not on the committed `.wav`s: `brightnessHz(audio.mono)` runs on the re
 centroid, the slopes and the 0.9584 similarity are identical either way — which is why the page
 does not distinguish them.
 
+The levels before that scalar, which the page used to print: the dry beat peaks at **2.005**, well
+past full scale because ten voices a cycle sum, and the two filtered renders at **0.934** and
+**1.069**. A 12 dB/octave filter removes more energy than a 6 dB/octave one, and that shows up as
+level before normalization scales it away. Printed by the smoke, not asserted.
+
+The gain leg of the seam check, also displaced from the page on 2026-09-16: the same buffer
+multiplied by 0.5 by the graph (`Signal * 0.5f`) and by Faust (`process = _,_ : *(0.5), *(0.5);`)
+over 44100 samples gives a **worst per-sample disagreement of 0.000e+00** — bit-equal, against a
+ceiling of `1e-6`.
+
 Byte-level agreement, for whoever next doubts the clips share an input: the two filtered clips
 reach their maximum at frames 25778 and 25777, one sample apart, while the dry beat peaks at
 22632. Printed by `run_field_tests.py --id synth.sound.path.map`, not asserted.
