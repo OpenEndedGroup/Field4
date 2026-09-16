@@ -24,8 +24,10 @@ import kotlin.test.assertTrue
  * instead of asserted.
  *
  * 64 square, not 512: the question is bit-identity, and a one-ulp divergence shows up in a 64x64
- * raster as surely as in a 512x512 one while costing 64 times less. (Checked, not assumed: the
- * refactor was first run with a deliberately widened `mix` and this test went red at 64.)
+ * raster as surely as in a 512x512 one while costing 64 times less. (Checked, not assumed: with
+ * `GlslMath.mix` widened to compute in `Double` and narrow once — the smallest realistic refactor
+ * accident, and invisible in 8-bit levels — this test reports **19 of 31** programs moved at 64
+ * square.)
  *
  * To re-fence after a *deliberate* change to the Float path, run with `-Dafield.stacksl.manifest.write=true`
  * and commit the rewritten file with the reason in the commit message.

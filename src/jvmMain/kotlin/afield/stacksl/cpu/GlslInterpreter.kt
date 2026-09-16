@@ -7,7 +7,7 @@ package afield.stacksl.cpu
  * be rendered by running one [GlslInvocation] per row across as many threads as there are cores
  * — see [StackSLCpu].
  *
- * #### Two design choices
+ * #### Three design choices
  *
  * **Control flow as a return value, not an exception.** Each statement reports what it did to
  * control flow — normal, break, continue, return or discard — as an ordinary return value, and
@@ -20,6 +20,14 @@ package afield.stacksl.cpu
  * records the current top of the frame and leaving truncates back to it, giving correct GLSL
  * shadowing with no per-block allocation. Lookup is a backwards linear scan, which for the
  * emitted subset (never more than about a dozen live names) beats a hash map.
+ *
+ * **Generic in its scalar, with exactly one copy of the control flow.** `GlslMachine` holds the
+ * statements, the branches, the loops, the frames and the lvalue writes; what a *value* is comes
+ * from a [GlslScalars]. `GlslScalars<GlslValue>` is the binary32 reference path and
+ * `GlslScalars<AdValue>` makes the same shader differentiable, so `d(pixel)/d(literal)` flows
+ * through this file rather than through a second evaluator — which would agree with itself while
+ * both copies drifted from the spec. [GlslInvocation] is the `Float` face of it, and is what
+ * every pre-existing caller uses, unchanged.
  */
 
 /** What a statement did to control flow. */
@@ -28,14 +36,18 @@ private enum class Flow { NORMAL, BREAK, CONTINUE, RETURN, DISCARD }
 /**
  * One function-call frame: a flat, append-only stack of `(name, value)` with block scopes as
  * marks into it.
+ *
+ * Values live in an `Array<Any?>` because Kotlin cannot allocate an `Array<V>`; the read is an
+ * unchecked cast whose safety is entirely local, since [declare] and [setAt] are the only writers
+ * and both take a `V`.
  */
-private class Frame {
+private class Frame<V> {
     private var names = arrayOfNulls<String>(32)
-    private var values = arrayOfNulls<GlslValue>(32)
+    private var values = arrayOfNulls<Any?>(32)
     var size = 0
         private set
 
-    fun declare(name: String, value: GlslValue) {
+    fun declare(name: String, value: V) {
         if (size == names.size) {
             names = names.copyOf(size * 2)
             values = values.copyOf(size * 2)
@@ -51,8 +63,10 @@ private class Frame {
         return -1
     }
 
-    fun valueAt(index: Int): GlslValue = values[index]!!
-    fun setAt(index: Int, value: GlslValue) { values[index] = value }
+    @Suppress("UNCHECKED_CAST")
+    fun valueAt(index: Int): V = values[index] as V
+
+    fun setAt(index: Int, value: V) { values[index] = value }
 
     fun truncateTo(mark: Int) {
         for (i in mark until size) { names[i] = null; values[i] = null }
@@ -61,34 +75,35 @@ private class Frame {
 }
 
 /**
- * Run one invocation of a [GlslShader].
+ * Run one invocation of a [GlslShader] over the scalar algebra [s].
  *
  * [globals] is the mutable global state for this invocation: the `in` variables the caller
  * supplies (`fragUV`), the uniforms and push-constant members (`pc.params`), and the `out`
  * variables the shader writes (`outColor`), which is how the caller gets the answer back out.
  */
-class GlslInvocation internal constructor(
+internal class GlslMachine<V> internal constructor(
     private val shader: GlslShader,
-    private val globals: HashMap<String, GlslValue>,
+    private val globals: HashMap<String, V>,
     private val samplers: GlslSamplers,
-    private val blockInstances: Set<String>
+    private val blockInstances: Set<String>,
+    private val s: GlslScalars<V>
 ) {
     /** True when this invocation executed `discard`. The caller decides what that means. */
     var discarded: Boolean = false
         private set
 
-    private var frame = Frame()
-    private var returnValue: GlslValue? = null
+    private var frame = Frame<V>()
+    private var returnValue: V? = null
     private var depth = 0
 
     /** Read a global — `outColor` after running `main`, most usefully. */
-    fun global(name: String): GlslValue? = globals[name]
+    fun global(name: String): V? = globals[name]
 
     /** Set a global before running, or between runs of the same invocation. */
-    fun setGlobal(name: String, value: GlslValue) { globals[name] = value }
+    fun setGlobal(name: String, value: V) { globals[name] = value }
 
     /** Call a function by name with already-evaluated arguments. */
-    fun call(name: String, args: List<GlslValue>): GlslValue {
+    fun call(name: String, args: List<V>): V {
         val fn = shader.functions[name] ?: throw GlslEvalError("no function '$name' in this shader")
         if (fn.params.size != args.size) {
             throw GlslEvalError("$name expects ${fn.params.size} argument(s), got ${args.size}")
@@ -99,10 +114,10 @@ class GlslInvocation internal constructor(
         frame = Frame()
         returnValue = null
         try {
-            fn.params.forEachIndexed { i, (type, pname) -> frame.declare(pname, coerce(args[i], type)) }
+            fn.params.forEachIndexed { i, (type, pname) -> frame.declare(pname, s.coerce(args[i], type)) }
             val flow = exec(fn.body)
             if (flow == Flow.DISCARD) discarded = true
-            return returnValue ?: GlslValue(fn.returnType, FloatArray(fn.returnType.components))
+            return returnValue ?: s.zeros(fn.returnType)
         } finally {
             frame = savedFrame
             returnValue = savedReturn
@@ -123,8 +138,8 @@ class GlslInvocation internal constructor(
         is GBlock -> {
             val mark = frame.size
             var flow = Flow.NORMAL
-            for (s in stmt.statements) {
-                flow = exec(s)
+            for (inner in stmt.statements) {
+                flow = exec(inner)
                 if (flow != Flow.NORMAL) break
             }
             frame.truncateTo(mark)
@@ -133,8 +148,7 @@ class GlslInvocation internal constructor(
 
         is GDeclare -> {
             stmt.declarators.forEach { (name, init) ->
-                val v = init?.let { coerce(eval(it), stmt.type) }
-                    ?: GlslValue(stmt.type, FloatArray(stmt.type.components))
+                val v = init?.let { s.coerce(eval(it), stmt.type) } ?: s.zeros(stmt.type)
                 frame.declare(name, v)
             }
             Flow.NORMAL
@@ -142,14 +156,16 @@ class GlslInvocation internal constructor(
 
         is GExprStmt -> { eval(stmt.expr); Flow.NORMAL }
 
-        is GIf -> if (eval(stmt.cond).asBool) exec(stmt.then) else stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL
+        is GIf ->
+            if (s.asBool(eval(stmt.cond))) exec(stmt.then)
+            else stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL
 
         is GFor -> {
             val mark = frame.size
             stmt.init?.let { exec(it) }
             var flow = Flow.NORMAL
             var iterations = 0
-            while (stmt.cond == null || eval(stmt.cond).asBool) {
+            while (stmt.cond == null || s.asBool(eval(stmt.cond))) {
                 if (++iterations > MAX_LOOP_ITERATIONS) {
                     throw GlslEvalError("loop exceeded $MAX_LOOP_ITERATIONS iterations — non-terminating shader?")
                 }
@@ -167,7 +183,7 @@ class GlslInvocation internal constructor(
             var iterations = 0
             var first = true
             while (true) {
-                if (!(first && stmt.isDoWhile) && !eval(stmt.cond).asBool) break
+                if (!(first && stmt.isDoWhile) && !s.asBool(eval(stmt.cond))) break
                 first = false
                 if (++iterations > MAX_LOOP_ITERATIONS) {
                     throw GlslEvalError("loop exceeded $MAX_LOOP_ITERATIONS iterations — non-terminating shader?")
@@ -192,8 +208,8 @@ class GlslInvocation internal constructor(
 
     // -- expressions ---------------------------------------------------------------------------
 
-    internal fun eval(e: GExpr): GlslValue = when (e) {
-        is GLiteral -> e.value
+    internal fun eval(e: GExpr): V = when (e) {
+        is GLiteral -> s.lift(e.value)
 
         is GVarRef -> {
             val i = frame.indexOf(e.name)
@@ -206,54 +222,50 @@ class GlslInvocation internal constructor(
             // before the swizzle path gets a chance to reject `params` as a component set.
             val blockName = blockMemberName(e)
             if (blockName != null) globals[blockName] ?: throw GlslEvalError("undefined block member '$blockName'")
-            else glslSwizzle(eval(e.target), e.field)
+            else s.swizzle(eval(e.target), e.field)
         }
 
         is GIndex -> {
             val target = eval(e.target)
-            val i = eval(e.index).asInt
-            if (target.type.isMatrix) {
-                val rows = target.type.rows
-                if (i !in 0 until target.type.cols) throw GlslEvalError("matrix column $i out of range")
-                GlslValue(GlslType.of(target.type.base, rows), FloatArray(rows) { target.c[i * rows + it] })
+            val type = s.typeOf(target)
+            val i = s.asInt(eval(e.index))
+            if (type.isMatrix) {
+                if (i !in 0 until type.cols) throw GlslEvalError("matrix column $i out of range")
+                s.column(target, i)
             } else {
-                if (i !in target.c.indices) throw GlslEvalError("component $i out of range for ${target.type}")
-                GlslValue(GlslType.of(target.type.base, 1), floatArrayOf(target.c[i]))
+                if (i !in 0 until type.components) throw GlslEvalError("component $i out of range for $type")
+                s.component(target, i)
             }
         }
 
-        is GConstruct -> glslConstruct(e.type, e.args.map { eval(it) })
+        is GConstruct -> s.construct(e.type, e.args.map { eval(it) })
 
         is GCall -> {
             val args = e.args.map { eval(it) }
             shader.functions[e.name]?.let { call(e.name, args) }
-                ?: GlslBuiltins.call(e.name, args, samplers)
-                ?: throw GlslUnsupported("unknown GLSL function '${e.name}(${args.joinToString { it.type.toString() }})'")
+                ?: s.callBuiltin(e.name, args, samplers)
+                ?: throw GlslUnsupported(
+                    "unknown GLSL function '${e.name}(${args.joinToString { s.typeOf(it).toString() }})'"
+                )
         }
 
         is GUnary -> when (e.op) {
-            "-" -> componentwise(eval(e.operand)) { -it }
+            "-" -> s.negate(eval(e.operand))
             "+" -> eval(e.operand)
-            "!" -> GlslValue.bool(!eval(e.operand).asBool)
+            "!" -> s.boolOf(!s.asBool(eval(e.operand)))
             else -> throw GlslUnsupported("unary '${e.op}' is not in the StackSL subset")
         }
 
         is GBinary -> binary(e.op, e)
 
-        is GTernary -> if (eval(e.cond).asBool) eval(e.yes) else eval(e.no)
+        is GTernary -> if (s.asBool(eval(e.cond))) eval(e.yes) else eval(e.no)
 
         is GAssign -> {
             val rhs = eval(e.value)
             val next = if (e.op == "=") rhs else {
                 val current = eval(e.target)
-                when (e.op) {
-                    "+=" -> pairwise(current, rhs) { a, b -> a + b }
-                    "-=" -> pairwise(current, rhs) { a, b -> a - b }
-                    "*=" -> if (current.type.isMatrix || rhs.type.isMatrix) glslMul(current, rhs)
-                    else pairwise(current, rhs) { a, b -> a * b }
-                    "/=" -> divide(current, rhs)
-                    "%=" -> pairwise(current, rhs) { a, b -> GlslMath.mod(a, b) }
-                    "&=", "|=", "^=", "<<=", ">>=" -> bitwise(e.op.dropLast(1), current, rhs)
+                when (val op = e.op.dropLast(1)) {
+                    "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>" -> s.binary(op, current, rhs)
                     else -> throw GlslUnsupported("assignment '${e.op}'")
                 }
             }
@@ -263,94 +275,38 @@ class GlslInvocation internal constructor(
 
         is GPostfix -> {
             val current = eval(e.target)
-            val one = GlslValue(current.type, FloatArray(current.c.size) { 1f })
-            val next = if (e.op == "++") pairwise(current, one) { a, b -> a + b }
-            else pairwise(current, one) { a, b -> a - b }
+            val one = s.ones(s.typeOf(current))
+            val next = if (e.op == "++") s.binary("+", current, one) else s.binary("-", current, one)
             assign(e.target, next)
             current
         }
     }
 
-    private fun binary(op: String, e: GBinary): GlslValue {
+    private fun binary(op: String, e: GBinary): V {
         // `&&` and `||` short-circuit in GLSL, so the right operand must not be evaluated.
-        if (op == "&&") return GlslValue.bool(eval(e.left).asBool && eval(e.right).asBool)
-        if (op == "||") return GlslValue.bool(eval(e.left).asBool || eval(e.right).asBool)
+        if (op == "&&") return s.boolOf(s.asBool(eval(e.left)) && s.asBool(eval(e.right)))
+        if (op == "||") return s.boolOf(s.asBool(eval(e.left)) || s.asBool(eval(e.right)))
         val a = eval(e.left)
         val b = eval(e.right)
         return when (op) {
-            "+" -> pairwise(a, b) { x, y -> x + y }
-            "-" -> pairwise(a, b) { x, y -> x - y }
-            "*" -> glslMul(a, b)
-            "/" -> divide(a, b)
-            "%" -> pairwise(a, b) { x, y -> GlslMath.mod(x, y) }
-            "^^" -> GlslValue.bool(a.asBool != b.asBool)
-            "&", "|", "^", "<<", ">>" -> bitwise(op, a, b)
-            "<" -> GlslValue.bool(a.asFloat < b.asFloat)
-            ">" -> GlslValue.bool(a.asFloat > b.asFloat)
-            "<=" -> GlslValue.bool(a.asFloat <= b.asFloat)
-            ">=" -> GlslValue.bool(a.asFloat >= b.asFloat)
-            "==" -> GlslValue.bool(a.c.contentEquals(b.c))
-            "!=" -> GlslValue.bool(!a.c.contentEquals(b.c))
-            else -> throw GlslUnsupported("binary operator '$op' is not in the StackSL subset")
+            "==" -> s.boolOf(s.equalComponents(a, b))
+            "!=" -> s.boolOf(!s.equalComponents(a, b))
+            else -> s.binary(op, a, b)
         }
     }
-
-    /**
-     * The integer bit operators, on values stored as `Float`.
-     *
-     * This is safe *because of a bound the emitter guarantees*, not in general: every `uvec4` the
-     * StackSL emitter produces goes through `toBits16`, which is
-     * `uvec4(round(clamp(v, 0, 1) * 65535.0))`, so no component ever exceeds 65535. A `Float`
-     * represents every integer below 2^24 exactly, so the round trip through `Int` here loses
-     * nothing. A genuine 32-bit `uint` would lose its low bits, and a shader that produced one
-     * would be silently wrong — so an operand out of range is refused rather than truncated.
-     */
-    private fun bitwise(op: String, a: GlslValue, b: GlslValue): GlslValue {
-        if (a.type.base != GlslBase.INT || b.type.base != GlslBase.INT) {
-            throw GlslUnsupported("bit operator '$op' on ${a.type} and ${b.type} — integers only")
-        }
-        return pairwise(a, b) { x, y ->
-            if (Math.abs(x) > EXACT_INT_LIMIT || Math.abs(y) > EXACT_INT_LIMIT) {
-                throw GlslEvalError(
-                    "bit operator '$op' on $x, $y: outside the range a Float holds exactly, so the " +
-                        "result would silently lose low bits"
-                )
-            }
-            val xi = x.toInt()
-            val yi = y.toInt()
-            when (op) {
-                "&" -> xi and yi
-                "|" -> xi or yi
-                "^" -> xi xor yi
-                "<<" -> xi shl yi
-                ">>" -> xi ushr yi
-                else -> throw GlslUnsupported("bit operator '$op'")
-            }.toFloat()
-        }
-    }
-
-    /**
-     * `/`, with GLSL's integer rule: `int / int` truncates towards zero, everything else is
-     * float division (including division by zero, which yields an infinity that the shader is
-     * expected to handle — the gallery's `main()` guards for exactly that).
-     */
-    private fun divide(a: GlslValue, b: GlslValue): GlslValue =
-        if (a.type.base == GlslBase.INT && b.type.base == GlslBase.INT) {
-            pairwise(a, b) { x, y -> (x.toInt() / y.toInt()).toFloat() }
-        } else if (b.type.isMatrix || a.type.isMatrix) {
-            pairwise(a, b) { x, y -> x / y }
-        } else {
-            pairwise(a, b) { x, y -> x / y }
-        }
 
     /** Write [value] through an lvalue: a variable, a swizzle of one, or a component of one. */
-    private fun assign(target: GExpr, value: GlslValue) {
+    private fun assign(target: GExpr, value: V) {
         when (target) {
             is GVarRef -> {
                 val i = frame.indexOf(target.name)
-                if (i >= 0) frame.setAt(i, coerce(value, frame.valueAt(i).type))
-                else if (target.name in globals) globals[target.name] = coerce(value, globals[target.name]!!.type)
-                else throw GlslEvalError("assignment to undefined variable '${target.name}'")
+                if (i >= 0) {
+                    frame.setAt(i, s.coerce(value, s.typeOf(frame.valueAt(i))))
+                } else {
+                    val existing = globals[target.name]
+                        ?: throw GlslEvalError("assignment to undefined variable '${target.name}'")
+                    globals[target.name] = s.coerce(value, s.typeOf(existing))
+                }
             }
 
             is GField -> {
@@ -360,23 +316,24 @@ class GlslInvocation internal constructor(
                     return
                 }
                 val current = eval(target.target)
-                val idx = swizzleIndices(target.field, current.c.size)
-                if (idx.size != value.c.size && value.c.size != 1) {
-                    throw GlslEvalError("cannot write ${value.type} into a ${idx.size}-component swizzle")
+                val idx = swizzleIndices(target.field, s.typeOf(current).components)
+                val written = s.typeOf(value).components
+                if (idx.size != written && written != 1) {
+                    throw GlslEvalError("cannot write ${s.typeOf(value)} into a ${idx.size}-component swizzle")
                 }
-                val src = FloatArray(idx.size) { value.c[if (value.c.size == 1) 0 else it] }
-                assign(target.target, current.withComponents(idx, src))
+                assign(target.target, s.withComponents(current, idx, value))
             }
 
             is GIndex -> {
                 val current = eval(target.target)
-                val i = eval(target.index).asInt
-                if (current.type.isMatrix) {
-                    val rows = current.type.rows
+                val i = s.asInt(eval(target.index))
+                val type = s.typeOf(current)
+                if (type.isMatrix) {
+                    val rows = type.rows
                     val idx = IntArray(rows) { i * rows + it }
-                    assign(target.target, current.withComponents(idx, value.c.copyOf()))
+                    assign(target.target, s.withComponents(current, idx, value))
                 } else {
-                    assign(target.target, current.withComponent(i, value.asFloat))
+                    assign(target.target, s.withComponent(current, i, value))
                 }
             }
 
@@ -390,23 +347,6 @@ class GlslInvocation internal constructor(
         return null
     }
 
-    /**
-     * Store [value] as [type].
-     *
-     * The only conversion GLSL performs implicitly here is `int` to `float` (and the reverse via
-     * an explicit constructor, which the parser routes through [glslConstruct]). A shape mismatch
-     * is an error rather than a reshape, because a silent reshape is how a CPU twin starts
-     * producing images that are merely *plausible*.
-     */
-    private fun coerce(value: GlslValue, type: GlslType): GlslValue = when {
-        value.type == type -> value
-        value.type.components == type.components && value.type.cols == type.cols ->
-            if (type.base == GlslBase.INT) GlslValue(type, FloatArray(value.c.size) { value.c[it].toInt().toFloat() })
-            else GlslValue(type, value.c)
-        value.type.isScalar -> glslConstruct(type, listOf(value))
-        else -> throw GlslEvalError("cannot store ${value.type} in a $type")
-    }
-
     private companion object {
         /** `_fbm` nests two deep; anything past this is a mistake, not a program. */
         const val MAX_CALL_DEPTH = 64
@@ -417,14 +357,40 @@ class GlslInvocation internal constructor(
          * a runaway in milliseconds rather than hanging a render of 262144 pixels.
          */
         const val MAX_LOOP_ITERATIONS = 100_000
-
-        /** 2^24: the largest integer a `Float` and its successor both represent exactly. */
-        const val EXACT_INT_LIMIT = 16_777_216f
     }
 }
 
 /**
- * Prepare a shader for repeated invocation.
+ * One invocation of a shader over binary32 floats — the CPU backend's reference path.
+ *
+ * A thin, non-generic face on the generic machine: the control flow, the frames and the lvalue
+ * writes are shared with every other scalar, and what makes *this* one the reference is
+ * [GlslFloatScalars], whose every operation is the binary32 reading of the shader. See
+ * [GlslValue]'s file KDoc for why that must not be widened, and
+ * `StackSLCpuFloatPathManifestTest` for where it is measured.
+ */
+class GlslInvocation internal constructor(internal val machine: GlslMachine<GlslValue>) {
+
+    /** True when this invocation executed `discard`. The caller decides what that means. */
+    val discarded: Boolean get() = machine.discarded
+
+    /** Read a global — `outColor` after running `main`, most usefully. */
+    fun global(name: String): GlslValue? = machine.global(name)
+
+    /** Set a global before running, or between runs of the same invocation. */
+    fun setGlobal(name: String, value: GlslValue) { machine.setGlobal(name, value) }
+
+    /** Call a function by name with already-evaluated arguments. */
+    fun call(name: String, args: List<GlslValue>): GlslValue = machine.call(name, args)
+
+    /** Run `main()`. Returns whether it completed without `discard`. */
+    fun runMain(): Boolean = machine.runMain()
+
+    internal fun eval(e: GExpr): GlslValue = machine.eval(e)
+}
+
+/**
+ * Prepare a shader for repeated invocation over binary32 floats.
  *
  * Globals are seeded from the shader's own declarations (so a `const` initialiser or an
  * `out vec4 outColor` starts out defined) and then overridden by [initialGlobals]. Samplers are
@@ -434,24 +400,38 @@ class GlslInvocation internal constructor(
 fun GlslShader.newInvocation(
     initialGlobals: Map<String, GlslValue> = emptyMap(),
     samplers: GlslSamplers = GlslSamplers.REFUSE
-): GlslInvocation {
-    val g = HashMap<String, GlslValue>()
-    globals.forEach { decl ->
-        g[decl.name] = GlslValue(decl.type, FloatArray(decl.type.components))
-    }
+): GlslInvocation = GlslInvocation(newMachine(GlslFloatScalars, initialGlobals, samplers))
+
+/**
+ * [newInvocation], generic in the scalar algebra.
+ *
+ * The seeding *order* is the reason this is one function rather than two per scalar: a global
+ * initialiser may reference another global, so initialisers run only once every name exists, and
+ * [initialGlobals] is applied last so that a caller's `fragUV` — or a fitted wire value — wins
+ * over a declaration's default.
+ */
+internal fun <V> GlslShader.newMachine(
+    scalars: GlslScalars<V>,
+    initialGlobals: Map<String, V> = emptyMap(),
+    samplers: GlslSamplers = GlslSamplers.REFUSE
+): GlslMachine<V> {
+    val g = HashMap<String, V>()
+    globals.forEach { decl -> g[decl.name] = scalars.zeros(decl.type) }
     blocks.forEach { block ->
         block.members.forEach { (type, name) ->
             val key = if (block.instance.isEmpty()) name else "${block.instance}.$name"
-            g[key] = GlslValue(type, FloatArray(type.components))
+            g[key] = scalars.zeros(type)
         }
     }
-    samplersIndexed().forEach { (index, name) -> g[name] = GlslValue.int(index) }
-    val invocation = GlslInvocation(this, g, samplers, blocks.map { it.instance }.filter { it.isNotEmpty() }.toSet())
+    samplersIndexed().forEach { (index, name) -> g[name] = scalars.lift(GlslValue.int(index)) }
+    val machine = GlslMachine(
+        this, g, samplers, blocks.map { it.instance }.filter { it.isNotEmpty() }.toSet(), scalars
+    )
     // Global initialisers may reference other globals, so they are evaluated after every name
     // exists, in declaration order.
-    globals.forEach { decl -> decl.initializer?.let { g[decl.name] = invocation.eval(it) } }
+    globals.forEach { decl -> decl.initializer?.let { g[decl.name] = machine.eval(it) } }
     initialGlobals.forEach { (k, v) -> g[k] = v }
-    return invocation
+    return machine
 }
 
 private fun GlslShader.samplersIndexed(): List<Pair<Int, String>> = samplers.mapIndexed { i, n -> i to n }
