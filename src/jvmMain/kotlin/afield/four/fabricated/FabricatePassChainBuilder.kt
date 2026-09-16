@@ -2,7 +2,9 @@ package afield.four.fabricated
 
 import afield.four.Renderer
 import afield.four.modules.fromContext
+import afield.four.targets.PingPongRenderToTexture
 import afield.four.targets.RenderToTexture
+import afield.four.texture.HasImageView
 
 /*
  * Materializes a planned FabricatePassChain onto the GPU, through the post stack that already
@@ -47,15 +49,50 @@ fun StandardRenderer.Bundle.addPassChain(
     )
     if (printReport) println(plan.report())
 
-    val effects = ArrayList<FabricatePostEffect>(plan.passes.size)
+    val effects = arrayOfNulls<FabricatePostEffect>(plan.passes.size)
+
+    // A persistent pass's previous frame may be read by a pass that runs *before* it, so its target
+    // has to exist before the walk reaches it. Allocating every ping-pong target up front is what
+    // makes that reference resolvable at all; the planner already guaranteed the shapes do not
+    // depend on anything the walk computes.
+    val persistentTargets = plan.persistentPasses.associate { pass ->
+        pass.index to PingPongRenderToTexture(
+            renderer,
+            FabricatePassChain.PERSISTENT_IMAGE_COUNT,
+            postEffectTargetParameters(pass.name, pass.shape) {
+                // A simulation field is not an image that gets redrawn from scratch; clearing it
+                // every frame would be clearing the state. Every pass writing one is fullscreen, so
+                // there is nothing a per-frame clear would cover that the pass does not.
+                clearFirst = false
+                // It does have to be cleared *once*, though, and this is what buys that:
+                // PingPongRenderToTexture.initializePingImagesNow clears every image in the ring at
+                // construction only if the image carries TRANSFER_DST usage, and otherwise just
+                // transitions the layout and leaves the contents undefined. Frame zero of a
+                // simulation then advects whatever was in that memory — which on a warm GPU is
+                // often plausible-looking noise rather than an obvious failure, and which does not
+                // reproduce.
+                colorTransferDst = true
+            }
+        )
+    }
 
     fun textureFor(ref: FabricatePassRef): RenderToTexture = when (ref) {
         FabricatePassRef.ChainInput -> chainInput
-        is FabricatePassRef.Pass -> effects[ref.index].target
+        is FabricatePassRef.Pass -> requireNotNull(effects[ref.index]) {
+            "pass '${ref.name}' has not been built yet"
+        }.target
+        is FabricatePassRef.PreviousFrame -> persistentTargets.getValue(ref.index)
+    }
+
+    /** Previous-frame refs bind a *view*, not a target — the half of the pair not being written. */
+    fun viewFor(ref: FabricatePassRef): HasImageView? = when (ref) {
+        is FabricatePassRef.PreviousFrame -> persistentTargets.getValue(ref.index).otherImageView
+        else -> null
     }
 
     plan.passes.forEach { pass ->
         val primary = pass.inputs.first()
+        val extras = pass.inputs.drop(1)
         val effect = addShaderEffect(
             name = pass.name,
             fragment = pass.spec.fragment,
@@ -65,14 +102,19 @@ fun StandardRenderer.Bundle.addPassChain(
             size = FabricatePassSize.Absolute(pass.shape.width, pass.shape.height),
             format = pass.shape.format,
             source = textureFor(primary.from),
-            extraInputs = pass.inputs.drop(1).associate { it.samplerName to textureFor(it.from) },
-            mipLevels = pass.shape.mipLevels
+            extraInputs = extras.filter { viewFor(it.from) == null }
+                .associate { it.samplerName to textureFor(it.from) },
+            mipLevels = pass.shape.mipLevels,
+            pingPong = pass.persistent,
+            sourceView = viewFor(primary.from),
+            extraViews = extras.mapNotNull { input -> viewFor(input.from)?.let { input.samplerName to it } }.toMap(),
+            existingTarget = persistentTargets[pass.index]
         )
-        effects += effect
+        effects[pass.index] = effect
         pass.spec.push.forEach { (name, value) -> effect.setPush(name, value) }
     }
 
-    return FabricateBuiltChain(plan, effects, chainInput)
+    return FabricateBuiltChain(plan, effects.map { requireNotNull(it) }, chainInput)
 }
 
 /** A chain that has been planned and built: the plan, the effects, and live push-constant access. */
@@ -91,6 +133,19 @@ class FabricateBuiltChain(
 
     /** The target a named pass renders into, or null if there is no such pass. */
     fun targetOf(name: String): RenderToTexture? = get(name)?.target
+
+    /**
+     * The ping-pong target behind a [FabricatePassSpec.persistent] pass, or null if [name] is not one.
+     *
+     * This is the handle for everything outside the chain that wants the *state* rather than the
+     * picture: `latestImageView` to sample the field from another module, and the ordinary
+     * `RenderToTexture` readback path to pull it back to the CPU. `latestImageView`, not
+     * `thisImageView` — outside the target's own render, "this" is the half about to be overwritten.
+     */
+    fun stateOf(name: String): PingPongRenderToTexture? = targetOf(name) as? PingPongRenderToTexture
+
+    /** Persistent pass names, in run order — the chain's state fields. */
+    fun stateNames(): List<String> = plan.persistentPasses.map { it.name }
 
     /**
      * Retune a pass's push constant in place, with no rebuild and no reallocation.

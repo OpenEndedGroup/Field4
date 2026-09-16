@@ -7,9 +7,11 @@ import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.Structure
 import afield.four.buffers.defaultBuffer
 import afield.four.modules.*
+import afield.four.targets.PingPongRenderToTexture
 import afield.four.targets.RTTParameters
 import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
+import afield.four.texture.HasImageView
 import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Camera
@@ -568,7 +570,26 @@ object StandardRenderer {
 		 * - [rtt] is an escape hatch onto the pass target's own `RTTParameters`, applied after the
 		 *   defaults, for the cases the arguments above do not cover.
 		 *
+		 * Two more exist for *simulation* passes, where this frame's value of a field is a function of
+		 * last frame's:
+		 *
+		 * - [pingPong] makes the pass target a `PingPongRenderToTexture` — two images with the roles
+		 *   swapped every frame — so the pass can be sampled while it is being written.
+		 * - [extraViews] binds named samplers to `HasImageView`s rather than to whole targets, which is
+		 *   what a ping-pong half is. It exists separately from [extraInputs] because the binding has
+		 *   to stay *dynamic*: `Module.TexturePointer.pushDescriptorSet` re-reads `imageView` every
+		 *   frame, so handing it `otherImageView` tracks the swap, while handing it
+		 *   `imageViewArray[0]` — the element, snapshotted here — would freeze on whichever image
+		 *   happened to be current when the pass was built. That distinction is invisible on a still
+		 *   first frame and shows up as a simulation that does not advance.
+		 *
 		 * @param mipLevels mip levels on the pass target; above one, mips are generated automatically.
+		 * @param sourceView overrides the view `sourceTex` binds to, [source] still supplying the pass's
+		 *   default size and the sampler's mip count.
+		 * @param existingTarget renders into a target the caller already allocated with
+		 *   [postEffectTargetParameters], instead of allocating one here. `addPassChain` needs it
+		 *   because a persistent pass can be *read* by an earlier pass, so its target has to exist
+		 *   before the pass itself is built. Checked against the resolved size rather than trusted.
 		 */
 		fun addShaderEffect(
 			name: String,
@@ -579,6 +600,10 @@ object StandardRenderer {
 			source: RenderToTexture? = null,
 			extraInputs: Map<String, RenderToTexture> = emptyMap(),
 			mipLevels: Int = 1,
+			pingPong: Boolean = false,
+			sourceView: HasImageView? = null,
+			extraViews: Map<String, HasImageView> = emptyMap(),
+			existingTarget: RenderToTexture? = null,
 			rtt: RTTParameters.() -> Unit = {},
 			configure: Parameters.(source: RenderToTexture) -> Unit = {}
 		): FabricatePostEffect {
@@ -598,19 +623,19 @@ object StandardRenderer {
 				"post effect '$name' resolved to ${passWidth}x$passHeight from $size"
 			}
 			val passFormat = format ?: sourceFormat
-			val target = RenderToTexture(renderer) {
-				width = passWidth
-				height = passHeight
-				colorAttachments = 1
-				this.format = passFormat
-				this.mipLevels = mipLevels
-				generateColorMipmaps = mipLevels > 1
-				colorSampled = true
-				colorTransferSrc = true
-				useDepth = false
-				clearColor = vec(0f, 0f, 0f, 1f)
-				debugName = "prefab-post-$name"
-				rtt()
+			val rttParameters = postEffectTargetParameters(
+				name = name,
+				shape = FabricatePassShape(passWidth, passHeight, passFormat, mipLevels),
+				rtt = rtt
+			)
+			val target = existingTarget ?: if (pingPong) {
+				PingPongRenderToTexture(renderer, FabricatePassChain.PERSISTENT_IMAGE_COUNT, rttParameters)
+			} else {
+				RenderToTexture(renderer, rttParameters)
+			}
+			require(target.width == passWidth && target.height == passHeight) {
+				"post effect '$name' was handed a ${target.width}x${target.height} target but planned " +
+						"at ${passWidth}x$passHeight"
 			}
 			val sampler = TextureSampler(renderer, primary.parameters.mipLevels, false)
 			// One sampler per extra input, sized to *that* texture's mip chain. A sampler built for
@@ -619,6 +644,8 @@ object StandardRenderer {
 			val extraSamplers = extraInputs.mapValues { (_, texture) ->
 				TextureSampler(renderer, texture.parameters.mipLevels, false)
 			}
+			// A ping-pong half is one image, never a mip chain, so one sampler covers all of them.
+			val viewSampler = if (extraViews.isEmpty() && sourceView == null) null else TextureSampler(renderer, 1, false)
 			val module = Module(parameters(renderer) {
 				this.name = "prefab-post-$name"
 				target.apply()
@@ -630,9 +657,13 @@ object StandardRenderer {
 				val userResolver = textureResolver
 				textureResolver = { tex ->
 					val extra = extraInputs[tex.name]
+					val view = extraViews[tex.name]
 					when {
+						tex.name == "sourceTex" && sourceView != null ->
+							fromViews(listOf(sourceView), tex.name, viewSampler)
 						tex.name == "sourceTex" ->
 							fromViews(listOf(primary.imageViewArray[0]), tex.name, sampler)
+						view != null -> fromViews(listOf(view), tex.name, viewSampler)
 						extra != null ->
 							fromViews(listOf(extra.imageViewArray[0]), tex.name, extraSamplers.getValue(tex.name))
 						else -> userResolver(tex)
@@ -2572,4 +2603,33 @@ object StandardRenderer {
 			outColor = vec4(color, 1.0);
 		}
 	"""
+}
+
+/**
+ * The `RTTParameters` every [StandardRenderer.Bundle.addShaderEffect] pass target is built with.
+ *
+ * Extracted so [addPassChain] can pre-allocate a persistent pass's `PingPongRenderToTexture` — which
+ * it has to, because an earlier pass may read that target's previous frame — without growing a second
+ * copy of the defaults. A pass target that is sampled but not `colorSampled`, or read back but not
+ * `colorTransferSrc`, fails in Vulkan validation a long way from here.
+ *
+ * @param rtt the caller's own escape hatch, applied last so it can override any of the above.
+ */
+fun postEffectTargetParameters(
+	name: String,
+	shape: FabricatePassShape,
+	rtt: RTTParameters.() -> Unit = {}
+): RTTParameters.() -> Unit = {
+	width = shape.width
+	height = shape.height
+	colorAttachments = 1
+	format = shape.format
+	mipLevels = shape.mipLevels
+	generateColorMipmaps = shape.mipLevels > 1
+	colorSampled = true
+	colorTransferSrc = true
+	useDepth = false
+	clearColor = vec(0f, 0f, 0f, 1f)
+	debugName = "prefab-post-$name"
+	rtt()
 }

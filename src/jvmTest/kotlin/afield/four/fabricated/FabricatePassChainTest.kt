@@ -2,6 +2,8 @@ package afield.four.fabricated
 
 import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R16_SFLOAT
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -366,4 +368,254 @@ class FabricatePassChainTest {
         assertTrue(deep.unsharedBytes * 4 < deep.naiveBytes, "a five-rung pyramid should save over 4x on shapes alone")
         assertNotEquals(flat.plannedBytes, deep.plannedBytes)
     }
+
+    // --- persistent passes: the one reference that may point forwards ---
+
+    private fun state(name: String, resolution: Int = 64) = FabricatePassSpec(
+        name,
+        "// $name",
+        size = FabricatePassSize.Absolute(resolution, resolution),
+        format = half,
+        persistent = true
+    )
+
+    @Test
+    fun aPreviousFrameReferenceMayNameAPassThatHasNotRunYet() {
+        // The whole point. `reader` runs first and reads `field`, which runs second — legal only
+        // because it reads last frame's copy, which already exists when this frame starts.
+        val plan = FabricatePassChain.plan(
+            listOf(
+                spec("reader", size = FabricatePassSize.Absolute(64, 64), format = half, source = "field")
+                    .copy(sourcePreviousFrame = true),
+                state("field")
+            ),
+            256, 256, srgb
+        )
+        assertEquals(
+            FabricatePassRef.PreviousFrame(1, "field"),
+            plan.passes[0].inputs.single().from
+        )
+        // And it resolves to the persistent pass's shape, not to anything the walk had computed yet.
+        assertEquals(64, plan.passes[0].shape.width)
+    }
+
+    @Test
+    fun aPersistentPassMayReadItsOwnPreviousFrame() {
+        val plan = FabricatePassChain.plan(
+            listOf(state("field").copy(source = "field", sourcePreviousFrame = true)),
+            256, 256, srgb
+        )
+        assertEquals(FabricatePassRef.PreviousFrame(0, "field"), plan.passes[0].inputs.single().from)
+    }
+
+    @Test
+    fun aPreviousFrameReferenceIsOnlyLegalAgainstAPersistentPass() {
+        // Without this the reference would silently bind *this* frame's target — which is the one
+        // being written — and the read would be a race rather than an error.
+        val failure = assertFailsWith<IllegalArgumentException> {
+            FabricatePassChain.plan(
+                listOf(
+                    spec("plain"),
+                    spec("reader", source = "plain").copy(sourcePreviousFrame = true)
+                ),
+                256, 256, srgb
+            )
+        }
+        assertTrue("not persistent" in (failure.message ?: ""), failure.message ?: "")
+    }
+
+    @Test
+    fun aPersistentPassMustStateASizeAndFormatThatDoNotDependOnItsSource() {
+        // MatchSource cannot be resolved for a pass whose output is read before its source is known.
+        val badSize = assertFailsWith<IllegalArgumentException> {
+            FabricatePassChain.plan(
+                listOf(FabricatePassSpec("field", "//", format = half, persistent = true)),
+                256, 256, srgb
+            )
+        }
+        assertTrue("depends on its source" in (badSize.message ?: ""), badSize.message ?: "")
+
+        val badFormat = assertFailsWith<IllegalArgumentException> {
+            FabricatePassChain.plan(
+                listOf(
+                    FabricatePassSpec(
+                        "field", "//",
+                        size = FabricatePassSize.Absolute(64, 64),
+                        persistent = true
+                    )
+                ),
+                256, 256, srgb
+            )
+        }
+        assertTrue("format" in (badFormat.message ?: ""), badFormat.message ?: "")
+    }
+
+    @Test
+    fun aPersistentTargetIsNeverSharedAndCostsTwoImages() {
+        // Three passes of identical shape. The two plain ones may share; the persistent one may not
+        // take a slot and may not offer its own, because its contents have to survive to next frame.
+        val shape = FabricatePassSize.Absolute(64, 64)
+        val plan = FabricatePassChain.plan(
+            listOf(
+                spec("a", size = shape, format = half),
+                state("field"),
+                spec("b", size = shape, format = half, source = "a"),
+                spec("c", size = shape, format = half, source = "b")
+            ),
+            256, 256, srgb
+        )
+        val field = plan["field"]!!
+        assertTrue(field.persistent)
+        assertEquals(listOf(field.index), plan.slots[field.slot].passIndices.toList(), "a persistent slot is exclusive")
+        assertTrue(plan.slots[field.slot].persistent)
+        assertEquals(2, plan.slots[field.slot].imageCount)
+        assertEquals(field.shape.bytes * 2, plan.slots[field.slot].bytes)
+        // No plain pass took it.
+        plan.passes.filter { !it.persistent }.forEach { assertNotEquals(field.slot, it.slot, it.name) }
+        assertEquals(listOf("field"), plan.stateNamesForTest())
+    }
+
+    @Test
+    fun aPersistentPassOutlivesTheWholeChainEvenWhenNothingThisFrameReadsIt() {
+        val plan = FabricatePassChain.plan(
+            listOf(state("field"), spec("visible", size = FabricatePassSize.Absolute(64, 64), format = half)),
+            256, 256, srgb
+        )
+        assertEquals(plan.passCount, plan["field"]!!.lastConsumer, "a persistent pass is read by next frame")
+        assertTrue("persistent" in plan.report(), plan.report())
+        assertTrue("field@prev" !in plan.report(), "nothing read it this frame")
+    }
+
+    // --- the fluid ---
+
+    @Test
+    fun theFluidChainIsWiredUpTheWayItsNameClaims() {
+        val fluid = FabricatePassLibrary.stableFluid(resolution = 128, iterations = 4)
+        val plan = FabricatePassChain.plan(fluid, 512, 512, srgb)
+
+        // Exactly two state fields, and they are the two the docs name.
+        assertEquals(listOf("fluid-velocity", "fluid-dye"), plan.persistentPasses.map { it.name })
+
+        // Advection starts from last frame's velocity — the forward reference.
+        val advect = plan["fluid-advect"]!!
+        assertEquals(0, advect.index, "advection is the first pass of the frame")
+        assertEquals(
+            FabricatePassRef.PreviousFrame(plan["fluid-velocity"]!!.index, "fluid-velocity"),
+            advect.inputs.single().from
+        )
+        assertTrue(advect.index < plan["fluid-velocity"]!!.index, "and it reads a pass that runs after it")
+
+        // The Jacobi ladder: iterate k reads iterate k-1 and the one fixed divergence, and nothing
+        // else. Getting this wrong — reading the divergence of the wrong pass, or iterate k-2 —
+        // converges to something, just not to the pressure.
+        (1..4).forEach { k ->
+            val iterate = plan["fluid-pressure-$k"]!!
+            assertEquals("sourceTex", iterate.inputs[0].samplerName)
+            assertEquals(FabricatePassRef.Pass(plan["fluid-pressure-${k - 1}"]!!.index, "fluid-pressure-${k - 1}"), iterate.inputs[0].from)
+            assertEquals("divergenceTex", iterate.inputs[1].samplerName)
+            assertEquals(FabricatePassRef.Pass(plan["fluid-divergence"]!!.index, "fluid-divergence"), iterate.inputs[1].from)
+            assertEquals(VK_FORMAT_R16_SFLOAT, iterate.shape.format, "the pressure field is one channel")
+        }
+
+        // The dye reads its own previous frame *and* this frame's velocity: both kinds of reference
+        // in one pass, which is the distinction the planner had to learn.
+        val dye = plan["fluid-dye"]!!
+        assertEquals(FabricatePassRef.PreviousFrame(dye.index, "fluid-dye"), dye.inputs[0].from)
+        assertEquals(FabricatePassRef.Pass(plan["fluid-velocity"]!!.index, "fluid-velocity"), dye.inputs[1].from)
+
+        // Projection subtracts the *last* iterate's gradient, not an earlier one.
+        assertEquals(
+            FabricatePassRef.Pass(plan["fluid-pressure-4"]!!.index, "fluid-pressure-4"),
+            plan["fluid-velocity"]!!.inputs[1].from
+        )
+
+        // Every pass is on the simulation grid, not the chain input's resolution.
+        plan.passes.forEach { assertEquals(128, it.shape.width, it.name) }
+    }
+
+    @Test
+    fun droppingVorticityDropsTheCurlPassAndItsBinding() {
+        // Not a style choice: the force shader compiles its curl sampler in or out, so a chain with
+        // vorticity off must not declare a binding there is no pass to fill.
+        val with = FabricatePassChain.plan(FabricatePassLibrary.stableFluid(resolution = 64, iterations = 2), 256, 256, srgb)
+        val without = FabricatePassChain.plan(
+            FabricatePassLibrary.stableFluid(resolution = 64, iterations = 2, vorticity = 0f), 256, 256, srgb
+        )
+        assertTrue(with["fluid-curl"] != null)
+        assertEquals(null, without["fluid-curl"])
+        assertEquals(2, with["fluid-force"]!!.inputs.size)
+        assertEquals(1, without["fluid-force"]!!.inputs.size)
+        assertEquals(with.passCount - 1, without.passCount)
+    }
+
+    @Test
+    fun aFluidCostsTwoPingPongPairsAndTheRestIsScratch() {
+        val plan = FabricatePassChain.plan(FabricatePassLibrary.stableFluid(resolution = 256, iterations = 20), 1024, 1024, srgb)
+        val persistentSlots = plan.slots.filter { it.persistent }
+        assertEquals(2, persistentSlots.size)
+        // 256x256 RGBA16F is 512 KiB; two of them, doubled for the ping-pong, is 2 MiB of state.
+        assertEquals(2L * 2 * 256 * 256 * 8, persistentSlots.sumOf { it.bytes })
+        // And the whole thing is still far cheaper than a full-resolution target per pass, which is
+        // what the old API would have allocated for a 27-pass chain at 1024².
+        assertTrue(plan.unsharedBytes * 8 < plan.naiveBytes, "planned ${plan.unsharedBytes} vs naive ${plan.naiveBytes}")
+    }
+
+    // --- the jump flood ---
+
+    @Test
+    fun theJumpFloodStrideSequenceHalvesFromHalfTheResolutionDownToOne() {
+        // The stride sequence is the whole algorithm. One rung short and the far corner of the image
+        // never hears about a seed in the near one, which reads as a distance field that is correct
+        // in the middle and wrong at the edges — not as a broken pass.
+        val plan = FabricatePassChain.plan(
+            FabricatePassLibrary.jumpFloodDistance(resolution = 256, plusOne = false), 512, 512, srgb
+        )
+        val strides = plan.passes.mapNotNull { it.spec.push["stride"] as? Int }
+        assertEquals(listOf(128, 64, 32, 16, 8, 4, 2, 1), strides)
+        assertEquals(listOf("jfa-seed", "jfa-distance"), listOf(plan.passes.first().name, plan.passes.last().name))
+    }
+
+    @Test
+    fun jfaPlusOneRepeatsTheFinalStrideOnePass() {
+        val plan = FabricatePassChain.plan(FabricatePassLibrary.jumpFloodDistance(resolution = 256), 512, 512, srgb)
+        assertEquals(listOf(1, 1), plan.passes.mapNotNull { it.spec.push["stride"] as? Int }.takeLast(2))
+        assertEquals(
+            FabricatePassRef.Pass(plan["jfa-flood-plus1"]!!.index, "jfa-flood-plus1"),
+            plan["jfa-distance"]!!.inputs[0].from
+        )
+    }
+
+    @Test
+    fun theDistancePassKeepsTheOriginalMaskBoundForTheSign() {
+        // The flood knows where the nearest seed is, not which side of it a texel is on, so the sign
+        // has to come from the mask. A signed chain that lost that binding would produce a field
+        // that is everywhere positive — a plausible unsigned distance field.
+        val plan = FabricatePassChain.plan(
+            FabricatePassLibrary.jumpFloodDistance(resolution = 64, signed = true), 256, 256, srgb
+        )
+        val distance = plan["jfa-distance"]!!
+        assertEquals("maskTex", distance.inputs[1].samplerName)
+        assertEquals(FabricatePassRef.ChainInput, distance.inputs[1].from)
+        assertEquals(1, distance.spec.push["signedField"])
+        assertEquals(1, plan["jfa-seed"]!!.spec.push["boundary"])
+    }
+
+    @Test
+    fun aJumpFloodRejectsAResolutionItCannotFloodOrCannotAddressExactly() {
+        val notPowerOfTwo = assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.jumpFloodDistance(resolution = 300)
+        }
+        assertTrue("power of two" in (notPowerOfTwo.message ?: ""), notPowerOfTwo.message ?: "")
+
+        // 4096 texel coordinates do not survive a half-float round trip, and the resulting field is
+        // subtly wrong rather than obviously broken — so it is refused rather than approximated.
+        val tooBigForHalf = assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.jumpFloodDistance(resolution = 4096)
+        }
+        assertTrue("half-float" in (tooBigForHalf.message ?: ""), tooBigForHalf.message ?: "")
+        FabricatePassLibrary.jumpFloodDistance(resolution = 4096, format = VK_FORMAT_R32G32B32A32_SFLOAT)
+    }
 }
+
+/** Test-only: the persistent pass names, without going through a built chain. */
+private fun FabricatePassChainPlan.stateNamesForTest(): List<String> = persistentPasses.map { it.name }
