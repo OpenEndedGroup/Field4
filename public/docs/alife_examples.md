@@ -96,8 +96,7 @@ four generations. The block is a still life. The blinker has period two. And the
 cells) runs for 1103 generations, peaks at a population of 319 at generation 821, and settles to 116
 cells, six of which are gliders still flying away.
 
-That last one has a subtlety worth the space, because it is the difference between a check and a
-flattering approximation. Those figures are about an *unbounded* board. On a board with walls the
+Those R-pentomino figures are about an *unbounded* board. On a board with walls the
 gliders are destroyed, and the system instead becomes exactly periodic at generation 1164 with 110
 cells. Both answers are correct; they are answers to different questions. So the box below runs on a
 620-wide board (wide enough that no glider can reach an edge in 1103 generations) and asserts
@@ -1496,11 +1495,11 @@ that is 24 birth bits and 25 survival bits: a fixed-length bit string, and there
 parents can be recombined across. `LifeRuleGenome.crossover` is uniform crossover over the rule table:
 real recombination rather than a graft.
 
-The radius is a lesson about controls rather than about cellular automata. At radius 1 the rule space is
+The radius decides whether evolution has anything to do. At radius 1 the rule space is
 2¹⁷, a few hundred *independent* draws land near the optimum on their own, and evolution wins by only
 3 %. At radius 2 the space is 2⁴⁹ and the margin is **27.4 %**, `0.54436` against `0.42744`. A control
-arm that nearly wins is telling you the problem is easy rather than that the search is good, and running
-the control is the only way to find that out.
+arm that nearly wins is telling you the problem is easy rather than that the search is good, so run
+the control arm at whatever radius you pick.
 
 The figure below reads oddly until you notice what the first panel is. The control is the best of 400
 *independent* draws, so it is a high bar early on: the evolved run's first two record holders score
@@ -1852,7 +1851,7 @@ lines(*(w.obstacleFLines() + trails).toTypedArray(), channel = "walls", w = 620.
 
 ![three coloured trails in a square room crossing to a vertical barrier: the blue SLIDE trail runs along the barrier, the orange BOUNCE trail zig-zags back off it and off the room walls, and the green STOP trail ends dead at first contact](assets/alife_examples/walls-response.png)
 
-### What local steering cannot do
+### Routing around a barrier
 
 `avoidWalls` steers away from nearby geometry and `cling` follows it at a chosen standoff. Both are
 *local*: they read the walls within a radius and push. The decision to go the other way round a
