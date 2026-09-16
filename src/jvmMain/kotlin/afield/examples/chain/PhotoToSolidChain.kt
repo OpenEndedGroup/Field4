@@ -160,9 +160,11 @@ object PhotoToSolidChain {
      * `normals = true` splits a vertex wherever two faces disagree about the surface direction,
      * which is what a renderer wants and what makes the mesh *not a manifold*: being manifold is a
      * property of the indices, and two vertices at the same position sharing an edge nowhere reads
-     * as a seam of holes. Handing such a mesh back to [TriMesh.toSolid] gets a refusal —
-     * `UNWELDED_VERTICES x598, OPEN_BOUNDARY x1186, chi=7 in 11 components` on this very object,
-     * and `MeshDiagnosis` names `weld(1e-6)` as the fix. So these ship unsplit, which keeps
+     * as a seam of holes. The `manifold_solids` transcript already records the rule — *ask for
+     * `toTriMesh()` when you are measuring and `toTriMesh(normals = true)` when you are drawing* —
+     * and this route walked straight into it: handing the split mesh back to [TriMesh.toSolid] gets
+     * a refusal reading `UNWELDED_VERTICES x598, OPEN_BOUNDARY x1186, chi=7 in 11 components` on
+     * this very object, with `MeshDiagnosis` naming `weld(1e-6)`. So these ship unsplit, which keeps
      * `toSolid` legal, and the two render bridges that need normals add them themselves:
      * [TriMesh.renderPng] calls [TriMesh.shadedNormals] for you, and a path tracer should too.
      *
@@ -272,22 +274,49 @@ object PhotoToSolidChain {
         edgeLength: Double,
         floor: Double,
         runs: Int = 8,
-    ): String {
-        fun census(parallel: Boolean): Set<String> = (1..runs).map {
+    ): Census {
+        fun census(parallel: Boolean): List<String> = (1..runs).map {
             Solid.scope {
                 val s = marchedPlaque(depth, footprintZ, edgeLength, parallel, floor)
                 "tri=${s.triangleCount} parts=${s.decompose().size} vol=%.12f".format(s.volume)
             }
-        }.toSet()
+        }
         val par = census(true)
         val seq = census(false)
-        println("  floor=%+.2f edgeLength=%.4f".format(floor, edgeLength))
-        println("    parallel=true : $runs runs, ${par.size} distinct")
-        par.forEach { println("        $it") }
-        println("    parallel=false: $runs runs, ${seq.size} distinct")
-        seq.forEach { println("        $it") }
-        return "parallel=${par.size}/$runs distinct, sequential=${seq.size}/$runs distinct"
+        val result = Census(floor, edgeLength, runs, par.toSet(), seq.toSet(), partsOf(seq.first()))
+        println("  floor=%+.2f edgeLength=%.4f, %d component(s)".format(floor, edgeLength, result.parts))
+        println("    parallel=true : $runs runs, ${result.parallel.size} distinct")
+        result.parallel.forEach { println("        $it") }
+        println("    parallel=false: $runs runs, ${result.sequential.size} distinct")
+        result.sequential.forEach { println("        $it") }
+        return result
     }
+
+    /**
+     * One row of the reproducibility table: how many *distinct* answers each path gave.
+     *
+     * The answer is the triple `(triangleCount, componentCount, volume to twelve places)`, so two
+     * runs count as the same answer only if they agree on all three. A weaker key — the volume
+     * rounded, say — would report reproducibility that is not there.
+     */
+    data class Census(
+        val floor: Double,
+        val edgeLength: Double,
+        val runs: Int,
+        val parallel: Set<String>,
+        val sequential: Set<String>,
+        /** Components the sequential path found, which is the one that agrees with itself. */
+        val parts: Int,
+    ) {
+        /** `"5/8"` — distinct answers over runs, for the `parallel = true` path. */
+        fun parallelRatio(): String = "${parallel.size}/$runs"
+
+        /** `"1/8"` — the same for `parallel = false`. */
+        fun sequentialRatio(): String = "${sequential.size}/$runs"
+    }
+
+    private fun partsOf(answer: String): Int =
+        Regex("parts=(\\d+)").find(answer)?.groupValues?.get(1)?.toInt() ?: -1
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -461,7 +490,10 @@ object PhotoToSolidChain {
         val verdicts = chosen.map { (label, field, floor) ->
             label to reproducibilityCensus(field, footprintZ, edge, floor)
         }
-        verdicts.forEach { (label, verdict) -> println("  %-30s → %s".format(label, verdict)) }
+        verdicts.forEach { (label, c) ->
+            println("  %-30s → parallel %s distinct, sequential %s distinct, %d component(s)"
+                .format(label, c.parallelRatio(), c.sequentialRatio(), c.parts))
+        }
 
         if (failures == 0) println("photo-to-solid chain passed") else {
             println("photo-to-solid chain FAILED with $failures problem(s)")

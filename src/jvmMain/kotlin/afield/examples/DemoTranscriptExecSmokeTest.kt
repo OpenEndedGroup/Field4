@@ -154,6 +154,13 @@ object DemoTranscriptExecSmokeTest {
         "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",
+        // A photograph to a printable solid, across four families that do not import one another:
+        // DepthAnything (ONNX) for monocular depth, the imaging family to normalise it, reliefMesh to
+        // close it into something with a volume, and Manifold for the Boolean. EXECUTE rather than
+        // COMPILE_ONLY even though it reaches a pretrained model and a native library, because both
+        // run on the CPU and the weights are already cached under ~/.afield/onnx; the pictures are
+        // TriMesh.renderPng, the AWT-free CPU rasteriser, so there is no Window and no Renderer.
+        "photo_to_solid_chain",
         "imaging_vector_kernels",
         "imaging_visualizers_demo",
         "mesh_geometry_examples",
