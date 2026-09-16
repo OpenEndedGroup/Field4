@@ -42,7 +42,7 @@ it is the cheaper thing to do. Structural mechanics cannot work that way, becaus
 names in `StructuralMechanicsApplication` finding not one matching `embedded`, `shifted` or `sbm`.
 `structural.bodyFitted` therefore needs a mesh whose boundary really is the part's surface.
 
-There is a second reason, and it is the one that decided the choice rather than merely forcing it.
+A second reason decided the choice, rather than merely forcing it.
 Sampling a distance function onto grid nodes destroys a sharp edge *before the mesher ever sees it*.
 Refining the grid only buys a smaller rounded radius. Structural stress concentrates at exactly
 those edges. [The sharp edge](#the-sharp-edge) below measures both halves of that on this machine.
@@ -216,12 +216,11 @@ showMesh(
 part.close()
 ```
 
-Measured on that bracket at `targetEdgeLength = 3.0`: 66,489 elements, median radius ratio `0.8483`,
-mean `0.8191`, minimum `0.0362`, **4** below `0.05` and 31 below `0.10`. The distribution is strongly
-left-skewed with a long thin tail, which is the normal shape for Delaunay refinement and is why the
-median and the mean differ by three points.
+On that bracket at `targetEdgeLength = 3.0`: 66,489 elements, median radius ratio `0.8483`, worst
+`0.0362`, and **4** elements below `0.05`. A long thin tail under a healthy median is the normal
+shape for Delaunay refinement, so judge a mesh by its tail rather than by its median.
 
-### The `quality` argument buys less than you would think
+### Choosing the `quality` bound
 
 TetGen's own default bound is `1.414`; `Tetgen.tetrahedralize` defaults to `1.2`. Swept on the same
 bracket at `targetEdgeLength = 5.0`, timing the median of three runs:
@@ -238,9 +237,9 @@ bracket at `targetEdgeLength = 5.0`, timing the median of three runs:
 
 </div>
 
-Read the last column first, because it is the one that does not behave. Tightening the bound does
-not remove slivers: `1.414` leaves one element below `0.05` and `1.2` leaves three. That is the
-separation above, made concrete — `-q` bounds a quantity a sliver already satisfies.
+Tightening the bound does not remove slivers, which is the last column: `1.414` leaves one element
+below `0.05` and `1.2` leaves three. That is the separation above, made concrete — `-q` bounds a
+quantity a sliver already satisfies.
 
 What tightening does buy is the *bulk* of the tail. The first percentile improves from `0.2838` to
 `0.3318` and the count below `0.10` drops from 24 to 18, for 30% more elements and 20% more time.
@@ -270,7 +269,7 @@ takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tet
 
 </div>
 
-The first two rows are the useful ones. Asking for 8 mm elements on a part 80 mm across gets you
+Asking for 8 mm elements on a part 80 mm across gets you
 almost exactly what asking for nothing gets you, because **the input surface sets a floor that
 `targetEdgeLength` cannot lift**. TetGen conforms to the triangles it is given, and this bracket's
 618 triangles are already about 10 mm across; the quality refinement then subdivides from there. A
@@ -283,9 +282,8 @@ solve of 36,000 elements spends about half a second meshing and several seconds 
 re-meshing on every geometry edit is the right design and no part of `afield.tetgen` tries to update
 a mesh in place.
 
-(The `quality` table above and this one are separate runs of the same code, and the same
-configuration comes out at 430 ms there and 510 ms here. That spread is what a wall-clock median of a
-handful of runs on a laptop is worth; treat these as costs to plan with, not as a benchmark.)
+These are costs to plan with rather than a benchmark: the same configuration comes out at 430 ms in
+the `quality` table above and 510 ms here.
 
 ??? aside "The same solid, built in a different order, meshes differently"
     TetGen is deterministic. The same surface, meshed five times in one process, three times in
@@ -318,7 +316,9 @@ handful of runs on a laptop is worth; treat these as costs to plan with, not as 
 
 ## The sharp edge
 
-This is the claim the whole route rests on, so here it is measured rather than asserted, twice.
+TetGen conforms to the surface it is given, so a corner in the input stays a corner in the output.
+That is the whole reason to prefer it to a level set, and it shows up two ways: against an exact
+volume, and against the formulation TetGen replaced.
 
 A `2 × 3 × 4` box has an exact volume of `24`. Through Manifold's 12-triangle surface and TetGen at
 `targetEdgeLength = 0.5`, Field gets `23.999999999999936` — a relative error of `2.7e-15`, three
@@ -472,34 +472,20 @@ exactBox.close()
 ```
 
 Two panels. The upper one is the corner itself, in a window `0.24` across on a body `2` across, with
-the marched outlines closing on it as `h` falls; the lower one is the same effect measured over the
-whole body, and it is the one that gives the rate.
+the marched outlines closing on it as `h` falls; the lower one is the same error over the whole body,
+which is what gives the rate.
 
-The numbers, from that run:
-
-<div class="field-data-table" markdown>
-
-| cell size `h` | box, worst error | sphere, worst error |
-|---|---|---|
-| 0.4 | 0.030303 = 0.0758 `h` | 0.010447 = 0.0261 `h` |
-| 0.2 | 0.015000 = 0.0750 `h` | 0.002789 = 0.0139 `h` |
-| 0.1 | 0.006699 = 0.0670 `h` | 0.000698 = 0.0070 `h` |
-| 0.05 | 0.003160 = 0.0632 `h` | 0.000166 = 0.0033 `h` |
-
-</div>
-
-Read down the two columns. On the sphere the error falls by four each time `h` halves — second
-order, converging. On the box it falls by two — first order, and the ratio to `h` barely moves. The
-error *is* a rounded edge whose radius is proportional to the cell size, at every resolution,
-forever. Refining a level set does not sharpen an edge; it makes a smaller rounded one.
+Halve `h` and the sphere's error falls by four — second order, converging on the true surface. The
+box's falls by two, first order, and stays a fixed fraction of `h` — about `0.07 h` — at every
+resolution. The error *is* a rounded edge whose radius is proportional to the cell size. Refining a
+level set does not sharpen an edge; it makes a smaller rounded one.
 
 TetGen's worst node lies `0.0` outside the true box, exactly, because it never resamples the
 surface: Manifold's triangulation goes in as a piecewise-linear complex whose facet edges are
-constraints, and TetGen's output honours them.
-
-This is not a criticism of marching cubes, and the constant here (`0.07 h`) is far better than the
-`0.35–0.40 h` `dev_docs/TETGEN.md` measured for MMG's tetrahedral background grid on the same
-question. The *order* is the finding, and it is the same one at either constant.
+constraints, and TetGen's output honours them. So this is the one choice on the page that is not a
+trade-off — if your part has a sharp edge and you care what happens there, the level-set route cannot
+get you closer by refining. `dev_docs/TETGEN.md` has the per-resolution errors, and the same
+comparison run against MMG rather than marching cubes.
 
 ### Where precision is lost: `TriMesh` stores float32
 
@@ -541,7 +527,7 @@ Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
 
 </div>
 
-The three acceptances are all correct answers, and the third is the interesting one.
+The three acceptances are all correct answers.
 
 **TetGen does not care which way your surface is wound.** Its input is a piecewise-linear complex,
 which is unoriented — a set of facets, not an oriented boundary. So an inside-out cube meshes the
@@ -552,10 +538,10 @@ you are pushing a repaired scan through both, `TriMesh.diagnose()` reporting `IN
 matters to the Manifold half and not to this one.
 
 The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
-neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. That is worth
-knowing precisely because it is the shape of the mistake you will actually make — a mesh off disk
-with an unwelded or over-welded seam produces a plausible solid of the wrong size, and nothing in
-this path will tell you. Compare `mesh.volume()` against `Solid.volume` before you trust a result.
+neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
+shape the mistake takes in practice: a mesh off disk with an unwelded or over-welded seam produces a
+plausible solid of the wrong size, and nothing in this path will tell you. Compare `mesh.volume()`
+against `Solid.volume` before you trust a result.
 
 ??? aside "The fatal path"
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
@@ -571,7 +557,7 @@ this path will tell you. Compare `mesh.volume()` against `Solid.volume` before y
     collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
     wrapper's; the line in your terminal is TetGen's.
 
-!!! warning "And it writes files into your working directory"
+!!! warning "A refused surface leaves two files in your working directory"
     Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
     `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
     it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
@@ -580,11 +566,9 @@ this path will tell you. Compare `mesh.volume()` against `Solid.volume` before y
     They are TetGen's own debugging aid and they are genuinely useful — the pair from a failed
     Boolean is a Medit-readable dump of exactly which facets tangled — but nothing asks before
     writing them. `TetgenWorkingDirectoryLitterTest` pins the behaviour and cleans up after itself.
-    The obvious fix, `chdir` around the call, is worse than the problem: the working directory is
-    process-global, and moving it under a mesh running on a background thread moves it for every
-    relative path in the session.
+    Field does not relocate them; `dev_docs/TETGEN.md` says why.
 
-### `preserveSurface` is a trap on a Boolean result
+### `preserveSurface` on a Boolean result
 
 `preserveSurface = true` is TetGen's `-Y`: forbid Steiner points on the boundary, so the output
 surface is the input surface, triangle for triangle. It is off by default and should stay off unless
@@ -602,8 +586,8 @@ you have measured your own case. On the bracket at `targetEdgeLength = 3.0`:
 Not "somewhat worse": 56% of the elements are slivers and the worst is degenerate to five decimal
 places. `-Y` refuses to add the boundary points that refinement needs, and on a surface a Boolean
 produced — with the long thin triangles a cylinder-through-a-block leaves — there is nowhere else for
-the refinement to go. The size request is ignored along with everything else, which is the tell:
-509 elements when you asked for something 130 times finer.
+the refinement to go. The size request goes with it: 509 elements when you asked for something 130
+times finer.
 
 ## Into Kratos
 
@@ -621,34 +605,11 @@ inside it. Bending is precisely the case where strain has to vary across a secti
 face, compression on the other. An element that cannot represent that resists it instead. It
 **locks**, and is far too stiff, converging on the right answer from below and slowly.
 
-`optional/kratos/VERIFICATION.md` has the measurement. A 1 m × 0.1 m × 0.1 m cantilever under
-self-weight, tip deflection as a fraction of the Euler–Bernoulli `wL⁴/8EI`. These are the solver
-container's numbers, not this page's; nothing here re-derives them.
-
-<div class="field-data-table" markdown>
-
-| mesh | tetrahedra | 4-node | 10-node |
-|---|---|---|---|
-| 5×1×1 | 30 | 13.2% | **95.4%** |
-| 10×2×2 | 240 | 35.6% | 98.8% |
-| 20×3×3 | 1,080 | 62.0% | 99.7% |
-
-</div>
-
-Refining was never a way out of the left-hand column: the linear element is still 38% short at 1,080
-elements. The quadratic one is within 5% at *thirty*. Landing just under 100% rather than on it is
-correct rather than a residual to chase — Euler–Bernoulli omits shear, worth 1.0% at this aspect
-ratio, while clamping the whole end face is stiffer than beam theory assumes, and the two nearly
-cancel. End to end through the container, on one 864-element TetGen mesh of that same beam, 69.5%
-against 99.8%.
-
-Axial extension is the control that pins the material, the clamp, the loads and the solver, and it
-was never the problem: 99.44% and 100.04% for the linear element on the first two meshes. The
-quadratic element is marginally *worse* there, 100.80% and 100.66%, and that is the load rather than
-the element. A total force split equally over every node in the load region is further from the
-consistent split on a six-node face (nothing at the corners, a third at each midside) than on a
-three-node one. The resultant is exact either way, so it is a local end effect, and it does not
-touch bending, where the load is gravity.
+Refining is not a way out of it. On a cantilever under self-weight, the 4-node element reaches 62% of
+the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-node element is within
+5% at *thirty*. So if you are bending anything, pass `order = 2` and mesh coarsely, rather than
+passing `order = 1` and refining. `optional/kratos/VERIFICATION.md` has the per-mesh numbers, the
+axial-extension control, and why landing just under 100% is right.
 
 ### Asking for 10-node elements
 

@@ -15,6 +15,10 @@ compiler and upstream's layout kernel, byte-identical to
 and supplies only the things a language needs from an environment rather than from itself:
 simulation, drawing, and somewhere to be typed.
 
+To write MorphoHDL rather than read about it, start at [Using it](#using-it): a `morpho` box takes
+upstream's source directly, and `MorphoGraal` compiles a design from Kotlin in a few lines. The
+sections before it are what the four figures below are showing you.
+
 ---
 
 ## What it looks like
@@ -116,70 +120,9 @@ with a `PROVENANCE.md` recording exactly what it is and what was left out.
 
 ---
 
-## Whether the circuits are right
-
-Two independent oracles, neither of which involves looking at a picture. The netlists are compiled
-through GraalJS, extracted into Kotlin and simulated against integer arithmetic — exhaustively for
-the 8-bit ripple adder, all 131 072 vectors, because a carry chain is the thing an off-by-one in pin
-indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
-full width. And their gate counts are pinned against morpho's *other* implementation,
-`tiny_morpho.py`, which shares no code at all with the JavaScript: the two agree gate for gate on
-the adders, the multiplier optimized and not, and the shifter, and those counts are `assertEquals`
-in `MorphoBridgeTest`, so a recompile that changes one goes red.
-
-The corpus, both tables, and which of their numbers have a guard are in
-`dev_docs/MORPHO_AGREEMENT.md`.
-
----
-
-## Where a bridge disagrees by accident
-
-Two of morpho's netlist conventions are written down nowhere but its own optimizer, and the
-optimized Wallace multiplier is the design that depends on both.
-
-The first is that liveness is per **slot**, not per cell. Morpho's LUT cells are broadcast: one
-truth table applied across many independent bit slices, and constant propagation retires slices
-*individually*. A cell can be active while one of its slots has been bypassed, its output net left
-driverless and its input pins disconnected, so a live cell can hold a LUT input pin whose net index
-is `-1`. The invariant a bridge naturally assumes,
-
-> an active cell has connected pins
-
-is false here.
-
-The second is what a disconnected pin *means*. `optimizeLUT` in `primitives.js`, the function that
-disconnects it, begins its reindexing with:
-
-```diffstatic {data-lang=javascript}
-if (w < 0) w = 0; // Treat disconnected inputs as constant 0
-```
-
-A disconnected port reads as constant zero, because constant propagation prunes a port *without*
-rewriting the cell's truth table: the arity and the table stay as they were, and everyone downstream
-reads the pruned port as 0. Read it as a don't-care instead, which is what it looks like, and the
-multiplier still compiles and still simulates: it just answers `29376512` for `62754 * 62244`
-instead of `3906059976`. Upstream's convention is the one that makes all six exhaustive multiplier
-checks pass.
-
-??? aside "Where a netlist's invariants live"
-    The netlist's field names describe the representation, not the *invariants*, and the invariants
-    live in whatever last mutated the graph. If something in a netlist looks impossible, read the
-    pass that produced it rather than the schema it produced it into.
-
-The bridge is also a second reader of Field's own shared infrastructure, and that shows up at the
-one point where morpho gives a box back. Reverting a language root to Kotlin *is*
-`setMainLanguageFor(roots, null)`, and `Box.mainLanguage` is a `Delegation<String?>`; assigning null
-to one of those **erases** the property rather than storing a null, so erased and never-set read
-back identically. Absent is what keeps a reverted root out of the saved document, and
-`the Set Main Language Kotlin action reverts a morpho root` drives the shipped
-**"Set Main Language: Kotlin"** action through `Action.target`, the way the command palette does,
-then asserts the property is absent rather than present-and-null.
-
----
-
 ## Depth: why there are two adders
 
-The clearest thing the bridge produces is a table. Morpho's timing pass (`updateTimes()`,
+Morpho's timing pass (`updateTimes()`,
 upstream's own, and what its viewer animates) gives per-cell signal arrival, and the deepest cell
 is the critical path.
 
@@ -282,23 +225,6 @@ clip.
     **output element** — a launched box that calls `showPlaneGrid` every frame is recorded with
     every frame drawn as real SVG. The mp4 is an encoding of vector frames rather than a montage of
     bitmaps, which is why the wires stay hairline-thin as the circuit fills the panel.
-
----
-
-## What a circuit costs to compile and simulate
-
-The largest design here, a 4 144-gate `medusa(36,8)`, compiles and fully expands in about 270 ms
-once Graal has warmed up; a 32-bit Brent–Kung adder takes about 50 ms. Relaxing the layout 200 steps
-costs between about 20 ms and 1.5 s depending on size, and you rarely want it in one go —
-`step(grow, relax)` in a `loop` spreads it over frames.
-
-Simulation is bit-parallel: each net holds a `Long` whose bit *s* is that net's value for sample
-*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. All
-131 072 vectors of the exhaustive 8-bit adder check evaluate in under 20 ms. This mirrors what
-`tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an array.
-
-Cell, gate, net, depth and expansion counts for every design on this page, and the timings above
-with the machine they came from, are in `dev_docs/MORPHO_MEASUREMENTS.md`.
 
 ---
 
@@ -515,6 +441,39 @@ loop {
 
 The projection defaults to isometric, because the layout is genuinely 3D and dropping z throws that
 away. `MorphoProjection.XY` gives the view directly comparable with morpho's own renderer.
+
+---
+
+## Whether the circuits are right
+
+Two independent oracles, neither of which involves looking at a picture. The netlists are compiled
+through GraalJS, extracted into Kotlin and simulated against integer arithmetic — exhaustively for
+the 8-bit ripple adder, all 131 072 vectors, because a carry chain is the thing an off-by-one in pin
+indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
+full width. And their gate counts are pinned against morpho's *other* implementation,
+`tiny_morpho.py`, which shares no code at all with the JavaScript: the two agree gate for gate on
+the adders, the multiplier optimized and not, and the shifter, and those counts are `assertEquals`
+in `MorphoBridgeTest`, so a recompile that changes one goes red.
+
+The corpus, both tables, and which of their numbers have a guard are in
+`dev_docs/MORPHO_AGREEMENT.md`.
+
+---
+
+## What a circuit costs to compile and simulate
+
+The largest design here, a 4 144-gate `medusa(36,8)`, compiles and fully expands in about 270 ms
+once Graal has warmed up; a 32-bit Brent–Kung adder takes about 50 ms. Relaxing the layout 200 steps
+costs between about 20 ms and 1.5 s depending on size, and you rarely want it in one go —
+`step(grow, relax)` in a `loop` spreads it over frames.
+
+Simulation is bit-parallel: each net holds a `Long` whose bit *s* is that net's value for sample
+*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. All
+131 072 vectors of the exhaustive 8-bit adder check evaluate in under 20 ms. This mirrors what
+`tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an array.
+
+Cell, gate, net, depth and expansion counts for every design on this page, and the timings above
+with the machine they came from, are in `dev_docs/MORPHO_MEASUREMENTS.md`.
 
 ---
 
@@ -925,7 +884,7 @@ by parsing the buffer with morpho's own parser, so it offers whatever cells the 
 written instead of a fixed list — and none of it ran, because Field's suggest widget gates on
 `DEFAULT_LANGUAGES` (`fieldSuggest.js:8#const DEFAULT_LANGUAGES = new Set([`) and morpho was absent.
 
-Both mistakes were live at once, which is the part worth copying down. The grammar was registered as
+Both mistakes were live at once. The grammar was registered as
 `morpho` while boxes ask for `morphohdl`, so the model was `plaintext` and the id in the completion
 list would not have matched anyway. Two lists, two silent failures, and a `complete` implementation
 that had never once been called. `SmallLanguageAnatomyTest` now derives every main language's
@@ -945,46 +904,59 @@ output, with no browser and no server, so it stays a unit test. `MorphoRegistrat
 the language is registered rather than merely implemented. Figures that are measurements rather than
 assertions live in `MorphoMeasurements` and run under `./gradlew jvmMeasurements`.
 
+### Two conventions this bridge had to discover
+
+Step 6 is where you find out that the implementation you are bridging has invariants written down
+nowhere but its own code. Two of morpho's are like that, and the optimized Wallace multiplier is the
+design that depends on both.
+
+The first is that liveness is per **slot**, not per cell. Morpho's LUT cells are broadcast: one
+truth table applied across many independent bit slices, and constant propagation retires slices
+*individually*. A cell can be active while one of its slots has been bypassed, its output net left
+driverless and its input pins disconnected, so a live cell can hold a LUT input pin whose net index
+is `-1`. The invariant a bridge naturally assumes,
+
+> an active cell has connected pins
+
+is false here.
+
+The second is what a disconnected pin *means*. `optimizeLUT` in `primitives.js`, the function that
+disconnects it, begins its reindexing with:
+
+```diffstatic {data-lang=javascript}
+if (w < 0) w = 0; // Treat disconnected inputs as constant 0
+```
+
+A disconnected port reads as constant zero, because constant propagation prunes a port *without*
+rewriting the cell's truth table: the arity and the table stay as they were, and everyone downstream
+reads the pruned port as 0. Read it as a don't-care instead, which is what it looks like, and the
+multiplier still compiles and still simulates: it just answers `29376512` for `62754 * 62244`
+instead of `3906059976`. Upstream's convention is the one that makes all six exhaustive multiplier
+checks pass.
+
+The general form: a netlist's field names describe the representation, not the *invariants*, and the
+invariants live in whatever last mutated the graph. If something in a netlist looks impossible, read
+the pass that produced it rather than the schema it produced it into.
+
+A bridge is also a second reader of its host's shared infrastructure, and for this one that shows up
+at the single point where morpho gives a box back. Reverting a language root to Kotlin *is*
+`setMainLanguageFor(roots, null)`, and `Box.mainLanguage` is a `Delegation<String?>`; assigning null
+to one of those **erases** the property rather than storing a null, so erased and never-set read
+back identically. Absent is what keeps a reverted root out of the saved document, and
+`the Set Main Language Kotlin action reverts a morpho root` drives the shipped
+**"Set Main Language: Kotlin"** action through `Action.target`, the way the command palette does,
+then asserts the property is absent rather than present-and-null.
+
 ### What it cost
 
-The plumbing, step by step:
+Getting a language *registered* in Field is nearly free: of the bridge's 2,868 lines, registration
+proper is sixty, and those sixty were a copy. What costs is the other three things — carrying the
+language's data across a process boundary, deciding what running the language should *do*, and
+reading the other implementation carefully enough not to disagree with it by accident. The boundary
+in steps 1 and 2 is 890 lines and checking it in step 6 is 706.
 
-<div class="field-data-table" markdown>
-
-| step | file | lines |
-| --- | --- | --- |
-| 1. host the foreign runtime | `MorphoGraal.kt` | 273 |
-| 1. guest-side drivers | `morpho-field-driver.mjs`, `morpho-field-layout.mjs` | 446 |
-| 2. the netlist crossing the boundary | `MorphoNetlist.kt` | 171 |
-| 3–4. registration, and what a box does | `MorphoInterface.kt` | 426 |
-| 5. editor grammar | `morpho.js` | 105 |
-| 6. tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
-| 6. measurement run | `MorphoMeasurements.kt` | 78 |
-
-</div>
-
-And what morpho left to its host, which is this language's bill rather than the template's:
-
-<div class="field-data-table" markdown>
-
-| what Field supplies | file | lines |
-| --- | --- | --- |
-| logic simulation | `MorphoSim.kt` | 192 |
-| 3D force layout | `MorphoLayout3D.kt` | 111 |
-| grow-and-draw handle | `MorphoCircuit.kt` | 121 |
-| drawing | `MorphoFLines.kt` | 317 |
-
-</div>
-
-Line counts include KDoc, which in this codebase is a substantial fraction of every file. The search
-layer of the previous section is a separate ~2,400 lines on top of all of this, and needed nothing
-from the bridge that was not already there.
-
-Of 2,868 lines, registration proper is sixty, and those sixty were a copy. The boundary in steps 1
-and 2 is 890. Checking it in step 6 is 706. Getting a language *registered* in Field is nearly free;
-what costs is carrying its data across a process boundary, deciding what the language should *do*
-once it is running, and reading the other implementation carefully enough not to disagree with it
-by accident.
+`dev_docs/MORPHO_MEASUREMENTS.md` has the file-by-file counts for both halves: the plumbing, and
+what morpho left to its host.
 
 ??? aside "Which harness holds what"
     The checks are `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` and

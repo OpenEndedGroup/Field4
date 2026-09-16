@@ -57,7 +57,7 @@ pools are baked in at construction, so two specs differing only in `intraOpThrea
 different sessions. `evict()` and `closeAll()` exist for the two legitimate reasons (the file changed;
 the memory is wanted back). Calling either because a box re-ran defeats the entire point.
 
-## Depth: what the model actually gives you
+## Depth: what comes out of the model
 
 [Depth Anything V2](https://depth-anything-v2.github.io) Small is the least demanding useful vision
 model there is: one image in, one single-channel map out, no anchors, no non-maximum suppression, no
@@ -209,7 +209,7 @@ Two design choices, both the opposite of the obvious one:
 
 Six frames of staleness at 60fps looks fine for displacement, parallax and depth-keyed compositing,
 and looks like lag for anything a hand is steering directly. That is the real constraint, and no
-provider flag fixes it — see [what was measured](#measurements).
+provider flag fixes it — see [what the flags cost](#coreml-fp16-and-thread-pinning).
 
 ## CLIP: a shared space for pictures and words
 
@@ -371,17 +371,17 @@ So depth alone costs about 99 MB and CLIP costs about 608<!--derive: 254.1+351.7
 same fetch machinery even though nothing about a `tokenizer.json` is ONNX, because it is the same
 problem: a large asset that must not live in the repository.
 
-!!! note "Nothing is optional-at-build-time here"
+!!! note "Nothing to install: the native library ships in the jar"
     Unlike [Manifold](manifold.md#installing-it), which needs a native library installed before a box
     can use it, `afield.onnx` needs nothing but network access on first run. The ONNX Runtime native
     library ships inside the JNI jar. `COMPILE_ONLY` box code that mentions `clipEncode("…")` compiles
     without ever opening a model, because `ClipText`'s session is `by lazy`. That is what lets the
     completion corpus guard compile the shipped transcript with no network at all.
 
-## Measurements
+## CoreML, fp16 and thread pinning
 
-Measured on Apple Silicon with 10 cores, at 518² unless stated, and quoted from `OnnxRuntime`'s own
-KDoc. Every row contradicts a plausible guess:
+Three flags that sound like speed and are not. Measured on Apple Silicon with 10 cores, at 518²
+unless stated:
 
 <div class="field-data-table" markdown>
 
@@ -412,22 +412,14 @@ invisible beside the inference.
     above are whatever that capture run measured. The numerics are the part that holds across runs
     and machines.
 
-## What the tests cover
+## Checking it on your own machine
 
-Two entries in the smoke catalog, both `jvm-main`, both tagged `network` because a cold machine
-downloads weights before they can run:
-
-| id | asserts |
-|---|---|
-| `onnx.depth.smoke` | model I/O signature and dynamic axes; output ranges at 518² and 266² against a Python `onnxruntime` oracle; that the range genuinely differs between the two; ImageNet normalisation; identity resampling at equal size; session memoisation and the thread-count cache key; fp16 agreement with Field's own converter; the `R16_SFLOAT` buffer stride against `ImageData`; window adaptation and `resetAdaptation`; no NaN from a zero-width window; and one frame end to end through the worker |
-| `onnx.clip.smoke` | tokenizer ids identical to Python's; both towers emitting projected 512-d; CLIP's own normalisation constants; the first components and pairwise cosines of four prompt embeddings to four decimals; the modality gap as an ordering property; the vector algebra; base64 round trip; and that `classify` is a softmax whose ranking follows cosine order and ignores temperature |
-
-The reference values in both were produced independently, under Python's `onnxruntime` and
-`tokenizers` on the same weight files, on a synthetic frame built with integer-only arithmetic so that
-Kotlin and NumPy construct a byte-identical image. That last detail is what lets the tolerance be
-`1e-3` instead of twenty times looser.
-
-Run them the usual way — see [building and testing](building_and_testing.md):
+Two entries in the smoke catalog, `onnx.depth.smoke` and `onnx.clip.smoke`, both `jvm-main` and both
+tagged `network` because a cold machine downloads weights before they can run. Each checks Field's
+preprocessing against reference values taken from the same weights under Python's `onnxruntime` and
+`tokenizers`, so a failure means Field has drifted rather than that a number was guessed.
+`OnnxSmokeTest` and `ClipSmokeTest` say in their own KDoc what each assertion defends. Run them the
+usual way — see [building and testing](building_and_testing.md):
 
 ```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --id onnx.depth.smoke --id onnx.clip.smoke
@@ -446,9 +438,8 @@ run-jvm-main afield.examples.onnx.WebcamPerceptionDemo \
 That writes a side-by-side PNG of the source and its depth map, and prints a zero-shot ranking plus
 two semantic-axis projections. On the room photograph above it ranks "an empty room" at 52.0% and "a
 computer screen" at 41.7%, and puts "a person sitting at a desk" at 0.4%, since there is nobody in the
-picture. It also guards against the failure that matters: if the decode produces an all-black buffer,
-every number below would still be produced and would still look plausible, so it checks mean luma and
-fails instead.
+picture. It checks mean luma before printing any of that, because a decode that handed it an
+all-black buffer would produce a ranking just as plausible-looking.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
 

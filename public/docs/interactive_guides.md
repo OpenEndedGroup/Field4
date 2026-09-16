@@ -216,13 +216,9 @@ fail.
 
 ### Setting up the chat server
 
-Chat is the one guide feature that needs a companion service. It has four parts: a
-Flask service (`server/guide_chat_server.py`) that persists messages as JSON, a
-JVM bridge (`src/jvmMain/kotlin/afield/server/chat.kt`), the collapsible chat UI in
-`src/jsMain/kotlin/afield/Main.kt`, and the metadata `SlideShow.kt` passes from the
-guide runtime. The browser only ever talks to Field's normal RPC transport — Field
-proxies HTTP to Flask and broadcasts successful posts back to clients, so the
-browser never connects to Flask's Socket.IO endpoint directly.
+Chat is the one guide feature that needs a companion service: a small Flask process that persists
+messages as JSON. Field proxies to it, so the browser only ever talks to Field's normal RPC
+transport and never reaches Flask directly.
 
 Install the dependencies and start the service alongside Field:
 
@@ -240,8 +236,9 @@ The frontend reads a username from the URL query string —
 `?file=myguide&username=student1` — and posts as `anonymous` without it. Messages
 are stored under `chat_data/` in per-slideshow, per-slide JSON files
 (`chat_data/slideshow_box123_.../slide_0.json`), each an array of
-`{username, message, timestamp}` records. A deeper quickstart lives in
-`dev_docs/GUIDE_CHAT_QUICKSTART.md`.
+`{username, message, timestamp}` records, so a thread survives a restart and can
+be read without Field. The bridge's own parts, and what to do when the two
+processes disagree about a port, are in `dev_docs/GUIDE_CHAT_QUICKSTART.md`.
 
 ## Annotations and code callouts
 

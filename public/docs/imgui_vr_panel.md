@@ -16,6 +16,21 @@ That is one eye of the running demo, cropped for legibility. The panel title, bo
 button, `show grid` checkbox, `gain` slider, and the live `ray hit u=0.500 v=0.500` readout are all
 drawn by ImGui into a texture and sampled onto the quad.
 
+## Try it
+
+Run the interactive desktop preview (move the mouse to aim the ray, left-click to press):
+
+```diffstatic {data-lang=bash}
+./gradlew runImGuiVrPanelDemo
+```
+
+Or run the automated smoke, which builds the whole pipeline on a real Vulkan window and checks that
+a ray aimed at the panel centre lands exactly at its centre:
+
+```diffstatic {data-lang=bash}
+python3 tools/run_field_tests.py --id examples.four.imgui-vr-panel-smoke
+```
+
 ## The pipeline
 
 The whole thing is one chain:
@@ -56,25 +71,12 @@ A controller ray drives the panel. Each frame Field:
 So hovering the ray over a button highlights it and pressing the trigger clicks it. When the ray
 misses the panel, the pointer is parked off-screen so nothing hovers.
 
-## Try it
+## If you build your own
 
-Run the interactive desktop preview (move the mouse to aim the ray, left-click to press):
-
-```diffstatic {data-lang=bash}
-./gradlew runImGuiVrPanelDemo
-```
-
-Or run the automated smoke, which builds the whole pipeline on a real Vulkan window and checks that
-a ray aimed at the panel centre lands exactly at its centre:
-
-```diffstatic {data-lang=bash}
-python3 tools/run_field_tests.py --id examples.four.imgui-vr-panel-smoke
-```
-
-!!! note "One thing to know if you build your own"
-    The camera has to look down **+Z**. With that orientation world-right maps to screen-right and
-    the ImGui text reads correctly; look the other way and the whole panel comes out mirrored
-    left-to-right. The demo sets this up for you.
+!!! note "The camera has to look down +Z"
+    With that orientation world-right maps to screen-right and the ImGui text reads correctly; look
+    the other way and the whole panel comes out mirrored left-to-right. The demo sets this up for
+    you.
 
 The developer-facing writeup (the `ImGuiPanel` helper API, the render-graph wiring, and the
 capture gotchas) lives in `dev_docs/imgui_vr_panel.md`.

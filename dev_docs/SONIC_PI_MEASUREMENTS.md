@@ -18,6 +18,32 @@ early.
 Pi then *does* what the program says, on the real engine. It asserts its bounds rather than printing
 them: 25 ms on the line-activity (flash) train and 2 ms on the recorded audio train.
 
+## What they last printed
+
+Both blocks below used to sit in `public/docs/sonic_pi.md` under a `### How the lowering is checked`
+heading whose prose this note already duplicated word for word. Moved here 2026-09-15. **Every
+number in them is printed and not asserted** — the asserted bounds are the two in the paragraph
+above — so treat them as one run on one machine rather than as a contract. Re-run the probes.
+
+```
+55 patterns x 3 tempos, 346 events, agreement exact in PatQ
+53/53 = 100.0% of the Sonic Pi-meaningful Pat surface
+44 aliases: 40 sample, 2 synth — all present
+```
+
+The last line reads like an arithmetic error and is not: `SONIC_PI_DRUM_ALIASES` has 44 entries, of
+which 40 resolve to a sample and 2 to a pitched synth voice (`bass` to `tb303`, `lead` to
+`prophet`). The other two are `~` and `-`, both `SonicPiVoice.Silent`, which have nothing in the
+installed vocabulary to be present in. If that line is ever reworded, say so.
+
+```
+flash: recall 1.000, mean |error| 2.114 ms, worst 5.038 ms   (bound asserted at 25 ms)
+
+observed intervals (samples): [96000, 16000, 16000, 16000, 48000, 96000, 16000, 16000, 16000, 48000]
+pattern  intervals (samples): [96000, 16000, 16000, 16000, 48000, 96000, 16000, 16000, 16000, 48000]
+audio: recall 1.000, worst 0.000 ms                          (bound asserted at 2 ms)
+```
+
 ## Why the onset numbers are trustworthy at that resolution
 
 Two properties of the audio probe are what make a sub-millisecond figure meaningful rather than an

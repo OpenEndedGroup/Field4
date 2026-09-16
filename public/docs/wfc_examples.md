@@ -408,15 +408,16 @@ South and west, the all-deep-water 3 × 3 window has **exactly one** legal succe
 window to sit south of it, that window's top two rows must be entirely deep, and this source's water
 band is mostly thinner than three cells, so no such window exists except the uniform one. Pin a
 single cell to it and propagation paints the entire grid deep; add a second pin anywhere on land and
-you get an instant contradiction, on every seed and every retry. A uniform window of a band thinner
-than the window is a trap, and `allowedCount` is how you find one before it costs you an afternoon.
-The 2 × 2 model has no such trap (its all-deep window has 2–4 successors per direction) but produces
+you get an instant contradiction, on every seed and every retry. Any uniform window drawn from a
+band thinner than the window behaves this way, and `allowedCount` is how you find one.
+The 2 × 2 model has no such window (its all-deep window has 2–4 successors per direction) but produces
 visibly shattered, one-cell-speckled coastlines, so 3 × 3 is the pick here.
 
 ### 3 × 3 windows, not 2 × 2 tiles
 
 Both give a cell more context, and `sliceIntoUniqueTiles(2, 2)` looks like the cheaper way to get it
-(36 tiles against 184 patterns). On a source like this one it is a trap, and the trap generalises.
+(36 tiles against 184 patterns). On a source like this one it costs more than it saves, for a reason
+that is not specific to this source.
 
 Bigger disjoint tiles mean most tiles are seen exactly once, at a sample edge, which leaves their
 mask in some direction empty. `fromSampleGrid` then widens each empty mask to "any tile may sit
@@ -979,9 +980,9 @@ that something went wrong somewhere.
 Nothing in the solver knows what a pixel is. It works on integer tile IDs, and the image helpers are
 a convenience layered on top, so the same machinery runs on a row-major `FloatArray` via
 `sliceIntoUniqueTiles2D` and `sliceIntoOverlappingPatterns2D`, and produces numbers rather than
-colours. That is the interesting direction in Field, because a scalar field is geometry waiting to
-happen: colour-map it, contour it, and the result is [`FLine`s](fline_examples.md) that go into the
-same drawing and export machinery as anything hand-drawn.
+colours. A scalar field is geometry waiting to happen: colour-map it, contour it, and the result is
+[`FLine`s](fline_examples.md) that go into the same drawing and export machinery as anything
+hand-drawn.
 
 The catch is that `sliceIntoUniqueTiles2D` dedupes on **exact float equality**, so a continuous field
 would yield one unique tile per distinct value. Quantise first. At the six levels used here, "level
@@ -1398,8 +1399,8 @@ println("learned: " + learned + ", weights " + learned.weights.toList())
 
 ![three rule sets drawn as adjacency matrices, one per direction: the strict set with magenta empty-mask rows, the widened set with none, and a learned set whose weights strip has one magenta zero-weight tile](assets/wfc_examples/inline-rules.png)
 
-The strict set's magenta rows are the whole story of why it deadlocks, in the place where that
-information actually lives: one row per tile with nowhere to go, in each direction. After
+The strict set's magenta rows are why it deadlocks: one row per tile with nowhere to go, in each
+direction. After
 `allowMissingAnything()` the same matrices have no magenta at all and the header still says
 `symmetric`: every previously empty mask became "anything", *and* every tile it now admits was told in
 turn that it may sit on the other side.
@@ -1407,9 +1408,8 @@ turn that it may sit on the other side.
 They do not, however, turn **teal**. They turn amber, and the header says why: `4 widened masks → 8
 observed + 20 invented pairs (71% of the table)`. Four authored constraints went in and the finished
 model is mostly not them. That is the same 71% §2 measured on a real source, from the same cause and
-at a much smaller scale, and it is the right reading of what the fallback did: it did not repair
-the rules, it replaced most of them. Reach for it when an unplaceable edge tile is the actual
-problem, and read the header afterwards.
+at a much smaller scale: the fallback did not repair the rules, it replaced most of them. Reach for
+it when an unplaceable edge tile is the actual problem, and read the header afterwards.
 
 The learned set is the last two cases at once. Its fault is in the weights strip, where tile 2 sits
 off the ramp because the sample never contained it and it can therefore never be chosen, and

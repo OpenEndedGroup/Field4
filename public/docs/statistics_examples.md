@@ -34,7 +34,8 @@ the wrong shape to work with".
 
 Two things this family is **not**. It is not a statistics library: there are no p-values, no
 confidence intervals and no hypothesis tests anywhere in it. Whether a number means anything is
-yours to establish, and *Is 0.193 big?* below writes the permutation test that settles it. And
+yours to establish, and *Measuring the null yourself* below writes the permutation test that does
+it. And
 `micTicNaive` is not MICe/TICe. The file's own header comment
 (`correlations.kt:36#WHAT THE MIC/TIC SCAN HERE IS AND IS NOT:`) says it is an equipartition-grid approximation that will not
 reproduce published numbers.
@@ -274,7 +275,7 @@ table that is non-zero on *every* dependent row, including the last interesting 
 growing-spread panel, where `y` has the same mean everywhere and only its *scale* depends on `x`.
 Pearson, Spearman and Kendall read 0.00 there. So does xi (0.026), and rightly so: `y` is not a
 function of `x`, it is a random variable whose spread is. Distance correlation reads 0.193, and the
-next section shows that 0.193 is real.
+next section puts that against the null it would have to beat.
 
 **And the trap in reading distance correlation**: it is *not* a measure of how strong the
 dependence is. dCor is 1 only for an exactly linear relationship (`distanceCorrelation(x, 3x+1)` is
@@ -309,7 +310,7 @@ looking, then use something else to describe what you found.
     samples arrived in. `dev_docs/stdlib_behaviour_changes.md` owns that history and the
     `chatterjeeXi` KDoc points at it.
 
-## Is 0.193 big? Measuring the null yourself
+## Measuring the null yourself
 
 There are no p-values in this family. That matters most for distance correlation, because dCor
 under genuine independence is **not** 0 at finite n: the estimator is biased upward, and the bias

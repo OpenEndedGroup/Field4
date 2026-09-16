@@ -158,7 +158,7 @@ rules it out, in three steps:
   committed bytes, and fails when a render fails. So a clip of this path behind a fence would not be
   a figure with a caveat; it would be a red build on every machine that has not run one optional
   Gradle task. See
-  [the same question, asked of every clip in the docs](sound.md#and-the-same-question-asked-of-every-clip-in-the-docs).
+  [how the captions on every clip are checked](sound.md#how-the-voice-captions-are-checked).
 
 An offline *substitute* for the spatialised output was considered and rejected, and it is worth
 separating from the two clips above. The arithmetic of the whole chain **is** faster than realtime —

@@ -197,7 +197,7 @@ kit.emits().respond(cps = 2.0) { event -> dirt(event.value) }
 
 ## Tokens that are rhythms
 
-Here is the part that a token-counting net cannot do. A token's colour can be **anything**,
+A token-counting net cannot do this. A token's colour can be **anything**,
 including a whole `PatPattern`. So a place is a *section*, a transition is an *edit*, and a slow
 net whose tokens are rhythms is an arrangement of the fast nets it schedules.
 
@@ -376,7 +376,7 @@ displayOpen("main")
 :::endfold
 ```
 
-The middle row is the interesting one, and it is past where the textbook usually stops. Breaking
+The middle row is past where the textbook usually stops. Breaking
 the symmetry does remove the *deadlock* — but under `PetriConflict.ORDER` the first-declared
 claimant wins the contested fork every single time, so the reversed philosopher never gets it and
 never eats. That is **starvation**, not deadlock: the net never stops, it just permanently excludes

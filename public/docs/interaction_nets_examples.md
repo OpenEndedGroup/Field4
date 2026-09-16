@@ -2,9 +2,11 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). Start from [what's already in the box](reference/index.md).*
 
-These four are the reduction rules `InteractionNetsSmokeTest` checks; its other two checks cover the drawing helpers rather than the reducer. Each example runs a single `stepDetailed` and shows the result as ordinary Field output: three summary cards across the top, and below them the net before the step and the net after it, both relaxed.
+An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. `Lambda` is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `ERASE`, `VAR`, `ROOT`, `CONST` — and `Lambda.rules()` is a rule book covering it.
 
-`Lambda.rules()` calls the energies art direction rather than semantics in its own KDoc: every rule splits or attenuates node energy so that a reduction visibly decays instead of merely rewiring. The same KDoc states the scope. There is no fan/fan commuting rule and no lambda frontend, so this is enough to watch beta reduction happen and to build your own vocabulary beside, and not a complete optimal reducer.
+So: build a net with `net { }`, wiring ports with `to`; `relax` it to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The four examples below each take a single step and show three cards over a before-and-after drawing; [Reference](#reference) is the whole surface in one table.
+
+Every rule splits or attenuates the energy its nodes carry, so a reduction visibly decays instead of merely rewiring. That is art direction rather than semantics, and it is where the energy figures quoted below come from. Two things it does not have: a fan/fan commuting rule, and a lambda frontend. It is enough to watch beta reduction happen and to grow your own vocabulary beside it, and it is not a complete optimal reducer.
 
 ## Beta bridge with swapped pair orientation
 
@@ -296,3 +298,43 @@ showInteractionOverview(
 
 println("interaction erase ready")
 ```
+
+## Reference
+
+Building and wiring, inside `net { }`:
+
+| | |
+|---|---|
+| `net { … }` | builds a `Net`; everything below is available inside the block |
+| `node(type, id, at, state, impulse)` | one agent at an **absolute** position; `id` is generated if you omit it |
+| `a.principal to b.principal` | wires two ports. Two principals wired together is an active pair |
+| `node.aux(i)` | the `i`th auxiliary port, counting from 0 |
+| `NodeState(energy, phase, hue, age, scalars)` | what a node carries. `energy` drives radius and pair ranking, `hue` drives colour, `phase` and `scalars` are yours |
+| `Lambda.APP` / `.LAM` / `.DUP` | the agents with two auxiliaries each |
+| `Lambda.ERASE` / `.VAR` / `.ROOT` / `.CONST` | the atoms, no auxiliaries |
+
+Reducing:
+
+| | |
+|---|---|
+| `Reducer(rules, order)` | a reducer over a rule book, picking pairs by an `ActivationOrder` |
+| `ActivationOrder` | `FIRST_FOUND`, `LEFTMOST_BY_ID`, `RIGHTMOST_BY_ID`, `RANDOM`, `HIGHEST_PAIR_ENERGY`, `LOWEST_PAIR_ENERGY` |
+| `.step(net)` | fires one reaction; `false` means nothing could fire |
+| `.stepDetailed(net)` | the same, returning the rule name, the ids removed and created, and any emitted events — or `null` |
+| `Lambda.rules()` | the rule book used on this page |
+| `rules { autoRule(name, a, b) { … } }` | your own, in the same shape |
+| `net.activePairs()` | every pair that could fire right now |
+
+Looking at it:
+
+| | |
+|---|---|
+| `net.relax(iterations, config)` | runs the force-directed layout; `LayoutConfig` holds the springs, repulsion and damping |
+| `net.toFLines(…)` | the net as `FLine`s, for a Field box or a canvas |
+| `net.summaryHtml(title, maxNodes)` | one HTML card: counts, energies, and the first `maxNodes` nodes |
+| `showInteractionOverview(graphicLines, cards, …)` | a row of cards over one shared drawing, as a single output |
+| `net.toSvg(width, height, padding)` | a standalone SVG, for outside Field |
+| `net.totalEnergy()` / `.averageAge()` | the two aggregates the cards quote |
+| `net.incrementAges(dt)` | advances `age` on whatever clock you choose |
+
+Starting points: `Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` are the nets behind the third and fourth examples above.

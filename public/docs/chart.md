@@ -212,12 +212,10 @@ CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests
 ```
 
 They are committed rather than built by the docs runner, so that command has to be re-run to reflect
-a change. Being a FIELD_TEST rather than a script is what keeps them from rotting silently: the
-gallery asserts ink floors per figure and per label gutter, that the same chart drawn with different
-data moves a real number of pixels, and that a bar's registered callback fires through
-`FLineClick.toIntersection()`. The floors, what they measure at, and the one thing they do not cover
-— Chromium deciding which `<g>` a click landed in, which `tools/fline_hit_proof.py` covers instead —
-are in `dev_docs/chart_primitive.md`.
+a change. Being a FIELD_TEST rather than a script is what keeps them from rotting silently: it
+asserts as well as draws, so a figure the code has stopped producing fails a build instead of
+sitting on the page. What it asserts, at what thresholds, and the one thing it cannot cover are in
+`dev_docs/chart_primitive.md`.
 
 The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
 refusals and expectations:

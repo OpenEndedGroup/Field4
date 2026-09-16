@@ -205,7 +205,7 @@ pattern is parsed a single time and the plan is reusable.
 `PathSet` to the slots that can be *driven* (native `Param`s, and any writable
 numeric field) and gives you set-at-once operations over the group.
 
-That second category is the interesting one: a plain `Float` or `Int` property
+In that second category a plain `Float` or `Int` property
 on an ordinary object gains base/supplier/modulation semantics, so anything with
 numbers in it can be driven like a synth parameter.
 

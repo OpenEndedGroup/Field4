@@ -414,56 +414,23 @@ unsolvable. `fitParameters` refuses that by name instead of printing a residual 
 calling it convergence. A parameter *beside* a staircase is still fine: under a floor it is refused,
 beside a gate it solves from residual 3.0 to 6.2·10⁻¹⁵.
 
-## How much of it is checked
+## What the backend is checked against
 
-The differentiable backend is checked against an oracle that shares **no code** with it: a full
-double-precision capture of every sampled rect of the gallery's 38 programs, at 41 times each. The
-backend recomputes each rect's nine numeric channels and is held to that capture:
+Every lowered track is held against a double-precision capture of the gallery's own sampler, which
+shares no code with the differentiable backend. Agreement is at the last couple of bits — worst
+relative disagreement across the whole gallery is 7.7·10⁻¹⁴ — so a fit's residual is telling you
+about your fit and not about the lowering.
 
-<div class="field-data-table" markdown>
+The gradient gets a second, separate oracle, and it needs one: a backend can reproduce `eval`
+everywhere and still differentiate the wrong function, so agreeing on values would prove nothing.
+It is checked against a central finite difference, and the 7.1·10⁻¹¹ worst case there is the finite
+difference's own truncation error rather than the gradient's.
 
-| measurement | value |
-| --- | --- |
-| gallery tracks that lower | **4993 of 5020**, with all 27 refusals pattern tracks |
-| channel values compared | **578,059 of 580,068**, across all 37 compilable programs |
-| worst relative disagreement | **7.7·10⁻¹⁴** (a `cascade-split` rotation; see the amplification note above) |
-| worst absolute disagreement | **8.3·10⁻¹⁴** |
-| easings lowered | 35 of 38, worst disagreement 8.9·10⁻¹⁶ over a 1001-point grid |
-| exact gradient vs central difference | worst **7.1·10⁻¹¹** over twenty-one parameterised shapes; **6.8·10⁻⁹** for a heading |
-| the exact step, at its own boundary | exact, including at `-0.0` |
-| a looped clock across 4.5 periods | **bit-identical** (0.0); ping-pong 8.9·10⁻¹⁶; a hold track 5.6·10⁻¹⁷ |
-| a heading round a winding circle | **bit-identical at 4001 of 4001 samples**, across two branch-cut crossings |
-| a heading whose velocity vanishes | **bit-identical at 801 of 801**, with 400 of them needing a wider probe than the first |
-| the guarded `/` and `smoothstep` | **bit-identical at 2001 of 2001 each**, including the sample where the guard fires |
-
-</div>
-
-The first row is asserted rather than reported, and what it asserts is a classification rather than a
-count. A pattern track is the only thing that may refuse; refused and pattern-built have to be the
-same set, checked in both directions from the track's own structure; and that set has to be
-non-empty, since a predicate matching nothing would pass the other two vacuously. A refusal for any
-other reason fails the build, and so does a `pat` the backend claims to have lowered.
-
-The last few rows are the ones that matter for a fit. Agreeing on values proves nothing about a
-derivative, because a second interpreter can reproduce `eval` everywhere and still differentiate the
-wrong function. So the gradient is checked against a central finite difference — its only oracle
-that does not involve trusting the gradient. 7.1·10⁻¹¹ is the finite difference's own truncation
-error at a 1e-6 relative step, not the gradient's.
+The residual tables, the corpus's two halves and what each half is evidence of are in
+`dev_docs/RECTSL_FN_BACKEND_MEASUREMENTS.md`.
 
 The figure at the top of this page is a CPU raster rather than a GPU capture. Its rectangles are
 sampled from the tracks at the instants shown, but they are not the shader's own answer.
-
-??? aside "The characterization corpus"
-    The golden is a 64,490-line characterization corpus and `RectSLFnBackendTest` reads it as data.
-    Its first 37,057 lines were generated from pre-refactor code, so for those rows the oracle came
-    out of a generator nobody can run today. The remaining rows cover the four musicality examples
-    and come from the current sampler, which shares no code path with the symbolic IR either but is
-    not independent of a sampler bug. Read which half a disagreement lands in before deciding what
-    it proves. There is one further transcription in the arrangement: the differential test has to
-    compose group and rect transforms somewhere, and the `Fn` backend is scalar-only, so that
-    composition is copied from `SceneProgram.sample`. A companion test runs the same copy with the
-    *original* tracks and requires bit-equality with the golden across all 580,068 channel values,
-    which is what stops the copy from rotting.
 
 ## The rest of what a symbolic IR is good for
 

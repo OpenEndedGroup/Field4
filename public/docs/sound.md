@@ -295,8 +295,8 @@ that page is about. Three are a Faust program compiled at runtime, two of those 
 it as a polyphonic instrument on
 [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one).
 
-The last two are the odd ones out, and worth knowing about before you go looking for the rest of
-their path. They are the dough wasm engine driven by a pattern, published on
+The last two are the odd ones out, and you will want to know that before going looking for the rest
+of their path. They are the dough wasm engine driven by a pattern, published on
 [A pattern in space](pat_spatial.md) — and they are **half a path on purpose**: the mono source
 Steam Audio is handed, not the spatialised output, because that half is realtime-only and needs a
 binary this repository does not carry. That page
@@ -343,40 +343,16 @@ A loadable Field document with all of this side by side is committed at
 
 ---
 
-## How the provenance claim is checked
+## How the "Voice:" captions are checked
 
-Every sentence on this page in the form *"Voice: …"* is a machine-readable claim.
+Every sentence on this page in the form *"Voice: …"* is checked rather than written. On each build,
+`SoundProvenanceGuardTest` decodes the committed `.wav` under each figure and compares it against a
+fresh render: a clip captioned as the stand-in has to match one, and a clip captioned as real
+samples has to not. So a figure whose producing code changed underneath it fails the build, instead
+of keeping a caption that has become false. The check needs no sample library, which is why it runs
+on a machine that has never downloaded one.
 
-`SoundRenderPathDocs` declares a `Voice` per figure, and a build guard then reads *this file*, pairs each
-audio fence with its figure, and requires:
-
-* every fence names a figure the renderer knows, and every figure appears on the page once;
-* the figure's declared label appears verbatim beside its fence — so the prose and the code
-  cannot drift apart in silence;
-* **the committed `.wav` is decoded and correlated against a stand-in render of the same
-  pattern.** A figure claiming the stand-in must match it (measured 1.0000). A figure claiming
-  samples must not (measured 0.0565 and 0.1588 for the sample-backed events of the two above);
-  and a mixed figure's fallback events must be audibly present in it (measured 0.8074).
-
-The correlation needs no sample library. A build machine with no 400MB third-party download still
-catches the day a "real drums" figure becomes bursts of white noise; a reader would not, because the
-caption underneath it would go on saying samples.
-
-### And the same question, asked of every clip in the docs
-
-`DocsAudioProvenance` widens all of that to the whole corpus, and runs on every build. It sweeps every
-page for `audio=` fences, re-renders each asset through the *same* `renderWav(name, path)` contract the
-docs build drives over the backdoor, and correlates the result against the committed bytes. Three
-assertions:
-
-* **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
-  until somebody states which family it belongs to;
-* **every committed clip still matches what its producer renders today** — all fifty-one
-  currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation. This is
-  the assertion that catches a published figure whose producing code has changed underneath it.
-  `56b124131` is the last time two of them had to be repaired by hand;
-* **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
-  cannot become a place to put problems unnoticed. It has one entry, the banner loop.
-
-The corpus audit prints its whole table:
+The same sweep runs over every audio clip in these docs, which is what makes the table above
+measured rather than inventoried. The method, the correlation figures and the pinned family counts
+are in `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`; the audit prints its whole table with
 `run_field_tests.py --id synth.docs.audio.provenance`.

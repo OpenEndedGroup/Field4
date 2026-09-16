@@ -52,8 +52,8 @@ once a frame, 500 samples is the last **eight and a third seconds** at 60 Hz. Ev
 statistic it reports — `avg`, `min`, `max`, `p1` through `p99` — is a claim about that
 window and about nothing before it.
 
-That has a consequence worth measuring rather than asserting, because it is the single
-easiest way to misread this instrument. The percentiles index a sorted copy of the window
+That window has a consequence, and it is the easiest way to misread this instrument. The
+percentiles index a sorted copy of the window
 (`Renderer.kt:111#val idx = ((sorted.size - 1) * frac).toInt().coerceIn(0, sorted.size - 1)`),
 so over a full window `p99` is element 494 of 500 — the **sixth worst** sample. One bad
 frame does not move it:
@@ -236,7 +236,7 @@ Collector time can include work outside those pauses; neither measure identifies
 whose allocation caused the collection. An absence of recorded pauses does not prove
 that heap allocation is free. Compare bytes per frame and allocation stacks alongside them.
 
-## A JFR sample: statistical, and honest about it
+## A JFR sample: 10 ms periods, 150 allocations a second
 
 The third instrument is optional JFR recording
 (`JvmProfileCapture.kt:16#/** Optional, bounded JFR sampling. Parsing and source lookup never run on the game thread. */`),
@@ -256,35 +256,32 @@ At 60 fps a frame is 16.7 milliseconds long, so about **1.7**<!--derive: 16.7/10
 but a firing only records your work if your work is what is running when it arrives, so **a
 2 millisecond hitch has about a one in five chance of appearing in any sample at all**, and
 a single hitch that shows up in no sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
-work in proportion to how much of *wall* time your work occupies. That is not a
-hand-waving claim; it is checkable, and it was checked for this page. The three-second
+work in proportion to how much of *wall* time your work occupies, which sets what a
+recording can give you. The three-second
 recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13<!--derive: 63.9/3002.6*100-->%
 busy. Three seconds at a 10 ms period is 300<!--derive: 3000/10--> possible firings, so about six CPU samples
-should have landed in the workload. **Nine arrived.** Out of 207 total sampled events,
-exactly **9 were CPU samples and 198 were allocation samples.**
+should have landed in the workload, and **nine did** — out of 207 sampled events, the other
+198 being allocation samples.
 
-Nine. In three seconds, with three boxes burning CPU. If you want CPU stacks
+Nine CPU samples in three seconds, with three boxes running. If you want CPU stacks
 worth grouping, the work has to be *happening* while you record: a piece genuinely spending
 half its frame budget in box code will yield a couple of hundred samples in three seconds,
 and a piece that is mostly waiting will yield a handful however long you record it.
 
 So when the **Hot code** tab shows a percentage, it is a share of sampled events and not a
-share of milliseconds. Two further rules follow from the same fact, and both are written
-into the model rather than left to the reader: an inclusive row counts a sample once per
+share of milliseconds. Two further rules follow from the same fact: an inclusive row counts a sample once per
 distinct stack row it contains, so inclusive rows overlap and their weights must never be
 added (`profileTimelineModel.js:65#// Inclusive rows overlap: their weights must never be added together.`);
 and a gutter stripe is labelled in the panel's own hover text as
 `lineHeatmap.js:345#"Sampled evidence, not an exact line timer."`.
 
-### Why an allocation rate off this is a guide and not a guarantee
+### Where an allocation rate's estimate comes from
 
-Allocation sampling has a second layer of estimation on top of the first, and it is worth
-understanding rather than merely disclaiming. The events are throttled, each carries the
+Allocation sampling has a second layer of estimation on top of the first. The events are
+throttled, each carries the
 JVM's own estimate of bytes allocated on that thread since the previous event, and the
 first event on each thread is **discarded** because its weight can reach back before the
 recording started (`JvmProfileCapture.kt:125#// recording. Establish its baseline instead of charging those bytes to the brush.`).
-That discard is visible: the measured recording reported three dropped events across
-exactly three sampled threads, which is one per thread and nothing else.
 
 At 150 events a second, ten seconds of a 60 fps piece gives at most 1,500<!--derive: 150*10--> events spread
 across the whole JVM — about two and a half per frame. A per-frame allocation budget read
@@ -414,8 +411,8 @@ frames.
 
 ## What none of this sees
 
-Worth stating plainly, because a reader who has exhausted all three instruments and is
-still dropping frames needs to know where to look next.
+If you have exhausted all three instruments and are still dropping frames, the cost is
+somewhere in here.
 
 - **GPU execution.** None of the three. `submit_gfx` is the cost of submitting. The
   renderer's own Vulkan timestamp profiler is a separate thing and is reachable through the
@@ -438,10 +435,11 @@ still dropping frames needs to know where to look next.
     instead. The window arithmetic, the percentile indexing and the 500-sample truncation
     are the renderer's own code either way, and are exercised for real.
 
-## Try it, and the one thing to change
+## Try it, then change one number
 
-Everything measured on this page came from one replay of the `profiling_timeline` starting
-point against a live Field, which needs no GPU and no private sources. With Field already
+Every measurement on this page came from one replay of the `profiling_timeline` starting
+point against a live Field, which needs no GPU and no private sources; the recording is
+written up in `dev_docs/profiling_stack.md`. With Field already
 running, and a workspace and document name of your own:
 
 ```diffstatic {data-lang=bash}

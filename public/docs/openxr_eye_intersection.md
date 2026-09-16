@@ -56,16 +56,15 @@ This hold assumes the same LOCAL reference-space origin. Restart the scene after
 recenter; this starter does not compensate saved placements for reference-space resets.
 Vergence depth becomes noisy at distance, so a rejected sample is a useful diagnostic.
 
-## Verification and saved document
+## On the desktop
 
-The mathematical tests cover convergence, skew rays, rejection cases, the -Z convention,
-translated HTC LOCAL poses, and a nonidentity world transform cancelling in both eye views.
-The extension tests also exercise native call layouts and lifecycle through synthetic runtime
-callbacks. These checks establish the conversion and binding contracts, not headset calibration.
+The desktop preview has no simulated eyes, so `NO_TRACKING` is the right answer there and the
+binocular marker stays hidden; the grey reference cubes and the EXT dashed ray are what you can
+check. **Nobody has run the four-step check above on an HTC-capable headset.** Tests cover the
+coordinate conversion and the native bindings, and `dev_docs/OPENXR_EYE_INTERSECTION_AGREEMENT.md`
+says which; a real eye tracker's calibration is not among them.
 
-The desktop Vulkan reference scene was run and inspected on macOS. The complete physical
-coordinate check above remains to be run on an HTC-capable headset; with no simulated eyes on the
-desktop preview, `NO_TRACKING` is the right answer there and the binocular marker stays hidden.
+## The saved document
 
 The working document is `eyeRayIntersection` in the local AField workspace. Its
 `launch-eye-rays` macro launches the renderer and scene in order. The repository transcript

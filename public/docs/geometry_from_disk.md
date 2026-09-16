@@ -437,7 +437,7 @@ five of the six, so print it before you draw anything.
 
 </div>
 
-The first row is the one that costs an hour, so here it is concretely: a file called `thing.obj` that
+The first row is the one that costs an hour: a file called `thing.obj` that
 is actually a ZIP, a glTF, or an HTML error page parses to zero vertices and zero triangles and
 raises nothing. `meshFromFile` is loud about a *missing* file and about an extension it does not read,
 and silent about a file whose contents make no sense. `println(mesh.summary())` before `showMesh` costs
@@ -546,40 +546,25 @@ So the contract is: **`isSuspect == false` means the cap's geometry is sound, no
 the one you started with.** Only comparison against the shape you meant catches the difference, and at
 run time you do not have it.
 
-### Measured against 27 broken meshes
+### What `repairToSolid` does
 
-`repaired()` (weld → degenerate → unused → winding) lives in `mesh_topology.kt` and already covers a
-real share of the ground, so the comparison below has a working baseline.
+Beyond what `repaired()` (weld → degenerate → unused → winding, in `mesh_topology.kt`) already
+does, `repairToSolid()` is responsible for exactly two families: **open boundaries**, and
+**non-manifold edges** from duplicated faces or dangling fins.
 
-The test table is 27 meshes broken in named, deterministic ways, of which **21 are rejected by
-Manifold as-is**; the other six are damaged inputs Manifold accepts unchanged, and they are left out
-of the counts. Each row is a damaged copy of a known-good mesh, so the correct answer is known, and
-"repaired" is judged against **the undamaged original** rather than against `isValidSolid()`:
+It refuses rather than guesses on two shapes. A `NaN` position is refused outright, because
+repairing around it would silently delete the affected triangles and cap the gap; so are two closed
+tetrahedra sharing a face. Both report the failure instead of returning something that looks
+repaired.
 
-<div class="field-data-table" markdown>
+Of a table of 21 broken meshes Manifold rejects, `repairToSolid()` makes 19 valid — and 15 of those
+19 match the original's volume, area and genus. The other four are valid solids of the wrong shape,
+and they are all curved or non-planar holes, where a fan fill is doing the best it can: the worst,
+a crowned rim, is 35% off by volume. That gap between 19 and 15 is the whole reason for the
+paragraph above: compare against the shape you meant, not against `isSuspect`.
 
-| of the 21 Manifold rejects | |
-|---|---|
-| the pre-existing `repaired()` makes valid | **6** — every unwelded-seam and every inconsistent-winding case, all of them faithful |
-| `repairToSolid()` makes valid | **19** |
-| ...of which **faithful** — volume, area *and* genus match the original | **15** |
-| ...of which **valid but the wrong shape** | **4** |
-| cannot be fixed, and say so | **2** |
-
-</div>
-
-The split between 15 faithful and 4 merely valid is why the table's holes are not all flat. A fan
-fill is trivially correct on a planar rim, so a table of flat holes measures only the easy case and
-lets "fixes" mean no more than "Manifold accepts it". The four merely-valid
-rows are the curved and non-planar holes that keep the two apart: a hole across a torus's tube (1.5%
-off), one that severs it (4.2% off, genus 1→0), a wide hole over a sphere (1.9% off), and a crowned
-rim (**35%** off).
-
-Beyond what `repaired()` already does, `repairToSolid()` is responsible for exactly two families:
-open boundaries, and non-manifold edges from duplicated faces or dangling fins. Two rows stay broken
-and assert that the failure is *reported*: a `NaN` position (refused outright, because repairing
-around it would silently delete the affected triangles and cap the gap), and two closed tetrahedra
-sharing a face.
+The 27-mesh table, what each row is broken in, and the per-row residuals are in
+`dev_docs/MESH_REPAIR_MEASUREMENTS.md`.
 
 ### ToyCar, the one real asset
 

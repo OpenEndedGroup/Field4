@@ -23,10 +23,23 @@ half but not the *network* half.
 If you are on a network you do not trust, the thing that protects you is the network, not
 Field.
 
-The rest of this page is what that means precisely, which defences exist, and what each one
-actually stops.
+## What to actually do
 
-## The trust boundary, drawn properly
+<div class="field-data-table" markdown>
+
+| if you are… | do this |
+| --- | --- |
+| on a network you do not fully trust | treat Field as an open door and rely on the network: a firewall on Field's port, or don't run it there |
+| worried about websites you visit | set `AFIELD_API_REQUIRE_SAME_SITE=1`. It closes cross-site HTTP writes **and** cross-site WebSocket upgrades |
+| running automation or the agent backdoor | those send no browser `Origin`, so the switch does not affect them. That is the intended behaviour, and also the limitation |
+| adding a route or a `/ws` command to Field | `dev_docs/server_surface_inventory.md` is the ledger, and the build will make you edit it |
+
+</div>
+
+The rest of this page is what those mean precisely: which defences exist, what each one
+actually stops, and what none of them stop.
+
+## The trust boundary: where a request came from, not who sent it
 
 Three different questions are easy to confuse, and most mistakes in this area come from
 answering one when you meant another:
@@ -72,12 +85,10 @@ there:
 
 So the defences that matter are the ones that ask *which website*.
 
-### What `GET /api/instance-info` actually returns
+### What `GET /api/instance-info` hands out
 
-This page used to describe that route as returning "the absolute path of your checkout",
-singular. That was true of the route when the sentence was written and is not true of it now.
-So rather than describe the payload again, here it is — 246 bytes, `curl`ed from a Field started
-out of this checkout, with only the home directory rewritten to `~`:
+Four keys: three describe the *program*, and the fourth describes *you*. The whole response is
+246 bytes, `curl`ed from a running Field with only the home directory rewritten to `~`:
 
 ```diffstatic {data-lang=json}
 {
@@ -88,53 +99,24 @@ out of this checkout, with only the home directory rewritten to `~`:
 }
 ```
 
-One thing about that capture is unrepresentative, and it is the interesting key. This Field was
-launched with an explicit throwaway `--workspace` inside the checkout, so `workspace` points
-there. Launched the ordinary way, with no `--workspace`, the same install resolves
-`~/Documents/AFieldWorkspace` — `./field.sh --print-workspace` says so — and that is the string
-the route hands out on a normal day. So the shape to read off the capture is "an absolute
-filesystem path to wherever this server keeps your documents", not this particular directory.
+`repoRoot`, `startedAtEpochMs` and `pid` say which checkout is running, when it booted and which
+process it is. An agent or a test that reuses a healthy Field already listening on a port has to
+be able to tell it apart from a sibling worktree's JVM, and `/health` cannot.
 
-Four keys. Three of them describe the *program* — which checkout is running, when it booted,
-which process it is — and they are there for a reason: an agent or a test that reuses a healthy
-Field already listening on a port has to be able to tell it apart from a sibling worktree's JVM,
-and `/health` cannot. The fourth key, `workspace`
-(`Server.kt:3608#workspace = displayWorkspacePath(home),`), describes *you*. It is the directory
-this server resolves document names against, which on an ordinary install is a folder inside
-your documents, and it was added so that a client attaching to a server it did not launch could
-find out where that server's documents live — a real problem that it really solves.
+`workspace` (`Server.kt:3608#workspace = displayWorkspacePath(home),`) is the directory this
+server resolves document names against, which on an ordinary install is a folder inside your
+documents. It was added so a client attaching to a server it did not launch could find out where
+that server's documents live. Read it off the capture for its *shape* rather than its value: this
+Field was started with an explicit throwaway `--workspace` inside a checkout, and launched the
+ordinary way the same install resolves `~/Documents/AFieldWorkspace`, which
+`./field.sh --print-workspace` will tell you.
 
-Two claims sit close together here and are worth keeping apart, because they are established
-differently:
-
-- **The workspace path is in the response body.** Measured — it is the capture above, and the
-  `pid` in it matched the process actually holding the port, so the answer came from the Field
-  that was asked.
-- **A page on another origin is handed that body, not just a status code.** Also measured, and
-  one step short of a browser: the same request with `Origin: https://evil.example` and
-  `Sec-Fetch-Mode: cors` came back **`200`** with **`Access-Control-Allow-Origin: *`** and
-  `Content-Length: 246`. That header is the browser's instruction to give the response to the
-  calling page, and it is there because of the CORS block quoted under Defence 1. What was *not*
-  measured for this page is a real `fetch` from a real foreign origin; the probe table further
-  down did that, against the older, checkout-path-only version of the same route.
-
-**Why this drifted silently, which is the part worth carrying elsewhere.** Field's route census,
-`ServerSurfaceLedgerTest`, enumerates **routes**, and `GET /api/instance-info` is one of its
-landmarks (`ServerSurfaceLedgerTest.kt:467#"GET /api/instance-info",`). A census of routes cannot
-see a new **key** appear inside a route's response: the door being counted did not change, only
-what gets handed through it. So the ledger stayed green, the route's own KDoc went on saying "the
-path of your work", and this page went on saying "the absolute path of your checkout" — three
-artifacts agreeing with each other and none of them agreeing with the payload. Anything policed
-by a list of endpoints has that blind spot, and closing it means pinning the *shape of the
-answer* and not just the existence of the question.
-
-**What is left to decide, which this page does not decide.** Reporting `workspace` is what makes
-"verify the workspace before you edit" a check that can fail; taking it away makes that check
-impossible again. Not answering cross-origin reads at all is the other end, and it is the end
-that costs a behaviour change to a running system. The choice between "keep the field, and accept
-that a page you visit can read the path to your documents" and "keep the field, but stop handing
-read bodies to foreign origins by default" belongs to whoever runs Field.
-`AFIELD_API_REQUIRE_SAME_SITE=1`, described under Defence 2, is the lever that exists today.
+A page on another origin is handed that body and not merely a status code — the same request with
+`Origin: https://evil.example` comes back `200` with `Access-Control-Allow-Origin: *`, which is
+the browser's instruction to hand the response to the calling page. **So a website you visit can
+read the path to your documents**, and `AFIELD_API_REQUIRE_SAME_SITE=1` does not close it, because
+that switch inspects mutating methods only. `dev_docs/server_surface_inventory.md` carries the
+measurement and the open question of whether the key belongs in the response at all.
 
 ## Defence 1 — CORS, and the `anyHost()` that has to be there
 
@@ -190,8 +172,10 @@ ordinary page load) and is also why reads need saying separately:
 > A read is not a lesser exposure than a write. It is a different one. `GET /api/instance-info`
 > leaks the path of your checkout *and* the path of the workspace your documents live in,
 > `GET /api/welcome-changelog` leaks your commit messages, and
-> `GET /api/source` and `GET /api/workspace-search` reach source text. **33 of Field's 36 read
-> routes have no guard at all**, and the same-site switch does not cover them.
+> `GET /api/source` and `GET /api/workspace-search` reach source text. **The only read routes
+> carrying a guard of their own are the documentation-annotation ones under Defence 5**; every
+> other read route has none, and the same-site switch does not cover them. They are listed one
+> by one, with their guards, in `dev_docs/server_surface_inventory.md`.
 
 The split is only as good as knowing which routes are which, and thirteen of Field's routes
 are declared `route("/welcome") { handle { … } }`, a route that names **no** HTTP verb and
@@ -240,7 +224,7 @@ Only after that does the rest run, and the order matters:
   forbidden header name, so no `fetch` option touches it. `same-origin` passes. `none` passes,
   because a typed URL or a bookmark has no initiator and is not a cross-site request at all.
   `cross-site`, `same-site` and anything unrecognised are refused.
-- **`same-site` being refused is the interesting one.** `http://localhost:9493` is a different
+- **`same-site` is refused too, not just `cross-site`.** `http://localhost:9493` is a different
   *origin* from `https://localhost:9092` but the same *site*, which is exactly the shape a
   page served from another port on your own machine has.
 - For a client too old to send `Sec-Fetch-Site`, `Origin` is compared with the
@@ -330,16 +314,15 @@ request. So `curl` from any machine on the same wifi reaches essentially every r
 today. Closing this needs authentication or a narrower bind address, and a narrower bind
 breaks the headset. **It is your network that is protecting you here.**
 
-**The `/ws` command surface, by default.** This is the part most likely to surprise.
-
-Field's HTTP routes get all the attention: 89 of them, 53 state-changing, all inventoried
-and tested. But the code with the most reach is not behind an HTTP route at all. The file
-proxy, the H2 database explorer, the box-execution commands and the agent backdoor declare
-**no HTTP routes between them**. They are entries in a message-dispatch table reached over
-`/ws`, and there are **107 of them**, about twice the HTTP write surface. A second, smaller
-table on the same socket carries **9 more** "raw" channels, which receive the whole frame and
-parse it themselves: the H2 explorer, the file browser, the log stream, the spreadsheet, the
-three.js and Metal viewers, and the RemoteJS bridge.
+**The `/ws` command surface, by default.**
+Field's HTTP routes get all the attention, and they are all inventoried and tested. But the code
+with the most reach is not behind an HTTP route at all. The file proxy, the H2 database explorer,
+the box-execution commands and the agent backdoor declare **no HTTP routes between them**. They
+are entries in a message-dispatch table reached over `/ws`, and there are about **twice as many
+of them as Field has HTTP write routes**. A second, smaller table on the same socket carries the
+"raw" channels, which receive the whole frame and parse it themselves: the H2 explorer, the file
+browser, the log stream, the spreadsheet, the three.js and Metal viewers, and the RemoteJS
+bridge. `dev_docs/server_surface_inventory.md` has the current totals and names every one.
 
 Among them, `launch-all`, `launch-batch` and `launch-fragment` run the code in your document,
 in Field's JVM, with Field's privileges. There is no sandbox between a `/ws` frame and that.
@@ -347,14 +330,11 @@ in Field's JVM, with Field's privileges. There is no sandbox between a `/ws` fra
 So the most privileged surface Field has sits behind a guard that is off by default. If you
 take one action after reading this page, `AFIELD_API_REQUIRE_SAME_SITE=1` is it.
 
-## Probed against a running Field
+## What the switch refuses, request by request
 
-A test can share a misconception with the code it tests, so this table comes from a real Field
-on port 9603, started with `AFIELD_API_REQUIRE_SAME_SITE=1` and probed over its real TLS
-socket. The write probes target a
-path that does not exist, so `403` means the guard refused and `404` means the request got
-past the guard and reached routing. That separates "refused" from "allowed" without changing
-any state.
+With `AFIELD_API_REQUIRE_SAME_SITE=1` on, this is what a real Field answers over its TLS socket.
+The write probes target a path that does not exist, so `403` means the guard refused and `404`
+means the request got past the guard and reached routing.
 
 | probe | result |
 | --- | --- |
@@ -369,22 +349,9 @@ any state.
 | `/ws` upgrade, `Host` = `Origin` = `field.attacker.example` | `101`, then close `1008` |
 | `/ws` upgrade, no `Origin` (native client) | open, and a command reached a handler |
 
-Two rows carry the point. The **second-to-last pair** shows the rebinding guard working on the
-WebSocket path as well as the HTTP one, and the `GET` row is the read gap: with the switch
-fully on, a foreign origin still read the absolute path of the checkout.
-
-## What to actually do
-
-<div class="field-data-table" markdown>
-
-| if you are… | do this |
-| --- | --- |
-| on a network you do not fully trust | treat Field as an open door and rely on the network: a firewall on Field's port, or don't run it there |
-| worried about websites you visit | set `AFIELD_API_REQUIRE_SAME_SITE=1`. It closes cross-site HTTP writes **and** cross-site WebSocket upgrades |
-| running automation or the agent backdoor | those send no browser `Origin`, so the switch does not affect them. That is the intended behaviour, and also the limitation |
-| adding a route or a `/ws` command to Field | `dev_docs/server_surface_inventory.md` is the ledger, and the build will make you edit it |
-
-</div>
+The rebinding guard works on the WebSocket path as well as the HTTP one — that is the
+second-to-last pair. And with the switch fully on, a foreign origin still read the absolute path
+of the checkout, which is the read gap the `GET` row records.
 
 ## Where the guarantees actually live
 
@@ -397,11 +364,11 @@ Six test files. Three start a real Ktor application; three read source.
 | `FieldWebSocketWriteGuardTest` | the upgrade guard, on the default and on the switch |
 | `DocsAnnotationRouteSecurityTest` | the four guarded routes, through the real CORS configuration |
 | `DocsAnnotationSecurityTest` | the guard predicates as pure functions |
-| `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 107 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
+| `ServerSurfaceLedgerTest` | the read routes, the all-method routes, the static mounts, and every `/ws` command and raw channel, against the ledger page |
 
 For the full route-by-route inventory, see `dev_docs/server_surface_inventory.md`: every read
-route with its guard, every all-method route, every static directory mount, every one of the
-107 commands with the file it lives in, and the 9 raw channels. That page is asserted
+route with its guard, every all-method route, every static directory mount, every `/ws`
+command with the file it lives in, and every raw channel. That page is asserted
 against the source in both directions, so a new door cannot appear without the build saying
 so.
 

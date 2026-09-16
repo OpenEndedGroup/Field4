@@ -61,7 +61,7 @@ knows about `java.lang.Math`.
 
 ### The receiver's type states its own prior
 
-Here is the part you can control. A class can name the members that answer *"what do you actually do
+This is the one input a class author controls. A class can name the members that answer *"what do you actually do
 with one of these"*, in the order a person reaches for them, with `@CommonMembers`. `FLine` uses
 it:
 

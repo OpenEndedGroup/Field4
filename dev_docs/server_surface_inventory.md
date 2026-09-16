@@ -72,7 +72,8 @@ anywhere in the tree, so `none` means precisely none.
 Reads matter on their own terms, and it is worth saying why rather than assuming it. A read
 route does not change your document, so it escapes both the mutating census and the
 `AFIELD_API_REQUIRE_SAME_SITE` interceptor, which only inspects mutating methods. But
-`GET /api/instance-info` returns the absolute path of your checkout, `GET /api/welcome-changelog`
+`GET /api/instance-info` returns the absolute path of your checkout *and* the absolute path of
+the workspace your documents live in, `GET /api/welcome-changelog`
 returns your recent commit messages, and `GET /api/source` and `GET /api/workspace-search`
 reach source text. All three were read by a foreign origin in the 2026-08-11 measurement
 recorded in `dev_docs/DOCS_IMPROVEMENT_AGENT.md`. Exfiltration is not a lesser outcome than
@@ -511,6 +512,53 @@ over the real input. Two cases in this tree broke a naive version, and neither w
 one: `Server.kt:1622` is a `"…${` whose template expression continues on the *next line*, and
 `MarkdownOutput.kt:129` closes a raw string with four quotes, which Kotlin ends at the **last**
 `"""` of the run rather than the first.
+
+### The key that appeared inside a counted route, 2026-09-13
+
+A fourth finding of the same kind as the three above, and the one that says most about what a
+route census is for. `GET /api/instance-info` gained a `workspace` key — the directory this
+server resolves document names against, which on an ordinary install is a folder inside your
+documents (`Server.kt:3608#workspace = displayWorkspacePath(home),`). The census stayed green
+throughout, correctly: `GET /api/instance-info` is one of its landmarks
+(`ServerSurfaceLedgerTest.kt:467#"GET /api/instance-info",`), and the door being counted did
+not change. Only what gets handed through it did.
+
+So a census of **routes** cannot see a new **key** inside a route's response, and while it was
+not looking, four artifacts drifted into agreement with each other and out of agreement with
+the payload: the route's own KDoc said "the path of your work", `public/docs/server_surface.md`
+said "the absolute path of your checkout", this page said the same thing in two places, and
+none of them mentioned the workspace. Three of those were found on 2026-09-13; the copy on this
+page survived until 2026-09-15, which is the useful part of the story — the page that records a
+docs-drift finding is not exempt from it. Closing this class means pinning the *shape of the
+answer* and not just the existence of the question.
+
+The payload, 246 bytes, `curl`ed from a Field started out of a worktree with an explicit
+throwaway `--workspace`, home directory rewritten to `~`:
+
+```json
+{
+  "repoRoot": "~/field4-worktrees/2026-09-13-3-instance-info-exposure-docs",
+  "startedAtEpochMs": 1789290604492,
+  "pid": 47573,
+  "workspace": "~/field4-worktrees/2026-09-13-3-instance-info-exposure-docs/build/field-automation-workspace"
+}
+```
+
+Two claims were established differently and are worth keeping apart. That the workspace path is
+in the response body is measured directly — the capture above, whose `pid` matched the process
+actually holding the port, so the answer came from the Field that was asked. That a page on
+another origin is handed that body rather than a status code is measured one step short of a
+browser: the same request with `Origin: https://evil.example` and `Sec-Fetch-Mode: cors` came
+back `200` with `Access-Control-Allow-Origin: *` and `Content-Length: 246`. A real `fetch` from
+a real foreign origin was not run for this; the 2026-08-11 probe table did that, against the
+older checkout-path-only version of the same route.
+
+**Open: whether `workspace` should be in that response at all.** Reporting it is what makes
+"verify the workspace before you edit" a check that can fail, and taking it away makes that
+check impossible again. Not answering cross-origin reads at all is the other end, and the end
+that costs a behaviour change to a running system. `AFIELD_API_REQUIRE_SAME_SITE=1` does not
+reach it either way, because it inspects mutating methods only. Decide it in `Server.kt`, not
+on the public page.
 
 ### Floors, landmarks, and what they cannot do
 

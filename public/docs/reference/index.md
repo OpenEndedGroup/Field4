@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13924 public symbols across 351 source files**, 7823 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13924 public symbols across 351 source files**, 7825 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -13,7 +13,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 334 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 28 | 1323 | 1110 (83%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 27 | 574 | 227 (39%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 27 | 574 | 229 (39%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 27 | 821 | 414 (50%) | Making a shape behave. |
@@ -119,12 +119,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FabricateFrameGraph.kt](renderers.md#fabricateframegraph-kt) | Renderers | 12 | 1 |  |  |
 | [FabricateGltfBridge.kt](renderers.md#fabricategltfbridge-kt) | Renderers | 4 | 1 |  |  |
 | [FabricateMaterialLibrary.kt](renderers.md#fabricatemateriallibrary-kt) | Renderers | 17 | 1 |  |  |
-| [FabricatePassChain.kt](renderers.md#fabricatepasschain-kt) | Renderers | 66 | 36 |  |  |
-| [FabricatePassChainBuilder.kt](renderers.md#fabricatepasschainbuilder-kt) | Renderers | 15 | 10 |  |  |
+| [FabricatePassChain.kt](renderers.md#fabricatepasschain-kt) | Renderers | 66 | 36 | The vocabulary for declaring a chain of post passes that are not all the same shape, and the pure planner that resolves one. |  |
+| [FabricatePassChainBuilder.kt](renderers.md#fabricatepasschainbuilder-kt) | Renderers | 15 | 10 | Materializes a planned pass chain onto the GPU, through the post stack that already exists. |  |
 | [FabricatePassGraph.kt](renderers.md#fabricatepassgraph-kt) | Renderers | 13 | 1 |  |  |
-| [FabricatePassLibrary.kt](renderers.md#fabricatepasslibrary-kt) | Renderers | 30 | 30 |  |  |
+| [FabricatePassLibrary.kt](renderers.md#fabricatepasslibrary-kt) | Renderers | 30 | 30 | Worked multi-resolution passes, as lists of `FabricatePassSpec` ready to hand to a chain. |  |
 | [FabricatePostEffects.kt](renderers.md#fabricateposteffects-kt) | Renderers | 4 | 3 | High-level post-processing helpers for `StandardRenderer.Bundle`, layered on top of the ordered `FabricatePostStack`. | [Fabricate Renderer](../fabricate_renderer.md) |
-| [FabricatePostStack.kt](renderers.md#fabricatepoststack-kt) | Renderers | 17 | 1 |  |  |
+| [FabricatePostStack.kt](renderers.md#fabricatepoststack-kt) | Renderers | 17 | 3 | The ordered post-processing stack a Fabricate pass lands in, and the record describing one pass. |  |
 | [FabricateRenderPlan.kt](renderers.md#fabricaterenderplan-kt) | Renderers | 21 | 2 | Render queue data structures and the `FabricateScenePlanner` that builds them from a `FabricateScene`. | [Fabricate Renderer](../fabricate_renderer.md) |
 | [FabricateScene.kt](renderers.md#fabricatescene-kt) | Renderers | 127 | 5 | The scene graph: nodes, transforms, materials, lights, animation playback, and the glTF import that fills them. | [Fabricate Renderer](../fabricate_renderer.md), [Geometry from disk](../geometry_from_disk.md) |
 | [FabricateShaderBoxes.kt](renderers.md#fabricateshaderboxes-kt) | Renderers | 4 | 4 | Expose Fabricate's built-in shaders the same way user-authored shaders work: each pass becomes an editable box with `vertex`/`fragment` GLSL tabs, live introspection, and `alt r` hot reload. | [Fabricate Renderer](../fabricate_renderer.md) |
@@ -206,7 +206,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KratosSession.kt](simulation.md#kratossession-kt) | Simulation | 68 | 20 | The JVM side of the Kratos link: finding a worker, opening a session on it, and asking for solves. |  |
 | [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
 | [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 |  |  |
-| [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 |  |  |
+| [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 | One parameter study over a heated part, in the three sizes a demo has to exist in. |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 0 |  |  |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 0 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
@@ -241,7 +241,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoSearchFLines.kt](languages.md#morphosearchflines-kt) | Languages | 11 | 8 | Drawing what a search did, as vector `FLine`s for `afield.stdlib.showPlaneGrid`. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 | What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator, plus the per-cell arrival times morpho's own compiler already hands over. |  |
 | [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Somebody else's language, running in Field](../morpho_examples.md) |
-| [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 |  | [Springs, dampers, and a character with mass](../movement_examples.md) |
+| [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 | Typed decoder for the versioned note document a multi-instrument transcription job leaves behind. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
@@ -332,7 +332,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SimdVerletColliders.kt](simulation.md#simdverletcolliders-kt) | Simulation | 60 | 32 | Collision shapes for `SimdVerlet`: the world layer of the particle solver. | [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints and cloth](../physics.md) |
 | [SimdVerletDebugLines.kt](simulation.md#simdverletdebuglines-kt) | Simulation | 1 | 1 |  |  |
 | [SimdVerletDyn4jBridge.kt](simulation.md#simdverletdyn4jbridge-kt) | Simulation | 22 | 10 | Runs a `SimdVerlet` particle simulation and a `Dyn4jScene` in one frame, so that chosen particles collide with rigid bodies as circles while the rest stay ordinary particles. |  |
-| [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 |  |  |
+| [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 | Tearing for `SimdVerlet`: retiring over-stretched distance constraints, and the two measurements that say where to set the threshold. |  |
 | [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 | Wind for `SimdVerlet`: per-particle drag, per-quad cloth aerodynamics, and the reproducible gust field both of them sample. |  |
 | [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 2 |  |  |
 | [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 12 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
