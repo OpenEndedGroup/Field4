@@ -22,8 +22,8 @@ space with Steam Audio's HRTF, in realtime only. Where it puts a note is written
 Eight things in Field make samples by one route or another, and
 [Making a sound in Field: every path there is](sound_paths.md) maps all eight and helps you pick.
 
-A third of the audio published elsewhere in these docs is the first voice below, and the rest is
-not. [What this means for the audio
+**Three quarters** of the audio published elsewhere in these docs is the first voice below — 36 of
+the 48 clips on other pages — and the rest is not. [What this means for the audio
 elsewhere](#what-this-means-for-the-audio-elsewhere-in-these-docs) has the breakdown, measured
 clip by clip.
 
@@ -262,30 +262,25 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 ## What this means for the audio elsewhere in these docs
 
 The audit described at the bottom of this page sweeps every published clip and measures each one.
-The corpus is forty-three clips across five pages, and it breaks down like this:
+The corpus is fifty-one clips across eight pages, and it breaks down like this:
 
 <div class="field-data-table" markdown>
 
 | how many | family | where |
 | --- | --- | --- |
-| 31 | the stand-in synth (`patVoice`) | 29 on [Patterns & Rhythm](pattern_language.md), 1 here, 1 on [Sound paths](sound_paths.md) |
+| 37 | the stand-in synth (`patVoice`) | 29 on [Patterns & Rhythm](pattern_language.md), 3 on [A cellular automaton you can hear](chain_ca_sound.md), 3 on [A pattern that moves particles](chain_pattern_particles.md), 1 here, 1 on [Sound paths](sound_paths.md) |
 | 1 | real Dirt-Samples one-shots | here |
 | 1 | real samples + the stand-in per unmatched event | here |
 | 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
 | 3 | a **Faust** program compiled at runtime | 1 on [Sound paths](sound_paths.md), 2 on [Faust](faust.md) |
+| 2 | the **dough wasm engine** driven by a pattern | 2 on [A pattern in space](pat_spatial.md) |
 
 </div>
 
 That first row used to read 5, and this section used to open by saying the stand-in is *not* what
-you are hearing on most of the site. It no longer can: twenty-six of those thirty-one are the
+you are hearing on most of the site. It no longer can: twenty-six of those thirty-seven are the
 mini-notation cards on [Patterns & Rhythm](pattern_language.md), one clip per form of the notation,
-and they arrived in a single commit. The stand-in is now most of the audio here by a wide margin.
-
-The twelve that are not still carry the point the audit was built to make. `DoughDspSoundDocs`
-runs a plate reverb, a phaser, a resonant lowpass and a soft clipper on real signals, and a plate
-reverb ringing down *is* the thing that page is about; the three Faust clips are a program
-compiled at runtime, two of them a pattern playing it as a polyphonic instrument on
-[Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one).
+and they arrived in a single commit. The stand-in is now three quarters of the audio here.
 
 The reason is the one given above, and adding twenty-six clips is the clearest case for it: a
 primer that plays `bd*4` and `bd(3,8)` and `{bd hh cp}%8` needs a voice that renders identically
@@ -293,10 +288,20 @@ on a clean checkout with no sample library anywhere near it, and whose onsets ca
 of the rendered audio* and checked against the schedule — which is what every one of those
 twenty-six asserts.
 
-The nine that never touch `patVoice` are still the interesting minority, and the largest of them
-is standing in for nothing at all. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant
-lowpass and a soft clipper on real signals; a plate reverb ringing down *is* the thing that page is
-about.
+The fourteen that never touch `patVoice` are still the interesting minority, and the largest group
+of them is standing in for nothing at all: `DoughDspSoundDocs` runs a plate reverb, a phaser, a
+resonant lowpass and a soft clipper on real signals, and a plate reverb ringing down *is* the thing
+that page is about. Three are a Faust program compiled at runtime, two of those a pattern playing
+it as a polyphonic instrument on
+[Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one).
+
+The last two are the odd ones out, and worth knowing about before you go looking for the rest of
+their path. They are the dough wasm engine driven by a pattern, published on
+[A pattern in space](pat_spatial.md) — and they are **half a path on purpose**: the mono source
+Steam Audio is handed, not the spatialised output, because that half is realtime-only and needs a
+binary this repository does not carry. That page
+[explains the absent figure](pat_spatial.md#what-there-is-no-figure-of-and-why) rather than
+publishing a substitute for it.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the homepage
 banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player sets `muted` and
