@@ -58,6 +58,11 @@ This guide summarizes the layout and responsibilities of the afield.four Vulkan 
 - `afield/four/texture/ImageView.kt`: ImageView creation metadata and helper for referencing image aspects/mips.
 - `afield/four/texture/TextureSampler.kt`: Sampler creation with common sampling options and mip handling.
 - `afield/four/texture/textures.kt`: Image loading (STB), staging/upload, mip setup, and convenience loader `LoadedTexture` plus stub texture helpers.
+- `afield/four/texture/mega/MegaTexture.kt`: GPU-driven virtual texture over an arbitrarily large image set — the fragment shader requests resolutions through a feedback buffer, and this serves them out of one layered atlas, a page table and an LRU.
+- `afield/four/texture/mega/MegaTextureLayout.kt`: pure atlas arithmetic and the page-table bit format; no device, so it is directly unit-tested.
+- `afield/four/texture/mega/MegaTextureCatalog.kt`: the image catalog (stable indices across runs) and the sparse on-disk page cache.
+- `afield/four/texture/mega/MegaTextureDecoder.kt`: prioritized, cancellable parallel decode/downsample workers feeding the atlas.
+- `afield/four/texture/mega/megaTextureShader.kt`: the GLSL the box interpolates with `{{ mega.all }}` — declarations, page-table queries and the derivative-based feedback.
 
 ## Video Pipeline
 - `afield/four/texture/video/VideoDecoder.kt`: FFmpeg-based decoder that opens/seeks/decodes frames into P010 (semi-planar) buffers.

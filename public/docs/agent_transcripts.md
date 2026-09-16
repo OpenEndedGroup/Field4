@@ -44,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 113 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 114 transcripts on every build, at three
 depths. 65 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-41 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+42 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1471,8 +1471,10 @@ in a headless build, which is why CI compiles this one and stops there.
 
 <!-- transcript-index: verified-by = compile -->
 
-These are self-contained scenes that build their own `Window` + `Renderer` and, when run, open a
-**native Vulkan window**, so the live image is a desktop window, not an embedded frame. The figures
+These are scenes that, when run, open a **native Vulkan window**, so the live image is a desktop
+window, not an embedded frame. All but one build their own `Window` + `Renderer`; `mega_texture_wall`
+takes its renderer from an `agent_graphics_context` parent, for the reason its own entry gives, and
+so is the one here that is not offered as a starting point. The figures
 here are captures of that window, taken by the docs capture pipeline from *these* transcript files
 (`capture="native-window"`), so they are the real frame and not a synthesized still. Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
@@ -1507,6 +1509,30 @@ frame boundary. Needs your own frames: the box prints how to make them and stops
 absent, rather than shipping somebody's capture as a fixture.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
+
+### mega_texture_wall
+
+A directory of images as one wall, behind a virtual texture the **GPU**
+drives. The distinction is the whole scene: the fragment shader takes `dFdx`/`dFdy` of the image's
+own UVs, so it knows how many pixels across it is being drawn at, and `atomicMax`es the level it
+wants into a feedback buffer. A frame later the CPU reads that buffer, and that read is the entire
+input to its decoding, residency and eviction — it is never told where anything is, how large it
+looks, or whether it is on screen at all. Measured on 1640 film frames: dollying in takes all of
+them from the 8-pixel base pages to level 3, then 480 of them to level 4, then the 28 that fill the
+screen to level 6 against a budget of 32 such pages, and evicts them again on the way out. The
+ceiling that stops the last step thrashing is computed from two measured numbers and nothing else —
+how many images want a level, and how many pages that level has.
+
+Worth opening for the shape as much as the subject. The wall's geometry is arithmetic on
+`gl_InstanceIndex` — six vertices, one instance per image, no vertex buffer at all — and both
+shaders are box properties with `{{ mega.all }}` interpolated into them, so the sampling, the layout
+and the LOD policy are all editable with `alt-r` rather than buried in Kotlin. Flip
+`showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
+is 512 pixels, and flying at the wall turns it green ahead of you. The library is
+`afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
+
+Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line
+at images of your own — which together are why this one ships no starting point.
 
 ### gpu_state
 

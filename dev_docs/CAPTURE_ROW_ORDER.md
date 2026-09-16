@@ -55,7 +55,6 @@ the bottom of the picture. `packRgbaToRgbBottomUp` is kept for it.
 | Texture / RTT preview + 4 docs harnesses | `TexturePreviewCache.capture` | top-down | `flipY = false` | **was inverted, fixed** |
 | `RenderToTexture.saveJpgAsync` | `GpuImageCapture.writeJpeg` | top-down | `packRgbaToRgbTopDown` | **was inverted, fixed** |
 | JPEG write primitive | `GpuImageCapture.writeJpegRgb` | n/a | none — writes what it is given | correct |
-| Virtual-texture thumbnail | `VirtualTextureSystem.writeThumbnailJpeg` | top-down (STB file decode, not a GPU readback) | none | correct |
 | Caller-supplied framebuffer → temp PNG | `Window.saveFramebufferToTempFile` | caller's, defaulted to top-down | `flipY = false` | **KDoc was false, fixed**; no callers |
 | Caller-supplied framebuffer → base64 | `Window.getFramebufferAsBase64` | caller's, defaulted to top-down | `flipY = false` | same; no callers |
 | Rolling snapshot readback | `RollingCapture.copySnapshotToStaging` | top-down | none — hands the raw buffer on | no encoder, no consumers |

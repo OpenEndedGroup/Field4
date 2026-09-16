@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-30 source file(s), 1430 public symbol(s), 1195 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+31 source file(s), 1442 public symbol(s), 1207 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1207,6 +1207,47 @@ The difference between two `KeyframeScope.Key`s: only the names that actually mo
 | <code class="highlight"><span class="k">val</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyDiffEntry</span><span class="p">&gt;</span></code> | The changes, name-sorted; empty means the two keys agree. |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/keyframer/#L1518) | The diff as text, one line per change prefixed `+` (added), `-` (removed) or `~` (changed), and the single line "No key differences." when there are none. |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/keyframer/#L1533) | The diff as a small dark-mode HTML table — one row per change, marker coloured green for added, red for removed and amber for changed, with a header counting the changes. What a box shows when a `KeyDiff` is the value on screen. |
+
+## megaTextures.kt { #megatextures-kt }
+
+A directory of images as one texture, however many of them there are.
+
+`Box.megaTextureHere` is the whole box-facing surface: point it at a folder and it scans the
+folder, builds the atlas, and registers the GLSL your shaders interpolate with `{{ mega.all }}`.
+The machinery behind it lives in `afield.four.texture.mega`, and the reason it is worth reaching
+for rather than a pile of `LoadedTexture`s is that it is *GPU-driven*: the fragment shader
+measures its own on-screen footprint and asks for the resolution it needs, so nothing here has to
+be told where anything is or how big it looks.
+
+`dev_docs/agents/transcripts/mega_texture_wall.yaml` is the worked example — five lines of Kotlin
+and two shaders you can edit live.
+
+`src/jvmMain/kotlin/afield/stdlib/megaTextures.kt` — [read the source](source/jvmMain/afield/stdlib/megaTextures/)
+
+### Top-level functions { #megatextures-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">megaTextureHere</span><span class="p">(</span><span class="n">build</span><span class="p">:</span> <span class="nc">MegaTextureSpec</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">MegaTexture</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L125) | Build (or reuse) this box's `MegaTexture` and register its GLSL under `{{ <templateName>.… }}`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">megaTexture</span><span class="p">(</span><span class="n">templateName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;mega&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">MegaTexture</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L163) | This box's `MegaTexture` under `templateName`, if `megaTextureHere` has built one. |
+
+### MegaTextureSpec { #megatextures-kt-megatexturespec }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">MegaTextureSpec</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L35)
+
+What to show and how, for `Box.megaTextureHere`.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">folders</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L37) | Directories to take images from, in the order given. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">recursive</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L40) | Walk subdirectories too. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">extensions</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L43) | Lower-case file extensions to take, without the dot. Anything else in the folder is ignored. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">maxImages</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L46) | Stop after this many images — useful for trying a huge directory at a small size first. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">templateName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L49) | The `shaderTemplate` key the GLSL slots are registered under: `{{ mega.all }}` by default. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">warmBaseLevel</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L58) | Queue level-0 pages for everything up front, so the wall fills in without being looked at. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">config</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L61) | Page sizes, residency budget, decode threads, bindings — see `MegaTextureConfig`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">folder</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L64) | Add a directory of images, by path. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">folder</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">MegaTextureSpec</span></code>](source/jvmMain/afield/stdlib/megaTextures/#L67) | Add a directory of images. |
 
 ## mesh.kt { #mesh-kt }
 
