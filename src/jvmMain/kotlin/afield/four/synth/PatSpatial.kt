@@ -17,6 +17,8 @@ import afield.four.audio.steamaudio.SteamAudio
 import afield.four.audio.steamaudio.SteamAudioContext
 import afield.inMain
 import afield.registerLaunchJob
+import afield.stdlib.Quat
+import afield.stdlib.Vec3
 import afield.returnValueRegistration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.yield
@@ -24,10 +26,11 @@ import java.lang.foreign.Arena
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.PriorityQueue
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
@@ -185,6 +188,59 @@ data class PatSpatialPlacement(
     companion object {
         /** Steam Audio's inverse-distance curve stops steepening here, so nothing blows up at zero. */
         const val MIN_DISTANCE = 0.4
+    }
+}
+
+/**
+ * Where the listener's head is in the room, as position plus orientation quaternion.
+ *
+ * The frame is **OpenXR's and Steam Audio's, which are the same one**: +X right, +Y up, -Z ahead,
+ * right-handed, metres. That identity is why [ofOpenXR] is a copy and not a conversion, and
+ * `HeadTrackedSpatialSmokeTest` renders real audio to hold it -- a handedness error here would
+ * invert left and right and change nothing else, which is the one audio bug that sounds fine.
+ *
+ * The room's origin is wherever the pose source calls the origin. For OpenXR that is the runtime's
+ * LOCAL space, so a `spat` source at `dist 2` sits two metres from where the headset was when the
+ * runtime last recentred, not two metres from the wearer.
+ */
+data class HeadPose(
+    val x: Double = 0.0,
+    val y: Double = 0.0,
+    val z: Double = 0.0,
+    val qx: Double = 0.0,
+    val qy: Double = 0.0,
+    val qz: Double = 0.0,
+    val qw: Double = 1.0,
+) {
+    /**
+     * This pose's heading in degrees, positive to the right -- the quantity [PatSpatialRoom.turnListener]
+     * takes. Yaw alone does not describe a head that is also nodding or tilted; this is a readout,
+     * and the spatialisation uses the whole quaternion.
+     */
+    val azimuthDeg: Double
+        get() {
+            // The heading of the head's own forward axis, q * (0, 0, -1). A turn to the right is a
+            // *negative* rotation about +Y -- which is where both minus signs come from.
+            val fx = -2.0 * (qx * qz + qw * qy)
+            val fz = -(1.0 - 2.0 * (qx * qx + qy * qy))
+            return Math.toDegrees(atan2(fx, -fz))
+        }
+
+    companion object {
+        val IDENTITY = HeadPose()
+
+        /** A head turned [azimuthDeg] to the right at the room's origin, and level. */
+        fun turnedRight(azimuthDeg: Double): HeadPose {
+            val half = Math.toRadians(-azimuthDeg) * 0.5
+            return HeadPose(qy = sin(half), qw = cos(half))
+        }
+
+        /** An OpenXR (or [afield.four.targets.StereoPoseSource]) head pose, copied without conversion. */
+        fun ofOpenXR(position: Vec3, orientation: Quat): HeadPose = HeadPose(
+            x = position.x.toDouble(), y = position.y.toDouble(), z = position.z.toDouble(),
+            qx = orientation.x.toDouble(), qy = orientation.y.toDouble(),
+            qz = orientation.z.toDouble(), qw = orientation.w.toDouble(),
+        )
     }
 }
 
@@ -467,7 +523,15 @@ class PatSpatialRoom internal constructor(
     private val frames = AtomicLong(0L)
     private val sourcesByKey = LinkedHashMap<String, PatSpatialSource>()
     private val pending = PriorityQueue<PatSpatialEvent>(64, compareBy { it.startFrame })
-    private val listenerRequests = ConcurrentLinkedQueue<Double>()
+    /**
+     * The newest pose a caller has offered, latest-wins.
+     *
+     * A queue would be wrong: a head-tracked listener produces poses at the tracker's rate and the
+     * render thread consumes them at the block rate, and when those disagree the block wants the
+     * *newest* pose, not the oldest unread one. Only the reference is published, so the render
+     * thread reads a whole pose or the previous whole pose, never half of each.
+     */
+    private val listenerRequest = AtomicReference(HeadPose.IDENTITY)
 
     /** Frames the render thread has produced. The clock a [PatSpatialEvent] is stamped on. */
     val framesRendered: Long get() = frames.get()
@@ -567,13 +631,67 @@ class PatSpatialRoom internal constructor(
      * head turns right. The render thread applies it at the top of a block.
      */
     fun turnListener(azimuthDeg: Double) {
-        listenerRequests.add(azimuthDeg)
+        listenerRequest.updateAndGet { previous ->
+            // Turning a head does not move it. Preserving the position matters once a pose source
+            // is driving this room: a turn must not teleport the listener back to the origin.
+            HeadPose.turnedRight(azimuthDeg).copy(x = previous.x, y = previous.y, z = previous.z)
+        }
+    }
+
+    /**
+     * Move and turn the listener's head, from any thread. The render thread applies the newest pose
+     * it finds at the top of a block; poses offered faster than that are skipped, not queued.
+     *
+     * Unlike [turnListener] this carries a **position**, so the head's own translation reaches the
+     * spatialisation: leaning toward a source makes it nearer and walking past one sweeps it across.
+     * [HeadTrackedListener] is what normally calls this, from an OpenXR headset.
+     */
+    fun setListenerPose(pose: HeadPose) {
+        listenerRequest.set(pose)
     }
 
     /** The listener's heading in degrees, as the render thread last applied it. */
+    val listenerAzimuthDeg: Double get() = listenerPose.azimuthDeg
+
+    /** The whole pose the render thread last applied, position included. */
     @Volatile
-    var listenerAzimuthDeg: Double = 0.0
+    var listenerPose: HeadPose = HeadPose.IDENTITY
         private set
+
+    /**
+     * World -> head rotation for [listenerPose], row-major, as nine floats.
+     *
+     * The transpose of the head's own rotation, recomputed only when the pose changes and read by
+     * every source in the block. Kept as floats rather than a [Quat] because the alternative --
+     * `Quat.conjugate().transform(...)` per source per block -- both allocates and mutates the
+     * quaternion it is called on.
+     */
+    private val worldToHead = FloatArray(9).also { it[0] = 1f; it[4] = 1f; it[8] = 1f }
+
+    private fun applyListenerPose(pose: HeadPose) {
+        listenerPose = pose
+        val x = pose.qx; val y = pose.qy; val z = pose.qz; val w = pose.qw
+        val n = sqrt(x * x + y * y + z * z + w * w)
+        if (n < 1e-9) {
+            // A zero quaternion is a pose source that has not filled anything in. Level and facing
+            // -Z is the one answer that cannot be mistaken for tracking.
+            worldToHead.fill(0f)
+            worldToHead[0] = 1f; worldToHead[4] = 1f; worldToHead[8] = 1f
+            return
+        }
+        val qx = x / n; val qy = y / n; val qz = z / n; val qw = w / n
+        // Rows of head->world, which written across are the columns of world->head: the transpose
+        // is the inverse for a rotation, and this is where it is taken.
+        worldToHead[0] = (1 - 2 * (qy * qy + qz * qz)).toFloat()
+        worldToHead[3] = (2 * (qx * qy - qw * qz)).toFloat()
+        worldToHead[6] = (2 * (qx * qz + qw * qy)).toFloat()
+        worldToHead[1] = (2 * (qx * qy + qw * qz)).toFloat()
+        worldToHead[4] = (1 - 2 * (qx * qx + qz * qz)).toFloat()
+        worldToHead[7] = (2 * (qy * qz - qw * qx)).toFloat()
+        worldToHead[2] = (2 * (qx * qz - qw * qy)).toFloat()
+        worldToHead[5] = (2 * (qy * qz + qw * qx)).toFloat()
+        worldToHead[8] = (1 - 2 * (qx * qx + qy * qy)).toFloat()
+    }
 
     internal fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -618,11 +736,8 @@ class PatSpatialRoom internal constructor(
                     }
 
                     while (running.get()) {
-                        listenerRequests.poll()?.let { requested ->
-                            var latest = requested
-                            while (true) latest = listenerRequests.poll() ?: break
-                            listenerAzimuthDeg = latest
-                        }
+                        val offered = listenerRequest.get()
+                        if (offered !== listenerPose) applyListenerPose(offered)
 
                         // 1. Query ahead far enough to cover everything the ring will hold.
                         val framesPerCycle = sampleRate / cps
@@ -746,9 +861,20 @@ class PatSpatialRoom internal constructor(
         val at = approach(source.current, source.target)
         source.current = at
 
+        // The placement is an anchor in the ROOM, not an offset from the head: az/elev/dist are
+        // spherical coordinates about the room's origin. With the listener at that origin and level
+        // -- which is every pattern that never mentions a pose -- the two readings agree exactly,
+        // and they part company as soon as a head moves.
+        val anchor = at.direction()
+        val radius = at.distance
+        val relX = anchor[0] * radius - listenerPose.x
+        val relY = anchor[1] * radius - listenerPose.y
+        val relZ = anchor[2] * radius - listenerPose.z
+
         // Steam Audio's own inverse-distance curve, evaluated here rather than through
         // DistanceAttenuationModel.calculate, which allocates a scratch Arena per call.
-        val distance = max(at.distance, PatSpatialPlacement.MIN_DISTANCE)
+        val separation = sqrt(relX * relX + relY * relY + relZ * relZ)
+        val distance = max(separation, PatSpatialPlacement.MIN_DISTANCE)
         source.directParams.distanceAttenuation =
             (PatSpatialPlacement.MIN_DISTANCE / distance).toFloat()
         source.directParams.occlusion = (1.0 - at.occlusion).toFloat()
@@ -766,10 +892,20 @@ class PatSpatialRoom internal constructor(
         source.directParams.flags = flags
         source.direct.apply(source.directParams, source.dry, source.shaped)
 
-        // The listener's heading turns the world the other way, which is the whole content of a
-        // head rotation: a source ahead of a head turned right is off to the left.
-        val dir = at.copy(azimuthDeg = at.azimuthDeg - listenerAzimuthDeg).direction()
-        source.binauralParams.setDirection(dir[0], dir[1], dir[2])
+        // The head's rotation turns the world the other way, which is the whole content of a head
+        // rotation: a source ahead of a head turned right is off to the left. Rotating the room's
+        // offset by the inverse of the head's orientation says that for pitch and roll too, which
+        // an azimuth subtraction cannot.
+        val inv = 1.0 / max(separation, 1e-6)
+        val wx = (relX * inv).toFloat()
+        val wy = (relY * inv).toFloat()
+        val wz = (relZ * inv).toFloat()
+        val m = worldToHead
+        source.binauralParams.setDirection(
+            m[0] * wx + m[1] * wy + m[2] * wz,
+            m[3] * wx + m[4] * wy + m[5] * wz,
+            m[6] * wx + m[7] * wy + m[8] * wz,
+        )
         source.binaural.apply(source.binauralParams, source.shaped, source.stereo)
 
         source.stereo.interleaveTo(context, lane)
@@ -938,6 +1074,19 @@ class PatSpatialLaunch internal constructor(
 
     /** Turn the listener's head. Positive is to the right. */
     fun turnListener(azimuthDeg: Double) = room.turnListener(azimuthDeg)
+
+    /** Move and turn the listener's head. See [PatSpatialRoom.setListenerPose]. */
+    fun setListenerPose(pose: HeadPose) = room.setListenerPose(pose)
+
+    /**
+     * Drive the listener from a tracked head -- an OpenXR headset, or anything else that reports a
+     * pose. The returned tracker is started; closing it stops following, and closing this launch
+     * does not.
+     */
+    fun followHead(
+        head: HeadPoseSource,
+        hz: Double = HeadTrackedListener.DEFAULT_HZ,
+    ): HeadTrackedListener = HeadTrackedListener(room, head, hz).also { it.start() }
 
     /** Frames the audio thread asked for and the ring could not supply. Zero is the whole point. */
     val underruns: Long get() = room.ring.underruns

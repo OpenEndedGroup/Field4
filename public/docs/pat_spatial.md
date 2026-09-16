@@ -315,6 +315,54 @@ engine and Steam Audio handle with it.
 `launch.turnListener(deg)` turns the listener's head from any thread — positive to the right, so a
 source dead ahead moves to your left. The render thread applies it at the top of a block.
 
+## A head that is actually on someone
+
+`turnListener` takes one angle, which is as much as a seated listener with a keyboard needs. A
+headset reports more than that, so `launch.setListenerPose(pose)` takes the whole thing — position
+and orientation — and `launch.followHead(source)` keeps it following one:
+
+```diffstatic {data-lang=kotlin}
+val launch = patSpatial(
+    pat("bd ~ sd ~, hh*8").with(
+        paramOf("spat", pat("<kit hats>")),
+        param("az", "0 -85"),
+        param("dist", 2.0),
+    ),
+    cps = 2.0,
+)
+launch.awaitReady()
+launch.followHead(VirtualHead.turning(degreesPerSecond = 45.0))
+launch
+```
+
+On a machine with an OpenXR runtime, `hmd.asHeadPoseSource()` on an `OpenXRHmdTarget` is the same
+argument, and there is no conversion between the two: OpenXR and Steam Audio are both right-handed,
++X right, +Y up, −Z ahead, in metres, so `HeadPose.ofOpenXR` copies seven numbers. Read that as a
+warning rather than as a convenience — a handedness mistake between these frames leaves level,
+distance, occlusion and air absorption all correct and swaps only the listener's ears, which is why
+`synth.head-tracked-spatial.smoke` pins it on rendered audio instead of on the sentence above.
+
+The one thing that changes underneath is what `az`, `elev` and `dist` describe. They are now
+spherical coordinates of an anchor **in the room**, not an offset from the listener, so a head that
+walks changes what it hears: lean toward a source and it is nearer, step past one and it crosses your
+ears. With the listener at the origin and level the two readings coincide exactly, which is what
+keeps every pattern on this page sounding as it did.
+
+Two things are worth knowing before wiring a real headset to it:
+
+* **Pump from the frame, not from a timer**, for `OpenXRHmdTarget`. Its pose is written by
+  `xrLocateViews` on the renderer's queue thread as loose floats, so a reader elsewhere can pick up a
+  position from one frame with an orientation from the next. Construct the listener with `hz = 0.0`
+  and call `pump()` inside the frame callback. A `StereoPoseSource` latches by contract and is fine
+  on the timer, which is the default.
+* **Losing tracking freezes the sound field**, it does not recentre it. A pose source returning false
+  leaves the last good pose applied, because a field that stops moving reads as a tracking dropout
+  where a snap back to front reads as a bug in the piece.
+
+`./gradlew headTrackedDemo` renders four movements of this to `build/demo/head-tracked.wav` — still,
+turning, stepping sideways, leaning in — differing from each other in the seven numbers of a head
+pose and in nothing else. Headphones.
+
 ---
 
 ## How the claims on this page are checked
@@ -325,10 +373,11 @@ source dead ahead moves to your left. The render thread applies it at the top of
 | `synth.pat-spatial.engine` | that it reaches a real output: the engine's own thread pulled the ring, the frame counter moved, the tap saw signal, nothing underran |
 | `synth.pat-spatial.budget` | the table above. Machine- and load-dependent; what reproduces is the *shape*, a median far inside budget and a tail far outside it |
 | `synth.pat-spatial.sound` | the two published clips, plus the three claims they cannot carry themselves |
+| `synth.head-tracked-spatial.smoke` | that a head pose of the shape OpenXR reports aims the HRTF: an identity pose is the old image to the sample, a head turned right moves a source ahead into the left ear, a head that only *steps* sideways moves it too, and losing tracking holds the last pose |
 | `synth.sound.path.map` | that this path is declared, on the seam, and named on [sound_paths.md](sound_paths.md) — the guard that caught it arriving |
 
-The first three need `./gradlew fetchSteamAudioNatives`; the fourth does not, which is exactly the
-line this page's missing figure falls on.
+The first three and the fifth need `./gradlew fetchSteamAudioNatives`; `synth.sound.path.map` does
+not, which is exactly the line this page's missing figure falls on.
 
 The full API — every field, every default, every parameter — is in
 [`afield.four.synth` in the generated reference](reference/patterns.md#patspatial-kt).
