@@ -178,3 +178,28 @@ like the answer would make the "after" free.
 cylinder against its truth, the cube against the inscribed/circumscribed interval — because the
 report prints all four numbers identically and three are measurements while the fourth is a
 negotiation.
+
+## The two lathes, and which of their bounds are guarded
+
+Displaced from `public/docs/solid_notation.md` on 2026-09-16. The page keeps the trap itself —
+`afield.stdlib.revolveMesh` turns about **Y** with a `(radius, y)` profile, and
+`afield.manifold.Section.revolved` (and therefore `Profile.revolved`) about **Z** with
+`(radius, z)` — and says that porting a profile means swapping `y` and `z`. What moved here is the
+measurement it illustrated that with.
+
+Measured on one asymmetric profile, Manifold returns bounds `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)`
+and `revolveMesh` returns `(-1.6, 0.0, -1.6)…(1.6, 0.8, 1.6)`.
+
+**Only part of the first pair is guarded, and the second pair is not guarded at all.**
+`SolidSLConventionProbe` builds `Profile.polygon(listOf(P2(1.0, 0.2), P2(1.6, 0.2), P2(1.6, 1.0)))`
+and asserts `b.min.z == 0.2` and `b.max.z == 1.0` — the two numbers that establish which axis the
+profile's `y` became, which is the whole point of the probe. The `±1.6` extents it prints are not
+asserted, and no test in the tree pins `revolveMesh`'s bounds for that profile.
+
+### Open
+
+The `revolveMesh` pair does not obviously follow from the probe's profile: that triangle spans
+`y ∈ [0.2, 1.0]`, so a Y-axis lathe of it should read `0.2…1.0` on Y rather than the `0.0…0.8`
+recorded above. Either the two halves of the comparison were measured on different profiles, or one
+of them has drifted. Resolve it by printing both from one profile in `SolidSLConventionProbe` and
+asserting the pair, rather than by editing either number here.
