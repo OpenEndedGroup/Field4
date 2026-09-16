@@ -9,10 +9,11 @@ Owners: `SoundPathMap` (`src/jvmMain/kotlin/afield/four/synth/SoundPathMap.kt`),
 
 ## The five things the map guard asserts
 
-1. **The counts.** `SOURCE_COUNT = 7`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 10`,
+1. **The counts.** `SOURCE_COUNT = 8`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 11`,
    each re-derived by grouping `PATHS` rather than recounted by hand. A path added *beside* the
    seam instead of *on* it grows `PATHS` while leaving `SEAM_COUNT` alone, and the failure message
-   says so rather than inviting an edit to the constant.
+   says so rather than inviting an edit to the constant. `SOURCE_COUNT` went from 7 to 8 on
+   2026-09-16 with `pat-spatial`.
 2. **Undeclared paths, derived from marker literals.** Five literals in the tree can only mean a
    new way in or out of the process: `alcOpenDevice(`, `alcCaptureOpenDevice(`,
    `fun renderWav(name: String, outPath: String)`, `WavFloatArrayWriter.encode` and
@@ -20,6 +21,15 @@ Owners: `SoundPathMap` (`src/jvmMain/kotlin/afield/four/synth/SoundPathMap.kt`),
    and a new hit names itself in the failure. `SoundPathMap`'s own KDoc records why the fifth
    marker was added and what the set still cannot see; it is the detailed account and this note
    does not duplicate it.
+
+    The fifth marker — the seam one — has now earned its keep twice. It was added on 2026-09-12
+    after `FaustPoly.kt` sat undeclared for a month: a pattern-driven Faust instrument opens no
+    device and writes no WAV, so the first four literals all missed it while every check stayed
+    green. `pat-spatial` arrived on 2026-09-16 with the same profile and the seam marker reported
+    `PatSpatial.kt` *and* the control node in `PatSpatialEngineSmoke.kt` before anybody noticed the
+    path was undeclared. The same hole, the second time, caught in a day rather than a month. It
+    still cannot see a source off the seam entirely — another `sonic-pi`, another whole-buffer free
+    function.
 3. **Stale declarations.** The same sweep in reverse: a declared file that no longer carries its
    marker fails, because that is a citation that has rotted.
 4. **Every citation on the page resolves.** Each path declares an entry-point *symbol*, not a line
