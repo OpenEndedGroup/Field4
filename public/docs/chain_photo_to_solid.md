@@ -98,7 +98,7 @@ a statement about holes that no volume can make, and it is checked rather than a
 
 The identity in that readout is inclusion–exclusion, which holds for any two solids at all:
 
-```
+```diffstatic {data-lang=text}
 vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)
 ```
 
@@ -118,7 +118,7 @@ The first version of this chain asked Manifold for `toTriMesh(normals = true)`, 
 renderer wants, and then handed the result back to `toSolid`. Manifold refused it, and
 `MeshDiagnosis` said exactly why:
 
-```
+```diffstatic {data-lang=text}
 this TriMesh is not a valid manifold: NOT_MANIFOLD.
 mesh: 18389 vertices, 35578 triangles, chi=7, 11 component(s)
 2 blocking defect(s) — Manifold will refuse this mesh.
