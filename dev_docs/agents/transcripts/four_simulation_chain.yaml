@@ -1,0 +1,348 @@
+name: four_simulation_chain
+description: |
+  Two GPU **simulations** declared as pass chains: a Stam stable fluid you paint into with the mouse,
+  and a jump flood distance transform of a shape you move around. Four boxes — a renderer, a bundle,
+  and one declaration each.
+
+  These are the companion to [four_pass_chain](#four_pass_chain), and they exist because that one
+  could not express them. A pass chain used to be strictly feed-forward over one frame — the planner
+  says so in as many words, *"a chain may only read backwards"* — and a fluid's velocity field this
+  frame is a function of the velocity field **last** frame. No ordering of passes within a frame
+  produces that.
+
+  So a pass may now declare itself `persistent`: its target becomes a ping-pong pair, and any pass
+  can bind a sampler to its *previous* frame. In the fluid box, `fluid-advect` is the **first** pass
+  in the list and it reads `fluid-velocity`, which is the second to last — a reference pointing
+  forwards, and exactly as legal as any other read of a value that already exists when the frame
+  starts.
+
+  **The fluid box: drag in the window to paint.** Left-drag injects velocity along the drag and dye
+  where the cursor is; let go and the fluid coasts on what you gave it. Twenty-seven passes: advect,
+  curl, force, divergence, a twenty-pass Jacobi pressure solve, projection, dye advection. A Jacobi
+  sweep turns out to be a pass chain in the most literal sense — iterate *k* reads iterate *k-1* and
+  the fixed divergence, and nothing else — which is why twenty iterations is twenty declarations
+  instead of twenty boxes or a loop you cannot put a probe inside.
+
+  Things worth trying in the fluid box:
+
+    - `vorticity` from `24f` down to `0f`, then back. This is the term that separates a smear from
+      something that reads as fluid: first-order advection numerically dissipates curl, and
+      confinement pushes it back. Off, the dye you paint spreads into a smooth blob; on, it goes
+      filamentary and sheds eddies.
+    - `iterations` from `20` down to `4`. The fluid does not become unstable — this method does not
+      blow up — the dye starts *piling up and thinning out*, because a velocity field with residual
+      divergence creates and destroys mass.
+    - `dissipation` on `fluid-dye` down to `0.9f` for trails that fade fast, or up to `1.0f` for dye
+      that never leaves.
+    - `println(chain.plan.report())`. The two `x2 (ping-pong)` slots at the bottom are the state; the
+      twenty pressure iterates alternate between two slots, which is a ping-pong the planner
+      *discovered* rather than was told about.
+
+  **The distance box: move the shape.** A mask pass draws a disc and a bar, then thirteen passes
+  flood it into a signed distance field, and a bands pass makes it visible — blue inside, orange out,
+  a dark isoline exactly on the edge, with evenly spaced contours either side. Even spacing is the
+  check: a field whose bands crowd or stretch is not a distance.
+
+  It ends with an inset pass that puts the field in the top-right quadrant and passes the fluid
+  through everywhere else, because two chains in one post stack run in series and whichever is
+  appended last owns the screen. Without it the distance box makes the fluid vanish, which reads like
+  a broken fluid rather than an ordering you asked for.
+
+  Things worth trying in the distance box:
+
+    - `maskCentre` and `maskRadius`. The whole field re-floods every frame from scratch, so the
+      contours track the shape with no history and no settling.
+    - `signed = false` in the `jumpFloodDistance(...)` call. The interior goes flat — an unsigned
+      transform measures distance to the *shape*, so everything inside it is zero.
+    - `spacing` on the bands pass, down to `0.01f`. Thirty-odd contours instead of ten, and they stay
+      evenly spaced, which is what makes this a distance field rather than a glow.
+    - `resolution = 512`. Fifteen passes instead of thirteen — the stride sequence is the halvings of
+      the resolution, so the pass count is `1 + log2(N)` and the planner derives it for you.
+
+  `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
+  `tools/run_field_tests.py --id four.simulation-chain.smoke` is the same two chains driven headlessly
+  with assertions on the pixels — including the jump flood checked against *exact* ground truth, and
+  the one assertion a plan cannot make: with the input switched off, the picture must keep changing.
+operations:
+  # 1. the renderer: owns the Window and pumps the loop. Run this one first.
+  - create:
+      box: sim_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Simulation chains")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  # 2. the bundle: no scene. Both chains below synthesise everything they need, so the lit-scene
+  #    half of four_pass_chain is not required here — what is required is a post stack for the
+  #    chains to be appended to.
+  - create:
+      box: sim_bundle
+      name: bundle
+      frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
+          // itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
+          // rewrites the box's code and the rewrite does not carry the snippet's own imports, so
+          // `prop<StandardRenderer.Bundle>(bundle)` under an
+          // `import afield.four.fabricated.StandardRenderer` fails with
+          // `Unresolved reference 'StandardRenderer'` reported against the *import* line, while
+          // every other reference in the box resolves through it normally.
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.applyScenePlan
+          import afield.stdlib.linalg.Vector3f
+
+          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+
+          val r: Renderer = fromContext()
+
+          once.bundle {
+              val b = StandardRenderer.build(
+                  r,
+                  StandardRenderer.Config(
+                      renderWidth = 1024,
+                      renderHeight = 1024,
+                      backgroundColor = Vector3f(0.02f, 0.02f, 0.03f)
+                  )
+              )
+              b.applyScenePlan()
+              b.present(renderer = r)
+              b.attachTo(r)
+              b
+          }
+          println("bundle ready: ${bundle.postStack.names()}")
+  # 3. the fluid: one declaration, a mouse handler that paints into it, and live knobs.
+  - create:
+      box: sim_fluid
+      name: fluid
+      frame: { x: 720.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.FabricatePassChain
+          import afield.four.fabricated.FabricatePassLibrary
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.addPassChain
+          import afield.four.util.DownResult
+          import afield.four.util.MouseEvent
+          import afield.four.util.MouseEvents
+          import afield.stdlib.linalg.Vector2f
+          import afield.stdlib.linalg.Vector3f
+
+          prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
+
+          val r: Renderer = fromContext()
+          val b: StandardRenderer.Bundle = fromContext()
+
+          // Twenty-seven passes, declared once. `fluid-velocity` and `fluid-dye` are persistent, so
+          // they get ping-pong targets that survive the frame; everything between them is scratch
+          // the planner packs onto five shared slots. `printReport` prints the whole thing — read it
+          // before believing the picture, because a chain planned at the wrong resolution renders
+          // something perfectly plausible.
+          once.fluid {
+              // The composite is part of **this** chain, not a second `addPassChain` call, and that
+              // is not a style preference. `addPassChain` plans against `postStack.output()` at the
+              // moment it is called, so in a later call `CHAIN_INPUT` means *this chain's output* —
+              // and a composite in that later chain naming `fluid-dye` as its blurred input fails
+              // with "fluid-dye is not a pass in this chain". Declaring both together is what makes
+              // `sharp = CHAIN_INPUT` mean the full-resolution frame the fluid is being laid over.
+              val c = b.addPassChain(
+                  FabricatePassLibrary.stableFluid(
+                      prefix = "fluid",
+                      resolution = 256,
+                      iterations = 20,
+                      dyeDissipation = 0.99f,
+                      vorticity = 24f
+                  ) + FabricatePassLibrary.composite(
+                      // The chain otherwise ends on the 256² simulation grid; this rejoins at full
+                      // resolution, and it is the same `composite` the aperture chain uses.
+                      name = "fluid-show",
+                      blurred = "fluid-dye",
+                      sharp = FabricatePassChain.CHAIN_INPUT,
+                      blend = 0f,
+                      gain = 1f,
+                      add = 1f
+                  ),
+                  renderer = r,
+                  printReport = true
+              )
+
+              // ── painting. Nothing in the library reads a mouse; the splat is push constants,
+              //    which is the seam that keeps the chain a declaration. The `force` and `dye`
+              //    passes deliberately share these names, so one handler drives both.
+              //
+              //    The `onDown` is not optional even though it does nothing: MouseEvents only polls
+              //    the buttons some handler has *asked* about (`buttonsRequested = down.keys +
+              //    up.keys`), and `onDrag` only fires while a button is down — so with no
+              //    down-handler registered for "left", no drag ever arrives and the fluid sits there
+              //    looking broken.
+              //    And the lambdas name their parameter type on purpose. `onDown` and `onUp` are
+              //    each overloaded on `() -> Boolean` and a `(MouseEvent) -> …` form, and a bare
+              //    `{ true }` is an overload resolution ambiguity *in a box* — the box compiler does
+              //    not pick the no-argument candidate the way the surrounding Kotlin does. Typing
+              //    the parameter is what resolves it.
+              val mouse = MouseEvents(r)
+              mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
+              mouse.onDrag("fluid-paint") { ev ->
+                  val u = (ev.pos.x / r.window.width.toFloat()).coerceIn(0f, 1f)
+                  val v = (ev.pos.y / r.window.height.toFloat()).coerceIn(0f, 1f)
+                  listOf("fluid-force", "fluid-dye").forEach { pass ->
+                      c.setPush(pass, "splatCenter", Vector2f(u, v))
+                      c.setPush(pass, "splatVelocity", Vector2f(ev.delta.x * 30f, ev.delta.y * 30f))
+                      c.setPush(pass, "splatColor", Vector3f(0.35f, 0.8f, 1.0f))
+                      c.setPush(pass, "splatRadius", 0.04f)
+                      c.setPush(pass, "splatMass", 0.05f)
+                  }
+                  true                       // returning false *removes* the handler
+              }
+              // Stop injecting the moment the button comes up, or the last splat keeps pumping
+              // forever at wherever the drag happened to end.
+              mouse.onUp("left", "fluid-paint") { _: MouseEvent ->
+                  listOf("fluid-force", "fluid-dye").forEach { pass ->
+                      c.setPush(pass, "splatVelocity", Vector2f(0f, 0f))
+                      c.setPush(pass, "splatMass", 0f)
+                  }
+                  true
+              }
+
+              b.attachTo(r)
+              b.present(renderer = r)
+              c
+          }
+
+          // ── live knobs. Edit a number, hit run. No rebuild, no reallocation. ──
+          fluid.setPush("fluid-dye", "dissipation", 0.99f)
+          fluid.setPush("fluid-force", "vorticity", 24f)
+
+          println("drag in the window to paint. state fields: ${fluid.stateNames()}")
+  # 4. the distance transform: a mask, a flood, and bands you can read.
+  - create:
+      box: sim_distance
+      name: distance field
+      frame: { x: 1060.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.FabricatePassChain
+          import afield.four.fabricated.FabricatePassInput
+          import afield.four.fabricated.FabricatePassLibrary
+          import afield.four.fabricated.FabricatePassSize
+          import afield.four.fabricated.FabricatePassSpec
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.addPassChain
+          import afield.stdlib.linalg.Vector2f
+
+          prop<afield.four.fabricated.FabricateBuiltChain>(sdf)
+
+          val r: Renderer = fromContext()
+          val b: StandardRenderer.Bundle = fromContext()
+
+          // The mask: a disc and a bar, in every channel. A chain head that synthesises its own
+          // input is self-contained however the chains before it ended up looking.
+          val maskFragment = """
+              #version 450
+              layout(location = 0) in vec2 vUv;
+              layout(push_constant) uniform MaskPush {
+                  vec2 centre;
+                  float radius;
+                  float bar;
+              } push;
+              layout(location = 0) out vec4 outColor;
+
+              void main() {
+                  float disc = length(vUv - push.centre) <= push.radius ? 1.0 : 0.0;
+                  float bar = (abs(vUv.y - 0.78) < push.bar && vUv.x > 0.2 && vUv.x < 0.8) ? 1.0 : 0.0;
+                  float m = max(disc, bar);
+                  outColor = vec4(m, m, m, m);
+              }
+          """
+
+          // The inset. Two chains in one post stack run in series, so whichever is appended last owns
+          // the screen — append this one after the fluid and the fluid simply disappears. This pass
+          // runs at full resolution, passes the incoming frame (the fluid) through, and draws the
+          // distance field into the top-right *square* quadrant, so both simulations are visible and
+          // the field keeps its aspect ratio. It is also a worked full-resolution rejoin with a named
+          // extra input, which is the shape every composite in the library has.
+          val insetFragment = """
+              #version 450
+              layout(location = 0) in vec2 vUv;
+              layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+              layout(set = 0, binding = 1) uniform sampler2D bandsTex;
+              layout(location = 0) out vec4 outColor;
+
+              void main() {
+                  vec4 under = texture(sourceTex, vUv);
+                  if (vUv.x > 0.5 && vUv.y < 0.5) {
+                      vec2 q = vec2((vUv.x - 0.5) * 2.0, vUv.y * 2.0);
+                      outColor = vec4(texture(bandsTex, q).rgb, under.a);
+                  } else {
+                      outColor = under;
+                  }
+              }
+          """
+
+          once.sdf {
+              val mask = FabricatePassSpec(
+                  name = "mask",
+                  fragment = maskFragment,
+                  size = FabricatePassSize.Absolute(256, 256),
+                  source = FabricatePassChain.CHAIN_INPUT,
+                  push = mapOf("centre" to Vector2f(0.38f, 0.38f), "radius" to 0.16f, "bar" to 0.02f)
+              )
+              // Seed, nine flood rounds at halving stride, JFA+1, then the distance — and `signed`,
+              // which seeds the *boundary* rather than the interior so one flood gives a field that
+              // is negative inside and positive out.
+              val c = b.addPassChain(
+                  listOf(mask) + FabricatePassLibrary.jumpFloodDistance(
+                      prefix = "sdf",
+                      resolution = 256,
+                      source = "mask",
+                      signed = true,
+                      scale = 1f / 512f
+                  ) + FabricatePassLibrary.distanceBands(
+                      name = "sdf-bands",
+                      source = "sdf-distance",
+                      spacing = 0.03f
+                  ) + FabricatePassSpec(
+                      name = "sdf-inset",
+                      fragment = insetFragment,
+                      // Sized from its primary input, which is the full-resolution frame, while
+                      // sampling the 256² field. That combination is the whole point of the layer.
+                      size = FabricatePassSize.MatchSource,
+                      source = FabricatePassChain.CHAIN_INPUT,
+                      extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands"))
+                  ),
+                  renderer = r,
+                  printReport = true
+              )
+              b.attachTo(r)
+              b.present(renderer = r)
+              c
+          }
+
+          // ── live knobs. Move the shape and the whole field re-floods, from scratch, every frame. ──
+          sdf.setPush("mask", "centre", Vector2f(0.38f, 0.38f))
+          sdf.setPush("mask", "radius", 0.16f)
+          sdf.setPush("sdf-bands", "spacing", 0.03f)
+
+          println("distance field: ${sdf.names().size} passes, output ${sdf.output.width}²")
+  - connect: { parent: sim_renderer, child: sim_bundle }
+  - connect: { parent: sim_bundle, child: sim_fluid }
+  - connect: { parent: sim_bundle, child: sim_distance }
+  - launch: { box: sim_renderer, property: code, strand: renderer }
+  - await: {}
+  - execute: { box: sim_bundle, property: code }
+  - await: {}
+  - execute: { box: sim_fluid, property: code }
+  - await: {}
+  - execute: { box: sim_distance, property: code }
+  - await: {}
+  - wait: { frames: 24 }

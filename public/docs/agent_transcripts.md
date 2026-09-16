@@ -44,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 112 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 113 transcripts on every build, at three
 depths. 65 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-40 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+41 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1548,6 +1548,27 @@ write-up, and `tools/run_field_tests.py --id four.pass-chain.smoke` is the same 
 with assertions on the pixels.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/four_pass_chain/metadata.edn)
+
+### four_simulation_chain
+
+Two GPU **simulations** declared as pass chains: a Stam stable fluid you paint into by dragging in the
+window, and a jump flood distance transform of a shape you move around, inset into a corner of the
+frame. The companion to `four_pass_chain`, and the thing that one could not express — a pass chain was
+strictly feed-forward over a single frame, and a fluid's velocity field this frame is a function of the
+velocity field *last* frame. A pass may now declare itself persistent, which gives it a ping-pong target
+whose previous frame any pass can read, including a pass that runs *earlier* in the list: `fluid-advect`
+is first and reads `fluid-velocity`, which is second to last. The fluid is twenty-seven passes — advect,
+curl, force, divergence, a twenty-pass Jacobi pressure solve, projection, dye advection — and the Jacobi
+sweep is a pass chain in the most literal sense, each iterate reading only the one before it and the
+fixed divergence. Turn `vorticity` down to `0f` and back to watch the one term that separates a smear
+from something that behaves like fluid; drop `iterations` to `4` and the dye starts piling up and
+thinning out rather than going unstable, because a velocity field with residual divergence creates and
+destroys mass. `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
+`tools/run_field_tests.py --id four.simulation-chain.smoke` is both chains driven headlessly — the jump
+flood against exact ground truth, and the fluid against the one thing no plan can check: with the input
+switched off, the picture has to keep changing.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/four_simulation_chain/metadata.edn)
 
 ### aperture_playground
 

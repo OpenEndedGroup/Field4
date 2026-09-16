@@ -373,6 +373,12 @@ object DemoTranscriptExecSmokeTest {
         // arithmetic it prints is covered without a device by FabricatePassChainTest, and the
         // pixels by the four.pass-chain.smoke jvm-main.
         "four_pass_chain",
+        // Two persistent-state pass chains — a stable fluid and a jump flood — on their own Window
+        // and Renderer, plus a mouse handler that paints into the fluid. Same classification and for
+        // the same reason as four_pass_chain: the plan arithmetic is covered without a device by
+        // FabricatePassChainTest, and the pixels (including the fluid actually advancing with no
+        // input) by the four.simulation-chain.smoke jvm-main.
+        "four_simulation_chain",
         "recstl_playground",
         "gpu_state",
         "threebox",
