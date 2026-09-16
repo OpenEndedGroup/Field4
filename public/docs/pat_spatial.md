@@ -358,8 +358,9 @@ pose and in nothing else. Headphones.
 | `synth.head-tracked-spatial.smoke` | that a head pose of the shape OpenXR reports aims the HRTF: an identity pose is the old image to the sample, a head turned right moves a source ahead into the left ear, a head that only *steps* sideways moves it too, and losing tracking holds the last pose |
 | `synth.sound.path.map` | that this path is declared, on the seam, and named on [sound_paths.md](sound_paths.md) — the guard that caught it arriving |
 
-The first three and the fifth need `./gradlew fetchSteamAudioNatives`; `synth.sound.path.map` does
-not, which is exactly the line this page's missing figure falls on.
+Every one of these boots Steam Audio and so needs `./gradlew fetchSteamAudioNatives` — except
+`synth.sound.path.map`, which checks a declaration rather than a sound, and which is exactly the
+line this page's missing figure falls on.
 
 The full API — every field, every default, every parameter — is in
 [`afield.four.synth` in the generated reference](reference/patterns.md#patspatial-kt).

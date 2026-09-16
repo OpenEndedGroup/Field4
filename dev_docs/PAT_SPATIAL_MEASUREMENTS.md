@@ -53,6 +53,44 @@ subject is the thread and the ring that re-implementation leaves out, and it wou
 uncommitted `libphonon` anyway. The two clips the page does publish make a smaller claim rendered by
 the shipping code, which is the only kind of clip `DocsAudioProvenance` can check.
 
+## What "realtime only" actually means, and the rate it runs at instead
+
+Added 2026-09-16 with the head-tracking work, because the phrase turned out to mislead in a way that
+cost a passing test.
+
+`PatSpatialRoom.renderLoop` has **no wall-clock pacing at all**. Its only brake is
+`if (ring.fill >= targetFillFrames) Thread.sleep(2)`. So "realtime" on this path means *paced by
+whatever drains the ring* — normally OpenAL. A consumer that pulls as fast as blocks appear, which is
+what a smoke capture and a file render both do, lets the shipping code free-run:
+
+| | audio seconds per wall second |
+| --- | --- |
+| `HeadTrackedSpatialSmokeTest`, one source, eight captures | 5.5x – 18.8x |
+| `HeadTrackedPatternDemo`, three sources, first movement | 9.7x |
+| `HeadTrackedPatternDemo`, three sources, movements 2–4 | 35x – 42x |
+
+The low figure in each row is the one that paid for the JIT warmup. Both tests print the factor per
+capture; neither asserts it, for the reason the top of this file gives.
+
+This sharpens the section above rather than contradicting it: it is not only the *arithmetic* that
+outruns realtime, it is the whole path including the thread and the ring. What the ring still buys
+is the decoupling under an audio device, which is a different claim and the one the budget table
+measures.
+
+Two consequences, both now in the code:
+
+- **Nothing on this path may be driven from `System.nanoTime()` and expected to line up with the
+  audio.** `HeadTrackedSpatialSmokeTest`'s case 6 originally required a pose count "over 1.6 s at
+  90 Hz" and failed as soon as a capture ran fast — the tracker was on the wall clock, the capture
+  was on no clock, and their ratio is a property of the machine. `VirtualHead` therefore takes a
+  `clock`.
+- **A file render should drive that clock from `room.framesRendered`**, not from frames pulled. The
+  ring bounds the render thread's lead to its own depth (0.37 s at the default 16384 frames), so
+  `framesRendered` tracks the pull closely and is the timeline of the blocks actually being
+  spatialised; the pulling end trails it. Draining the ring at a movement boundary matters for the
+  same reason — without it the first 0.37 s carries the previous movement's pose, which showed up as
+  a full turn finishing at 350 degrees instead of 360.
+
 ## Open
 
 - **The same measurement mass is published twice.** `PatSpatial.kt`'s file KDoc (around lines
