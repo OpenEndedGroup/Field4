@@ -187,9 +187,9 @@ operations:
               //    looking broken.
               //    And the lambdas name their parameter type on purpose. `onDown` and `onUp` are
               //    each overloaded on `() -> Boolean` and a `(MouseEvent) -> …` form, and a bare
-              //    `{ true }` is an overload resolution ambiguity *in a box* — the box compiler does
-              //    not pick the no-argument candidate the way the surrounding Kotlin does. Typing
-              //    the parameter is what resolves it.
+              //    `{ true }` is an overload resolution ambiguity — everywhere, not just in a box;
+              //    the only other caller in the repo, OrbitControls, types its parameter too.
+              //    Typing the parameter is what resolves it.
               val mouse = MouseEvents(r)
               mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
               mouse.onDrag("fluid-paint") { ev ->

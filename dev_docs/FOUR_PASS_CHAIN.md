@@ -509,16 +509,25 @@ Both cost real time when the demo was first written, and neither is specific to 
   through that same line. The workaround in the transcript is to write the `prop<>` type argument
   fully qualified: `prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)`.
 
-And one that is specific to *box* code rather than to this layer:
+And two about `MouseEvents`, which the fluid box needs in order to be painted into:
 
-- **An overload pair a box cannot resolve.** The two candidates are
-  `MouseEvents.kt:66#onDown` and `MouseEvents.kt:69#onDown` — overloaded on
-  `() -> Boolean` and a `(MouseEvent) -> …` form — and `mouse.onDown("left", "paint") { true }` —
-  which compiles anywhere else — is an *overload resolution ambiguity* in a box. Naming the
-  parameter's type resolves it: `{ _: MouseEvent -> DownResult.Keep }`. The same box also cannot drop
-  the `onDown` even though it does nothing, because `MouseEvents` only polls buttons some handler has
-  asked about (`buttonsRequested = down.keys + up.keys`) and `onDrag` only fires while a button is
-  down — so without it no drag ever arrives and the fluid sits there looking broken.
+- **A bare `{ true }` on `onDown`/`onUp` is an overload resolution ambiguity.** The candidates are
+  `MouseEvents.kt:66#onDown` and `MouseEvents.kt:69#onDown`, overloaded on `() -> Boolean` and
+  `(MouseEvent) -> DownResult`. Name the parameter's type — `{ _: MouseEvent -> DownResult.Keep }` —
+  and it resolves. (`DownResult` is top-level in `afield.four.util`, declared in `KeyEvents.kt`, not
+  nested in `MouseEvents`.)
+
+    This is **not** box-only, though it first turned up in a box and reads exactly like the
+    import-scope ambiguity that is. Dropping `m.onDown("left", "probe") { true }` into `jvmTest` and
+    running `compileTestKotlinJvm` fails the same way in ten seconds. The trap was simply unspent:
+    the only caller in the repository, `OrbitControls.kt:93`, already writes
+    `{ ev : MouseEvent -> … }`, so nothing had ever hit it. Worth the ten seconds before writing
+    "in a box" about any ambiguity.
+
+- **`onDrag` with no matching `onDown` never fires, silently.** `MouseEvents` only polls the buttons
+  some handler has *asked* about (`buttonsRequested = down.keys + up.keys`), and drags are only
+  dispatched while a button is down. So the fluid box's `onDown` cannot be deleted even though its
+  body does nothing; without it the fluid just sits there and looks broken.
 
 ## Six measurement traps, all paid for
 

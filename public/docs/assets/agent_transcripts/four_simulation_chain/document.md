@@ -200,7 +200,7 @@ println("distance field: ${sdf.names().size} passes, output ${sdf.output.width}�
 <!-- field-box id="sim_fluid" index="3" -->
 
 ```edn [field-box id="sim_fluid" role="properties"]
-{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 96 "characters" 4649 "sha256" "46dd52c5ed38ee349cff920ec02f461777678225f9ea22941af1b7fab00e1c6e"}]}
+{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 96 "characters" 4650 "sha256" "8a9f2c8f5418d3156ba372ecceb35ae5a33d1943d8e5a93c0e492433b0086a8d"}]}
 ```
 
 ```kotlin [field-property box="sim_fluid" name="code" path="sim_fluid_code_.kt"]
@@ -263,9 +263,9 @@ once.fluid {
     //    looking broken.
     //    And the lambdas name their parameter type on purpose. `onDown` and `onUp` are
     //    each overloaded on `() -> Boolean` and a `(MouseEvent) -> …` form, and a bare
-    //    `{ true }` is an overload resolution ambiguity *in a box* — the box compiler does
-    //    not pick the no-argument candidate the way the surrounding Kotlin does. Typing
-    //    the parameter is what resolves it.
+    //    `{ true }` is an overload resolution ambiguity — everywhere, not just in a box;
+    //    the only other caller in the repo, OrbitControls, types its parameter too.
+    //    Typing the parameter is what resolves it.
     val mouse = MouseEvents(r)
     mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
     mouse.onDrag("fluid-paint") { ev ->
