@@ -120,67 +120,6 @@ with a `PROVENANCE.md` recording exactly what it is and what was left out.
 
 ---
 
-## Whether the circuits are right
-
-Two independent oracles, neither of which involves looking at a picture. The netlists are compiled
-through GraalJS, extracted into Kotlin and simulated against integer arithmetic — exhaustively for
-the 8-bit ripple adder, all 131 072 vectors, because a carry chain is the thing an off-by-one in pin
-indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
-full width. And their gate counts are pinned against morpho's *other* implementation,
-`tiny_morpho.py`, which shares no code at all with the JavaScript: the two agree gate for gate on
-the adders, the multiplier optimized and not, and the shifter, and those counts are `assertEquals`
-in `MorphoBridgeTest`, so a recompile that changes one goes red.
-
-The corpus, both tables, and which of their numbers have a guard are in
-`dev_docs/MORPHO_AGREEMENT.md`.
-
----
-
-## Where a bridge disagrees by accident
-
-Two of morpho's netlist conventions are written down nowhere but its own optimizer, and the
-optimized Wallace multiplier is the design that depends on both.
-
-The first is that liveness is per **slot**, not per cell. Morpho's LUT cells are broadcast: one
-truth table applied across many independent bit slices, and constant propagation retires slices
-*individually*. A cell can be active while one of its slots has been bypassed, its output net left
-driverless and its input pins disconnected, so a live cell can hold a LUT input pin whose net index
-is `-1`. The invariant a bridge naturally assumes,
-
-> an active cell has connected pins
-
-is false here.
-
-The second is what a disconnected pin *means*. `optimizeLUT` in `primitives.js`, the function that
-disconnects it, begins its reindexing with:
-
-```diffstatic {data-lang=javascript}
-if (w < 0) w = 0; // Treat disconnected inputs as constant 0
-```
-
-A disconnected port reads as constant zero, because constant propagation prunes a port *without*
-rewriting the cell's truth table: the arity and the table stay as they were, and everyone downstream
-reads the pruned port as 0. Read it as a don't-care instead, which is what it looks like, and the
-multiplier still compiles and still simulates: it just answers `29376512` for `62754 * 62244`
-instead of `3906059976`. Upstream's convention is the one that makes all six exhaustive multiplier
-checks pass.
-
-??? aside "Where a netlist's invariants live"
-    The netlist's field names describe the representation, not the *invariants*, and the invariants
-    live in whatever last mutated the graph. If something in a netlist looks impossible, read the
-    pass that produced it rather than the schema it produced it into.
-
-The bridge is also a second reader of Field's own shared infrastructure, and that shows up at the
-one point where morpho gives a box back. Reverting a language root to Kotlin *is*
-`setMainLanguageFor(roots, null)`, and `Box.mainLanguage` is a `Delegation<String?>`; assigning null
-to one of those **erases** the property rather than storing a null, so erased and never-set read
-back identically. Absent is what keeps a reverted root out of the saved document, and
-`the Set Main Language Kotlin action reverts a morpho root` drives the shipped
-**"Set Main Language: Kotlin"** action through `Action.target`, the way the command palette does,
-then asserts the property is absent rather than present-and-null.
-
----
-
 ## Depth: why there are two adders
 
 Morpho's timing pass (`updateTimes()`,
@@ -286,23 +225,6 @@ clip.
     **output element** — a launched box that calls `showPlaneGrid` every frame is recorded with
     every frame drawn as real SVG. The mp4 is an encoding of vector frames rather than a montage of
     bitmaps, which is why the wires stay hairline-thin as the circuit fills the panel.
-
----
-
-## What a circuit costs to compile and simulate
-
-The largest design here, a 4 144-gate `medusa(36,8)`, compiles and fully expands in about 270 ms
-once Graal has warmed up; a 32-bit Brent–Kung adder takes about 50 ms. Relaxing the layout 200 steps
-costs between about 20 ms and 1.5 s depending on size, and you rarely want it in one go —
-`step(grow, relax)` in a `loop` spreads it over frames.
-
-Simulation is bit-parallel: each net holds a `Long` whose bit *s* is that net's value for sample
-*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. All
-131 072 vectors of the exhaustive 8-bit adder check evaluate in under 20 ms. This mirrors what
-`tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an array.
-
-Cell, gate, net, depth and expansion counts for every design on this page, and the timings above
-with the machine they came from, are in `dev_docs/MORPHO_MEASUREMENTS.md`.
 
 ---
 
@@ -519,6 +441,39 @@ loop {
 
 The projection defaults to isometric, because the layout is genuinely 3D and dropping z throws that
 away. `MorphoProjection.XY` gives the view directly comparable with morpho's own renderer.
+
+---
+
+## Whether the circuits are right
+
+Two independent oracles, neither of which involves looking at a picture. The netlists are compiled
+through GraalJS, extracted into Kotlin and simulated against integer arithmetic — exhaustively for
+the 8-bit ripple adder, all 131 072 vectors, because a carry chain is the thing an off-by-one in pin
+indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
+full width. And their gate counts are pinned against morpho's *other* implementation,
+`tiny_morpho.py`, which shares no code at all with the JavaScript: the two agree gate for gate on
+the adders, the multiplier optimized and not, and the shifter, and those counts are `assertEquals`
+in `MorphoBridgeTest`, so a recompile that changes one goes red.
+
+The corpus, both tables, and which of their numbers have a guard are in
+`dev_docs/MORPHO_AGREEMENT.md`.
+
+---
+
+## What a circuit costs to compile and simulate
+
+The largest design here, a 4 144-gate `medusa(36,8)`, compiles and fully expands in about 270 ms
+once Graal has warmed up; a 32-bit Brent–Kung adder takes about 50 ms. Relaxing the layout 200 steps
+costs between about 20 ms and 1.5 s depending on size, and you rarely want it in one go —
+`step(grow, relax)` in a `loop` spreads it over frames.
+
+Simulation is bit-parallel: each net holds a `Long` whose bit *s* is that net's value for sample
+*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. All
+131 072 vectors of the exhaustive 8-bit adder check evaluate in under 20 ms. This mirrors what
+`tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an array.
+
+Cell, gate, net, depth and expansion counts for every design on this page, and the timings above
+with the machine they came from, are in `dev_docs/MORPHO_MEASUREMENTS.md`.
 
 ---
 
@@ -948,6 +903,49 @@ the size it should be. `MorphoLanguageTest` checks the directive, the growth loo
 output, with no browser and no server, so it stays a unit test. `MorphoRegistrationTest` checks that
 the language is registered rather than merely implemented. Figures that are measurements rather than
 assertions live in `MorphoMeasurements` and run under `./gradlew jvmMeasurements`.
+
+### Two conventions this bridge had to discover
+
+Step 6 is where you find out that the implementation you are bridging has invariants written down
+nowhere but its own code. Two of morpho's are like that, and the optimized Wallace multiplier is the
+design that depends on both.
+
+The first is that liveness is per **slot**, not per cell. Morpho's LUT cells are broadcast: one
+truth table applied across many independent bit slices, and constant propagation retires slices
+*individually*. A cell can be active while one of its slots has been bypassed, its output net left
+driverless and its input pins disconnected, so a live cell can hold a LUT input pin whose net index
+is `-1`. The invariant a bridge naturally assumes,
+
+> an active cell has connected pins
+
+is false here.
+
+The second is what a disconnected pin *means*. `optimizeLUT` in `primitives.js`, the function that
+disconnects it, begins its reindexing with:
+
+```diffstatic {data-lang=javascript}
+if (w < 0) w = 0; // Treat disconnected inputs as constant 0
+```
+
+A disconnected port reads as constant zero, because constant propagation prunes a port *without*
+rewriting the cell's truth table: the arity and the table stay as they were, and everyone downstream
+reads the pruned port as 0. Read it as a don't-care instead, which is what it looks like, and the
+multiplier still compiles and still simulates: it just answers `29376512` for `62754 * 62244`
+instead of `3906059976`. Upstream's convention is the one that makes all six exhaustive multiplier
+checks pass.
+
+The general form: a netlist's field names describe the representation, not the *invariants*, and the
+invariants live in whatever last mutated the graph. If something in a netlist looks impossible, read
+the pass that produced it rather than the schema it produced it into.
+
+A bridge is also a second reader of its host's shared infrastructure, and for this one that shows up
+at the single point where morpho gives a box back. Reverting a language root to Kotlin *is*
+`setMainLanguageFor(roots, null)`, and `Box.mainLanguage` is a `Delegation<String?>`; assigning null
+to one of those **erases** the property rather than storing a null, so erased and never-set read
+back identically. Absent is what keeps a reverted root out of the saved document, and
+`the Set Main Language Kotlin action reverts a morpho root` drives the shipped
+**"Set Main Language: Kotlin"** action through `Action.target`, the way the command palette does,
+then asserts the property is absent rather than present-and-null.
 
 ### What it cost
 
