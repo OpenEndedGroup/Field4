@@ -25,11 +25,22 @@ class MegaTextureShaderTest {
 
     private val layout = MegaTextureLayout(
         imageCount = 1500,
-        minPageSize = 8,
         levels = 7,
         atlasEdge = 2048,
         layersPerLevel = 2,
-        maxBaseLevelLayers = 64
+        maxBaseLevelLayers = 64,
+        topPageWidth = 512      // the square 8..512 ladder
+    )
+
+    /** The rectangular ladder a film set gets: top page exactly one 1920x798 frame. */
+    private val filmLayout = MegaTextureLayout(
+        imageCount = 1639,
+        levels = 8,
+        atlasEdge = 2048,
+        layersPerLevel = 2,
+        maxBaseLevelLayers = 64,
+        topPageWidth = 1920,
+        topPageHeight = 798
     )
     private val config = MegaTextureConfig()
 
@@ -116,6 +127,35 @@ class MegaTextureShaderTest {
         assertTrue("dFdx" in megaFragmentSource(layout, config), "the fragment slot is where derivatives live")
     }
 
+    /**
+     * The rectangular ladder compiles, and the constants it emits are the frame's own numbers.
+     *
+     * Worth its own case because the level maths changed shape with it: `megaLevelForPixels`
+     * counts halvings down from the top page rather than shifts up from the base, and that is
+     * arithmetic no Kotlin compiler checks.
+     */
+    @Test
+    fun theFilmLadderCompilesAndCarriesItsOwnSize() {
+        val source = """
+            #version 450
+            ${megaAllSource(filmLayout, config)}
+            layout(location = 0) in vec2 ftc;
+            layout(location = 1) flat in uint fid;
+            layout(location = 0) out vec4 outColor;
+            void main() { outColor = megaTexture(fid, ftc); }
+        """.trimIndent()
+        introspect("megaTexture-film.frag", source, ShaderKind.FRAGMENT_SHADER)
+
+        val declarations = megaDeclarationsSource(filmLayout, config)
+        assertTrue("megaTopPageWidth  = 1920.0" in declarations, declarations)
+        assertTrue("megaTopPageHeight = 798.0" in declarations, declarations)
+        assertTrue("megaBasePageWidth = 15.0" in declarations, declarations)
+        assertTrue(
+            "megaMinPageSize" !in declarations,
+            "the square-ladder constant should be gone, not left to mislead: \n$declarations"
+        )
+    }
+
     @Test
     fun bindingsMatchTheConfig() {
         val introspection = introspect(
@@ -196,11 +236,13 @@ class MegaTextureShaderTest {
         assertEquals(
             setOf(
                 "declarations", "functions", "fragment", "vertex", "all",
-                "imageCount", "levels", "minPageSize", "maxPageSize", "atlasEdge"
+                "imageCount", "levels", "atlasEdge",
+                "basePageWidth", "basePageHeight", "topPageWidth", "topPageHeight"
             ),
             template.keys
         )
         assertEquals("1500", template["imageCount"])
-        assertEquals("512", template["maxPageSize"], "7 levels from 8px")
+        assertEquals("512", template["topPageWidth"], "7 levels topping out at 512")
+        assertEquals("8", template["basePageWidth"], "and starting at 8")
     }
 }

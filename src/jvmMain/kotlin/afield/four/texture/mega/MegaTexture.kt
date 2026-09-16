@@ -1,5 +1,7 @@
 package afield.four.texture.mega
 
+import afield.Table
+import afield.ToHTML
 import afield.four.Renderer
 import afield.four.buffers.BufferParameters
 import afield.four.buffers.FrameBufferGroup
@@ -43,11 +45,47 @@ import kotlin.math.min
  * [atlasEdge] and [layersPerLevel] (the residency budget) and [feedbackEveryNFrames].
  */
 class MegaTextureConfig {
-    /** Edge of a level-0 page in pixels. Level `L` pages are `minPageSize shl L`. */
+    /**
+     * Edge of a level-0 page, for a *square* page ladder. Level `L` is then `minPageSize shl L`.
+     *
+     * The square shorthand for [sourcePage], which is what to reach for when the images have a
+     * shape. Ignored once [sourcePage] has been called.
+     */
     var minPageSize: Int = 8
 
     /** How many levels exist. The default 7 gives 8, 16, 32, 64, 128, 256 and 512-pixel pages. */
     var levels: Int = 7
+
+    private var explicitTopWidth: Int = 0
+    private var explicitTopHeight: Int = 0
+
+    /**
+     * Shape the pages like the source, and make the top level exactly this size.
+     *
+     * The one call that matters for film, where nothing is square. A 1920×798 frame in a square
+     * 2048 page is 63% padding — paid on every byte of atlas, at every level — so a set of one
+     * shape should say so: `sourcePage(1920, 798)` gives a top page of exactly that, and each
+     * level down is it halved (960×399, 480×200, 240×100, …). Full resolution with no waste, and
+     * about two and a half times as many pages resident for the same memory.
+     *
+     * A set of *mixed* shapes still works: each picture is fitted into the page's aspect and the
+     * page table publishes the rectangle it actually used, so the difference is letterboxing
+     * rather than distortion. Pick the aspect most of them share.
+     */
+    fun sourcePage(width: Int, height: Int): MegaTextureConfig {
+        require(width > 0 && height > 0) { "sourcePage needs a positive size, not ${width}x$height" }
+        explicitTopWidth = width
+        explicitTopHeight = height
+        return this
+    }
+
+    /** Top-level page width: [sourcePage]'s, or the square ladder's `minPageSize shl (levels-1)`. */
+    val topPageWidth: Int
+        get() = if (explicitTopWidth > 0) explicitTopWidth else minPageSize shl (levels - 1)
+
+    /** Top-level page height. Equal to [topPageWidth] unless [sourcePage] said otherwise. */
+    val topPageHeight: Int
+        get() = if (explicitTopHeight > 0) explicitTopHeight else minPageSize shl (levels - 1)
 
     /** Edge of one atlas array layer, in pixels. Every level packs whole pages into these. */
     var atlasEdge: Int = 2048
@@ -136,7 +174,13 @@ class MegaTextureConfig {
     var name: String = "megaTexture"
 }
 
-/** What a [MegaTexture] is doing right now — for `println`, an output card, or a test. */
+/**
+ * What a [MegaTexture] is doing right now — for `println`, an output card, or a test.
+ *
+ * Implements [ToHTML], so `display(mega.stats().h)` in a box gives the level table rather than the
+ * reflected field list `.h` would otherwise produce — which elided everything past the eighth
+ * field, and the per-level residency is the whole point of looking.
+ */
 data class MegaTextureStats(
     val imageCount: Int,
     val frame: Long,
@@ -155,8 +199,45 @@ data class MegaTextureStats(
     val uploadBytesThisFrame: Int,
     val effectiveMaxLevel: Int,
     /** Images with no base-level page yet. */
-    val warmUpRemaining: Int
-) {
+    val warmUpRemaining: Int,
+    /** Page width per level, so the table can name each level by the page it actually holds. */
+    val pageWidths: IntArray,
+    /** Page height per level. Equal to [pageWidths] for a square ladder. */
+    val pageHeights: IntArray
+) : ToHTML {
+
+    /**
+     * One row per level, because that is the shape of the question being asked: how sharp is the
+     * wall, and is any level out of pages. The ceiling is marked rather than stated separately —
+     * a level above it is not being served, and seeing which one is more useful than the number.
+     */
+    override fun toHTML(): String {
+        val levels = residentPages.size
+        val table = Table(listOf("level", "page", "resident", "of", "showing"))
+        table.title = "megaTexture — $imageCount images, frame $frame"
+        table.note = buildString {
+            append("$wantedImages asked for a level this frame; ")
+            append(if (unpublished == 0) "every image has a page" else "$unpublished have no page yet")
+            if (warmUpRemaining > 0) append(" ($warmUpRemaining base pages still to come)")
+            append(". Ceiling is level $effectiveMaxLevel. ")
+            append("Decoded $decodedFromSource from source, $decodedFromCache from cache")
+            if (decodeFailures > 0) append(", $decodeFailures FAILED")
+            if (cancelled > 0) append(", $cancelled cancelled")
+            append(". Queue $queueDepth, $inFlightDecodes in flight. ")
+            append("Uploaded $uploadedPagesThisFrame pages / $uploadBytesThisFrame bytes this frame.")
+        }
+        for (level in 0 until levels) {
+            table.row(
+                if (level > effectiveMaxLevel) "$level ·" else "$level",
+                "${pageWidths[level]}x${pageHeights[level]}",
+                residentPages[level],
+                pageCapacity[level],
+                publishedAtLevel[level]
+            )
+        }
+        return table.toHTML()
+    }
+
     override fun toString(): String = buildString {
         append("megaTexture[$imageCount images, frame $frame] ")
         append("wanted=$wantedImages unpublished=$unpublished maxLevel=$effectiveMaxLevel")
@@ -231,11 +312,12 @@ class MegaTexture(
      */
     val layout = MegaTextureLayout(
         imageCount = imageCount,
-        minPageSize = config.minPageSize,
         levels = levels,
         atlasEdge = config.atlasEdge,
         layersPerLevel = config.layersPerLevel,
-        maxBaseLevelLayers = config.maxBaseLevelLayers
+        maxBaseLevelLayers = config.maxBaseLevelLayers,
+        topPageWidth = config.topPageWidth,
+        topPageHeight = config.topPageHeight
     )
 
     private val pageCapacity get() = layout.pageCapacity
@@ -368,7 +450,7 @@ class MegaTexture(
 
         // At least one of the largest page, whatever the per-frame budget is: uploadReadyPages has
         // to be able to stage a single oversized page rather than stall on it.
-        val stagingBytes = max(config.uploadBytesPerFrame, layout.pageSize(levels - 1).let { it * it * 4 })
+        val stagingBytes = max(config.uploadBytesPerFrame, layout.pageBytes(levels - 1))
         staging = (0 until numImages).map {
             VulkanBuffer(
                 renderer,
@@ -384,8 +466,7 @@ class MegaTexture(
         pyramid = MegaTexturePyramidCache(
             cacheDir = catalog.cacheDir,
             imageCount = imageCount,
-            minPageSize = config.minPageSize,
-            levels = levels,
+            layout = layout,
             maxLevelCached = config.cacheMaxLevel,
             maxVirtualBytes = config.cacheMaxVirtualBytes
         )
@@ -394,8 +475,7 @@ class MegaTexture(
         decoder = MegaTextureDecoder(
             catalog = catalog,
             cache = pyramid,
-            minPageSize = config.minPageSize,
-            levels = levels,
+            layout = layout,
             threads = config.decodeThreads,
             stillWanted = ::stillWanted
         )
@@ -414,7 +494,8 @@ class MegaTexture(
         lprintln(
             "info,megatexture",
             "megaTexture '${config.name}': $imageCount images, $levels levels " +
-                    "(${config.minPageSize}..${config.minPageSize shl (levels - 1)}px), " +
+                    "(${layout.pageWidth(0)}x${layout.pageHeight(0)}.." +
+                    "${layout.topPageWidth}x${layout.topPageHeight}), " +
                     "$totalLayers atlas layers of ${config.atlasEdge}² " +
                     "(${layout.atlasBytes shr 20} MiB), " +
                     "capacities ${pageCapacity.toList()}, feedback every $feedbackInterval frames"
@@ -426,8 +507,8 @@ class MegaTexture(
     // ------------------------------------------------------------------------------------------
 
     val atlasEdge: Int get() = config.atlasEdge
-    val minPageSize: Int get() = config.minPageSize
-    fun pageSize(level: Int): Int = layout.pageSize(level)
+    fun pageWidth(level: Int): Int = layout.pageWidth(level)
+    fun pageHeight(level: Int): Int = layout.pageHeight(level)
     fun capacityOf(level: Int): Int = pageCapacity[level]
     fun isIdentityLevel(level: Int): Boolean = identityLevel[level]
 
@@ -836,7 +917,7 @@ class MegaTexture(
 
         while (true) {
             val page = carriedPage?.also { carriedPage = null } ?: decoder.poll() ?: break
-            val bytes = page.pageSize * page.pageSize * 4
+            val bytes = page.pageWidth * page.pageHeight * 4
             // Carry only if something has already been staged. A page larger than the whole
             // budget must go through anyway, or it is carried forever and blocks every page behind
             // it: with a 64 KiB budget and a 256 KiB page that stalled the whole system at one
@@ -868,7 +949,7 @@ class MegaTexture(
             }
 
             MemoryUtil.memCopy(MemoryUtil.memAddress(page.pixels), stageAddress + offset, bytes.toLong())
-            jobs.add(UploadJob(page.level, slot, offset, page.pageSize))
+            jobs.add(UploadJob(page.level, slot, offset, page.pageWidth, page.pageHeight))
 
             slotImage[page.level][slot] = page.index
             slotLastUsed[page.level][slot] = frame
@@ -892,7 +973,13 @@ class MegaTexture(
         recordUploads(command, stage, jobs)
     }
 
-    private class UploadJob(val level: Int, val slot: Int, val bufferOffset: Long, val pageSize: Int)
+    private class UploadJob(
+        val level: Int,
+        val slot: Int,
+        val bufferOffset: Long,
+        val pageWidth: Int,
+        val pageHeight: Int
+    )
 
     private fun recordUploads(command: CommandBuffer, stage: VulkanBuffer, jobs: List<UploadJob>) {
         MemoryStack.stackPush().use { stack ->
@@ -925,7 +1012,7 @@ class MegaTexture(
                             .layerCount(1)
                     }
                     .imageOffset { it: VkOffset3D -> it.x(x).y(y).z(0) }
-                    .imageExtent { it: VkExtent3D -> it.width(job.pageSize).height(job.pageSize).depth(1) }
+                    .imageExtent { it: VkExtent3D -> it.width(job.pageWidth).height(job.pageHeight).depth(1) }
             }
             vkCmdCopyBufferToImage(
                 command.vkCommandBuffer,
@@ -993,10 +1080,11 @@ class MegaTexture(
             for (word in 0 until 4) into.put(at + word, entry[word])
             return
         }
-        val pageSize = pageSize(level)
+        val pageW = layout.pageWidth(level)
+        val pageH = layout.pageHeight(level)
         val source = pyramid.sourceSize(index)
-        val used = if (source == null) pageSize to pageSize
-        else MegaTextureDecoder.fitInto(source.first, source.second, pageSize)
+        val used = if (source == null) pageW to pageH
+        else MegaTextureDecoder.fitInto(source.first, source.second, pageW, pageH)
         val entry = layout.encode(
             level = level,
             slot = publishedSlot[index],
@@ -1048,7 +1136,9 @@ class MegaTexture(
             uploadedPagesThisFrame = uploadedPagesThisFrame,
             uploadBytesThisFrame = uploadBytesThisFrame,
             effectiveMaxLevel = effectiveMaxLevel,
-            warmUpRemaining = if (warmLevel < 0) 0 else (imageCount - residentPages[warmLevel]).coerceAtLeast(0)
+            warmUpRemaining = if (warmLevel < 0) 0 else (imageCount - residentPages[warmLevel]).coerceAtLeast(0),
+            pageWidths = layout.pageWidths.copyOf(),
+            pageHeights = layout.pageHeights.copyOf()
         )
     }
 
