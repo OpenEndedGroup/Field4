@@ -13,39 +13,8 @@ The model-neutral operation is `analysis.transcribe_music`. Its three concrete c
 | `analysis.muscriptor.medium` | about 300M parameters | the upstream quality/footprint compromise |
 | `analysis.muscriptor.large` | about 1.4B parameters | highest accuracy when GPU memory permits |
 
-All three revisions are pinned in the service. A completed result preserves:
-
-- exact source asset and time range;
-- onset, offset, MIDI pitch, and MuScriptor instrument group for every note;
-- 25 Hz active-note and onset-count trajectories;
-- a versioned `field.audio.music-transcription.v1` MessagePack document;
-- performance-timed Standard MIDI;
-- an optional quantized-MIDI handle for future workers (not emitted by MuScriptor 0.3.0);
-- package, worker, model revision, checkpoint SHA-256, preprocessing, parameters, and license metadata.
-
-The note timeline is source-relative. MuScriptor's measured onset lag is removed from the NPZ and
-MessagePack times before Field draws them, while the correction remains recorded in result metadata.
-The MIDI writer applies the same correction through MuScriptor's beat-grid path, so moving the shared
-playhead between waveform and score does not introduce the model's small systematic lag.
-
-## Limits of a transcription
-
-A transcription is a set of model hypotheses, not a score. Read it against the synchronized
-waveform and piano roll before you treat it as one — on a short Sonic Pi recording the pulse timing
-and several of the pitches came out useful and the score as a whole did not.
-
-The instrument labels are hypotheses too. "Piano" and "bass" on an electronic source describe what
-the model heard, not what made the sound, and the `instruments` allow-list below is the way to say
-so up front.
-
-MuScriptor does **not** infer velocity, so Field draws these notes at uniform opacity rather than
-inventing dynamics. Its tokenizer cannot represent two simultaneous notes with the same pitch and
-instrument. MuScriptor 0.3.0 does not expose beat quantization at all, which is why the quantized
-artifact above is a handle rather than a file. And the upstream authors caution that dense mixes,
-unusual timbres, processed recordings, and exact offsets remain difficult.
-
-What has been run end to end, and the out-of-range-note fix that followed it, is in
-`dev_docs/MUSCRIPTOR_VERIFICATION.md`.
+All three revisions are pinned in the service. What comes back is a set of model hypotheses rather
+than a score; [Limits of a transcription](#limits-of-a-transcription) says how far to trust one.
 
 ## Install and start the worker
 
@@ -154,6 +123,40 @@ client.musicTranscription(result).thenAccept { transcription ->
 - `tempoDetection`: required, best effort, or off. When a grid is found, its measured model-onset correction is applied
   to the source-relative note timeline.
 - `strictEos`: turn a chunk that exhausts its token budget into a failed job rather than a warning.
+
+## What a completed result carries
+
+- exact source asset and time range;
+- onset, offset, MIDI pitch, and MuScriptor instrument group for every note;
+- 25 Hz active-note and onset-count trajectories;
+- a versioned `field.audio.music-transcription.v1` MessagePack document;
+- performance-timed Standard MIDI;
+- an optional quantized-MIDI handle for future workers (not emitted by MuScriptor 0.3.0);
+- package, worker, model revision, checkpoint SHA-256, preprocessing, parameters, and license metadata.
+
+The note timeline is source-relative. MuScriptor's measured onset lag is removed from the NPZ and
+MessagePack times before Field draws them, while the correction remains recorded in result metadata.
+The MIDI writer applies the same correction through MuScriptor's beat-grid path, so moving the shared
+playhead between waveform and score does not introduce the model's small systematic lag.
+
+## Limits of a transcription
+
+A transcription is a set of model hypotheses, not a score. Read it against the synchronized
+waveform and piano roll before you treat it as one — on a short Sonic Pi recording the pulse timing
+and several of the pitches came out useful and the score as a whole did not.
+
+The instrument labels are hypotheses too. "Piano" and "bass" on an electronic source describe what
+the model heard, not what made the sound, and the `instruments` allow-list is the way to say so up
+front.
+
+MuScriptor does **not** infer velocity, so Field draws these notes at uniform opacity rather than
+inventing dynamics. Its tokenizer cannot represent two simultaneous notes with the same pitch and
+instrument. MuScriptor 0.3.0 does not expose beat quantization at all, which is why the quantized
+artifact above is a handle rather than a file. And the upstream authors caution that dense mixes,
+unusual timbres, processed recordings, and exact offsets remain difficult.
+
+What has been run end to end, and the out-of-range-note fix that followed it, is in
+`dev_docs/MUSCRIPTOR_VERIFICATION.md`.
 
 Load the `audio_ai_muscriptor` operation transcript for the complete editable starting point. Its
 first two boxes run without the server or model; the third performs the live asset → job → score →
