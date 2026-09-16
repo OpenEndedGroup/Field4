@@ -147,6 +147,31 @@ same problem: `clamp01(floor(x) + 1)` is an exact step function.
 Not a change: `Fn.eval` for every existing graph, every existing formula, and the finite-difference
 fit path are all untouched.
 
+## 2026-08-14 — the `clip()` baking macro was reverted (`9d611b4cb`)
+
+Displaced from `public/docs/onnx.md` on 2026-09-16, where it was 17 lines of collapsed aside about a
+feature that lived one day. The page keeps the technique that replaced it: encode prompts once, into
+a `val`.
+
+`clip("…")` encoded a prompt at *macro-expansion* time and cached the 512 floats in the box's attic
+as base64, so the text encoder never loaded at run time. **Box code calling `clip("…")` no longer
+compiles**; `clipEncode("…")`, hoisted into a `val`, is the replacement and is an ordinary call.
+
+Why it went, since the reasons are about shared infrastructure rather than about ONNX:
+
+- Its stated justification was circular. Baking is what made compilation reach for the encoder in the
+  first place, because macro expansion *is* part of compilation. With prompts resolved at run time,
+  `COMPILE_ONLY` compiles `clipEncode("storm")` without evaluating it and the encoder stays shut.
+- `MacroRegistry.rewrite` runs during preview expansion, which fires as the caret moves over
+  half-typed source. Without a new guard, a keystroke could bake `clip("s")`, `clip("st")`,
+  `clip("sto")` — and trigger a 254 MB download. A feature that needs the macro system to grow a
+  safety concept in order to be safe is asking an expensive question.
+- What it bought was about 5 ms a prompt, hoistable into a `val` and never per-frame anyway, against
+  a macro, an attic block format, and a change to shared macro infrastructure.
+
+`ClipVector.toBase64`/`fromBase64` outlived the revert, being fifteen lines of pure function with an
+obvious use of their own.
+
 ## 2026-08-19 — the angle family: `Fn.atan()`, `Fn.atan2()`, `Fn.hypot()`
 
 Three ops added, one arithmetic fix, and one declared reproducibility consequence — the same shape of

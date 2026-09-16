@@ -25,7 +25,7 @@ collapses to something close to ordinary panning, and everything below stops bei
 | --- | --- |
 | **Use it when** | you want a rhythm or a line to come from *somewhere* — a direction, a distance, a thing you can walk around — and you want the placement written in the pattern rather than driven from outside it |
 | **Use it when** | you want dough's synth vocabulary: `s`, `note`, `lpf`, `room`, `crush`, `fmi` and the rest of superdough's parameters, which this path forwards untouched |
-| **Don't** | if you need it in a file. This path is **realtime only**, and that is not a missing feature — see [no figure, and why](#what-there-is-no-figure-of-and-why) |
+| **Don't** | if you need it in a file. This path is **realtime only**, and that is not a missing feature — see [why there is no clip of the output](#why-there-is-no-clip-of-the-output) |
 | **Don't** | if you need sample-exact onsets. Notes quantise to a 128-frame dough block, 2.9 ms at 44.1 kHz. [`patSynth`](sound.md) is sample-exact and proves it |
 | **Don't** | if you want dozens of independently placed voices. Each `spat` group costs a dough engine — about 200 MB of wasm and a few hundred milliseconds to boot — and the default ceiling is four |
 | **Needs** | the dough wasm build (tracked here) **and** Steam Audio's `libphonon`, which is **not** committed: `./gradlew fetchSteamAudioNatives` |
@@ -75,7 +75,7 @@ plays MIDI notes through `s`'s default `saw`; `pat("bd sd")` asks dough for soun
 bright: measured, the drum spelling of one rhythm comes out at a 678 Hz spectral centroid and the
 note spelling at 4677 Hz. `synth.pat-spatial.sound` renders both and prints both.
 
-Two smaller behaviours worth knowing before you are surprised by them:
+Two more behaviours of the placement itself:
 
 * A placement change is **approached**, not jumped to — one pole per block, about 5 ms. A note that
   jumps 140° of azimuth between two blocks would step the HRTF filter discontinuously, which is
@@ -135,22 +135,21 @@ And the second figure's claim, as a number:
 | `spatial-source-forwarded` | 544 Hz | 0.12× | 0.198 | 0.059 |
 
 A saw at note 72 has harmonics well past 700 Hz, and dough's own filter takes them. The guard
-requires that ratio to stay under 0.6×, so a `lpf` that stopped reaching dough would fail rather
-than quietly publish two clips that sound alike.
+requires that ratio to stay under 0.6×, so a `lpf` that stopped reaching dough would fail the build
+rather than publish two clips that sound alike.
 
-## What there is no figure of, and why
+## Why there is no clip of the output
 
-**There is no published clip of this path's actual output, and there cannot be one.** That is worth
-stating plainly rather than leaving as an absence, because the site's own audio contract is what
-rules it out, in three steps:
+**There is no published clip of this path's actual output, and there cannot be one.** The site's own
+audio contract rules it out, in three steps:
 
 * **The docs build renders audio offline.** An `audio=` fence calls
   `<renderer>.renderWav(scene, path)` over the backdoor — no device, no clock, no browser. There is
   no offline half of `patSpatial` to call. `PatSpatialLaunch.advanceOffline` looks like one and is
   not: the render thread is running regardless, so that call only *consumes* what has already been
   produced, in real time. A caller asking for four seconds of audio waits four seconds, and no flag
-  makes it faster, because the thing being waited for is a thread that is deliberately decoupled
-  from its consumer.
+  makes it faster: what it is waiting for is a render thread that runs on its own clock, decoupled
+  from whoever consumes it.
 * **The HRTF needs a binary this repository does not carry.** `libphonon` is fetched, checksum
   pinned, into `build/steamaudio` by `./gradlew fetchSteamAudioNatives`. On a clean clone, on CI,
   and in `check`, a render of this path does not merely come out different — it cannot start.
@@ -160,16 +159,11 @@ rules it out, in three steps:
   Gradle task. See
   [how the captions on every clip are checked](sound.md#how-the-voice-captions-are-checked).
 
-An offline *substitute* for the spatialised output was considered and rejected, and it is worth
-separating from the two clips above. The arithmetic of the whole chain **is** faster than realtime —
-`PatSpatialBudgetProbe` drives dough engines and Steam Audio effects in a tight loop, no thread, no
-ring — so a docs producer could have re-implemented the path end to end and published something that
-sounded right. What it would have published is a figure of the re-implementation, on a page about the
-thread and the ring it left out, and needing the uncommitted binary anyway. The two clips above take
-the opposite trade: they are a *smaller* claim rendered by the code that really ships, which is the
-only kind of clip the provenance audit can keep honest.
+The two clips above make the smaller claim instead: they are rendered by the code that really ships,
+which is what the provenance audit can check. Why an offline stand-in for the spatialised output was
+rejected rather than written is in `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
 
-So: **hear it yourself, which takes two commands.**
+To hear the real thing takes two commands.
 
 ```diffstatic {data-lang=bash}
 ./gradlew fetchSteamAudioNatives
@@ -184,13 +178,13 @@ device it says so and stops rather than passing for the wrong reason.
 
 ---
 
-## One dough engine per source, and what it costs the pattern
+## One dough engine per source
 
 Steam Audio spatialises a mono buffer — a direction is a property of a whole buffer, not of a voice
 inside it. That single fact decides the shape of this path: one `DoughEngine` per `spat` group, which
 is also **why `spat` exists at all** rather than every event getting its own position.
 
-Two consequences worth stating plainly:
+That costs the pattern two things:
 
 * **A pattern's `pan` is overridden.** Every event is sent `pan/0`. Panning is lossless this way, but
   `pan` as a musical parameter is gone. `az` replaces it, and it is a better parameter.
@@ -215,23 +209,12 @@ synthesis on the audio thread because Field's own voices are a fixed amount of f
 Neither half of that argument survives here. `DoughEngine` is GraalWasm: every block enters a
 polyglot context, and the JIT and the collector get a say in how long that takes.
 
-`PatSpatialBudgetProbe` measures it — four sources, 128 frames, 44.1 kHz, a 2.902 ms budget, 8000
-blocks with the first tenth dropped as warmup. Two runs on the same machine, the second while other
-work was loading it:
-
-| | idle | under load |
-| --- | --- | --- |
-| median block | 0.120 ms | 0.117 ms |
-| p99 | 1.170 ms | 2.951 ms |
-| p99.9 | 2.405 ms | 9.522 ms |
-| worst block | 12.705 ms | **36.631 ms** |
-| blocks over budget | 3 of 7200 | 74 of 7200 |
-
-**Read the two columns together, because the pair is the finding.** The median is *flat* — four wasm
-engines and eight Steam Audio effects are 4% of a block either way, so nothing here needs optimising.
-The tail moves by a factor of three, with load the audio thread has no say over. A path whose median
-fits twenty-five times over and which still misses one block in a hundred is not a path to shave
-down; it is one to **decouple**.
+`PatSpatialBudgetProbe` measures four sources against a block's 2.902 ms budget, idle and under load,
+and the two runs differ only in the tail. The median is *flat* — four wasm engines and eight Steam
+Audio effects are about 4% of a block either way, so nothing here needs optimising. The tail moves by
+a factor of three, with load the audio thread has no say over. A path whose median fits twenty-five
+times over and which still misses one block in a hundred is not a path to shave down; it is one to
+**decouple**. Both runs' percentiles are in `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
 
 So `PatSpatialRoom` renders on its own thread into a `PatSpatialRing`, and the audio thread's entire
 job is a bounded copy out of that ring — no synthesis, no spatialisation, no allocation, no locks.
@@ -244,14 +227,13 @@ in `PatSpatialRoom.start` is still there.
 
 ---
 
-## What actually limits this, measured
+## What actually limits this
 
-Not the arithmetic. On a ten-core machine at load average 33 — twenty-odd agent sessions and a Gradle
-daemon at 180% CPU — `PatSpatialEngineSmoke` recorded the render thread producing **1274 of the 1500
-blocks** a four-second window needed, while being **busy only 1399 ms of those 4000**. A thread that
-is idle two thirds of the time and still misses its deadline is not a thread that needs faster code;
-it is a thread that is not being scheduled. Per-block dough cost came out 4.5× its idle figure in the
-same run.
+Not the arithmetic — the scheduler. On a heavily loaded ten-core machine `PatSpatialEngineSmoke`
+recorded the render thread falling short of the blocks a four-second window needed while it was busy
+only about a third of that window. A thread that is idle two thirds of the time and still misses its
+deadline is not a thread that needs faster code; it is a thread that is not being scheduled. That
+run's figures are in `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
 
 Two things follow, and both are in the code rather than in advice:
 
@@ -371,7 +353,7 @@ pose and in nothing else. Headphones.
 | --- | --- |
 | `synth.pat-spatial.smoke` | that a **tag** becomes a spatial parameter, on real audio. Patterns differing only in `az` or `dist` must produce audio differing in the matching way |
 | `synth.pat-spatial.engine` | that it reaches a real output: the engine's own thread pulled the ring, the frame counter moved, the tap saw signal, nothing underran |
-| `synth.pat-spatial.budget` | the table above. Machine- and load-dependent; what reproduces is the *shape*, a median far inside budget and a tail far outside it |
+| `synth.pat-spatial.budget` | the per-block cost, idle and under load. Machine- and load-dependent; what reproduces is the *shape*, a median far inside budget and a tail far outside it |
 | `synth.pat-spatial.sound` | the two published clips, plus the three claims they cannot carry themselves |
 | `synth.head-tracked-spatial.smoke` | that a head pose of the shape OpenXR reports aims the HRTF: an identity pose is the old image to the sample, a head turned right moves a source ahead into the left ear, a head that only *steps* sideways moves it too, and losing tracking holds the last pose |
 | `synth.sound.path.map` | that this path is declared, on the seam, and named on [sound_paths.md](sound_paths.md) — the guard that caught it arriving |
