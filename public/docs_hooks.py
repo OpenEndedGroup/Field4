@@ -4369,6 +4369,36 @@ def graphics_renderer_transcript_path(repo_root: Path) -> Path:
     return repo_root / "dev_docs" / "agents" / "transcripts" / "graphics_renderer_launch.yaml"
 
 
+# A fence's `timeout` is what the author allows *their own example*. The three commands that
+# bring up the native renderer -- `macro write/run graphics_renderer_launch` and
+# `wait-native-renderer` -- are not the author's example: they are a cold Vulkan boot this file
+# generates on the author's behalf, and their cost is a property of the machine, not of the page.
+# Threading the fence budget into them made one attribute govern both, so the tightest page in the
+# corpus set the budget for the slowest thing in the run. `afield_four_graphics.md` declares
+# `timeout="10"` on all ten of its fences -- below even the 45.0 default -- and that killed three
+# consecutive certifying docs builds at capture 3-8 of ~544 with a `TimeoutError` that *moved*
+# between runs on a byte-identical tree: no fence was broken, the budget was simply insufficient
+# wherever it landed.
+#
+# 90s is not a guess: it is `puppet_browser.md`'s own declared budget, an author's working number
+# for this same class of work (boot a native window, wait for frames). Every other
+# graphics-context page already sits at 45s or above, so this floor binds only on
+# `afield_four_graphics.md` (10 -> 90), `keyframer_examples.md` (20/25 -> 90) and the three pages
+# that declare nothing (45 -> 90). A timeout is a ceiling, never a sleep, so raising it cannot
+# slow a capture that succeeds -- it only stops one being abandoned early.
+GRAPHICS_LAUNCH_TIMEOUT_FLOOR_SECONDS = 90.0
+
+
+def graphics_launch_timeout(options: RunnerOptions) -> float:
+    """The budget for the runner's own renderer bring-up, floored away from the fence's.
+
+    A fence may still ask for *more* than the floor -- `stacksl_examples.md` asks for 600 -- and
+    that is honoured, because a page whose example needs a long budget needs its renderer to
+    survive at least as long.
+    """
+    return max(float(options.timeout), GRAPHICS_LAUNCH_TIMEOUT_FLOOR_SECONDS)
+
+
 def generated_graphics_child_transcript(*, target_uid: str, options: RunnerOptions) -> str:
     transcript: dict[str, Any] = {
         "name": f"{target_uid}_setup",
@@ -4598,24 +4628,25 @@ def build_backdoor_command(
     language = options.language_key.strip().lower()
     if options.graphics_context:
         renderer_macro_path = graphics_renderer_transcript_path(repo_root)
+        launch_timeout = graphics_launch_timeout(options)
         backdoor_commands.append(shlex.join([
             "macro",
             "write",
             "graphics_renderer_launch",
             "--file", str(renderer_macro_path),
-            "--timeout", str(options.timeout),
+            "--timeout", str(launch_timeout),
         ]))
         backdoor_commands.append(shlex.join([
             "macro",
             "run",
             "graphics_renderer_launch",
-            "--timeout", str(options.timeout),
+            "--timeout", str(launch_timeout),
         ]))
         backdoor_commands.append(shlex.join([
             "wait-native-renderer",
             "agent_graphics_context",
             "--frames", "3",
-            "--timeout", str(options.timeout),
+            "--timeout", str(launch_timeout),
         ]))
     if options.macro_file:
         macro_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
