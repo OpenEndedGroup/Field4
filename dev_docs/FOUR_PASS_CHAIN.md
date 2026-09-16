@@ -470,7 +470,29 @@ run. The blur changes on the next frame with no pipeline rebuild and no target r
 `setPush` writes the push constant on the pass's existing fullscreen quad. That is the difference
 between a chain you *declare* and a chain you *assemble*.
 
-#### Two import traps this transcript already pays for
+`dev_docs/agents/transcripts/four_simulation_chain.yaml` is the same thing for the two simulations —
+four boxes, classified the same way and for the same reason, and offered as a starting point beside
+it. Drag in the window to paint velocity and dye into the fluid; the distance field floods a disc and
+a bar into a signed field and insets it into a corner. Replayed end to end into a fresh `--scratch`
+document on 2026-09-16: `applied=16 skipped=0 errors=0`, all four boxes printing normally, the fluid
+reporting `[fluid-velocity, fluid-dye]` and the distance chain `14 passes, output 1024²`, with every
+new shader through shaderc and every pipeline created clean in the managed-server log.
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --scratch --timeout 900 \
+  --command 'macro write four_simulation_chain --file dev_docs/agents/transcripts/four_simulation_chain.yaml' \
+  --command 'macro run four_simulation_chain' \
+  --command 'wait-native-renderer'
+```
+
+`--timeout 900` is not caution. The default dropped the connection mid-run and reported
+`{"error": "TimeoutError"}` while the server was still happily creating pipelines — 41 passes across
+two chains is 41 shaderc compiles and 41 pipelines, and on a loaded machine that outlasts the
+client's patience. The managed-server log under `.field-backdoor/logs/` is what says which it was.
+`wait-native-renderer` writes a PNG of the window there as a side effect, which is the capture to
+look at; `native-screenshot` takes no `--out`.
+
+#### Two import traps these transcripts already pay for
 
 Both cost real time when the demo was first written, and neither is specific to this layer.
 
@@ -486,6 +508,17 @@ Both cost real time when the demo was first written, and neither is specific to 
   rather than a rewrite dropping it. Every other reference in the same box resolves normally
   through that same line. The workaround in the transcript is to write the `prop<>` type argument
   fully qualified: `prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)`.
+
+And one that is specific to *box* code rather than to this layer:
+
+- **An overload pair a box cannot resolve.** The two candidates are
+  `MouseEvents.kt:66#onDown` and `MouseEvents.kt:69#onDown` — overloaded on
+  `() -> Boolean` and a `(MouseEvent) -> …` form — and `mouse.onDown("left", "paint") { true }` —
+  which compiles anywhere else — is an *overload resolution ambiguity* in a box. Naming the
+  parameter's type resolves it: `{ _: MouseEvent -> DownResult.Keep }`. The same box also cannot drop
+  the `onDown` even though it does nothing, because `MouseEvents` only polls buttons some handler has
+  asked about (`buttonsRequested = down.keys + up.keys`) and `onDrag` only fires while a button is
+  down — so without it no drag ever arrives and the fluid sits there looking broken.
 
 ## Six measurement traps, all paid for
 
@@ -562,9 +595,10 @@ just this one.
   with pure clamp-to-edge sampling, advection transports velocity through the wall, the pressure
   solve has no boundary condition to satisfy, and the fluid slowly pumps itself into a corner over a
   few hundred frames — long enough to blame something else.
-- **No transcript yet.** `four_pass_chain.yaml` makes the aperture chain openable from the welcome
-  screen; there is no equivalent for these two, so the way to see them live is the smoke test. A
-  `four_simulation_chain.yaml` is the natural next step, and per
-  `dev_docs/agents/transcripts/README.md` it is six steps rather than one — the yaml, a bucket in
-  `DemoTranscriptExecSmokeTest`, an entry *and the totals paragraph* in
-  `public/docs/agent_transcripts.md`, the corpus README, and two regenerations.
+- **Two chains in one post stack run in series, and the last one appended owns the screen.** That is
+  the intended composition and it is still a trap: appending the distance chain after the fluid makes
+  the fluid vanish, which reads as a broken fluid rather than an ordering you asked for.
+  `four_simulation_chain`'s distance box therefore ends in an inset pass that passes the incoming
+  frame through and draws the field into one quadrant. A chain has no way to say "show me next to the
+  other one": `FabricatePostStack.kt:11#FabricatePostStack` is an ordered name→pass list whose
+  `output()` is its last effect's target, so composition is the only layout there is.
