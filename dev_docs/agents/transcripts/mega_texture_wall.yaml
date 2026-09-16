@@ -1,0 +1,144 @@
+name: mega_texture_wall
+description: >
+  A GPU-driven virtual texture over a directory of images, drawn as an instanced wall. The fragment
+  shader measures its own screen footprint and requests the resolution it needs; the CPU reads those
+  requests and serves them. Needs a graphics parent, so run graphics_renderer_launch.yaml first.
+  Point the folder(...) line at your own images — allBlade is 1640 frames of Blade Runner.
+operations:
+  - create:
+      box: agent_mega_texture_wall
+      name: mega texture wall
+      frame:
+        x: 320.0
+        y: 200.0
+        w: 320.0
+        h: 100.0
+      properties:
+        vertex: |
+          #version 450
+
+          // megaAspect() lives in here, so each picture can be shaped to its own frame before
+          // anything about it has been decoded. The rest of the system is fragment-stage.
+          {{ mega.vertex }}
+
+          layout(push_constant) uniform matrices {
+              mat4 p;
+              mat4 m;
+          } pc;
+
+          layout(location = 0) out vec2 ftc;
+          layout(location = 1) flat out uint fid;
+
+          // The whole scene is this one number. Edit it and reload the shader with alt-r.
+          const float wallSpacing = 1.08;
+
+          void main()
+          {
+              // Two triangles from six vertices and no vertex buffer at all: every quad is an
+              // instance, and where it goes is arithmetic on gl_InstanceIndex.
+              vec2 corner[6] = vec2[6](
+                  vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0),
+                  vec2(0.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
+              vec2 c = corner[gl_VertexIndex % 6];
+
+              uint id = uint(gl_InstanceIndex);
+              uint columns = uint(ceil(sqrt(float(megaImageCount))));
+              uint rows = (megaImageCount + columns - 1u) / columns;
+
+              // Row height comes from the *first* picture's shape, so a set that is all one
+              // format — a film, a camera roll — packs with no gaps. A mixed set letterboxes
+              // into those rows instead, which is the honest thing for it to do.
+              float rowAspect = max(megaAspect(0u), 0.01);
+              vec2 pitch = vec2(wallSpacing, wallSpacing / rowAspect);
+
+              vec2 cell = vec2(
+                  float(id % columns) - float(columns) * 0.5,
+                  float(rows) * 0.5 - float(id / columns)) * pitch;
+
+              // Fit this picture inside its row without distorting it.
+              float aspect = megaAspect(id);
+              vec2 size = (aspect >= rowAspect)
+                  ? vec2(1.0, 1.0 / aspect)
+                  : vec2(aspect / rowAspect, 1.0 / rowAspect);
+
+              fid = id;
+              ftc = vec2(c.x, 1.0 - c.y);   // page row 0 is the top of the picture
+              gl_Position = pc.p * pc.m * vec4(cell + (c - 0.5) * size, 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+
+          // megaTexture(id, uv) is the whole interface: it measures this fragment's footprint from
+          // the UV derivatives, asks the CPU for that resolution, and samples the best page that
+          // has arrived so far.
+          {{ mega.all }}
+
+          layout(location = 0) in vec2 ftc;
+          layout(location = 1) flat in uint fid;
+          layout(location = 0) out vec4 outColor;
+
+          // Set to 1 and reload (alt-r) to see residency directly: red is the 8-pixel base level,
+          // green is 512. Flying towards the wall should turn it green ahead of the camera.
+          const int showResidentLevel = 0;
+
+          void main()
+          {
+              vec4 colour = megaTexture(fid, ftc);
+
+              if (showResidentLevel != 0) {
+                  float t = float(megaResidentLevel(fid) + 1) / float(megaLevels);
+                  colour.rgb = mix(colour.rgb, vec3(1.0 - t, t, 0.15), 0.4);
+              }
+
+              outColor = vec4(colour.rgb, 1.0);
+          }
+        code: |
+          import afield.four.Renderer
+          import afield.four.modules.fromContext
+
+          // Scan the directory, build the atlas, and register the {{ mega.* }} shader slots.
+          // Queues every image's 8-pixel page so the wall fills in without being looked at.
+          val mega = megaTextureHere { folder("/Users/marc/Movies/blade/scenes/allBlade") }
+
+          // An execution break. moduleHere compiles this box's shaders when its macro expands,
+          // which is before any code in the next fragment runs — so the slots have to be
+          // registered here, in an earlier fragment, or {{ mega.all }} has nothing to resolve to.
+          //%-
+          val renderer: Renderer = fromContext()
+
+          val camera = Camera()
+          camera.at = vec(0, 0, -18)
+          var kc by keyCamera(camera = camera)
+
+          var module = moduleHere { mega.bind(this) }
+          var m = Mesh()
+          module += m named "wall"
+          renderer += module
+
+          // The per-frame cache work: read what the shader asked for, upload what has arrived,
+          // republish the page table. Recorded into this module's own command buffer.
+          mega.attach(module)
+
+          m.p = camera.p
+          m.m = camera.m
+
+          // Six vertices, no index buffer, one instance per image.
+          m.resize(6)
+          m.instanceCount = mega.imageCount
+
+          println("mega texture wall: ${mega.imageCount} images, ${mega.totalLayers} atlas layers")
+
+          var tick = 0
+          loop {
+              if (tick++ % 120 == 0) println(mega.stats().toString())
+              true
+          }
+  - connect:
+      parent: agent_graphics_context
+      child: agent_mega_texture_wall
+  - launch:
+      box: agent_mega_texture_wall
+      property: code
+      type: code
+  - wait:
+      seconds: 8

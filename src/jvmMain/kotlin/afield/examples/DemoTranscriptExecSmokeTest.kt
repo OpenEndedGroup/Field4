@@ -368,6 +368,12 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
+        // A native window plus a directory of images that is nobody's to commit. Both shaders are
+        // compiled here, which is the part worth having: `{{ mega.all }}` is generated GLSL, so a
+        // mistake in MegaTexture's declarations would otherwise only surface on a machine with a
+        // GPU and a folder of photographs. MegaTextureShaderTest checks that same GLSL through
+        // shaderc without either.
+        "mega_texture_wall",
         // Builds its own Window + Renderer and a six-pass chain across three resolutions, so it
         // wants a GLFW window and a Vulkan device the lightweight build does not own. The plan
         // arithmetic it prints is covered without a device by FabricatePassChainTest, and the

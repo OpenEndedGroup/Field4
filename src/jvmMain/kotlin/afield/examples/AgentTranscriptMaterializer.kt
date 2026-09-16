@@ -85,6 +85,10 @@ object AgentTranscriptMaterializer {
         // The Linux/dma-buf receiver integration smoke, likewise.
         "external_browser_surface_linux_smoke",
         "graphics_renderer_launch",
+        // Needs both things this set is for: a renderer from a box it does not contain, and a
+        // directory of images that is the reader's to supply. Opened on its own it would build a
+        // wall of nothing.
+        "mega_texture_wall",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin (mirrors the smoke test). */

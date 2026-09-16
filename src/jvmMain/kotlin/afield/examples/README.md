@@ -50,7 +50,6 @@ Graphics and rendering examples using the Four module (Vulkan/OpenGL):
 - **`NewMain7_errorChecking.kt`** - Error checking patterns
 - **`NewMain8_writeToImage.kt`** - Rendering to image files
 - **`PlyLoaderTest.kt`** - PLY file loading (ASCII and binary)
-- **`VirtualTexturingDemo.kt`** - Virtual texture system with dynamic loading
 
 ### Video Examples (`afield.examples.video`)
 

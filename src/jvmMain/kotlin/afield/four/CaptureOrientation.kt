@@ -154,16 +154,6 @@ internal object CaptureOrientation {
                     "elsewhere in afield.four has to come here and say which way its rows run."
         ),
         CapturePathSpec(
-            id = "virtual-texture-thumbnail",
-            file = "src/jvmMain/kotlin/afield/four/texture/VirtualTextureSystem.kt",
-            symbol = "writeThumbnailJpeg",
-            sourceRowOrder = RowOrder.TopDown,
-            expectedToken = JPEG_WRITE,
-            why = "Not a GPU readback at all: the rows come from STB decoding an image file, " +
-                    "which yields top-down, and go straight to stbi_write_jpg unflipped. Correct " +
-                    "as-is, and listed so it is not mistaken for an unaudited capture path."
-        ),
-        CapturePathSpec(
             id = "window-framebuffer-tempfile",
             file = "src/jvmMain/kotlin/afield/four/util/Window.kt",
             symbol = "saveFramebufferToTempFile",

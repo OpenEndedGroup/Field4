@@ -319,9 +319,13 @@ class CaptureOrientationTest {
         }
 
         // A floor near the number actually checked, so a spec list that quietly shrinks fails.
-        assertTrue(checked >= 8, "only $checked declared paths carried a checkable token")
+        // Lowered by one on 2026-09-16 with `virtual-texture-thumbnail`, whose writer went away
+        // when `VirtualTextureSystem` was replaced by `afield.four.texture.mega` — that system
+        // caches raw RGBA pages rather than re-encoding JPEG thumbnails, so it has no row order to
+        // declare. Lower these only alongside a path that has genuinely gone.
+        assertTrue(checked >= 7, "only $checked declared paths carried a checkable token")
         assertTrue(
-            CaptureOrientation.paths.size >= 9,
+            CaptureOrientation.paths.size >= 8,
             "the path table shrank to ${CaptureOrientation.paths.size}"
         )
     }
@@ -342,8 +346,9 @@ class CaptureOrientationTest {
         )
 
         // Floor near the real number, so the scan going blind (bad regex, wrong root, renamed
-        // directory) reads as a failure instead of a clean pass over nothing.
-        assertTrue(sites.size >= 8, "the scan found only ${sites.size} flip sites; it has gone blind")
+        // directory) reads as a failure instead of a clean pass over nothing. Lowered by one on
+        // 2026-09-16 along with the `virtual-texture-thumbnail` path — see the sibling floor above.
+        assertTrue(sites.size >= 7, "the scan found only ${sites.size} flip sites; it has gone blind")
     }
 
     // ── negative controls for the scanner ───────────────────────────────────────────────────
