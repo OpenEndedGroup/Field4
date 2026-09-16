@@ -23,8 +23,62 @@ import kotlin.collections.ArrayDeque
 import kotlin.concurrent.thread
 import kotlin.math.roundToInt
 
+/**
+ * The file that opens an audio device: the OpenAL output stream Field plays through, the optional
+ * capture stream `audioInput()` reads from, and the mixer that sums every registered patch into it.
+ *
+ * [AudioPatchSpec] is one thing to hear, either a mono [Signal] with a gain and a pan or a
+ * [StereoRenderable] with a gain. A box builds one by returning `audio { … }` from `synth.kt` rather
+ * than by calling the constructors here. [FieldAudioEngine] is the device and the list of patches on
+ * it; `shared()`, reached from a box as `audioEngine()`, is the single instance a process gets, and
+ * its sample rate and buffer size are whatever the first caller in the session asked for. `register`
+ * takes a spec and hands back an [AudioPatchHandle], and closing that handle is the only way a patch
+ * leaves the mix.
+ *
+ * Rendering is pulled by the device rather than driven by a clock. One daemon thread keeps a queue of
+ * OpenAL buffers filled, `bufferSize` frames each, and renders the next block only when the source
+ * reports an earlier buffer as processed, so the mix advances as fast as the sound card consumes it
+ * and no faster. A [SynthContext] is advanced once per block and handed to every patch. Patches
+ * accumulate rather than replace: each renderer adds into the same pair of buffers, a mono one
+ * through an equal-power pan law that puts a centred signal at 0.707 in both channels rather than at
+ * half in each. The sum is clamped to [-1, 1] and written out as 16-bit stereo, and a sample that is
+ * not finite becomes silence and is counted in `nonFiniteSamplesSanitized`, which reaches the
+ * `warning,audio` log channel at most once every two seconds.
+ *
+ * Three properties of that loop account for most silence. `outputActive` means the device opened, not
+ * that audio is flowing: it is set when the OpenAL source and its buffers exist and cleared only when
+ * the thread exits, while rendering depends on that source continuing to report processed buffers. A
+ * machine too loaded to service its own audio daemon therefore renders nothing with every flag still
+ * reading true, and a patch that counts its own `generateStereo` calls is what separates that case
+ * from a wiring mistake. If the device cannot be opened at all, the thread prints why and returns
+ * without retrying, so `start()` does nothing from then on and patches register into a mix nobody
+ * renders; `destroyShared()` forces a fresh attempt. And input is the newest block the capture device
+ * has rather than a continuous stream: at most `bufferSize` frames are taken per block, and a block
+ * with nothing ready reads as silence.
+ *
+ * `enableLinkOutput` sends the same mix on to Ableton Link through [LinkAudioInterface], and can mute
+ * the local device while it does by zeroing the OpenAL source gain; the mix is rendered either way. A
+ * Link interface opened anywhere else in the process is picked up per block without this file being
+ * told about it, so a patch can reach Link without the call.
+ */
+
+/**
+ * One thing to hear: a signal graph, the gain and pan it plays at, and how many blocks to render it
+ * for before it joins the mix.
+ *
+ * A spec holds no device and makes no sound by itself. Boxes build one with `audio { … }` from
+ * `synth.kt`; the two `from` overloads are the direct form, one for a mono [Signal] and one for a
+ * [StereoRenderable]. Registering the same spec twice puts it in the mix twice.
+ */
 class AudioPatchSpec internal constructor(
     internal var renderer: Renderer,
+    /**
+     * Blocks to render and throw away on the registering thread before the patch joins the mix.
+     *
+     * Zero by default. Enough of them allocates the graph's internal buffers and gets its hot path
+     * compiled before the audio thread reaches it, which is the difference between a first block that
+     * is late and one that is not.
+     */
     val warmUpCycles: Int = 0
 ) : LiveGraphInspectable {
     internal val visualTrace = StereoTrace(capacity = 4096, stride = 1)
@@ -36,6 +90,13 @@ class AudioPatchSpec internal constructor(
     }
 
     companion object {
+        /**
+         * A mono [signal] scaled by [gain] and placed by [pan], both of which are [Param]s and so can
+         * themselves be signals.
+         *
+         * [pan] runs -1 to 1 through an equal-power law, so the centre is 0.707 in each channel and
+         * the two ends are one channel only.
+         */
         fun from(
             signal: Signal,
             gain: Param = Param(1f),
@@ -47,6 +108,12 @@ class AudioPatchSpec internal constructor(
             return spec
         }
 
+        /**
+         * A stereo [signal] scaled by [gain], with no pan: a two-channel source is already placed.
+         *
+         * The source is given [StereoNode]'s per-block cache if it does not already have one, so a
+         * stateful graph reached twice in one block still advances once.
+         */
         fun from(
             signal: StereoRenderable,
             gain: Param = Param(1f),
@@ -84,6 +151,14 @@ internal data class InlineAudioSummaryTarget(
     val annotation: String? = null
 )
 
+/**
+ * A registration rather than a patch: closing it takes the spec out of the mix and does nothing else.
+ *
+ * The [AudioPatchSpec] itself survives and can be registered again. When a box returns a patch, the
+ * return-value handler in `AudioReturnValue.kt` holds the handle for as long as that run of the box
+ * lasts and closes it in a `finally`, which is what stops a re-run box from playing its old sound
+ * underneath its new one.
+ */
 class AudioPatchHandle internal constructor(
     private val engine: FieldAudioEngine,
     private val id: String
@@ -175,6 +250,16 @@ private class StereoRenderer(
     )
 }
 
+/**
+ * The audio device and the patches playing through it.
+ *
+ * Reach it with `shared()`, or with `audioEngine()` from a box; the constructor is private and one
+ * process gets one engine. `sampleRate` and `bufferSize` are fixed when it is created and every patch
+ * is rendered against the same [SynthContext], advanced once per block on the engine's own daemon
+ * thread. Nothing resamples, so a source that generates at a rate of its own has to be built at the
+ * engine's `sampleRate`, which is why `parkDough` reads that off the engine before it builds a
+ * [DoughEngine].
+ */
 class FieldAudioEngine private constructor(
     val sampleRate: Int = 48_000,
     val bufferSize: Int = 512,
@@ -187,6 +272,13 @@ class FieldAudioEngine private constructor(
         @Volatile
         private var sharedInstance: FieldAudioEngine? = null
 
+        /**
+         * The process-wide engine, created and started if it is not already running.
+         *
+         * The arguments are used only when it has to be created, so the first caller in a session
+         * fixes the sample rate, the buffer size and the queue depth, and every later call gets that
+         * engine whatever it asks for. [inputChannels] is clamped to 1 or 2.
+         */
         @Synchronized
         fun shared(
             sampleRate: Int = 48_000,
@@ -206,6 +298,12 @@ class FieldAudioEngine private constructor(
             return engine
         }
 
+        /**
+         * Close the process-wide engine and forget it, so the next `shared()` opens the device again.
+         *
+         * This is the way back from a failed device open, which does not retry on its own, and the
+         * only way to change the sample rate or buffer size a session is running at.
+         */
         @Synchronized
         fun destroyShared() {
             sharedInstance?.close()
@@ -243,18 +341,44 @@ class FieldAudioEngine private constructor(
     @Volatile
     private var linkOutput: LinkAudioInterface? = null
 
+    /**
+     * Whether the local OpenAL source is audible.
+     *
+     * Only `enableLinkOutput` changes it. False mutes the device by setting its gain to zero and does
+     * not stop the mix being rendered.
+     */
     @Volatile
     var monitorLocalOutput: Boolean = true
         private set
 
+    /**
+     * Whether a capture device is open.
+     *
+     * False leaves `monoInput()` and `stereoInput()` producing silence rather than failing, so a
+     * graph built on input still renders on a machine with no microphone.
+     */
     @Volatile
     var inputActive: Boolean = false
         private set
 
+    /**
+     * Whether the output device opened, which is not the same as audio flowing.
+     *
+     * It is set once the OpenAL source and its buffers exist and cleared only when the audio thread
+     * exits, so it stays true while a source that has stopped reporting processed buffers renders
+     * nothing at all.
+     */
     @Volatile
     var outputActive: Boolean = false
         private set
 
+    /**
+     * How many NaN or infinite samples have been replaced with silence since the engine started,
+     * counted once per sample and per channel.
+     *
+     * A graph that has gone non-finite goes quiet rather than loud, so this counter is usually how it
+     * is noticed. It is also logged to the `warning,audio` channel, at most once every two seconds.
+     */
     @Volatile
     var nonFiniteSamplesSanitized: Long = 0L
         private set
@@ -262,16 +386,34 @@ class FieldAudioEngine private constructor(
     private var nonFiniteSamplesSinceLog: Long = 0L
     private var nextNonFiniteLogAtNs: Long = System.nanoTime() + NON_FINITE_LOG_INTERVAL_NS
 
+    /**
+     * The capture device's newest block as a mono [Signal], starting the engine if it is not running.
+     *
+     * A stereo capture device is averaged to one channel. Whenever capture is unavailable, or has
+     * nothing ready at the top of a block, the signal reads zero.
+     */
     fun monoInput(): Signal {
         start()
         return monoInputSignal
     }
 
+    /**
+     * The capture device's newest block as a [StereoSignal], starting the engine if it is not running.
+     *
+     * A mono capture device is copied to both channels, so the pair is always two full channels.
+     */
     fun stereoInput(): StereoSignal {
         start()
         return StereoSignal(leftInputSignal, rightInputSignal)
     }
 
+    /**
+     * Publish the mix to Ableton Link as 16-bit stereo, and return this engine so the call chains.
+     *
+     * With [monitorLocal] false the local device is muted while Link carries the sound, which stops it
+     * leaving the machine twice; the mix is rendered either way. [maxFrames] is raised to `bufferSize`
+     * if it is smaller, since that is the size of the blocks Link will be handed.
+     */
     fun enableLinkOutput(
         link: LinkAudioInterface = LinkAudioInterface.shared(),
         name: String = "Field4",
@@ -286,6 +428,13 @@ class FieldAudioEngine private constructor(
         return this
     }
 
+    /**
+     * Drop the engine's own reference to Link and unmute the local device.
+     *
+     * This clears a reference rather than a connection: the block loop falls back to whatever
+     * [LinkAudioInterface] is still current in the process, so a shared interface opened elsewhere
+     * keeps receiving the mix. `LinkAudioInterface.destroyShared()` is what ends that.
+     */
     fun disableLinkOutput(): FieldAudioEngine {
         linkOutput = null
         monitorLocalOutput = true
@@ -306,6 +455,14 @@ class FieldAudioEngine private constructor(
         "linkOutput" to (linkOutput?.snapshot())
     )
 
+    /**
+     * Put [spec] in the mix and return the handle that takes it out again.
+     *
+     * Starts the engine if it is not running, then renders the spec's `warmUpCycles` blocks on the
+     * calling thread and throws the audio away: that allocates the graph's internal buffers and gives
+     * HotSpot passes over the hot path before the audio thread ever reaches it. The default is zero
+     * cycles. The next block the device asks for is the first one the patch is heard in.
+     */
     fun register(spec: AudioPatchSpec): AudioPatchHandle {
         start()
         warmUp(spec)
@@ -320,6 +477,14 @@ class FieldAudioEngine private constructor(
         patches.remove(id)
     }
 
+    /**
+     * Open the devices and begin rendering, or return at once if that has already been attempted.
+     *
+     * Blocks for up to five seconds while the audio thread tries to open its output and capture
+     * devices, so `outputActive` and `inputActive` can be read immediately afterwards. Every entry
+     * point that needs the engine running calls this, so a box rarely does. A second call after a
+     * failed open does not try again: `destroyShared()` is what does.
+     */
     fun start() {
         if (started.compareAndSet(false, true)) {
             shouldStop.set(false)
@@ -344,6 +509,13 @@ class FieldAudioEngine private constructor(
         startLatch.await(5, TimeUnit.SECONDS)
     }
 
+    /**
+     * Ask the audio thread to stop and wait up to two seconds for it, releasing the OpenAL device,
+     * source, buffers and capture stream on the way out.
+     *
+     * The engine does not come back afterwards: `start()` sees that it has already started and does
+     * nothing. Use `destroyShared()` to close the process-wide engine and get a new one.
+     */
     override fun close() {
         shouldStop.set(true)
         audioThread?.join(2_000)

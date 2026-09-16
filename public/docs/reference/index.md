@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**13869 public symbols across 350 source files**, 7743 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**13869 public symbols across 350 source files**, 7774 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -22,7 +22,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 25 | 1059 | 405 (38%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 25 | 1059 | 436 (41%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 27 | 963 | 500 (51%) | Musical time, as a value. |
 | [Audio](audio.md) | 18 | 871 | 257 (29%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
@@ -105,9 +105,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 | Offline rendering of a pattern through the **real** Dirt sample library. | [Sound: from a pattern to something you can hear](../sound.md) |
 | [DirtSamples.kt](audio.md#dirtsamples-kt) | Audio | 59 | 4 | The TidalCycles Dirt-Samples collection loaded, indexed, and played from Field. | [Boolean network music examples](../boolean_network_music_examples.md) |
-| [Dough.kt](synthesis.md#dough-kt) | Synthesis | 21 | 1 |  | [Making a sound in Field: every path there is](../sound_paths.md) |
+| [Dough.kt](synthesis.md#dough-kt) | Synthesis | 21 | 16 | dough itself, run as WebAssembly inside GraalVM, and the two wrappers that hand its output to Field's audio engine. | [Making a sound in Field: every path there is](../sound_paths.md) |
 | [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 | Native Kotlin ports of low-level DSP from dough, carrying dough's AGPL-3.0 terms. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
-| [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 13 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
+| [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 14 | Headless **offline sound-render harness** for the dough DSP ports in `DoughDsp.kt`: every audible example on the docs page is produced by running one of those primitives on the CPU. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [Dyn4jScene.kt](simulation.md#dyn4jscene-kt) | Simulation | 43 | 17 | A 2D rigid-body scene: dyn4j's `World` behind a Kotlin surface that addresses bodies by handle, with a converter from Field's own drawing into collision geometry. |  |
 | [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
@@ -137,7 +137,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 18 |  |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
-| [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 0 |  |  |
+| [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 15 | The file that opens an audio device: the OpenAL output stream Field plays through, the optional capture stream `audioInput()` reads from, and the mixer that sums every registered patch into it. |  |
 | [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 10 | FieldML's front end behind one call: source text in, and whatever its four stages managed to produce out. |  |
 | [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 3 | Completion and hover for a FieldML box: what the editor offers under the caret, and what the card over a symbol says. |  |
 | [FieldMLInterface.kt](languages.md#fieldmlinterface-kt) | Languages | 13 | 13 | FieldML as a box language: set a box's Main Language to FieldML and its children hold FieldML programs instead of Kotlin. |  |
