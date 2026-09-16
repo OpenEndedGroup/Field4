@@ -288,7 +288,13 @@ object StackSLCpu {
      * puts the picture in a box output with no graphics context, no window and no AWT.
      *
      * Cost, so nobody is surprised: this is an interpreter, and 512x512 of a five-octave `fbm`
-     * takes single-digit seconds across ten cores. 256 is a good size for a box.
+     * takes single-digit seconds across ten cores — 5.9 s measured. 256 is a good size for a box.
+     *
+     * Per core that is **1.3–1.6 x 10^4** pixel-shader invocations per second, and the aggregate on
+     * a ten-core machine is **4.4 x 10^4/s**, which is 3.3x the single-core figure rather than 10x.
+     * This KDoc said 10^5/core until 2026-09-16 and was wrong by about 7x; the two halves of the
+     * claim were never consistent, and the wall-clock half was the true one.
+     * `StackSLCpuThroughputMeasurements` states the method and is where the numbers come from.
      */
     fun renderStill(program: String, dim: Int = 256, time: Float = 1.75f, parallel: Boolean = true): CpuRaster =
         renderProgram(program, stillTemplate(time), dim, dim, parallel = parallel)
