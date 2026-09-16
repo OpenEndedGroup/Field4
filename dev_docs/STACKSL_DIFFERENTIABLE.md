@@ -59,10 +59,18 @@ safe for `+ - * /` and `sqrt` because `Double` has more than twice `Float`'s sig
 `float <prefix>_wires[N]` array with an initialiser and records each as a `StackSLDanglingWire`
 carrying `index`, `initial`, `line`, `column`, `token` and `note`. That part needed no new syntax.
 
-But **the externalised emitted GLSL cannot be parsed by this backend at all**, and no CPU path had
-ever tried:
+But **the externalised emitted GLSL cannot be parsed by this backend at all**
+(reproducer: `StackSLWireLoweringTest.kt#fun theUnloweredWiredGlslIsRefusedByTheParser`), and no CPU
+path had ever tried:
 
-- `GlslParser.kt:313` and `:442` both `throw GlslUnsupported("GLSL arrays are not in the StackSL subset")`;
+- the wire array first appears in a **parameter list**
+  (`void <prefix>_init_wires(out float <prefix>_wires[<prefix>_wire_count])`), and the parameter
+  parser has no array branch at all, so it dies as an ordinary syntax error:
+  `GlslEvalError: GLSL parse: expected ')', found '['`. That is *not* the message the two
+  `GlslUnsupported` sites suggest — `GlslParser.kt:442`'s
+  `"GLSL arrays are not in the StackSL subset"` is what a **local** array declaration gets, which is
+  what the forwarding wrapper's body hits once the signature is gone. Both refusals are real and
+  they fire at different points;
 - `StackSLCpu.stackAutoOptions` pins `externalizeConstants = false`;
 - every emitted function gains a trailing `, float <prefix>_wires[<prefix>_wire_count]` parameter;
 - the entrypoint gains a **second, overloaded** one-argument wrapper that declares the array, calls

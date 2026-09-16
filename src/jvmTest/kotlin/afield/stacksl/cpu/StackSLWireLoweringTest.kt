@@ -1,7 +1,9 @@
 package afield.stacksl.cpu
 
+import afield.stacksl.StackSLCompiler
 import java.io.File
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -77,6 +79,49 @@ class StackSLWireLoweringTest {
             "only $compared programs were compared, expected at least $MIN_PROGRAMS"
         )
         assertTrue(wires >= MIN_WIRES, "only $wires wires were lifted, expected at least $MIN_WIRES")
+    }
+
+    /**
+     * The refusal that makes [StackSLWires.lower] necessary, demonstrated rather than asserted.
+     *
+     * `dev_docs/STACKSL_DIFFERENTIABLE.md` claims the externalised emitted GLSL cannot be parsed by
+     * this backend at all. That is a claim about a refusal, so it takes a reproducer: here it is.
+     * Named in camelCase rather than the backticked style of its neighbours because
+     * `dev_docs/impossibility_claims.md`'s citation anchors resolve a plain identifier.
+     *
+     * The refusal is **not** the one the two `GlslUnsupported` sites in `GlslParser` suggest, and
+     * that was worth finding out: the wire array appears first in a *parameter list*
+     * (`void program_init_wires(out float program_wires[program_wire_count])`), and the parameter
+     * parser has no array branch at all, so it dies as an ordinary syntax error —
+     * `GlslEvalError: GLSL parse: expected ')', found '['`. `GlslParser.kt:442`'s
+     * `"GLSL arrays are not in the StackSL subset"` is what a *local* array declaration gets, which
+     * is what the forwarding wrapper's body would hit if the signature ever parsed. So the exact
+     * exception is not asserted; the refusal, and that it names the `[`, is.
+     */
+    @Test
+    fun theUnloweredWiredGlslIsRefusedByTheParser() {
+        val result = StackSLCompiler.compile("uv 3.0 * fbm palette", StackSLWires.wiredOptions("program"))
+        assertTrue(result.ok, "the wired compile itself should succeed: ${result.diagnostics}")
+        assertTrue(
+            result.glsl.contains("program_wires[program_wire_count]"),
+            "externalizeConstants no longer emits a wire array; this test's subject is gone"
+        )
+        val thrown = assertFailsWith<RuntimeException> {
+            parseGlslShader(StackSLCpu.substituteSlot(StackSLCpu.stillTemplate(), result.glsl))
+        }
+        assertTrue(
+            thrown is GlslUnsupported || thrown is GlslEvalError,
+            "refused with an unrelated exception: $thrown"
+        )
+        assertTrue(
+            thrown.message!!.contains("[") || thrown.message!!.contains("arrays"),
+            "refused for the wrong reason: ${thrown.message}"
+        )
+        println("unlowered wired GLSL is refused: ${thrown::class.simpleName}: ${thrown.message}")
+
+        // And the lowered form of the same compile parses, which is the other half of the claim.
+        val lowered = StackSLWires.lower(result.glsl, "program", result.analysis.danglingWires.size)
+        parseGlslShader(StackSLCpu.substituteSlot(StackSLCpu.stillTemplate(), lowered))
     }
 
     @Test
