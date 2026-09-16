@@ -458,10 +458,9 @@ marked as such where they appear:
 </div>
 
 So **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this page that nothing in
-this repository checks.** The bar in that third column is a narrow one: an assertion somewhere that
-`ClipImage.encode` works says nothing about whether a snippet calling it still compiles. A snippet
-nobody executes drifts from the API it describes and looks exactly like one that works, so only the
-two capture fences count as run, and they are compiled and run *as written*.
+this repository checks.** Read that third column narrowly: it says the calls are exercised somewhere,
+not that these snippets still compile. A snippet nobody executes drifts from the API it describes and
+looks exactly like one that works, which is why only the two capture fences count as run.
 
 ## Encode prompts once, into a `val`
 
@@ -469,23 +468,9 @@ That is the whole technique. It keeps the text encoder out of the per-frame path
 session that never asks it anything. `ClipText.encodeAll` is the batch form, and
 `val prompts = mapOf("…" to clipEncode("…"), …)` is what the shipped transcript does.
 
-??? aside "The `clip()` macro"
-    A `clip("…")` macro shipped alongside the package and was reverted the next day by commit
-    `9d611b4cb`. It encoded a prompt at *macro-expansion* time and cached the 512 floats in the box's
-    attic as base64, so the text encoder never loaded at run time. Its stated justification was
-    circular: baking is what made compilation reach for the encoder in the first place, because macro
-    expansion *is* part of compilation. With prompts resolved at run time, `clipEncode("storm")` is an
-    ordinary call, `COMPILE_ONLY` compiles it without evaluating it, and the encoder stays shut.
-
-    What that left was about 5 ms a prompt, hoistable into a `val` and never per-frame anyway, against
-    a macro, an attic block format, and a change to *shared* macro infrastructure.
-    `MacroRegistry.rewrite` runs during preview expansion, which fires as the caret moves over
-    half-typed source, so without a guard a keystroke could bake `clip("s")`, `clip("st")`,
-    `clip("sto")` and trigger a 254 MB download. A feature that needs the macro system to grow a new
-    safety concept in order to be safe is asking an expensive question.
-
-    `ClipVector.toBase64`/`fromBase64` outlived the revert, being fifteen lines of pure function with
-    an obvious use of their own.
+There is no `clip("…")` macro that bakes a prompt at compile time. One shipped briefly and was
+reverted; `dev_docs/stdlib_behaviour_changes.md` records why under 2026-08-14, which matters if you
+meet the call in old box code.
 
 ## Reference
 

@@ -90,3 +90,62 @@ Thin-pane measurements agreed from either face. At roughness 0.35 the frosted sl
 roughness 0.6 the mean fell to 0.81528 — the single-scattering approximation loses appreciable
 energy at high roughness, which is the one number here a user may need, and the page states it
 where roughness is introduced. Total internal reflection produced no leaked radiance.
+
+## Emitter sampling: that it converges to the same image
+
+Displaced from the page on 2026-09-16. The page keeps the RMSE ratio, which is the number that
+tells a reader to leave `emitterSampling` on; this is the unbiasedness half.
+
+Unbiasedness is checked against something other than itself. A sphere inside a uniformly emissive
+cube, at one bounce, is the identical integral as the same sphere under a constant unit environment
+map -- which the tracer solves through the separate, already-checked environment path. At one bounce
+neither run applies a multiple-importance weight, so what is under test is exactly the new pdf and
+its area-to-solid-angle Jacobian.
+
+| Check | Whole image | Worst of 24 tiles | Per-pixel p95 |
+| --- | ---: | ---: | ---: |
+| Emissive enclosure against a constant environment, 1 bounce | 0.00001 | 0.00011 | 0.00206 |
+| Six differently coloured faces, on against off, 2 bounces | 0.00004 | 0.00054 | 0.00360 |
+| Two small lamps, on against off, 3 bounces, 65,536 samples | 0.00070 | 0.01071 | 0.13316 |
+
+The first two are over all 6,912 pixels; the third uses the 6,746 lit ones. The white-furnace mean
+under unit radiance from every direction came out 0.99811 through emissive geometry and 0.99810
+through the environment map -- the same number by two unrelated routes.
+
+The third row's larger residual is the lamp box's own reference noise rather than bias: it shrinks
+5.49x when the reference budget grows 4x, and the two references differ by 0.00359 RMS against a
+predicted standard error of 0.00848 for the off reference at that budget.
+
+The RMSE comparison the page keeps is over the 6,746 lit pixels of a 96 x 72 render -- luminance
+between 0.004 and 6, which excludes the black background and the directly visible lamps -- at an
+equal 257 samples per pixel, against a 65,536-sample reference: 0.13534 off against 0.00389 on.
+`PathTraceEmitterGpuSmoke` asserts a floor of 28x against the measured 34.8x.
+
+## Temporal reuse: the retained-weight regression
+
+Displaced from the page on 2026-09-16.
+
+In a 48 x 32 constant-environment diffuse-plane scene, after warming up for 512 samples, a small
+translation with a 16-sample cap retained a mean weight of approximately 16 in the measured surface
+patch. A separate densely tessellated plane checks that jitter crossing triangle seams preserves
+useful history.
+
+These tests include interpolation of history, so the noise reduction they report is not a count of
+independent samples and not a general speedup. The page keeps that caveat, since a reader can
+otherwise take the regression as a performance claim.
+
+## Replacing the integrator: what survives the swap
+
+Displaced from the page on 2026-09-16.
+
+On an M1 Max, swapping the 640 x 360 material study to direct-light-only changed 155,099 of its
+230,400 pixels and dropped mean linear radiance from 0.27579 to 0.26030, while `camera.at`,
+`camera.target` and `camera.up` stayed bitwise identical. The page keeps the qualitative
+guarantee -- scene, environment, accumulation buffers, camera and tuning properties all survive.
+
+## Open
+
+- **None of the figures in this note is asserted at its printed value.** The smokes assert floors
+  and ratios (`mediumSpread > 0.5`, `fogSpread / fogMean < 1e-4`, the 28x RMSE floor); everything
+  quoted to five decimals here is a last observation on one machine. Do not cite them back onto a
+  page as contract.

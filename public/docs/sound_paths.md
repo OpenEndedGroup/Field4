@@ -53,8 +53,8 @@ why the synthesis is a thread away from the audio. Read whichever you have picke
 helps you pick.
 
 Two of the eight are **realtime only**, and for unrelated reasons. `pat-spatial` cannot render into a
-buffer because its synthesis and its consumer are deliberately decoupled — its own page has
-[the argument and the measurements](pat_spatial.md#what-there-is-no-figure-of-and-why), and it is the
+buffer because its synthesis runs on its own clock, ahead of whoever consumes it — its own page gives
+[the three reasons](pat_spatial.md#why-there-is-no-clip-of-the-output), and it is the
 only path in this table whose published clips are of its *input* rather than of what it sounds like.
 
 `sonic-pi` is the other, and it is the more extreme case: it is the only path where **no sample ever
@@ -76,7 +76,7 @@ Every audio figure in these docs, all fifty-one of them, comes out of the `wav-f
 why they regenerate on a build machine with no sound card. That is also what bounds what
 `pat-spatial` can publish: two of those fifty-one are the *mono source* its dough engine produces,
 and none of them is its spatialised output, because this sink cannot be pointed at a path that only
-runs in realtime. [Its page says why, at length](pat_spatial.md#what-there-is-no-figure-of-and-why).
+runs in realtime. [Its page says why](pat_spatial.md#why-there-is-no-clip-of-the-output).
 
 ## Spatial audio: thread-local contexts, and rendering with no device
 
@@ -88,7 +88,7 @@ speakers through the ordinary seam rather than through a context of its own. The
 way on the one axis that matters for these docs: `spatial-openal` can be driven with no device at
 all, by the loopback renderer described below, and `pat-spatial` cannot be driven faster than wall
 clock by anything — which is why it is the one path here whose own page has to
-[explain an absent figure](pat_spatial.md#what-there-is-no-figure-of-and-why) rather than publish
+[explain an absent figure](pat_spatial.md#why-there-is-no-clip-of-the-output) rather than publish
 one. Neither of them has a clip on this site; only one of them *could*.
 
 `spatial-openal` defaults to one shared engine. Two constructor arguments change that, and both

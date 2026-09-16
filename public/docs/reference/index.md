@@ -36,9 +36,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 
 | File | Category | Symbols | Documented | What it is | Used in |
 | --- | --- | --- | --- | --- | --- |
-| [AbletonLinkAudio.kt](audio.md#abletonlinkaudio-kt) | Audio | 34 | 0 |  |  |
+| [AbletonLinkAudio.kt](audio.md#abletonlinkaudio-kt) | Audio | 34 | 0 | Ableton Link from inside Field: a tempo, beat and phase shared with every Link peer on the network, and audio published to and taken from them. |  |
 | [AbletonSet.kt](audio.md#abletonset-kt) | Audio | 190 | 1 | An Ableton Live set read into Field: tracks, clips, tempo, automation and sample analysis. |  |
-| [AbletonSetDebugDrawing.kt](audio.md#abletonsetdebugdrawing-kt) | Audio | 26 | 0 |  |  |
+| [AbletonSetDebugDrawing.kt](audio.md#abletonsetdebugdrawing-kt) | Audio | 26 | 0 | An `AbletonSet` drawn as a timeline: a row of clip rectangles per track, an automation curve under it per envelope, at a fixed number of pixels per beat. |  |
 | [alife.kt](alife.md#alife-kt) | ALife | 51 | 39 | Spatial artificial life for the Field stdlib — the *continuous / grid / agent* half of ALife, the counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`, `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_agents.kt](alife.md#alife-agents-kt) | ALife | 59 | 24 | Agent-based spatial ALife: boids flocking, a Physarum (slime-mould) deposit–sense–move population over a trail `Img`, and diffusion-limited aggregation. | [Spatial artificial life](../alife_examples.md) |
 | [alife_animate.kt](alife.md#alife-animate-kt) | ALife | 5 | 5 | One shared way to *animate* the `alife*.kt` family — because every system in it is a time evolution, and a montage of frozen generations is the one view that hides the thing they are about. | [Spatial artificial life](../alife_examples.md) |
@@ -346,7 +346,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 driven from a Field box, in owned mode. | [Sonic Pi](../sonic_pi.md) |
 | [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 |  |  |
-| [SonicPiLaunch.kt](audio.md#sonicpilaunch-kt) | Audio | 12 | 7 |  |  |
+| [SonicPiLaunch.kt](audio.md#sonicpilaunch-kt) | Audio | 12 | 7 | The handle Field holds while Sonic Pi is playing, and the registration that ties it to a box's lifecycle. |  |
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 36 | 36 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
