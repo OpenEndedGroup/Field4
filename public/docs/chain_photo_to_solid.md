@@ -168,8 +168,9 @@ counting cannot report a reproducibility that is not there.
 - `parallel = true` does not, and it is worst in the most fragmented regime. **The exact ratios in
   that column are not quoted here on purpose**, because this figure is recaptured on every docs build
   and they come out different each time — which is the claim, demonstrated rather than asserted.
-  Read the numbers off the figure above; what is stable about them is that the last column is never
-  `1/8` and the middle one always is.
+  Read the numbers off the figure above. What has been stable across the runs of it so far is the
+  shape rather than the values: the middle column reads `1/8` on every row, the last column does not,
+  and the bottom row is the worst one.
 - Note the first row in particular. That regime is a single solid block, the easy case, and the
   parallel path still disagrees with itself there. On a more heavily blurred version of the same
   photograph the single-block regime *did* come back `1/8`, which is the useful negative result:
