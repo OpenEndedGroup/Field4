@@ -659,8 +659,8 @@ window glass or thickness-dependent absorption.
 
 For solid glass, roughness above 0.001 enables single-scattering GGX reflection and
 transmission with matching direction PDFs and environment MIS. Very rough glass
-loses energy through the microfacet model's omitted multiple scattering, and it is worth
-knowing how much before you reach for a high value: a frosted slab under a unit white
+loses energy through the microfacet model's omitted multiple scattering, and how much
+is worth checking before you reach for a high value: a frosted slab under a unit white
 environment holds about 0.98 of it at roughness 0.35 and about 0.82 at 0.6. Ideal
 glass paths use delta-event MIS handling, and roulette accounts for refraction's
 radiance scaling. Each bounce still follows one stochastic ray, on either backend.
@@ -788,18 +788,13 @@ closes. They add 128 bytes per pixel: about 28<!--derive: 640*360*128/1048576-->
 1920 × 1080. `samples` continues to count fresh samples for the current view, so it
 may stay at `samplesPerFrame` while moving even though valid pixels carry history.
 
-A GPU regression compares the same small camera translation with reuse enabled
-and disabled in a constant-environment diffuse-plane scene. It checks retained
-weights and noise reduction, then exercises continuous translation, rotation, FOV
-changes, disocclusion, camera cuts, transparent backgrounds and lens invalidation.
-The existing glass, glTF, camera and convergence regressions run alongside it.
-
-In that 48 × 32 regression, after warming up for 512 samples, a small translation
-with a 16-sample cap retained a mean weight of approximately 16 in the measured
-surface patch. A separate densely tessellated plane checks that jitter crossing
-triangle seams preserves useful history. These tests include interpolation of
-history; their noise reduction is not a count of independent samples or a general
-speedup.
+A GPU regression covers this: retained weights and noise reduction under a small
+translation, then continuous translation, rotation, FOV changes, disocclusion, camera
+cuts, transparent backgrounds, lens invalidation, and jitter crossing triangle seams
+on a densely tessellated plane. What it measures and at what size is in
+`dev_docs/PATH_TRACING_MEASUREMENTS.md`. Note that the noise reduction it reports
+includes interpolated history, so it is not a count of independent samples and not a
+general speedup.
 
 ## Reducing bright specks
 
@@ -875,26 +870,12 @@ The ratio's denominator is a property of the scene, not of the estimator: a larg
 lamp, or any environment light at all, moves it down. The check asserts a floor of
 28×, near the measurement rather than comfortably below it.
 
-Unbiasedness is the half that matters more, and it is checked against something
-other than itself. A sphere inside a uniformly emissive cube, at one bounce, is the
-identical integral as the same sphere under a constant unit environment map — which
-the tracer solves through the separate, already-checked environment path. At one
-bounce neither run applies a multiple-importance weight, so what is under test is
-exactly the new pdf and its area-to-solid-angle Jacobian:
-
-| Check | Whole image | Worst of 24 tiles | Per-pixel p95 |
-| --- | ---: | ---: | ---: |
-| Emissive enclosure against a constant environment, 1 bounce | 0.00001 | 0.00011 | 0.00206 |
-| Six differently coloured faces, on against off, 2 bounces | 0.00004 | 0.00054 | 0.00360 |
-| Two small lamps, on against off, 3 bounces, 65,536 samples | 0.00070 | 0.01071 | 0.13316 |
-
-The first two are over all 6,912 pixels; the third uses the 6,746 lit ones. The
-white-furnace mean under unit radiance from every direction came out 0.99811 through
-emissive geometry and 0.99810 through the environment map — the same number by two
-unrelated routes. The third row's larger residual is the lamp box's own reference
-noise rather than bias: it shrinks 5.49× when the reference budget grows 4×, and the
-two references differ by 0.00359 RMS against a predicted standard error of 0.00848
-for the off reference at that budget.
+The image it converges to is the same one. That is checked against the separate,
+already-checked environment path rather than against itself: a sphere inside a
+uniformly emissive cube, at one bounce, is the identical integral as the same sphere
+under a constant unit environment map, and the two agree to within a pixel-level
+residual that shrinks as the reference budget grows. The agreement figures are in
+`dev_docs/PATH_TRACING_MEASUREMENTS.md`.
 
 The extra shadow ray costs one traversal per surface interaction. A scene with no
 emissive triangle is bit-for-bit identical with the control on or off.
@@ -1053,10 +1034,10 @@ println(tracer.reloadIntegrator(directOnly))
 ```
 
 The scene, the environment, the accumulation buffers, the camera pose and every tuning
-property survive; only the compute pipeline is rebuilt. On an M1 Max, swapping the 640 × 360
-material study to direct-light-only changed 155 099 of its 230 400 pixels and dropped mean
-linear radiance from 0.27579 to 0.26030, while `camera.at`, `camera.target` and `camera.up`
-stayed **bitwise** identical.
+property survive; only the compute pipeline is rebuilt. Swapping the material study to
+direct-light-only changes most of its pixels and leaves `camera.at`, `camera.target` and
+`camera.up` **bitwise** identical — the measured version of that swap is in
+`dev_docs/PATH_TRACING_MEASUREMENTS.md`.
 
 `integratorSource(file)` takes the source from disk instead, which is what you want while
 editing `src/jvmMain/resources/afield/four/pathtracing/trace.comp` — the packaged resource

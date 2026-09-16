@@ -270,7 +270,7 @@ object SoundPathMap {
             // looks like an offline half and is not one — it consumes what the render thread has
             // already produced, in real time, so a caller asking for a second of audio waits a
             // second. That is what keeps this path off the docs `audio=` fence contract; see
-            // `public/docs/pat_spatial.md#what-there-is-no-figure-of-and-why`.
+            // `public/docs/pat_spatial.md#why-there-is-no-clip-of-the-output`.
             role = Role.MAKES, timing = Timing.REALTIME, onSeam = true,
             needs = "the dough WebAssembly build, plus Steam Audio's libphonon, which is not " +
                 "committed — ./gradlew fetchSteamAudioNatives",

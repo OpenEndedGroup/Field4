@@ -172,3 +172,42 @@ notation rather than one recording: a chord and an arpeggio sound different for 
 nothing to do with voice allocation, so a single clip would settle nothing.
 
 Both clips, both counts and the gap between them are asserted by `synth.faust.poly.sound`.
+
+## Why the one-voice render steals sixteen times and not twenty-three
+
+Displaced from `public/docs/faust.md` on 2026-09-16: the page keeps the rule for reading `steals`,
+which is what a reader sizing `voices` acts on. This is the derivation.
+
+Twenty-four notes on one voice would be twenty-three steals if every note had to take the voice from
+the one before it. But `FAUST_PATTERN_SUSTAIN` is 0.9, so the gate falls a tenth of a beat before the
+next chord and the program's 30 ms release finishes inside that gap. A voice that has stopped moving
+air is *finished*, and a finished voice is reused rather than stolen.
+
+What is left is two steals per chord -- the second and third notes, which arrive on the very same
+frame as the first and cannot wait for anything -- times eight chords. Sixteen.
+
+So `steals` is a count of same-frame simultaneity, not of voice exhaustion.
+
+## Open: seven counts on `faust.md` that nothing guards
+
+Checked on 2026-09-16 against `build/processedResources/jvm/main/faust-vocabulary.json`, and **all
+seven are currently correct**:
+
+| page says | field in the vocabulary | value |
+|---|---|---|
+| 1008 functions | `functions` | 1008 |
+| 990 with a summary | `summary` non-empty | 990 |
+| 940 with a signature | `usage` non-empty | 940 |
+| 37 library prefixes | `prefixes` | 37 |
+| `os.` 78 | `prefix == "os"` | 78 |
+| `fi.` 109 | `prefix == "fi"` | 109 |
+| `ba.` 90 / `pm.` 150 | `prefix` | 90 / 150 |
+
+Nothing asserts any of them. The page itself says the vocabulary is regenerated from the vendored
+compiler (`tools/generate_faust_vocabulary.py`), so **a compiler bump silently falsifies all seven**
+-- which is exactly the drift the page claims it is immune to. Note the field is named `usage`, not
+`signature`, so a naive guard grepping for `signature` finds zero and would pass vacuously.
+
+The cheap fix is a derived-count check over the generated JSON, in the shape `DerivedCountGuard`
+already uses. That needs a test change and a build, which the firing that found this did not have
+disk for.

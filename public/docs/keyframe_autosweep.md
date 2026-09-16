@@ -240,7 +240,7 @@ archive/
       frames/
 ```
 
-Three properties of that layout are load-bearing.
+Three properties of that layout are what a second pass depends on.
 
 **`key.json` is an ordinary key**, written by the same serializer `saveKey` uses, so
 `scope.loadKey(…)` reads it and `KeyframeCollection` browses it. Which means **`renders/` is itself a
@@ -273,36 +273,32 @@ running sums start at the largest weight and end at 1 — rising while the terms
 once they go negative — and the minimum is `min(w_max, 1)`, which is always positive. No divisor ever
 approaches zero, including under extrapolation, where some weights *are* negative.
 
-!!! note "Three things the fold alone gets wrong"
+??? aside "Picking the three lane policies in `SweepConfig`"
 
-    Each is a policy in [`SweepConfig`](reference/graphics.md#keyframesweep-kt) rather than a default
-    nobody chose, and each is recorded per render rather than assumed.
+    Three kinds of lane need a policy the fold cannot supply. Each is a field on
+    [`SweepConfig`](reference/graphics.md#keyframesweep-kt), and each is recorded per render.
 
-    **Lanes with no midpoint.** `interpolate` *steps* a string or a code block, to the right-hand
-    value once `t >= 1`. Inside a fold that is unpredictable rather than wrong: `t = w / S` can exceed
-    1 whenever the weights have mixed signs, which is exactly what extrapolation produces, so which of
-    five programs came out would depend on arithmetic nobody chose. `DiscreteBlend.ANCHOR` gives every
-    discrete lane to one parent — the **anchor**, drawn by roulette over the final weights, so the key
-    dominating the picture usually supplies the code — and the manifest names it. `ROULETTE_PER_LANE`
-    draws each lane independently, which recombines code across keys and breaks any pair of lanes that
-    had to agree; `AS_INTERPOLATED` leaves the fold's answer, which is the mode to pick when the scope
-    has a `codeBlend` configured and arity is 2, because then the fold really is a code blend.
+    **Lanes with no midpoint** — a string, or a code block. `interpolate` *steps* them to the
+    right-hand value once `t >= 1`, and inside a fold `t = w / S` can exceed 1 whenever the weights
+    have mixed signs, which is what extrapolation produces. `DiscreteBlend.ANCHOR` gives every
+    discrete lane to one parent — the **anchor**, drawn by roulette over the final weights, so the
+    key dominating the picture usually supplies the code — and the manifest names it.
+    `ROULETTE_PER_LANE` draws each lane independently, which recombines code across keys and breaks
+    any pair of lanes that had to agree. `AS_INTERPOLATED` leaves the fold's answer: pick it when the
+    scope has a `codeBlend` configured and arity is 2, because then the fold really is a code blend.
 
-    **Participants that disagree about which lanes exist.** They will: a pool accumulates over weeks
-    while the scope grows targets, and `interpolate` drops any name the two sides do not share — so a
-    naive fold silently shrinks to the intersection of everything it touched, and the oldest key in
-    the pool decides how much of the look gets explored. `MissingSlots.FILL_FROM_LIVE` back-fills from
-    `scope.capture()` and lists every fill in the manifest. `FILL_FROM_ANCHOR`, `INTERSECT` and
-    `REQUIRE_ALL` are the alternatives, and `REQUIRE_ALL` reports how many keys it excluded rather
-    than quietly shrinking the pool.
+    **Participants that disagree about which lanes exist**, which a pool accumulating over weeks
+    guarantees. `interpolate` drops any name the two sides do not share, so a naive fold shrinks to
+    the intersection of everything it touched and the oldest key in the pool decides how much of the
+    look gets explored. `MissingSlots.FILL_FROM_LIVE` back-fills from `scope.capture()` and lists
+    every fill in the manifest; `FILL_FROM_ANCHOR`, `INTERSECT` and `REQUIRE_ALL` are the
+    alternatives, and `REQUIRE_ALL` reports how many keys it excluded.
 
     **Numeric type.** `interpolate` returns `Double` unless *both* sides were `Float`, so an `Int`
-    lane comes back as a `Double` that an `Int` uniform will refuse. `preserveNumericKind` rounds each
-    lane back to the anchor's type — rounded, but *not* clamped. An extrapolated blend can put an
-    `Int` lane outside the range its `intTarget` declares, and the clamp stays where it already lives:
-    in the target, on apply. So the key records the point that was actually visited *and* still
-    reproduces the render exactly. Clamping in the key would lose the first without gaining the
-    second.
+    lane comes back as a `Double` an `Int` uniform will refuse. `preserveNumericKind` rounds each
+    lane back to the anchor's type — rounded, but *not* clamped, because an extrapolated blend can
+    put an `Int` lane outside the range its `intTarget` declares and the clamp belongs in the target,
+    on apply. The key then records the point actually visited and still reproduces the render.
 
 ## Extrapolation is measured in hull-crossings
 
@@ -316,10 +312,10 @@ far face of the hull; at `1.5` it is half as far again beyond that face; anythin
 outside. `minExtrapolationGain` is therefore floored at `1.0`, because a "gain" that sometimes
 extrapolated and sometimes did not would make the archive's `extrapolationGain` field mean nothing.
 
-Two details in that are corrections rather than choices.
+Two details in that are easy to get wrong.
 
-The pole is a *different draw* from the anchor. An earlier version gave one key both jobs, and
-produced blends wearing the palette of the look they had just fled — visible in the table above as a
+The pole is a *different draw* from the anchor. One key doing both jobs produces blends wearing the
+palette of the look they have just fled; keeping them separate is visible in the table above as a
 render whose `palette` comes from the key with the largest weight while the pole is the one with the
 negative one.
 
@@ -362,8 +358,8 @@ job are not the failure modes of a demo.
 - **Cancellation is clean.** The stop key marks the in-flight render `cancelled`, restores the scope
   to what it was before the run, and rethrows.
 - **`maxDurationMs` is the "stop at 7am" knob**, and the callback itself is never interrupted: it runs
-  to completion, one render at a time. There is a `perRenderTimeout`, off by default, and it is
-  documented as leaving a partial render on purpose.
+  to completion, one render at a time. There is a `perRenderTimeout`, off by default; switching it on
+  accepts a partial render as the price of a bounded one.
 
 ## Stills and clips
 
@@ -434,12 +430,11 @@ isolation, the disk floor and the sampling distribution.
 Every one of those assertions would still hold if applying a blend reached no uniform at all. So the
 claim that the *picture* is a function of the blend is checked on a GPU instead, by
 `tools/run_field_tests.py --id keyframe.sweep.smoke`: it runs a real six-render sweep and requires
-pixel distance to correlate with key distance across all fifteen pairs (measured at r = 0.82–0.84).
-Deliberately not "consecutive renders differ" — two independent draws can legitimately land next to
-each other in the space, and the first version of that test failed the sweeper for correctly drawing a
-0.74/0.26 blend followed by a 0.67/0.30 one. The same run re-applies a saved key and re-renders it:
-that reproduced the sweep's own still **exactly**, which is a stronger result than the test requires
-and worth knowing, since the renderer carries a frame of temporal history.
+pixel distance to correlate with key distance across every pair of renders, at better than 0.6. What
+it does *not* require is that consecutive renders differ, since two independent draws can land next
+to each other in the space legitimately. The same run also re-applies a saved key and re-renders it;
+on the runs observed so far that has reproduced the sweep's own still exactly, which is more than the
+test asks for, given that the renderer carries a frame of temporal history.
 
 The loadable version of this page is the `keyframe_autosweep` transcript — four boxes, a renderer, the
 rig, the sweep and the morning box — listed with the rest in
