@@ -10,6 +10,16 @@ Stack signatures use `a b -- c`, where the top of stack is on the right. If a wo
 
 ## Mental model
 
+The smallest complete program is one word and a clamp:
+
+```diffstatic {data-lang=stacksl}
+uv saturate
+```
+
+`uv` pushes `vec4(uv.xy, 0, 1)`, `saturate` clamps it, and whatever is on top of the stack at the
+end becomes the colour — so that frame is a red-green gradient. Every program below is the same
+shape: push something, transform it, let the top value fall out as the colour.
+
 <div class="field-data-table" markdown>
 
 | Stage | Meaning |
@@ -22,6 +32,16 @@ Stack signatures use `a b -- c`, where the top of stack is on the right. If a wo
 </div>
 
 ## Inputs and constants
+
+`uv` runs `0..1` across the frame; `p` is the same coordinate centred on zero, which is the one to
+reach for whenever a figure has a middle.
+
+```diffstatic {data-lang=stacksl}
+p 4 * phacelle palette saturate
+```
+
+Worked: [The input convention](stacksl_examples.md#the-input-convention), and the whole
+[rendered gallery](stacksl_examples.md#rendered-gallery) opens on `uv saturate`.
 
 | Word | Pushes | Use |
 | --- | --- | --- |
@@ -50,6 +70,21 @@ These helpers compile StackSL to GLSL and run it through a tiny on-demand comput
 
 All values are `vec4`. Swizzles turn selected channels back into a `vec4`: one channel is splatted, two channels become `xy,0,1`, three become `xyz,1`, and four stay four-wide. The dot prefix is optional.
 
+These are how a program reaches a value it has already computed. Below, `dup` copies the polar
+coordinate, `y` takes the angle lane off the copy, `0.2t` drifts it with time, and `>y` writes the
+result back into the lane it came from — so the angle turns while the radius is left alone:
+
+```diffstatic {data-lang=stacksl}
+p polar
+dup y 0.2t + >y
+cart
+fbm
+sigmoid
+palette
+```
+
+Worked: [Swizzles and constructors](stacksl_examples.md#swizzles-and-constructors).
+
 | Word | Stack | Effect |
 | --- | --- | --- |
 | `.x`, `.xy`, `.rgb`, `w`, `rgba`, etc. | `a -- b` | swizzle; channels may use `xyzw` or `rgba`. |
@@ -68,6 +103,15 @@ All values are `vec4`. Swizzles turn selected channels back into a `vec4`: one c
 ## Number forms and suffixes
 
 Suffixes let you write modulation where you are already thinking about a number. The same modifiers work as numeric literals, top-of-stack amplitude operators, and top-of-stack driver operators.
+
+`]sh10` below is the driver form: it consumes the scaled coordinate as its phase and holds a random
+value across each bucket of it, which is what turns a smooth gradient into blocks.
+
+```diffstatic {data-lang=stacksl}
+uv 6 * ]sh10 palette saturate
+```
+
+Worked: [Modifiers, ranges, and memories](stacksl_examples.md#modifiers-ranges-and-memories).
 
 <div class="field-data-table" markdown>
 
@@ -90,6 +134,13 @@ Suffixes let you write modulation where you are already thinking about a number.
 
 `|` keeps the default driver, usually time or input coordinates. `]` changes the driver to the consumed top value.
 
+`]wr14` is a sine wave across radius at fourteen cycles, driven by the centred coordinate it
+consumes — concentric rings, in one token:
+
+```diffstatic {data-lang=stacksl}
+p ]wr14 palette saturate
+```
+
 <div class="field-data-table" markdown>
 
 | Group | Modifiers | What they do |
@@ -107,6 +158,13 @@ Suffixes let you write modulation where you are already thinking about a number.
 Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]c3p0.1`.
 
 ## Math and logic
+
+Eighteen stripes: take the `x` lane, scale it, fold it through `sin`, then bring the `-1..1` result
+back into `0..1` before colouring it.
+
+```diffstatic {data-lang=stacksl}
+uv x 18 * sin 0.5 + 0.5 * palette saturate
+```
 
 | Word | Stack | Effect |
 | --- | --- | --- |
@@ -156,6 +214,16 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 
 ## Reducers and geometry
 
+A reducer collapses a `vec4` to one number splatted across all four lanes, which is how a distance
+becomes a shape: `length` of the centred coordinate is the radius, and `pulse` keeps a soft band at
+one radius, so this is a ring.
+
+```diffstatic {data-lang=stacksl}
+p length 0.5 0.08 pulse white *
+```
+
+Worked: [Pulses, rings, and FM](stacksl_examples.md#pulses-rings-and-fm).
+
 | Word | Stack | Effect |
 | --- | --- | --- |
 | `average`, `avg`, `mean` | `a -- s` | mean of RGBA. |
@@ -189,6 +257,20 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 
 ## Domain transforms
 
+These change the coordinate before anything is read at it, so they compose: six mirrored sectors,
+then a twist that grows with radius, and only then the noise.
+
+```diffstatic {data-lang=stacksl}
+p 6 kaleido
+1.7 twist
+3.0 *
+fbm
+palette
+saturate
+```
+
+Worked: [Domain transforms and shapers](stacksl_examples.md#domain-transforms-and-shapers).
+
 | Word | Stack | Effect |
 | --- | --- | --- |
 | `cart`, `cartesian` | `polar -- coord` | convert `vec4(radius, angleRadians, z, w)` back to xy. |
@@ -200,6 +282,19 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `twist` | `coord amount -- coord` | rotate `coord.xy` by `radius * amount.x`; short form uses `tau`. |
 
 ## Creative operators
+
+The shapers you reach for once a field exists. Here a noise field is remapped onto `0.2..0.8`,
+quantised to six levels, and pushed off centre before it is coloured.
+
+```diffstatic {data-lang=stacksl}
+uv 5 * fbm
+0.2 0.8 ramp
+6 posterize
+0.62 bias
+palette
+```
+
+Worked: [Domain transforms and shapers](stacksl_examples.md#domain-transforms-and-shapers).
 
 | Word | Stack | What it does |
 | --- | --- | --- |
