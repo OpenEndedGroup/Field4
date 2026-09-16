@@ -57,7 +57,7 @@ pools are baked in at construction, so two specs differing only in `intraOpThrea
 different sessions. `evict()` and `closeAll()` exist for the two legitimate reasons (the file changed;
 the memory is wanted back). Calling either because a box re-ran defeats the entire point.
 
-## Depth: what the model actually gives you
+## Depth: what comes out of the model
 
 [Depth Anything V2](https://depth-anything-v2.github.io) Small is the least demanding useful vision
 model there is: one image in, one single-channel map out, no anchors, no non-maximum suppression, no
@@ -209,7 +209,7 @@ Two design choices, both the opposite of the obvious one:
 
 Six frames of staleness at 60fps looks fine for displacement, parallax and depth-keyed compositing,
 and looks like lag for anything a hand is steering directly. That is the real constraint, and no
-provider flag fixes it — see [what the flags cost](#what-coreml-fp16-and-thread-pinning-actually-cost).
+provider flag fixes it — see [what the flags cost](#coreml-fp16-and-thread-pinning).
 
 ## CLIP: a shared space for pictures and words
 
@@ -371,17 +371,17 @@ So depth alone costs about 99 MB and CLIP costs about 608<!--derive: 254.1+351.7
 same fetch machinery even though nothing about a `tokenizer.json` is ONNX, because it is the same
 problem: a large asset that must not live in the repository.
 
-!!! note "Nothing is optional-at-build-time here"
+!!! note "Nothing to install: the native library ships in the jar"
     Unlike [Manifold](manifold.md#installing-it), which needs a native library installed before a box
     can use it, `afield.onnx` needs nothing but network access on first run. The ONNX Runtime native
     library ships inside the JNI jar. `COMPILE_ONLY` box code that mentions `clipEncode("…")` compiles
     without ever opening a model, because `ClipText`'s session is `by lazy`. That is what lets the
     completion corpus guard compile the shipped transcript with no network at all.
 
-## What CoreML, fp16 and thread pinning actually cost
+## CoreML, fp16 and thread pinning
 
-Measured on Apple Silicon with 10 cores, at 518² unless stated, and quoted from `OnnxRuntime`'s own
-KDoc. Every row contradicts a plausible guess:
+Three flags that sound like speed and are not. Measured on Apple Silicon with 10 cores, at 518²
+unless stated:
 
 <div class="field-data-table" markdown>
 
@@ -438,8 +438,8 @@ run-jvm-main afield.examples.onnx.WebcamPerceptionDemo \
 That writes a side-by-side PNG of the source and its depth map, and prints a zero-shot ranking plus
 two semantic-axis projections. On the room photograph above it ranks "an empty room" at 52.0% and "a
 computer screen" at 41.7%, and puts "a person sitting at a desk" at 0.4%, since there is nobody in the
-picture. A decode that produces an all-black buffer would still print every one of those numbers, and
-they would still look plausible, so the demo checks mean luma and fails instead of reporting them.
+picture. It checks mean luma before printing any of that, because a decode that handed it an
+all-black buffer would produce a ranking just as plausible-looking.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
 
