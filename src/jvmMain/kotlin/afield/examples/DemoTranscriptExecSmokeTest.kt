@@ -373,6 +373,10 @@ object DemoTranscriptExecSmokeTest {
         // arithmetic it prints is covered without a device by FabricatePassChainTest, and the
         // pixels by the four.pass-chain.smoke jvm-main.
         "four_pass_chain",
+        // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
+        // keyframe blends, so it wants a device CI does not own. The sweeper's arithmetic is covered
+        // without one by KeyframeSweepTest, and its pixels by the keyframe.sweep.smoke jvm-main.
+        "keyframe_autosweep",
         "recstl_playground",
         "gpu_state",
         "threebox",

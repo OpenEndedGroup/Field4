@@ -88,6 +88,9 @@ nav:
       # physics.md because nothing here is a solve — it is arithmetic on a value over time.
       - Springs & Character Movement: movement_examples.md
       - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
+      # Directly after the keyframes page, because it is that page's collection noun: one saved key
+      # is a look, a directory of them is a space, and this is what explores the space overnight.
+      - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
       - Timeseries Examples: timeseries_examples.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md

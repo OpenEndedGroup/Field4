@@ -93,6 +93,7 @@ class KeyframerCoverageTest {
             "KeyframeScope::codeBlendPlans(Key, Key)" to covered(),
 
             // ---- KeyframeScope: persistence --------------------------------------------------
+            "KeyframeScope::encodeKeyJson(Key)" to covered(),
             "KeyframeScope::saveKey(Path, Key, String?)" to covered(),
             "KeyframeScope::loadKey(Path, Int?)" to covered(),
             "KeyframeScope::loadKeyVersion(Path, Int)" to covered(),
@@ -355,8 +356,8 @@ class KeyframerCoverageTest {
 
         // The exact numbers published on public/docs/keyframer_examples.md. If this test has to
         // change, that page has to change in the same commit.
-        assertEquals(120, total, "total public behavioural declarations")
-        assertEquals(112, covered, "declarations covered by KeyframerTest")
+        assertEquals(121, total, "total public behavioural declarations")
+        assertEquals(113, covered, "declarations covered by KeyframerTest")
         assertEquals(8, unreachable, "declarations unreachable in a headless unit test")
 
         // Every uncovered declaration must carry a reason — no silent gaps.
