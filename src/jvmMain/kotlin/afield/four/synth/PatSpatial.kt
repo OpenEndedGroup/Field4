@@ -147,6 +147,14 @@ import kotlin.math.sqrt
  *
  * Raising the render thread's priority was tried and reverted; the comment in
  * [PatSpatialRoom.start] records what it did instead of helping.
+ *
+ * # Where this is written up for a reader
+ *
+ * `public/docs/pat_spatial.md` — the page that decides *whether* to use this, rather than how it
+ * works. It carries the same tables and the same measurements, plus the two things this file cannot
+ * hold: [PatSpatialSoundDocs]' published clips of the mono source, and the argument for why the
+ * spatialised output has no clip and cannot have one. It is also declared in [SoundPathMap] as the
+ * `pat-spatial` path, which is what keeps that page and this file from drifting apart.
  */
 
 /** Where a spatial source is, in Steam Audio's listener-relative frame. Metres and degrees. */

@@ -71,6 +71,22 @@ object DocsAudioProvenance {
         /** [DoughDspSoundDocs]: DSP primitives driven by real signals. Not a stand-in for a kit. */
         DOUGH_DSP("a DoughDSP primitive run on a real signal — not a drum stand-in at all"),
 
+        /**
+         * The dough *wasm* engine, driven by a pattern's events. Distinct from [DOUGH_DSP].
+         *
+         * A separate family rather than a reuse of [DOUGH_DSP], because the two share a name and
+         * nothing else: [DoughDspSoundDocs] renders Field's own Kotlin ports of dough's primitives,
+         * and this is the Strudel/superdough engine itself running inside GraalWasm.
+         *
+         * It is also the one family whose clips are **half a path on purpose**.
+         * [PatSpatialSoundDocs] publishes the mono source [PatSpatialRoom] hands Steam Audio and
+         * not the binaural output, for a reason spelled out in its KDoc and on its page: the
+         * spatialised half is realtime-only and needs a binary this repository does not carry, so
+         * this audit could not re-render it. Naming that as a family keeps the boundary visible in
+         * the corpus table rather than leaving two clips looking like a spatial audio figure.
+         */
+        DOUGH_WASM("the dough wasm engine driven by a pattern's events — a mono source, pre-HRTF"),
+
         /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
         FAUST("a Faust program compiled at runtime and rendered with no audio device"),
 
@@ -96,6 +112,7 @@ object DocsAudioProvenance {
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.four.synth.FaustPolySoundDocs" to Origin.FAUST,
+        "afield.four.synth.PatSpatialSoundDocs" to Origin.DOUGH_WASM,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */

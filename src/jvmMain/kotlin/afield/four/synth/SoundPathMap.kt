@@ -263,6 +263,28 @@ object SoundPathMap {
         ),
 
         SoundPath(
+            id = "pat-spatial",
+            // The one source in this map that is REALTIME while sitting on the seam, and the reason
+            // is worth keeping next to the flag: the synthesis is a render thread's, and the audio
+            // thread's whole job is a bounded copy out of a ring. `PatSpatialLaunch.advanceOffline`
+            // looks like an offline half and is not one — it consumes what the render thread has
+            // already produced, in real time, so a caller asking for a second of audio waits a
+            // second. That is what keeps this path off the docs `audio=` fence contract; see
+            // `public/docs/pat_spatial.md#what-there-is-no-figure-of-and-why`.
+            role = Role.MAKES, timing = Timing.REALTIME, onSeam = true,
+            needs = "the dough WebAssembly build, plus Steam Audio's libphonon, which is not " +
+                "committed — ./gradlew fetchSteamAudioNatives",
+            channels = "binaural stereo: one HRTF-placed mono source per `spat` tag, summed",
+            what = "a pattern placed in space. Each `spat` group gets a DoughEngine of its own, " +
+                "its output is taken as mono because Steam Audio spatialises a direction-less " +
+                "buffer, and a render thread applies the direct and binaural effects and sums " +
+                "them into a PatSpatialRing that PatSpatialBank copies out of on the audio thread",
+            file = "src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt",
+            entryPoint = "fun patSpatial",
+            page = "public/docs/pat_spatial.md",
+        ),
+
+        SoundPath(
             id = "sonic-pi",
             role = Role.MAKES, timing = Timing.REALTIME, onSeam = false,
             needs = "a local Sonic Pi v5 install",
@@ -395,14 +417,20 @@ object SoundPathMap {
     // ── the ratchets: counts, pinned near the measurement ──────────────────────────────────
 
     /**
-     * How many distinct ways there are to make samples. **Seven**, replacing a bolded "two".
+     * How many distinct ways there are to make samples. **Eight**, replacing a bolded "two".
      *
-     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other five are the
-     * `Signal` graph, Faust as an effect, Faust as a polyphonic instrument, the dough wasm engine
-     * and Sonic Pi. Three of the seven are pattern voices, which is the number `sound.md` counts;
-     * this one counts routes, so it is always the larger.
+     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other six are the
+     * `Signal` graph, Faust as an effect, Faust as a polyphonic instrument, the dough wasm engine,
+     * [patSpatial] and Sonic Pi. Four of the eight are pattern voices, which is the number
+     * `sound.md` counts; this one counts routes, so it is always the larger.
+     *
+     * It went from seven to eight on 2026-09-16, and that arrival is the failure this file's
+     * markers exist to catch happening a second time and being caught: `PatSpatial.kt` opens no
+     * device and encodes no WAV, exactly like `FaustPoly.kt` before it, and the `seam-stereo-node`
+     * marker reported it — along with `PatSpatialEngineSmoke.kt`'s control node — rather than the
+     * count sitting at seven while a whole spatialised pattern voice shipped undeclared.
      */
-    const val SOURCE_COUNT = 7
+    const val SOURCE_COUNT = 8
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -411,7 +439,7 @@ object SoundPathMap {
     const val INPUT_COUNT = 4
 
     /**
-     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Ten of sixteen.
+     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Eleven of seventeen.
      *
      * A floor here is the assertion that matters most: the seam is the reason Faust cost no new
      * plumbing, and if a later change adds a path *beside* it rather than *on* it, this number
@@ -422,8 +450,13 @@ object SoundPathMap {
      * along, and `pat-stand-in` was put on it by [patSynth], which is the scheduler a pattern needed
      * in order to be asked for a block at a time. A number that moves for three reasons is worth
      * saying so.
+     *
+     * Eleven since 2026-09-16, for a fourth kind of reason: [patSpatial] is the first path to reach
+     * the seam without being able to render into a buffer at all. Being on the seam and being
+     * offline-capable are independent, and this is the entry that proves it — what the seam asks of
+     * a path is that it can fill a block when asked, not that it can do so faster than wall clock.
      */
-    const val SEAM_COUNT = 10
+    const val SEAM_COUNT = 11
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -492,6 +525,10 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
+                // The only producer here that cannot render the path it belongs to. It publishes
+                // the *mono source* pat-spatial hands Steam Audio, because the spatialisation is
+                // realtime-only and its binary is not committed; see PatSpatialSoundDocs' KDoc.
+                "src/jvmMain/kotlin/afield/four/synth/PatSpatialSoundDocs.kt" to "pat-spatial",
             ),
         ),
         Marker(
@@ -531,6 +568,14 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt" to "faust",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt" to "faust-poly",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynth.kt" to "pat-stand-in",
+                // PatSpatialBank and PatSpatialLaunch, the audio thread's end of the spatial ring.
+                "src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt" to "pat-spatial",
+                // Not a node of the path: the control patch that smoke registers *beside* the
+                // launch, so that "the engine pulled nothing" can be told apart from "the engine
+                // pulled nothing from this launch". Declared anyway, because the sweep cannot tell
+                // a test's scaffolding from a shipped node and should not be taught to guess — a
+                // file under jvmMain that spells the seam is a file somebody has to account for.
+                "src/jvmMain/kotlin/afield/four/synth/PatSpatialEngineSmoke.kt" to "pat-spatial",
             ),
         ),
     )

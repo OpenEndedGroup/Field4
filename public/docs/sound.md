@@ -12,9 +12,15 @@ pattern all the way down the **first two**, and **every audio figure below says 
 produced it.** The third has a page of its own,
 [Faust: a box that is a signal processor](faust.md#a-pattern-plays-it).
 
-Three counts the voices a *pattern* can drive. Seven things in Field make samples by one route or
-another, and [Making a sound in Field: every path there is](sound_paths.md) maps all seven and helps
-you pick.
+Three counts the pattern voices that can render **offline**. There is a fourth that cannot, and it is
+excluded from the sentence above by the "no audio device, no realtime engine" clause rather than by
+being less of a voice: `patSpatial` plays a pattern through dough and places each `spat` group in
+space with Steam Audio's HRTF, in realtime only. Where it puts a note is written in the pattern as an
+`az`/`dist` tag, which is the thing about it worth reading — see
+[A pattern in space](pat_spatial.md).
+
+Eight things in Field make samples by one route or another, and
+[Making a sound in Field: every path there is](sound_paths.md) maps all eight and helps you pick.
 
 A third of the audio published elsewhere in these docs is the first voice below, and the rest is
 not. [What this means for the audio
@@ -360,7 +366,7 @@ assertions:
 
 * **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
   until somebody states which family it belongs to;
-* **every committed clip still matches what its producer renders today** — all forty-one
+* **every committed clip still matches what its producer renders today** — all fifty-one
   currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation. This is
   the assertion that catches a published figure whose producing code has changed underneath it.
   `56b124131` is the last time two of them had to be repaired by hand;
