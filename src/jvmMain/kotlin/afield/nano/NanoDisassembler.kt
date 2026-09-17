@@ -1,17 +1,35 @@
 package afield.nano
 
 /**
- * Nano disassembler: converts a [ByteArray] bytecode program back into
- * human-readable Nano assembly.
+ * Reads a Nano bytecode `ByteArray` back as assembly text, one `DisasmLine` per instruction.
  *
- * Each line is produced in the form:
- * ```
- * addr:  hex  hex   mnemonic  operands    ; optional annotation
- * ```
- * Labels are auto-generated for branch targets (e.g. `L00`, `L02`…).
+ * It walks the program twice. The first walk collects every branch target, so that the second can
+ * put a name on each one and a branch reads as a label rather than as a raw offset. The name is
+ * the target address in hex, so `L00` and `L0A`, and it arrives as its own `DisasmLine` with an
+ * empty `bytes` list, which is how `NanoVisualization.kt` tells a label apart from an instruction
+ * when it is deciding which line to highlight.
+ *
+ * `DisasmLine.toString` is the printable form:
+ *
+ *     addr:  hex  hex   mnemonic  operands    ; optional annotation
+ *
+ * The annotation is the part the bytes do not say: the signed offset behind a relative branch, and
+ * the absolute address behind `jmpa` or `calla`. A byte that decodes to no instruction prints as
+ * `???` with its hex value, which is the five of the 256 that `NanoVM.kt` lists as executing
+ * nothing: `0x03`, and `0xFC`–`0xFF` past `DIV`'s last register pair.
+ */
+
+/**
+ * The disassembler. Like the assembler it keeps no state between calls.
  */
 class NanoDisassembler {
 
+    /**
+     * One output line: its [addr], the program [bytes] it decoded from, and the [text] to show.
+     *
+     * A label line carries the same address as the instruction it precedes and an empty [bytes],
+     * so looking a program counter up by [addr] alone finds both of them.
+     */
     data class DisasmLine(
         val addr: Int,
         val bytes: List<Int>,

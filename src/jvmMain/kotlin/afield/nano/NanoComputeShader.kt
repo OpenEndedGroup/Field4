@@ -4,14 +4,17 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * GLSL compute-shader implementation of the Nano VM.
+ * The host side of `nano_compute.glsl`, the GLSL compute port of the Nano VM: the buffer layout a
+ * caller has to honour, the mapping struct, and the packing helpers for getting bytes in and out.
  *
- * The shader (`nano_compute.glsl`) executes one independent Nano VM instance
- * per GPU invocation.  Instances share four flat GPU buffers, each partitioned
- * into non-overlapping byte-ranges.  A fifth *mapping* buffer (binding 0)
- * tells the shader where each instance's slice begins.
+ * The shader runs one independent Nano VM instance per GPU invocation, decoding the same opcode
+ * map `NanoVM.kt` documents. Three of its four storage buffers hold bytes and are cut into
+ * non-overlapping per-instance slices; the fourth, at binding 0, holds one `NanoMapping` per
+ * dispatch id and says where that instance's three slices begin. **Nothing in the tree dispatches
+ * it.** `SOURCE` reads the GLSL off the classpath and the helpers below build the buffers, so what
+ * is missing is the Vulkan plumbing: pipeline, descriptor sets, submit and readback.
  *
- * ## Buffer bindings
+ * #### Buffer bindings
  *
  * | binding | layout           | access | description                          |
  * |---------|------------------|--------|--------------------------------------|
@@ -20,12 +23,14 @@ import java.nio.ByteOrder
  * | 2       | `uint[]` (bytes) | r-only | code: assembled Nano programs        |
  * | 3       | `uint[]` (bytes) | r/w    | OUT stream: results of OUT rX        |
  *
- * ### Byte-packing
- * All byte buffers pack 4 bytes per `uint`: byte at logical offset B lives in
- * word `B >> 2` at bit-shift `(B & 3) << 3`.  The host must honour this layout
- * when uploading code/RAM and when reading back OUT results.
+ * ##### Byte-packing
  *
- * ## Push constants (16 bytes, std430)
+ * All three byte buffers pack 4 bytes per `uint`: the byte at logical offset B lives in word
+ * `B >> 2` at bit-shift `(B & 3) << 3`.  A host has to honour that when uploading code and RAM and
+ * when reading OUT results back, which is what `packBytes`, `packPrograms` and `unpackBytes` are
+ * for.
+ *
+ * #### Push constants (16 bytes, std430)
  *
  * | field            | type   | description                                  |
  * |------------------|--------|----------------------------------------------|
@@ -34,7 +39,7 @@ import java.nio.ByteOrder
  * | ramSize          | uint32 | RAM bytes per instance; **must be power-of-2**|
  * | codeSize         | uint32 | code bytes per instance (≤ 256)              |
  *
- * ## Mapping buffer layout (NanoMapping struct, 16 bytes each)
+ * #### Mapping buffer layout (NanoMapping struct, 16 bytes each)
  *
  * | field      | type   | description                                       |
  * |------------|--------|---------------------------------------------------|
@@ -43,7 +48,7 @@ import java.nio.ByteOrder
  * | outputBase | uint32 | byte offset into OUT buffer for this instance     |
  * | maxSteps   | uint32 | per-instance step cap (0 → use push-constant)     |
  *
- * ## Minimal dispatch example (pseudocode)
+ * #### Minimal dispatch example (pseudocode)
  *
  * ```kotlin
  * val N         = 1024               // number of Nano instances
@@ -56,9 +61,11 @@ import java.nio.ByteOrder
  * // bind as buffers 0..3
  * // dispatch ceil(N / 64) groups of 64
  * ```
- *
- * See [buildMappings] for a helper that generates the mapping buffer, and
- * [packBytes] / [unpackBytes] for the byte-packing convention.
+ */
+
+/**
+ * The GLSL source, the mapping-buffer builder and the byte-packing helpers, and nothing that
+ * talks to a device.
  */
 object NanoComputeShader {
 
@@ -166,7 +173,7 @@ object NanoComputeShader {
     }
 
     /**
-     * Pack [numInstances] assembled programs (each up to [codeSize] bytes) into
+     * Pack [programs] (each up to [codeSize] bytes) into
      * a single flat [ByteBuffer] ready for binding as the code SSBO.
      *
      * Programs shorter than [codeSize] are zero-padded (byte 0x00 = NOP).

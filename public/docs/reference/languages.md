@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-77 source file(s), 2264 public symbol(s), 809 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+77 source file(s), 2264 public symbol(s), 816 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3517,60 +3517,215 @@ Compiles a candidate at every width in the spec and scores it.
 
 ## NanoAssembler.kt { #nanoassembler-kt }
 
+Turns Nano assembly source text into a bytecode `ByteArray`: one pass over the lines emitting
+bytes, then a patch pass that fills in the labels the first pass left as placeholders.
+
+`NanoVM.kt` has the machine and the opcode map; this is the text side of the same instruction
+set. The listing below is the whole language: one directive, no macros, and operands that are
+registers, integer literals or labels.
+
+### Syntax
+
+```diffstatic {data-lang=nano}
+; line comment (rest of line)
+label:            ; defines a label at the current address
+
+; Data directive – place raw bytes into the program stream
+.data 0x1A 0x2B 42 ...
+
+; Instructions
+nop
+hlt
+ret
+inc r0
+dec r1
+not r2
+neg r3
+clr r0
+out r1           ; print reg value
+rng r2           ; fill with random byte
+
+mov r0, r1       ; r0 = r1
+add r0, r1       ; r0 += r1
+sub r0, r1
+mul r0, r1
+and r0, r1
+or  r0, r1
+xor r0, r1
+cmp r0, r1       ; flags = r0 <=> r1  (no reg change)
+ldr r0, r1       ; r0 = the RAM byte at address r1  (load indirect)
+str r0, r1       ; the RAM byte at address r0 = r1  (store indirect)
+div r0, r1       ; r0 = r0 / r1  (integer; r1==0 → r0=0xFF)
+
+ldi r0, 42       ; r0 = 42   (immediate, 0–255)
+ldi r0, 0xFF
+lda r0, 5        ; r0 = RAM[5]  (absolute load)
+sta r0, 5        ; RAM[5] = r0  (absolute store)
+addi r0, -3      ; r0 += -3     (signed immediate, -128..127)
+ldrr r0, -2      ; r0 = RAM[PC + (-2)]  (PC-relative load)
+strr r0, 4       ; RAM[PC + 4] = r0     (PC-relative store)
+shl r0, 2        ; r0 <<= 2
+shr r0, 1        ; r0 >>= 1
+
+jmp  target      ; unconditional (relative, or label)
+jz   target
+jnz  target
+jgt  target
+jlt  target
+jge  target
+jle  target
+jc   target
+jnc  target
+call target      ; relative call
+jmpa target      ; absolute jump (0–255)
+calla target     ; absolute call
+```
+
+Labels can appear on their own line (`start:`) or before a mnemonic on the same line
+(`start: ldi r0, 0`).  A label used by a relative branch resolves to the
+**signed 8-bit offset from the byte following the branch** (PC+2 for the two-byte forms like
+`jmp`), and an offset that will not fit in −128..+127 is an error on that line. `jmpa` and
+`calla` take the absolute address instead, so there the error is an address past 255.
+
+### Results and errors
+
+Every bad register, number, mnemonic, duplicate label and out-of-range branch goes into a list
+that assembly keeps filling, so one run reports all of them with the line each came from rather
+than stopping at the first. `assemble` hands back `AssemblyResult`, which is either the bytes
+or that list. `assembleWithSourceMap` hands back the same bytes plus a program-counter-to-line
+array, which is what `NanoInterface.kt` and `NanoVisualization.kt` use to mark the source line a
+running program is on. The throwing wrapper a live-coding box calls is the top-level
+`nanoAssemble` in `NanoInterface.kt`.
+
 `src/jvmMain/kotlin/afield/nano/NanoAssembler.kt` — [read the source](source/jvmMain/afield/nano/NanoAssembler/)
 
 ### NanoAssembler { #nanoassembler-kt-nanoassembler }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">NanoAssembler</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L71)
+[<code class="highlight"><span class="k">class</span> <span class="nc">NanoAssembler</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L89)
 
-Nano assembler: converts Nano assembly source text into a `ByteArray` bytecode program.
+The assembler. It keeps no state between calls, so one instance can assemble any number of programs.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyError</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L73) |  |
-| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L75) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyDebugInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pcToLine</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L80) |  |
-| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L85) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L90) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">assembleWithSourceMap</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L97) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parseNumber</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L348) | Parse an integer literal: decimal, 0x hex, or 0b binary. Returns null on failure. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">extractLabels</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L365) | Returns all label names defined in `source`. Useful for completion. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyError</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L92) | One assembly failure: the 1-based source `line` it was found on, and what was wrong. |
+| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L95) | The bytecode, or every error the source produced. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyDebugInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pcToLine</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L104) | Bytecode plus the source map: `pcToLine` is one entry per emitted byte, holding the 1-based line that byte came from, so a program counter indexes straight into it. |
+| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L110) | `AssemblyDebugInfo`, or every error the source produced. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L116) | Assemble `source` into bytecode, or into the list of everything wrong with it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">assembleWithSourceMap</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L127) | Assemble `source` and keep the byte-to-line map, for a caller that has to point at the line a program counter is sitting on. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parseNumber</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L378) | Parse an integer literal: decimal, 0x hex, or 0b binary. Returns null on failure. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">extractLabels</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L395) | Returns all label names defined in `source`. Useful for completion. |
 
 ## NanoComputeShader.kt { #nanocomputeshader-kt }
+
+The host side of `nano_compute.glsl`, the GLSL compute port of the Nano VM: the buffer layout a
+caller has to honour, the mapping struct, and the packing helpers for getting bytes in and out.
+
+The shader runs one independent Nano VM instance per GPU invocation, decoding the same opcode
+map `NanoVM.kt` documents. Three of its four storage buffers hold bytes and are cut into
+non-overlapping per-instance slices; the fourth, at binding 0, holds one `NanoMapping` per
+dispatch id and says where that instance's three slices begin. **Nothing in the tree dispatches
+it.** `SOURCE` reads the GLSL off the classpath and the helpers below build the buffers, so what
+is missing is the Vulkan plumbing: pipeline, descriptor sets, submit and readback.
+
+### Buffer bindings
+
+| binding | layout           | access | description                          |
+|---------|------------------|--------|--------------------------------------|
+| 0       | `NanoMapping[]`  | r-only | dispatch-id → slice offsets          |
+| 1       | `uint[]` (bytes) | r/w    | RAM: persistent working memory       |
+| 2       | `uint[]` (bytes) | r-only | code: assembled Nano programs        |
+| 3       | `uint[]` (bytes) | r/w    | OUT stream: results of OUT rX        |
+
+#### Byte-packing
+
+All three byte buffers pack 4 bytes per `uint`: the byte at logical offset B lives in word
+`B >> 2` at bit-shift `(B & 3) << 3`.  A host has to honour that when uploading code and RAM and
+when reading OUT results back, which is what `packBytes`, `packPrograms` and `unpackBytes` are
+for.
+
+### Push constants (16 bytes, std430)
+
+| field            | type   | description                                  |
+|------------------|--------|----------------------------------------------|
+| numInstances     | uint32 | total instances (over-dispatch guard)        |
+| defaultMaxSteps  | uint32 | step limit when mapping.maxSteps == 0        |
+| ramSize          | uint32 | RAM bytes per instance; **must be power-of-2**|
+| codeSize         | uint32 | code bytes per instance (≤ 256)              |
+
+### Mapping buffer layout (NanoMapping struct, 16 bytes each)
+
+| field      | type   | description                                       |
+|------------|--------|---------------------------------------------------|
+| ramBase    | uint32 | byte offset into RAM buffer for this instance     |
+| codeBase   | uint32 | byte offset into code buffer for this instance    |
+| outputBase | uint32 | byte offset into OUT buffer for this instance     |
+| maxSteps   | uint32 | per-instance step cap (0 → use push-constant)     |
+
+### Minimal dispatch example (pseudocode)
+
+```diffstatic {data-lang=kotlin}
+val N         = 1024               // number of Nano instances
+val ramSize   = 32                 // bytes per VM
+val codeSize  = 64                 // bytes per program
+val outSize   = 64                 // max OUT bytes per VM
+
+val mappings  = NanoComputeShader.buildMappings(N, ramSize, codeSize, outSize)
+// upload mappings, ramBytes (N*ramSize), codeBytes (N*codeSize), outBytes (N*outSize)
+// bind as buffers 0..3
+// dispatch ceil(N / 64) groups of 64
+```
 
 `src/jvmMain/kotlin/afield/nano/NanoComputeShader.kt` — [read the source](source/jvmMain/afield/nano/NanoComputeShader/)
 
 ### NanoComputeShader { #nanocomputeshader-kt-nanocomputeshader }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">NanoComputeShader</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L63)
+[<code class="highlight"><span class="k">object</span> <span class="nc">NanoComputeShader</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L70)
 
-GLSL compute-shader implementation of the Nano VM.
+The GLSL source, the mapping-buffer builder and the byte-packing helpers, and nothing that talks to a device.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L66) | Source of the `nano_compute.glsl` compute shader. |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NanoMapping</span><span class="p">(</span><span class="k">val</span> <span class="n">ramBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codeBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L84) | Kotlin mirror of the `NanoMapping` GPU struct (16 bytes, std430). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">buildMappings</span><span class="p">(</span><span class="n">numInstances</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ramSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">NanoVM</span><span class="p">.</span><span class="nc">RAM&#95;SIZE</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">outSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L106) | Build a flat `ByteBuffer` containing one `NanoMapping` per instance, with each instance allocated contiguous, non-overlapping slices. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">packBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L142) | Pack `bytes` into a `uint[]`-compatible `ByteBuffer` using the shader's 4-bytes-per-uint little-endian layout. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">unpackBytes</span><span class="p">(</span><span class="n">buf</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">baseOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L157) | Unpack `length` bytes from a `uint[]`-packed `ByteBuffer` starting at byte offset `baseOffset`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">packPrograms</span><span class="p">(</span><span class="n">programs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ByteArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L174) | Pack `numInstances` assembled programs (each up to `codeSize` bytes) into a single flat `ByteBuffer` ready for binding as the code SSBO. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L198) | Assemble `source` with [`NanoAssembler`](languages.md#nanoassembler-kt-nanoassembler) and return the raw bytes, or throw [`NanoAssemblyException`](languages.md#nanointerface-kt-nanoassemblyexception) on error. Useful for building code buffers inline. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L73) | Source of the `nano_compute.glsl` compute shader. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NanoMapping</span><span class="p">(</span><span class="k">val</span> <span class="n">ramBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codeBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L91) | Kotlin mirror of the `NanoMapping` GPU struct (16 bytes, std430). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">buildMappings</span><span class="p">(</span><span class="n">numInstances</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ramSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">NanoVM</span><span class="p">.</span><span class="nc">RAM&#95;SIZE</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">outSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L113) | Build a flat `ByteBuffer` containing one `NanoMapping` per instance, with each instance allocated contiguous, non-overlapping slices. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">packBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L149) | Pack `bytes` into a `uint[]`-compatible `ByteBuffer` using the shader's 4-bytes-per-uint little-endian layout. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">unpackBytes</span><span class="p">(</span><span class="n">buf</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">baseOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L164) | Unpack `length` bytes from a `uint[]`-packed `ByteBuffer` starting at byte offset `baseOffset`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">packPrograms</span><span class="p">(</span><span class="n">programs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ByteArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L181) | Pack `programs` (each up to `codeSize` bytes) into a single flat `ByteBuffer` ready for binding as the code SSBO. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L205) | Assemble `source` with [`NanoAssembler`](languages.md#nanoassembler-kt-nanoassembler) and return the raw bytes, or throw [`NanoAssemblyException`](languages.md#nanointerface-kt-nanoassemblyexception) on error. Useful for building code buffers inline. |
 
 ## NanoDisassembler.kt { #nanodisassembler-kt }
+
+Reads a Nano bytecode `ByteArray` back as assembly text, one `DisasmLine` per instruction.
+
+It walks the program twice. The first walk collects every branch target, so that the second can
+put a name on each one and a branch reads as a label rather than as a raw offset. The name is
+the target address in hex, so `L00` and `L0A`, and it arrives as its own `DisasmLine` with an
+empty `bytes` list, which is how `NanoVisualization.kt` tells a label apart from an instruction
+when it is deciding which line to highlight.
+
+`DisasmLine.toString` is the printable form:
+
+    addr:  hex  hex   mnemonic  operands    ; optional annotation
+
+The annotation is the part the bytes do not say: the signed offset behind a relative branch, and
+the absolute address behind `jmpa` or `calla`. A byte that decodes to no instruction prints as
+`???` with its hex value, which is the five of the 256 that `NanoVM.kt` lists as executing
+nothing: `0x03`, and `0xFC`–`0xFF` past `DIV`'s last register pair.
 
 `src/jvmMain/kotlin/afield/nano/NanoDisassembler.kt` — [read the source](source/jvmMain/afield/nano/NanoDisassembler/)
 
 ### NanoDisassembler { #nanodisassembler-kt-nanodisassembler }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">NanoDisassembler</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L13)
+[<code class="highlight"><span class="k">class</span> <span class="nc">NanoDisassembler</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L25)
 
-Nano disassembler: converts a `ByteArray` bytecode program back into human-readable Nano assembly.
+The disassembler. Like the assembler it keeps no state between calls.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DisasmLine</span><span class="p">(</span><span class="k">val</span> <span class="n">addr</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L15) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassemble</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DisasmLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L31) | Disassemble `program` starting at offset `startAddr`. Returns a list of `DisasmLine`s. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassembleToString</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L54) | Disassemble and join into a single printable string. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DisasmLine</span><span class="p">(</span><span class="k">val</span> <span class="n">addr</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L33) | One output line: its `addr`, the program `bytes` it decoded from, and the `text` to show. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassemble</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DisasmLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L49) | Disassemble `program` starting at offset `startAddr`. Returns a list of `DisasmLine`s. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassembleToString</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L72) | Disassemble and join into a single printable string. |
 
 ## NanoInterface.kt { #nanointerface-kt }
 
