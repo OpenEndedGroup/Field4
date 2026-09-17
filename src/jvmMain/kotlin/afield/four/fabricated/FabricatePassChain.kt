@@ -90,6 +90,26 @@ import afield.four.texture.vkFormatBytesPerPixel
  *    to the next one, so slot packing neither offers it another pass's slot nor offers its slot to
  *    anyone. That is what [FabricateTargetSlot.persistent] records, and it is why a persistent slot
  *    costs two images rather than one.
+ *
+ * ### Frame history, and the half that persistence does not cover
+ *
+ * [FabricatePassSpec.persistent] tells a pass *what* last frame's pixels were. It says nothing about
+ * *where* they were, and for a simulation that is exactly right: a velocity field is a function of
+ * position, and position has not moved. For anything whose subject moved — temporal antialiasing,
+ * motion blur, reprojection-based denoise, temporal upscale — reading last frame at the same UV is
+ * reading the wrong pixel, and the more the camera moves the more wrong it is.
+ *
+ * So a spec may also declare [FabricatePassSpec.frameHistory], and receive
+ * [afield.four.targets.FrameHistory] as two push constants: `mat4 reprojection`, which takes a
+ * current clip position straight to where it was in the previous frame's clip space, and
+ * `vec4 historyParams`, whose `xy` is the history's size and whose `z` is **whether to believe any
+ * of it**. That third number is the one that matters and the one a picture cannot check — an
+ * unavailable history still holds a perfectly plausible image of the wrong thing. See
+ * [afield.four.targets.FrameHistory] for the rule that decides it.
+ *
+ * The two declarations compose, and a TAA pass is exactly their composition: `persistent` to keep
+ * the accumulation buffer, `previousFrame = true` to read it, `frameHistory` to know which texel of
+ * it to read. [FabricatePassLibrary.temporalAccumulate] is that pass.
  */
 object FabricatePassChain {
 
@@ -475,6 +495,11 @@ data class FabricateResolvedInput(val samplerName: String, val from: FabricatePa
  * @param sourcePreviousFrame bind the *primary* `sourceTex` to [source]'s previous frame. The advect
  *   pass of a fluid wants this: the field it transports and the velocity that transports it are both
  *   last frame's.
+ * @param frameHistory receive the chain's [afield.four.targets.FrameHistory] as push constants —
+ *   `mat4 reprojection` and `vec4 historyParams`. This is the other half of [persistent]: persistent
+ *   says *what* last frame's pixels were, frame history says *where* they were. A pass that declares
+ *   it and does not declare the constants in its shader is not an error; the binding is skipped, the
+ *   same tolerance [push] has. See `FabricatePassLibrary.FRAME_HISTORY_GLSL` for the block to paste.
  */
 data class FabricatePassSpec(
     val name: String,
@@ -486,7 +511,8 @@ data class FabricatePassSpec(
     val push: Map<String, Any> = emptyMap(),
     val mipLevels: Int = 1,
     val persistent: Boolean = false,
-    val sourcePreviousFrame: Boolean = false
+    val sourcePreviousFrame: Boolean = false,
+    val frameHistory: Boolean = false
 )
 
 /** A pass target after planning: its shape, its bound inputs, its lifetime and the slot it shares. */
@@ -502,6 +528,9 @@ data class FabricatePlannedPass(
 
     /** True if this pass's target is a ping-pong pair rather than a single image. */
     val persistent: Boolean get() = spec.persistent
+
+    /** True if this pass asked for the chain's frame history. */
+    val frameHistory: Boolean get() = spec.frameHistory
 }
 
 /**
@@ -557,6 +586,9 @@ class FabricatePassChainPlan(
     /** Passes whose target is a ping-pong pair — the chain's state, if it has any. */
     val persistentPasses: List<FabricatePlannedPass> get() = passes.filter { it.persistent }
 
+    /** Passes that asked for the chain's frame history — the chain's reprojecting passes. */
+    val historyPasses: List<FabricatePlannedPass> get() = passes.filter { it.frameHistory }
+
     /** The chain's final pass. */
     val output: FabricatePlannedPass get() = passes.last()
 
@@ -585,7 +617,8 @@ class FabricatePassChainPlan(
                 pass.lastConsumer >= passes.size -> "output"
                 else -> "dead after #${pass.lastConsumer}"
             }
-            appendLine("  #${pass.index} ${pass.name}: ${pass.shape} slot=${pass.slot} [$inputs] ($death)")
+            val history = if (pass.frameHistory) " +history" else ""
+            appendLine("  #${pass.index} ${pass.name}: ${pass.shape} slot=${pass.slot} [$inputs]$history ($death)")
         }
         slots.forEach { slot ->
             val sharers = slot.passIndices.map { passes[it].name }

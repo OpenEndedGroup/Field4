@@ -1237,4 +1237,388 @@ object FabricatePassLibrary {
             outColor = vec4(color, 1.0);
         }
     """
+
+    // --- Reprojection: passes that read last frame somewhere *else* ---------------------------
+
+    /** Hard cap on [cameraMotionBlur] taps, so the streak loop is bounded at compile time. */
+    const val MAX_MOTION_BLUR_TAPS = 33
+
+    /** Highest [temporalDebug] mode — availability. */
+    const val MOTION_DISPLAY_MAX_MODE = 3
+
+    /**
+     * The GLSL every [FabricatePassSpec.frameHistory] pass shares: clip/UV conversion and the
+     * reprojection lookup.
+     *
+     * Paste it into a fragment shader after the push block. It declares no uniforms and no push
+     * constants of its own — it is four pure functions over values the caller passes in — because a
+     * push block cannot be assembled from string fragments without the offsets becoming somebody's
+     * problem. What the caller has to declare, in this order and **first** in the block, is:
+     *
+     * ```glsl
+     * layout(push_constant) uniform WhateverPush {
+     *     mat4 reprojection;    // bound by addPassChain
+     *     vec4 historyParams;   // bound by addPassChain
+     *     // ... then the pass's own constants
+     * } push;
+     * ```
+     *
+     * ### The two conventions this encodes, both of which are easy to get wrong
+     *
+     * 1. **The Y flip.** `StandardRenderer.fullscreenVertex` emits `vUv = vec2(pos.x, -pos.y) * 0.5
+     *    + 0.5`, so `v = 0` is image row 0 and NDC `y` runs the *other* way from `v`. The clip-to-UV
+     *    scale is therefore `* vec2(0.5, -0.5) + 0.5` and not `* 0.5 + 0.5`. This is the same
+     *    expression the g-buffer already uses to write its motion vectors, and it is written
+     *    identically on purpose: a chain whose reprojection disagreed with the g-buffer's motion
+     *    vectors by a sign in `y` would produce an image that is stable when the camera pans and
+     *    smears when it tilts.
+     * 2. **Availability is two tests, not one.** `historyParams.z` is the CPU's answer — is there a
+     *    previous frame at all (see [afield.four.targets.FrameHistory]). It says nothing about *this
+     *    pixel*, which may have reprojected to somewhere that was off the edge of the previous
+     *    frame. Both have to hold, and the second is per-pixel, which is why it cannot live on the
+     *    CPU side.
+     *
+     * ### The depth honesty
+     *
+     * `fieldHistoryUv` reprojects at an **assumed NDC depth**, because a post pass has a colour
+     * buffer and no depth buffer. That makes it exact for a camera that rotated or changed its field
+     * of view — every ray is the same ray, differently indexed — and approximate for a camera that
+     * translated, with the error growing with the spread of real depth around the assumed plane. It
+     * is the honest first scope rather than a shortcut: the alternative is to thread the g-buffer's
+     * depth attachment into the chain as a named sampler, which is a bigger change than this one. A
+     * pass that *does* have depth should compose `reprojection` with its own unprojection rather
+     * than call `fieldHistoryUv`.
+     */
+    const val FRAME_HISTORY_GLSL = """
+        // Clip position to post-stack UV. The vec2(0.5, -0.5) is the Y flip; see FRAME_HISTORY_GLSL.
+        vec2 fieldUvFromClip(vec4 clip) {
+            return (clip.xy / max(abs(clip.w), 1e-5)) * vec2(0.5, -0.5) + vec2(0.5);
+        }
+
+        // Post-stack UV and an assumed NDC depth back to a clip position.
+        vec4 fieldClipFromUv(vec2 uv, float ndcDepth) {
+            return vec4((uv - vec2(0.5)) / vec2(0.5, -0.5), ndcDepth, 1.0);
+        }
+
+        // Where `uv` was in the previous frame, at an assumed NDC depth.
+        vec2 fieldHistoryUv(mat4 reprojection, vec2 uv, float ndcDepth) {
+            return fieldUvFromClip(reprojection * fieldClipFromUv(uv, ndcDepth));
+        }
+
+        // Both halves: the CPU's validity rule, and whether this pixel was on screen last frame.
+        bool fieldHistoryValid(vec4 historyParams, vec2 historyUv) {
+            return historyParams.z > 0.5 &&
+                historyUv.x > 0.0 && historyUv.x < 1.0 &&
+                historyUv.y > 0.0 && historyUv.y < 1.0;
+        }
+    """
+
+    /**
+     * A TAA-style temporal accumulation: blend this frame into a reprojected history, with a
+     * rejection rule.
+     *
+     * This is the pass the whole frame-history layer exists for, and it is the exact composition of
+     * the two declarations: [FabricatePassSpec.persistent] to own the accumulation buffer,
+     * `previousFrame = true` to read it, and [FabricatePassSpec.frameHistory] to know *which texel*
+     * of it to read. Take away the third and you have a pass that accumulates correctly while the
+     * camera is still and smears while it moves — which is what a temporal chain could do before,
+     * and why the layer needed a third declaration rather than a better shader.
+     *
+     * ### The rejection rule, and why it is a neighbourhood and not a threshold
+     *
+     * Reprojection answers "where was this pixel", not "was it the same thing". A pixel that
+     * reprojects onto a surface that has since been occluded, revealed, or simply moved past finds
+     * history that is a perfectly good picture of something else, and blending it in is a ghost.
+     *
+     * So the history is clamped to the **colour range of a 3×3 neighbourhood of the current frame**
+     * before it is blended — the standard neighbourhood clamp. A plain "reject if the colours differ
+     * by more than t" threshold cannot work: on a noisy or a finely detailed image every pixel
+     * differs by more than any useful t, so the effect switches itself off exactly where it would
+     * have helped most. The clamp instead keeps the *component* of history that is consistent with
+     * what is in front of it, which degrades to "no accumulation" on a disocclusion and to "full
+     * accumulation" on a still surface without a knob in between.
+     *
+     * [rejection] dilates the clamp box about the neighbourhood mean. At 0 the clamp is the raw
+     * neighbourhood min/max and ghosting is least; above 0 more history survives, and so do more of
+     * its ghosts.
+     *
+     * @param name the pass name; also the accumulation buffer's, since they are the same target.
+     * @param source the pass supplying this frame's image, or null for the pass before.
+     * @param blend weight given to the reprojected history when it is valid. 0.9 is about ten frames
+     *   of effective history; 1.0 would never take a new sample and is rejected.
+     * @param rejection clamp-box dilation, in units of the neighbourhood's own range.
+     * @param ndcDepth the NDC depth reprojection assumes; see [FRAME_HISTORY_GLSL].
+     * @param resolution the accumulation buffer's size. A persistent pass must state its own size
+     *   ([FabricatePassChain.plan] enforces that) and it must match the image it accumulates, or the
+     *   reprojected UV addresses the right fraction of the wrong picture.
+     * @param format the accumulation buffer's format. Half-float by default and deliberately: an
+     *   8-bit accumulation buffer quantises at every blend, and at a blend of 0.9 a converging
+     *   increment is under one code, so the image stops converging and sits a code short forever.
+     */
+    fun temporalAccumulate(
+        name: String = "taa",
+        source: String? = null,
+        blend: Float = 0.9f,
+        rejection: Float = 0f,
+        ndcDepth: Float = 0.5f,
+        resolution: Pair<Int, Int>,
+        format: Int = VK_FORMAT_R16G16B16A16_SFLOAT
+    ): List<FabricatePassSpec> {
+        require(blend in 0f..0.999f) {
+            "temporal blend must be in 0..0.999, got $blend — at 1.0 the pass never takes a new " +
+                    "sample and the accumulation buffer freezes at whatever it first held"
+        }
+        require(rejection >= 0f) { "rejection dilation must not be negative, got $rejection" }
+        val (width, height) = resolution
+        require(width > 0 && height > 0) {
+            "temporal accumulation needs a positive size, got ${width}x$height"
+        }
+        return listOf(
+            FabricatePassSpec(
+                name = name,
+                fragment = TEMPORAL_ACCUMULATE_FRAGMENT,
+                size = FabricatePassSize.Absolute(width, height),
+                format = format,
+                source = source,
+                // Itself, last frame — the forward reference persistence already allows.
+                extraInputs = listOf(FabricatePassInput("historyTex", name, previousFrame = true)),
+                push = mapOf("blend" to blend, "rejection" to rejection, "ndcDepth" to ndcDepth),
+                persistent = true,
+                frameHistory = true
+            )
+        )
+    }
+
+    /**
+     * Camera motion blur: smear each pixel along the direction it came from.
+     *
+     * The second consumer, and deliberately a pass that declares [FabricatePassSpec.frameHistory]
+     * and **not** [FabricatePassSpec.persistent]. It has no history buffer and reads no previous
+     * frame; it only wants to know which way the camera went, and takes every sample from the
+     * current image. That the two declarations are independent is a claim about the API rather than
+     * about this effect, which is why the API needed a second consumer to make it.
+     *
+     * Not to be confused with the standard renderer's `PASS_MOTION_BLUR`, which is the better
+     * effect: that one reads the g-buffer's per-pixel motion vectors, so it blurs a moving *object*
+     * in front of a still camera, which this cannot. This is the camera-only case, available to any
+     * chain over any image — including one with no geometry behind it at all.
+     *
+     * @param strength fraction of the frame's motion to smear over. 1.0 is a full open shutter.
+     * @param taps samples along the streak. Odd values keep a centre sample.
+     */
+    fun cameraMotionBlur(
+        name: String = "camera-motion-blur",
+        source: String? = null,
+        strength: Float = 1f,
+        taps: Int = 9,
+        ndcDepth: Float = 0.5f,
+        format: Int? = null
+    ): List<FabricatePassSpec> {
+        require(strength >= 0f) { "motion blur strength must not be negative, got $strength" }
+        require(taps in 1..MAX_MOTION_BLUR_TAPS) {
+            "motion blur taps must be in 1..$MAX_MOTION_BLUR_TAPS, got $taps"
+        }
+        return listOf(
+            FabricatePassSpec(
+                name = name,
+                fragment = cameraMotionBlurFragment(taps),
+                size = FabricatePassSize.MatchSource,
+                format = format,
+                source = source,
+                push = mapOf("strength" to strength, "ndcDepth" to ndcDepth),
+                frameHistory = true
+            )
+        )
+    }
+
+    /**
+     * The debug view, in four modes — and it is not garnish.
+     *
+     * Reprojection is the case where "it renders" and "it is right" are almost unrelated. A
+     * reprojection with a sign error in `y`, a half-texel offset, or an availability flag stuck on
+     * produces an image that a person looking at it will call fine, and a temporal pass built on it
+     * will look *better* than the correct one on a still frame. The only way a human sees which it
+     * is, is to look at the correspondence directly, so this ships with the layer rather than after
+     * it — the same four modes the hand-built prototype had.
+     *
+     * - **0 — beauty.** The source, untouched. The baseline to flip against.
+     * - **1 — backward motion.** `previousUv - currentUv`, the direction this pixel came *from*,
+     *   scaled by [motionScale] and shown as red/green about a grey zero. A still camera is flat
+     *   grey; pan and the frame goes uniformly one colour. The *sign* is what this mode is for.
+     * - **2 — previous UV.** The reprojected coordinate itself as red/green: a smooth corner-to-corner
+     *   ramp when it is right. This is the mode that shows a half-texel error, which mode 1 cannot —
+     *   a constant offset inside a difference is invisible, and inside an absolute coordinate it is
+     *   a visible colour shift.
+     * - **3 — availability.** Green where `fieldHistoryValid` holds, red where it does not. Entirely
+     *   green on a still camera, growing a red band on the edge the camera moves *away* from — the
+     *   pixels that were off screen last frame. Entirely red is history the CPU rule rejected;
+     *   entirely green *while the camera moves* is an availability flag that is not being written.
+     *
+     * @param mode 0..[MOTION_DISPLAY_MAX_MODE] as above. A push constant, so it is a number a person
+     *   turns while watching rather than a rebuild.
+     */
+    fun temporalDebug(
+        name: String = "motion-display",
+        source: String? = null,
+        mode: Int = 0,
+        motionScale: Float = 8f,
+        ndcDepth: Float = 0.5f,
+        format: Int? = null
+    ): List<FabricatePassSpec> {
+        require(mode in 0..MOTION_DISPLAY_MAX_MODE) {
+            "motion display mode must be in 0..$MOTION_DISPLAY_MAX_MODE, got $mode"
+        }
+        require(motionScale > 0f) { "motion scale must be positive, got $motionScale" }
+        return listOf(
+            FabricatePassSpec(
+                name = name,
+                fragment = TEMPORAL_DEBUG_FRAGMENT,
+                size = FabricatePassSize.MatchSource,
+                format = format,
+                source = source,
+                push = mapOf("mode" to mode, "motionScale" to motionScale, "ndcDepth" to ndcDepth),
+                frameHistory = true
+            )
+        )
+    }
+
+    /**
+     * Neighbourhood-clamped temporal accumulation against a reprojected history.
+     *
+     * Reads `historyTex` at the *reprojected* UV rather than at `vUv`, which is the whole point, and
+     * writes the blend into its own persistent target. A pixel failing either half of
+     * `fieldHistoryValid` takes the current frame whole — the correct restart, rather than a fade
+     * towards it.
+     */
+    val TEMPORAL_ACCUMULATE_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D historyTex;
+        layout(push_constant) uniform TemporalPush {
+            mat4 reprojection;
+            vec4 historyParams;
+            float blend;
+            float rejection;
+            float ndcDepth;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+$FRAME_HISTORY_GLSL
+
+        void main() {
+            vec4 here = texture(sourceTex, vUv);
+            vec2 hUv = fieldHistoryUv(push.reprojection, vUv, push.ndcDepth);
+
+            if (!fieldHistoryValid(push.historyParams, hUv)) {
+                outColor = here;
+                return;
+            }
+
+            // The 3x3 neighbourhood of the *current* frame, in this pass's own texels.
+            vec2 t = 1.0 / vec2(textureSize(sourceTex, 0));
+            vec3 lo = here.rgb;
+            vec3 hi = here.rgb;
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    vec3 c = texture(sourceTex, vUv + t * vec2(dx, dy)).rgb;
+                    lo = min(lo, c);
+                    hi = max(hi, c);
+                }
+            }
+
+            // Dilate the clamp box. At rejection = 0 this is the raw neighbourhood min/max.
+            vec3 pad = (hi - lo) * 0.5 * max(push.rejection, 0.0);
+            lo -= pad;
+            hi += pad;
+
+            vec3 history = clamp(texture(historyTex, hUv).rgb, lo, hi);
+            outColor = vec4(mix(here.rgb, history, clamp(push.blend, 0.0, 0.999)), here.a);
+        }
+    """
+
+    /**
+     * The debug view's four modes, sharing one shader because they share one reprojection.
+     *
+     * One shader and one `mode` push constant rather than four passes: what a person does with this
+     * is flip between modes on the *same* frame, and four passes would be four reprojections that
+     * could disagree.
+     */
+    val TEMPORAL_DEBUG_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform DisplayPush {
+            mat4 reprojection;
+            vec4 historyParams;
+            int mode;
+            float motionScale;
+            float ndcDepth;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+$FRAME_HISTORY_GLSL
+
+        void main() {
+            vec2 hUv = fieldHistoryUv(push.reprojection, vUv, push.ndcDepth);
+            bool valid = fieldHistoryValid(push.historyParams, hUv);
+
+            if (push.mode == 1) {
+                // Backward motion: where it came FROM, minus where it is. Grey is zero.
+                vec2 motion = (hUv - vUv) * push.motionScale;
+                outColor = vec4(clamp(motion * 0.5 + 0.5, 0.0, 1.0), 0.5, 1.0);
+            } else if (push.mode == 2) {
+                // The reprojected coordinate itself, so a constant offset is visible.
+                outColor = vec4(clamp(hUv, 0.0, 1.0), 0.0, 1.0);
+            } else if (push.mode == 3) {
+                outColor = valid ? vec4(0.1, 0.85, 0.2, 1.0) : vec4(0.9, 0.15, 0.1, 1.0);
+            } else {
+                outColor = texture(sourceTex, vUv);
+            }
+        }
+    """
+
+    /**
+     * Camera motion blur over [taps] samples along the backward-motion direction.
+     *
+     * The tap count is baked into the source rather than pushed, so the loop is bounded at compile
+     * time and the shader carries no dynamic trip count. Whether it unrolls is the compiler's
+     * business; the constant being constant is what lets it do any.
+     */
+    fun cameraMotionBlurFragment(taps: Int): String {
+        require(taps in 1..MAX_MOTION_BLUR_TAPS) { "taps must be in 1..$MAX_MOTION_BLUR_TAPS, got $taps" }
+        return """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform BlurPush {
+            mat4 reprojection;
+            vec4 historyParams;
+            float strength;
+            float ndcDepth;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        const int TAPS = $taps;
+
+$FRAME_HISTORY_GLSL
+
+        void main() {
+            vec2 hUv = fieldHistoryUv(push.reprojection, vUv, push.ndcDepth);
+            // Unlike the accumulating pass this does NOT test availability: the streak is taken
+            // entirely from the current image, and `reprojection` is only being asked which way the
+            // camera went. With no previous frame the reprojection is the identity, so the streak
+            // has zero length and the pass is a no-op — handled by arithmetic rather than a branch.
+            vec2 stride = (hUv - vUv) * max(push.strength, 0.0) / float(max(TAPS - 1, 1));
+
+            vec4 total = vec4(0.0);
+            for (int i = 0; i < TAPS; ++i) {
+                // Centred on vUv so a symmetric shutter does not shift the image.
+                vec2 at = vUv + stride * float(i - (TAPS - 1) / 2);
+                total += texture(sourceTex, clamp(at, vec2(0.0), vec2(1.0)));
+            }
+            outColor = total / float(TAPS);
+        }
+        """
+    }
 }

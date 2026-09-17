@@ -185,6 +185,42 @@ object StandardRenderer {
 		var lightsBuffer: FrameBufferGroup? = null
 		val maxLights: Int = DEFAULT_MAX_LIGHTS
 
+		/**
+		 * Identity token for "this is still the same scene, continuously rendered".
+		 *
+		 * A chain's [afield.four.targets.FrameHistory] compares this with `===` every frame, so
+		 * swapping it is how anything that makes last frame's pixels a picture of something *else*
+		 * announces itself. A frame id and a size catch a dropped frame and a resize; they cannot
+		 * catch a camera cut, a material edit or a light that moved, and a history buffer that
+		 * survives one of those holds a completely plausible image of the wrong thing.
+		 *
+		 * Swap it with [invalidateFrameHistory].
+		 */
+		var frameHistoryEpoch: Any = Any()
+			private set
+
+		/**
+		 * Declare that last frame is no longer comparable to this one — a camera cut, a scene edit.
+		 *
+		 * Costs one frame of accumulation in every chain built on this bundle. Missing a call costs a
+		 * ghost that persists, so call it whenever in doubt.
+		 */
+		fun invalidateFrameHistory(): Bundle {
+			frameHistoryEpoch = Any()
+			return this
+		}
+
+		/**
+		 * This frame's combined `projection · view`, written into [dest] and returned.
+		 *
+		 * The order is the one the g-buffer's shaders already use (`uCamera.prevProj *
+		 * uCamera.prevView * prevWorldPos`), so a chain's reprojection and the g-buffer's motion
+		 * vectors agree about what clip space is. Takes a destination because it is called once per
+		 * history-reading pass per frame, from inside the render loop.
+		 */
+		fun currentViewProjection(dest: Matrix4f = Matrix4f()): Matrix4f =
+			dest.set(scene.projection.evaluateUniform()).mul(scene.camera.modelView())
+
 		/** Add a light to the scene. Call [syncLights] afterwards (or once per frame) to upload it. */
 		fun addLight(light: FabricateLight): FabricateLight = sceneGraph.addLight(light)
 
