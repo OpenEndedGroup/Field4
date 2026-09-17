@@ -904,6 +904,11 @@ private fun requiredAgentJvmArgs(): List<String> {
     return buildList {
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         add("--enable-native-access=ALL-UNNAMED")
+        // Child smoke JVMs need the same Steam Audio native tree (or explicit library override)
+        // as Field itself. The bindings otherwise look for a separate natives resource jar.
+        for (property in listOf("steamaudio.library.file", "steamaudio.library.path")) {
+            System.getProperty(property)?.takeIf { it.isNotBlank() }?.let { add("-D$property=$it") }
+        }
         add("--sun-misc-unsafe-memory-access=allow")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
