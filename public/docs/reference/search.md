@@ -127,7 +127,7 @@ One generation in which the population's leader improved.
 
 How `PopulationSearch.evolve` picks a parent.
 
-Constants: `keep`, `then`, `until`, `which`.
+Constants: `TOURNAMENT`, `LEXICASE`.
 
 ### SearchRun { #populationsearch-kt-searchrun }
 

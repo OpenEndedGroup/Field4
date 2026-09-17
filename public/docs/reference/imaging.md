@@ -150,6 +150,8 @@ A CPU raster image: `width * height * channels` floats, interleaved, row-major, 
 
 How a filter resolves coordinates that fall outside the image.
 
+Constants: `ZERO`, `CLAMP`, `REFLECT`, `WRAP`.
+
 ## imaging_features.kt { #imaging-features-kt }
 
 Edges, corners, lines, blobs and morphology for [`Img`](imaging.md#imaging-kt-img) — the "find things in the picture" half of
@@ -237,7 +239,7 @@ A circle found by `houghCircles`.
 
 Neighbourhood shape for the morphological operators.
 
-Constants: `and`, `no`.
+Constants: `SQUARE`, `DISC`, `CROSS`.
 
 ### Component { #imaging-features-kt-component }
 

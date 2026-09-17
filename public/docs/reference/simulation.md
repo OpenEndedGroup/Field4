@@ -1932,7 +1932,7 @@ One more line for the convergence panel — a second search, a refinement pass, 
 
 How a normalised objective becomes a position on the colour ramp.
 
-Constants: `and`, `for`.
+Constants: `LINEAR`, `STRETCHED`.
 
 | Declaration | Summary |
 | --- | --- |

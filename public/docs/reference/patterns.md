@@ -902,7 +902,7 @@ leaves a lone hit or a lone rest: the same self-description, in bigger blocks.
 
 How a Kolakoski word is read as a rhythm. See the file overview for the two figures.
 
-Constants: `starting`, `two`, `one`, `and`, `so`.
+Constants: `RUNS`, `GAPS`.
 
 ## PatMiniNotation.kt { #patmininotation-kt }
 
@@ -1268,7 +1268,7 @@ One recovered note.
 
 What a buffer is, when a monophonic detector could not name notes in it.
 
-Constants: `aperiodic`, `and`, `with`, `but`, `so`.
+Constants: `PITCHED`, `POLYPHONIC`, `UNPITCHED`, `UNRESOLVED`, `SILENT`.
 
 ### PatPitchDiagnosis { #patpitchdetection-kt-patpitchdiagnosis }
 
@@ -2048,7 +2048,7 @@ Everything recovered from one buffer: the notes, the grid, and the notation that
 
 What happened when the emitted notation was rendered again and listened to again.
 
-Constants: `within`, `and`, `so`.
+Constants: `CLOSED`, `DIVERGED`, `REFUSED`, `NO_GRID`.
 
 ### PatLoopClosure { #pattranscription-kt-patloopclosure }
 
@@ -2186,7 +2186,7 @@ One notated pattern, rendered and then measured.
 
 What a case *did*, as opposed to how it scored.
 
-Constants: `and`.
+Constants: `RECOVERED_EXACTLY`, `RECOVERED_WITHIN`, `REFUSED`, `CONFIDENTLY_WRONG`.
 
 ### PatCaseVerdict { #pattranscriptioncorpus-kt-patcaseverdict }
 
