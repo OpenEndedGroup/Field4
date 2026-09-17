@@ -22,7 +22,7 @@ up the graphics context, and each example is a child of it, inheriting `renderer
 and drawing its scene live:
 
 <iframe
-  src="/offline.html?file=/field4/assets/rectsl_gallery/metadata.edn"
+  src="offline.html?file=assets/rectsl_gallery/metadata.edn"
   title="RectSL gallery workspace"
   style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
   loading="lazy"

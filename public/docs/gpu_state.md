@@ -377,7 +377,7 @@ thing and you would never leave it switched on.
 It ships as a starting point, so the shortest route is the welcome screen, or open the document
 directly:
 
-[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn), or open
+[Open ↗](offline.html?file=assets/agent_transcripts/gpu_state/metadata.edn), or open
 `public/docs/assets/agent_transcripts/gpu_state/metadata.edn` from a Field workspace.
 
 Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:

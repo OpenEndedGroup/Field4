@@ -9,7 +9,7 @@ All of the code below are meant to run inside a Box inside Field. Each snippet e
 If you want to run these examples, this embedded viewer's "Open in Field4" button will do just that, if you have Field already running.
 
 <iframe
-    src="/offline.html?file=/field4/assets/fline_examples/metadata.edn"
+    src="offline.html?file=assets/fline_examples/metadata.edn"
     title="FLine examples (offline viewer)"
     style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"

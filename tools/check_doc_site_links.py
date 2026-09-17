@@ -53,6 +53,36 @@ What this guard cannot see
   against this prefix and passes, but such a ref only works under this exact prefix. They are
   emitted by the theme from ``site_url``, so they move when it does; they are counted and
   reported under ``--summary`` so the count cannot drift unnoticed.
+* Anything inside a ``<pre>`` or ``<code>`` element. That is displayed source, not markup —
+  see below.
+
+Code is not markup
+------------------
+A docs page that *shows* HTML shows it escaped: the ``diffstatic`` fence treatment renders
+``<iframe src="/extensions/remote_ar/index.html?debug=1">`` as
+``<pre …><code>&lt;iframe src="/extensions/…"``. The ``<`` is escaped, so no element is
+created and no browser ever requests it — but the attribute text survives verbatim, quotes and
+all, so a regex over the raw HTML matches ``src="…"`` inside the code block and reports a
+reference that does not exist.
+
+This was mis-diagnosed once, in the commit that first made it a category (``d6d164822``): it
+said a source that builds HTML in a string literal "is emitted live rather than escaped, so an
+unexpanded ``$src`` reaches the browser as a real anchor", and proposed escaping in
+``generate_source_pages`` as the fix. The count was right and the cause was not. Read back out
+of the built site on 2026-09-17, ``reference/source/jvmMain/afield/outputs/index.html`` contains
+``<pre class="code-diff-fence-static" …><code>… &lt;iframe … src="/keyframe_browser.html?root=$token"``
+— already escaped, already inert. Nothing was reaching the browser; the extractor was reading
+displayed code. So the fix is here, in the extractor, and ``generate_source_pages``
+(which is ``afield.docs.SourcePageGenerator``, emitting ``diffstatic`` fences) needs no change.
+
+Measured on the full build the same night, over 613 pages: of 146724 ``href``/``src``/``poster``/
+``srcset`` attribute matches in the raw HTML, 51 sit inside a ``<pre>`` or ``<code>``. 39 of
+those were already skipped as external or in-page, **0 resolved to a real file**, and 12 were
+reported as broken references — the 11 the base commit counted, plus one on ``ar_reference.md``.
+Masking code regions therefore costs this guard no coverage at all, which is asserted rather
+than assumed: :func:`main` resolves the masked refs too and fails if any of them *would* have
+landed on a real file inside the prefix, because that would mean the mask had swallowed a real
+reference.
 
 Exit status is non-zero when any reference escapes the prefix or is missing, so this can gate
 a docs build (it is wired into ``tools/build_zensical_docs.py`` under ``--strict``) or a test.
@@ -75,9 +105,25 @@ import yaml
 # quietly open a hole; its comma/descriptor syntax is split below.
 REF_ATTR = re.compile(r'\b(href|src|poster|srcset)\s*=\s*"([^"]*)"', re.IGNORECASE)
 
+# Displayed source: everything between a `<pre>`/`<code>` and its close. Non-greedy and
+# non-nested on purpose — these elements do not nest in this theme's output (the fence
+# treatment emits `<pre …><code>…</code></pre>` and inline code emits `<code>…</code>`), and a
+# backreference keeps the two tag names paired so a `<pre>` is not closed by a `</code>`.
+CODE_REGION = re.compile(r"<(pre|code)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
+
 # Schemes and forms that do not name a file in this site. `//` is protocol-relative, so it is
 # off-site too. A bare `#fragment` is the same page.
 SKIP_PREFIXES = ("http://", "https://", "data:", "mailto:", "tel:", "javascript:", "#", "//")
+
+
+def code_spans(html: str) -> list[tuple[int, int]]:
+    """The `(start, end)` character ranges of every `<pre>`/`<code>` element in `html`."""
+    return [match.span() for match in CODE_REGION.finditer(html)]
+
+
+def inside_code(spans: list[tuple[int, int]], index: int) -> bool:
+    """Whether `index` falls inside one of `spans`."""
+    return any(start <= index < end for start, end in spans)
 
 
 def prefix_from_site_url(site_url: str) -> str:
@@ -113,37 +159,28 @@ def read_config(config_yml: Path) -> tuple[str, str]:
     return str(config.get("site_url", "") or "/"), str(config.get("site_dir", "") or "site")
 
 
-# Recorded 2026-09-16, on the first run of this guard over the whole built site. Each entry is a
-# reference that was already broken under the published prefix at cb4377a6c, on a page this guard's
-# author must not edit, so gating on it would only mean never gating at all. They are reported on
-# every run and do not fail; `stale_known_unresolved` fails when an entry stops reproducing, so the
-# list cannot quietly become permanent. Anything NOT listed here fails now.
+# All three entries recorded here on 2026-09-16 were fixed on 2026-09-17 and are gone. The
+# mechanism stays, because it is the half of a grandfather list that usually gets left out:
+# `stale_known_unresolved` fails when a listed entry stops reproducing, so an exception cannot
+# outlive its cause. What the list held, and where each went:
 #
-# This is a debt, not a policy. Each entry names who can retire it.
-KNOWN_UNRESOLVED = {
-    "/offline.html": (
-        "The offline viewer link on 134 pages (`agent_transcripts.md`, `afield_four_graphics.md`) is "
-        "written server-absolute as `/offline.html?file=/field4/...`. Both halves assume the site is "
-        "served at the server root with `field4/` visible as a subdirectory; under `site_url`'s "
-        "`/Field4/` prefix the correct pair is `/Field4/offline.html?file=/Field4/...`. Note also the "
-        "case mismatch: the query says `/field4/` (the local `site_dir`) against a published "
-        "`/Field4/`, which 404s on any case-sensitive host. Owner: whoever holds agent_transcripts.md."
-    ),
-    "/extensions/remote_ar/index.html": (
-        "`ar_reference.md:45` iframes a path served by a *running Field instance* "
-        "(`https://FIELD_HOST:9092/extensions/remote_ar/index.html`), not by the docs site. It is "
-        "dead on the published site by nature rather than by mistake; it wants either an absolute "
-        "URL or a note saying it only works beside a live Field."
-    ),
-    "/Field4/reference/3,8": (
-        "`public/docs/reference/patterns.md:2295` shows `pat(\"[bd cp](3,8) hh!2\")` in a block that "
-        "lost code-block status (it is indented 7 spaces inside already-indented KDoc output, so the "
-        "relative indent is 3 — one short), and markdown then read the pat figure `[bd cp](3,8)` as a "
-        "link. Origin: the KDoc at `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:75`; "
-        "`PatCondense.kt:589` writes the same figure in backticks and is immune. Fix belongs in the "
-        "KDoc plus a reference regeneration, both outside this branch's ownership."
-    ),
-}
+#   `/offline.html`                      — 137 refs on 17 authored pages, server-absolute and in
+#                                          the wrong case. Fixed at source; `offline.html?file=`
+#                                          is now viewer-relative and guarded by
+#                                          `tools/check_doc_offline_links.py`.
+#   `/extensions/remote_ar/index.html`   — never a live reference. It is the `src` of an escaped
+#                                          `&lt;iframe` shown inside a `diffstatic` fence on
+#                                          `ar_reference.md`, and is now masked with all other
+#                                          displayed code. The page also says, in prose, that
+#                                          `/extensions/…` is served by a running Field.
+#   `/Field4/reference/3,8`              — `patterns.md`'s `pat("[bd cp](3,8) hh!2")` sample,
+#                                          published as a paragraph because its KDoc indent was
+#                                          one space short of a code block. Fixed in
+#                                          `TidalPatterns.kt` and regenerated.
+#
+# An empty dict is the correct state, not a missing feature: anything not listed here fails now,
+# and nothing is listed.
+KNOWN_UNRESOLVED: dict[str, str] = {}
 
 # The source mirror (`reference/source/**`) is the one generated docs tree that is not committed:
 # `build_zensical_docs.py:generate_source_pages` renders it per build and needs a compiled Kotlin
@@ -285,21 +322,42 @@ def main() -> int:
     total_refs = 0
     skipped_external = 0
     absolute_refs = 0
+    # Displayed code, masked out below. `masked_would_resolve` is the assertion that the mask is
+    # not hiding real references: a `src=` inside a `<pre>` that lands on a real file in the site
+    # is not displayed code, it is a reference in a place this guard did not expect, and the mask
+    # must not be what makes it pass.
+    masked_refs = 0
+    masked_skipped = 0
+    masked_would_resolve: list[tuple[str, str, str]] = []
     for page in pages:
         page_dir = page_url(site_dir, page, prefix)
         html = page.read_text(encoding="utf-8", errors="ignore")
-        for _attr, value in REF_ATTR.findall(html):
+        spans = code_spans(html)
+        for match in REF_ATTR.finditer(html):
+            value = match.group(2)
+            in_code = inside_code(spans, match.start())
             for ref in (split_srcset(value) if "," in value and " " in value else [value]):
                 stripped = ref.strip()
                 if not stripped:
                     continue
                 if stripped.lower().startswith(SKIP_PREFIXES):
-                    skipped_external += 1
+                    if in_code:
+                        masked_skipped += 1
+                    else:
+                        skipped_external += 1
+                    continue
+                url_path = resolve(page_dir, stripped)
+                if in_code:
+                    masked_refs += 1
+                    landed = url_path == prefix.rstrip("/") or url_path.startswith(prefix)
+                    if landed and site_path(site_dir, prefix, url_path or prefix).is_file():
+                        masked_would_resolve.append(
+                            (url_path, page.relative_to(site_dir).as_posix(), stripped)
+                        )
                     continue
                 total_refs += 1
                 if stripped.startswith("/"):
                     absolute_refs += 1
-                url_path = resolve(page_dir, stripped)
                 if url_path:
                     wanted[url_path].append((page.relative_to(site_dir).as_posix(), stripped))
 
@@ -310,21 +368,14 @@ def main() -> int:
     missing: list[tuple[str, str, str]] = []
     known: list[tuple[str, str, str]] = []
     source_mirror_absent: list[str] = []
-    mirror_code: list[tuple[str, str, str]] = []
     unresolved_paths: set[str] = set()
     for url_path in sorted(wanted):
         page_rel, ref = wanted[url_path][0]
-        # Refs whose every referrer is a source-mirror page are CODE, not links. The mirror
-        # renders Kotlin and Python sources, and a source that builds HTML in a string literal
-        # (`"""<a href="../$src">"""`) is emitted live rather than escaped, so the browser — and
-        # this extractor — sees a real anchor built out of an unexpanded `$src` or a stray
-        # `quote=True)`. Those cannot be "fixed" as references because they are not references;
-        # the fix belongs in generate_source_pages' escaping. Named and counted rather than
-        # dropped, and only when NO authored page shares the target, so a real broken link that
-        # merely also appears in the mirror still gates.
-        all_referrers_are_mirror = all(
-            rel.startswith(SOURCE_MIRROR_PREFIX) for rel, _ in wanted[url_path]
-        )
+        # There used to be a `mirror_code` category here, for refs whose every referrer was a
+        # `reference/source/**` page. It existed because the extractor read displayed code as
+        # markup; masking `<pre>`/`<code>` above removes the cause, so the category is gone. It
+        # was also a weaker rule than the mask: it let a bogus ref through whenever every
+        # referrer happened to be a mirror page, whether or not the ref was inside a fence.
         # `prefix.rstrip("/")` is the site root itself. The theme links back to it as `./..`
         # from every page (463 of them), which normalises to `/Field4` with no trailing slash —
         # inside the site, not an escape. Only treating it as such stops the guard reporting
@@ -337,8 +388,6 @@ def main() -> int:
         unresolved_paths.add(url_path)
         if url_path in KNOWN_UNRESOLVED:
             known.append((url_path, page_rel, ref))
-        elif source_mirror_built and all_referrers_are_mirror:
-            mirror_code.append((url_path, page_rel, ref))
         elif not inside:
             escapes.append((url_path, page_rel, ref))
         elif not source_mirror_built and url_path[len(prefix):].startswith(SOURCE_MIRROR_PREFIX):
@@ -351,6 +400,15 @@ def main() -> int:
         f"({site_url.strip()}): {total_refs} local reference(s) extracted from rendered HTML, "
         f"{len(wanted)} distinct target(s); {skipped_external} external/in-page ref(s) skipped"
     )
+    # The population is meaningless without the build flag that produced it, because the source
+    # mirror is by far the largest page family and is the only one generated per build. Measured
+    # on 2026-09-17 in one tree, the same site two ways: a default build checks 613 of 745 *.html
+    # (455 of them the mirror), and `--no-source-pages` checks 158 of 290. Quoting either number
+    # on its own says nothing. The flag is not observable from here, so the mirror's presence and
+    # page count are printed instead — that is the fact the flag decides.
+    mirror_pages = sum(
+        1 for p in pages if p.relative_to(site_dir).as_posix().startswith(SOURCE_MIRROR_PREFIX)
+    )
     print(
         f"  population: {len(pages)} of {len(all_html)} *.html in {site_dir.name}/"
         + (
@@ -359,6 +417,22 @@ def main() -> int:
             else f"; {len(copied)} skipped as copied/vendored under assets/ "
                  f"(--include-copied-assets to check them too)"
         )
+    )
+    print(
+        f"  build shape: source mirror "
+        + (
+            f"PRESENT — {mirror_pages} of the {len(pages)} checked page(s) are "
+            f"{SOURCE_MIRROR_PREFIX}**; a --no-source-pages build omits them and is a different, "
+            f"much smaller population"
+            if source_mirror_built
+            else f"ABSENT (--no-source-pages, or no compiled Kotlin tree) — {SOURCE_MIRROR_PREFIX}** "
+                 f"is the largest page family and is not checked by this run"
+        )
+    )
+    print(
+        f"  displayed code masked: {masked_refs + masked_skipped} attribute match(es) inside "
+        f"<pre>/<code> ({masked_skipped} external or in-page, {masked_refs} local), of which "
+        f"{len(masked_would_resolve)} would have resolved to a real file"
     )
     if args.summary:
         print(f"  of the {total_refs} local refs, {absolute_refs} are site-absolute "
@@ -407,20 +481,19 @@ def main() -> int:
             f"--no-source-pages to check these."
         )
 
-    if mirror_code:
-        print(f"\nNOTE — {len(mirror_code)} reference(s) exist only on source-mirror pages and are "
-              f"rendered code, not links:\n")
-        for url_path, page_rel, ref in mirror_code[: args.max_report]:
+    if masked_would_resolve:
+        print(f"\nFAIL — {len(masked_would_resolve)} reference(s) inside <pre>/<code> resolve to a "
+              f"real file in the site:\n")
+        for url_path, page_rel, ref in masked_would_resolve[: args.max_report]:
             print(f"  {url_path}  (as {ref} on {page_rel})")
-        if len(mirror_code) > args.max_report:
-            print(f"  … and {len(mirror_code) - args.max_report} more")
+        if len(masked_would_resolve) > args.max_report:
+            print(f"  … and {len(masked_would_resolve) - args.max_report} more")
         print(
-            f"\n{SOURCE_MIRROR_PREFIX}** renders Kotlin and Python sources. A source that builds\n"
-            "HTML in a string literal is emitted live rather than escaped, so an unexpanded\n"
-            "`$src` or a stray `quote=True)` reaches the browser as a real anchor. These are not\n"
-            "references and cannot be fixed as such — the fix is escaping in\n"
-            "build_zensical_docs.py:generate_source_pages. Not gating, and only counted here when\n"
-            "no authored page shares the target."
+            "\nThe code mask is meant to hide displayed source, and displayed source does not\n"
+            "name real files in this site — measured 0 of 51 on the full build of 2026-09-17.\n"
+            "A hit here means either the theme now emits real markup inside a code element, or\n"
+            "CODE_REGION is matching more than it should. Either way the mask is now hiding\n"
+            "references this guard exists to check, so it fails rather than shrinking in silence."
         )
 
     if known:
@@ -447,14 +520,15 @@ def main() -> int:
         print("\nThe reference now resolves (or is gone). Delete the entry — an exception that "
               "outlives\nits cause is how a grandfathered list becomes a policy.")
 
-    if escapes or missing or stale:
+    if escapes or missing or stale or masked_would_resolve:
         return 1
     resolved = len(wanted) - len(unresolved_paths)
     print(f"OK — {resolved} of {len(wanted)} distinct local reference(s) across {len(pages)} built "
-          f"page(s) resolve inside {prefix!r}"
-          + (f"; {len(known)} known gap(s), {len(mirror_code)} source-mirror code ref(s) and "
+          f"page(s) resolve inside {prefix!r}, source mirror "
+          + ("present" if source_mirror_built else "absent")
+          + (f"; {len(known)} known gap(s) and "
              f"{len(source_mirror_absent)} un-generated source-mirror target(s) above, not gating."
-             if known or source_mirror_absent or mirror_code else "."))
+             if known or source_mirror_absent else "."))
     return 0
 
 

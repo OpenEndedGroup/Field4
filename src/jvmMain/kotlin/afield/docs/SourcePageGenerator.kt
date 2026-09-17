@@ -462,7 +462,10 @@ object SourcePageGenerator {
                     signature,
                     endsWithCall = whole == null && endsWithCall(partition, span),
                 )
-                out.appendLine("$heading $highlighted { #L${span.declarationLine} $SEARCH_EXCLUDE }")
+                out.appendLine(
+                    "$heading ${attrListSafe(highlighted)} " +
+                        "{ #L${span.declarationLine} $SEARCH_EXCLUDE }"
+                )
                 out.appendLine()
                 headings += span.declarationLine
                 doc?.let {
@@ -822,6 +825,33 @@ object SourcePageGenerator {
         return if (html.endsWith(tail)) html.removeSuffix(tail) + "</code>" else html
     }
 
+    /**
+     * [text] with its braces entity-escaped, so `attr_list` cannot mistake them for an attribute
+     * block.
+     *
+     * A heading here ends with its own anchor — `### <code…>…</code> { #L68 data-search-exclude=… }`
+     * — and Python-Markdown's `attr_list` finds that block with
+     * `[ ]+\{\:?[ ]*([^\}\n]*)[ ]*\}[ ]*$`, searched **leftmost**. A *balanced* brace pair earlier in
+     * the heading's own text therefore swallows the search and the real block is left as literal
+     * text, slugified into the id. Measured on python-markdown 3.10.2: `### a { b } c { #L1 }`
+     * renders `<h3>a { b } c { #L1 }</h3>` — no id at all — while `### a }}) b { #L1 }` and
+     * `### a } b { #L1 }` are both fine. So it takes an opening brace *and* a later closing one.
+     *
+     * That happened exactly once in this corpus, and the way it failed is the point: the page still
+     * rendered, the heading still read correctly, and only the anchor was gone — so
+     * `imaging_filters.kt:68` (`override fun toString(): String = "Kernel1D(${'$'}{taps.joinToString(", ")
+     * { "%.4f".format(it) }})"`, whose body carries a balanced `{ … }`) was listed in `anchors.json`
+     * and absent from the page, and a citation link on `reference/imaging` pointed at `#L68` and
+     * landed at the top of the page. One broken fragment out of 37757 on the built site, and no
+     * guard in the tree could see it, because the reference resolved: the *page* is at 200.
+     *
+     * Escaping rather than stripping, because the brace is real Kotlin and must still be shown; and
+     * at the heading only, because a brace in a fence or a table cell is harmless. `&#123;` and
+     * `&#125;` render identically in the browser.
+     */
+    internal fun attrListSafe(text: String): String =
+        text.replace("{", "&#123;").replace("}", "&#125;")
+
     /** A comment span as markdown prose: markers stripped, headings demoted, fences given the site's treatment. */
     private fun prose(
         partition: KotlinSourcePartition.Partition,
@@ -1025,8 +1055,42 @@ object SourcePageGenerator {
         if (covered == 0 && source.size > 5) {
             failures += "${page.path}: no fences at all, for a ${source.size}-line file"
         }
+
+        // Every line this page claims in `anchors.json` must actually become an anchor, and the only
+        // thing that stops one is a brace in the heading's own text confusing `attr_list` — see
+        // [attrListSafe]. Checked here rather than against the rendered HTML because this generator
+        // runs before the site is built, and because the invariant is exact: after escaping, the
+        // trailing attribute block is the ONLY brace pair a heading line may carry. It failed once,
+        // silently, and the page still looked perfect.
+        val anchored = mutableSetOf<Int>()
+        page.markdown.split("\n").forEach { line ->
+            val match = ANCHOR_HEADING.matchEntire(line) ?: return@forEach
+            val at = match.groups["line"]!!.value.toInt()
+            anchored += at
+            val body = match.groups["body"]!!.value
+            if ('{' in body || '}' in body) {
+                failures += "${page.path}: the heading for line $at carries a literal brace in " +
+                    "its own text. A BALANCED pair earlier in the line makes attr_list miss the " +
+                    "trailing `{ #L… }` block, and the heading publishes with no anchor at all — " +
+                    "so no brace is let through, rather than modelling attr_list's leftmost " +
+                    "search. Escape it in attrListSafe: `${body.trim().take(70)}`"
+            }
+        }
+        val claimed = page.declarationLines.toSet()
+        (claimed - anchored).sorted().forEach {
+            failures += "${page.path}: anchors.json will claim line $it but the page emits no " +
+                "`{ #L$it }` heading — a citation to it would land at the top of the page"
+        }
+        (anchored - claimed).sorted().forEach {
+            failures += "${page.path}: the page emits a `{ #L$it }` heading that anchors.json does " +
+                "not claim — the citation linker will never send anyone to it"
+        }
         return failures
     }
+
+    /** A heading line ending in its own `{ #L… }` anchor block: everything before it, and the line. */
+    private val ANCHOR_HEADING =
+        Regex("""#{1,6} (?<body>.*?) \{ #L(?<line>\d+)[^{}]*\}""")
 
     /** Every fence in [markdown], dedented, with the line number it declares. */
     private fun fencesIn(markdown: String): List<Fence> {

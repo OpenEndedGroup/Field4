@@ -35,7 +35,7 @@ that binds `module.program = stackSL`). It is one Field document; you can browse
 and live-edit the boxes below. Edit a `.stacksl` file and regenerate.
 
 <iframe
-  src="/offline.html?file=/field4/assets/stacksl_gallery/metadata.edn"
+  src="offline.html?file=assets/stacksl_gallery/metadata.edn"
   title="StackSL gallery workspace"
   style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
   loading="lazy"

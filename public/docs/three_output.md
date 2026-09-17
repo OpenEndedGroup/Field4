@@ -428,7 +428,7 @@ the gyroid, change `facts = true` to `false`, or set the grid's `columns` to `4`
 context re-tile itself.
 
 <iframe
-    src="/offline.html?file=/field4/assets/three_output_gallery/metadata.edn"
+    src="offline.html?file=assets/three_output_gallery/metadata.edn"
     title="Field's 3D Output — offline viewer"
     style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"
