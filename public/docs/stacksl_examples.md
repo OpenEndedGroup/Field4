@@ -1116,6 +1116,14 @@ values are written back at the token positions the compiler recorded, so the res
 can paste into a `stackSL` box and run on a GPU. Recompiled from scratch through the ordinary
 non-wired path, it renders bit-identically to the fitted parameter vector.
 
+**What that figure is, exactly.** It is a *recovery* experiment on **one program and seventeen
+wires**: the target was made by the same program with twelve of its numbers changed, so a correct
+answer exists and the descent can be scored against it. That is the right first experiment, because
+it separates "the gradient is wrong" from "the objective is wrong" — but it is not a claim about
+arbitrary images. What is verified broadly is the **gradient**, against central differences over
+nine programs and forty-six wires. Fitting a photograph, or any target no StackSL program generated,
+is unattempted here, and the paragraphs below are most of the reason why.
+
 Three things to know before fitting anything.
 
 **A `threshold` is a wall.** It lowers to a hard `step`, which carries exactly zero derivative, so

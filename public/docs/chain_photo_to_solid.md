@@ -14,6 +14,16 @@ that already ships in the repository, and the same one the [ONNX page](onnx.md) 
 is involved anywhere, and no network: the 99MB of weights are cached under `~/.afield/onnx/models`
 after the first run.
 
+One thing to know about that frame, because it is visible in the first figure and in everything
+downstream of it: **it is a passthrough frame with Field's own interface composited into it** — a
+panel, some buttons, a blue triangle and an orange curve, all drawn by the headset over the room.
+Depth Anything has no way to know which of those are surfaces, and the large dark rectangle in the
+middle of the depth map sits exactly where the semi-transparent panel is, so at least some of that
+"distance" is the overlay rather than the wall behind it. The route does not care — every oracle on
+this page is a statement about closure, genus, component counts and volume, none of which asks
+whether the depth is *true*. But the relief you see is the relief of a room with a user interface
+floating in it, and a clean photograph would give a different plaque.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/depth.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="input forced to a multiple of 14" embed=true force=true timeout="300" w="1120" h="380" padding="18" name="chain-photo-depth" alt="Two panels: a photograph of a pale living room with framed prints, a television on a grey wall and a wooden floor, beside its depth map in the inferno colormap, where the television wall is almost black and the near floor along the bottom edge is a bright orange-yellow band" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_depth"}
 // Built and launched from dev_docs/agents/transcripts/photo_to_solid_chain.yaml.
 ```

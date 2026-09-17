@@ -310,9 +310,21 @@ def main() -> int:
     missing: list[tuple[str, str, str]] = []
     known: list[tuple[str, str, str]] = []
     source_mirror_absent: list[str] = []
+    mirror_code: list[tuple[str, str, str]] = []
     unresolved_paths: set[str] = set()
     for url_path in sorted(wanted):
         page_rel, ref = wanted[url_path][0]
+        # Refs whose every referrer is a source-mirror page are CODE, not links. The mirror
+        # renders Kotlin and Python sources, and a source that builds HTML in a string literal
+        # (`"""<a href="../$src">"""`) is emitted live rather than escaped, so the browser — and
+        # this extractor — sees a real anchor built out of an unexpanded `$src` or a stray
+        # `quote=True)`. Those cannot be "fixed" as references because they are not references;
+        # the fix belongs in generate_source_pages' escaping. Named and counted rather than
+        # dropped, and only when NO authored page shares the target, so a real broken link that
+        # merely also appears in the mirror still gates.
+        all_referrers_are_mirror = all(
+            rel.startswith(SOURCE_MIRROR_PREFIX) for rel, _ in wanted[url_path]
+        )
         # `prefix.rstrip("/")` is the site root itself. The theme links back to it as `./..`
         # from every page (463 of them), which normalises to `/Field4` with no trailing slash —
         # inside the site, not an escape. Only treating it as such stops the guard reporting
@@ -325,6 +337,8 @@ def main() -> int:
         unresolved_paths.add(url_path)
         if url_path in KNOWN_UNRESOLVED:
             known.append((url_path, page_rel, ref))
+        elif source_mirror_built and all_referrers_are_mirror:
+            mirror_code.append((url_path, page_rel, ref))
         elif not inside:
             escapes.append((url_path, page_rel, ref))
         elif not source_mirror_built and url_path[len(prefix):].startswith(SOURCE_MIRROR_PREFIX):
@@ -393,6 +407,22 @@ def main() -> int:
             f"--no-source-pages to check these."
         )
 
+    if mirror_code:
+        print(f"\nNOTE — {len(mirror_code)} reference(s) exist only on source-mirror pages and are "
+              f"rendered code, not links:\n")
+        for url_path, page_rel, ref in mirror_code[: args.max_report]:
+            print(f"  {url_path}  (as {ref} on {page_rel})")
+        if len(mirror_code) > args.max_report:
+            print(f"  … and {len(mirror_code) - args.max_report} more")
+        print(
+            f"\n{SOURCE_MIRROR_PREFIX}** renders Kotlin and Python sources. A source that builds\n"
+            "HTML in a string literal is emitted live rather than escaped, so an unexpanded\n"
+            "`$src` or a stray `quote=True)` reaches the browser as a real anchor. These are not\n"
+            "references and cannot be fixed as such — the fix is escaping in\n"
+            "build_zensical_docs.py:generate_source_pages. Not gating, and only counted here when\n"
+            "no authored page shares the target."
+        )
+
     if known:
         print(f"\nKNOWN GAP — {len(known)} reference(s) were already broken under the prefix "
               f"and are grandfathered:\n")
@@ -422,8 +452,9 @@ def main() -> int:
     resolved = len(wanted) - len(unresolved_paths)
     print(f"OK — {resolved} of {len(wanted)} distinct local reference(s) across {len(pages)} built "
           f"page(s) resolve inside {prefix!r}"
-          + (f"; {len(known)} known gap(s) and {len(source_mirror_absent)} un-generated "
-             f"source-mirror target(s) above, not gating." if known or source_mirror_absent else "."))
+          + (f"; {len(known)} known gap(s), {len(mirror_code)} source-mirror code ref(s) and "
+             f"{len(source_mirror_absent)} un-generated source-mirror target(s) above, not gating."
+             if known or source_mirror_absent or mirror_code else "."))
     return 0
 
 

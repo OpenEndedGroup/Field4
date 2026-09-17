@@ -41,6 +41,9 @@ class StackSLCpuFloatPathManifestTest {
     fun `every gallery program renders to the committed float bits`() {
         val entries = StackSLCpuGallery.load(root)
         assertTrue(entries.size >= POPULATION, "gallery shrank: ${entries.size} entries, expected >= $POPULATION")
+        // `>=` above catches a gallery that shrank; on its own it lets one GROW past the manifest,
+        // which would leave a new program unfenced and say nothing. The set-equality assertion
+        // below is the other half, so an addition fails by name and has to be fenced deliberately.
 
         val measured = entries.associate { entry ->
             entry.name to sha256(StackSLCpuGallery.render(entry, DIM).rgba)
@@ -75,6 +78,18 @@ class StackSLCpuFloatPathManifestTest {
         )
         val missing = expected.keys - measured.keys
         assertTrue(missing.isEmpty(), "gallery no longer has: $missing")
+        val unfenced = measured.keys - expected.keys
+        assertTrue(
+            unfenced.isEmpty(),
+            "the gallery gained ${unfenced.size} program(s) the manifest does not fence: " +
+                unfenced.sorted().joinToString(", ") + " — an unfenced program is one whose float " +
+                "bits nothing pins, so re-fence with -Dafield.stacksl.manifest.write=true and say " +
+                "in the commit message that the population grew"
+        )
+        assertEquals(
+            expected.keys.toSortedSet(), measured.keys.toSortedSet(),
+            "manifest and gallery must be the same set, not merely overlapping"
+        )
     }
 
     private fun sha256(values: FloatArray): String {
