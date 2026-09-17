@@ -20,7 +20,7 @@ import kotlin.math.abs
  * constraints and force generators pull on; it spends the end of every frame being a rigid body
  * as well.
  *
- * #### The frame, and what it leaves out
+ * #### The frame, and the SimdVerlet features it drops
  *
  * [step] does not call [SimdVerlet.step]. It runs its own copy of that frame, because it has to
  * decide per particle whether gravity applies. In order: queued removals, zero the accumulators,

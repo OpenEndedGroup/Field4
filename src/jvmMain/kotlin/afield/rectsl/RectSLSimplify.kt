@@ -27,7 +27,7 @@ import kotlin.math.abs
  * the cost of both a sample and a gradient — `Fn.eval` walks every node, and `gradientAt` records
  * every node on a tape. A fit runs that thousands of times.
  *
- * # The contract: every rule is bit-exact, and that is a real constraint
+ * # The contract: every rule is bit-exact
  *
  * A simplified track must sample **bit-identically** to the original, not merely equal-to-tolerance,
  * which rules out several rewrites everyone writes by reflex. The gallery corpus caught the first

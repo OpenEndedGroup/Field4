@@ -1043,7 +1043,7 @@ dyn4j, and copies the bodies back. A nominated particle is still a Verlet partic
 constraints and force generators pull on; it spends the end of every frame being a rigid body
 as well.
 
-### The frame, and what it leaves out
+### The frame, and the SimdVerlet features it drops
 
 `step` does not call `SimdVerlet.step`. It runs its own copy of that frame, because it has to
 decide per particle whether gravity applies. In order: queued removals, zero the accumulators,
@@ -1347,7 +1347,7 @@ simulation that may already contain others, chains them through a
     rope.pin(0)
     while (true) { rope.step(gravity = 9.8f, iterations = 16); draw(rope.lines()) }
 
-### Two slots, and what the other two are for
+### Why every node has two spare slots
 
 A chain node spends slot 0 on its successor and slot 1 on its predecessor; the ends use one
 each. That leaves **slots 2 and 3 free on every node of every rope**, which is what
@@ -1958,7 +1958,7 @@ moving the geometric axis reclassifies the same background grid rather than reme
 the full run and the smoke assert that the grid is built exactly once across a whole sweep, so a
 sweep over a shape costs what a sweep over a coefficient costs.
 
-The objective is one whose answer can be checked rather than admired. Stationary conduction is
+The objective is one whose right answer is known in advance. Stationary conduction is
 linear in the source and inverse in the conductivity, so the designs that put a target
 temperature at a chosen point form a curve with a closed form, and
 `KratosStudyDemo.verifyValley` holds every column of the sampled grid against it.

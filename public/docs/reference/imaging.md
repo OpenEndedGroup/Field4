@@ -336,7 +336,7 @@ Everything here is per-channel: a 3-channel image blurs each of R, G, B independ
 that only make sense on a scalar field (`sobel`, `laplacian`, …) take the `Img.luma` of a colour
 input automatically rather than erroring, because that is what you meant.
 
-Two performance-relevant choices worth knowing about:
+Two performance-relevant choices:
 
 - **Separable when possible.** Gaussian and box blurs run as two 1-D passes (`O(k)` per pixel,
   not `O(k²)`). `convolveSeparable` is public so your own separable kernels get the same
@@ -612,7 +612,7 @@ read-modify-writes. For the sigma-2 Gaussian used in the benchmark (`radius 8`, 
 the inner loop of everything here. `axpy` survives only for the handful of border rows where each
 tap resolves to a *different*, border-dependent source row and there is no single offset to fold.
 
-### On unrolling, which is not optional
+### Why the main loop keeps four accumulators
 
 `stencil` is a chain of `k` dependent FMAs into one accumulator. On Apple silicon an FMA has ~4
 cycles of latency and can issue ~4 per cycle, so a single-accumulator 17-tap chain runs at

@@ -53,10 +53,10 @@ import kotlin.math.abs
  *
  * The one unavoidable difference is precision: the CPU samples in `double` and
  * a shader runs in `float`. Expect agreement to about 1e-6 of a wall unit, not
- * to the ulp — which is now measured rather than assumed:
- * `RectSLGalleryHarness.measureSdfAgreement` reads the *compiled shader's* own
- * answers back out of a framebuffer and compares them against [SceneProgram.sample]
- * across eleven programs, and the worst disagreement is 2.5e-06 wall units.
+ * to the ulp. `RectSLGalleryHarness.measureSdfAgreement` reads the *compiled
+ * shader's* own answers back out of a framebuffer and compares them against
+ * [SceneProgram.sample] across eleven programs, and the worst disagreement is
+ * 2.5e-06 wall units.
  *
  * What *is* approximated is now two tracks, not three. `->degrade`'s 64-bit
  * integer hash reads like something a shader cannot do and is not: it lowers

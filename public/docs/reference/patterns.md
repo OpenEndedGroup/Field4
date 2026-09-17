@@ -1091,7 +1091,7 @@ Every rectangle is a **scheduled event**. Each lane queries its pattern over the
 through `PatPattern.events(...)`, and nothing is hand-placed; the only parts chosen by hand are
 the colours and the mapping from cycle time to pixels.
 
-### Lanes, and how a roll is read
+### How a roll is read
 
 A roll is a stack of horizontal lanes drawn at one shared time scale, so reading down a column
 compares the same instant across all of them. Most rolls are built as a source lane with its
@@ -1504,7 +1504,7 @@ between notes; and because the placement is held on the source rather than the n
 pattern's next event on that `spat` group moves the whole group. The tags do not decorate the
 sound, they aim it.
 
-### Why one Dough engine per source, and what it costs the pattern
+### Why one Dough engine per source
 
 Steam Audio spatialises a **mono** signal -- a direction is a property of a whole buffer.
 [`DoughEngine`](synthesis.md#dough-kt-doughengine) mixes its 32 voices to stereo and `MAX_ORBITS` is 1, so there is no way to pull two
@@ -1809,7 +1809,7 @@ being 400 ms early is the same sound as being exactly on time. The audio thread'
 an integer comparison. [`FaustPatternFeeder`](synthesis.md#faustpattern-kt-faustpatternfeeder) splits the work the same way for a Faust voice bank,
 and the two are deliberate siblings.
 
-### The voice, and why the `.wav` is the same thing you hear
+### One voice, and the `.wav` that records it
 
 One oscillator, one exponential-decay envelope, one one-pole lowpass, reading the same `gain`,
 `pan`, `cutoff`, `sustain`, `note` and `speed` annotations off each event and using the same

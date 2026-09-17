@@ -78,7 +78,7 @@ import kotlin.math.sqrt
  * pattern's next event on that `spat` group moves the whole group. The tags do not decorate the
  * sound, they aim it.
  *
- * # Why one Dough engine per source, and what it costs the pattern
+ * # Why one Dough engine per source
  *
  * Steam Audio spatialises a **mono** signal -- a direction is a property of a whole buffer.
  * [DoughEngine] mixes its 32 voices to stereo and `MAX_ORBITS` is 1, so there is no way to pull two
