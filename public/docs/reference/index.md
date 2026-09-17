@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14131 public symbols across 360 source files**, 8028 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14151 public symbols across 360 source files**, 8047 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -13,7 +13,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 334 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 31 | 1444 | 1209 (83%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 27 | 575 | 232 (40%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 27 | 595 | 251 (42%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 27 | 821 | 418 (50%) | Making a shape behave. |
@@ -119,10 +119,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FabricateFrameGraph.kt](renderers.md#fabricateframegraph-kt) | Renderers | 12 | 1 | The renderer's off-screen passes as a named, ordered list, and the one place that order is written into a `RenderTarget`. |  |
 | [FabricateGltfBridge.kt](renderers.md#fabricategltfbridge-kt) | Renderers | 4 | 1 |  |  |
 | [FabricateMaterialLibrary.kt](renderers.md#fabricatemateriallibrary-kt) | Renderers | 17 | 2 | The flattened per-material record a render queue carries, and the table that hands out its ids. |  |
-| [FabricatePassChain.kt](renderers.md#fabricatepasschain-kt) | Renderers | 66 | 36 | The vocabulary for declaring a chain of post passes that are not all the same shape, and the pure planner that resolves one. |  |
-| [FabricatePassChainBuilder.kt](renderers.md#fabricatepasschainbuilder-kt) | Renderers | 16 | 12 | Materializes a planned pass chain onto the GPU, through the post stack that already exists. |  |
+| [FabricatePassChain.kt](renderers.md#fabricatepasschain-kt) | Renderers | 73 | 42 | The vocabulary for declaring a chain of post passes that are not all the same shape, and the pure planner that resolves one. |  |
+| [FabricatePassChainBuilder.kt](renderers.md#fabricatepasschainbuilder-kt) | Renderers | 20 | 16 | Materializes a planned pass chain onto the GPU, through the post stack that already exists. |  |
 | [FabricatePassGraph.kt](renderers.md#fabricatepassgraph-kt) | Renderers | 13 | 1 | The ordered, name-keyed map both of this package's pass collections are built on. |  |
-| [FabricatePassLibrary.kt](renderers.md#fabricatepasslibrary-kt) | Renderers | 30 | 30 | Worked multi-resolution passes, as lists of `FabricatePassSpec` ready to hand to a chain. |  |
+| [FabricatePassLibrary.kt](renderers.md#fabricatepasslibrary-kt) | Renderers | 39 | 39 | Worked multi-resolution passes, as lists of `FabricatePassSpec` ready to hand to a chain. |  |
 | [FabricatePostEffects.kt](renderers.md#fabricateposteffects-kt) | Renderers | 4 | 3 | High-level post-processing helpers for `StandardRenderer.Bundle`, layered on top of the ordered `FabricatePostStack`. | [Fabricate Renderer](../fabricate_renderer.md) |
 | [FabricatePostStack.kt](renderers.md#fabricatepoststack-kt) | Renderers | 17 | 3 | The ordered post-processing stack a Fabricate pass lands in, and the record describing one pass. |  |
 | [FabricateRenderPlan.kt](renderers.md#fabricaterenderplan-kt) | Renderers | 21 | 2 | Render queue data structures and the `FabricateScenePlanner` that builds them from a `FabricateScene`. | [Fabricate Renderer](../fabricate_renderer.md) |
