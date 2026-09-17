@@ -1,0 +1,140 @@
+operations:
+  - create:
+      box: rp_renderer
+      name: frame history renderer
+      frame: {x: 40.0, y: 40.0, w: 320.0, h: 100.0}
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · frame history reprojection")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+
+  - create:
+      box: rp_bundle
+      name: lit scene
+      frame: {x: 400.0, y: 40.0, w: 320.0, h: 100.0}
+      properties:
+        code: |
+          // `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
+          // argument is written out in full on purpose: `prop<>` rewrites the box's code and the
+          // rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
+          // under an `import ...StandardRenderer` fails against the *import* line.
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.applyScenePlan
+          import afield.stdlib.linalg.Matrix4f
+          import afield.stdlib.linalg.Vector3f
+
+          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+
+          // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
+          // so re-running it would strand the bundle the chain is appended to.
+          once.bundle {
+              val b = StandardRenderer.build(
+                  renderer,
+                  StandardRenderer.Config(
+                      renderWidth = 1024,
+                      renderHeight = 1024,
+                      backgroundColor = Vector3f(0.05f, 0.06f, 0.08f)
+                  )
+              )
+              b.scene.camera.at.set(0f, 1.4f, -4.2f)
+              b.scene.camera.target.set(0f, 0f, 0f)
+              b.scene.lightIntensity = 3.4f
+              b.scene.aoStrength = 0.8f
+              // The standard stack's own motion blur off: it is a second, different temporal effect
+              // and it would sit upstream of everything the chain below is showing you.
+              b.scene.motionBlurStrength = 0f
+              // Silhouette edges, so there is something for a reprojection to be right or wrong about.
+              for (ix in -2..2) for (iz in -2..2) {
+                  b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
+                      .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f))
+              }
+              b.applyScenePlan()
+              b.present(renderer = renderer)
+              b.attachTo(renderer)
+              b
+          }
+          println("bundle ready: " + bundle.postStack.names())
+
+  - create:
+      box: rp_chain
+      name: reprojected accumulation
+      frame: {x: 760.0, y: 40.0, w: 320.0, h: 100.0}
+      properties:
+        code: |
+          import afield.four.fabricated.FabricatePassChain
+          import afield.four.fabricated.FabricatePassLibrary
+          import afield.four.fabricated.addPassChain
+
+          prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+
+          // `persistent` says WHAT last frame's pixels were. `frameHistory` says WHERE they were.
+          // `temporalAccumulate` declares both, and that composition is the whole point: without the
+          // second it accumulates correctly while the camera is still and smears the moment it moves.
+          //
+          // `resolution` must equal the chain input's size, or the reprojected UV addresses the right
+          // fraction of the wrong picture.
+          chain = bundle.addPassChain(
+              FabricatePassLibrary.temporalAccumulate(
+                  name = "taa",
+                  source = FabricatePassChain.CHAIN_INPUT,
+                  blend = 0.92f,
+                  resolution = 1024 to 1024
+              ) + FabricatePassLibrary.temporalDebug(
+                  name = "display",
+                  source = "taa",
+                  mode = 0
+              ),
+              printReport = true
+          )
+          bundle.attachTo(renderer)
+          bundle.present(renderer = renderer)
+
+          // The camera turns, so reprojection has something to do. A pure yaw about the camera's own
+          // position: `reprojection` is then P*R*inverse(P), which maps a ray to a ray whatever its
+          // depth, so the assumed NDC depth costs nothing here.
+          frames {
+              while (true) {
+                  bundle.scene.camera.yaw(0.004, aroundTarget = false)
+                  frame()
+              }
+          }
+
+  - create:
+      box: rp_modes
+      name: the four debug modes
+      frame: {x: 1120.0, y: 40.0, w: 320.0, h: 100.0}
+      properties:
+        code: |
+          // The debug view is not garnish. A reprojection with a sign error in y renders an image a
+          // person will call fine, and a temporal pass built on it looks BETTER than the correct one
+          // on a still frame. These four modes are how you see which you have.
+          //
+          //   0 beauty          the accumulated image. The baseline to flip against.
+          //   1 backward motion where each pixel came FROM. Flat grey is zero motion.
+          //   2 previous UV     the reprojected coordinate itself, as a corner-to-corner ramp. The
+          //                     only mode that shows a CONSTANT offset - inside a difference an
+          //                     offset is invisible, inside an absolute coordinate it is a colour shift.
+          //   3 availability    green where history is usable, red where it is not. Watch the red
+          //                     band on the trailing edge: those pixels were off screen last frame.
+          val names = listOf("beauty", "backward motion", "previous UV", "availability")
+          frames {
+              while (true) {
+                  for (m in 0..3) {
+                      chain.setPush("display", "mode", m)
+                      println("mode " + m + " - " + names[m])
+                      repeat(150) { frame() }
+                  }
+              }
+          }
+
+  - connect: {parent: rp_renderer, child: rp_bundle}
+  - connect: {parent: rp_bundle, child: rp_chain}
+  - connect: {parent: rp_chain, child: rp_modes}
