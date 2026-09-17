@@ -32,10 +32,14 @@ import kotlin.math.tanh
  *
  * Whether it *helps* is a separate question, and the measured answer is **no**: a fixed `t = 0.25`
  * recovers marginally better than a `0.25 → 0.01` schedule on every continuous case in
- * `dev_docs/STACKSL_SURROGATE.md`'s corpus, and cooling to `0.016` loses a nested predicate
- * outright. [AdAnnealing] stays because a fixed temperature is one of its cases and because
- * convergence to the exact gradient is worth having near the end of a fit — not because cooling was
- * shown to buy anything.
+ * `dev_docs/STACKSL_SURROGATE.md`'s corpus. [AdAnnealing] stays because a fixed temperature is one
+ * of its cases and because convergence to the exact gradient is worth having near the end of a fit
+ * — not because cooling was shown to buy anything.
+ *
+ * Cooling to `0.016` used to lose a nested predicate outright, and that is where the page's
+ * temperature floor came from. It was not the kernel's doing: `select` lowers to a `step` inside a
+ * `step` and the outer one was being charged its own `K_t(0.5)`. `GlslAdScalars`' mask tracking
+ * passes that partial through instead, and every arm of the schedule sweep now recovers.
  *
  * #### Straight-through: the primal does not move, by construction
  *
@@ -177,6 +181,14 @@ enum class AdSurrogateFamily {
      * `threshold` is `step(edge, value)`, `step` is itself, and `select`/`if` is
      * `mix(f, t, step(0.5, abs(cond)))` — so a soft `step` is also what lets a gradient reach a
      * `select`'s condition.
+     *
+     * That last lowering puts a `step` *inside* a `step`, and the outer one is **not** a second
+     * jump: `cond` is a 0/1 mask in the common case, and `step(0.5, abs(·))` restricted to {0, 1}
+     * is the identity. `GlslAdScalars`'s mask tracking recognises that and passes the partial
+     * through, so the chain carries the inner jump's kernel once instead of multiplying it by
+     * `K_t(0.5)` — which decayed like `exp(−1/2t)` and used to switch `select` off as a schedule
+     * cooled. `and` and `or` come along, since they reduce two masks with `min`/`max`. `not` does
+     * not: it is `1.0 − mask`, which the tracking deliberately does not follow.
      */
     STEP,
 

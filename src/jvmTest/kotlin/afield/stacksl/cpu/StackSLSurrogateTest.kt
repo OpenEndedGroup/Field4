@@ -440,6 +440,7 @@ class StackSLSurrogateTest {
         var ratioLow = Double.MAX_VALUE
         var ratioHigh = 0.0
         val nestedRatios = ArrayList<Double>()
+        val bareRatios = ArrayList<Double>()
 
         WALLED.forEach { case ->
             val wired = StackSLWires.lift(case.program)
@@ -464,14 +465,16 @@ class StackSLSurrogateTest {
                     else -> {
                         agreeing++
                         val ratio = abs(g / fd)
-                        // The nested-`step` case is held out of the range, and fenced separately
-                        // below: its collapse is structural rather than a scale drift.
-                        if (case.program == NESTED_STEP_PROGRAM) {
-                            nestedRatios += ratio
-                        } else {
-                            ratioLow = minOf(ratioLow, ratio)
-                            ratioHigh = maxOf(ratioHigh, ratio)
-                        }
+                        // The nested predicate is IN the range now. It used to be held out, because
+                        // its ratio collapsed by 1e11 across the sweep and would have swamped a
+                        // band that is about scale drift; since the mask pass-through landed it
+                        // sits inside the band like any other `step` case, and folding it in is the
+                        // statement that it is no longer exceptional.
+                        ratioLow = minOf(ratioLow, ratio)
+                        ratioHigh = maxOf(ratioHigh, ratio)
+                        // Kept side by side as well, for the nested-versus-bare fence below.
+                        if (case.program == NESTED_STEP_PROGRAM) nestedRatios += ratio
+                        if (case.program == BARE_STEP_PROGRAM) bareRatios += ratio
                     }
                 }
                 println(
@@ -488,18 +491,25 @@ class StackSLSurrogateTest {
                 "${TEMPERATURES.size} temperatures — point the same way as the t-scale central " +
                 "difference (${"%.1f".format(fraction * 100)}%). $signFlipped disagreed in sign, " +
                 "$oracleVanished had no oracle because the true loss is flat over that very window. " +
-                "Excluding the nested-step program, where both are non-zero the magnitude ratio spans " +
+                "Where both are non-zero the magnitude ratio spans " +
                 "${"%.3f".format(ratioLow)}..${"%.3f".format(ratioHigh)}: the surrogate UNDER-reports " +
                 "hot (the kernel carries only tanh(1/4t) of its jump) and OVER-reports cold."
         )
+        val nestedDrift = nestedRatios.zip(bareRatios).map { (nested, bare) ->
+            max(nested / bare, bare / nested)
+        }
         println(
-            "M3 nested-step collapse: '$NESTED_STEP_PROGRAM' ratios by temperature " +
-                nestedRatios.joinToString(", ") { "%.3e".format(it) } +
-                " — a fall of ${"%.2e".format(nestedRatios.first() / nestedRatios.last())}x across the " +
-                "sweep. `select` lowers to mix(f, t, step(0.5, abs(cond))) and `abs(cond)` is exactly " +
-                "0 or 1, so the OUTER step's argument sits at distance exactly 0.5 from its edge, " +
-                "forever. K_t(0.5) decays like exp(-1/2t), so annealing switches `select` back off. " +
-                "The practical rule: a nested predicate wants a temperature FLOOR near 0.1, not 0.01."
+            "M3 nested predicate: '$NESTED_STEP_PROGRAM' ratios by temperature " +
+                nestedRatios.joinToString(", ") { "%.3f".format(it) } +
+                " against the bare '$BARE_STEP_PROGRAM' at " +
+                bareRatios.joinToString(", ") { "%.3f".format(it) } +
+                " — the same shape of wire, a `uv`-ramp `threshold` edge, with and without a " +
+                "`select` in front of it, agreeing to within " +
+                "${"%.2f".format(nestedDrift.max())}x at the worst temperature. `select` lowers to " +
+                "mix(f, t, step(0.5, abs(cond))), and `step(0.5, abs(.))` restricted to a 0/1 mask " +
+                "is the IDENTITY, so GlslAdScalars passes its partial straight through instead of " +
+                "applying a second K_t(0.5). Before that landed this ratio fell 1.45e+11x across " +
+                "the sweep and the surrogate switched `select` off as the schedule cooled."
         )
         assertEquals(WALLED.size * TEMPERATURES.size, total, "not every (wire, temperature) pair was measured")
         assertTrue(
@@ -514,22 +524,43 @@ class StackSLSurrogateTest {
                 "the recorded $MIN_MAGNITUDE_RATIO..$MAX_MAGNITUDE_RATIO — the surrogate's scale has " +
                 "moved and the bias section of dev_docs/STACKSL_SURROGATE.md is stale"
         )
-        // The nested-`step` collapse, fenced as its own claim. `select` lowers to
-        // `mix(f, t, step(0.5, abs(cond)))`, and `abs(cond)` is exactly 0 or 1 because `cond` is
-        // itself a `step` output — so the outer jump is *always* at distance exactly 0.5 and
-        // `K_t(0.5) ~ exp(-1/2t)` drives the whole chain to nothing as the schedule cools. That is
-        // not a bug to fix; it is the reason a nested predicate needs a temperature floor. Asserted
-        // two-sided so that a `select` lowering which stops nesting is noticed rather than absorbed.
+        // The nested predicate, fenced as its own claim — and fenced against the RIGHT thing.
+        //
+        // `select` lowers to `mix(f, t, step(0.5, abs(cond)))`, so a `select` over a `threshold`
+        // puts a `step` inside a `step`. The outer one is not a second jump: `cond` is a 0/1 mask,
+        // and `step(0.5, abs(.))` restricted to {0, 1} is the identity, so its honest mollified
+        // partial is 1 and the chain carries the inner jump's kernel exactly once. `GlslAdScalars`'
+        // mask tracking is what makes that happen; before it, the outer jump sat at distance
+        // exactly 0.5 forever, `K_t(0.5) ~ exp(-1/2t)` multiplied the chain down to nothing, and
+        // this ratio fell 1.45e+11x across the sweep.
+        //
+        // So the sharp form of "one kernel, not two" is not a bound on the nested case alone — it
+        // is that the nested case tracks THE SAME SHAPE OF WIRE WITH ONE FEWER PREDICATE. Both
+        // programs recover a `threshold` edge on a `uv` ramp from a seed a third of the way off,
+        // against a target rendered by the same program; `select` only chooses two colours behind
+        // it. The seeds and truths differ (0.40 → 0.62 against 0.35 → 0.57), so this is a
+        // comparison of ratios rather than of gradients — which is the right granularity, since a
+        // ratio against each program's own oracle already divides the scale out.
+        //
+        // If the pass-through is ever lost, the cold end of the nested sweep drops by orders of
+        // magnitude while the bare one does not move, and this fence is what notices.
         assertEquals(
             TEMPERATURES.size, nestedRatios.size,
             "the nested-step case did not produce a ratio at every temperature: $nestedRatios"
         )
+        assertEquals(
+            TEMPERATURES.size, bareRatios.size,
+            "the bare-threshold comparison did not produce a ratio at every temperature: $bareRatios"
+        )
         assertTrue(
-            nestedRatios.first() / nestedRatios.last() >= MIN_NESTED_COLLAPSE,
-            "the nested-step surrogate ratio fell only " +
-                "${"%.2e".format(nestedRatios.first() / nestedRatios.last())}x across the sweep, under " +
-                "the recorded ${"%.0e".format(MIN_NESTED_COLLAPSE)} — then `select` no longer nests two " +
-                "`step`s and the temperature-floor rule in dev_docs/STACKSL_SURROGATE.md is obsolete"
+            nestedDrift.max() <= MAX_NESTED_DRIFT,
+            "the nested predicate's surrogate/oracle ratio now differs from a bare `threshold`'s by " +
+                "${"%.2f".format(nestedDrift.max())}x (per temperature: " +
+                "${nestedDrift.joinToString(", ") { "%.2f".format(it) }}), past the recorded " +
+                "$MAX_NESTED_DRIFT — a `select` is carrying a different number of kernels than the " +
+                "`threshold` underneath it, which is what the mask pass-through in GlslAdScalars " +
+                "exists to prevent. If it has been removed on purpose, the nested-predicate rows in " +
+                "dev_docs/STACKSL_SURROGATE.md go back to describing a temperature floor"
         )
         // Non-degeneracy: the EXACT gradient agrees with nothing at all, because it is zero. Without
         // this the comparison above could be measuring a wall that is not one.
@@ -553,15 +584,24 @@ class StackSLSurrogateTest {
      *
      * [AdAnnealing] was built on the assumption that cooling a surrogate is what makes it work: hot
      * early to find the jump, cold late to converge on the exact derivative. Measured over the
-     * continuous corpus, that assumption is **wrong in its second half**. A *fixed hot* temperature
-     * recovers marginally better than the geometric schedule and has a better mean, and a *fixed
-     * cold* one fails outright on the nested-predicate case — which is the M3 collapse showing up in
-     * a fit rather than only in a gradient.
+     * continuous corpus, that assumption is **wrong in its second half**: a *fixed hot* temperature
+     * recovers marginally better than the geometric schedule and has a better mean. Cooling does not
+     * buy the recovery; it is roughly free, and the shape of the schedule is second order.
      *
-     * So what the measurement actually says is: **the temperature has to be hot enough, and the
-     * shape of the schedule is second order.** Annealing is not harmful — it converges to the exact
-     * gradient, which is a property worth having when the fit is nearly done — but it is not what
-     * buys the recovery, and the documentation says so rather than implying otherwise.
+     * #### What changed, and it is the more interesting half
+     *
+     * This sweep used to have a **fourth finding** that no longer holds: a fixed *cold* temperature
+     * failed outright, leaving the nested-predicate wire exactly where it started, and the page
+     * derived a **temperature floor near 0.1** from it. That floor was never a property of the
+     * surrogate. It was the `select` lowering's nested `step` being charged a second `K_t(0.5)`, and
+     * with `GlslAdScalars`' mask pass-through in place all four arms recover inside the floor M2
+     * holds a continuous parameter to — cold included, and cold's worst case is still the nested
+     * wire, now at 0.0327 rather than 0.3548.
+     *
+     * The surviving claim is therefore the narrower and better one: **the schedule's shape is second
+     * order over the whole measured range**, rather than "hot or nothing". The cold arm is still the
+     * worst of the four, and is still asserted to recover, so a regression that reintroduces a
+     * temperature floor reddens here as well as in M3.
      */
     @Test
     fun `a hot enough temperature is what recovers, and the schedule shape is second order`() {
@@ -608,22 +648,27 @@ class StackSLSurrogateTest {
                 "surrogate-off arm cannot move at all, so its error is the seed's. The result is " +
                 "NEGATIVE for annealing: a fixed hot temperature " +
                 "(${"%.4f".format(worst.getValue(HOT))}) is marginally BETTER than the geometric " +
-                "schedule (${"%.4f".format(worst.getValue(GEOMETRIC))}), and a fixed cold one " +
-                "(${"%.4f".format(worst.getValue(COLD))}) fails outright. What matters is that the " +
-                "temperature is hot enough; the schedule's shape is second order."
+                "schedule (${"%.4f".format(worst.getValue(GEOMETRIC))}). Cooling is roughly free " +
+                "rather than what buys the recovery; the schedule's shape is second order."
         )
         println(
-            "M5 and the reason cold fails is M3's collapse, in a fit: on $nested the cold arm ended " +
+            "M5 and the temperature floor is GONE, which is M3's pass-through showing up in a fit: " +
+                "on $nested the cold arm ends " +
                 "${"%.4f".format(perCase.getValue(COLD).getValue(nested))} from the truth against a " +
-                "seed error of ${"%.4f".format(seedError.getValue(nested))} — it did not move at all, " +
-                "because a nested `step`'s kernel is K_t(0.5) and that is ~1e-12 at t=0.016. Every " +
-                "other continuous case recovers even when cold."
+                "seed error of ${"%.4f".format(seedError.getValue(nested))} — a " +
+                "${"%.1f".format(seedError.getValue(nested) / perCase.getValue(COLD).getValue(nested))}x " +
+                "recovery where it used to sit at the seed to nine decimal places. A nested `step` " +
+                "no longer costs a second K_t(0.5), so t=0.016 is no longer a wall for `select`. " +
+                "Cold is still the worst of the four arms (${"%.4f".format(worst.getValue(COLD))}) " +
+                "and its worst case is still this wire."
         )
 
         assertEquals(SCHEDULES.size, worst.size, "a schedule label is duplicated, so one overwrote another")
 
-        // The three arms that work, held to M2's floor.
-        listOf(HOT, WARM, GEOMETRIC).forEach { label ->
+        // All FOUR arms, held to M2's floor. This list used to exclude COLD, and that exclusion was
+        // the temperature floor: cold could not recover a nested predicate. It can now, so the
+        // sweep holds every arm to the same bar and there is no special case left to describe.
+        SCHEDULES.map { it.first }.forEach { label ->
             assertTrue(
                 worst.getValue(label) <= CONTINUOUS_TOLERANCE,
                 "'$label' worst error ${"%.4f".format(worst.getValue(label))} is above the recovery " +
@@ -656,27 +701,19 @@ class StackSLSurrogateTest {
                 "cooling has stopped being roughly free and the default should change"
         )
 
-        // Two: a fixed COLD temperature really does fail, and it fails on exactly the case M3 says
-        // it must. Asserted as "did not move" rather than as a loose bound, which is the sharpest
-        // form the claim has.
-        assertEquals(
-            seedError.getValue(nested), perCase.getValue(COLD).getValue(nested), 1e-9,
-            "the cold arm moved the nested-predicate wire, which contradicts M3: a nested `step`'s " +
-                "surrogate kernel is K_t(0.5) ~ 1e-12 at t=0.016, so there is nothing to descend"
-        )
+        // Two: the cold arm recovers the nested predicate, which is the assertion that replaced
+        // "cold does not move it at all". Stated as an IMPROVEMENT over the seed rather than only
+        // as a bound, because the bound alone would also pass if the seed happened to be close —
+        // and the seed is 0.3548 away, which is the whole reason this case was chosen.
+        val coldNested = perCase.getValue(COLD).getValue(nested)
         assertTrue(
-            worst.getValue(COLD) >= MIN_COLD_FAILURE,
-            "the cold arm's worst error ${"%.4f".format(worst.getValue(COLD))} is under the recorded " +
-                "$MIN_COLD_FAILURE — if annealing to 0.016 is now safe then the temperature-floor rule " +
-                "in dev_docs/STACKSL_SURROGATE.md is obsolete"
-        )
-        // Non-degeneracy for the cold arm: it must still recover everything *except* the nested one,
-        // or "cold fails" would be a statement about the surrogate rather than about nesting.
-        assertEquals(
-            continuous.size - 1, zeroLosses.getValue(COLD),
-            "the cold arm reached a loss of exactly zero on ${zeroLosses.getValue(COLD)} of " +
-                "${continuous.size} cases, expected all but the nested one — cold failing *everywhere* " +
-                "is a different finding from cold failing on a nested predicate"
+            coldNested > 0.0 && seedError.getValue(nested) / coldNested >= MIN_COLD_NESTED_RECOVERY,
+            "at t=0.016 the nested-predicate wire improved only " +
+                "${"%.1f".format(seedError.getValue(nested) / coldNested)}x on its seed error of " +
+                "${"%.4f".format(seedError.getValue(nested))} (ending at ${"%.4f".format(coldNested)}), " +
+                "under the recorded ${MIN_COLD_NESTED_RECOVERY}x — a nested `step` is being charged " +
+                "a second K_t(0.5) again, the temperature floor is back, and M3's nested fence plus " +
+                "the nested-predicate rows in dev_docs/STACKSL_SURROGATE.md all need rewriting together"
         )
     }
 
@@ -927,7 +964,7 @@ class StackSLSurrogateTest {
         const val MIN_SEED_RELATIVE_ERROR = 0.2
         const val MIN_SEED_LOSS = 1e-4
 
-        /** Measured: worst continuous relative error 0.0215, worst improvement 14.8x. */
+        /** Measured: worst continuous relative error 0.0247, worst improvement 14.3x. */
         const val CONTINUOUS_TOLERANCE = 0.05
         const val MIN_CONTINUOUS_IMPROVEMENT = 8.0
 
@@ -942,17 +979,38 @@ class StackSLSurrogateTest {
         const val MIN_SIGN_AGREEMENT = 0.75
 
         /**
-         * Measured, excluding [NESTED_STEP_PROGRAM]: the magnitude ratio spans 0.077..2.177 where
-         * both the surrogate and the oracle are non-zero.
+         * Measured: the magnitude ratio spans 0.077..2.177 where both the surrogate and the oracle
+         * are non-zero — over all nine wires, [NESTED_STEP_PROGRAM] now included. The band did not
+         * move when the nested case joined it, which is the blunt version of the M3 finding: the
+         * nested case is inside 0.234..0.585, well within a band set by the two `posterize` counts.
          */
         const val MIN_MAGNITUDE_RATIO = 0.03
         const val MAX_MAGNITUDE_RATIO = 5.0
 
-        /** The one program in the corpus whose `select` nests a `step` inside a `step`. */
+        /** The one program in the corpus whose `select` puts a `step` inside a `step`. */
         const val NESTED_STEP_PROGRAM = "red blue uv x 0.40 threshold select"
 
-        /** Measured: the nested-step ratio falls 1.45e+11x from t=0.25 to t=0.016. */
-        const val MIN_NESTED_COLLAPSE = 1e6
+        /**
+         * The same shape of wire with one fewer predicate — [NESTED_STEP_PROGRAM]'s control.
+         *
+         * Both recover a `threshold` edge on a `uv` ramp against a target rendered by the same
+         * program, so each one's surrogate/oracle *ratio* divides its own scale out and the two
+         * ratios are comparable as numbers. That comparison is what says a `select` costs no extra
+         * kernel. The wires are not identical — 0.40 → 0.62 here against 0.35 → 0.57 — which is why
+         * the fence is a factor rather than an equality.
+         */
+        const val BARE_STEP_PROGRAM = "uv x 0.35 threshold"
+
+        /**
+         * Measured: the nested predicate's ratio tracks the bare `threshold`'s to within **1.54x**,
+         * worst temperature (1.01, 1.05, 1.17, 1.54 hot to cold — the drift grows as the kernel
+         * narrows, because the two programs' edges fall on different pixel boundaries).
+         *
+         * This constant replaced a `MIN_NESTED_COLLAPSE = 1e6`, which fenced the *opposite* claim:
+         * before `GlslAdScalars`' mask pass-through, the nested ratio fell 1.45e+11x across the
+         * sweep and that fall was recorded as a property of the language rather than of the AD path.
+         */
+        const val MAX_NESTED_DRIFT = 2.0
 
         /** Measured: the exact fbm frequency gradient is within 9.35e-3 of a central difference. */
         const val EXACT_FBM_TOLERANCE = 5e-2
@@ -962,8 +1020,12 @@ class StackSLSurrogateTest {
 
         /**
          * M5, measured: worst continuous relative error by schedule — hot **0.0204**, warm 0.0264,
-         * geometric **0.0215**, cold **0.3548**. Means 0.0110, 0.0110, 0.0146, 0.0683. So the
-         * annealed schedule is 1.05x *worse* than fixed hot rather than better, and cold fails.
+         * cold **0.0327**, geometric **0.0247**. Means 0.0110, 0.0110, 0.0146, 0.0151, and all four
+         * arms drive 6 of 6 fits to a loss of exactly zero. So the annealed schedule is 1.21x
+         * *worse* than fixed hot rather than better.
+         *
+         * Cold was **0.3548** before the mask pass-through landed, i.e. outside M2's 0.05 floor and
+         * the source of the temperature-floor rule; it is now inside it, and the floor is gone.
          *
          * [MAX_ANNEAL_ADVANTAGE] is the two-sided half: if annealing ever becomes clearly better
          * than a fixed hot temperature, the negative result on record is wrong and should be
@@ -972,7 +1034,11 @@ class StackSLSurrogateTest {
         const val MAX_ANNEAL_ADVANTAGE = 1.3
         const val MAX_ANNEAL_PENALTY = 2.0
 
-        /** Measured: a fixed t=0.016 leaves the nested-predicate wire exactly where it started. */
-        const val MIN_COLD_FAILURE = 0.2
+        /**
+         * Measured: at a fixed `t = 0.016` the nested-predicate wire recovers **10.9x** on its seed
+         * error (0.3548 → 0.0327). Before the mask pass-through it recovered **1.0x** — it sat at
+         * the seed to nine decimal places, which is what the assertion this replaced pinned.
+         */
+        const val MIN_COLD_NESTED_RECOVERY = 5.0
     }
 }

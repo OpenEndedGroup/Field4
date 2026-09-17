@@ -285,7 +285,7 @@ partial, so every claim on this page still holds unchanged.
 
 What it buys: **10 of the 74 blocked words** gain a gradient the true loss confirms (2 more gain a
 fictitious one), and a wire behind a `threshold`, `select`, `posterize` or `bit-crush` becomes
-recoverable — worst relative error **0.0215** over 6 continuous parameters, against a surrogate-off
+recoverable — worst relative error **0.0247** over 6 continuous parameters, against a surrogate-off
 arm that provably cannot move at all.
 
 What it costs, and it is this page's own finding turned into a fence: switching the staircase family

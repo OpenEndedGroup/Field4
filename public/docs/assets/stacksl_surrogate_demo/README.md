@@ -36,9 +36,9 @@ distributional derivative is a **delta train**. Mollify it: the partial becomes
 so a temperature is a well-defined thing to choose rather than a knob with no limit.
 
 Whether *cooling* it during a fit helps is a separate question, and the measured answer is **no**: a
-fixed `t = 0.25` recovers marginally better than a `0.25 → 0.01` schedule on every continuous case,
-and cooling to `0.016` loses a nested predicate outright. Pick one hot temperature and leave it
-there. The second box anneals anyway, because that is the shape a reader will reach for first and it
+fixed `t = 0.25` recovers marginally better than a `0.25 → 0.01` schedule on every continuous case.
+Cooling is roughly free rather than harmful, so pick one hot temperature and leave it there. The
+second box anneals anyway, because that is the shape a reader will reach for first and it
 costs nothing here — swap `AdAnnealing.stepOnly(iterations)` for
 `AdAnnealing(0.25, 0.25, iterations, setOf(AdSurrogateFamily.STEP))` and watch it not get worse.
 
@@ -58,11 +58,15 @@ relative. An **integer-valued** one — a posterize level count, a bit depth, a 
 to about 20%, because the loss is itself a staircase in that parameter and a bump of width `t`
 cannot see across its shelves. That split is measured, floored, and asserted two-sided.
 
-A **nested predicate is worse than it looks.** `select`/`if` lowers to
+A **nested predicate costs nothing extra, and it took a fix to say so.** `select`/`if` lowers to
 `mix(f, t, step(0.5, abs(cond)))`, and when `cond` is itself a `step` output, `abs(cond)` is exactly
-0 or 1 — so the outer jump sits at distance exactly 0.5 forever and `K_t(0.5)` decays like
-`exp(−1/2t)`. Measured: the gradient falls by 1.45e+11 from `t = 0.25` to `t = 0.016`. A nested
-predicate wants a temperature **floor near 0.1**, not 0.01.
+0 or 1 — so the outer jump sat at distance exactly 0.5 forever and `K_t(0.5)` decays like
+`exp(−1/2t)`. The gradient fell by 1.45e+11 from `t = 0.25` to `t = 0.016`, and that looked like a
+temperature floor near 0.1. It was not: the outer `step` is **not a second jump**, because
+`step(0.5, abs(·))` restricted to a 0/1 mask is the *identity*. The AD path now tracks which values
+are 0/1 by construction and passes the partial through, so a `select` over a `threshold` tracks the
+bare `threshold` to within 1.54× at every temperature. `not` and `band` still nest — they are built
+from `−`, which the tracking does not follow — and still want a hot temperature.
 
 A surrogate partial is **local**, and can therefore be **fictitious**. It mollifies the jump in
 front of it and knows nothing about what happens downstream, so `any` and `ceil` both gain a
