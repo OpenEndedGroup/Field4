@@ -5,6 +5,42 @@ package afield.four.synth
 
 import kotlin.math.*
 
+/**
+ * The frequency-domain end of the synth: an [FFT], two short-time transforms built on it, and a
+ * wavetable that keeps its waveforms as spectra.
+ *
+ * [FFT] is radix-2 and in place, over interleaved `[re, im, re, im, …]` buffers whose length is a
+ * power of two. It is not a shared service: [PhaseVocoder], [SpectralFilter] and [SpectralWavetable]
+ * each construct one at the size they work at.
+ *
+ * [PhaseVocoder] and [SpectralFilter] have the same shape. A Hann window is applied on the way in
+ * and again on the way out, frames advance by `fftSize / hopFactor` samples, and the results are
+ * overlap-added into a ring that is then drained one sample per output frame. `hopFactor` is 4 by
+ * default, so four windows cover every sample. What they do in between differs. [PhaseVocoder] reads
+ * an [AudioSample], and its two controls act on different quantities: `timeStretch` scales how far
+ * the analysis frame advances between hops while the output hop stays fixed, and `pitchShift` scales
+ * each bin's phase advance, so neither one implies the other. [SpectralFilter] reads its input and
+ * multiplies each bin by whatever gain the caller's `transferFunction` returns for that bin's centre
+ * frequency, mirroring the gain onto the negative-frequency half.
+ *
+ * [SpectralWavetable] puts the same transform to a different use. It holds a fixed number of
+ * single-cycle frames, eight of 2048 samples by default, and keeps each one as both a waveform and
+ * its spectrum. Morphing between two frames interpolates the spectra rather than the waveforms, and
+ * band-limiting is then a matter of zeroing every bin above a harmonic limit before transforming
+ * back, so one table plays at any pitch with the harmonics that would fold removed. Writes and the
+ * frame copy that starts a morph both take a lock, so a box thread can rewrite a frame while the
+ * audio thread is playing the table.
+ *
+ * [SpectralWavetableRecorder] and [SpectralWavetableOsc] are the two ends of that. The recorder
+ * passes its input through untouched and, `captureRate` times a second, blends the most recent
+ * `frameSize` samples of it into the one or two frames bracketing `position`, unless `freeze` is
+ * positive. The oscillator takes its harmonic limit from the frequency it is playing and the
+ * `brightness` control, renders the morphed waveform once per segment of `segmentSize` samples, and
+ * crossfades across the segment when `position` moved during it. A table also remembers the position
+ * the oscillator last asked for, and that is the position `Visualizers.kt` draws when a table is
+ * displayed in a box.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  FFT – radix-2 Cooley-Tukey (SIMD-accelerated butterflies)
 // ═══════════════════════════════════════════════════════════════════
