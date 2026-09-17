@@ -90,11 +90,73 @@ import afield.four.texture.vkFormatBytesPerPixel
  *    to the next one, so slot packing neither offers it another pass's slot nor offers its slot to
  *    anyone. That is what [FabricateTargetSlot.persistent] records, and it is why a persistent slot
  *    costs two images rather than one.
+ *
+ * ### Frame history, and the half that persistence does not cover
+ *
+ * [FabricatePassSpec.persistent] tells a pass *what* last frame's pixels were. It says nothing about
+ * *where* they were, and for a simulation that is exactly right: a velocity field is a function of
+ * position, and position has not moved. For anything whose subject moved — temporal antialiasing,
+ * motion blur, reprojection-based denoise, temporal upscale — reading last frame at the same UV is
+ * reading the wrong pixel, and the more the camera moves the more wrong it is.
+ *
+ * So a spec may also declare [FabricatePassSpec.frameHistory], and receive
+ * [afield.four.targets.FrameHistory] as two push constants: `mat4 reprojection`, which takes a
+ * current clip position straight to where it was in the previous frame's clip space, and
+ * `vec4 historyParams`, whose `xy` is the history's size and whose `z` is **whether to believe any
+ * of it**. That third number is the one that matters and the one a picture cannot check — an
+ * unavailable history still holds a perfectly plausible image of the wrong thing. See
+ * [afield.four.targets.FrameHistory] for the rule that decides it.
+ *
+ * The two declarations compose, and a TAA pass is exactly their composition: `persistent` to keep
+ * the accumulation buffer, `previousFrame = true` to read it, `frameHistory` to know which texel of
+ * it to read. [FabricatePassLibrary.temporalAccumulate] is that pass.
  */
 object FabricatePassChain {
 
     /** Reference name for the texture entering the chain — the stack input, not a pass. */
     const val CHAIN_INPUT = "@input"
+
+    /**
+     * Reference name for the renderer's **per-pixel motion vectors** — g-buffer attachment 3, not a
+     * pass in this chain.
+     *
+     * This is what makes temporal reprojection correct rather than approximate, and the distinction
+     * is not a refinement. A [FabricatePassSpec.frameHistory] matrix can only say where the *camera*
+     * went, so a pass using it reprojects the whole frame as one plane at an assumed depth. That is
+     * exact for a yaw about the camera's own position — the reprojection is then `P*R*inverse(P)`,
+     * which maps a ray to a ray at any depth — and wrong for anything else: wrong with depth under a
+     * translating camera, and unable *in principle* to follow a moving object, because one matrix per
+     * frame cannot describe per-object motion. "Where was this pixel last frame" is a per-pixel
+     * question and only a per-pixel answer settles it.
+     *
+     * The g-buffer already computes that answer. Its vertex stage builds
+     * `vPreviousClip = uCamera.prevProj * uCamera.prevView * (push.prevModel * position)`, so the
+     * answer carries the object's own previous transform *and* the previous camera, and its fragment
+     * stage writes `currentUv - previousUv` into `.xy` of attachment 3. [GBUFFER_DEPTH]'s sibling
+     * note on `currentViewProjection` already records that the chain and the g-buffer agree about
+     * what clip space is; this reference is what lets a pass spend that agreement.
+     *
+     * Sampled as `texture(motionTex, uv).xy`, so last frame's position is `uv - motion`. **The
+     * g-buffer clears to `(0, 0, 0, 1)`, so `.w` is 1 everywhere and is NOT a coverage mask** — a
+     * pixel no geometry drew reads as zero motion, which is to say "static", which is wrong under a
+     * moving camera. [GBUFFER_DEPTH] is what tells the two apart.
+     *
+     * Requires the chain's input to match the g-buffer's size: the vectors are in its UV space.
+     */
+    const val GBUFFER_MOTION = "@motion"
+
+    /**
+     * Reference name for the renderer's **depth buffer** — the g-buffer's sampled depth, not a pass.
+     *
+     * Its job here is to separate geometry from background, which [GBUFFER_MOTION] cannot do alone:
+     * a cleared motion texel is indistinguishable from a genuinely static one. A pixel at the far
+     * plane had no geometry, so it has no per-object answer and has to fall back to the camera-only
+     * matrix.
+     */
+    const val GBUFFER_DEPTH = "@depth"
+
+    /** The reference names that resolve outside the chain rather than to one of its passes. */
+    val EXTERNAL_REFERENCES: Set<String> = setOf(GBUFFER_MOTION, GBUFFER_DEPTH)
 
     /** The sampler name a pass's primary input is always bound to. */
     const val PRIMARY_SAMPLER = "sourceTex"
@@ -128,6 +190,10 @@ object FabricatePassChain {
         passes.forEachIndexed { index, spec ->
             require(spec.name.isNotBlank()) { "pass $index has a blank name" }
             require(spec.name != CHAIN_INPUT) { "pass $index may not be named '$CHAIN_INPUT'" }
+            require(spec.name !in EXTERNAL_REFERENCES) {
+                "pass $index may not be named '${spec.name}' — that is a reserved reference to a " +
+                        "texture the renderer owns, and a pass answering to it would shadow the real one"
+            }
             require(spec.name !in indexByName) { "duplicate pass name '${spec.name}'" }
             indexByName[spec.name] = index
         }
@@ -176,6 +242,18 @@ object FabricatePassChain {
                     }
                     return FabricatePassRef.ChainInput
                 }
+                if (reference in EXTERNAL_REFERENCES) {
+                    // An external texture is this frame's, always. It is written by the g-buffer
+                    // before the post stack runs, and nothing keeps a second copy of it, so there is
+                    // no history of it to ask for — asking is a mistake worth naming rather than
+                    // quietly serving the current frame.
+                    require(!previousFrame) {
+                        "pass '${spec.name}' $role asks for the previous frame of '$reference', which the " +
+                                "renderer overwrites every frame and keeps no history of — a motion vector " +
+                                "already encodes the step from last frame, so read it for this frame instead"
+                    }
+                    return FabricatePassRef.External(reference)
+                }
                 val target = indexByName[reference]
                     ?: throw IllegalArgumentException(
                         "pass '${spec.name}' $role names '$reference', which is not a pass in this chain"
@@ -212,6 +290,16 @@ object FabricatePassChain {
                 FabricatePassRef.ChainInput -> inputShape
                 is FabricatePassRef.Pass -> shapes[ref.index]
                 is FabricatePassRef.PreviousFrame -> persistentShapes.getValue(ref.index)
+                // Reachable only if an external texture was named as a pass's *source*, and that is
+                // the one place it cannot go: a pass inherits its size from its source, and the
+                // planner has never seen the renderer that owns this texture, so there is no size to
+                // inherit. As an extra input it is fine — nothing derives a shape from those.
+                is FabricatePassRef.External -> throw IllegalArgumentException(
+                    "pass '${spec.name}' takes '${ref.reference}' as its source, but a pass's size is " +
+                            "inherited from its source and this chain is planned without a renderer, so " +
+                            "that size is unknown here — name it as an extra input instead and give the " +
+                            "pass an explicit size"
+                )
             }
 
             val sourceShape = shapeOf(primary)
@@ -429,6 +517,18 @@ sealed interface FabricatePassRef {
      * about whether it can be read.
      */
     data class PreviousFrame(val index: Int, val name: String) : FabricatePassRef
+
+    /**
+     * A texture the *renderer* owns rather than the chain — [FabricatePassChain.GBUFFER_MOTION] or
+     * [FabricatePassChain.GBUFFER_DEPTH].
+     *
+     * The planner cannot resolve these to an image view, because it plans a chain in isolation and
+     * has never seen a renderer. It records the request and whoever builds the chain against a real
+     * bundle binds it; [FabricateBuiltChain] is where that happens. So an external reference is a
+     * *hole the plan declares*, which is why planning stays testable without a GPU while the binding
+     * stays the builder's problem.
+     */
+    data class External(val reference: String) : FabricatePassRef
 }
 
 /**
@@ -475,6 +575,11 @@ data class FabricateResolvedInput(val samplerName: String, val from: FabricatePa
  * @param sourcePreviousFrame bind the *primary* `sourceTex` to [source]'s previous frame. The advect
  *   pass of a fluid wants this: the field it transports and the velocity that transports it are both
  *   last frame's.
+ * @param frameHistory receive the chain's [afield.four.targets.FrameHistory] as push constants —
+ *   `mat4 reprojection` and `vec4 historyParams`. This is the other half of [persistent]: persistent
+ *   says *what* last frame's pixels were, frame history says *where* they were. A pass that declares
+ *   it and does not declare the constants in its shader is not an error; the binding is skipped, the
+ *   same tolerance [push] has. See `FabricatePassLibrary.FRAME_HISTORY_GLSL` for the block to paste.
  */
 data class FabricatePassSpec(
     val name: String,
@@ -486,7 +591,8 @@ data class FabricatePassSpec(
     val push: Map<String, Any> = emptyMap(),
     val mipLevels: Int = 1,
     val persistent: Boolean = false,
-    val sourcePreviousFrame: Boolean = false
+    val sourcePreviousFrame: Boolean = false,
+    val frameHistory: Boolean = false
 )
 
 /** A pass target after planning: its shape, its bound inputs, its lifetime and the slot it shares. */
@@ -502,6 +608,9 @@ data class FabricatePlannedPass(
 
     /** True if this pass's target is a ping-pong pair rather than a single image. */
     val persistent: Boolean get() = spec.persistent
+
+    /** True if this pass asked for the chain's frame history. */
+    val frameHistory: Boolean get() = spec.frameHistory
 }
 
 /**
@@ -557,6 +666,9 @@ class FabricatePassChainPlan(
     /** Passes whose target is a ping-pong pair — the chain's state, if it has any. */
     val persistentPasses: List<FabricatePlannedPass> get() = passes.filter { it.persistent }
 
+    /** Passes that asked for the chain's frame history — the chain's reprojecting passes. */
+    val historyPasses: List<FabricatePlannedPass> get() = passes.filter { it.frameHistory }
+
     /** The chain's final pass. */
     val output: FabricatePlannedPass get() = passes.last()
 
@@ -577,6 +689,7 @@ class FabricatePassChainPlan(
                     FabricatePassRef.ChainInput -> FabricatePassChain.CHAIN_INPUT
                     is FabricatePassRef.Pass -> ref.name
                     is FabricatePassRef.PreviousFrame -> "${ref.name}@prev"
+                    is FabricatePassRef.External -> ref.reference
                 }
                 "${input.samplerName}<-$from"
             }
@@ -585,7 +698,8 @@ class FabricatePassChainPlan(
                 pass.lastConsumer >= passes.size -> "output"
                 else -> "dead after #${pass.lastConsumer}"
             }
-            appendLine("  #${pass.index} ${pass.name}: ${pass.shape} slot=${pass.slot} [$inputs] ($death)")
+            val history = if (pass.frameHistory) " +history" else ""
+            appendLine("  #${pass.index} ${pass.name}: ${pass.shape} slot=${pass.slot} [$inputs]$history ($death)")
         }
         slots.forEach { slot ->
             val sharers = slot.passIndices.map { passes[it].name }
