@@ -1,4 +1,4 @@
-# The four ways a docs reference breaks
+# The ways a docs reference breaks — four found, a fifth added
 
 Companion to [DOCS_SITE_PREFIX_REFS.md](DOCS_SITE_PREFIX_REFS.md), which explains the *prefix*
 family and the guard that found the rest. That guard found four genuinely distinct failure modes
@@ -18,6 +18,12 @@ resemblance. Two of the four were not broken references at all.
 | 2 | server-absolute and case-mismatched | both halves of a link ignore the site prefix | the page and the guard that dictates it | `check_doc_offline_links.py` |
 | 3 | dead by nature | the path is served by a running Field, not by the docs site | the page's prose | none needed — it was never a live ref |
 | 4 | code read as markup | the extractor reads attribute text out of `<pre>`/`<code>` | the extractor | the mask's own over-reach check |
+| 5 | the page is at 200 and the anchor is gone | a brace in a heading's own text eats its `attr_list` block | `SourcePageGenerator` | `verifyPage`'s anchor invariant |
+
+Mode 5 is not from the backlog. It came out of looking for a fifth, once the other four were
+closed, in the one place no guard in the tree was looking: the **fragment**. Every existing guard
+strips `#…` before resolving, so a reference whose page is at 200 and whose anchor does not exist
+is invisible to all of them, and it is a dead link to a reader.
 
 ---
 
@@ -230,6 +236,71 @@ which is how it broke when the list emptied.
 
 ---
 
+## Mode 5 — the page resolves, the anchor does not
+
+**How it was found.** Every guard in this tree strips `#…` before resolving, so nothing checks
+whether the fragment exists on the page it lands on. Surveying it over the 613-page build, with
+code regions masked: **37757** local refs carry a fragment (23704 of them same-page), **37755**
+fragments were present on their target page, and **2** were absent.
+
+Two out of 37757 is the point. This mode does not produce a broken-looking page; it produces a
+link that opens the right page at the top instead of at the thing it promised, which is the
+failure a reader is least likely to report.
+
+**Instance.** `public/field4/reference/imaging/index.html` carried a citation link
+`../source/jvmMain/afield/stdlib/imaging_filters/#L68`, and the source page it points at emitted
+64 `id="L…"` anchors, of which `L68` was not one — while `anchors.json` listed 65 lines including
+68. (The other of the two is `404.html`'s `#__skip`, the theme's own skip-to-content link on a
+page with no skip target. Theme output, authored by nobody here, left alone.)
+
+**Mechanism.** `SourcePageGenerator` writes a heading that ends in its own anchor block —
+`### <code…>…</code> { #L68 data-search-exclude="true" }` — and Python-Markdown's `attr_list`
+finds that block with `[ ]+\{\:?[ ]*([^\}\n]*)[ ]*\}[ ]*$`, searched **leftmost**. A *balanced*
+brace pair earlier in the heading's own text swallows the search, and the real block is left as
+literal text and slugified into the id. Isolated on python-markdown 3.10.2:
+
+```text
+### a { b } c { #L1 }   ->  <h3>a { b } c { #L1 }</h3>       no id at all
+### a }}) b { #L1 }     ->  <h3 id="L1">a }}) b</h3>         fine
+### a } b { #L1 }       ->  <h3 id="L1">a } b</h3>           fine
+```
+
+So it takes an opening brace *and* a later closing one. `imaging_filters.kt:68` is
+`override fun toString(): String = "Kernel1D(${taps.joinToString(", ") { "%.4f".format(it) }})"`,
+whose body carries exactly that.
+
+Note what the two halves of the contract do: `anchors.json` is written from
+`page.declarationLines`, which is appended to at the moment the heading is *emitted* — so the
+generator's own bookkeeping was correct and complete. The anchor was lost downstream, in the
+markdown renderer, which is why no amount of checking the generator against itself would have
+found it.
+
+**Fixed at** `SourcePageGenerator.attrListSafe`: braces in the heading's own text become `&#123;`
+and `&#125;`, which render identically. Escaping rather than stripping, because the brace is real
+Kotlin and must still be shown; and at the heading only, because a brace in a fence or a table
+cell is harmless.
+
+**Guard.** `verifyPage` now asserts, per page, that
+
+* no heading line carries a literal brace before its `{ #L… }` block, and
+* the set of `{ #L… }` headings the page emits equals the set of lines `anchors.json` will claim —
+  **both directions**, so a claimed-but-unanchored line and an anchored-but-unclaimed line each
+  fail with their own message.
+
+The predicate is deliberately *stricter* than the failure: 681 headings carry a brace, and only
+one of them lost its anchor. Rejecting every brace is mechanical and exact; modelling `attr_list`'s
+leftmost search inside this generator would be a second copy of someone else's regex.
+
+**Teeth, proved by counterfactual.** With `attrListSafe` stubbed to the identity function,
+`checkSourcePages` reports **681 problems**; with it in place, `BUILD SUCCESSFUL`. After the fix
+the survey reads **0 of 454** source files with a claimed-but-unemitted anchor (was 1) and
+**37756 of 37757** fragments present site-wide, the remaining one being `404.html`'s.
+
+No repo drift: `reference/source/**` is the one generated docs tree that is not committed, so this
+changes 681 headings per build and nothing in git.
+
+---
+
 ## The population question, settled
 
 Last night's report left `607 of 739` against `155 of 287` as an open question. They were never in
@@ -267,6 +338,12 @@ count, and a `displayed code masked:` line, so neither number can be quoted bare
 - **Python-Markdown is not CommonMark on list indentation.** `tab_length` is 4 whatever the marker
   width, so an ordered-list item's code block needs 8 where CommonMark would take 7. A KDoc
   written to the CommonMark rule renders as prose.
+- **No guard in this tree checks a fragment.** Every one of them strips `#…` before resolving, so
+  a reference whose page is at 200 and whose anchor is gone is invisible to all of them. That is
+  where mode 5 was hiding, and it is still the right place to look for mode 6.
+- **Do not edit the working tree while `docsGates` runs.** `checkTestTreeWrites` takes a baseline
+  and compares, and cannot tell your edit from a test write — it says so in its own failure
+  message. One `docsGates` run here failed for exactly that and nothing else.
 - **A default docs build in a fresh worktree recaptures.** Ten fences carry `force=true` across
   four pages, and a plain build honours them: the first attempt here rewrote 20 committed assets,
   one of them from 9 MB to 26 KB. `FIELD_DOCS_RUNNER_MODE=never` (or `--page <one-page>`, which
@@ -285,4 +362,5 @@ count, and a `displayed code masked:` line, so neither number can be quoted bare
 | `src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` | the immune form: inline backticks |
 | `src/jvmMain/kotlin/afield/docs/AgentTranscriptIndexGuard.kt` | mode 2's dictating guard |
 | `src/commonMain/resources/offline-viewer.js` | `ednFileCandidates`, why a relative `?file=` works |
+| `src/jvmMain/kotlin/afield/docs/SourcePageGenerator.kt` | mode 5: `attrListSafe`, and `verifyPage`'s anchor invariant |
 | `dev_docs/DOCS_SITE_PREFIX_REFS.md` | the prefix family and the guard's design |
