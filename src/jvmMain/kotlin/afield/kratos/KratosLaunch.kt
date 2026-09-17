@@ -11,37 +11,46 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
- * Where the worker process comes from, and which end of the socket Field owns.
+ * Where the Kratos worker process comes from, and which end of the socket Field owns.
  *
- * The protocol above this is identical in all three cases — one authenticated frame stream, one
- * session, the envelope in `protocol.md`. What differs is the ten seconds before the first frame.
+ * The protocol above this is identical in all three cases: one authenticated frame stream, one
+ * session, the envelope described in `optional/kratos/protocol.md`. What differs is everything
+ * before the first frame.
  *
  * | | who runs Python | who listens | who dials |
  * |---|---|---|---|
- * | [LocalProcess] | Field, as a child process | Field, on an ephemeral 127.0.0.1 port | the worker |
- * | [Container] | Field, as a container | the worker, inside its namespace | Field, on the published port |
- * | [Attach] | nobody — it is already running | the worker | Field |
+ * | `LocalProcess` | Field, as a child process | Field, on an ephemeral 127.0.0.1 port | the worker |
+ * | `Container` | Field, as a container | the worker, inside its namespace | Field, on the published port |
+ * | `Attach` | nobody, it is already running | the worker | Field |
  *
- * # Why the container case has to reverse the direction
+ * #### Why the container case reverses the direction
  *
- * [LocalProcess] binds `127.0.0.1` in the JVM and hands the port to the child, which connects back.
+ * `LocalProcess` binds `127.0.0.1` in the JVM and hands the port to the child, which connects back.
  * A container cannot do that. Its network namespace is not the host's, so the host's loopback
  * interface is not reachable from inside it, and on macOS there is a virtual machine in between as
- * well. Publishing a port is the direction that *does* work through both, so in [Container] the
+ * well. Publishing a port is the direction that *does* work through both, so in `Container` the
  * worker binds and Field dials.
  *
- * That does mean the worker binds `0.0.0.0` — inside the container. Only the port the runtime
+ * That does mean the worker binds `0.0.0.0`, inside the container. Only the port the runtime
  * publishes leaves that namespace, and it is published to `127.0.0.1` on the host, so the host's
  * exposure is the same loopback-only socket either way. The token is checked on the first frame in
  * both directions.
  *
- * # Why [Container] exists at all
+ * #### Why the container launch exists at all
  *
  * Kratos publishes `manylinux_2_28_x86_64` and `win_amd64` wheels. There is no macOS wheel for
  * either architecture, so on an Apple Silicon checkout `uv sync --project optional/kratos` fails
- * during resolution and [LocalProcess] has nothing to run. The container carries the same pinned
+ * during resolution and `LocalProcess` has nothing to run. The container carries the same pinned
  * environment, resolved from the same `uv.lock`. Under emulation it is slow enough that the
  * measured component times mean nothing as absolute numbers; the ratios between them still do.
+ */
+
+/**
+ * One way of bringing a worker up and handing back a socket connected to it.
+ *
+ * `LocalProcess`, `Container` and `Attach` are the three, and the table above says which end of the
+ * socket each of them owns. A [KratosConfig] with no launch of its own resolves to `LocalProcess`,
+ * so that is what a caller who never mentions this interface gets.
  */
 sealed interface KratosLaunch {
 

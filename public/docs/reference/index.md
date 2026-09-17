@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14131 public symbols across 360 source files**, 8024 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14131 public symbols across 360 source files**, 8028 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -16,7 +16,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 27 | 575 | 232 (40%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 27 | 821 | 414 (50%) | Making a shape behave. |
+| [Simulation](simulation.md) | 27 | 821 | 418 (50%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 398 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -207,11 +207,11 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KotlinJs.kt](languages.md#kotlinjs-kt) | Languages | 12 | 0 | SPIKE — a "Kotlin in the head" main language. |  |
 | [KotlinJsHeadProfiles.kt](languages.md#kotlinjsheadprofiles-kt) | Languages | 29 | 4 | Which remote head a Kotlin/JS box runs on, chosen by a marker on its first line. |  |
 | [KotlinToJsCompiler.kt](languages.md#kotlintojscompiler-kt) | Languages | 7 | 4 | SPIKE — Kotlin source -> JavaScript, for RemoteJS boxes. |  |
-| [KratosDemo.kt](simulation.md#kratosdemo-kt) | Simulation | 6 | 2 |  |  |
-| [KratosLaunch.kt](simulation.md#kratoslaunch-kt) | Simulation | 10 | 7 |  |  |
+| [KratosDemo.kt](simulation.md#kratosdemo-kt) | Simulation | 6 | 6 | The two Kratos smoke runs, and the small piece of geometry they share. |  |
+| [KratosLaunch.kt](simulation.md#kratoslaunch-kt) | Simulation | 10 | 7 | Where the Kratos worker process comes from, and which end of the socket Field owns. |  |
 | [KratosSession.kt](simulation.md#kratossession-kt) | Simulation | 68 | 20 | The JVM side of the Kratos link: finding a worker, opening a session on it, and asking for solves. |  |
 | [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
-| [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 |  |  |
+| [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 | A `StudyLandscape` and a `StudyOptimisation`, as a picture. |  |
 | [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 | One parameter study over a heated part, in the three sizes a demo has to exist in. |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 0 |  |  |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 0 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
