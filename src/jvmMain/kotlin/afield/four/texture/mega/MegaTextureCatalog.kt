@@ -241,11 +241,13 @@ class MegaTextureCatalog private constructor(
 class MegaTexturePyramidCache(
     val cacheDir: Path,
     val imageCount: Int,
-    val minPageSize: Int,
-    val levels: Int,
+    /** Where page sizes come from. Taken whole so the cache's stride cannot drift from the atlas's. */
+    val layout: MegaTextureLayout,
     val maxLevelCached: Int,
     val maxVirtualBytes: Long = 32L shl 30
 ) : AutoCloseable {
+
+    val levels: Int get() = layout.levels
 
     private class LevelStore(
         val level: Int,
@@ -265,9 +267,10 @@ class MegaTexturePyramidCache(
     /**
      * Source pixel dimensions, two ints per image, or 0 for "never decoded".
      *
-     * A cached page is a fixed-size square with the picture fitted into its top-left corner, so
+     * A cached page is a fixed-size rectangle with the picture fitted into its top-left corner, so
      * the bytes alone do not say how much of the page is picture. Without this the aspect ratio
-     * would be knowable only on a cache *miss*, and every warm start would show square photos.
+     * would be knowable only on a cache *miss*, and every warm start would show the page's shape
+     * rather than the picture's.
      */
     private val dims = IntArray(maxOf(imageCount, 1) * 2)
     private val dimsFile = cacheDir.resolve("dims.bin")
@@ -277,13 +280,13 @@ class MegaTexturePyramidCache(
         Files.createDirectories(cacheDir)
         loadDims()
         for (level in 0 until minOf(levels, maxLevelCached + 1)) {
-            val pageSize = minPageSize shl level
-            val stride = pageSize * pageSize * 4
+            val stride = layout.pageBytes(level)
             val virtual = stride.toLong() * imageCount
             if (virtual > maxVirtualBytes) {
                 lprintln(
                     "info,megatexture",
-                    "megatexture cache skipping level $level (${pageSize}px): would need " +
+                    "megatexture cache skipping level $level " +
+                            "(${layout.pageWidth(level)}x${layout.pageHeight(level)}): would need " +
                             "${virtual shr 30} GiB of sparse file, over the ${maxVirtualBytes shr 30} GiB cap"
                 )
                 continue

@@ -93,19 +93,30 @@ operations:
               outColor = vec4(colour.rgb, 1.0);
           }
         code: |
-          import afield.four.Renderer
-          import afield.four.modules.fromContext
-
           // Scan the directory, build the atlas, and register the {{ mega.* }} shader slots.
-          // Queues every image's 8-pixel page so the wall fills in without being looked at.
-          val mega = megaTextureHere { folder("/Users/marc/Movies/blade/scenes/allBlade") }
+          // Queues every image's base page so the wall fills in without being looked at.
+          //
+          // sourcePage names the shape of the set, and gets full resolution for free: the top
+          // level becomes exactly one frame and each level below it is that halved — 960x399,
+          // 480x200, 240x100, down to 15x7. Nothing is padded, which for film is the difference
+          // between 10 full-resolution frames resident and 4: a 1920x798 frame in the square
+          // 2048x2048 page it would otherwise need is 63% empty, at every level.
+          //
+          // For your own set, say its frame size and how many levels you want between the base
+          // and it. Eight from 1920x798 puts the base at 15x7, which is 105 texels an image —
+          // small enough that all 1639 base pages fit one atlas layer and the wall is never bare.
+          val mega = megaTextureHere {
+              folder("/Users/marc/Movies/blade/scenes/allBlade")
+              config.sourcePage(1920, 798)
+              config.levels = 8
+              config.atlasEdge = 4096
+              config.layersPerLevel = 1
+          }
 
           // An execution break. moduleHere compiles this box's shaders when its macro expands,
           // which is before any code in the next fragment runs — so the slots have to be
           // registered here, in an earlier fragment, or {{ mega.all }} has nothing to resolve to.
           //%-
-          val renderer: Renderer = fromContext()
-
           val camera = Camera()
           camera.at = vec(0, 0, -18)
           var kc by keyCamera(camera = camera)
@@ -126,11 +137,11 @@ operations:
           m.resize(6)
           m.instanceCount = mega.imageCount
 
-          println("mega texture wall: ${mega.imageCount} images, ${mega.totalLayers} atlas layers")
-
+          // Residency as a live card: one row per level, its pages, and how many images are being
+          // shown at it. Fly the wall and watch the rows fill from the top down.
           var tick = 0
           loop {
-              if (tick++ % 120 == 0) println(mega.stats().toString())
+              if (tick++ % 30 == 0) display(mega.stats().h)
               true
           }
   - connect:

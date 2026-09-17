@@ -40,6 +40,16 @@ class MegaTexturePipelineTest {
         }
     }
 
+    /** A square page ladder for the cache and decoder to size themselves from. */
+    private fun squareLayout(imageCount: Int, minPageSize: Int, levels: Int) = MegaTextureLayout(
+        imageCount = imageCount,
+        levels = levels,
+        atlasEdge = 4096,
+        layersPerLevel = 2,
+        maxBaseLevelLayers = 64,
+        topPageWidth = minPageSize shl (levels - 1)
+    )
+
     private fun temporaryDirectory(name: String): Path =
         Files.createTempDirectory("megatexture-$name").also { temporaries.add(it) }
 
@@ -139,7 +149,7 @@ class MegaTexturePipelineTest {
     @Test
     fun pagesRoundTripThroughTheSparseCache() {
         val dir = temporaryDirectory("cache-round-trip")
-        MegaTexturePyramidCache(dir, imageCount = 100, minPageSize = 8, levels = 3, maxLevelCached = 2).use { cache ->
+        MegaTexturePyramidCache(dir, 100, squareLayout(100, 8, 3), 2).use { cache ->
             val stride = 16 * 16 * 4
             val page = MemoryUtil.memAlloc(stride)
             try {
@@ -171,11 +181,11 @@ class MegaTexturePipelineTest {
         val page = MemoryUtil.memAlloc(stride)
         try {
             for (i in 0 until stride) page.put(i, (i and 0xff).toByte())
-            MegaTexturePyramidCache(dir, 64, minPageSize = 8, levels = 2, maxLevelCached = 1).use { cache ->
+            MegaTexturePyramidCache(dir, 64, squareLayout(64, 8, 2), 1).use { cache ->
                 cache.write(7, 0, page)
                 cache.setSourceSize(7, 1920, 1080)
             }
-            MegaTexturePyramidCache(dir, 64, minPageSize = 8, levels = 2, maxLevelCached = 1).use { cache ->
+            MegaTexturePyramidCache(dir, 64, squareLayout(64, 8, 2), 1).use { cache ->
                 assertTrue(cache.has(7, 0), "presence must be persisted, or every start re-decodes")
                 assertEquals(1920 to 1080, cache.sourceSize(7))
                 assertNull(cache.sourceSize(8))
@@ -191,7 +201,7 @@ class MegaTexturePipelineTest {
         val stride = 8 * 8 * 4
         val page = MemoryUtil.memAlloc(stride)
         try {
-            MegaTexturePyramidCache(dir, 64, minPageSize = 8, levels = 2, maxLevelCached = 1).use { cache ->
+            MegaTexturePyramidCache(dir, 64, squareLayout(64, 8, 2), 1).use { cache ->
                 cache.write(3, 0, page)
                 cache.write(4, 0, page)
                 cache.invalidate(intArrayOf(3))
@@ -208,9 +218,7 @@ class MegaTexturePipelineTest {
         val dir = temporaryDirectory("cache-cap")
         // Level 1 pages are 16×16×4 = 1 KiB, so a million images is 1 GiB of sparse file. With a
         // 4 KiB cap neither level qualifies and nothing is created.
-        MegaTexturePyramidCache(
-            dir, imageCount = 1_000_000, minPageSize = 8, levels = 3,
-            maxLevelCached = 2, maxVirtualBytes = 4096
+        MegaTexturePyramidCache(dir, 1_000_000, squareLayout(1_000_000, 8, 3), 2, maxVirtualBytes = 4096
         ).use { cache ->
             assertEquals(emptyList(), cache.cachedLevels())
             assertFalse(cache.has(0, 0))
@@ -240,12 +248,32 @@ class MegaTexturePipelineTest {
     }
 
     @Test
+    fun aFilmFrameFillsAFilmPageExactly() {
+        // The point of rectangular pages: same shape in, no padding out.
+        assertEquals(1920 to 798, MegaTextureDecoder.fitInto(1920, 798, 1920, 798))
+        assertEquals(960 to 399, MegaTextureDecoder.fitInto(1920, 798, 960, 399))
+        // And the square page it replaces wastes 63% of itself on the same frame.
+        val (sw, sh) = MegaTextureDecoder.fitInto(1920, 798, 2048, 2048)
+        assertEquals(2048 to 851, sw to sh)
+        assertTrue(sw * sh < 2048 * 2048 * 45 / 100, "a 1920x798 frame should fill under 45% of a square page")
+    }
+
+    @Test
+    fun fitIntoContainsRatherThanCropsInAPage() {
+        // A picture taller than its page is limited by height, not width, so nothing is cut off.
+        assertEquals(400 to 800, MegaTextureDecoder.fitInto(1000, 2000, 1920, 800))
+        // And one wider than its page is limited by width.
+        assertEquals(1920 to 480, MegaTextureDecoder.fitInto(4000, 1000, 1920, 800))
+    }
+
+    @Test
     fun fitIntoNeverExceedsThePage() {
-        for (page in listOf(8, 16, 64, 512)) {
+        val pages = listOf(8 to 8, 16 to 16, 64 to 64, 512 to 512, 1920 to 798, 15 to 7, 100 to 1)
+        for ((pw, ph) in pages) {
             for (w in listOf(1, 3, 17, 640, 4096, 12000)) {
                 for (h in listOf(1, 3, 17, 480, 4096, 12000)) {
-                    val (fw, fh) = MegaTextureDecoder.fitInto(w, h, page)
-                    assertTrue(fw in 1..page && fh in 1..page, "fitInto($w,$h,$page) = $fw×$fh")
+                    val (fw, fh) = MegaTextureDecoder.fitInto(w, h, pw, ph)
+                    assertTrue(fw in 1..pw && fh in 1..ph, "fitInto($w,$h,${pw}x$ph) = $fw×$fh")
                 }
             }
         }
@@ -270,16 +298,27 @@ class MegaTexturePipelineTest {
         levels: Int = 3,
         minPageSize: Int = 8,
         maxLevelCached: Int = 2,
+        // Non-null for a rectangular page ladder whose top page is this size.
+        sourcePage: Pair<Int, Int>? = null,
         stillWanted: (Int, Int, Long) -> Boolean = { _, _, _ -> true }
     ): Harness {
         val catalog = MegaTextureCatalog.of(
             Files.list(images).use { it.sorted().toList() },
             cacheDir.also { it.createDirectories() }
         )
-        val cache = MegaTexturePyramidCache(cacheDir, catalog.count, minPageSize, levels, maxLevelCached)
+        val layout = MegaTextureLayout(
+            imageCount = catalog.count,
+            levels = levels,
+            atlasEdge = 4096,
+            layersPerLevel = 2,
+            maxBaseLevelLayers = 64,
+            topPageWidth = sourcePage?.first ?: (minPageSize shl (levels - 1)),
+            topPageHeight = sourcePage?.second ?: (minPageSize shl (levels - 1))
+        )
+        val cache = MegaTexturePyramidCache(cacheDir, catalog.count, layout, maxLevelCached)
         return Harness(
             catalog, cache,
-            MegaTextureDecoder(catalog, cache, minPageSize, levels, threads = 2, stillWanted = stillWanted)
+            MegaTextureDecoder(catalog, cache, layout, threads = 2, stillWanted = stillWanted)
         )
     }
 
@@ -303,7 +342,7 @@ class MegaTexturePipelineTest {
             val page = assertNotNull(awaitPage(h.decoder), "no page arrived")
             assertEquals(0, page.index)
             assertEquals(1, page.level)
-            assertEquals(16, page.pageSize)
+            assertEquals(16 to 16, page.pageWidth to page.pageHeight)
             assertEquals(16 to 8, page.usedWidth to page.usedHeight, "2:1 source in a 16px page")
             assertEquals(128 to 64, page.sourceWidth to page.sourceHeight)
             assertFalse(page.fromCache, "the first decode cannot be a cache hit")
@@ -319,6 +358,28 @@ class MegaTexturePipelineTest {
             assertEquals(200, page.averageColor and 0xff)
             assertEquals(100, (page.averageColor ushr 8) and 0xff)
             assertEquals(50, (page.averageColor ushr 16) and 0xff)
+            h.decoder.recycle(page)
+        }
+    }
+
+    @Test
+    fun aRectangularPageComesBackFullOfPicture() {
+        val images = temporaryDirectory("film-images")
+        val cacheDir = temporaryDirectory("film-cache")
+        // A 2.406:1 frame, the shape of the film set this was built for.
+        writeImage(images, "frame.png", 1920, 798, Triple(90, 120, 150))
+
+        harness(images, cacheDir, levels = 4, sourcePage = 1920 to 798).use { h ->
+            h.decoder.request(0, 3, score = 1f, generation = 1)
+            val page = assertNotNull(awaitPage(h.decoder), "no page arrived")
+            assertEquals(1920 to 798, page.pageWidth to page.pageHeight)
+            // Every texel of the page is picture — that is the saving, measured.
+            assertEquals(1920 to 798, page.usedWidth to page.usedHeight)
+            // Bottom-right texel of the page is real picture, not pool garbage.
+            val at = ((798 - 1) * 1920 + (1920 - 1)) * 4
+            assertEquals(90, page.pixels.get(at).toInt() and 0xff)
+            assertEquals(120, page.pixels.get(at + 1).toInt() and 0xff)
+            assertEquals(150, page.pixels.get(at + 2).toInt() and 0xff)
             h.decoder.recycle(page)
         }
     }
@@ -394,8 +455,8 @@ class MegaTexturePipelineTest {
             listOf(images.resolve("real.png"), images.resolve("does-not-exist.png")),
             cacheDir
         )
-        MegaTexturePyramidCache(cacheDir, 2, 8, 2, 1).use { cache ->
-            MegaTextureDecoder(catalog, cache, 8, 2, threads = 1) { _, _, _ -> true }.use { decoder ->
+        MegaTexturePyramidCache(cacheDir, 2, squareLayout(2, 8, 2), 1).use { cache ->
+            MegaTextureDecoder(catalog, cache, squareLayout(2, 8, 2), threads = 1) { _, _, _ -> true }.use { decoder ->
                 decoder.request(1, 0, 1f, 1)
                 val deadline = System.nanoTime() + 10_000_000_000L
                 while (decoder.decodeFailures.get() == 0L && System.nanoTime() < deadline) Thread.sleep(5)
@@ -417,8 +478,8 @@ class MegaTexturePipelineTest {
         // before trimTo was even called.
         val parked = java.util.concurrent.CountDownLatch(1)
         val arrived = java.util.concurrent.CountDownLatch(1)
-        MegaTexturePyramidCache(cacheDir, 1, 8, 2, 1).use { cache ->
-            MegaTextureDecoder(catalog, cache, 8, 2, threads = 1, stillWanted = { _, _, _ ->
+        MegaTexturePyramidCache(cacheDir, 1, squareLayout(1, 8, 2), 1).use { cache ->
+            MegaTextureDecoder(catalog, cache, squareLayout(1, 8, 2), threads = 1, stillWanted = { _, _, _ ->
                 arrived.countDown()
                 parked.await()
                 false
@@ -470,7 +531,7 @@ class MegaTexturePipelineTest {
         try {
             assertEquals(
                 0xff808080.toInt(),
-                MegaTextureDecoder.averageOf(page, pageSize = 4, usedWidth = 0, usedHeight = 0)
+                MegaTextureDecoder.averageOf(page, pageWidth = 4, usedWidth = 0, usedHeight = 0)
             )
         } finally {
             MemoryUtil.memFree(page)

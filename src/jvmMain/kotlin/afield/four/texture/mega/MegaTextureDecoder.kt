@@ -21,14 +21,15 @@ import kotlin.math.roundToInt
  * [pixels] is native memory from [MegaTextureDecoder]'s per-level pool; whoever consumes the page
  * must hand it back with [MegaTextureDecoder.recycle] or the pool bleeds.
  *
- * [usedWidth] / [usedHeight] are the part of the square page the picture actually occupies. The
+ * [usedWidth] / [usedHeight] are the part of the page the picture actually occupies. The
  * rest is left at whatever the pool last held: never sampled, because the page table publishes
  * this rectangle and the shader scales its UVs by it.
  */
 class MegaDecodedPage(
     val index: Int,
     val level: Int,
-    val pageSize: Int,
+    val pageWidth: Int,
+    val pageHeight: Int,
     val pixels: ByteBuffer,
     val usedWidth: Int,
     val usedHeight: Int,
@@ -63,8 +64,8 @@ class MegaDecodedPage(
 class MegaTextureDecoder(
     private val catalog: MegaTextureCatalog,
     private val cache: MegaTexturePyramidCache,
-    private val minPageSize: Int,
-    private val levels: Int,
+    /** Where page sizes come from, so the decoder resamples to exactly what the atlas will hold. */
+    private val layout: MegaTextureLayout,
     threads: Int,
     /** Answers "is this still worth doing?" from the requester's live state. Called off-thread. */
     private val stillWanted: (index: Int, level: Int, generation: Long) -> Boolean
@@ -98,7 +99,8 @@ class MegaTextureDecoder(
      * and a dropped request stranded its image.
      */
     private val abandoned = ConcurrentLinkedQueue<Int>()
-    private val pools = Array(levels) { ConcurrentLinkedQueue<ByteBuffer>() }
+    private val levels: Int get() = layout.levels
+    private val pools = Array(layout.levels) { ConcurrentLinkedQueue<ByteBuffer>() }
     private val stopping = AtomicBoolean(false)
     private val sequence = AtomicLong()
     private val workers: List<Thread>
@@ -177,8 +179,7 @@ class MegaTextureDecoder(
     }
 
     private fun borrow(level: Int): ByteBuffer {
-        val pageSize = minPageSize shl level
-        val bytes = pageSize * pageSize * 4
+        val bytes = layout.pageBytes(level)
         val pooled = pools[level].poll()
         if (pooled != null && pooled.capacity() >= bytes) {
             pooled.clear()
@@ -223,26 +224,28 @@ class MegaTextureDecoder(
     }
 
     private fun produce(index: Int, level: Int): MegaDecodedPage? {
-        val pageSize = minPageSize shl level
+        val pageW = layout.pageWidth(level)
+        val pageH = layout.pageHeight(level)
         val sourceSize = cache.sourceSize(index)
 
         // Cache hit needs the source dimensions too: the page's used rectangle is derived from
-        // them, and a page with no known aspect would be published as a square.
+        // them, and a page with no known aspect would be published as the page's own shape.
         if (sourceSize != null && cache.has(index, level)) {
             val pixels = borrow(level)
             pixels.clear()
             if (cache.read(index, level, pixels)) {
-                pixels.position(0).limit(pageSize * pageSize * 4)
-                val (usedW, usedH) = fitInto(sourceSize.first, sourceSize.second, pageSize)
+                pixels.position(0).limit(layout.pageBytes(level))
+                val (usedW, usedH) = fitInto(sourceSize.first, sourceSize.second, pageW, pageH)
                 decodedFromCache.incrementAndGet()
                 return MegaDecodedPage(
                     index = index,
                     level = level,
-                    pageSize = pageSize,
+                    pageWidth = pageW,
+                    pageHeight = pageH,
                     pixels = pixels,
                     usedWidth = usedW,
                     usedHeight = usedH,
-                    averageColor = averageOf(pixels, pageSize, usedW, usedH),
+                    averageColor = averageOf(pixels, pageW, usedW, usedH),
                     sourceWidth = sourceSize.first,
                     sourceHeight = sourceSize.second,
                     fromCache = true
@@ -267,12 +270,13 @@ class MegaTextureDecoder(
                 // The full-size decode is the expensive part; spend it on every cacheable level.
                 for (other in cache.cachedLevels()) {
                     if (other == level || cache.has(index, other)) continue
-                    val otherPage = minPageSize shl other
-                    val scratch = MemoryUtil.memAlloc(otherPage * otherPage * 4)
+                    val scratch = MemoryUtil.memAlloc(layout.pageBytes(other))
                     try {
-                        if (fitIntoPage(decoded, sourceWidth, sourceHeight, scratch, otherPage)) {
-                            cache.write(index, other, scratch)
-                        }
+                        val ok = fitIntoPage(
+                            decoded, sourceWidth, sourceHeight, scratch,
+                            layout.pageWidth(other), layout.pageHeight(other)
+                        )
+                        if (ok) cache.write(index, other, scratch)
                     } finally {
                         MemoryUtil.memFree(scratch)
                     }
@@ -280,22 +284,23 @@ class MegaTextureDecoder(
 
                 val pixels = borrow(level)
                 pixels.clear()
-                if (!fitIntoPage(decoded, sourceWidth, sourceHeight, pixels, pageSize)) {
+                if (!fitIntoPage(decoded, sourceWidth, sourceHeight, pixels, pageW, pageH)) {
                     pixels.clear()
                     pools[level].add(pixels)
                     return@use null
                 }
                 cache.write(index, level, pixels)
-                pixels.position(0).limit(pageSize * pageSize * 4)
-                val (usedW, usedH) = fitInto(sourceWidth, sourceHeight, pageSize)
+                pixels.position(0).limit(layout.pageBytes(level))
+                val (usedW, usedH) = fitInto(sourceWidth, sourceHeight, pageW, pageH)
                 MegaDecodedPage(
                     index = index,
                     level = level,
-                    pageSize = pageSize,
+                    pageWidth = pageW,
+                    pageHeight = pageH,
                     pixels = pixels,
                     usedWidth = usedW,
                     usedHeight = usedH,
-                    averageColor = averageOf(pixels, pageSize, usedW, usedH),
+                    averageColor = averageOf(pixels, pageW, usedW, usedH),
                     sourceWidth = sourceWidth,
                     sourceHeight = sourceHeight,
                     fromCache = false
@@ -322,24 +327,34 @@ class MegaTextureDecoder(
 
     companion object {
         /**
-         * The picture's size inside a square page of [pageSize], longest side fitted, aspect kept.
+         * The picture's size inside a [pageWidth]×[pageHeight] page — contained, aspect kept.
          *
-         * Both results are at least 1: a 4000×1 panorama in an 8-pixel page is a 8×1 strip, not a
+         * "Contained" is the whole content of this function, and it is why the page being
+         * rectangular does not complicate anything downstream: whichever of the two ratios is
+         * tighter decides, so a picture the same shape as its page fills it exactly, a wider one
+         * is limited by width, a taller one by height. A 1920×798 frame in a 1920×798 page comes
+         * back 1920×798 and wastes not one texel.
+         *
+         * Both results are at least 1: a 4000×1 panorama in an 8-pixel page is an 8×1 strip, not a
          * zero-height one, and a zero would make the page table publish an empty rectangle.
          */
-        fun fitInto(sourceWidth: Int, sourceHeight: Int, pageSize: Int): Pair<Int, Int> {
-            if (sourceWidth <= 0 || sourceHeight <= 0) return pageSize to pageSize
-            return if (sourceWidth >= sourceHeight) {
-                pageSize to max(1, (pageSize.toDouble() * sourceHeight / sourceWidth).roundToInt())
-                    .coerceAtMost(pageSize)
-            } else {
-                max(1, (pageSize.toDouble() * sourceWidth / sourceHeight).roundToInt())
-                    .coerceAtMost(pageSize) to pageSize
-            }
+        fun fitInto(sourceWidth: Int, sourceHeight: Int, pageWidth: Int, pageHeight: Int): Pair<Int, Int> {
+            if (sourceWidth <= 0 || sourceHeight <= 0) return pageWidth to pageHeight
+            val scale = minOf(
+                pageWidth.toDouble() / sourceWidth,
+                pageHeight.toDouble() / sourceHeight
+            )
+            val w = max(1, (sourceWidth * scale).roundToInt()).coerceAtMost(pageWidth)
+            val h = max(1, (sourceHeight * scale).roundToInt()).coerceAtMost(pageHeight)
+            return w to h
         }
 
+        /** [fitInto] for a square page — the shorthand the square page ladder uses. */
+        fun fitInto(sourceWidth: Int, sourceHeight: Int, pageSize: Int): Pair<Int, Int> =
+            fitInto(sourceWidth, sourceHeight, pageSize, pageSize)
+
         /**
-         * Resample RGBA [source] into the top-left `fitInto(...)` rectangle of a [pageSize] square.
+         * Resample RGBA [source] into the top-left `fitInto(...)` rectangle of the page.
          *
          * `stb_image_resize` takes the destination's row stride, which is what lets the picture go
          * into a corner of a larger page without a second copy.
@@ -349,14 +364,15 @@ class MegaTextureDecoder(
             sourceWidth: Int,
             sourceHeight: Int,
             page: ByteBuffer,
-            pageSize: Int
+            pageWidth: Int,
+            pageHeight: Int
         ): Boolean {
-            val (usedW, usedH) = fitInto(sourceWidth, sourceHeight, pageSize)
+            val (usedW, usedH) = fitInto(sourceWidth, sourceHeight, pageWidth, pageHeight)
             source.position(0)
             page.position(0)
             val result = stbir_resize_uint8_linear(
                 source, sourceWidth, sourceHeight, 0,
-                page, usedW, usedH, pageSize * 4,
+                page, usedW, usedH, pageWidth * 4,
                 4
             )
             source.position(0)
@@ -369,11 +385,11 @@ class MegaTextureDecoder(
          * Mean colour over the page's used rectangle, packed `0xAABBGGRR` to match the shader's
          * unpack order.
          *
-         * Sampled rather than summed: an every-nth-pixel walk over a 512×512 page is within a
+         * Sampled rather than summed: an every-nth-pixel walk over a full-size page is within a
          * percent of the true mean and this runs on the decode threads, where the full-size JPEG
          * decode is already the thing to beat.
          */
-        internal fun averageOf(page: ByteBuffer, pageSize: Int, usedWidth: Int, usedHeight: Int): Int {
+        internal fun averageOf(page: ByteBuffer, pageWidth: Int, usedWidth: Int, usedHeight: Int): Int {
             var r = 0L
             var g = 0L
             var b = 0L
@@ -382,7 +398,7 @@ class MegaTextureDecoder(
             var y = 0
             while (y < usedHeight) {
                 var x = 0
-                val row = y * pageSize * 4
+                val row = y * pageWidth * 4
                 while (x < usedWidth) {
                     val at = row + x * 4
                     r += page.get(at).toInt() and 0xff

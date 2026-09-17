@@ -19,15 +19,33 @@ import kotlin.math.min
  */
 class MegaTextureLayout(
     val imageCount: Int,
-    val minPageSize: Int,
     val levels: Int,
     val atlasEdge: Int,
     layersPerLevel: Int,
-    maxBaseLevelLayers: Int
+    maxBaseLevelLayers: Int,
+    /** Width of a top-level page. For a film set, the source frame's width exactly. */
+    val topPageWidth: Int,
+    /** Height of a top-level page. Equal to [topPageWidth] for the square default. */
+    val topPageHeight: Int = topPageWidth
 ) {
+    /**
+     * Page width at this level: the top page halved once per level down, never below 1.
+     *
+     * Derived from the *top* rather than doubled up from a base, because the number anyone
+     * actually knows is the source resolution. 1920×798 film frames halve to 960×399, 480×200,
+     * 240×100 — a ladder that a base-and-double scheme cannot produce at all, since 798 has one
+     * factor of two in it. The rounding that makes 399 out of 399.0 and 200 out of 199.5 is why
+     * each level carries its own size instead of a shared shift.
+     */
+    val pageWidths = IntArray(levels) { max(1, ceilDiv(topPageWidth, 1 shl (levels - 1 - it))) }
+    val pageHeights = IntArray(levels) { max(1, ceilDiv(topPageHeight, 1 shl (levels - 1 - it))) }
+
     /** Pages across one atlas layer at this level. At least 1, even for a page wider than a layer. */
-    val pagesPerRow = IntArray(levels) { max(1, atlasEdge / (minPageSize shl it)) }
-    val pagesPerLayer = IntArray(levels) { pagesPerRow[it] * pagesPerRow[it] }
+    val pagesPerRow = IntArray(levels) { max(1, atlasEdge / pageWidths[it]) }
+
+    /** Pages down one atlas layer at this level. */
+    val pagesPerColumn = IntArray(levels) { max(1, atlasEdge / pageHeights[it]) }
+    val pagesPerLayer = IntArray(levels) { pagesPerRow[it] * pagesPerColumn[it] }
     val layersForLevel = IntArray(levels)
 
     /** First atlas array layer belonging to this level. */
@@ -48,8 +66,17 @@ class MegaTextureLayout(
 
     init {
         require(levels in 1..15) { "a MegaTexture has between 1 and 15 levels, not $levels" }
-        require(minPageSize > 0) { "minPageSize must be positive" }
+        require(topPageWidth > 0 && topPageHeight > 0) { "top page must be positive" }
         require(atlasEdge > 0) { "atlasEdge must be positive" }
+        // A page wider or taller than a layer has nowhere to go. `pagesPerRow` clamps to 1 rather
+        // than 0, which without this would have it believe one page fits where none does: `pageX`
+        // says 0, the copy asks for 1920 columns of a 1024-wide image, and the upload runs off the
+        // end. Caught by a test that tiled the slots and checked they stayed inside the layer.
+        require(topPageWidth <= atlasEdge && topPageHeight <= atlasEdge) {
+            "a ${topPageWidth}x$topPageHeight top page does not fit an atlas layer of " +
+                    "${atlasEdge}x$atlasEdge; raise atlasEdge to at least " +
+                    "${max(topPageWidth, topPageHeight)} or use fewer levels"
+        }
         var layer = 0
         for (level in 0 until levels) {
             val needed = ceil(imageCount.toDouble() / pagesPerLayer[level]).toInt().coerceAtLeast(1)
@@ -68,7 +95,11 @@ class MegaTextureLayout(
         }
     }
 
-    fun pageSize(level: Int): Int = minPageSize shl level
+    fun pageWidth(level: Int): Int = pageWidths[level]
+    fun pageHeight(level: Int): Int = pageHeights[level]
+
+    /** Bytes one page at this level occupies as RGBA8 — the cache's stride and the upload's size. */
+    fun pageBytes(level: Int): Int = pageWidths[level] * pageHeights[level] * 4
 
     /** Bytes one atlas layer occupies as RGBA8. */
     val bytesPerLayer: Long get() = atlasEdge.toLong() * atlasEdge * 4
@@ -81,11 +112,11 @@ class MegaTextureLayout(
 
     /** Pixel column of this slot's page within its layer. */
     fun pageX(level: Int, slot: Int): Int =
-        ((slot % pagesPerLayer[level]) % pagesPerRow[level]) * pageSize(level)
+        ((slot % pagesPerLayer[level]) % pagesPerRow[level]) * pageWidths[level]
 
     /** Pixel row of this slot's page within its layer. */
     fun pageY(level: Int, slot: Int): Int =
-        ((slot % pagesPerLayer[level]) / pagesPerRow[level]) * pageSize(level)
+        ((slot % pagesPerLayer[level]) / pagesPerRow[level]) * pageHeights[level]
 
     /**
      * The highest level worth serving, given what the shader asked for and how many pages exist.
@@ -184,10 +215,14 @@ class MegaTextureLayout(
     )
 
     override fun toString(): String =
-        "MegaTextureLayout($imageCount images, $levels levels, ${atlasEdge}² × $totalLayers layers " +
-                "= ${atlasBytes shr 20} MiB, capacities ${pageCapacity.toList()})"
+        "MegaTextureLayout($imageCount images, $levels levels " +
+                "(${pageWidths[0]}x${pageHeights[0]}..${topPageWidth}x${topPageHeight}), " +
+                "${atlasEdge}² × $totalLayers layers = ${atlasBytes shr 20} MiB, " +
+                "capacities ${pageCapacity.toList()})"
 
     companion object {
+        private fun ceilDiv(a: Int, b: Int): Int = (a + b - 1) / b
+
         /** Bit 20 of the second word: "this entry names a real page". */
         const val RESIDENT_BIT = 1 shl 20
 
