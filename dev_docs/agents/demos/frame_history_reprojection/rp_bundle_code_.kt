@@ -9,6 +9,12 @@ import afield.stdlib.linalg.Vector3f
 
 prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
 
+// The registration handles, kept so the next box can move each ball independently.
+// `registerSphere` returns the `PullingMeshPair` it registered and there is no by-name
+// lookup on a bundle, so the handle is the only way back to an object once it is in the
+// scene — hold it at registration or you cannot animate it at all.
+prop<MutableList<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>>(balls)
+
 // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
 // so re-running it would strand the bundle the chain is appended to.
 once.bundle {
@@ -28,13 +34,19 @@ once.bundle {
     // and it would sit upstream of everything the chain below is showing you.
     b.scene.motionBlurStrength = 0f
     // Silhouette edges, so there is something for a reprojection to be right or wrong about.
+    // The handles go into `balls` in row-major order, ix outer and iz inner, which is the
+    // order the animation box relies on to recover (ix, iz) from an index.
+    val handles = mutableListOf<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
     for (ix in -2..2) for (iz in -2..2) {
-        b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
-            .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f))
+        handles.add(
+            b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
+                .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f))
+        )
     }
+    balls = handles
     b.applyScenePlan()
     b.present(renderer = renderer)
     b.attachTo(renderer)
     b
 }
-println("bundle ready: " + bundle.postStack.names())
+println("bundle ready: " + bundle.postStack.names() + ", " + balls.size + " balls")
