@@ -42,7 +42,7 @@ import kotlin.math.*
  */
 
 // ═══════════════════════════════════════════════════════════════════
-//  FFT – radix-2 Cooley-Tukey (SIMD-accelerated butterflies)
+//  FFT – radix-2 Cooley-Tukey, decimation in time, precomputed twiddles
 // ═══════════════════════════════════════════════════════════════════
 
 /**
