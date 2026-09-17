@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * that only make sense on a scalar field ([sobel], [laplacian], …) take the [Img.luma] of a colour
  * input automatically rather than erroring, because that is what you meant.
  *
- * Two performance-relevant choices worth knowing about:
+ * Two performance-relevant choices:
  *
  * - **Separable when possible.** Gaussian and box blurs run as two 1-D passes (`O(k)` per pixel,
  *   not `O(k²)`). [convolveSeparable] is public so your own separable kernels get the same

@@ -29,7 +29,7 @@ package afield.stdlib.polytope
  * polyhedral surface and 0 for a convex 4-polytope, which are the numbers a reader is checking
  * against.
  *
- * ## Validation reports; it does not throw
+ * ## Validation returns values, not exceptions
  *
  * [PolytopeTopologyBuilder] records what it is told and checks almost nothing. Structural
  * complaints are [ValidationIssue] *values* returned by [PolytopeTopology.validate], so a tool or a

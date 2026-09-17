@@ -9,9 +9,9 @@ print them; the smoke asserts the *shape* (a median far inside budget, a tail fa
 `PatSpatialRoom.busyMsTotal` against elapsed time, not any of these numbers. Treat every figure as
 a last observation on one machine, not as a contract.
 
-Note also that `PatSpatial.kt`'s file KDoc carries the same table and the same
-`1274 of 1500` figure, and that KDoc **publishes** to `public/docs/reference/patterns.md`. So these
-numbers are still on the site in the reference. See "Open" below.
+`PatSpatial.kt`'s file KDoc used to carry this table and the `1274 of 1500` figure too, and that
+KDoc **publishes** to `public/docs/reference/patterns.md`. The seventeenth firing (2026-09-16) cut
+it back to the design argument and pointed it here, so this note is now the only copy.
 
 ## Per-block cost against budget
 
@@ -93,11 +93,11 @@ Two consequences, both now in the code:
 
 ## Open
 
-- **The same measurement mass is published twice.** `PatSpatial.kt`'s file KDoc (around lines
-  104–146) repeats this table, the `1274 of 1500` figure, and the sentence "Read the two columns
-  together, because the pair is the finding" — which is the TED-slide heading shape Marc named on
-  2026-09-13. Fixing it means editing KDoc and regenerating `public/docs/reference/patterns.md`,
-  which needs a Gradle run; the firing that displaced this material had 9 GiB of disk and could not
-  build. Do this when the machine has room.
+- ~~The same measurement mass is published twice.~~ **Done, 2026-09-16 (seventeenth firing).**
+  `PatSpatial.kt`'s file KDoc kept the design argument — median flat, tail moves by three, therefore
+  decouple — and lost the percentile table, the warmup methodology, the load-average-33 run and the
+  sentence "Read the two columns together, because the pair is the finding". It now cites this note
+  by path. `generateCodebaseReference` was re-run, so `public/docs/reference/patterns.md` no longer
+  carries any of it.
 - Nothing pins the six spatial tags' consumption other than `synth.pat-spatial.sound`'s event-map
   assertions, which run only with `./gradlew fetchSteamAudioNatives` done first.

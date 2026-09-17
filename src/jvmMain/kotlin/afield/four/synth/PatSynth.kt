@@ -40,7 +40,7 @@ import kotlin.math.sqrt
  * an integer comparison. [FaustPatternFeeder] splits the work the same way for a Faust voice bank,
  * and the two are deliberate siblings.
  *
- * # The voice, and why the `.wav` is the same thing you hear
+ * # One voice, and the `.wav` that records it
  *
  * One oscillator, one exponential-decay envelope, one one-pole lowpass, reading the same `gain`,
  * `pan`, `cutoff`, `sustain`, `note` and `speed` annotations off each event and using the same

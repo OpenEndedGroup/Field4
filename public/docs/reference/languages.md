@@ -3966,7 +3966,7 @@ simulation and not a renderer: the language decides where rectangles are over a 
 and what material metadata each one carries, and StackSL (`afield.stacksl`) decides how a
 material shades. That division is the reason both are small.
 
-### The pipeline, which is also the reading order
+### The pipeline, in reading order
 
 Four types, and every entry point in this file is a step between two of them:
 
@@ -3993,7 +3993,7 @@ String  --tokenize-->  List<Token>  --eval-->  SceneProgram  --sample(t)-->  Sam
 `afield.stdlib.Functions` half of the bridge, so a program can lay out an array from a curve the
 host fitted or evolved.
 
-### What the tracks buy, and why they are not just interpolation
+### Why a property is a track and not a number
 
 Half this file is [`Track`](languages.md#rectsl-kt-track) and its implementations, because a property being a function of time
 rather than a number is what the rest of the package is built on. A track is symbolic and
@@ -5549,10 +5549,10 @@ returns 0, and its `mod` truncates where GLSL's floors.
 
 The one unavoidable difference is precision: the CPU samples in `double` and
 a shader runs in `float`. Expect agreement to about 1e-6 of a wall unit, not
-to the ulp — which is now measured rather than assumed:
-`RectSLGalleryHarness.measureSdfAgreement` reads the *compiled shader's* own
-answers back out of a framebuffer and compares them against `SceneProgram.sample`
-across eleven programs, and the worst disagreement is 2.5e-06 wall units.
+to the ulp. `RectSLGalleryHarness.measureSdfAgreement` reads the *compiled
+shader's* own answers back out of a framebuffer and compares them against
+`SceneProgram.sample` across eleven programs, and the worst disagreement is
+2.5e-06 wall units.
 
 What *is* approximated is now two tracks, not three. `->degrade`'s 64-bit
 integer hash reads like something a shader cannot do and is not: it lowers
@@ -5930,14 +5930,14 @@ Not speed, primarily. RectSL's array words build per-copy channels by *offsettin
 hundred-copy array arrives at a backend as a hundred `BinaryDoubleTrack(const, const, ADD)` nodes,
 and each backend has had to fold that itself: `trackConstantValue` exists because the GLSL emitter
 needed it, and the `Fn` lowering calls the same function for the same reason. A fold is the
-*smallest* rewrite, and having it live inside two emitters rather than over the IR is the tell that
-the rewriter was missing.
+*smallest* rewrite there is, and both emitters had to reach for it themselves because there
+was nowhere over the IR to apply it once.
 
 The bigger reason is that a simplified tree is a smaller `Fn` graph, and an `Fn` graph's size is
 the cost of both a sample and a gradient — `Fn.eval` walks every node, and `gradientAt` records
 every node on a tape. A fit runs that thousands of times.
 
-### The contract: every rule is bit-exact, and that is a real constraint
+### The contract: every rule is bit-exact
 
 A simplified track must sample **bit-identically** to the original, not merely equal-to-tolerance,
 which rules out several rewrites everyone writes by reflex. The gallery corpus caught the first
@@ -5996,7 +5996,7 @@ bit-identity over the corpus already assembled for the differentiable backend is
 
 The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted.
 
-### Why this exists, and what it is not
+### Why an image fit needs a rasterizer
 
 `Track.fitParameters` turns the arrow round for one *track*: mark a number `free-param`, say what
 the track should read at three instants, and the exact gradient of the lowered `Fn` walks the
@@ -6040,7 +6040,7 @@ unioned across channels, because one name legitimately reaches several of them. 
 gradient-summed, step-applied-to-every-slot discipline of `Track.fitParameters` carries over
 unchanged; only the index space is new.
 
-### Cost, and why a frame is a separate object
+### Why a frame is a separate object
 
 [`ADTape`](math.md#autodiff-kt-adtape) records five parallel arrays per operation and never shrinks. A 128² raster over a
 30-rect scene, naively taped, is ~14M nodes — half a gigabyte. But a shape's *transform* depends

@@ -17,7 +17,7 @@ import kotlin.math.sqrt
  *     rope.pin(0)
  *     while (true) { rope.step(gravity = 9.8f, iterations = 16); draw(rope.lines()) }
  *
- * #### Two slots, and what the other two are for
+ * #### Why every node has two spare slots
  *
  * A chain node spends slot 0 on its successor and slot 1 on its predecessor; the ends use one
  * each. That leaves **slots 2 and 3 free on every node of every rope**, which is what
