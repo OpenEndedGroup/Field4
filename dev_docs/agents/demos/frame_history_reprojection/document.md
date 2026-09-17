@@ -112,7 +112,7 @@ val Once.renderer by Onceing<Renderer>() /**/
 <!-- field-box id="rp_chain" index="2" -->
 
 ```edn [field-box id="rp_chain" role="properties"]
-{"id" "rp_chain" "index" 2 "name" "reprojected accumulation" "parents" ["root" "rp_bundle"] "children" ["rp_modes"] "properties" {"children" #{#afield/box "rp_modes"} "parents" #{#afield/box "root" #afield/box "rp_bundle"} "name" "reprojected accumulation" "_tombstone" false "frame" #afield/rect [760.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_chain_code_.kt" "lines" 37 "characters" 1364 "sha256" "5769afb63afba1f8eb65dad845e88da918c858e8815813054b9e6e7894a817d7"} {"name" "preamble" "language" "text" "lines" 10 "characters" 564 "sha256" "aefb4afd09c0c218970462cf6a0312ee1c30d0422a9f1cc2c65751dd5bb7fe22"}]}
+{"id" "rp_chain" "index" 2 "name" "reprojected accumulation" "parents" ["root" "rp_bundle"] "children" ["rp_modes"] "properties" {"children" #{#afield/box "rp_modes"} "parents" #{#afield/box "root" #afield/box "rp_bundle"} "name" "reprojected accumulation" "_tombstone" false "frame" #afield/rect [760.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_chain_code_.kt" "lines" 42 "characters" 1735 "sha256" "f196bbb99f95afd059cad5e85bbe85076aed1d94d069c108d4e2831ecb8eaa9b"} {"name" "preamble" "language" "text" "lines" 10 "characters" 564 "sha256" "aefb4afd09c0c218970462cf6a0312ee1c30d0422a9f1cc2c65751dd5bb7fe22"}]}
 ```
 
 ```kotlin [field-property box="rp_chain" name="code" path="rp_chain_code_.kt"]
@@ -137,7 +137,12 @@ chain = bundle.addPassChain(
     ) + FabricatePassLibrary.temporalDebug(
         name = "display",
         source = "taa",
-        mode = 0
+        mode = 0,
+        // Turn mode 1's gain WAY up. The default 8 is tuned for a fast camera; this yaw
+        // moves the image about five texels a frame, which at 8 is a shift of 0.03 in
+        // linear light - under two 8-bit codes, and indistinguishable from flat grey even
+        // though the number underneath is right. At 60 you can see the pan.
+        motionScale = 60f
     ),
     printReport = true
 )

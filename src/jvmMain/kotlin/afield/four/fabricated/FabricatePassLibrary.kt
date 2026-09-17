@@ -1456,6 +1456,13 @@ object FabricatePassLibrary {
      *
      * @param mode 0..[MOTION_DISPLAY_MAX_MODE] as above. A push constant, so it is a number a person
      *   turns while watching rather than a rebuild.
+     * @param motionScale gain on mode 1, so a motion of `1/motionScale` of the frame saturates the
+     *   channel. **Turn this up.** The default 8 is right for a *fast* camera and far too low to see
+     *   an ordinary one: a smooth turn moves the image a handful of texels per frame, which at 8 is
+     *   a shift of about 0.03 in linear light — under two 8-bit codes, and indistinguishable from
+     *   flat grey to the eye even though the number underneath is correct. Something in the tens is
+     *   what makes mode 1 legible for a camera a person is driving; the default is left low so the
+     *   mode never lies by saturating.
      */
     fun temporalDebug(
         name: String = "motion-display",

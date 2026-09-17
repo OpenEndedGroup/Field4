@@ -90,7 +90,12 @@ operations:
               ) + FabricatePassLibrary.temporalDebug(
                   name = "display",
                   source = "taa",
-                  mode = 0
+                  mode = 0,
+                  // Turn mode 1's gain WAY up. The default 8 is tuned for a fast camera; this yaw
+                  // moves the image about five texels a frame, which at 8 is a shift of 0.03 in
+                  // linear light - under two 8-bit codes, and indistinguishable from flat grey even
+                  // though the number underneath is right. At 60 you can see the pan.
+                  motionScale = 60f
               ),
               printReport = true
           )
