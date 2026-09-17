@@ -30,7 +30,7 @@ import kotlin.math.*
  *     bounded-curvature force limiter (magnitude, magnitude rate, and
  *     angular rate/acceleration on the direction).
  *  2. ~100ms   discrete-time RLS identification of the host's own integrator:
- *       x[k+1] - 2x[k] + x[k-1] = dt^2 (b F[k] + c v[k] + d)
+ *         x(k+1) - 2x(k) + x(k-1) = dt^2 (b F(k) + c v(k) + d)
  *     exact under semi-implicit Euler, so b^ absorbs the host's
  *     numerical damping and dispersion, not just the mass. Gains are
  *     synthesised from (b,c,d); the only free knobs are physical.
@@ -48,8 +48,8 @@ import kotlin.math.*
  *    amplification. Uncorrected this donates omega*dt/2 of lag straight to the
  *    limiter and lowers the bandwidth ceiling.
  *  - TWO velocity signals, never crossed:
- *        vHat  (model observer)  -> control law only
- *        vPrev (raw, prefiltered) -> identifier only
+ *         vHat  (model observer)  -> control law only
+ *         vPrev (raw, prefiltered) -> identifier only
  *    Feeding the observer estimate to the identifier is circular -- it was built
  *    from the force and the current model, so the RLS would confirm whatever it
  *    already believes. That failure looks stable for minutes, then diverges.

@@ -109,6 +109,12 @@ object AgentTranscriptIndexGuard {
     private val HEADING = Regex("""^##\s+(.*\S)\s*$""")
     private val VERIFIED_BY = Regex("""<!--\s*transcript-index:\s*verified-by\s*=\s*([a-z, ]+?)\s*-->""")
     private val TOTALS = Regex("""<!--\s*transcript-index:\s*totals\s*-->""")
+    // Deliberately prefix-agnostic: this guard answers "which transcript does the link name?", and
+    // the *shape* of the link is `tools/check_doc_offline_links.py`'s question. Both halves have to
+    // stay viewer-relative — `offline.html?file=assets/…`, no leading slash on either — because the
+    // site publishes under a path prefix (`site_url: …/Field4/`) and the viewer resolves `?file=`
+    // against its own URL. Writing `/offline.html?file=/field4/…` 404s twice over on the published
+    // site; it was the shape on all 137 links here until 2026-09-17.
     private val OPEN_LINK = Regex("""assets/agent_transcripts/([a-z0-9_]+)/metadata\.edn""")
 
     @JvmStatic
@@ -219,7 +225,7 @@ object AgentTranscriptIndexGuard {
                 materialized && target == null -> problems.add(
                     "${entry.name}: entry at line ${entry.line} has no `Open ↗` link, but the transcript IS " +
                         "materialized into $BUNDLE_REL/${entry.name}/ and is offered on the welcome screen. Link it: " +
-                        "[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/${entry.name}/metadata.edn)"
+                        "[Open ↗](offline.html?file=assets/agent_transcripts/${entry.name}/metadata.edn)"
                 )
                 !materialized && target != null -> problems.add(
                     "${entry.name}: entry at line ${entry.line} links a starting point, but the transcript is in " +

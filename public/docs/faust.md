@@ -207,7 +207,7 @@ each chord as notated, not the first.
 Everything on this page ships as a loadable document — six boxes, on the welcome screen under
 **Starting points**, or straight from here:
 
-[Open the starting point](/offline.html?file=/field4/assets/agent_transcripts/faust_polyphony/metadata.edn)
+[Open the starting point](offline.html?file=assets/agent_transcripts/faust_polyphony/metadata.edn)
 
 *Faust instrument* is the live one and the only box that opens an audio device: `faustPoly(…, voices = 8)`
 playing the pattern above, returned as the box's last expression so the box stays lit while it plays

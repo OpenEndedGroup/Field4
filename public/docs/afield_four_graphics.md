@@ -9,7 +9,7 @@
 That last part is the one to learn. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
 
 <iframe
-  src="/offline.html?file=/field4/assets/canonical_graphics/metadata.edn"
+  src="offline.html?file=assets/canonical_graphics/metadata.edn"
   title="Canonical Graphics Offline Viewer"
   style="width:100%; height:640px; border:1px solid #444; border-radius:8px; background:#111;"
   loading="lazy"
