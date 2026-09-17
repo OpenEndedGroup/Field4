@@ -101,7 +101,7 @@ number instead of a NaN:
 - three samples: `kurtosisExcess` is **0.0**; it needs `n > 3`.
 
 `SummaryStatsBuffer` keeps two separate drop counters
-(`stats.kt:405#Two independent drop counters, and the distinction is the useful part`).
+(`stats.kt:405#Two independent drop counters`).
 `dropped(non-finite)` counts values it refused; `window-evicted` counts values that aged out of the
 window. Feed 200 finite samples to a `maxSize = 64` buffer and you get `size=64, samplesSeen=200,
 droppedByCapacity=136`.
