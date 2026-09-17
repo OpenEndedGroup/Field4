@@ -1479,7 +1479,7 @@ Where a [`TriMesh`](graphics.md#mesh-kt-trimesh) comes from: the primitives (`bo
 generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`,
 `tubeMesh`, `heightfieldMesh`, `reliefMesh`, `polygonMesh`).
 
-### Welding, and where the normals come from
+### Welding and normals
 
 **Everything here is welded and watertight where it can be.** A generator returns the minimal
 vertex set, so `MeshTopology.eulerCharacteristic` of a box, a sphere, a cone or a capped cylinder
@@ -1697,8 +1697,8 @@ smoothing and decimation.
 These are the four operations that make the difference between a mesh you generated and a mesh you
 can use. In rough order of how often you will reach for them:
 
- - `TriMesh.withVertexNormals` / `TriMesh.flatShaded` / `TriMesh.shadedNormals` — shading. The
-   third is the interesting one: it splits a vertex only where the faces meeting there genuinely
+ - `TriMesh.withVertexNormals` / `TriMesh.flatShaded` / `TriMesh.shadedNormals` — shading.
+   `TriMesh.shadedNormals` splits a vertex only where the faces meeting there genuinely
    disagree, so a cylinder comes out smooth around its side and hard at its rim, from one call.
  - `TriMesh.loopSubdivide` — four triangles for one, converging on the Loop limit surface. Refines
    *and* smooths, and preserves the Euler characteristic exactly.

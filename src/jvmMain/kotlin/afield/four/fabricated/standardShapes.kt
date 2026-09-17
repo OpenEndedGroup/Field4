@@ -8,6 +8,27 @@ import org.lwjgl.util.par.ParShapesMesh
 import kotlin.math.sqrt
 
 /**
+ * Ten par_shapes primitives, written straight into vertex-pulling buffers as triangle soup.
+ *
+ * [StandardShapes] is the layer under `StandardRenderer.Bundle.registerCube`, `registerSphere` and
+ * the eight other `register*` shape helpers, one per function here. Each builds a par_shapes mesh,
+ * scales it, translates it if the call gave a centre, and writes it into two buffers the caller
+ * supplies, one for positions and one for normals. The write is **non-indexed**: the source mesh's
+ * triangle list is expanded, so three vertices go out per triangle and a vertex-pulling shader
+ * reads a position and its normal at the same index with no indirection. `ShapeWriteResult` comes
+ * back carrying the source mesh's vertex and triangle counts alongside what was actually written,
+ * which is how a caller sizes its mesh afterwards instead of predicting the triangle count up
+ * front.
+ *
+ * `WriteConfig` covers the two decisions a caller usually has to make. `padVec3To4` writes each
+ * vector as four floats for std430 alignment and is on by default; `append` chooses between
+ * continuing after whatever is already in the buffer and starting at its beginning, and all ten
+ * `register*` helpers pass `append = false`. Normals come from par_shapes, computed there if the
+ * mesh arrived without any, with an index that falls outside the normal buffer reading the
+ * triangle's face normal instead. Each call frees its par_shapes mesh before returning.
+ */
+
+/**
  * Thin Kotlin helpers around par_shapes that emit **non-indexed** positions + normals
  * into caller-provided [DynamicallyWriteable] buffers (useful for vertex-pulling tests).
  */

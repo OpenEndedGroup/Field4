@@ -66,7 +66,7 @@ Euler characteristic falls out and is `2` at every resolution, because the `−P
 walls contribute cancels the `+nx+nz` that the grid does. `MeshCoreTest` checks all of that at three
 aspect ratios, so a formula that only works on a square grid fails there.
 
-!!! note "Which way the rim is walked, and why it is not a coin flip"
+??? aside "The rim winds clockwise in `(x, z)`"
 
     The rim runs **clockwise in `(x, z)`**, because `x̂ × ẑ = −ŷ`: a clockwise loop in those two
     coordinates is the one whose right-hand normal points `+y`. That is the direction the grid quads
@@ -100,7 +100,7 @@ Manifold's is C++ over its own halfedge structure, and the two share no code.
 
 A picture frame is a slab with a rectangular window, so it is a torus and its genus is `1`. Union it
 with the plaque and the plaque's base blocks the window, so the assembly's genus is `0`. That pair is
-a statement about holes that no volume can make, and it is checked rather than admired.
+a statement about holes that no volume can make, and the chain asserts both numbers.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/boolean.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="inclusion-exclusion holds to" embed=true force=true timeout="300" w="1120" h="440" padding="18" name="chain-photo-boolean" alt="Three renders on a dark background: the relief plaque with a notch cut around its rim, a plain rectangular frame ring that is visibly a torus, and the two assembled with the frame lip standing proud around the relief" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_boolean"}
 // Built and launched from dev_docs/agents/transcripts/photo_to_solid_chain.yaml.
@@ -122,7 +122,7 @@ depth-tested wireframe, and is AWT-free (the encoder is `afield.util.PngEncoder`
 why it is safe to call from inside a live box on macOS, where touching AWT in a process that already
 owns its main thread for GLFW takes the whole thing down.
 
-### The trap this route walked into
+### Asking for normals breaks the round trip
 
 The first version of this chain asked Manifold for `toTriMesh(normals = true)`, because that is what a
 renderer wants, and then handed the result back to `toSolid`. Manifold refused it, and
@@ -164,28 +164,26 @@ The second half of that box is a recorded claim put back on the bench. `Solid.le
 flatly that `parallel = true` is not reproducible — it was first seen on a field that marched to 46,
 47 or 48 components on different runs, against a sequential path that was identical every time.
 
-That is **confirmed**, and the table above is the measurement. Population: depth maps of one
-photograph, five regimes across two smoothing levels, eight runs each way — 80 marches, plus a
-twelve-point component scan to locate the regimes. Within the table, `floor` is the only thing that
-varies: the field, the bounds and the edge length are identical, and raising `floor` erodes the plaque
-so that only the nearer parts of the photograph survive, as islands. Two answers count as the same
-only if the triangle count, the component count *and* the volume to twelve places all agree, so this
-counting cannot report a reproducibility that is not there.
+That is **confirmed**, and the table above is the measurement. Within the table, `floor` is the only
+thing that varies: the field, the bounds and the edge length are identical, and raising `floor` erodes
+the plaque so that only the nearer parts of the photograph survive, as islands. Two answers count as
+the same only if the triangle count, the component count *and* the volume to twelve places all agree.
+The run population, and the scan that located the regimes, are in
+`dev_docs/CHAIN_PHOTO_TO_SOLID_MEASUREMENTS.md`.
 
 - `parallel = false` returns **one distinct answer in eight, on every row, in every regime** — volume
   equal to twelve decimal places, triangle and component counts equal as integers. That column is the
   invariant, and it has held on every run of this figure.
-- `parallel = true` does not, and it is worst in the most fragmented regime. **The exact ratios in
-  that column are not quoted here on purpose**, because this figure is recaptured on every docs build
-  and they come out different each time — which is the claim, demonstrated rather than asserted.
-  Read the numbers off the figure above. What has been stable across the runs of it so far is the
-  shape rather than the values: the middle column reads `1/8` on every row, the last column does not,
-  and the bottom row is the worst one.
+- `parallel = true` does not, and it is worst in the most fragmented regime. **This page does not
+  quote that column's ratios**: the figure is recaptured on every docs build and they come out
+  different each time, which is the claim itself. Read the numbers off the figure above. What has
+  been stable across the runs so far is the shape rather than the values: the middle column reads
+  `1/8` on every row, the last column does not, and the bottom row is the worst one.
 - Note the first row in particular. That regime is a single solid block, the easy case, and the
   parallel path still disagrees with itself there. On a more heavily blurred version of the same
-  photograph the single-block regime *did* come back `1/8`, which is the useful negative result:
-  *"parallel is fine on simple shapes"* is not a rule you can lean on, because which field is simple
-  enough is not something you can see in advance.
+  photograph the single-block regime *did* come back `1/8`. So *"parallel is fine on simple shapes"*
+  is not a rule you can lean on, because which field is simple enough is not something you can see
+  in advance.
 - Worse than the KDoc says, in one respect, and this one is not in the table. At an intermediate
   floor the parallel path returned **one component on all eight runs** where the sequential path
   returned **two**. It does not only wobble around the right answer — it can agree with itself on a
@@ -205,7 +203,7 @@ claim was first made about: composing `k` translated copies for `k = 1..4` gives
 and `decompose()` gives `1, 2, 3, 4` parts. The two sequences are the same statement twice, and they
 agree.
 
-## What this page does not do
+## The limits of this route
 
 The render hop here is the CPU rasteriser, not the GPU path tracer. `PathTraceScene.importTriMesh`
 takes exactly the meshes `mount()` produces and would trace them, but it needs a live Vulkan

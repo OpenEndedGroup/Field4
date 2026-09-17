@@ -1,6 +1,25 @@
 package afield.four.fabricated
 
 /**
+ * The ordered, name-keyed map both of this package's pass collections are built on.
+ *
+ * [FabricatePassGraph] is a `LinkedHashMap` with an API that makes the ordering part of the
+ * contract rather than a property of whichever map a caller happened to reach for. Names are
+ * unique and non-blank, and the three ways of putting one in differ in what they will accept:
+ * `addLast` refuses a name already present, `replace` refuses one that is not, and `putOrReplace`
+ * takes either. `insertBefore` and `insertAfter` position a new pass relative to one already
+ * there, and both rebuild the map end to end, because a `LinkedHashMap` has no way to place an
+ * entry anywhere but last.
+ *
+ * Two collections here are this map with a type argument and a vocabulary on top.
+ * [FabricatePostStack] holds [FabricatePostEffect]s, which is what lets a feature insert a post
+ * pass beside one it did not add; [FabricateFrameGraph] holds `afield.four` targets, which is what
+ * gives the renderer's off-screen passes names and an order before any of them reach a
+ * `RenderTarget`. Nothing in this file imports anything, so the ordering rules can be exercised on
+ * plain strings, which is what `FabricatePassGraphTestMain.kt` does.
+ */
+
+/**
  * Small ordered map for renderer passes. Kotlin's default mutableMapOf currently preserves
  * insertion order, but this wrapper makes that contract explicit and gives tests a pure data
  * structure to exercise before we touch Vulkan objects.

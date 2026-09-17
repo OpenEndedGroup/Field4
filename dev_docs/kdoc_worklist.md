@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8010 of 14153 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8013 of 14153 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**788 undocumented entry points** (types, top-level functions and values) and 5037 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**785 undocumented entry points** (types, top-level functions and values) and 5037 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -131,8 +131,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [JoltPhysicsWorld.kt](../src/jvmMain/kotlin/afield/four/physics/JoltPhysicsWorld.kt) | Simulation | — | 11 | 70 | 30% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/four/synth/Filters.kt) | Synthesis | — | 11 | 28 | 11% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 11 | 9 | 27% |
-| [Sampling.kt](../src/jvmMain/kotlin/afield/four/synth/Sampling.kt) | Synthesis | — | 7 | 39 | 37% |
 | [AbletonSetDebugDrawing.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSetDebugDrawing.kt) | Audio | — | 7 | 19 | 0% |
+| [Sampling.kt](../src/jvmMain/kotlin/afield/four/synth/Sampling.kt) | Synthesis | — | 6 | 39 | 38% |
 | [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt) | Solvers | — | 5 | 62 | 50% |
 | [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 10% |
 | [Spectral.kt](../src/jvmMain/kotlin/afield/four/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
@@ -157,9 +157,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [simpleGaussianSplatSupport.kt](../src/jvmMain/kotlin/afield/four/fabricated/simpleGaussianSplatSupport.kt) | Renderers | — | 3 | 0 | 40% |
 | [LaunchBundle.kt](../src/jvmMain/kotlin/afield/four/synth/LaunchBundle.kt) | Synthesis | — | 3 | 0 | 0% |
 | [AbletonLinkAudio.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt) | Audio | — | 2 | 30 | 0% |
-| [Physical.kt](../src/jvmMain/kotlin/afield/four/synth/Physical.kt) | Synthesis | — | 2 | 16 | 5% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
-| [FabricateMaterialLibrary.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateMaterialLibrary.kt) | Renderers | — | 2 | 14 | 5% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
 | [Lexer.kt](../src/jvmMain/kotlin/afield/ml/lex/Lexer.kt) | Languages | — | 2 | 3 | 0% |
 | [Token.kt](../src/jvmMain/kotlin/afield/ml/lex/Token.kt) | Languages | — | 2 | 3 | 0% |
@@ -169,6 +167,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PathTraceShaderBoxes.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceShaderBoxes.kt) | Renderers | — | 2 | 0 | 33% |
 | [alife_dla.kt](../src/jvmMain/kotlin/afield/stdlib/alife_dla.kt) | ALife | — | 1 | 33 | 2% |
 | [VolumetricNoise.kt](../src/jvmMain/kotlin/afield/stacksl/VolumetricNoise.kt) | Languages | — | 1 | 18 | 57% |
+| [Physical.kt](../src/jvmMain/kotlin/afield/four/synth/Physical.kt) | Synthesis | — | 1 | 16 | 10% |
+| [FabricateMaterialLibrary.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateMaterialLibrary.kt) | Renderers | — | 1 | 14 | 11% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
 | [OctreeBarnesHut.kt](../src/jvmMain/kotlin/afield/four/physics/OctreeBarnesHut.kt) | Simulation | — | 1 | 8 | 10% |
 | [tuio.kt](../src/jvmMain/kotlin/afield/stdlib/tuio.kt) | Data | — | 1 | 7 | 20% |
@@ -387,4 +387,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ShaderModuleSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1202` |
 | `MaterialTable` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1211` |
 
-…and **668 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **665 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

@@ -10,11 +10,49 @@ import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.sin
 
+/**
+ * Playback of recorded audio, from reading a buffer straight through to scattering it into grains.
+ * [AudioSample] is the buffer, [Sampler] plays one back, and the three grain clouds take one apart.
+ *
+ * Every read goes through a four-point Hermite fit that wraps at both ends of the buffer rather than
+ * clamping, so a position past the last sample continues from the first. [Sampler] starts on the
+ * rising edge of its `gate` and either runs to the end or loops between `loopStart` and `loopEnd`;
+ * it scales its read rate by the ratio of the sample's own rate to the engine's, so a recording made
+ * at 48 kHz plays at pitch on a 44.1 kHz output.
+ *
+ * The three clouds spawn grains the same way and differ in where the grains read from. [GrainCloud]
+ * reads a fixed [AudioSample] and sums to mono. [StereoGrainCloud] reads the same kind of sample but
+ * gives each grain a pan position, a left/right read-head separation and independent per-channel
+ * scatter, so it is a [StereoNode] rather than a [Signal]. [LiveGrainCloud] has no sample at all and
+ * grains a ring buffer that its own input is writing.
+ *
+ * Spawning is by accumulated density rather than by a clock: `density` is grains per second,
+ * `densityJitter` varies the gap between onsets, and each cloud holds `maxGrains` voices, 128 by
+ * default. A spawn that finds every voice busy is dropped rather than stealing one, so pushing
+ * `density` past what `maxGrains` can carry thins the texture instead of cutting grains short.
+ * `spray`, `pitchJitterCents`, `grainSizeJitter` and `gainJitter` each widen one property per grain
+ * at spawn time, [GrainDirection] decides whether a grain reads forwards, backwards or picks one per
+ * grain, and [GrainEnvelope] is the window over a grain's life, eight shapes, with `randomEnvelope`
+ * drawing a fresh one each time.
+ *
+ * [LiveGrainCloud] also has to stay out of the recorder's way. A forward-reading grain is placed at
+ * least its own travel distance back from the write head, as far as the ring allows, so it does not
+ * overtake the recorder while it sounds. Its `record` control is a slewed gain on the write rather
+ * than a switch, and at zero the write head stops advancing, so the grains go on working over
+ * whatever the ring was holding.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  AudioSample – in-memory audio data
 // ═══════════════════════════════════════════════════════════════════
 
-
+/**
+ * A block of audio in memory: a `FloatArray` of samples, and the rate they were captured at.
+ *
+ * Reads go through `readInterp` rather than by index, so a sampler or a grain can sit at a
+ * fractional position and move through the buffer at any rate. `generate` builds one from a function
+ * of time in seconds, which is how the cookbook in `synth.kt` raises a test tone without a file.
+ */
 class AudioSample(
     val data: FloatArray,
     /** Original sample rate of the data. */

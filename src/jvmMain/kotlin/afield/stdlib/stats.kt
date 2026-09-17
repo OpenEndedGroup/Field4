@@ -402,10 +402,10 @@ data class Vec4SummaryStatsBox(
  * Rolling numeric summary + histogram buffer: `add` samples one at a time, ask for a [snapshot], a
  * [histogram], a whole [summaryBox] or a rendered [summaryHtml] whenever you like.
  *
- * **Two independent drop counters, and the distinction is the useful part.** [droppedNonFinite]
- * counts samples the buffer *refused* — null, NaN or an infinity, rejected at `add` time so `values`
- * never holds one — while [droppedByCapacity] counts samples it *accepted and later evicted* because
- * the window filled. Feeding 200 finite samples to a `maxSize = 64` buffer leaves `size == 64`,
+ * **Two independent drop counters.** [droppedNonFinite] counts samples the buffer *refused* — null,
+ * NaN or an infinity, rejected at `add` time so `values` never holds one — while
+ * [droppedByCapacity] counts samples it *accepted and later evicted* because the window filled.
+ * Feeding 200 finite samples to a `maxSize = 64` buffer leaves `size == 64`,
  * `samplesSeen == 200` and `droppedByCapacity == 136`. [samplesSeen] counts every `add` including the
  * refused ones. [snapshot] carries [droppedNonFinite] forward into [SummaryStats.droppedCount], so a
  * snapshot's `droppedCount` is about refusals and says nothing about evictions.

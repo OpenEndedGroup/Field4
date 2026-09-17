@@ -17,7 +17,7 @@ import afield.stdlib.sin
 /**
  * The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted.
  *
- * # Why this exists, and what it is not
+ * # Why an image fit needs a rasterizer
  *
  * [Track.fitParameters] turns the arrow round for one *track*: mark a number `free-param`, say what
  * the track should read at three instants, and the exact gradient of the lowered `Fn` walks the
@@ -61,7 +61,7 @@ import afield.stdlib.sin
  * gradient-summed, step-applied-to-every-slot discipline of [Track.fitParameters] carries over
  * unchanged; only the index space is new.
  *
- * # Cost, and why a frame is a separate object
+ * # Why a frame is a separate object
  *
  * [ADTape] records five parallel arrays per operation and never shrinks. A 128² raster over a
  * 30-rect scene, naively taped, is ~14M nodes — half a gigabyte. But a shape's *transform* depends

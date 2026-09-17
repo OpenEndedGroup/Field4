@@ -3,6 +3,34 @@ package afield.four.synth
 
 import kotlin.math.floor
 
+/**
+ * Two processors over one delay line read at fractional sample positions: [FractionalDelay], a plain
+ * echo, and [KarplusStrong], the same line closed into a loop and tuned to a pitch.
+ *
+ * [DelayInterpolation] picks how the line reads between whole samples. `LINEAR` mixes the two
+ * neighbours, `CUBIC`, the default, fits four of them. The choice matters most inside a feedback
+ * loop, where the read happens again on every pass.
+ *
+ * [FractionalDelay] is the echo: `delayTime` in seconds against a line sized from `maxDelaySec` and
+ * the sample rate it first sees, `feedback` clamped just inside ±1 so each pass is quieter than the
+ * last, and `mix` crossfading dry against delayed. [Delay] in `Effects.kt` does the same job with a
+ * fixed cubic read; this one lets the interpolation be chosen.
+ *
+ * [KarplusStrong] closes that line into a loop one period of `freq` long. Two things happen inside
+ * it. `brightness` crossfades the delayed sample against the one before it, an average of two taps
+ * that acts as a lowpass, so the high harmonics fade a pass at a time while the low ones hold, and
+ * the loop length has that average's own delay subtracted from it, which keeps the pitch where it
+ * was as `brightness` moves. `decay` scales the whole of what goes back round on each pass.
+ *
+ * The excitation reaches the loop through a second line, delayed by `pickPosition` of a period and
+ * subtracted from itself before `excitationMix` scales it in. That is a comb with notches every
+ * `1 / pickPosition` harmonics, which is the standard stand-in for where along a string it was
+ * plucked, so moving the control changes the colour of the attack rather than its level. It is a
+ * [SignalProcessor], so `burst / KarplusStrong(freq = 110.p)` is how it gets used, and with
+ * `clearOnTrigger` a rising edge on `trigger` empties both lines so a new note starts clean.
+ */
+
+/** How a delay line reads between whole samples: `LINEAR` mixes two neighbours, `CUBIC` fits four. */
 enum class DelayInterpolation {
     LINEAR,
     CUBIC

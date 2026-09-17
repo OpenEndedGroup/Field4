@@ -46,7 +46,7 @@ import kotlin.random.Random
  *
  * — and the scheduler, not the author, remembers that this agent is 1.3 seconds into its approach.
  *
- * ### The clock, and why it is the point
+ * ### Why the scheduler counts ticks
  *
  * The obvious way to build this is on `kotlinx.coroutines` with `delay` and a real dispatcher. That
  * gives you something you can watch and nothing you can assert, because the interleaving depends on

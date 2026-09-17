@@ -53,7 +53,7 @@ import kotlin.math.sqrt
  * and what material metadata each one carries, and StackSL (`afield.stacksl`) decides how a
  * material shades. That division is the reason both are small.
  *
- * ### The pipeline, which is also the reading order
+ * ### The pipeline, in reading order
  *
  * Four types, and every entry point in this file is a step between two of them:
  *
@@ -80,7 +80,7 @@ import kotlin.math.sqrt
  * `afield.stdlib.Functions` half of the bridge, so a program can lay out an array from a curve the
  * host fitted or evolved.
  *
- * ### What the tracks buy, and why they are not just interpolation
+ * ### Why a property is a track and not a number
  *
  * Half this file is [Track] and its implementations, because a property being a function of time
  * rather than a number is what the rest of the package is built on. A track is symbolic and

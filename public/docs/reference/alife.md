@@ -1014,7 +1014,7 @@ forever {
 
 — and the scheduler, not the author, remembers that this agent is 1.3 seconds into its approach.
 
-### The clock, and why it is the point
+### Why the scheduler counts ticks
 
 The obvious way to build this is on `kotlinx.coroutines` with `delay` and a real dispatcher. That
 gives you something you can watch and nothing you can assert, because the interleaving depends on
@@ -1316,7 +1316,7 @@ behaviour that is *about* the environment — a corridor, a room with a door, a 
 go round rather than through — and it rules it out silently, because an agent pressing into a
 wall that does not exist just flies on.
 
-### Three representations, and why each one is the one it is
+### Three representations
 
 **Obstacles are a flat soup of line segments** ([`ScriptObstacle`](alife.md#alife-walls-kt-scriptobstacle), [`ObstacleField`](alife.md#alife-walls-kt-obstaclefield)) and not
 polygons-as-solids. The only predicate collision needs is "is this swept circle crossing a wall",
@@ -1349,7 +1349,7 @@ than leaving the caller to wonder why there was no route.
 
 ### Determinism
 
-The same load-bearing property as the rest of `alife_script.kt`, and the same discipline. Segments
+The same property the rest of `alife_script.kt` depends on, and the same discipline. Segments
 are held in insertion order in flat `DoubleArray`s. A*'s open set is ordered by `(f, cellIndex)`,
 a **total** order, so two cells with equal estimated cost expand in a fixed order rather than in
 whichever order a heap happened to leave them. Neighbours are visited through one fixed

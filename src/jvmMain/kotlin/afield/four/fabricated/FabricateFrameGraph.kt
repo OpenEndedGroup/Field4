@@ -7,6 +7,30 @@ import afield.four.util.Window
 import java.util.WeakHashMap
 
 /**
+ * The renderer's off-screen passes as a named, ordered list, and the one place that order is
+ * written into a `RenderTarget`.
+ *
+ * A [StandardRenderer.Bundle] holds its five built-in passes as five separate fields, which is a
+ * set rather than a sequence. [FabricateFrameGraph] takes a bundle and makes it a sequence:
+ * g-buffer, shadow map, ambient occlusion, lighting, transparent composite, then one entry for
+ * each effect currently in the bundle's [FabricatePostStack]. Every built-in name is a constant on
+ * the companion, and `passNameFor` supplies the two that arrive as post effects rather than as
+ * bundle fields, motion blur and anti-aliasing; anything else is named after its effect. So
+ * `insertAfter("my-pass", PASS_LIGHTING, target)` works without knowing how the bundle was built.
+ *
+ * `attachTo` is where the order stops being advisory. A `RenderTarget` renders its `preTargets`
+ * before its own pass and in map order, so attaching removes and re-adds every pass by name, which
+ * leaves `preTargets` iterating in the graph's order. It also remembers, per target, which names
+ * this graph put there last time and drops the ones that have since gone, while a pass some other
+ * code added under a name this graph never used is left alone. Attaching a second time is
+ * therefore a resync rather than a duplicate.
+ *
+ * The graph is a view. `StandardRenderer.Bundle.frameGraph()` builds a fresh one on each call, it
+ * does not own the targets it names, and it does not stop a box reaching past it to a
+ * `RenderToTexture` directly.
+ */
+
+/**
  * Ordered, inspectable pass contract for [StandardRenderer].
  *
  * It is thin: it does not hide the underlying RenderToTexture/Target objects or

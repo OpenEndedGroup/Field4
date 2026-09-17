@@ -1111,10 +1111,10 @@ println(result.fittedProgram)      // StackSL source, with the fitted numbers in
 result.report().forEach(::println) // wire #1  '0.5' at 2:1  0.5 -> 0.59025836
 ```
 
-The last line is the point. The output of a fit is not a vector, it is a **program** — the fitted
-values are written back at the token positions the compiler recorded, so the result is something you
-can paste into a `stackSL` box and run on a GPU. Recompiled from scratch through the ordinary
-non-wired path, it renders bit-identically to the fitted parameter vector.
+The output of a fit is not a vector, it is a **program**: the fitted values are written back at the
+token positions the compiler recorded, so `result.fittedProgram` is something you can paste into a
+`stackSL` box and run on a GPU. Recompiled from scratch through the ordinary non-wired path, it
+renders bit-identically to the fitted parameter vector.
 
 **What that figure is, exactly.** It is a *recovery* experiment on **one program and seventeen
 wires**: the target was made by the same program with twelve of its numbers changed, so a correct

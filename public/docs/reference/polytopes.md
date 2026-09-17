@@ -268,7 +268,7 @@ of them, so a realization run is *data*: it prints, it diffs, it reweights with
 cycles and the initial coordinates once per solve, and hands a constraint nothing but flat
 `DoubleArray` coordinates and integer indices — no [`ElementId`](polytopes.md#topology-kt-elementid) bookkeeping, no FLines, no renderer.
 
-### Units, and what a weight multiplies
+### Units and weights
 
 Every residual in this file is a **length in the units of the coordinates**, and every one is
 written as `weight * (measured - goal)`. So the families are directly comparable to each other, and
@@ -1563,7 +1563,7 @@ rank-3 element meaning "the solid", and its proper ranks are `0 until rank`. Thi
 polyhedral surface and 0 for a convex 4-polytope, which are the numbers a reader is checking
 against.
 
-### Validation reports; it does not throw
+### Validation returns values, not exceptions
 
 [`PolytopeTopologyBuilder`](polytopes.md#topology-kt-polytopetopologybuilder) records what it is told and checks almost nothing. Structural
 complaints are [`ValidationIssue`](polytopes.md#topology-kt-validationissue) *values* returned by `PolytopeTopology.validate`, so a tool or a
