@@ -58,6 +58,30 @@ import afield.stdlib.linalg.Vector4f
  * When history is unavailable, [previous] is set equal to [current], so [reprojection] is the
  * identity. A shader that ignores [available] therefore degrades to a zero-motion read of the same
  * UV rather than to whatever happened to be in the matrix — wrong, but wrong in the boring direction.
+ *
+ * ### Thread safety, and exactly how far it goes
+ *
+ * The private `FrameStableHistory` in `standardRenderer.kt` that this generalises marks **every**
+ * method `@Synchronized`, and that guarantee is not dropped here: [capture], [invalidate], [params]
+ * and [toString] all take the instance lock. [capture] is the mutator and needs it; [invalidate]
+ * needs it because it writes the `reset` flag that [capture] reads under the same lock, and an
+ * unsynchronized write has no ordering against that read; [params] and [toString] need it because
+ * each reads *several* fields that must come from the same capture — a `params()` whose `z` came
+ * from a later frame than its `xy` is a torn answer, and "availability from one frame, size from
+ * another" is precisely the class of bug this type exists to prevent.
+ *
+ * **What the lock cannot cover, and this is a real difference from the class it replaces.**
+ * [current], [previous], [inverse], [reprojection] and [packed] are handed out *by reference*, so a
+ * caller reads them whenever it likes and no method-level lock is in the path.
+ * `FrameStableHistory` did not have this problem because it returned a fresh **copy** on every
+ * read — which is a `Matrix4f` allocation and copy per read, per frame. That trade is made
+ * differently here on purpose: these are read once per history-reading pass per frame from inside
+ * the render loop, where the allocation is a real cost and the reader is the render thread that
+ * just called [capture]. The rule that follows is worth stating plainly rather than leaving to be
+ * discovered: **a thread other than the one calling [capture] must not read the exposed matrices or
+ * [packed] without copying them under its own discipline.** The `var`s with a private setter are in
+ * the same position, and [frameId] is a `Long`, whose non-atomic write can in principle tear for a
+ * reader outside the lock.
  */
 class FrameHistory {
 
@@ -115,6 +139,7 @@ class FrameHistory {
      * picture of something else. Cheap, so call it whenever in doubt; one call costs one frame of
      * accumulation and a missed call costs a ghost that persists.
      */
+    @Synchronized
     fun invalidate() {
         reset = true
     }
@@ -134,6 +159,7 @@ class FrameHistory {
      *   with `===`, not `==`: its job is to be a token somebody swaps, not a value somebody compares.
      * @return [available], for a caller that would rather branch than re-read the field.
      */
+    @Synchronized
     fun capture(frameId: Long, viewProjection: Matrix4fc, width: Int, height: Int, epoch: Any): Boolean {
         require(width > 0 && height > 0) { "frame history needs a positive size, got ${width}x$height" }
         if (frameId == this.frameId) return available
@@ -175,8 +201,10 @@ class FrameHistory {
      * its own constant: the size converts a clip position to a texel so a pass can widen its
      * rejection test to a neighbourhood, and `z` is the flag that says whether to bother.
      */
+    @Synchronized
     fun params(): Vector4f = Vector4f(width.toFloat(), height.toFloat(), if (available) 1f else 0f, 0f)
 
+    @Synchronized
     override fun toString(): String =
         "FrameHistory(frame=$frameId, ${width}x$height, available=$available)"
 
