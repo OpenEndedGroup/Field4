@@ -1255,6 +1255,8 @@ The delegate behind `var n by saved { 0 }`: a property that loads itself from di
 
 Distance functions supplied by Field's general-purpose `smileMds` wrapper.
 
+Constants: `COSINE`, `EUCLIDEAN`.
+
 ### SmileMdsProjection { #smile-mds-kt-smilemdsprojection }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SmileMdsProjection</span><span class="p">(</span><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">scores</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">proportion</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span><span class="p">,</span> <span class="k">val</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L39)
@@ -1667,7 +1669,7 @@ What `solveWithRetries` ended up doing: the final `status` and how many attempts
 
 Which symmetries of the square a learned pattern set should be closed under.
 
-Constants: `and`, `each`.
+Constants: `None`, `Reflections`, `Rotations`, `All`.
 
 | Declaration | Summary |
 | --- | --- |

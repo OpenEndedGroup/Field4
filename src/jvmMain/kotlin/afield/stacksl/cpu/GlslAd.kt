@@ -71,9 +71,18 @@ private fun fl(v: Double): Double = v.toFloat().toDouble()
  * The differentiable instance of [GlslScalars], over one [ADTape].
  *
  * One instance per tape, and one tape per pixel; the instance is cheap (it holds the tape and
- * nothing else) and is emphatically not thread-safe, exactly like `GlslInvocation`.
+ * a surrogate mode) and is emphatically not thread-safe, exactly like `GlslInvocation`.
+ *
+ * [surrogate] selects which of the jump-discontinuous operations get a mollified-delta partial in
+ * place of their exact zero — see [AdSurrogate]. It is a **mode of this instance**, not a second
+ * evaluator: the same parse tree, the same [GlslMachine] control flow, the same primal values. With
+ * the default [AdSurrogate.OFF] every partial and every tape node is what it was before the mode
+ * existed, and the tape does not even change length.
  */
-internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
+internal class GlslAdScalars(
+    val tape: ADTape,
+    val surrogate: AdSurrogate = AdSurrogate.OFF
+) : GlslScalars<AdValue> {
 
     // -- tape primitives -----------------------------------------------------------------------
 
@@ -104,6 +113,46 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
     /** Derivative-free: a value the gradient must not flow through (`floor`, a comparison, `int`). */
     private fun frozen(value: Double): AD = tape.constant(fl(value))
 
+    // -- the jump sites: exactly zero, or [surrogate]'s mollified delta ---------------------------
+
+    /**
+     * A piecewise-constant operation with one parent: the **exact** value, and either its exact
+     * zero partial or [AdSurrogate]'s mollified delta.
+     *
+     * [u] is the signed distance from the argument to the nearest jump and [height] is that jump's
+     * size. When [family] is not surrogated — or when the kernel underflows, which it does a few
+     * temperatures away from a jump — this falls back to [frozen], so the off path pushes the same
+     * parentless constant it always did and the tape's length is unchanged.
+     */
+    private fun jumpNode(
+        x: AD,
+        value: Double,
+        family: AdSurrogateFamily,
+        u: Double,
+        height: Double = 1.0
+    ): AD {
+        if (!surrogate.covers(family)) return frozen(value)
+        val d = surrogate.kernel(u, height)
+        return if (d == 0.0) frozen(value) else node(x, fl(value), d)
+    }
+
+    /** Signed distance to the nearest integer — where `floor`, `ceil` and `trunc` jump. */
+    private fun toNearestInteger(x: Double): Double = x - Math.rint(x)
+
+    /** Signed distance to the nearest half-integer — where `round` and `roundEven` jump. */
+    private fun toNearestHalfInteger(x: Double): Double = (x - 0.5) - Math.rint(x - 0.5)
+
+    /**
+     * `step(edge, x)`: one jump of height 1 at `x == edge`, so the partial is `+K` in `x` and `−K`
+     * in `edge`. Two parents, which is why it cannot go through [jumpNode].
+     */
+    private fun stepAd(e: AD, x: AD): AD {
+        val value = if (x.value < e.value) 0.0 else 1.0
+        if (!surrogate.covers(AdSurrogateFamily.STEP)) return frozen(value)
+        val d = surrogate.kernel(x.value - e.value, 1.0)
+        return if (d == 0.0) frozen(value) else node(x, e, fl(value), d, -d)
+    }
+
     // -- Float-faithful elementary arithmetic --------------------------------------------------
 
     private fun add(a: AD, b: AD): AD = fnode(a, b, a.value + b.value, 1.0, 1.0)
@@ -120,8 +169,18 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
     private fun mulK(a: AD, k: Double): AD = fnode(a, a.value * k, k)
     private fun subFromK(k: Double, a: AD): AD = fnode(a, k - a.value, -1.0)
 
-    /** `floor`, as the `Float` path computes it, with the zero derivative its jumps require. */
-    private fun floorAd(a: AD): AD = frozen(kotlin.math.floor(a.value))
+    /**
+     * `floor`, as the `Float` path computes it, with the zero derivative its jumps require — or
+     * [AdSurrogate]'s mollified delta train when the [AdSurrogateFamily.STAIRCASE] family is on.
+     *
+     * `fract` and `mod` route through here, so a surrogated `floor` mollifies the sawtooth's `−1`
+     * jump and `mod`'s too, with no separate site. That is also the reason the staircase family is
+     * dangerous: `_noise`'s lattice cell index is a `floor`, and a gradient through *that* one is
+     * `_hash21`'s, which is chaotic.
+     */
+    private fun floorAd(a: AD): AD = jumpNode(
+        a, kotlin.math.floor(a.value), AdSurrogateFamily.STAIRCASE, toNearestInteger(a.value)
+    )
 
     /** `mod(x, y) = x - y * floor(x / y)` — the same four `Float` roundings, in the same places. */
     private fun modAd(x: AD, y: AD): AD = sub(x, mul(y, floorAd(div(x, y))))
@@ -349,12 +408,38 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
         }
 
         "abs" -> unary(a[0]) { x -> absAd(x) }
-        "sign" -> unary(a[0]) { x -> frozen(kotlin.math.sign(x.value)) }
+        // `sign`'s single jump at the origin is the only one in the subset that is not height 1:
+        // it goes from -1 to +1, so its distributional derivative is 2·delta.
+        "sign" -> unary(a[0]) { x ->
+            jumpNode(x, kotlin.math.sign(x.value), AdSurrogateFamily.SIGN, x.value, height = 2.0)
+        }
+
         "floor" -> unary(a[0]) { x -> floorAd(x) }
-        "trunc" -> unary(a[0]) { x -> frozen(x.value.toFloat().let { if (it < 0f) kotlin.math.ceil(it) else kotlin.math.floor(it) }.toDouble()) }
-        "round" -> unary(a[0]) { x -> frozen(Math.round(x.value.toFloat()).toDouble()) }
-        "roundEven" -> unary(a[0]) { x -> frozen(Math.rint(x.value)) }
-        "ceil" -> unary(a[0]) { x -> frozen(kotlin.math.ceil(x.value)) }
+        "trunc" -> unary(a[0]) { x ->
+            val t = x.value.toFloat().let { if (it < 0f) kotlin.math.ceil(it) else kotlin.math.floor(it) }.toDouble()
+            // `trunc` is flat across the origin — it is 0 on the whole of (-1, 1) — so the integer
+            // at zero is not a jump. An infinite distance is how the kernel is told there is none.
+            val nearest = Math.rint(x.value)
+            val u = if (nearest == 0.0) Double.POSITIVE_INFINITY else x.value - nearest
+            jumpNode(x, t, AdSurrogateFamily.STAIRCASE, u)
+        }
+
+        "round" -> unary(a[0]) { x ->
+            jumpNode(
+                x, Math.round(x.value.toFloat()).toDouble(), AdSurrogateFamily.STAIRCASE,
+                toNearestHalfInteger(x.value)
+            )
+        }
+
+        "roundEven" -> unary(a[0]) { x ->
+            jumpNode(x, Math.rint(x.value), AdSurrogateFamily.STAIRCASE, toNearestHalfInteger(x.value))
+        }
+
+        "ceil" -> unary(a[0]) { x ->
+            jumpNode(
+                x, kotlin.math.ceil(x.value), AdSurrogateFamily.STAIRCASE, toNearestInteger(x.value)
+            )
+        }
         "fract" -> unary(a[0]) { x -> sub(x, floorAd(x)) }
         "mod" -> pair(a[0], a[1]) { x, y -> modAd(x, y) }
         "min" -> pair(a[0], a[1]) { x, y -> minAd(x, y) }
@@ -373,7 +458,10 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
             triple(a) { x, y, t -> mixAd(x, y, t) }
         }
 
-        "step" -> pair(a[0], a[1]) { e, x -> frozen(if (x.value < e.value) 0.0 else 1.0) }
+        // Three StackSL words lower to `step`: `threshold` is `step(edge, value)`, `step` is
+        // itself, and `select`/`if` is `mix(f, t, step(0.5, abs(cond)))` — so this one site is also
+        // what lets a gradient reach a `select`'s condition.
+        "step" -> pair(a[0], a[1]) { e, x -> stepAd(e, x) }
         "smoothstep" -> triple(a) { e0, e1, x -> smoothstepAd(e0, e1, x) }
 
         "length" -> scalar(lengthAd(a[0]))

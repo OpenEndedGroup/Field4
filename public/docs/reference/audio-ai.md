@@ -61,13 +61,15 @@ Constants: `ACOUSTIC_PIANO`, `ELECTRIC_PIANO`, `CHROMATIC_PERCUSSION`, `ORGAN`, 
 
 Revision-pinned MuScriptor model exposed behind the model-neutral music-transcription operation.
 
+Constants: `SMALL`, `MEDIUM`, `LARGE`.
+
 ### MuscriptorTempoDetection { #analysisoperations-kt-muscriptortempodetection }
 
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MuscriptorTempoDetection</span></code>](source/jvmMain/afield/stdlib/noir/audioai/AnalysisOperations/#L230)
 
 What MuScriptor should do when deriving MIDI tempo and meter from the selected audio.
 
-Constants: `but`.
+Constants: `REQUIRED`, `BEST_EFFORT`, `OFF`.
 
 ### SpeechEmbeddingBackend { #analysisoperations-kt-speechembeddingbackend }
 
@@ -75,7 +77,7 @@ Constants: `but`.
 
 The two revision-pinned learned speech spaces exposed behind one model-neutral operation.
 
-Constants: `speaker`, `vocal`, `and`, `timbre`.
+Constants: `EMOTION2VEC`, `WAVLM_BASE_PLUS`.
 
 ## AnalysisVisualization.kt { #analysisvisualization-kt }
 
@@ -1304,6 +1306,8 @@ at display rate. Sampling to `maxFrames` happens after pooling and retains time 
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">SpectralEmbeddingDistance</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/noir/audioai/SpectralEmbeddingProjection/#L44)
 
 The interchangeable short-time representations and metrics retained by one spectral job.
+
+Constants: `MEL_WASSERSTEIN`, `LOG_MEL_COSINE`, `LOG_MEL_EUCLIDEAN`, `MFCC_COSINE`, `MFCC_EUCLIDEAN`.
 
 ### SpectralEmbeddingFrames { #spectralembeddingprojection-kt-spectralembeddingframes }
 

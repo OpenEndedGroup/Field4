@@ -6,7 +6,7 @@ HTC eye rays come closest. It follows the editable `Mesh` and shader pattern in
 is the scene box's parent. Launch the renderer first, wait for its window/headset views,
 then launch the scene. On macOS it shows a desktop reference scene without simulated eyes.
 
-[Open the starting point](/offline.html?file=/field4/assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
+[Open the starting point](offline.html?file=assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
 
 Both extensions remain optional. `XR_HTC_eye_tracker` supplies the two origins and
 orientations needed for binocular depth. `XR_EXT_eye_gaze_interaction` supplies a single

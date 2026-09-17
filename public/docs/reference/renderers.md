@@ -521,7 +521,7 @@ All passes are built with `StandardRenderer.Bundle.addShaderEffect`, so they cha
 
 Tone-mapping operator passed to `setToneMapping`.
 
-Constants: `desaturates`, `hue`.
+Constants: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`.
 
 ## FabricatePostStack.kt { #fabricatepoststack-kt }
 

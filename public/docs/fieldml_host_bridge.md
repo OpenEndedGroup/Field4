@@ -258,7 +258,7 @@ Every capability above has a Field document behind it, listed here in the order 
 
 `public/docs/assets/fieldml_macro_demo/metadata.edn` has four boxes: a `prop` written in one and inherited by another that draws a spiral from it, Field's own `println` macro expanded and called, and the generated Kotlin of `prop` and `sourceBlock` as readable text. Run the parameter box, run the drawing box, then change `swirl` or `turns` in the first and run both again.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_macro_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_demo/metadata.edn` from a Field workspace.
 
 ![two captures of the same FieldML box side by side on black: on the left a wide four-turn cyan spiral filling the frame, on the right a tight nine-turn spiral about half the diameter](assets/fieldml_macro_demo/spiral-pair.png)
 
@@ -280,7 +280,7 @@ Every capability above has a Field document behind it, listed here in the order 
 
 The next has five boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, one that exercises overload resolution, varargs and `hostNull`, and one that calls Kotlin by name and leaves its defaults alone.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_host_bridge_demo/metadata.edn), or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_host_bridge_demo/metadata.edn), or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
 
 Things to change, in the order they are most likely to teach you something:
 
@@ -301,11 +301,11 @@ Things to change, in the order they are most likely to teach you something:
 
 And a third, for a machine with a GPU: **a whole `afield.four` scene described from FieldML**, with no `hostAs` in it. One box walks up to a live `Renderer`, builds a shader module out of two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }` (the receiver lambda whose `p` is now a typed `Parameters`), attaches a three-vertex mesh, and registers it with the render target. It needs a running Vulkan device, so it does nothing in an ordinary box; connect it to whichever box owns your renderer.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_afield_four_demo/metadata.edn), or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_afield_four_demo/metadata.edn), or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
 
 And a fourth, the same scene with a `Frames` loop on it: **the triangle from the captures above**. This one is self-contained: three boxes, and the first is a small Kotlin box that opens the window and owns the `Renderer`, so there is nothing to wire up. Open it, run `window and renderer`, then run the FieldML box.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_frames_demo/metadata.edn), or open `public/docs/assets/fieldml_frames_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_frames_demo/metadata.edn), or open `public/docs/assets/fieldml_frames_demo/metadata.edn` from a Field workspace.
 
 | In | Change | What happens |
 | --- | --- | --- |
@@ -319,7 +319,7 @@ And one where the **macro builds the scene**: instead of hand-writing `parameter
 
 Then run the fourth box while it is spinning. It writes `spinRate` with `setRootProp`, and the scene reads that slot on *every frame*, so the speed of a running Vulkan scene changes from a different box, with the scene box untouched.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_module_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_macro_module_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
 
 <div class="field-data-table" markdown>
 
@@ -337,13 +337,13 @@ This one has no picture, because the thing to look at is its output record: `bui
 
 And another, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write` — one call positional, one named — and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_mesh_demo/metadata.edn), or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_mesh_demo/metadata.edn), or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
 
 ![four captures of a native Vulkan window a second apart, each a ring of coloured triangles on black, the hues rotating between frames](assets/fieldml_mesh_demo/ring-frames.png)
 
 One more is about the lambda parameters specifically: a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn), or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_lambda_demo/metadata.edn), or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
 
 <div class="field-data-table" markdown>
 

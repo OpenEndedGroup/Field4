@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-77 source file(s), 2264 public symbol(s), 838 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+78 source file(s), 2286 public symbol(s), 856 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -535,7 +535,7 @@ Evaluates a set of rules against a set of base facts. Owned by [`Datalog`](langu
 
 What a premise *is* to the step above it. A proof tree is not homogeneous, and a reader who cannot tell a rule body from an aggregate's group is reading a tree that means several different things in the same shape.
 
-Constants: `or`, `and`, `counted`, `when`.
+Constants: `DERIVED`, `AGGREGATE`, `GROUP`, `ABSENCE`.
 
 ### DlDerivation { #datalogengine-kt-dlderivation }
 
@@ -2843,7 +2843,7 @@ Flattens a 3D layout position to the plane a drawing lives in.
 
 The three fixed views worth having names.
 
-Constants: `which`, `because`.
+Constants: `XY`, `ISOMETRIC`, `XZ`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2966,7 +2966,7 @@ A LUT standard cell: a truth table and the number of inputs it reads.
 
 What a generated SSA line can be.
 
-Constants: `which`.
+Constants: `LUT`, `SPLIT`, `CAT`, `SELF`.
 
 ### MorphoOpcode { #morphogenome-kt-morphoopcode }
 
@@ -3356,7 +3356,7 @@ What one search run did.
 
 How `MorphoSearch.evolve` picks a parent.
 
-Constants: `i`, `keep`, `then`, `until`.
+Constants: `TOURNAMENT`, `LEXICASE`.
 
 ### MorphoSearch { #morphosearch-kt-morphosearch }
 
@@ -4420,7 +4420,7 @@ Constants: `ADD`, `SUB`, `MUL`, `DIV`, `MOD`.
 
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">TrackOp3</span><span class="p">(</span><span class="k">val</span> <span class="n">eval</span><span class="p">:</span> <span class="p">(</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">glsl</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">TrackFnTernary</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/rectsl/RectSL/#L528)
 
-Constants: `matching`, `MIX`, `SMOOTHSTEP`.
+Constants: `CLAMP`, `MIX`, `SMOOTHSTEP`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -4434,7 +4434,7 @@ Constants: `matching`, `MIX`, `SMOOTHSTEP`.
 
 How a [`TimeWarpTrack`](languages.md#rectsl-kt-timewarptrack) rewrites the time it hands to its source. Each kind takes one scalar parameter, fixed when the warp is built, so the whole warp is `(kind, amount)` rather than a closure over that amount.
 
-Constants: `not`, `in`, `and`, `because`, `which`, `folded`.
+Constants: `SHIFT`, `SCALE`, `REVERSE`, `LOOP`, `PINGPONG`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -5849,13 +5849,15 @@ How a scene is lowered — the choices a consumer of the field cannot make for i
 
 What a bake can claim, which is a property of the *track* rather than of the bake.
 
-Constants: `plateaus`, `edges`, `so`, `but`, `which`.
+Constants: `STEPPED`, `SAMPLED`, `ALIASED`.
 
 ### RectSLSdfBakeShape { #rectslglsl-kt-rectslsdfbakeshape }
 
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">RectSLSdfBakeShape</span></code>](source/jvmMain/afield/rectsl/RectSLGlsl/#L1244)
 
 How a bake is written into GLSL. See [`RectSLSdfBakeFidelity`](languages.md#rectslglsl-kt-rectslsdfbakefidelity) for what it costs.
+
+Constants: `HOLD`, `RAMP`.
 
 ### RectSLSdfBake { #rectslglsl-kt-rectslsdfbake }
 
@@ -6382,7 +6384,7 @@ A whole scene, lowered: its shapes, its concatenated θ, and what it had to leav
 
 The three soft-coverage kernels, **normalised to be comparable**: each reads 0.5 at the surface and has slope `1/beta` there.
 
-Constants: `which`, `so`, `matching`.
+Constants: `LINEAR`, `SMOOTHSTEP`, `SIGMOID`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -6395,7 +6397,7 @@ Constants: `which`, `so`, `matching`.
 
 How per-rect coverage becomes one number per pixel.
 
-Constants: `and`, `so`, `not`.
+Constants: `UNION_SDF`, `OVER`.
 
 ### SoftRasterSpec { #rectslsoftraster-kt-softrasterspec }
 
@@ -7117,6 +7119,54 @@ while the adjoint is the derivative of the smooth relaxation, which is the quant
 
 `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/GlslAd/)
 
+## GlslAdSurrogate.kt { #glsladsurrogate-kt }
+
+`src/jvmMain/kotlin/afield/stacksl/cpu/GlslAdSurrogate.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/)
+
+### AdSurrogate { #glsladsurrogate-kt-adsurrogate }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">AdSurrogate</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L68)
+
+A differentiable surrogate for the jump-discontinuous GLSL operations, as a **mode** of the one AD evaluation rather than a second one.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span></code> | The bump width, in the units of the quantity being floored. `0.0` means off. |
+| <code class="highlight"><span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span></code> | Which jump families get a surrogate partial; the rest keep their exact zero. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L79) | True when any partial in this object differs from the exact zero. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">covers</span><span class="p">(</span><span class="n">family</span><span class="p">:</span> <span class="nc">AdSurrogateFamily</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L82) | Is `family` surrogated here? |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L85) | The same families at a different temperature — what an annealing schedule steps. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">kernel</span><span class="p">(</span><span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">jump</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L94) | The mollified delta: `jump · sech²(u / 2t) / 4t`, with `u` the signed distance to the jump. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">unitPeriodMass</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L113) | The fraction of a unit-period jump this kernel actually carries: `tanh(1 / 4t)`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L115) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L119) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L122) |  |
+
+### AdSurrogateFamily { #glsladsurrogate-kt-adsurrogatefamily }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AdSurrogateFamily</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L160)
+
+The three jump families, split by *where the jumps are* rather than by builtin name — because that is what decides the surrogate partial, and two builtins with the same jump lattice want the same treatment.
+
+Constants: `STAIRCASE`, `STEP`, `SIGN`.
+
+### AdAnnealing { #glsladsurrogate-kt-adannealing }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">AdAnnealing</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L201)
+
+A geometric annealing schedule from `start` down to `end`, plus the driver that steps it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span></code> | The temperature at the first evaluation. |
+| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span></code> | The temperature at the last evaluation of the budget. |
+| <code class="highlight"><span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span></code> | The evaluation count the schedule is scaled to — normally the iteration count. |
+| <code class="highlight"><span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span></code> | Which families the schedule anneals. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">temperatureAt</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L219) | The temperature at evaluation `index`, counting from zero. Pure — no state is touched. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L226) | The surrogate for the *next* evaluation, and advance. Call once per loss evaluation. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">used</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L233) | How many times `next` has been called. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L235) |  |
+
 ## GlslInterpreter.kt { #glslinterpreter-kt }
 
 The evaluator for parsed GLSL shaders, tree-walking and single-threaded per invocation.
@@ -7457,11 +7507,11 @@ The fit itself: seed program in, fitted program out, with the descent's provenan
 | Declaration | Summary |
 | --- | --- |
 | [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;DIM</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L56) | The default fit resolution: 64 square, sized from the measured cost — see `dev_docs`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fit</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">StackSLCpu</span><span class="p">.</span><span class="nf">stillTemplate</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;DIM</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nc">OptimizeMethod</span> <span class="o">=</span> <span class="nc">OptimizeMethod</span><span class="p">.</span><span class="nc">ADAM</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLFitResult</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L64) | Fit `program`'s literals to `target`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fit</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">StackSLCpu</span><span class="p">.</span><span class="nf">stillTemplate</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;DIM</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nc">OptimizeMethod</span> <span class="o">=</span> <span class="nc">OptimizeMethod</span><span class="p">.</span><span class="nc">ADAM</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">annealing</span><span class="p">:</span> <span class="nc">AdAnnealing</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLFitResult</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L72) | Fit `program`'s literals to `target`. |
 
 ### StackSLImageLoss { #stackslfit-kt-stackslimageloss }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLImageLoss</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">outName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;outColor&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">fragUvName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fragUV&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L126)
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLImageLoss</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">outName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;outColor&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">fragUvName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fragUV&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L138)
 
 A mean-squared-error image loss over a wired program's parameter vector, with both an exact reverse-mode gradient and the plain `Float` render the gradient is checked against.
 
@@ -7470,16 +7520,16 @@ A mean-squared-error image loss over a wired program's parameter vector, with bo
 | <code class="highlight"><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L136) | The complete fragment shader, wires and all — the artifact both paths read. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L147) | Render on the `Float` reference path at `values`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L151) | The loss at `values`, via the `Float` path — the finite-difference oracle's evaluator. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueAndGradient</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ADGradient</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L162) | The loss and its **exact** gradient at `values`, by reverse-mode AD through the same parse tree the `Float` path walks. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderPrimal</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L215) | The primal image the differentiable pass computed, as a raster. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">saturatedFraction</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L239) | Fraction of RGB samples that sit exactly on a clamp bound, and so carry no gradient. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L148) | The complete fragment shader, wires and all — the artifact both paths read. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L159) | Render on the `Float` reference path at `values`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L163) | The loss at `values`, via the `Float` path — the finite-difference oracle's evaluator. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueAndGradient</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">surrogate</span><span class="p">:</span> <span class="nc">AdSurrogate</span> <span class="o">=</span> <span class="nc">AdSurrogate</span><span class="p">.</span><span class="nc">OFF</span><span class="p">)</span><span class="p">:</span> <span class="nc">ADGradient</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L180) | The loss and its **exact** gradient at `values`, by reverse-mode AD through the same parse tree the `Float` path walks. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderPrimal</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">surrogate</span><span class="p">:</span> <span class="nc">AdSurrogate</span> <span class="o">=</span> <span class="nc">AdSurrogate</span><span class="p">.</span><span class="nc">OFF</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L238) | The primal image the differentiable pass computed, as a raster. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">saturatedFraction</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L262) | Fraction of RGB samples that sit exactly on a clamp bound, and so carry no gradient. |
 
 ### StackSLFitResult { #stackslfit-kt-stackslfitresult }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLFitResult</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">StackSLImageLoss</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedIndices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">OptimizeRun</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedProgram</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L267)
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLFitResult</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">StackSLImageLoss</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedIndices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">OptimizeRun</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedProgram</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">annealing</span><span class="p">:</span> <span class="nc">AdAnnealing</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L290)
 
 What a fit produced, including the program a human can paste back into a box.
 
@@ -7491,12 +7541,13 @@ What a fit produced, including the program a human can paste back into a box.
 | <code class="highlight"><span class="k">val</span> <span class="n">fittedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The whole wire vector after the fit, indexed by wire index. |
 | <code class="highlight"><span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">OptimizeRun</span></code> | The descent's provenance: losses, trajectory, gradient norms. |
 | <code class="highlight"><span class="k">val</span> <span class="n">fittedProgram</span><span class="p">:</span> <span class="nc">String</span></code> | `wired`'s source with the fitted literals substituted at their own token positions. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">seedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L282) | The wire vector the fit started from. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">seedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L285) | The loss before any step. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fittedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L288) | The loss at the end. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">lossRatio</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L291) | How far the loss fell, as a ratio. 1.0 means the descent achieved nothing. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">saturatedFraction</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L294) | Fraction of RGB samples clamped at the seed — see [`StackSLFit`](languages.md#stackslfit-kt-stackslfit)'s second caveat. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L297) | One line per moved literal: what the human wrote, and what the fit made of it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">annealing</span><span class="p">:</span> <span class="nc">AdAnnealing</span><span class="o">?</span></code> | The jump surrogate's schedule, or `null` for an exact fit. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">seedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L314) | The wire vector the fit started from. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">seedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L317) | The loss before any step. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fittedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L320) | The loss at the end. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">lossRatio</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L323) | How far the loss fell, as a ratio. 1.0 means the descent achieved nothing. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">saturatedFraction</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L326) | Fraction of RGB samples clamped at the seed — see [`StackSLFit`](languages.md#stackslfit-kt-stackslfit)'s second caveat. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L329) | One line per moved literal: what the human wrote, and what the fit made of it. |
 
 ## StackSLWires.kt { #stackslwires-kt }
 

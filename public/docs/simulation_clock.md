@@ -5,7 +5,7 @@ code. `SimulationClock` lets those delays follow time you advance explicitly. It
 no thread and no new kind of box launcher.
 
 Open **simulation_clock** from the welcome screen's starting points, or
-[browse the document](/offline.html?file=/field4/assets/agent_transcripts/simulation_clock/metadata.edn).
+[browse the document](offline.html?file=assets/agent_transcripts/simulation_clock/metadata.edn).
 Select **1. Simulation — launch / stop** and use **Launch Box** (Alt–Up) in the editor.
 **Stop Box** (Alt–Down) stops it and its two children; launching again starts fresh.
 Run **2. Record and explore** to inspect the same work in [Profiling Timeline](profiling_timeline.md).

@@ -469,7 +469,7 @@ One of the expression's points, as three scalar expressions — the vector algeb
 
 The space a free variable lives in — which is to say, how Ceres is allowed to step it.
 
-Constants: `tangent`, `three`.
+Constants: `NONE`, `SPHERE`, `QUATERNION`.
 
 ### CeresVariableDecl { #ceresexpression-kt-ceresvariabledecl }
 
