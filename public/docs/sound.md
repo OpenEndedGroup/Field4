@@ -297,7 +297,7 @@ it as a polyphonic instrument on
 
 The last two are the odd ones out, and you will want to know that before going looking for the rest
 of their path. They are the dough wasm engine driven by a pattern, published on
-[A pattern in space](pat_spatial.md) — and they are **half a path on purpose**: the mono source
+[A pattern in space](pat_spatial.md) — and they are **half a path**: the mono source
 Steam Audio is handed, not the spatialised output, because that half is realtime-only and needs a
 binary this repository does not carry. That page
 [explains the absent figure](pat_spatial.md#why-there-is-no-clip-of-the-output) rather than
@@ -345,14 +345,14 @@ A loadable Field document with all of this side by side is committed at
 
 ## How the "Voice:" captions are checked
 
-Every sentence on this page in the form *"Voice: …"* is checked rather than written. On each build,
+Every sentence on this page in the form *"Voice: …"* is produced by a check, not written by hand. On each build,
 `SoundProvenanceGuardTest` decodes the committed `.wav` under each figure and compares it against a
 fresh render: a clip captioned as the stand-in has to match one, and a clip captioned as real
 samples has to not. So a figure whose producing code changed underneath it fails the build, instead
 of keeping a caption that has become false. The check needs no sample library, which is why it runs
 on a machine that has never downloaded one.
 
-The same sweep runs over every audio clip in these docs, which is what makes the table above
-measured rather than inventoried. The method, the correlation figures and the pinned family counts
+The same sweep runs over every audio clip in these docs, so every row of the table above comes from
+a decode. The method, the correlation figures and the pinned family counts
 are in `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`; the audit prints its whole table with
 `run_field_tests.py --id synth.docs.audio.provenance`.

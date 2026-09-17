@@ -503,7 +503,7 @@ that both accelerates along its input and turns lazily. The tick spacing is the
 other half of it: green's stay even all the way through, and blue's bunch up
 through the corner.
 
-The same four runs, measured rather than eyeballed. The colours carry over:
+The same four runs, as numbers. The colours carry over:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/movement_examples/turn_speed.png" wait="1.5" capture="box" open-outputs="true" name="movement-dial-speed"}
 :::static
