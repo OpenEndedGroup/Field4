@@ -230,6 +230,7 @@ nav:
     - Three-Dimensional Life, Counted and Traced: chain_life3d_render.md
     - A RectSL Animation as a Solid: chain_rectsl_spacetime.md
     - A Polytope, Canonicalised and Sliced: chain_ceres_manifold_contours.md
+    - A Photograph, Closed and Mounted: chain_photo_to_solid.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - AI Tool-Use History: ai_tool_use_history.md
