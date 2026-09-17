@@ -6,22 +6,20 @@ package afield.stacksl.cpu
  *
  * #### One interpreter, two algebras
  *
- * The CPU backend's value is that it interprets **the emitted GLSL**, the artifact the GPU
- * consumes. A hand-written per-word CPU evaluator would not be that, and would check nothing: two
- * algebraically-identical implementations agree with each other while both drift from the spec. So
- * a derivative has to flow through this parser and this interpreter.
+ * The interface factors out the *values*, leaving `GlslInterpreter.kt`'s machine (the statements,
+ * the branches, the loops, the call frames, the lvalue writes) as one copy of the control flow,
+ * shared by every scalar type. `GlslFloatScalars` is the `Float` instance, and each of its methods
+ * is a single `GlslValue` expression, so going through the interface neither widens nor reorders
+ * any arithmetic. `StackSLCpuFloatPathManifestTest` holds all 31 gallery programs to committed
+ * `Float` bits.
  *
- * That is what this interface is for. It factors out the *values*, leaving `GlslInterpreter.kt`'s
- * machine (the statements, the branches, the loops, the call frames, the lvalue writes) as one copy
- * of the control flow, shared by every scalar type. `GlslFloatScalars` is the `Float` instance, and
- * each of its methods is a single `GlslValue` expression, so going through the interface neither
- * widens nor reorders any arithmetic. `StackSLCpuFloatPathManifestTest` holds all 31 gallery
- * programs to committed `Float` bits.
+ * Sharing the control flow is what lets a derivative run over **the emitted GLSL**, the artifact
+ * the GPU consumes, rather than over a second evaluator written beside it.
  *
  * `V` is a reference type in both instances ([GlslValue] and `AdValue`), so the `Float` path pays no
  * boxing for the generic parameter: one interface dispatch per operation is the entire cost.
  *
- * #### Whole values, not components
+ * #### Why the methods take whole values
  *
  * Every method here takes and returns a *whole* GLSL value rather than a component, because
  * `normalize`, `dot`, `length` and the matrix products are not component-wise, and an interface at

@@ -35,10 +35,10 @@ import java.util.Locale
  *     dropped, the initial values having moved into the globals.
  *
  * `StackSLWireLoweringTest` renders the lowered program with every wire at its recorded initial
- * and asserts the raster is **bit-identical** to the ordinary non-externalised compile of the same
- * program, which is what the two are supposed to be.
+ * and asserts the raster is **bit-identical** to the ordinary non-externalised compile of the
+ * same program.
  *
- * #### Only some wires can be written back into the source
+ * #### Which wires can be written back
  *
  * A wire's `note` says where it came from, and that is what governs the round trip. A `"number"`
  * wire stands for a literal the human typed, so a fitted value can be substituted at the recorded
