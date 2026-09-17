@@ -30,7 +30,7 @@ import kotlin.math.*
  *     bounded-curvature force limiter (magnitude, magnitude rate, and
  *     angular rate/acceleration on the direction).
  *  2. ~100ms   discrete-time RLS identification of the host's own integrator:
- *         x[k+1] - 2x[k] + x[k-1] = dt^2 (b F[k] + c v[k] + d)
+ *         x(k+1) - 2x(k) + x(k-1) = dt^2 (b F(k) + c v(k) + d)
  *     exact under semi-implicit Euler, so b^ absorbs the host's
  *     numerical damping and dispersion, not just the mass. Gains are
  *     synthesised from (b,c,d); the only free knobs are physical.

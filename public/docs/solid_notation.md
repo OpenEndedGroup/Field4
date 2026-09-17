@@ -725,7 +725,7 @@ what a torus is.
 
 <iframe
   style="width:100%;height:520px;border:1px solid #2a3038;border-radius:8px"
-  src="/offline.html?file=/field4/assets/solidsl_gallery/metadata.edn"
+  src="offline.html?file=assets/solidsl_gallery/metadata.edn"
   loading="lazy"></iframe>
 
 `assets/solidsl_gallery/metadata.edn` is a Field document with three boxes. Open it and run them:
