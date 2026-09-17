@@ -1820,8 +1820,8 @@ Two kinds of slot qualify, behind one `ParamBinding` interface:
    `Int`/`Float`/`Double`/… field the same base/supplier/modulation semantics, coercing
    back to the field's declared type on write.
 
-That second case is the interesting one: it makes *any* object's numeric field
-modulatable, which is why the generic query core underneath knows nothing
+That second case is what makes *any* object's numeric field modulatable,
+which is why the generic query core underneath knows nothing
 about audio.
 
 The split runs along the same line. Path resolution, grouping and `ScalarPathState` carry no

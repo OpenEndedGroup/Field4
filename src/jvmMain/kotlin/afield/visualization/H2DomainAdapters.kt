@@ -11,7 +11,7 @@ import afield.stdlib.linalg.Vector3f
  *
  * `H2Reflect` lifted `.h2` from "types someone registered" to "everything", and for a data class or
  * a plain domain object a property tree is exactly right. Four families it is wrong for, each for
- * its own reason, and each reason is the argument for the adapter:
+ * its own reason:
  *
  *  - **[Box]** — reflection would touch `Box.ki`, a `lazyVar` that *builds a K2 REPL engine on
  *    read*. Exploring a box would compile one. This is the concrete case behind the side-effect

@@ -5930,8 +5930,8 @@ Not speed, primarily. RectSL's array words build per-copy channels by *offsettin
 hundred-copy array arrives at a backend as a hundred `BinaryDoubleTrack(const, const, ADD)` nodes,
 and each backend has had to fold that itself: `trackConstantValue` exists because the GLSL emitter
 needed it, and the `Fn` lowering calls the same function for the same reason. A fold is the
-*smallest* rewrite, and having it live inside two emitters rather than over the IR is the tell that
-the rewriter was missing.
+*smallest* rewrite there is, and both emitters had to reach for it themselves because there
+was nowhere over the IR to apply it once.
 
 The bigger reason is that a simplified tree is a smaller `Fn` graph, and an `Fn` graph's size is
 the cost of both a sample and a gradient — `Fn.eval` walks every node, and `gradientAt` records

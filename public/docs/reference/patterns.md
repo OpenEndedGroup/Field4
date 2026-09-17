@@ -1511,7 +1511,7 @@ Steam Audio spatialises a **mono** signal -- a direction is a property of a whol
 separable signals out of one engine. Hence one engine per `spat` group, which is also why `spat`
 exists at all rather than every event getting its own position.
 
-Two consequences worth stating plainly:
+Two consequences:
 
 - **A pattern's `pan` is overridden.** Every event is sent with `pan/0`, which puts all of that
   engine's energy in its left channel, and that channel *is* the mono source signal. Panning is

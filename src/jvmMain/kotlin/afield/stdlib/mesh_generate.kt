@@ -17,7 +17,7 @@ import kotlin.math.sqrt
  * generators that build one out of something you already have ([extrudeMesh], [revolveMesh],
  * [tubeMesh], [heightfieldMesh], [reliefMesh], [polygonMesh]).
  *
- * # Welding, and where the normals come from
+ * # Welding and normals
  *
  * **Everything here is welded and watertight where it can be.** A generator returns the minimal
  * vertex set, so [MeshTopology.eulerCharacteristic] of a box, a sphere, a cone or a capped cylinder
