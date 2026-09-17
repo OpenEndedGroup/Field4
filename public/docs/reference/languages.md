@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-78 source file(s), 2286 public symbol(s), 856 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+78 source file(s), 2286 public symbol(s), 884 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2133,108 +2133,196 @@ The reflective half of FieldML's JVM bridge: given a name, a receiver and some a
 
 ## Diagnostics.kt { #diagnostics-kt }
 
+Where a FieldML compile says something is wrong, and how badly.
+
+This is the package the rest of the front end shares, and the only one that depends on nothing:
+the lexer, the parser, the inferencer and the lowerer all import it, and it imports none of them.
+A stage with something to report either adds a [`Diagnostic`](languages.md#diagnostics-kt-diagnostic) to the list it returns or, where
+carrying on would mean inventing a tree, throws [`CompileAbort`](languages.md#diagnostics-kt-compileabort) and lets its own entry point turn
+that back into a diagnostic.
+
+Only an error stops a compile. Each stage runs if no earlier diagnostic was an error, so a
+[`Severity`](languages.md#diagnostics-kt-severity) of `Warning` or `Info` is collected and reported without holding the run up.
+
+Nothing outside `afield.ml` imports these types. They leave the front end inside
+`CompilationResult`, and the box runtime reads them from there to put a message on a line.
+
 `src/jvmMain/kotlin/afield/ml/diag/Diagnostics.kt` — [read the source](source/jvmMain/afield/ml/diag/Diagnostics/)
 
 ### SourcePos { #diagnostics-kt-sourcepos }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourcePos</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L3)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourcePos</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L25)
+
+One character position in the compiled source, in the three forms its readers need.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> | Characters from the start of the source, counting from zero. |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> | Lines from the start of the source, counting from one. |
+| <code class="highlight"><span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span></code> | Characters from the start of the line, counting from one. |
 
 ### SourceRange { #diagnostics-kt-sourcerange }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourceRange</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L9)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourceRange</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L52)
+
+A half-open span of source: `start` is the first character, `end` is the position just past the last.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span></code> | The first character of the span. |
+| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span></code> | The position just past the last character of the span. |
 
 ### Diagnostic { #diagnostics-kt-diagnostic }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Diagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L19)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Diagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L76)
+
+One thing a stage has to say about one place in the source.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span></code> | How much it matters. |
+| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> | The sentence shown to whoever wrote the program. It is also the exception message when the diagnostic arrives as a [`CompileAbort`](languages.md#diagnostics-kt-compileabort). |
+| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span></code> | What the message is about, or null when there is nothing to point at. |
 
 ### Severity { #diagnostics-kt-severity }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Severity</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L25)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Severity</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L100)
+
+How much a [`Diagnostic`](languages.md#diagnostics-kt-diagnostic) matters.
 
 Constants: `Error`, `Warning`, `Info`.
 
 ### CompileAbort { #diagnostics-kt-compileabort }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">CompileAbort</span><span class="p">(</span><span class="k">val</span> <span class="n">diagnostic</span><span class="p">:</span> <span class="nc">Diagnostic</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">diagnostic</span><span class="p">.</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L31)
+[<code class="highlight"><span class="k">class</span> <span class="nf">CompileAbort</span><span class="p">(</span><span class="k">val</span> <span class="n">diagnostic</span><span class="p">:</span> <span class="nc">Diagnostic</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">diagnostic</span><span class="p">.</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L114)
+
+The exception a stage throws to stop where it stands, carrying the [`Diagnostic`](languages.md#diagnostics-kt-diagnostic) that says why.
 
 ## Lexer.kt { #lexer-kt }
+
+FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything
+that could not be read.
+
+The scan never stops early. A character the lexer cannot use costs one diagnostic and no token,
+and the scan carries on, so a typo halfway down a box does not hide what is below it. Whether the
+*compile* carries on is a separate decision, made by `FieldMLCompiler`, which does not reach the
+parser at all once lexing has reported an error.
+
+Trivia is skipped rather than emitted: `//` to the end of the line, and `(* … *)` blocks, which
+nest by depth count, so a region commented out this way can contain comments of its own. An
+unterminated block is reported at the position it was opened.
+
+The shapes a literal can take are all decided here. A number is digits, and a `.` opens a
+fraction only when a digit follows it, which leaves `.` free to be the field-access token and
+makes `1.` an `INT` and then a `DOT`; there is no exponent form, and a leading `-` is always a
+token of its own rather than part of the literal. An identifier starts with a letter or `_` and
+may carry `'` after that. A string runs to the next unescaped `"`, and one that reaches the end
+of the source first is reported rather than closed. `&`, `:` and `!` are errors on their own,
+since only `&&`, `::` and `!=` exist, and the first two say so in the message.
 
 `src/jvmMain/kotlin/afield/ml/lex/Lexer.kt` — [read the source](source/jvmMain/afield/ml/lex/Lexer/)
 
 ### LexResult { #lexer-kt-lexresult }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LexResult</span><span class="p">(</span><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L8)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LexResult</span><span class="p">(</span><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L36)
+
+The whole of what one scan produced.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code> | The tokens, in source order, ending with `EOF`. Trivia is not among them. |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> | One entry per thing the lexer could not read, in source order. All of them are errors. |
 
 ### Lexer { #lexer-kt-lexer }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">Lexer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L13)
+[<code class="highlight"><span class="k">class</span> <span class="nf">Lexer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L50)
+
+A single-use scanner over one string.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lex</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">LexResult</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L20) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lex</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">LexResult</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L58) | Scan to the end of the source, appending the `EOF` token. Reports rather than throws. |
 
 ## Token.kt { #token-kt }
+
+One [`TokenKind`](languages.md#token-kt-tokenkind) for every lexeme FieldML has, and the [`Token`](languages.md#token-kt-token) that pairs a kind with the text it
+was read from.
+
+There is no kind for whitespace or for a comment: the lexer skips trivia instead of emitting it,
+so a token list cannot be printed back as the source it came from. Keywords are kinds of their
+own rather than identifiers with reserved text, which is what lets the parser ask for `LET` or
+`WITH` by kind, and also what stops those words being used as names.
 
 `src/jvmMain/kotlin/afield/ml/lex/Token.kt` — [read the source](source/jvmMain/afield/ml/lex/Token/)
 
 ### TokenKind { #token-kt-tokenkind }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TokenKind</span></code>](source/jvmMain/afield/ml/lex/Token/#L5)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TokenKind</span></code>](source/jvmMain/afield/ml/lex/Token/#L23)
+
+Every lexeme FieldML has: its keywords, its identifier, its three literal kinds, its punctuation, its operators, and `EOF`.
 
 Constants: `LET`, `TYPE`, `IN`, `IF`, `THEN`, `ELSE`, `FUN`, `MATCH`, `WITH`, `TRUE`, `FALSE`, `IDENT`, `INT`, `FLOAT`, `STRING`, `LPAREN`, `RPAREN`, `LBRACKET`, `RBRACKET`, `LBRACE`, `RBRACE`, `COMMA`, `SEMICOLON`, `BAR`, `PIPE_FORWARD`, `DOT`, `ARROW`, `EQ`, `EQEQ`, `NEQ`, `PLUS`, `PLUSPLUS`, `MINUS`, `STAR`, `SLASH`, `AMPAMP`, `BARBAR`, `COLONCOLON`, `LT`, `LTE`, `GT`, `GTE`, `EOF`.
 
 ### Token { #token-kt-token }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Token/#L51)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Token/#L70)
+
+A lexeme: what it is, the text it was read from, and where that text was.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span></code> | Which lexeme this is. |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> | The exact slice of source the token was read from, undecoded: a `STRING` still has its quotes and its backslashes, and an `INT` is still text. Converting them is the parser's job. Empty for `EOF`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code> | Where `text` was. `EOF` gets an empty range at the end of the source, so a diagnostic about a program that stopped too early still has somewhere to point. |
 
 ## Parser.kt { #parser-kt }
+
+FieldML's second stage: tokens in, the surface tree out, by recursive descent with precedence
+climbing for the operators.
+
+There is no error recovery. The first token the parser cannot use throws, `parse` catches it, and
+the result is no tree and exactly one diagnostic. Where the lexer reports every character it
+could not read, the parser reports only the first thing it could not fit into the grammar.
+
+Two places in the grammar are settled by columns rather than by tokens, and they are what lets a
+box be written as a stack of bindings with no `in` and a record as a block with no separators.
+The value of a top-level `let` ends at the next line that starts no further right than the `let`
+itself, so a continuation has to be indented. A record field's value ends at `}`, at a `,` or
+`;`, or at the next `name =` that starts a later line. Both are carried down into the expression
+parser as predicates, so they apply at whatever depth the expression has reached rather than only
+at the top.
+
+Function application binds tighter than every operator, and prefix `-` binds looser than
+application, so `-f x` negates the call. `::` is the one right-associative operator. `|>` gets no
+node of its own: `a |> f` is parsed as the call `f a`, which is why nothing after this stage has a
+case for a pipe.
+
+A program is a chain of `let` and `type` declarations ending in an expression. One that ends on a
+binding instead evaluates to `Unit`, and a `type` declaration with nothing after it is an error
+rather than a program.
 
 `src/jvmMain/kotlin/afield/ml/parse/Parser.kt` — [read the source](source/jvmMain/afield/ml/parse/Parser/)
 
 ### ParseResult { #parser-kt-parseresult }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ParseResult</span><span class="p">(</span><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L45)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ParseResult</span><span class="p">(</span><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L77)
+
+The surface tree, or nothing and the reason why.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span></code> | The tree, or null when parsing gave up. Non-null means the whole token list parsed, `EOF` included, so nothing was left over. |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> | Empty when `expr` is non-null, and one error long when it is null. |
 
 ### Parser { #parser-kt-parser }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">Parser</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L50)
+[<code class="highlight"><span class="k">class</span> <span class="nf">Parser</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L94)
+
+Recursive descent over a finished token list.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParseResult</span></code>](source/jvmMain/afield/ml/parse/Parser/#L54) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParseResult</span></code>](source/jvmMain/afield/ml/parse/Parser/#L104) | Parse the token list as one FieldML program, reporting a failure rather than throwing it. |
 
 ## FieldMLTypePrelude.kt { #fieldmltypeprelude-kt }
 

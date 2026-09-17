@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8065 of 14173 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8093 of 14173 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**774 undocumented entry points** (types, top-level functions and values) and 5016 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**763 undocumented entry points** (types, top-level functions and values) and 4999 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -137,7 +137,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 10% |
 | [Spectral.kt](../src/jvmMain/kotlin/afield/four/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
-| [Diagnostics.kt](../src/jvmMain/kotlin/afield/ml/diag/Diagnostics.kt) | Languages | — | 5 | 8 | 0% |
 | [KotlinJs.kt](../src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt) | Languages | — | 5 | 7 | 0% |
 | [LazyValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt) | Visualization | — | 5 | 5 | 0% |
 | [KratosSession.kt](../src/jvmMain/kotlin/afield/kratos/KratosSession.kt) | Simulation | — | 4 | 44 | 29% |
@@ -156,9 +155,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AbletonLinkAudio.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt) | Audio | — | 2 | 30 | 0% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
-| [Lexer.kt](../src/jvmMain/kotlin/afield/ml/lex/Lexer.kt) | Languages | — | 2 | 3 | 0% |
-| [Token.kt](../src/jvmMain/kotlin/afield/ml/lex/Token.kt) | Languages | — | 2 | 3 | 0% |
-| [Parser.kt](../src/jvmMain/kotlin/afield/ml/parse/Parser.kt) | Languages | — | 2 | 3 | 0% |
 | [Inferencer.kt](../src/jvmMain/kotlin/afield/ml/type/Inferencer.kt) | Languages | — | 2 | 3 | 0% |
 | [FabricateGltfBridge.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateGltfBridge.kt) | Renderers | — | 2 | 1 | 25% |
 | [PathTraceShaderBoxes.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceShaderBoxes.kt) | Renderers | — | 2 | 0 | 33% |
@@ -381,4 +377,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ShaderModuleSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1202` |
 | `MaterialTable` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1211` |
 
-…and **654 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **643 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
