@@ -1545,18 +1545,23 @@ drives. The distinction is the whole scene: the fragment shader takes `dFdx`/`dF
 own UVs, so it knows how many pixels across it is being drawn at, and `atomicMax`es the level it
 wants into a feedback buffer. A frame later the CPU reads that buffer, and that read is the entire
 input to its decoding, residency and eviction — it is never told where anything is, how large it
-looks, or whether it is on screen at all. Measured on 1640 film frames: dollying in takes all of
-them from the 8-pixel base pages to level 3, then 480 of them to level 4, then the 28 that fill the
-screen to level 6 against a budget of 32 such pages, and evicts them again on the way out. The
-ceiling that stops the last step thrashing is computed from two measured numbers and nothing else —
-how many images want a level, and how many pages that level has.
+looks, or whether it is on screen at all. On 1640 film frames the ladder runs from 15×7 base pages
+to a top page of 1920×798 — a whole source frame — and dollying in walks each image up it and
+evicts it again on the way out. The ceiling that stops the last step thrashing is computed from two
+measured numbers and nothing else: how many images want a level, and how many pages that level has.
+
+A page arriving does not snap in. It fades over the page it replaces across ten frames, or over the
+image's own mean colour when there was no previous page — which is the pop worth removing, since
+every image in a cold start makes it. Only upgrades fade: a level lost to eviction has to snap,
+because its pixels belong to another image by the time the page table stops naming them.
+`config.crossfadeFrames = 0` turns it off.
 
 Worth opening for the shape as much as the subject. The wall's geometry is arithmetic on
 `gl_InstanceIndex` — six vertices, one instance per image, no vertex buffer at all — and both
 shaders are box properties with `{{ mega.all }}` interpolated into them, so the sampling, the layout
 and the LOD policy are all editable with `alt-r` rather than buried in Kotlin. Flip
 `showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
-is 512 pixels, and flying at the wall turns it green ahead of you. The library is
+is a full source frame, and flying at the wall turns it green ahead of you. The library is
 `afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
 
 Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line

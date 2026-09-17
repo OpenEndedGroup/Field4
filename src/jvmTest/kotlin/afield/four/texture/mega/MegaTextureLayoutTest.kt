@@ -376,5 +376,79 @@ class MegaTextureLayoutTest {
             "0x%xu".format(MegaTextureLayout.MAX_LAYER) in declarations,
             "the shader's layer mask must be the layout's:\n$declarations"
         )
+        assertTrue(
+            "megaFadeShift    = ${MegaTextureLayout.FADE_SHIFT}" in declarations,
+            "the shader's fade shift must be the layout's:\n$declarations"
+        )
+    }
+
+    /**
+     * The fade weight rides along in the entry without disturbing anything already in it.
+     *
+     * It was put in the second word's spare bits rather than given a word of its own, which is the
+     * kind of saving that is free until the day it silently eats the top bit of the layer index.
+     * This is that day's test: a page in the highest addressable layer, at full fade.
+     */
+    @Test
+    fun aFadeWeightRidesAlongsideTheLayerAndLevel() {
+        val l = layout()
+        val level = 3
+        val slot = l.pageCapacity[level] - 1
+        for (fade in listOf(0, 1, 128, MegaTextureLayout.FADE_FULL)) {
+            val entry = l.decode(
+                l.encode(
+                    level = level,
+                    slot = slot,
+                    averageColor = 0x7f804020,
+                    usedWidth = 61,
+                    usedHeight = 33,
+                    fade = fade
+                )
+            )
+            assertEquals(fade, entry.fade, "fade $fade did not survive the round trip")
+            assertEquals(level, entry.level, "fade $fade disturbed the level")
+            assertEquals(l.layerOf(level, slot), entry.layer, "fade $fade disturbed the layer")
+            assertEquals(l.pageX(level, slot), entry.pageX, "fade $fade disturbed pageX")
+            assertEquals(61, entry.usedWidth, "fade $fade disturbed the used width")
+            assertTrue(entry.resident, "fade $fade cleared the resident bit")
+        }
+    }
+
+    /** An entry written without a fade is fully faded in, so nothing has to opt out of crossfading. */
+    @Test
+    fun anUnfadedEntryIsAlreadyFullyThere() {
+        val l = layout()
+        assertEquals(
+            MegaTextureLayout.FADE_FULL,
+            l.decode(l.encode(level = 2, slot = 0, averageColor = 0, usedWidth = 4, usedHeight = 4)).fade
+        )
+    }
+
+    /**
+     * The ramp reaches full exactly on the last frame, and is never zero before it.
+     *
+     * Zero is the value that matters: it is indistinguishable from an absent page, so a ramp that
+     * starts there spends a frame showing the old page for no reason at every level change. The
+     * other end matters because a ramp that never quite arrives leaves two texture taps running
+     * forever on every image on screen.
+     */
+    @Test
+    fun theFadeRampStartsVisibleAndFinishesOnTime() {
+        val frames = 10
+        val weights = (0 until frames).map { MegaTextureLayout.fadeWeight(it.toLong(), frames) }
+        assertTrue(weights.first() > 0, "a fade's first frame must show something: $weights")
+        assertEquals(MegaTextureLayout.FADE_FULL, weights.last(), "should finish on frame $frames: $weights")
+        assertEquals(weights.sorted(), weights, "the ramp must not go backwards: $weights")
+        assertEquals(
+            MegaTextureLayout.FADE_FULL,
+            MegaTextureLayout.fadeWeight(frames.toLong() * 3, frames),
+            "past the end it stays full"
+        )
+    }
+
+    /** `crossfadeFrames = 0` means no fade at all, not a division by zero. */
+    @Test
+    fun zeroFadeFramesIsInstant() {
+        assertEquals(MegaTextureLayout.FADE_FULL, MegaTextureLayout.fadeWeight(0, 0))
     }
 }

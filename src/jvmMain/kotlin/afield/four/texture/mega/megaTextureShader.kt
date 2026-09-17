@@ -108,6 +108,12 @@ const float megaBasePageWidth = ${layout.pageWidth(0)}.0;
 const uint  megaResidentBit  = ${"0x%xu".format(MegaTextureLayout.RESIDENT_BIT)};
 const int   megaLevelShift   = ${MegaTextureLayout.LEVEL_SHIFT};
 const uint  megaLayerMask    = ${"0x%xu".format(MegaTextureLayout.MAX_LAYER)};
+const int   megaFadeShift    = ${MegaTextureLayout.FADE_SHIFT};
+
+// Two entries per image: the page being shown, and the page it is fading in over. The second is
+// the whole reason the stride is not 1 — a crossfade needs the *address* of the outgoing page, and
+// the CPU is the only thing that knows which atlas slot that was.
+const uint  megaEntryStride  = ${MegaTextureLayout.ENTRY_STRIDE_WORDS / MegaTextureLayout.ENTRY_WORDS}u;
 """.trimIndent()
 }
 
@@ -129,17 +135,23 @@ fun megaFunctionsSource(layout: MegaTextureLayout, config: MegaTextureConfig): S
     return """
 // --- megaTexture: page table queries ---
 
+/** The entry for the page this image is showing. */
+uvec4 megaEntry(uint id) { return megaPages[id * megaEntryStride]; }
+
+/** The entry for the page it is fading in over; not resident when there is nothing to fade from. */
+uvec4 megaOutgoingEntry(uint id) { return megaPages[id * megaEntryStride + 1u]; }
+
 /** Highest level currently resident for this image, or -1 if it has none yet. */
 int megaResidentLevel(uint id) {
     if (id >= megaImageCount) return -1;
-    uint word = megaPages[id].y;
+    uint word = megaEntry(id).y;
     return ((word & megaResidentBit) != 0u) ? int((word >> megaLevelShift) & 0xfu) : -1;
 }
 
 /** Width / height of the image as currently known; 1.0 before anything has been decoded. */
 float megaAspect(uint id) {
     if (id >= megaImageCount) return 1.0;
-    uvec4 entry = megaPages[id];
+    uvec4 entry = megaEntry(id);
     vec2 used = vec2(float(entry.w & 0xffffu), float(entry.w >> 16));
     return (used.x > 0.0 && used.y > 0.0) ? used.x / used.y : 1.0;
 }
@@ -151,7 +163,7 @@ vec3 megaSrgbToLinear(vec3 c) {
 /** The image's mean colour — what it draws as while it is still loading. */
 vec4 megaAverageColor(uint id) {
     if (id >= megaImageCount) return vec4(0.5, 0.5, 0.5, 1.0);
-    uint packed = megaPages[id].z;
+    uint packed = megaEntry(id).z;
     vec3 srgb = vec3(
         float(packed & 255u),
         float((packed >> 8) & 255u),
@@ -160,16 +172,36 @@ vec4 megaAverageColor(uint id) {
     return vec4(megaSrgbToLinear(srgb), float((packed >> 24) & 255u) / 255.0);
 }
 
-/** Sample whatever page this image currently has, without asking for a better one. */
-vec4 megaSampleResident(uint id, vec2 uv) {
-    if (id >= megaImageCount) return vec4(1.0, 0.0, 1.0, 1.0);
-    uvec4 entry = megaPages[id];
-    if ((entry.y & megaResidentBit) == 0u) return megaAverageColor(id);
+/** Sample the page an entry names. The caller has already checked that it is resident. */
+vec4 megaSampleEntry(uvec4 entry, vec2 uv) {
     vec2 origin = vec2(float(entry.x & 0xffffu), float(entry.x >> 16));
     vec2 used   = vec2(float(entry.w & 0xffffu), float(entry.w >> 16));
     float layer = float(entry.y & megaLayerMask);
     vec2 texel = clamp(uv, vec2(0.0), vec2(1.0)) * max(used - vec2(1.0), vec2(0.0)) + vec2(0.5);
     return textureLod(${config.atlasName}, vec3((origin + texel) / megaAtlasEdge, layer), 0.0);
+}
+
+/**
+ * Sample whatever page this image currently has, without asking for a better one.
+ *
+ * Two taps rather than one while a page is fading in, and one everywhere else — the early-out is
+ * on a value the CPU controls, so with `crossfadeFrames = 0` this costs a compare and nothing
+ * more. What it fades *from* is the previous page if there was one and the mean colour if there
+ * was not, which means the first page an image ever gets arrives as a dissolve out of its own
+ * average rather than as a rectangle snapping from flat colour to photograph.
+ */
+vec4 megaSampleResident(uint id, vec2 uv) {
+    if (id >= megaImageCount) return vec4(1.0, 0.0, 1.0, 1.0);
+    uvec4 entry = megaEntry(id);
+    if ((entry.y & megaResidentBit) == 0u) return megaAverageColor(id);
+    vec4 arrived = megaSampleEntry(entry, uv);
+    float fade = float((entry.y >> megaFadeShift) & 255u) * (1.0 / 255.0);
+    if (fade >= 1.0) return arrived;
+    uvec4 outgoing = megaOutgoingEntry(id);
+    vec4 leaving = ((outgoing.y & megaResidentBit) != 0u)
+        ? megaSampleEntry(outgoing, uv)
+        : megaAverageColor(id);
+    return mix(leaving, arrived, fade);
 }
 """.trimIndent()
 }
