@@ -358,6 +358,89 @@ def is_workspace_markdown(relative: Path) -> bool:
     return relative.name in WORKSPACE_MARKDOWN_FILENAMES and relative.parts[:1] == ("assets",)
 
 
+# The two ways a page names a local file: an HTML attribute, and a markdown link/image target.
+# Only a ref that already starts with `../` can over-climb.
+#
+# `src` and `href` ONLY, and `poster` deliberately excluded: zensical's rebasing is
+# attribute-selective, which nothing in the tree said out loud until this pass got it wrong and
+# `tools/check_doc_site_links.py` caught it. Measured on `rectsl_examples.md`, from one `<video>`
+# tag rewritten to be file-relative throughout: `src="assets/rectsl/x.mp4"` came out
+# `../assets/rectsl/x.mp4` (rebased) while `poster="assets/rectsl/x.png"` came out unchanged, so
+# it resolved inside the page's own URL directory and 404'd. A `poster` must therefore be written
+# in the *published URL's* frame -- the opposite convention to everything beside it.
+#
+# `public/docs/vision_geometry.md:340` is the witness that someone already found this empirically:
+# one tag carrying `src="assets/..."` and `poster="../assets/..."` together, each correct. All 39
+# `poster=` attributes in the tree (on 2 of 500 pages) are `../`-framed, and all 39 resolve.
+ESCAPING_ATTR_REF_RE = re.compile(r'\b(?:src|href)\s*=\s*"(?P<ref>\.\./[^"\s]*)"')
+ESCAPING_MARKDOWN_REF_RE = re.compile(r'\]\(\s*(?P<ref>\.\./[^)\s]*)')
+OVER_CLIMB = "../"
+
+
+def normalize_over_climbing_refs(*, markdown: str, page_path: Path, docs_dir: Path, docs_hooks: Any) -> tuple[str, list[tuple[str, str]]]:
+    """Re-seat local refs written from the published URL's frame instead of the file's.
+
+    `public/docs_hooks.py:page_directory_depth` records the contract this enforces: zensical rebases
+    a relative `href`/`src`/markdown target for the page's *URL* depth, so the source must name a
+    file relative to the markdown file's own directory and let the build add the `../`. A page that
+    helpfully writes the `../` itself gets a second one, and its refs leave the site. That is
+    invisible while the site is served at `/`, because `..` clamps at the server root -- and it is a
+    404 the moment the site is served under a path prefix, which is exactly how this one is
+    published (`site_url: http://openendedgroup.com/Field4/`). Measured before this existed:
+    `rectsl_examples.md`'s 12 `<img src="../assets/rectsl/...">` rendered as `../../assets/...` and
+    404'd under a simulated `/Field4/` prefix, while `rectsl_cheatsheet.md`'s three `<img
+    src="assets/rectsl/...">` -- the same construct, written file-relative -- served 200.
+
+    Two conditions must both hold before anything is touched, which is what keeps a correct ref
+    safe: in the source frame the ref must land outside the docs root, so it cannot be what the
+    author meant; and one level shallower it must land on a file that really exists inside the docs
+    tree, so the repair is confirmed rather than inferred. Dropping exactly one `../` is the whole
+    repair, because directory URLs put a page exactly one directory deeper than its markdown sat.
+    A ref failing either test is left as written, for `tools/check_doc_site_links.py` to report --
+    a rewrite that cannot name the file it repaired is a rewrite that should not happen.
+
+    Lives here rather than in `public/docs_hooks.py` deliberately. That module is in
+    `RUNNER_DIGEST_SOURCE_FILES`, so any edit to it changes every capture's digest and a warm tree's
+    next incremental build would re-run all 633 captures to produce identical pictures. This file is
+    not in that list, so the same transform here costs nothing.
+
+    Returns the rewritten markdown and the `(before, after)` pairs, so the caller can report them.
+    """
+    docs_root = docs_dir.resolve()
+    page_dir = page_path.resolve().parent
+    repairs: list[tuple[str, str]] = []
+
+    def repair(match: re.Match[str]) -> str:
+        ref = match.group("ref")
+        target = ref.split("#", 1)[0].split("?", 1)[0]
+        if docs_hooks.path_is_relative_to(page_dir / target, docs_root):
+            return match.group(0)
+        candidate = page_dir / target[len(OVER_CLIMB):]
+        if not candidate.is_file() or not docs_hooks.path_is_relative_to(candidate, docs_root):
+            return match.group(0)
+        reseated = ref[len(OVER_CLIMB):]
+        repairs.append((ref, reseated))
+        return match.group(0).replace(ref, reseated, 1)
+
+    # Fenced blocks are skipped on the same grounds `docs_hooks.rewrite_source_citations` skips them:
+    # a fence showing what an `<img>` looks like must keep showing it.
+    out: list[str] = []
+    closing: re.Pattern[str] | None = None
+    for line in markdown.splitlines(keepends=True):
+        if closing is not None:
+            out.append(line)
+            if closing.match(line):
+                closing = None
+            continue
+        generic = docs_hooks.GENERIC_FENCE_OPEN_RE.match(line)
+        if generic is not None:
+            out.append(line)
+            closing = re.compile(rf"^[ ]{{0,3}}{re.escape(generic.group('fence'))}\s*(?:\r?\n)?$")
+            continue
+        out.append(ESCAPING_MARKDOWN_REF_RE.sub(repair, ESCAPING_ATTR_REF_RE.sub(repair, line)))
+    return "".join(out), repairs
+
+
 def copy_non_markdown_files(source: Path, target: Path) -> None:
     for path in source.rglob("*"):
         if not path.is_file() or path.suffix == ".md":
@@ -489,6 +572,7 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     runner_mode = state.runner_mode
     matched_pages = 0
     total_pages = 0
+    reseated_refs: list[tuple[str, str, str]] = []
 
     try:
         for path in sorted(source_docs.rglob("*.md")):
@@ -516,10 +600,36 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
                 )
             finally:
                 state.runner_mode = previous_mode
+            # After process_markdown, not before, so that fence-emitted refs are covered by the
+            # same rule as author-written ones rather than trusted to a second convention.
+            processed, repairs = normalize_over_climbing_refs(
+                markdown=processed,
+                page_path=path.resolve(),
+                docs_dir=source_docs,
+                docs_hooks=docs_hooks,
+            )
+            for before, after in repairs:
+                reseated_refs.append((relative.as_posix(), before, after))
             destination.write_text(processed, encoding="utf-8")
     finally:
         state.runner_mode = runner_mode
         docs_hooks.on_post_build(config)
+
+    if reseated_refs:
+        by_page: dict[str, int] = {}
+        for page_rel, _before, _after in reseated_refs:
+            by_page[page_rel] = by_page.get(page_rel, 0) + 1
+        print(
+            f"Re-seated {len(reseated_refs)} over-climbing local ref(s) on {len(by_page)} page(s) "
+            f"so they stay inside the published path prefix:"
+        )
+        for page_rel in sorted(by_page):
+            print(f"  {page_rel}: {by_page[page_rel]}")
+        print(
+            "  These were written from the published URL's point of view; zensical adds the `../` "
+            "itself.\n  Fixing them in the page source is better than relying on this pass -- see "
+            "normalize_over_climbing_refs."
+        )
 
     if page_filters and matched_pages == 0:
         requested = ", ".join(page_filters)
@@ -707,6 +817,24 @@ def run(args: argparse.Namespace) -> int:
         emit_offline_viewer(site_dir=site_dir)
         copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)
         print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
+
+        # Only now, after the offline viewer and the verbatim copies are in place, is the site dir
+        # what a browser will actually see -- so this has to run last rather than beside
+        # check_doc_assets.py above. That one asks whether an asset is committed and reads the
+        # markdown; this one asks whether every reference on every built page resolves under
+        # `site_url`'s path prefix, and reads the rendered HTML. Warn on every build; gate under
+        # --strict, the same trade check_doc_assets.py makes.
+        # Our own stdout is block-buffered when the build log is redirected, while the child writes
+        # straight through; without this the guard's report lands *above* the lines that caused it.
+        sys.stdout.flush()
+        link_check = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "check_doc_site_links.py")],
+            cwd=repo_root,
+            check=False,
+        ).returncode
+        if link_check != 0 and args.strict:
+            print("Doc site link check failed (see above). Failing because --strict.", file=sys.stderr)
+            return link_check
     return returncode
 
 
