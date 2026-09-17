@@ -30,8 +30,9 @@ chain = bundle.addPassChain(
         // the rail and the view collapses to four flat quadrants whose only remaining
         // information is the SIGN of each component - which reads like a result, not like
         // a clipped instrument. 6 keeps this scene's dolly inside range so the field's
-        // actual radial structure is visible.
-        motionScale = 6f
+        // actual structure is visible. 20 suits per-pixel motion, whose per-object part is
+        // smaller than the dolly's global field and washes out at 6.
+        motionScale = 20f
     ),
     printReport = true
 )

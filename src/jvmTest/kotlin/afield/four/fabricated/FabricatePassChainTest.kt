@@ -731,9 +731,29 @@ class FabricatePassChainTest {
         val only = specs.single()
         assertTrue(only.persistent, "a TAA pass with no persistent target has nothing to accumulate into")
         assertTrue(only.frameHistory, "a TAA pass with no frame history reads the wrong texel once the camera moves")
+        // Three extra inputs now, and which is which matters: the accumulation buffer is read as
+        // LAST frame, while the motion vectors and depth are read as THIS frame. Getting that
+        // backwards is a pass that reprojects by where things were going to be.
         assertEquals(
-            FabricatePassInput("historyTex", "taa", previousFrame = true),
-            only.extraInputs.single()
+            listOf(
+                FabricatePassInput("historyTex", "taa", previousFrame = true),
+                FabricatePassInput("motionTex", FabricatePassChain.GBUFFER_MOTION),
+                FabricatePassInput("depthTex", FabricatePassChain.GBUFFER_DEPTH)
+            ),
+            only.extraInputs
+        )
+        assertTrue(
+            only.extraInputs.filter { it.previousFrame }.map { it.samplerName } == listOf("historyTex"),
+            "only the accumulation buffer is a previous-frame read; the g-buffer's are this frame's"
+        )
+        // And the opt-out is a real opt-out rather than a flag that changes nothing: without it the
+        // pass is back to the one-plane approximation and declares neither external texture.
+        val approximate = FabricatePassLibrary
+            .temporalAccumulate(name = "taa", resolution = 320 to 240, perPixelMotion = false)
+            .single()
+        assertEquals(
+            listOf(FabricatePassInput("historyTex", "taa", previousFrame = true)),
+            approximate.extraInputs
         )
         // And it plans, which is what would fail if a persistent pass's size were allowed to depend
         // on its source.
@@ -780,14 +800,81 @@ class FabricatePassChainTest {
     }
 
     @Test
+    fun anExternalReferenceIsAHoleThePlanDeclaresRatherThanATextureItResolves() {
+        // The planner has never seen a renderer, so it cannot resolve these to an image view. What
+        // it must do is carry the request through intact, so the builder can bind it later.
+        val specs = FabricatePassLibrary.temporalAccumulate(name = "taa", resolution = 64 to 64)
+        val plan = FabricatePassChain.plan(specs, 64, 64, srgb)
+        val byName = plan.passes.single().inputs.associate { it.samplerName to it.from }
+        assertEquals(
+            FabricatePassRef.External(FabricatePassChain.GBUFFER_MOTION),
+            byName.getValue("motionTex")
+        )
+        assertEquals(
+            FabricatePassRef.External(FabricatePassChain.GBUFFER_DEPTH),
+            byName.getValue("depthTex")
+        )
+        // And it survives into the audit, so a chain that reads the g-buffer says so out loud.
+        assertTrue(FabricatePassChain.GBUFFER_MOTION in plan.report())
+    }
+
+    @Test
+    fun anExternalReferenceMayNotBeASourceAPreviousFrameOrAPassName() {
+        // A source, because a pass inherits its size from its source and this one has no size here.
+        val asSource = assertFailsWith<IllegalArgumentException> {
+            FabricatePassChain.plan(
+                listOf(
+                    FabricatePassSpec(
+                        name = "reads-motion",
+                        fragment = "// none",
+                        source = FabricatePassChain.GBUFFER_MOTION
+                    )
+                ),
+                64, 64, srgb
+            )
+        }
+        assertTrue(
+            "extra input" in (asSource.message ?: ""),
+            "the refusal should point at the remedy, was: ${asSource.message}"
+        )
+
+        // A previous frame, because the renderer overwrites it every frame and keeps no history —
+        // and a motion vector already encodes the step from last frame, so asking is a mistake.
+        val asHistory = assertFailsWith<IllegalArgumentException> {
+            FabricatePassChain.plan(
+                listOf(
+                    FabricatePassSpec(
+                        name = "reads-motion",
+                        fragment = "// none",
+                        extraInputs = listOf(
+                            FabricatePassInput("m", FabricatePassChain.GBUFFER_MOTION, previousFrame = true)
+                        )
+                    )
+                ),
+                64, 64, srgb
+            )
+        }
+        assertTrue("keeps no history" in (asHistory.message ?: ""), asHistory.message ?: "")
+
+        // A pass name, because a pass answering to the sentinel would shadow the real texture.
+        val asName = assertFailsWith<IllegalArgumentException> {
+            FabricatePassChain.plan(
+                listOf(FabricatePassSpec(name = FabricatePassChain.GBUFFER_MOTION, fragment = "// none")),
+                64, 64, srgb
+            )
+        }
+        assertTrue("reserved" in (asName.message ?: ""), asName.message ?: "")
+    }
+
+    @Test
     fun everyHistoryShaderDeclaresTheTwoConstantsTheBuilderBinds() {
         // The contract between FabricatePassChainBuilder and these shaders is by NAME, and a name
         // the shader does not declare is skipped rather than throwing — which is the right tolerance
         // and also means a typo produces a pass that renders with an identity reprojection and no
         // error anywhere. This is the only place that can catch it.
         val shaders = mapOf(
-            "temporalAccumulate" to FabricatePassLibrary.TEMPORAL_ACCUMULATE_FRAGMENT,
-            "temporalDebug" to FabricatePassLibrary.TEMPORAL_DEBUG_FRAGMENT,
+            "temporalAccumulate" to FabricatePassLibrary.temporalAccumulateFragment(),
+            "temporalDebug" to FabricatePassLibrary.temporalDebugFragment(),
             "cameraMotionBlur" to FabricatePassLibrary.cameraMotionBlurFragment(9)
         )
         shaders.forEach { (name, source) ->
@@ -804,10 +891,46 @@ class FabricatePassChainTest {
         // The Y flip is carried exactly once, as the same expression the g-buffer writes its motion
         // vectors with. A sign difference is an image that is stable on a pan and smears on a tilt.
         assertTrue("vec2(0.5, -0.5)" in FabricatePassLibrary.FRAME_HISTORY_GLSL)
+        // Each helper is DEFINED exactly once. The pattern is anchored on the open paren on
+        // purpose: `vec2 fieldHistoryUv` is a prefix of `vec2 fieldHistoryUvPerPixel`, so the
+        // unanchored form counted the per-pixel helper as a second definition of the one-plane one
+        // the day it was added, and reported 2 where 1 was meant.
         assertEquals(
             1,
-            Regex("vec2 fieldHistoryUv").findAll(FabricatePassLibrary.FRAME_HISTORY_GLSL).count()
+            Regex(Regex.escape("vec2 fieldHistoryUv(")).findAll(FabricatePassLibrary.FRAME_HISTORY_GLSL).count(),
+            "the one-plane helper is defined more than once"
         )
+        assertEquals(
+            1,
+            Regex(Regex.escape("vec2 fieldHistoryUvPerPixel(")).findAll(FabricatePassLibrary.FRAME_HISTORY_GLSL).count(),
+            "the per-pixel helper is defined more than once"
+        )
+        // Which shader CALLS which. The test is on the call and not on the name, because
+        // FRAME_HISTORY_GLSL defines both helpers into every shader that includes it — so
+        // `"fieldHistoryUvPerPixel" in source` is true of every fragment ever built, and asserting
+        // it proves nothing in either direction. An unused GLSL function is free; the call is the
+        // behaviour.
+        val perPixelCall = "fieldHistoryUvPerPixel(motionTex"
+        assertTrue(
+            perPixelCall in FabricatePassLibrary.temporalAccumulateFragment(),
+            "TAA must read per-pixel motion by default — one matrix cannot describe per-object motion"
+        )
+        assertTrue(
+            perPixelCall in FabricatePassLibrary.temporalDebugFragment(),
+            "the debug view must show the field the accumulating pass actually uses"
+        )
+        assertTrue(
+            perPixelCall !in FabricatePassLibrary.temporalAccumulateFragment(perPixelMotion = false),
+            "the opt-out must really fall back to the one-plane form"
+        )
+        assertTrue(
+            perPixelCall !in FabricatePassLibrary.cameraMotionBlurFragment(9),
+            "camera motion blur is camera-only by definition; per-pixel motion would make its name wrong"
+        )
+        // The samplers the per-pixel path binds are declared only when it is on.
+        assertTrue("sampler2D motionTex;" in FabricatePassLibrary.temporalAccumulateFragment())
+        assertTrue("sampler2D depthTex;" in FabricatePassLibrary.temporalAccumulateFragment())
+        assertTrue("sampler2D motionTex;" !in FabricatePassLibrary.temporalAccumulateFragment(perPixelMotion = false))
     }
 }
 

@@ -1311,7 +1311,70 @@ object FabricatePassLibrary {
                 historyUv.x > 0.0 && historyUv.x < 1.0 &&
                 historyUv.y > 0.0 && historyUv.y < 1.0;
         }
+
+        // A depth of exactly 1.0 is the far plane, which under this renderer's conventions means no
+        // geometry drew here: `clearDepth` is 1.0 and `depthCompareOp` is LESS_OR_EQUAL, so every
+        // real surface is strictly nearer. A surface lying exactly on the far plane is
+        // indistinguishable from background, which is a bullet worth biting rather than a tolerance
+        // worth inventing.
+        const float FIELD_FAR_DEPTH = 1.0;
+
+        // WHERE `uv` WAS LAST FRAME, PER PIXEL. This is the correct answer; `fieldHistoryUv` above is
+        // the one-plane approximation of it.
+        //
+        // Geometry gets the g-buffer's own answer. Its vertex stage carries each object's previous
+        // transform AND the previous camera into `vPreviousClip`, and its fragment stage stores
+        // `currentUv - previousUv`, so the previous position is just `uv - motion` — per pixel, per
+        // object, exact for rotation, translation, and anything the model matrix did.
+        //
+        // Background gets the matrix, at the FAR plane rather than at some assumed middle. That is
+        // not a consolation case: a point at the far plane is unmoved by camera translation and
+        // moved only by rotation, which is exactly what `reprojection` evaluated at ndcDepth 1.0
+        // computes. So the fallback is right for the pixels that use it, rather than merely
+        // available.
+        //
+        // The two are not interchangeable and the reason is worth stating once: a motion texel that
+        // no geometry wrote reads as zero, i.e. "this pixel did not move", and the g-buffer clears
+        // to (0, 0, 0, 1) — so `.w` cannot tell you which it is and depth is the only thing that
+        // can. Trusting the motion texture everywhere pins the background to the screen while the
+        // camera turns under it.
+        vec2 fieldHistoryUvPerPixel(
+            sampler2D motionTex,
+            sampler2D depthTex,
+            mat4 reprojection,
+            vec2 uv
+        ) {
+            float depth = texture(depthTex, uv).r;
+            if (depth < FIELD_FAR_DEPTH) {
+                return uv - texture(motionTex, uv).xy;
+            }
+            return fieldHistoryUv(reprojection, uv, FIELD_FAR_DEPTH);
+        }
     """
+
+    /**
+     * The two extra sampler declarations a per-pixel history read needs, or nothing.
+     *
+     * Bindings are matched by *name* when the chain builds the effect, not by index, so these are
+     * free to sit at the end of a shader's binding list.
+     */
+    private fun perPixelHistorySamplers(perPixelMotion: Boolean, firstBinding: Int): String =
+        if (!perPixelMotion) "" else """
+        layout(set = 0, binding = $firstBinding) uniform sampler2D motionTex;
+        layout(set = 0, binding = ${firstBinding + 1}) uniform sampler2D depthTex;"""
+
+    /** The history-lookup expression: the correct per-pixel one, or the one-plane approximation. */
+    private fun historyUvExpression(perPixelMotion: Boolean): String =
+        if (perPixelMotion) "fieldHistoryUvPerPixel(motionTex, depthTex, push.reprojection, vUv)"
+        else "fieldHistoryUv(push.reprojection, vUv, push.ndcDepth)"
+
+    /** The two inputs a per-pixel history read declares, or nothing. */
+    private fun perPixelHistoryInputs(perPixelMotion: Boolean): List<FabricatePassInput> =
+        if (!perPixelMotion) emptyList()
+        else listOf(
+            FabricatePassInput("motionTex", FabricatePassChain.GBUFFER_MOTION),
+            FabricatePassInput("depthTex", FabricatePassChain.GBUFFER_DEPTH)
+        )
 
     /**
      * A TAA-style temporal accumulation: blend this frame into a reprojected history, with a
@@ -1361,6 +1424,7 @@ object FabricatePassLibrary {
         blend: Float = 0.9f,
         rejection: Float = 0f,
         ndcDepth: Float = 0.5f,
+        perPixelMotion: Boolean = true,
         resolution: Pair<Int, Int>,
         format: Int = VK_FORMAT_R16G16B16A16_SFLOAT
     ): List<FabricatePassSpec> {
@@ -1376,12 +1440,13 @@ object FabricatePassLibrary {
         return listOf(
             FabricatePassSpec(
                 name = name,
-                fragment = TEMPORAL_ACCUMULATE_FRAGMENT,
+                fragment = temporalAccumulateFragment(perPixelMotion),
                 size = FabricatePassSize.Absolute(width, height),
                 format = format,
                 source = source,
                 // Itself, last frame — the forward reference persistence already allows.
-                extraInputs = listOf(FabricatePassInput("historyTex", name, previousFrame = true)),
+                extraInputs = listOf(FabricatePassInput("historyTex", name, previousFrame = true)) +
+                        perPixelHistoryInputs(perPixelMotion),
                 push = mapOf("blend" to blend, "rejection" to rejection, "ndcDepth" to ndcDepth),
                 persistent = true,
                 frameHistory = true
@@ -1470,6 +1535,7 @@ object FabricatePassLibrary {
         mode: Int = 0,
         motionScale: Float = 8f,
         ndcDepth: Float = 0.5f,
+        perPixelMotion: Boolean = true,
         format: Int? = null
     ): List<FabricatePassSpec> {
         require(mode in 0..MOTION_DISPLAY_MAX_MODE) {
@@ -1479,10 +1545,11 @@ object FabricatePassLibrary {
         return listOf(
             FabricatePassSpec(
                 name = name,
-                fragment = TEMPORAL_DEBUG_FRAGMENT,
+                fragment = temporalDebugFragment(perPixelMotion),
                 size = FabricatePassSize.MatchSource,
                 format = format,
                 source = source,
+                extraInputs = perPixelHistoryInputs(perPixelMotion),
                 push = mapOf("mode" to mode, "motionScale" to motionScale, "ndcDepth" to ndcDepth),
                 frameHistory = true
             )
@@ -1497,11 +1564,11 @@ object FabricatePassLibrary {
      * `fieldHistoryValid` takes the current frame whole — the correct restart, rather than a fade
      * towards it.
      */
-    val TEMPORAL_ACCUMULATE_FRAGMENT = """
+    fun temporalAccumulateFragment(perPixelMotion: Boolean = true) = """
         #version 450
         layout(location = 0) in vec2 vUv;
         layout(set = 0, binding = 0) uniform sampler2D sourceTex;
-        layout(set = 0, binding = 1) uniform sampler2D historyTex;
+        layout(set = 0, binding = 1) uniform sampler2D historyTex;${perPixelHistorySamplers(perPixelMotion, 2)}
         layout(push_constant) uniform TemporalPush {
             mat4 reprojection;
             vec4 historyParams;
@@ -1515,7 +1582,7 @@ $FRAME_HISTORY_GLSL
 
         void main() {
             vec4 here = texture(sourceTex, vUv);
-            vec2 hUv = fieldHistoryUv(push.reprojection, vUv, push.ndcDepth);
+            vec2 hUv = ${historyUvExpression(perPixelMotion)};
 
             if (!fieldHistoryValid(push.historyParams, hUv)) {
                 outColor = here;
@@ -1551,10 +1618,10 @@ $FRAME_HISTORY_GLSL
      * is flip between modes on the *same* frame, and four passes would be four reprojections that
      * could disagree.
      */
-    val TEMPORAL_DEBUG_FRAGMENT = """
+    fun temporalDebugFragment(perPixelMotion: Boolean = true) = """
         #version 450
         layout(location = 0) in vec2 vUv;
-        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;${perPixelHistorySamplers(perPixelMotion, 1)}
         layout(push_constant) uniform DisplayPush {
             mat4 reprojection;
             vec4 historyParams;
@@ -1567,7 +1634,7 @@ $FRAME_HISTORY_GLSL
 $FRAME_HISTORY_GLSL
 
         void main() {
-            vec2 hUv = fieldHistoryUv(push.reprojection, vUv, push.ndcDepth);
+            vec2 hUv = ${historyUvExpression(perPixelMotion)};
             bool valid = fieldHistoryValid(push.historyParams, hUv);
 
             if (push.mode == 1) {

@@ -29,6 +29,15 @@ import afield.stdlib.linalg.Matrix4f
  */
 
 /**
+ * The g-buffer colour attachment holding per-pixel motion vectors.
+ *
+ * Fixed by `StandardRenderer`'s g-buffer layout — `colorFormats` is
+ * `[hdr, normal, position, motion]` and its fragment stage writes
+ * `outMotionVectors` at `location = 3`. Named here so the binding site does not carry a bare 3.
+ */
+const val GBUFFER_MOTION_ATTACHMENT = 3
+
+/**
  * Plan [passes] against the current post-stack output and append the whole chain to it.
  *
  * The chain input is `postStack.output()` at the moment of the call, so a chain appended after
@@ -97,11 +106,46 @@ fun StandardRenderer.Bundle.addPassChain(
             "pass '${ref.name}' has not been built yet"
         }.target
         is FabricatePassRef.PreviousFrame -> persistentTargets.getValue(ref.index)
+        // The planner refuses an external reference as a pass's source, so this is unreachable
+        // rather than merely unused: an external texture binds a view, never a target.
+        is FabricatePassRef.External -> throw IllegalStateException(
+            "'${ref.reference}' binds as a view, not as a target — the planner should have refused it " +
+                    "as a source before the build got here"
+        )
     }
 
-    /** Previous-frame refs bind a *view*, not a target — the half of the pair not being written. */
+    /**
+     * Refs that bind a *view* rather than a target: a previous-frame ref binds the half of the
+     * ping-pong pair that is not being written, and an external ref binds a texture the renderer
+     * owns outright.
+     *
+     * The g-buffer's motion vectors are colour attachment **3**, and its depth prefers the sampled
+     * view, which is what the shadow-map and depth-blit paths in `standardRenderer` already do.
+     */
     fun viewFor(ref: FabricatePassRef): HasImageView? = when (ref) {
         is FabricatePassRef.PreviousFrame -> persistentTargets.getValue(ref.index).otherImageView
+        is FabricatePassRef.External -> when (ref.reference) {
+            FabricatePassChain.GBUFFER_MOTION -> {
+                require(gBuffer.width == chainInput.width && gBuffer.height == chainInput.height) {
+                    "a pass asked for '${FabricatePassChain.GBUFFER_MOTION}', whose vectors are in the " +
+                            "g-buffer's UV space at ${gBuffer.width}x${gBuffer.height}, but this chain's " +
+                            "input is ${chainInput.width}x${chainInput.height} — sampling one by the " +
+                            "other's coordinates reprojects to the right fraction of the wrong picture, " +
+                            "which renders and merely looks soft"
+                }
+                requireNotNull(gBuffer.imageViewArray.getOrNull(GBUFFER_MOTION_ATTACHMENT)) {
+                    "the g-buffer has ${gBuffer.imageViewArray.size} colour attachments, and the motion " +
+                            "vectors are attachment $GBUFFER_MOTION_ATTACHMENT"
+                }
+            }
+            FabricatePassChain.GBUFFER_DEPTH -> requireNotNull(
+                gBuffer.depthSampledImageView ?: gBuffer.depthImageView
+            ) {
+                "the g-buffer exposes no sampleable depth view, so '${FabricatePassChain.GBUFFER_DEPTH}' " +
+                        "cannot be bound"
+            }
+            else -> throw IllegalArgumentException("unknown external reference '${ref.reference}'")
+        }
         else -> null
     }
 
