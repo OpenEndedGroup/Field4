@@ -266,16 +266,48 @@ behaviour, and were replaced by the numbers the run printed. Both say so in plac
 
 ## Speed, honestly
 
-A tree-walking interpreter: roughly 10⁵ pixel-shader invocations per second per core, against a
-GPU's 10⁹. 512×512 of a five-octave `fbm` is single-digit seconds across ten cores; the whole
-31-program gallery is about 200 seconds. Rows are rendered in parallel with one `GlslInvocation`
-each, because an invocation holds mutable frames and is not thread-safe.
+A tree-walking interpreter: **1.3–1.6 × 10⁴** pixel-shader invocations per second per core for a
+five-octave `fbm` with a cosine palette, against a GPU's 10⁹. 512×512 of that program is
+single-digit seconds across ten cores; the whole 31-program gallery is about 200 seconds. Rows are
+rendered in parallel with one `GlslInvocation` each, because an invocation holds mutable frames and
+is not thread-safe.
+
+**That per-core figure was 10⁵ here and in `StackSLCpu.renderStill`'s KDoc until 2026-09-16, and it
+was wrong by about 7×.** The two halves of the claim were never consistent with each other, and it
+was the wall-clock half that was right: 10⁵/core × 10 cores would put 512² at 0.26 s, not at
+"single-digit seconds". `StackSLCpuThroughputMeasurements` is where the number comes from now.
+
+Method, so it can be disputed: one `GlslInvocation` per row with `parallel = false`, the shader
+compiled and parsed outside the timed region, three untimed warm-up renders so the JIT has compiled
+`eval`/`exec`, then five timed renders of 96×96 with the **median** taken. GraalVM CE 25.0.2,
+Apple aarch64, 10 cores, two separate runs on a machine also running other builds:
+
+| program | invocations/s/core |
+| --- | --- |
+| `uv saturate` | 1.34 × 10⁵ |
+| `uv 4.0 * fbm palette saturate` | 1.34 × 10⁴ and 1.56 × 10⁴ |
+| `p 6 kaleido fbm palette saturate` | 1.38 × 10⁴ |
+
+The aggregate figure is **measured, not multiplied**, and that is the other thing worth knowing:
+a separate `parallel = true` run at 192×192 reaches **4.4 × 10⁴** invocations/s, which is **3.3×**
+the single-core figure on ten cores, not 10×. So 512² is 5.9 s across the machine and 19.5 s on one
+core. Anyone sizing a fit resolution, a contact sheet or a docs capture should use 4.4 × 10⁴ and
+not 1.3 × 10⁵.
 
 It is a reference, not a renderer. Two things were done for speed and are worth knowing about:
 `GlslType` instances are interned (every component-wise operation would otherwise allocate one
 alongside its result), and control flow is a returned `Flow` rather than an exception (`_fbm`
 returns from inside a loop, and a 512×512 render evaluates that `return` 1.3 million times per
 program).
+
+## Differentiating it
+
+Since 2026-09-16 the interpreter is generic in its scalar (`GlslScalars<V>`), so the same parse tree
+and the same control flow that produce the `Float` reference also produce `d(pixel)/d(literal)` on a
+reverse-mode AD tape. The `Float` path is byte-identical — measured, over all 31 gallery programs —
+and the differentiable pass's *primal* is bit-identical to it, because every AD node rounds to
+`Float` where the `Float` path rounds. `dev_docs/STACKSL_DIFFERENTIABLE.md` has the mechanism, the
+populations and the floors.
 
 ## The loadable demo
 
