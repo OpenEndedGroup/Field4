@@ -7,10 +7,20 @@ at `/` the same reference works, because `..` clamps at the server root. On 2026
 nothing in the tree could see them, because `check_doc_assets.py` deliberately accepts a ref that
 resolves at *either* convention and so cannot tell a correct one from a broken one.
 
-The numbers below are real measurements taken on 2026-09-16 against the built site at
-cb4377a6c + this branch: 155 built pages (of 287 `*.html`; the other 132 are vendored CodeMirror
-files copied verbatim), 39943 local references extracted from rendered HTML, 1462 distinct
-targets. Before the build-side fix, 50 distinct targets escaped the prefix; after it, 0 do.
+The numbers below are real measurements, and each carries the build that produced it — which
+matters more than it looks, because the source mirror (`reference/source/**`) is generated per
+build and is the largest page family, so the same site measures two completely different ways.
+
+* `--no-source-pages`, 2026-09-16 at cb4377a6c + that branch: **155 built pages of 287 `*.html`**
+  (the other 132 are vendored CodeMirror files copied verbatim), 39943 local references, 1462
+  distinct targets. Before the build-side fix 50 distinct targets escaped the prefix; after it 0.
+* `--no-source-pages`, 2026-09-17 at this branch: **158 of 290**, 1483 distinct targets, of which
+  1120 resolve — the shortfall is 360 mirror targets the build did not generate.
+* default build (mirror present), same tree, same night: **613 of 745**, 455 of the 613 being the
+  mirror, 121655 local references, **1575 of 1575** distinct targets resolving.
+
+So "607 of 739" and "155 of 287" were never in conflict; they are the two flags. The guard now
+prints a `build shape:` line so a quoted population can never again omit which one it was.
 
 Two properties get pinned hardest, because both were bugs in this guard's own first draft:
 
@@ -22,15 +32,20 @@ Two properties get pinned hardest, because both were bugs in this guard's own fi
 Run with:  uv run --group docs python -m unittest tools.test_check_doc_site_links
 """
 
+import re
 import subprocess
 import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 from tools.check_doc_site_links import (
     KNOWN_UNRESOLVED,
+    REF_ATTR,
     SOURCE_MIRROR_PREFIX,
+    code_spans,
+    inside_code,
     page_url,
     prefix_from_site_url,
     read_config,
@@ -138,7 +153,19 @@ class Srcset(unittest.TestCase):
 
 
 class KnownUnresolvedLedger(unittest.TestCase):
-    """The grandfathered list must not become a policy."""
+    """The grandfathered list must not become a policy — and it is empty, which is the goal state.
+
+    All three entries recorded on 2026-09-16 were fixed at source on 2026-09-17, so the real dict
+    is now `{}`. The mechanism is still tested, against a synthetic ledger rather than the real
+    one: an empty dict makes `stale_known_unresolved` trivially return `[]`, and a test that read
+    that as a pass would have stopped covering anything the moment the list emptied. That is
+    exactly how this test broke when the list emptied, which is the right way for it to break.
+    """
+
+    def test_the_ledger_is_empty(self) -> None:
+        # Stated rather than implied: the correct state of a grandfather list is no entries, and
+        # a future entry should have to change this line deliberately.
+        self.assertEqual(KNOWN_UNRESOLVED, {})
 
     def test_every_entry_explains_itself(self) -> None:
         # An exception with no reason is an exception nobody can retire.
@@ -147,12 +174,48 @@ class KnownUnresolvedLedger(unittest.TestCase):
                 self.assertGreater(len(reason), 120, f"{entry} needs a real explanation")
 
     def test_an_entry_that_stops_reproducing_is_reported_stale(self) -> None:
-        self.assertEqual(stale_known_unresolved(set(KNOWN_UNRESOLVED)), [])
-        # Drop one from the observed set and it must be named for deletion.
-        observed = set(KNOWN_UNRESOLVED)
-        dropped = sorted(observed)[0]
-        observed.remove(dropped)
-        self.assertEqual(stale_known_unresolved(observed), [dropped])
+        synthetic = {"/a": "x" * 130, "/b": "y" * 130}
+        with mock.patch.dict(
+            "tools.check_doc_site_links.KNOWN_UNRESOLVED", synthetic, clear=True
+        ):
+            self.assertEqual(stale_known_unresolved(set(synthetic)), [])
+            self.assertEqual(stale_known_unresolved({"/a"}), ["/b"])
+            self.assertEqual(stale_known_unresolved(set()), ["/a", "/b"])
+
+
+class DisplayedCodeIsNotMarkup(unittest.TestCase):
+    """`<pre>`/`<code>` interiors are masked, and the mask is checked for over-reach.
+
+    A page that shows HTML shows it escaped, so `&lt;iframe src="/x"` creates no element — but
+    the attribute text survives with its quotes, and a regex over raw HTML matches it. That is
+    what put `/extensions/remote_ar/index.html` (an `ar_reference.md` fence) and eleven
+    `reference/source/**` refs on this guard's report. Measured on the full build of 2026-09-17:
+    51 of 146724 attribute matches sit inside a code element, 39 already skipped as
+    external/in-page, and **0** resolved to a real file — so the mask costs no coverage.
+    """
+
+    def test_code_spans_pair_their_own_tags(self) -> None:
+        html = '<pre><code>a</code></pre><a href="real">x</a><code>b</code>'
+        spans = code_spans(html)
+        # `<pre>…</pre>` and the standalone `<code>…</code>`; the `<a>` between them is not in one.
+        self.assertTrue(inside_code(spans, html.index("a</code>")))
+        self.assertTrue(inside_code(spans, html.index("b</code>")))
+        self.assertFalse(inside_code(spans, html.index('href="real"')))
+
+    def test_an_inline_code_ref_is_not_mistaken_for_markup(self) -> None:
+        html = '<p>write <code>src="../../assets/x.png"</code> like this</p>'
+        match = REF_ATTR.search(html)
+        self.assertIsNotNone(match)
+        self.assertTrue(inside_code(code_spans(html), match.start()))
+
+    def test_a_pre_is_not_closed_by_a_code_close_tag(self) -> None:
+        # The backreference in CODE_REGION is what keeps the two tag names paired. Without it a
+        # `<pre …><code>…</code></pre>` would end at the `</code>`, leaving the tail unmasked.
+        html = '<pre class="f"><code>&lt;img src="../../escapes.png"&gt;</code></pre>'
+        match = REF_ATTR.search(html)
+        self.assertIsNotNone(match)
+        self.assertTrue(inside_code(code_spans(html), match.start()))
+        self.assertEqual(len(re.findall(r"<pre", html)), 1)
 
 
 class EndToEnd(unittest.TestCase):
@@ -217,6 +280,49 @@ class EndToEnd(unittest.TestCase):
         self.assertEqual(self.run_checker(config, site).returncode, 0)
         config, site = self.build_site('<video src="../assets/x.png" poster="assets/x.png">')
         self.assertEqual(self.run_checker(config, site).returncode, 1)
+
+    def test_an_escaped_iframe_shown_in_a_fence_is_not_a_reference(self) -> None:
+        # Exactly the ar_reference.md and reference/source/** shape: the `<` is escaped so no
+        # element exists, but `src="…"` survives verbatim inside the code element.
+        config, site = self.build_site(
+            '<img src="../assets/x.png">'
+            '<pre class="code-diff-fence-static"><code>display("remote-ar", """\n'
+            '&lt;iframe src="/extensions/remote_ar/index.html?debug=1"&gt;&lt;/iframe&gt;\n'
+            '""")</code></pre>'
+        )
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("displayed code masked: 1 attribute match(es)", result.stdout)
+        self.assertIn("0 would have resolved", result.stdout)
+
+    def test_the_mask_fails_when_it_would_hide_a_real_reference(self) -> None:
+        # A `src=` inside a code element that lands on a real file is not displayed source. If
+        # the mask ever starts swallowing those, it must say so rather than shrink in silence.
+        config, site = self.build_site('<pre><code><img src="../assets/x.png"></code></pre>')
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("inside <pre>/<code> resolve to a real file", result.stdout)
+
+    def test_a_real_broken_ref_outside_code_still_gates_on_the_same_page(self) -> None:
+        config, site = self.build_site(
+            '<pre><code>&lt;img src="/extensions/x"&gt;</code></pre>'
+            '<img src="../../assets/x.png">'
+        )
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("escape the site prefix", result.stdout)
+
+    def test_the_build_shape_line_names_the_mirror_and_the_flag(self) -> None:
+        # A population quoted without the source mirror's state is not a measurement: the same
+        # site is 613 of 745 pages with it and 158 of 290 without.
+        config, site = self.build_site('<img src="../assets/x.png">')
+        absent = self.run_checker(config, site)
+        self.assertIn("source mirror ABSENT (--no-source-pages", absent.stdout)
+        (site / SOURCE_MIRROR_PREFIX).mkdir(parents=True)
+        (site / SOURCE_MIRROR_PREFIX / "index.html").write_text("<html></html>", encoding="utf-8")
+        present = self.run_checker(config, site)
+        self.assertIn("source mirror PRESENT", present.stdout)
+        self.assertIn(f"1 of the 3 checked page(s) are {SOURCE_MIRROR_PREFIX}", present.stdout)
 
     def test_the_un_prefixed_deployment_can_be_checked_too(self) -> None:
         # Same site, served at the root: the over-climb now clamps onto a real file, which is

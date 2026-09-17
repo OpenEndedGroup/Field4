@@ -6,6 +6,8 @@ Field's browser graphics head is a page you open yourself, on whichever device y
 https://FIELD_HOST:9092/extensions/remote_ar/index.html
 ```
 
+`FIELD_HOST` is the machine your Field is running on and 9092 is Field's own HTTPS port, so that address — and every other `/extensions/…` path on this page — is served by a running Field and by nothing else. None of them is a link on this documentation site: there is no host to substitute and no page to fetch until Field is up. Read them as addresses to type beside a live Field, not as references to follow from here.
+
 Load it on an Android phone, on a headset, or in a second browser window on the machine Field is already running on. Wherever you open it, it connects back to the Field server over WebSocket and executes your Javascript boxes there. The same page has three modes:
 
 - Android and desktop browsers use the browser's native WebXR implementation.
@@ -48,6 +50,8 @@ display("remote-ar", """
 """.trimIndent())
 displayOpen("remote-ar")
 ```
+
+The leading slash in that `src` is deliberate and is relative to *Field's* server, not to this site — a box's output pane is served by the same Field that serves `/extensions/`, so the iframe resolves there and only there. Copied into a web page anywhere else it resolves to nothing.
 
 ## Draw into the head from Kotlin
 
