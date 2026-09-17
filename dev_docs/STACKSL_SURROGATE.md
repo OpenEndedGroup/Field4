@@ -6,6 +6,11 @@ first thing it buys is a correction to the question.
 Landed 2026-09-17 on `nightly/2026-09-17/2-stacksl-floor-surrogate`, based on `d6d164822`.
 Reads on from `dev_docs/STACKSL_DIFFERENTIABLE.md`, which is the mechanism this extends.
 
+**Revised 2026-09-17, same day:** the *nested-predicate collapse* this page originally recorded as a
+property of the language was a defect in the AD path, and the **temperature floor near 0.1** derived
+from it is withdrawn. See [the nested predicate](#the-nested-predicate-which-was-a-bug-in-this-file-and-not-a-floor-on-the-schedule);
+M3's and M5's numbers below are the re-measured ones.
+
 ## The premise was backwards, and the landed branch already said so
 
 The brief for this work named `floor` as the wall: *"`fbm` frequency IS fittable, and the `floor`ed
@@ -193,7 +198,7 @@ The split by *what kind of parameter* sits behind the wall is the result:
 
 | class | wires | worst relative error | worst off/on improvement | floors |
 | --- | --- | --- | --- | --- |
-| continuous — an edge, an offset | 6 | **0.0215** | **14.8×** | 0.05, 8× |
+| continuous — an edge, an offset | 6 | **0.0247** | **14.3×** | 0.05, 8× |
 | integer-valued — a count, a bit depth | 3 | **0.2197** | **1.8×** | 0.30, 1.5× |
 
 **Six of the nine fits reach a loss of exactly zero.** Per case:
@@ -202,7 +207,7 @@ The split by *what kind of parameter* sits behind the wall is the result:
 | --- | --- | --- | --- | --- | --- | --- |
 | `uv x 0.35 threshold` | `0.35` | 0.35 → 0.57 | 0.3860 | **0.0197** | 19.6 | 2.19e-01 → **0** |
 | `uv y 0.60 threshold` | `0.60` | 0.60 → 0.82 | 0.2683 | **0.0137** | 19.6 | 2.19e-01 → **0** |
-| `red blue uv x 0.40 threshold select` | `0.40` | 0.40 → 0.62 | 0.3548 | **0.0215** | 16.5 | 1.46e-01 → **0** |
+| `red blue uv x 0.40 threshold select` | `0.40` | 0.40 → 0.62 | 0.3548 | **0.0247** | 14.3 | 1.46e-01 → **0** |
 | `uv x 2.0 * 0.30 + fract 0.5 threshold` | `0.5` | 0.50 → 0.72 | 0.3056 | **0.0206** | 14.8 | 2.50e-01 → **0** |
 | `uv x 0.30 + 3.0 bit-crush` | `0.30` | 0.30 → 0.52 | 0.4231 | **0.0045** | 94.0 | 3.00e-02 → **0** |
 | `uv x 0.30 + 6.0 posterize palette` | `0.30` | 0.30 → 0.52 | 0.4231 | **0.0074** | 57.1 | 1.16e-01 → **0** |
@@ -233,21 +238,71 @@ Population: the same **9 walled wires × 4 temperatures** (0.25, 0.1, 0.04, 0.01
   **under-reports hot**, because the kernel carries only `tanh(1/4t)` of its jump, and
   **over-reports cold**. On `uv x 0.30 + 3.0 bit-crush` the ratio walks 0.713 → 1.024 → 1.084 →
   1.394 across the sweep, which is the cleanest view of the bias in the corpus.
+- That band covers **all nine wires**. It used to exclude the nested predicate, whose ratio fell
+  through eleven orders of magnitude; the band did not move when that case rejoined it, which is the
+  blunt version of the section below — 0.234 … 0.585 sits comfortably inside limits set by the two
+  `posterize` counts.
 
-### The nested-predicate collapse, which sets a floor on the schedule
+### The nested predicate, which was a bug in this file and not a floor on the schedule
 
 `select`/`if` lowers to `mix(f, t, step(0.5, abs(cond)))`, and when `cond` is itself a `step` output
-`abs(cond)` is **exactly 0 or 1**. So the outer jump sits at distance **exactly 0.5** from its edge,
+`abs(cond)` is **exactly 0 or 1**. So the outer jump sat at distance **exactly 0.5** from its edge,
 forever, and `K_t(0.5) ∝ sech²(1/4t)/t` decays like `exp(−1/2t)`.
 
-Measured on `red blue uv x 0.40 threshold select`: the surrogate gradient runs
+Measured on `red blue uv x 0.40 threshold select` **as first landed**: the surrogate gradient ran
 `−5.73e-02 → −1.73e-02 → −2.84e-05 → −4.39e-13` over the four temperatures — a ratio fall of
-**1.45e+11×**. Annealing switches `select` back *off*.
+**1.45e+11×**. Annealing switched `select` back *off*, and this page recorded a **temperature floor
+near 0.1** as the rule that followed.
 
-The practical rule: **a nested predicate wants a temperature floor near 0.1, not 0.01.** The fit in
-M2 still recovers to 0.0215 only because its hot early iterations did the work before the schedule
-cooled past the collapse. This is fenced as its own assertion so that a `select` lowering which
-stops nesting is noticed rather than absorbed.
+That rule is now withdrawn, because the collapse was never a property of the surrogate. **The outer
+`step` is not a second jump.** `cond` ranges over {0, 1}, and `step(0.5, abs(·))` restricted to
+{0, 1} is the **identity** — so its honest mollified partial is `1`, and the kernel belonging to the
+chain is the inner jump's, once. Charging it a second `K_t(0.5)` was arithmetic applied to a
+composition that does not have two jumps in it.
+
+`GlslAdScalars` now tracks which tape nodes are 0/1 **by construction** and passes the partial
+through at `step` and at `abs` when it sees one. Two details carry the whole fix:
+
+- membership is **structural**, not a value test. Passing through whenever the argument *happens* to
+  be 0.0 or 1.0 would give a wire seeded at exactly 1.0 under `w 0.5 threshold` a partial of 1 where
+  the honest answer is `K_t(0.5) ≈ 0` — a wall reported as a cliff. The question is what the argument
+  *ranges over*, and only the expression that built it knows;
+- `abs` needs it as much as `step` does. `absAd` splits evenly at the origin, so a mask's **false**
+  lanes are exactly 0.0 and report a partial of 0. Fixing only the `step` would have left half the
+  lanes dead.
+
+`step` produces a mask, and `abs`, `min` and `max` propagate one — so `threshold`, `step`, `select`,
+`if`, and the `and`/`or` that reduce two masks with `min`/`max` are all covered. `not` is
+`vec4(1.0) − mask` and is **deliberately not** tracked: it would put a mask test on `sub`, the
+hottest arithmetic site in `GlslAd.kt`, to recover one word. `band` is `step(a) − step(b)`, so it is
+outside for the same reason. `x not select` therefore still nests, and still wants a hot temperature.
+
+Re-measured after the pass-through, against the same shape of wire with one fewer predicate — both
+recover a `threshold` edge on a `uv` ramp against a target rendered by the same program, so each
+program's ratio against its *own* oracle divides its scale out and the two are comparable as numbers:
+
+| t | `… threshold select` ratio | bare `uv x 0.35 threshold` ratio | drift |
+| --- | --- | --- | --- |
+| 0.25 | 0.234 | 0.236 | 1.01× |
+| 0.10 | 0.415 | 0.437 | 1.05× |
+| 0.04 | 0.585 | 0.684 | 1.17× |
+| 0.016 | 0.403 | 0.621 | 1.54× |
+
+A `select` now costs no extra kernel: it tracks the `threshold` underneath it to within **1.54×** at
+the worst temperature, against 1.45e+11× of divergence before.
+
+The drift grows as the kernel narrows, and that is the **oracle** getting noisy rather than the
+surrogate decaying. At 32×32 a pixel is 0.031 wide, so by `t = 0.016` the central difference's whole
+window is about half a pixel and it can only report whichever columns happen to flip inside it. The
+printed oracles say so directly: they are **non-monotone** in `t` — the bare program's run
+−0.875, −0.938, −0.781, −0.977 and the nested one's −0.583, −0.625, −0.521, −0.651, both dipping at
+`t = 0.04` and recovering at 0.016. A decay would not do that; pixel quantisation does.
+
+The primal is untouched — this changes a local partial and nothing else, so
+`StackSLCpuFloatPathManifestTest`'s raster hashes and `StackSLCpuGalleryTest`'s GPU comparison cannot
+move, and the emitted GLSL is byte-for-byte what it was. The fence is now **nested against bare**
+rather than a bound on the nested case alone, which is the form that notices a lost pass-through: the
+cold end would drop by orders of magnitude while the bare arm stayed put.
 
 ### M4 — what a soft floor costs
 
@@ -283,23 +338,29 @@ through the same code path.
 | --- | --- | --- | --- |
 | fixed hot, `t = 0.25` | **0.0204** | **0.0110** | 6 of 6 |
 | fixed warm, `t = 0.10` | 0.0264 | 0.0110 | 6 of 6 |
-| fixed cold, `t = 0.016` | **0.3548** | 0.0683 | 5 of 6 |
-| geometric, `0.25 → 0.01` | 0.0215 | 0.0146 | 6 of 6 |
+| fixed cold, `t = 0.016` | 0.0327 | 0.0146 | 6 of 6 |
+| geometric, `0.25 → 0.01` | 0.0247 | 0.0151 | 6 of 6 |
 
 **A fixed hot temperature is marginally better than the schedule**, on both the worst case and the
-mean. So the honest statement is: *the temperature has to be hot enough, and the schedule's shape is
+mean. So the honest statement is: *cooling does not buy the recovery, and the schedule's shape is
 second order.* Annealing is not harmful and the class stays — a fixed temperature is one of its
 cases, and converging to the exact gradient is worth having once a fit is nearly done — but it is
 not what buys the recovery, and this page would be overselling it to imply otherwise. Asserted
 **two-sided**: if annealing ever becomes clearly better than fixed-hot, the test says this paragraph
 needs rewriting rather than relaxing.
 
-**And the cold arm's failure is M3's collapse, in a fit.** On
-`red blue uv x 0.40 threshold select` the cold arm ends **0.3548** from the truth against a seed
-error of **0.3548** — it does not move *at all*, because a nested `step`'s kernel is `K_t(0.5)` and
-that is about `1e-12` at `t = 0.016`. Every other continuous case recovers even when cold, which is
-what makes this a statement about *nesting* rather than about the surrogate. Asserted as an exact
-"did not move", which is the sharpest form the claim has.
+**The cold arm used to be a fourth finding, and it has been withdrawn.** As first landed it ended
+**0.3548** from the truth on `red blue uv x 0.40 threshold select` against a seed error of 0.3548 —
+it did not move *at all* — and this page read a temperature floor off that. The cause was the nested
+`step` being charged a second `K_t(0.5)`, not the temperature; with the mask pass-through in place
+the cold arm recovers that wire to **0.0327**, a **10.9×** improvement on its seed, and all four arms
+drive 6 of 6 fits to a loss of exactly zero.
+
+Cold is still the worst of the four and its worst case is still this wire, so the sweep now holds
+**every** arm to the 0.05 floor M2 holds a continuous parameter to, with no excluded arm. The cold
+assertion was inverted rather than deleted: it demands a ≥5× recovery on the seed error, stated as an
+improvement rather than a bound because a bound alone would also pass if the seed happened to sit
+close, and this seed is 0.3548 away precisely so that standing still cannot pass.
 
 ## How to use it
 
@@ -308,12 +369,15 @@ what makes this a statement about *nesting* rather than about the surrogate. Ass
 | a `threshold`, `step`, `select` or `if` edge | `AdSurrogate.stepOnly(0.25)` held **fixed**, or `AdAnnealing.stepOnly(iterations)` — measured equivalent, fixed marginally ahead |
 | a `posterize` offset, a `bit-crush` offset, a bare `floor` quantiser | the `STAIRCASE` family at `t = 0.25`: `AdAnnealing(0.25, 0.25, iterations, setOf(STAIRCASE))` |
 | an integer-valued count or bit depth | the same, and expect ~20% relative, not 2% |
-| a nested predicate (`select` over a `threshold`) | keep `t` **at or above 0.1**. At 0.016 the wire does not move at all |
+| a nested predicate (`select` or `if` over a `threshold`, `and`, `or`) | nothing special — it costs no extra kernel. Treat it as the `threshold` underneath it |
+| a nested predicate through `not` or `band` | still nests, because the mask tracking does not follow `sub`. Keep `t` **at or above 0.1** |
 | anything containing `noise`, `fbm`, `noise3`, `fbm3` … | **never** `STAIRCASE`. Use `stepOnly`, or exact |
 | a program that ends in `saturate` and is mostly pinned | nothing will help; the active clamp is the wall |
 
-The short version: **pick one hot temperature and leave it there.** Cooling below about 0.1 is the
-only setting measured to lose a wire, and no setting measured beats `t = 0.25`.
+The short version: **pick one hot temperature and leave it there.** No setting measured beats
+`t = 0.25`, and since the nested-predicate fix there is no setting in the measured range that loses a
+wire either — cooling is roughly free rather than dangerous, which is a smaller claim for annealing
+than the original page made and a larger one for the range.
 
 ## Traps hit on this branch
 
@@ -338,7 +402,7 @@ only setting measured to lose a wire, and no setting measured beats `t = 0.25`.
 | file | what |
 | --- | --- |
 | `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAdSurrogate.kt` | `AdSurrogate`, `AdSurrogateFamily`, `AdAnnealing` |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` | the jump sites, and the `jumpNode`/`stepAd` seam |
+| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` | the jump sites, the `jumpNode`/`stepAd` seam, and `maskNodes` — the 0/1 provenance that keeps a nested predicate to one kernel |
 | `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt` | `valueAndGradient(values, surrogate)`, `fit(… annealing =)` |
 | `src/jvmTest/kotlin/afield/stacksl/cpu/StackSLSurrogateTest.kt` | all six measurements above |
 
