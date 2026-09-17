@@ -6836,6 +6836,52 @@ The CPU twin of the GLSL emitted by `volumetricNoiseHelperSource`. Every functio
 
 ## GlslAd.kt { #glslad-kt }
 
+Reverse-mode automatic differentiation for the GLSL interpreter: `d(pixel)/d(literal)`.
+
+`GlslAdScalars` is a `GlslScalars` instance, so a shader differentiated here runs through the
+interpreter's one copy of the control flow, over the same parse tree the `Float` reference path
+walks. Nothing about a GLSL builtin's *meaning* is restated; what is added is a local partial
+beside each operation.
+
+### Reverse, not forward
+
+An image loss over a wire vector is many-inputs-one-output, which is reverse mode's shape:
+one forward pass plus one backward sweep answers for every wire at once, so the cost does not
+grow with the number of free parameters. The loss is a **sum over pixels**, so the gradient is a
+sum of per-pixel backward sweeps, one short tape per pixel, thrown away before the next. That
+bounds the tape: a 64x64 fit never holds more than one pixel's operations at a time, where a
+whole-image tape would hold 4096 times as many.
+
+### The primal is bit-identical to the `Float` path
+
+[`AD`](math.md#autodiff-kt-ad) computes in `Double`, and a `Double` shader is the *wrong* shader. `GlslValue.kt`'s overview
+sets out why: widening an intermediate makes the CPU result more accurate than the GPU's and
+therefore a worse reference, and `fract` of a large product amplifies a last-bit difference to
+O(1). On a hash-bearing program a `Double` primal would not be slightly different, it would be a
+different image.
+
+So every node this file pushes stores its value **rounded to `Float`**, at exactly the points the
+`Float` path rounds. Double rounding is safe for `+ - * /` and `sqrt`: `Double` has more than
+twice `Float`'s significand, so rounding a `Double`-exact sum to `Float` gives the same answer as
+the `Float` operation. The differentiable pass's primal image is therefore *the same image* the
+reference path produces, which `StackSLGradientTest` asserts bit for bit over a named population,
+while the adjoint is the derivative of the smooth relaxation, which is the quantity a fit needs.
+
+### Derivative conventions
+
+ - a branch, a loop bound and an index carry **no** derivative: differentiated as taken, which
+   is correct for the piecewise function away from the switch-over. `autodiff.kt` says the same.
+ - `floor`, `ceil`, `trunc`, `round`, `roundEven`, `sign`, `step` and `int(...)` truncation
+   carry **exactly zero** derivative. `fract` therefore carries derivative **one**, since it is
+   `x - floor(x)`.
+ - `abs`, `min` and `max` **split evenly at an exact tie**, which is what a central difference
+   reports at a kink, so the analytic gradient and the finite-difference oracle agree there.
+ - a comparison, `any`, `all`, `isnan` and `isinf` produce a derivative-free `bool`.
+ - `texture()` is **refused**. A bilinear CPU texture fetch is differentiable in principle, but
+   the two feedback gallery programs are already excluded from every asserted comparison in
+   this backend, so a derivative through a sampler would have no oracle to check it against.
+   `StackSLDifferentiabilityTest` counts it as unsupported rather than as zero.
+
 `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/GlslAd/)
 
 ## GlslInterpreter.kt { #glslinterpreter-kt }
@@ -6939,6 +6985,33 @@ A parsed fragment shader.
 | [<code class="highlight"><span class="k">val</span> <span class="n">globalNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/GlslParser/#L95) | Names of `in`/`out`/`uniform` variables, samplers included. |
 
 ## GlslScalars.kt { #glslscalars-kt }
+
+The value type the GLSL interpreter is generic over, so that one interpreter serves both the
+`Float` reference path and the differentiable one.
+
+### One interpreter, two algebras
+
+The CPU backend's value is that it interprets **the emitted GLSL**, the artifact the GPU
+consumes. A hand-written per-word CPU evaluator would not be that, and would check nothing: two
+algebraically-identical implementations agree with each other while both drift from the spec. So
+a derivative has to flow through this parser and this interpreter.
+
+That is what this interface is for. It factors out the *values*, leaving `GlslInterpreter.kt`'s
+machine (the statements, the branches, the loops, the call frames, the lvalue writes) as one copy
+of the control flow, shared by every scalar type. `GlslFloatScalars` is the `Float` instance, and
+each of its methods is a single `GlslValue` expression, so going through the interface neither
+widens nor reorders any arithmetic. `StackSLCpuFloatPathManifestTest` holds all 31 gallery
+programs to committed `Float` bits.
+
+`V` is a reference type in both instances ([`GlslValue`](languages.md#glslvalue-kt-glslvalue) and `AdValue`), so the `Float` path pays no
+boxing for the generic parameter: one interface dispatch per operation is the entire cost.
+
+### Whole values, not components
+
+Every method here takes and returns a *whole* GLSL value rather than a component, because
+`normalize`, `dot`, `length` and the matrix products are not component-wise, and an interface at
+component granularity would force them to be restated per scalar. As it is, the `Float` instance
+delegates to `glslMul`, `glslConstruct`, `glslSwizzle` and `GlslBuiltins.call` unchanged.
 
 `src/jvmMain/kotlin/afield/stacksl/cpu/GlslScalars.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/GlslScalars/)
 
@@ -7108,22 +7181,54 @@ Render StackSL on the CPU.
 
 ## StackSLFit.kt { #stackslfit-kt }
 
+Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the
+fitted numbers back into the program.
+
+### Why a StackSL program is differentiable where a RectSL scene is not
+
+A shape language is the hard case. RectSL draws shapes, so a pixel's value depends on a
+parameter through *coverage*, `d(pixel)/d(parameter)` needs a differentiable rasteriser, and a
+coverage approximation is a modelling choice with a bias to characterise. `RectSLSoftRaster.kt`
+is that choice, made there.
+
+StackSL is not geometry. It is a **per-pixel field**: `main()` runs once per pixel with `fragUV`
+as its only spatial input, and the output is an ordinary composition of arithmetic and GLSL
+builtins. So `d(pixel)/d(wire)` is the chain rule. There is no rasteriser in the pipeline, no
+coverage term, no approximation and so no bias to characterise.
+
+### Three limits on what a fit can do
+
+ 1. **A fit can only move literal-backed wires.** See [`StackSLWires`](languages.md#stackslwires-kt-stackslwires): a wire noted
+    `"optional default palette a"` is a default the emitter supplied, with no literal in the
+    source to rewrite. `StackSLFitResult.fittedIndices` is the population that moved and
+    `WiredProgram.wires` is the larger set that exists.
+ 2. **The template clamps.** `StackSLCpu.stillTemplate`, the default, ends `main()` with
+    `outColor = vec4(clamp(c, 0.0, 1.0), 1.0)`, and `clamp` carries zero derivative outside its
+    range. A pixel that is saturated at the seed therefore contributes **nothing** to the
+    gradient, so a seed whose image is mostly blown out is a seed with almost no signal.
+    `StackSLFitResult.saturatedFraction` measures how much of the image is in that state.
+ 3. **The loss is a per-pixel sum of squares and rewards exactly that.** It has no term for
+    structure, so a fit can lower it a long way by matching a target's colour and luminance
+    statistics while the image does not resemble the target at all. `StackSLFitFigureTest`
+    writes a figure of the target, the seed and the fit so the result is looked at and not only
+    scored.
+
 `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/StackSLFit/)
 
 ### StackSLFit { #stackslfit-kt-stackslfit }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLFit</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L47)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLFit</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L53)
 
-Gradient descent on a StackSL program's own literals — fit a shader to a picture, then write the fitted numbers back into the program.
+The fit itself: seed program in, fitted program out, with the descent's provenance attached.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;DIM</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L50) | The default fit resolution: 64 square, sized from the measured cost — see `dev_docs`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fit</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">StackSLCpu</span><span class="p">.</span><span class="nf">stillTemplate</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;DIM</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nc">OptimizeMethod</span> <span class="o">=</span> <span class="nc">OptimizeMethod</span><span class="p">.</span><span class="nc">ADAM</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLFitResult</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L58) | Fit `program`'s literals to `target`. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;DIM</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L56) | The default fit resolution: 64 square, sized from the measured cost — see `dev_docs`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fit</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">StackSLCpu</span><span class="p">.</span><span class="nf">stillTemplate</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;DIM</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nc">OptimizeMethod</span> <span class="o">=</span> <span class="nc">OptimizeMethod</span><span class="p">.</span><span class="nc">ADAM</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLFitResult</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L64) | Fit `program`'s literals to `target`. |
 
 ### StackSLImageLoss { #stackslfit-kt-stackslimageloss }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLImageLoss</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">outName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;outColor&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">fragUvName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fragUV&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L120)
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLImageLoss</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">outName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;outColor&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">fragUvName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fragUV&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L126)
 
 A mean-squared-error image loss over a wired program's parameter vector, with both an exact reverse-mode gradient and the plain `Float` render the gradient is checked against.
 
@@ -7132,16 +7237,16 @@ A mean-squared-error image loss over a wired program's parameter vector, with bo
 | <code class="highlight"><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span></code> |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L130) | The complete fragment shader, wires and all — the artifact both paths read. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L141) | Render on the `Float` reference path at `values`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L145) | The loss at `values`, via the `Float` path — the finite-difference oracle's evaluator. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueAndGradient</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ADGradient</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L156) | The loss and its **exact** gradient at `values`, by reverse-mode AD through the same parse tree the `Float` path walks. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderPrimal</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L209) | The primal image the differentiable pass computed, as a raster. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">saturatedFraction</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L233) | Fraction of RGB samples that sit exactly on a clamp bound, and so carry no gradient. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L136) | The complete fragment shader, wires and all — the artifact both paths read. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L147) | Render on the `Float` reference path at `values`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L151) | The loss at `values`, via the `Float` path — the finite-difference oracle's evaluator. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueAndGradient</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ADGradient</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L162) | The loss and its **exact** gradient at `values`, by reverse-mode AD through the same parse tree the `Float` path walks. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderPrimal</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L215) | The primal image the differentiable pass computed, as a raster. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">saturatedFraction</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L239) | Fraction of RGB samples that sit exactly on a clamp bound, and so carry no gradient. |
 
 ### StackSLFitResult { #stackslfit-kt-stackslfitresult }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLFitResult</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">StackSLImageLoss</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedIndices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">OptimizeRun</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedProgram</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L261)
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLFitResult</span><span class="p">(</span><span class="k">val</span> <span class="n">wired</span><span class="p">:</span> <span class="nc">WiredProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">StackSLImageLoss</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedIndices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">OptimizeRun</span><span class="p">,</span> <span class="k">val</span> <span class="n">fittedProgram</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L267)
 
 What a fit produced, including the program a human can paste back into a box.
 
@@ -7153,36 +7258,79 @@ What a fit produced, including the program a human can paste back into a box.
 | <code class="highlight"><span class="k">val</span> <span class="n">fittedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The whole wire vector after the fit, indexed by wire index. |
 | <code class="highlight"><span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">OptimizeRun</span></code> | The descent's provenance: losses, trajectory, gradient norms. |
 | <code class="highlight"><span class="k">val</span> <span class="n">fittedProgram</span><span class="p">:</span> <span class="nc">String</span></code> | `wired`'s source with the fitted literals substituted at their own token positions. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">seedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L276) | The wire vector the fit started from. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">seedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L279) | The loss before any step. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fittedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L282) | The loss at the end. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">lossRatio</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L285) | How far the loss fell, as a ratio. 1.0 means the descent achieved nothing. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">saturatedFraction</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L288) | Fraction of RGB samples clamped at the seed — see [`StackSLFit`](languages.md#stackslfit-kt-stackslfit)'s second caveat. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L291) | One line per moved literal: what the human wrote, and what the fit made of it. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">seedWires</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L282) | The wire vector the fit started from. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">seedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L285) | The loss before any step. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fittedLoss</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L288) | The loss at the end. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">lossRatio</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L291) | How far the loss fell, as a ratio. 1.0 means the descent achieved nothing. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">saturatedFraction</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L294) | Fraction of RGB samples clamped at the seed — see [`StackSLFit`](languages.md#stackslfit-kt-stackslfit)'s second caveat. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L297) | One line per moved literal: what the human wrote, and what the fit made of it. |
 
 ## StackSLWires.kt { #stackslwires-kt }
+
+StackSL's dangling wires, made runnable on the CPU: the free-parameter vector a fit descends.
+
+`StackSLCompileOptions.externalizeConstants` already lifts every numeric literal out of a
+program into an emitted `float` array called `<prefix>_wires`, with a `<prefix>_init_wires`
+initialiser, and records each one as a `StackSLDanglingWire` carrying its `index`, its
+`initial`, and the source `token` it came from. So the parameter vector needs no new syntax.
+
+### Why the emitted GLSL has to be rewritten first
+
+This backend **cannot parse the externalised GLSL at all**. `GlslParser` refuses arrays outright
+(`"GLSL arrays are not in the StackSL subset"`, on both the global and the local declaration
+path) and `StackSLCpu.stackAutoOptions` pins `externalizeConstants = false`. Two further things
+break even if arrays are granted: every emitted function gains a trailing
+`, float <prefix>_wires[<prefix>_wire_count]` parameter, and the entrypoint gains a **second,
+overloaded** one-argument wrapper that declares the array, calls the initialiser and forwards.
+`GlslShader.functions` is keyed by name, so the wrapper simply replaces the real function.
+
+`lower` closes that with one source-to-source rewrite of the **emitted** GLSL, so what the CPU
+runs is still the artifact the GPU consumes rather than a restatement of it:
+
+ 1. element *i* of `<prefix>_wires` becomes a scalar global `<prefix>_wire_i`, a shape the
+    subset does support, and one a caller can push a new value into per evaluation with
+    `setGlobal`, with no recompile;
+ 2. the wire parameter and the wire argument disappear from every signature and call;
+ 3. `const int <prefix>_wire_count`, `<prefix>_init_wires` and the forwarding wrapper are
+    dropped, the initial values having moved into the globals.
+
+`StackSLWireLoweringTest` renders the lowered program with every wire at its recorded initial
+and asserts the raster is **bit-identical** to the ordinary non-externalised compile of the same
+program, which is what the two are supposed to be.
+
+### Only some wires can be written back into the source
+
+A wire's `note` says where it came from, and that is what governs the round trip. A `"number"`
+wire stands for a literal the human typed, so a fitted value can be substituted at the recorded
+`line`/`column` and the program still reads as the program. A wire noted
+`"optional default palette a"` is a default the *emitter* supplied for a word that was given no
+operand: there is no literal in the source to rewrite, and inventing one would mean pushing four
+`vec4`s in front of `palette`. So `rewrite` fits and rewrites **literal-backed wires only**,
+`literalBacked` is the population, and the rest are held at their initials. A program's wire
+count is therefore an upper bound on its fittable parameter count rather than the count itself,
+and [`StackSLFit`](languages.md#stackslfit-kt-stackslfit) reports both.
 
 `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLWires.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/StackSLWires/)
 
 ### StackSLWires { #stackslwires-kt-stackslwires }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLWires</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L54)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLWires</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L59)
 
-StackSL's dangling wires, made runnable on the CPU — the free-parameter vector a fit descends.
+Lifting a StackSL program's literals into addressable globals, and writing fitted values back.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">wiredOptions</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileOptions</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L57) | The compile options for a wired program: `StackSLCpu.stackAutoOptions` plus externalisation. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">globalName</span><span class="p">(</span><span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L61) | The global a lowered wire lives in. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lift</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">WiredProgram</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L67) | Compile `program` with its literals lifted, and lower the result to something the CPU backend can parse. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wireCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L89) | Rewrite the wire array in `glsl` into scalar globals. See the file KDoc for the three steps and for why this is a rewrite of the emitted artifact rather than a second emitter. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">literalBacked</span><span class="p">(</span><span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L146) | The wires a fitted value can be written back into the program source: the ones whose `note` is `"number"`, i.e. the ones that stand for a literal the human typed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">rewrite</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L161) | Substitute `values` back into `program`'s source at the recorded token positions. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">formatLiteral</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L182) | `%.8f`, trimmed, with a decimal point kept — the same shape `StackSL.kt` emits. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">wiredOptions</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileOptions</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L62) | The compile options for a wired program: `StackSLCpu.stackAutoOptions` plus externalisation. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">globalName</span><span class="p">(</span><span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L66) | The global a lowered wire lives in. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lift</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">WiredProgram</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L72) | Compile `program` with its literals lifted, and lower the result to something the CPU backend can parse. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wireCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L94) | Rewrite the wire array in `glsl` into scalar globals. See the file KDoc for the three steps and for why this is a rewrite of the emitted artifact rather than a second emitter. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">literalBacked</span><span class="p">(</span><span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L151) | The wires a fitted value can be written back into the program source: the ones whose `note` is `"number"`, i.e. the ones that stand for a literal the human typed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rewrite</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L166) | Substitute `values` back into `program`'s source at the recorded token positions. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">formatLiteral</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L187) | `%.8f`, trimmed, with a decimal point kept — the same shape `StackSL.kt` emits. |
 
 ### WiredProgram { #stackslwires-kt-wiredprogram }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">WiredProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L195)
+[<code class="highlight"><span class="k">class</span> <span class="nf">WiredProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L200)
 
 A StackSL program whose numeric literals have become addressable free parameters.
 
@@ -7193,9 +7341,9 @@ A StackSL program whose numeric literals have become addressable free parameters
 | <code class="highlight"><span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span></code> | The emitted prefix, which is also `slot` unless the compiler renamed it. |
 | <code class="highlight"><span class="k">val</span> <span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span></code> | The lowered emitted GLSL: parseable by `parseGlslShader`, wires as scalar globals. |
 | <code class="highlight"><span class="k">val</span> <span class="n">wires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span></code> | Every wire the emitter lifted, literal-backed or not, in index order. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">literalWires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L208) | The wires a fitted value can be written back into the source — see `StackSLWires.rewrite`. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L211) | Every wire's emitted initial value, indexed by wire index. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">globals</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L214) | The globals map a render needs for a given parameter vector. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L222) | A one-line report of what this program's parameter vector actually is. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">literalWires</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLDanglingWire</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L213) | The wires a fitted value can be written back into the source — see `StackSLWires.rewrite`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L216) | Every wire's emitted initial value, indexed by wire index. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">globals</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L219) | The globals map a render needs for a given parameter vector. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLWires/#L227) | A one-line report of what this program's parameter vector actually is. |
 
 </div>

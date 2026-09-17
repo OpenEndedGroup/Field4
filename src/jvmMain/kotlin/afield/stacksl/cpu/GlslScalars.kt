@@ -1,33 +1,37 @@
 package afield.stacksl.cpu
 
 /**
- * The scalar algebra the GLSL interpreter runs on — the one seam that makes StackSL differentiable.
+ * The value type the GLSL interpreter is generic over, so that one interpreter serves both the
+ * `Float` reference path and the differentiable one.
  *
- * #### Why this interface exists, and why it is not a second interpreter
+ * #### One interpreter, two algebras
  *
- * The CPU backend's whole value is that it interprets **the emitted GLSL**, the artifact the GPU
- * consumes. The recorded lesson behind it is blunt: a hand-written per-word CPU arm would have
- * reproduced StackSL's `mix` bug forever, because two algebraically-identical implementations agree
- * with each other while both drift from the spec. So a derivative must flow through *this* parser
- * and *this* interpreter, and a second evaluator is not an option.
+ * The CPU backend's value is that it interprets **the emitted GLSL**, the artifact the GPU
+ * consumes. A hand-written per-word CPU evaluator would not be that, and would check nothing: two
+ * algebraically-identical implementations agree with each other while both drift from the spec. So
+ * a derivative has to flow through this parser and this interpreter.
  *
- * What [GlslScalars] does instead is factor out the *values*, leaving [GlslMachine] — the
- * statements, the branches, the loops, the call frames, the lvalue writes — as exactly one copy of
- * the control flow, shared by every scalar. [GlslFloatScalars] is the `Float` instance and every
- * one of its bodies is the pre-refactor expression **verbatim**, so the `Float` path is byte-
- * identical by construction rather than by hope. `StackSLCpuFloatPathManifestTest` measures that
- * claim over all 31 gallery programs anyway.
+ * That is what this interface is for. It factors out the *values*, leaving `GlslInterpreter.kt`'s
+ * machine (the statements, the branches, the loops, the call frames, the lvalue writes) as one copy
+ * of the control flow, shared by every scalar type. `GlslFloatScalars` is the `Float` instance, and
+ * each of its methods is a single `GlslValue` expression, so going through the interface neither
+ * widens nor reorders any arithmetic. `StackSLCpuFloatPathManifestTest` holds all 31 gallery
+ * programs to committed `Float` bits.
  *
- * `V` is a reference type in both instances ([GlslValue], [AdValue]), so the `Float` path pays no
- * boxing for the generic parameter — one interface dispatch per operation is the entire cost.
+ * `V` is a reference type in both instances ([GlslValue] and `AdValue`), so the `Float` path pays no
+ * boxing for the generic parameter: one interface dispatch per operation is the entire cost.
  *
- * #### The granularity, and why it is whole values rather than scalars
+ * #### Whole values, not components
  *
- * Every method here takes and returns a *whole* GLSL value, not a component. That is deliberate:
- * `normalize`, `dot`, `length` and the matrix products are not component-wise, and a component-
- * level seam would have forced them to be restated per scalar. At this granularity
- * [GlslFloatScalars] can delegate to `glslMul`, `glslConstruct`, `glslSwizzle` and
- * `GlslBuiltins.call` untouched.
+ * Every method here takes and returns a *whole* GLSL value rather than a component, because
+ * `normalize`, `dot`, `length` and the matrix products are not component-wise, and an interface at
+ * component granularity would force them to be restated per scalar. As it is, the `Float` instance
+ * delegates to `glslMul`, `glslConstruct`, `glslSwizzle` and `GlslBuiltins.call` unchanged.
+ */
+
+/**
+ * Everything the interpreter asks of a value: lifting, arithmetic, construction, swizzles,
+ * component writes and the builtin table. One implementation per scalar type.
  */
 internal interface GlslScalars<V> {
 

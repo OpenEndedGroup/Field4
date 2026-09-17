@@ -11,38 +11,44 @@ import afield.stdlib.sq
 import java.util.stream.IntStream
 
 /**
- * Gradient descent on a StackSL program's own literals — fit a shader to a picture, then write the
+ * Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the
  * fitted numbers back into the program.
  *
- * #### Why this is possible here and was correctly abandoned for RectSL
+ * #### Why a StackSL program is differentiable where a RectSL scene is not
  *
- * The backlog's "differentiable image fit" died on a real objection: *a per-track scalar lowering
- * cannot produce `d(pixel)/d(parameter)`; that needs a differentiable rasterizer whose coverage
- * approximation has a characterisable bias.* That objection is about **geometry**. RectSL draws
- * shapes, so a pixel's value depends on a parameter through *coverage*, and a coverage
- * approximation is a modelling choice you then have to defend (`RectSLSoftRaster` is that choice).
+ * A shape language is the hard case. RectSL draws shapes, so a pixel's value depends on a
+ * parameter through *coverage*, `d(pixel)/d(parameter)` needs a differentiable rasteriser, and a
+ * coverage approximation is a modelling choice with a bias to characterise. `RectSLSoftRaster.kt`
+ * is that choice, made there.
  *
  * StackSL is not geometry. It is a **per-pixel field**: `main()` runs once per pixel with `fragUV`
  * as its only spatial input, and the output is an ordinary composition of arithmetic and GLSL
- * builtins. So `d(pixel)/d(wire)` is just the chain rule. There is no rasteriser in the pipeline,
- * no coverage term, no approximation and therefore no bias to characterise. The same sentence that
- * kills the idea for RectSL is what makes it exact for StackSL.
+ * builtins. So `d(pixel)/d(wire)` is the chain rule. There is no rasteriser in the pipeline, no
+ * coverage term, no approximation and so no bias to characterise.
  *
- * #### The three things that are not free
+ * #### Three limits on what a fit can do
  *
- *  1. **A fit can only move literal-backed wires.** See [StackSLWires] — a wire noted
+ *  1. **A fit can only move literal-backed wires.** See [StackSLWires]: a wire noted
  *     `"optional default palette a"` is a default the emitter supplied, with no literal in the
  *     source to rewrite. [StackSLFitResult.fittedIndices] is the population that moved and
  *     [WiredProgram.wires] is the larger set that exists.
- *  2. **The gallery template clamps.** `main()` ends `outColor = vec4(clamp(c, 0.0, 1.0), 1.0)`,
- *     and `clamp` carries zero derivative outside its range. A pixel that is saturated at the seed
- *     therefore contributes **nothing** to the gradient, so a seed whose image is mostly blown out
- *     is a seed with almost no signal. That is a property of the shader, not of the gradient, and
- *     [StackSLFitResult.saturatedFraction] reports it rather than hiding it.
+ *  2. **The template clamps.** `StackSLCpu.stillTemplate`, the default, ends `main()` with
+ *     `outColor = vec4(clamp(c, 0.0, 1.0), 1.0)`, and `clamp` carries zero derivative outside its
+ *     range. A pixel that is saturated at the seed therefore contributes **nothing** to the
+ *     gradient, so a seed whose image is mostly blown out is a seed with almost no signal.
+ *     [StackSLFitResult.saturatedFraction] measures how much of the image is in that state.
  *  3. **The loss is a per-pixel sum of squares and rewards exactly that.** It has no term for
  *     structure, so a fit can lower it a long way by matching a target's colour and luminance
- *     statistics while the image does not resemble the target at all. The figure in
- *     `StackSLFitFigureTest` exists so that this is looked at rather than inferred from a number.
+ *     statistics while the image does not resemble the target at all. `StackSLFitFigureTest`
+ *     writes a figure of the target, the seed and the fit so the result is looked at and not only
+ *     scored.
+ */
+
+/**
+ * The fit itself: seed program in, fitted program out, with the descent's provenance attached.
+ *
+ * [fit] is the whole surface; [StackSLFitResult] carries the fitted literals, the loss trajectory
+ * and the re-emitted source.
  */
 object StackSLFit {
 

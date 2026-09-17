@@ -7,8 +7,8 @@ import kotlin.math.absoluteValue
 /**
  * Reverse-mode automatic differentiation for the GLSL interpreter: `d(pixel)/d(literal)`.
  *
- * [GlslAdScalars] is a [GlslScalars] instance, so a shader differentiated here runs through
- * `GlslMachine`'s one copy of the control flow, the same parse tree the `Float` reference path
+ * `GlslAdScalars` is a `GlslScalars` instance, so a shader differentiated here runs through the
+ * interpreter's one copy of the control flow, over the same parse tree the `Float` reference path
  * walks. Nothing about a GLSL builtin's *meaning* is restated; what is added is a local partial
  * beside each operation.
  *
@@ -17,27 +17,26 @@ import kotlin.math.absoluteValue
  * An image loss over a wire vector is many-inputs-one-output, which is reverse mode's shape:
  * one forward pass plus one backward sweep answers for every wire at once, so the cost does not
  * grow with the number of free parameters. The loss is a **sum over pixels**, so the gradient is a
- * sum of per-pixel backward sweeps — one short tape per pixel, thrown away before the next. That
- * is what keeps reverse mode's tape cost bounded here: a 64x64 fit never holds more than one
- * pixel's operations at a time, where a whole-image tape would hold 4096 times as many.
+ * sum of per-pixel backward sweeps, one short tape per pixel, thrown away before the next. That
+ * bounds the tape: a 64x64 fit never holds more than one pixel's operations at a time, where a
+ * whole-image tape would hold 4096 times as many.
  *
- * #### The primal is bit-identical to the `Float` path, deliberately
+ * #### The primal is bit-identical to the `Float` path
  *
- * [AD] computes in `Double`, and a `Double` shader is the *wrong* shader:
- * [GlslValue]'s file KDoc argues that widening an intermediate makes the CPU result more accurate
- * than the GPU's and therefore a worse reference, and that `fract` of a large product amplifies a
- * last-bit difference to O(1). A `Double` primal would not merely be slightly different on a
- * hash-bearing program — it would be a different image.
+ * [AD] computes in `Double`, and a `Double` shader is the *wrong* shader. `GlslValue.kt`'s overview
+ * sets out why: widening an intermediate makes the CPU result more accurate than the GPU's and
+ * therefore a worse reference, and `fract` of a large product amplifies a last-bit difference to
+ * O(1). On a hash-bearing program a `Double` primal would not be slightly different, it would be a
+ * different image.
  *
- * So every node this file pushes stores its value **rounded to `Float`** ([fl]), at exactly the
- * points the `Float` path rounds. Double rounding is safe for `+ - * /` and `sqrt`: `Double` has
- * more than twice `Float`'s significand, so rounding a `Double`-exact sum to `Float` gives the
- * same answer as the `Float` operation. The result is that the differentiable pass's primal image
- * is *the same image* the reference path produces —
- * `StackSLGradientTest` asserts bit-equality over a named population — while the adjoint is the
- * derivative of the smooth relaxation, which is the quantity a fit needs.
+ * So every node this file pushes stores its value **rounded to `Float`**, at exactly the points the
+ * `Float` path rounds. Double rounding is safe for `+ - * /` and `sqrt`: `Double` has more than
+ * twice `Float`'s significand, so rounding a `Double`-exact sum to `Float` gives the same answer as
+ * the `Float` operation. The differentiable pass's primal image is therefore *the same image* the
+ * reference path produces, which `StackSLGradientTest` asserts bit for bit over a named population,
+ * while the adjoint is the derivative of the smooth relaxation, which is the quantity a fit needs.
  *
- * #### Conventions, all inherited rather than invented
+ * #### Derivative conventions
  *
  *  - a branch, a loop bound and an index carry **no** derivative: differentiated as taken, which
  *    is correct for the piecewise function away from the switch-over. `autodiff.kt` says the same.
@@ -45,13 +44,15 @@ import kotlin.math.absoluteValue
  *    carry **exactly zero** derivative. `fract` therefore carries derivative **one**, since it is
  *    `x - floor(x)`.
  *  - `abs`, `min` and `max` **split evenly at an exact tie**, which is what a central difference
- *    reports at a kink — so the analytic gradient and the finite-difference oracle agree there.
+ *    reports at a kink, so the analytic gradient and the finite-difference oracle agree there.
  *  - a comparison, `any`, `all`, `isnan` and `isinf` produce a derivative-free `bool`.
- *  - `texture()` is **refused**: a bilinear CPU texture fetch is differentiable in principle, but
- *    the two feedback gallery programs are excluded from every asserted comparison in this
- *    backend already, so a derivative through a sampler would have no oracle to be checked
- *    against. `StackSLDifferentiabilityTest` counts it as unsupported rather than as zero.
+ *  - `texture()` is **refused**. A bilinear CPU texture fetch is differentiable in principle, but
+ *    the two feedback gallery programs are already excluded from every asserted comparison in
+ *    this backend, so a derivative through a sampler would have no oracle to check it against.
+ *    `StackSLDifferentiabilityTest` counts it as unsupported rather than as zero.
  */
+
+/** A GLSL value whose components are [AD] nodes on one tape: the differentiable [GlslValue]. */
 internal class AdValue(val type: GlslType, val c: Array<AD>) {
     init {
         require(c.size == type.components) { "$type needs ${type.components} components, got ${c.size}" }

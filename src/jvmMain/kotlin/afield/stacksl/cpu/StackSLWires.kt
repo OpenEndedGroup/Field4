@@ -7,49 +7,54 @@ import afield.stacksl.StackSLSeverity
 import java.util.Locale
 
 /**
- * StackSL's dangling wires, made runnable on the CPU — the free-parameter vector a fit descends.
+ * StackSL's dangling wires, made runnable on the CPU: the free-parameter vector a fit descends.
  *
  * `StackSLCompileOptions.externalizeConstants` already lifts every numeric literal out of a
- * program into an emitted `float <prefix>_wires[N]` array with a `<prefix>_init_wires`
+ * program into an emitted `float` array called `<prefix>_wires`, with a `<prefix>_init_wires`
  * initialiser, and records each one as a `StackSLDanglingWire` carrying its `index`, its
  * `initial`, and the source `token` it came from. So the parameter vector needs no new syntax.
  *
- * #### What did not work, and had to be bridged
+ * #### Why the emitted GLSL has to be rewritten first
  *
- * The externalised GLSL **cannot be parsed by this backend at all**, and no CPU path had ever
- * tried: `GlslParser` refuses arrays outright (`"GLSL arrays are not in the StackSL subset"`, twice)
- * and `StackSLCpu.stackAutoOptions` pins `externalizeConstants = false`. Two further things break
- * even if arrays are granted: every emitted function gains a trailing
+ * This backend **cannot parse the externalised GLSL at all**. `GlslParser` refuses arrays outright
+ * (`"GLSL arrays are not in the StackSL subset"`, on both the global and the local declaration
+ * path) and `StackSLCpu.stackAutoOptions` pins `externalizeConstants = false`. Two further things
+ * break even if arrays are granted: every emitted function gains a trailing
  * `, float <prefix>_wires[<prefix>_wire_count]` parameter, and the entrypoint gains a **second,
- * overloaded** one-argument wrapper that declares the array, calls the initialiser and forwards —
- * and `GlslShader.functions` is keyed by name, so the wrapper simply replaces the real function.
+ * overloaded** one-argument wrapper that declares the array, calls the initialiser and forwards.
+ * `GlslShader.functions` is keyed by name, so the wrapper simply replaces the real function.
  *
- * [lower] bridges that with one source-to-source rewrite of the **emitted** GLSL, which is still
- * the artifact the GPU consumes rather than a restatement of it:
+ * [lower] closes that with one source-to-source rewrite of the **emitted** GLSL, so what the CPU
+ * runs is still the artifact the GPU consumes rather than a restatement of it:
  *
- *  1. `<prefix>_wires[i]` becomes a scalar global `<prefix>_wire_i` — a shape the subset does
- *     support, and one a caller can push a new value into per evaluation with `setGlobal`, with no
- *     recompile;
+ *  1. element *i* of `<prefix>_wires` becomes a scalar global `<prefix>_wire_i`, a shape the
+ *     subset does support, and one a caller can push a new value into per evaluation with
+ *     `setGlobal`, with no recompile;
  *  2. the wire parameter and the wire argument disappear from every signature and call;
  *  3. `const int <prefix>_wire_count`, `<prefix>_init_wires` and the forwarding wrapper are
  *     dropped, the initial values having moved into the globals.
  *
- * The rewrite is not trusted on inspection. `StackSLWireLoweringTest` renders the lowered
- * program with every wire at its recorded initial and asserts the raster is **bit-identical** to
- * the ordinary non-externalised compile of the same program — which is the only evidence that
- * matters, since the two are supposed to be the same shader.
+ * `StackSLWireLoweringTest` renders the lowered program with every wire at its recorded initial
+ * and asserts the raster is **bit-identical** to the ordinary non-externalised compile of the same
+ * program, which is what the two are supposed to be.
  *
  * #### Only some wires can be written back into the source
  *
- * A wire's `note` says where it came from, and this is the fact that shapes the whole round trip:
- * `"number"` wires stand for a literal the human typed, so a fitted value can be substituted at
- * the recorded `line`/`column` and the program still reads as the program. A wire noted
+ * A wire's `note` says where it came from, and that is what governs the round trip. A `"number"`
+ * wire stands for a literal the human typed, so a fitted value can be substituted at the recorded
+ * `line`/`column` and the program still reads as the program. A wire noted
  * `"optional default palette a"` is a default the *emitter* supplied for a word that was given no
- * operand — there is no literal in the source to rewrite, and inventing one would mean pushing
- * four `vec4`s in front of `palette`. So [rewrite] fits and rewrites **literal-backed wires
- * only**, [literalBacked] is the population, and the rest are held at their initials. A program's
- * wire count is therefore an upper bound on its fittable parameter count, not the count itself,
- * and `StackSLFit` reports both.
+ * operand: there is no literal in the source to rewrite, and inventing one would mean pushing four
+ * `vec4`s in front of `palette`. So [rewrite] fits and rewrites **literal-backed wires only**,
+ * [literalBacked] is the population, and the rest are held at their initials. A program's wire
+ * count is therefore an upper bound on its fittable parameter count rather than the count itself,
+ * and [StackSLFit] reports both.
+ */
+
+/**
+ * Lifting a StackSL program's literals into addressable globals, and writing fitted values back.
+ *
+ * [lift] is the entry point and [WiredProgram] is what comes back; [rewrite] closes the round trip.
  */
 object StackSLWires {
 
@@ -153,10 +158,10 @@ object StackSLWires {
      * line is rewritten right-to-left so that an earlier substitution cannot move a later token's
      * column.
      *
-     * The literal is printed the way `StackSL.kt`'s own `formatFloat` prints one — `%.8f`, trimmed
-     * — so a rewritten program is a program a human would have written. That printing is the one
-     * lossy step in the round trip, and it is why
-     * `StackSLFitRoundTripTest` asserts a tolerance rather than bit-equality.
+     * The literal is printed the way `StackSL.kt`'s own `formatFloat` prints one (`%.8f`, trimmed)
+     * so a rewritten program is a program a human would have written. That printing is the one
+     * lossy step in the round trip, and it is why `StackSLFitFigureTest` asserts a tolerance
+     * rather than bit-equality.
      */
     fun rewrite(program: String, wires: List<StackSLDanglingWire>, values: DoubleArray): String {
         require(values.size == wires.size) { "expected ${wires.size} values, got ${values.size}" }
