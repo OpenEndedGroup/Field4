@@ -71,15 +71,30 @@ of which **1335** contain `/**`, holding **20739** KDoc blocks:
 - **1007** KDoc lines are indented past their enclosing list's content indent but under the `+4`
   code-block threshold. Distribution of that relative indent: 1 → 121, 2 → 826, 3 → **60**.
 - Of those 1007, **exactly one** also contains a markdown inline link (`](` outside inline
-  backticks): the `TidalPatterns.kt` line above.
+  backticks): the `TidalPatterns.kt` line above. After the fix that count is **0**.
 - The 60 at relative indent 3 — the "clearly meant as a sample" shape — live in **five** files:
-  `TidalPatterns.kt` 16, `PatComposition.kt` 10, `PatAlgebra.kt` 7, `PatSignals.kt` 5,
+  `TidalPatterns.kt` **36**, `PatComposition.kt` 10, `PatAlgebra.kt` 7, `PatSignals.kt` 5,
   `PointController.kt` 2.
 
 So the answer to "is there another one?" is **no, one instance tree-wide**, and the answer to "is
-there another *sample* published as prose?" is **yes, 43 more lines in three files**. Those three
-`Pat*.kt` files were held by the live branch `docs/voice-2026-09-17` on the night this landed and
-were deliberately left to it.
+there another *sample* published as prose?" is **yes**.
+
+After this branch: 971 lines match (a)+(b), **25** at relative indent 3 — `PatComposition.kt` 10,
+`PatAlgebra.kt` 7, `PatSignals.kt` 5, `TidalPatterns.kt` 3. **22 of those 25 are real and 3 are a
+false positive of the survey**, and the difference was settled by reading the rendered page rather
+than the predicate: the classifier's list context is *sticky* (it resets on a list marker, not on
+a return to column 0), so `TidalPatterns.kt`'s last three sample lines — the `data class Cue`
+block, which sits after the numbered list ended — are scored as relative indent 3 while markdown
+reads them at the top level. In the built page they are `<pre><code>`. The other 22 are `<p>`:
+spot-checked in `reference/patterns/index.html`, `iter(4)`, `voiceLead(center`, `val grid  =
+struct` and `shuffle(4)` all render inside a paragraph. The three `Pat*.kt` files were held by the
+live branch `docs/voice-2026-09-17` on the night this landed and were deliberately left to it.
+
+That correction is worth its own line, because it is the same mistake this page keeps documenting
+in other people's work: an earlier draft of this section said `TidalPatterns.kt` 16 and "43 more
+lines in three files", both taken from a survey that printed only its first 40 rows. The commit
+messages of `edb159372` and `36c53969f` still carry those two numbers. **A number read off a
+truncated listing is a number about the listing.**
 
 **A cousin, found by regenerating.** KDoc reads `[k]` as a symbol reference, so the generator
 published `PointController.kt`'s recurrence as
@@ -338,6 +353,9 @@ count, and a `displayed code masked:` line, so neither number can be quoted bare
 - **Python-Markdown is not CommonMark on list indentation.** `tab_length` is 4 whatever the marker
   width, so an ordered-list item's code block needs 8 where CommonMark would take 7. A KDoc
   written to the CommonMark rule renders as prose.
+- **A survey that caps its own output will be quoted by its cap.** `sel[:40]` printed 40 of 60
+  rows and the per-file breakdown taken from it was wrong for two commits. Aggregate first, print
+  second.
 - **No guard in this tree checks a fragment.** Every one of them strips `#…` before resolving, so
   a reference whose page is at 200 and whose anchor is gone is invisible to all of them. That is
   where mode 5 was hiding, and it is still the right place to look for mode 6.
