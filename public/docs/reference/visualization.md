@@ -752,7 +752,7 @@ invisible.
 
 Why a file under the collection root is not a row in the browser.
 
-Constants: `is`, `and`, `a`.
+Constants: `NotAKey`, `Damaged`, `Hidden`.
 
 ### SkippedFile { #keyframebrowser-kt-skippedfile }
 
@@ -1245,7 +1245,7 @@ One axis: a data interval, a pixel interval, and the arithmetic between them.
 
 What a [`ChartMark`](visualization.md#charts-kt-chartmark) draws.
 
-Constants: `each`, `plus`, `at`.
+Constants: `POINTS`, `LINE`, `AREA`, `BARS`, `HISTOGRAM`, `HRULE`, `VRULE`, `BAND`.
 
 ### ChartMark { #charts-kt-chartmark }
 

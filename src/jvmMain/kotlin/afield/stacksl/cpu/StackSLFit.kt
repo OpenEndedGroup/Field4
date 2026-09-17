@@ -60,6 +60,14 @@ object StackSLFit {
      *
      * [target] must be [dim] square. [indices] selects which wires may move; the default is every
      * literal-backed one, which is the set [StackSLWires.rewrite] can write back.
+     *
+     * [annealing] turns on the jump surrogate ([AdSurrogate]) with a cooling temperature, which is
+     * what lets a descent move a wire that sits behind a `threshold`, a `posterize`, a `select` or a
+     * `bit-crush` — operations whose exact gradient is zero everywhere a fit will ever stand. It is
+     * `null` by default, so a fit is exact unless asked otherwise, and
+     * `dev_docs/STACKSL_SURROGATE.md` says which family to anneal for which program: the
+     * [AdSurrogateFamily.STAIRCASE] family also softens `_noise`'s lattice index, where zero is the
+     * *true* derivative, so switching everything on costs a noise-frequency wire its accuracy.
      */
     fun fit(
         program: String,
@@ -71,7 +79,8 @@ object StackSLFit {
         method: OptimizeMethod = OptimizeMethod.ADAM,
         slot: String = "program",
         indices: List<Int>? = null,
-        parallel: Boolean = true
+        parallel: Boolean = true,
+        annealing: AdAnnealing? = null
     ): StackSLFitResult {
         require(target.width == dim && target.height == dim) {
             "target is ${target.width}x${target.height}, fit is ${dim}x$dim"
@@ -98,8 +107,10 @@ object StackSLFit {
                 showProgress = false
             )
         ) { p ->
-            val exact = loss.valueAndGradient(expand(p))
-            ADGradient(exact.value, DoubleArray(moving.size) { exact.gradient[moving[it]] })
+            // One `next()` per loss evaluation: the schedule's own KDoc says why that is the driver
+            // and what LBFGS does to it. With `annealing == null` this is the exact gradient.
+            val whole = loss.valueAndGradient(expand(p), annealing?.next() ?: AdSurrogate.OFF)
+            ADGradient(whole.value, DoubleArray(moving.size) { whole.gradient[moving[it]] })
         }
 
         val fitted = expand(run.x)
@@ -109,7 +120,8 @@ object StackSLFit {
             fittedIndices = moving,
             fittedWires = fitted,
             run = run,
-            fittedProgram = StackSLWires.rewrite(program, wired.wires, fitted)
+            fittedProgram = StackSLWires.rewrite(program, wired.wires, fitted),
+            annealing = annealing
         )
     }
 }
@@ -158,8 +170,14 @@ class StackSLImageLoss(
      * backward sweeps, and no tape outlives the pixel that built it. Rows run in parallel into
      * private accumulators, so the sum is over a fixed partition and does not depend on thread
      * scheduling — the answer is the same number every time, which a test is entitled to assume.
+     *
+     * [surrogate] is the one knob that makes the gradient inexact, and only the *gradient*: an
+     * [AdSurrogate] other than [AdSurrogate.OFF] replaces the exact zero partial at a jump
+     * discontinuity with a mollified delta, leaving every primal value alone. So
+     * [ADGradient.value] is the true loss at both settings — it is the direction that is a
+     * surrogate. Default off, and every existing caller therefore gets exactly what it got before.
      */
-    fun valueAndGradient(values: DoubleArray): ADGradient {
+    fun valueAndGradient(values: DoubleArray, surrogate: AdSurrogate = AdSurrogate.OFF): ADGradient {
         val n = wired.wires.size
         require(values.size == n) { "expected $n wire values, got ${values.size}" }
         val perRow = arrayOfNulls<DoubleArray>(dim)
@@ -169,7 +187,7 @@ class StackSLImageLoss(
             val acc = DoubleArray(n + 1)
             for (x in 0 until dim) {
                 val tape = ADTape()
-                val scalars = GlslAdScalars(tape)
+                val scalars = GlslAdScalars(tape, surrogate)
                 val wireNodes = Array(n) { scalars.variable(values[it]) }
                 val globals = HashMap<String, AdValue>(n + 1)
                 for (k in 0 until n) {
@@ -211,13 +229,18 @@ class StackSLImageLoss(
      * Every node [GlslAdScalars] pushes rounds its value to `Float` where the `Float` path rounds,
      * so this raster is expected to be **bit-identical** to [render]'s, and
      * `StackSLGradientTest` asserts exactly that over a named population.
+     *
+     * [surrogate] is accepted here for one reason: the surrogate's central claim is that it changes
+     * *nothing* in the forward pass, and a claim that cannot be measured is a hope.
+     * `StackSLSurrogateTest` renders this at every temperature it sweeps and asserts bit-equality,
+     * so a future surrogate that reaches into a primal value reddens instead of drifting.
      */
-    fun renderPrimal(values: DoubleArray): CpuRaster {
+    fun renderPrimal(values: DoubleArray, surrogate: AdSurrogate = AdSurrogate.OFF): CpuRaster {
         val n = wired.wires.size
         val rgba = FloatArray(dim * dim * 4)
         for (y in 0 until dim) {
             val tape = ADTape()
-            val scalars = GlslAdScalars(tape)
+            val scalars = GlslAdScalars(tape, surrogate)
             val globals = HashMap<String, AdValue>(n + 1)
             for (k in 0 until n) {
                 globals[StackSLWires.globalName(wired.prefix, k)] =
@@ -276,7 +299,16 @@ class StackSLFitResult(
     /** The descent's provenance: losses, trajectory, gradient norms. */
     val run: OptimizeRun,
     /** [wired]'s source with the fitted literals substituted at their own token positions. */
-    val fittedProgram: String
+    val fittedProgram: String,
+    /**
+     * The jump surrogate's schedule, or `null` for an exact fit.
+     *
+     * When this is non-null, [OptimizeRun.gradient] is the **surrogate** direction at the final
+     * temperature rather than the exact gradient — the loss values are exact either way, because
+     * the surrogate only ever changes a partial. Kept so that a reading of a run knows which it is
+     * looking at rather than inferring it from the numbers.
+     */
+    val annealing: AdAnnealing? = null
 ) {
     /** The wire vector the fit started from. */
     val seedWires: DoubleArray get() = wired.initial

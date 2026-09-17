@@ -111,7 +111,7 @@ A multi-output regression MLP, which is the one thing Smile's own `smile.regress
 
 How `flowMatch` decides which `x0` travels to which `x1`.
 
-Constants: `and`, `so`, `but`, `because`, `not`, `the`.
+Constants: `INDEPENDENT`, `MINIBATCH_OT`, `PAIRED`.
 
 ### FlowIntegrator { #flowmatching-kt-flowintegrator }
 
@@ -119,7 +119,7 @@ Constants: `and`, `so`, `but`, `because`, `not`, `the`.
 
 Which integrator [`FlowMatchField`](machine-learning.md#flowmatching-kt-flowmatchfield) uses to follow the velocity field.
 
-Constants: `and`, `second`, `because`.
+Constants: `EULER`, `MIDPOINT`.
 
 ### FlowMatchOptions { #flowmatching-kt-flowmatchoptions }
 
