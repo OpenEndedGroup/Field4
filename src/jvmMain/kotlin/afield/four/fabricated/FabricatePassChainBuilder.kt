@@ -2,9 +2,11 @@ package afield.four.fabricated
 
 import afield.four.Renderer
 import afield.four.modules.fromContext
+import afield.four.targets.FrameHistory
 import afield.four.targets.PingPongRenderToTexture
 import afield.four.targets.RenderToTexture
 import afield.four.texture.HasImageView
+import afield.stdlib.linalg.Matrix4f
 
 /**
  * Materializes a planned pass chain onto the GPU, through the post stack that already exists.
@@ -25,6 +27,15 @@ import afield.four.texture.HasImageView
  * [FabricateBuiltChain] comes back holding the plan, the built effects and the chain input, and is
  * how a push constant is retuned afterwards without a rebuild or a reallocation.
  */
+
+/**
+ * The g-buffer colour attachment holding per-pixel motion vectors.
+ *
+ * Fixed by `StandardRenderer`'s g-buffer layout — `colorFormats` is
+ * `[hdr, normal, position, motion]` and its fragment stage writes
+ * `outMotionVectors` at `location = 3`. Named here so the binding site does not carry a bare 3.
+ */
+const val GBUFFER_MOTION_ATTACHMENT = 3
 
 /**
  * Plan [passes] against the current post-stack output and append the whole chain to it.
@@ -95,13 +106,65 @@ fun StandardRenderer.Bundle.addPassChain(
             "pass '${ref.name}' has not been built yet"
         }.target
         is FabricatePassRef.PreviousFrame -> persistentTargets.getValue(ref.index)
+        // The planner refuses an external reference as a pass's source, so this is unreachable
+        // rather than merely unused: an external texture binds a view, never a target.
+        is FabricatePassRef.External -> throw IllegalStateException(
+            "'${ref.reference}' binds as a view, not as a target — the planner should have refused it " +
+                    "as a source before the build got here"
+        )
     }
 
-    /** Previous-frame refs bind a *view*, not a target — the half of the pair not being written. */
+    /**
+     * Refs that bind a *view* rather than a target: a previous-frame ref binds the half of the
+     * ping-pong pair that is not being written, and an external ref binds a texture the renderer
+     * owns outright.
+     *
+     * The g-buffer's motion vectors are colour attachment **3**, and its depth prefers the sampled
+     * view, which is what the shadow-map and depth-blit paths in `standardRenderer` already do.
+     */
     fun viewFor(ref: FabricatePassRef): HasImageView? = when (ref) {
         is FabricatePassRef.PreviousFrame -> persistentTargets.getValue(ref.index).otherImageView
+        is FabricatePassRef.External -> when (ref.reference) {
+            FabricatePassChain.GBUFFER_MOTION -> {
+                require(gBuffer.width == chainInput.width && gBuffer.height == chainInput.height) {
+                    "a pass asked for '${FabricatePassChain.GBUFFER_MOTION}', whose vectors are in the " +
+                            "g-buffer's UV space at ${gBuffer.width}x${gBuffer.height}, but this chain's " +
+                            "input is ${chainInput.width}x${chainInput.height} — sampling one by the " +
+                            "other's coordinates reprojects to the right fraction of the wrong picture, " +
+                            "which renders and merely looks soft"
+                }
+                requireNotNull(gBuffer.imageViewArray.getOrNull(GBUFFER_MOTION_ATTACHMENT)) {
+                    "the g-buffer has ${gBuffer.imageViewArray.size} colour attachments, and the motion " +
+                            "vectors are attachment $GBUFFER_MOTION_ATTACHMENT"
+                }
+            }
+            FabricatePassChain.GBUFFER_DEPTH -> requireNotNull(
+                gBuffer.depthSampledImageView ?: gBuffer.depthImageView
+            ) {
+                "the g-buffer exposes no sampleable depth view, so '${FabricatePassChain.GBUFFER_DEPTH}' " +
+                        "cannot be bound"
+            }
+            else -> throw IllegalArgumentException("unknown external reference '${ref.reference}'")
+        }
         else -> null
     }
+
+    // One FrameHistory per chain, not per pass. Every pass that declares `frameHistory` binds
+    // against this same object, and `FrameHistory.capture` is idempotent for a frame id it already
+    // stands at — so whichever pass's push constant is written first advances the history and the
+    // rest see the same answer. Per-pass histories would make each pass reproject against the
+    // *previous pass* instead of the previous frame, and the ghost that produces looks like a
+    // slightly soft image rather than like a bug.
+    //
+    // Fresh per build, deliberately. A rebuild carries the persistent *target* (see above) but not
+    // the history, so the frame after a rebuild reports unavailable and the accumulation restarts
+    // once. That is the right answer rather than a limitation: the thing that was rebuilt may be the
+    // shader, the resolution or the camera wiring, and none of those leave last frame comparable.
+    val history = FrameHistory()
+
+    // Scratch, reused every frame. The binding below runs inside the render loop, where allocating a
+    // matrix per pass per frame is a real cost and an avoidable one.
+    val viewProjection = Matrix4f()
 
     plan.passes.forEach { pass ->
         val primary = pass.inputs.first()
@@ -125,16 +188,58 @@ fun StandardRenderer.Bundle.addPassChain(
         )
         effects[pass.index] = effect
         pass.spec.push.forEach { (name, value) -> effect.setPush(name, value) }
+
+        if (pass.frameHistory) {
+            // Bound, not set: `Structure.bind` keeps the supplier and re-invokes it every time the
+            // push-constant buffer is written, which is once per pass per frame. A value written
+            // here at build time would be last frame's camera forever.
+            //
+            // `capture` is called from inside the binding rather than from a frame callback on
+            // purpose. There is no "start of frame" hook that is guaranteed to run before the first
+            // pass writes its constants, and a capture that lands *after* a pass has already read
+            // the history is a one-frame-stale reprojection that looks like a slightly wrong motion
+            // vector. Calling it from the binding makes the first reader the one that advances it,
+            // and idempotence makes every later reader agree.
+            effect.setPushBinding("reprojection") {
+                history.capture(
+                    frameId = renderer.frameCounter,
+                    viewProjection = currentViewProjection(viewProjection),
+                    width = chainInput.width,
+                    height = chainInput.height,
+                    epoch = frameHistoryEpoch
+                )
+                history.reprojection
+            }
+            effect.setPushBinding("historyParams") {
+                history.capture(
+                    frameId = renderer.frameCounter,
+                    viewProjection = currentViewProjection(viewProjection),
+                    width = chainInput.width,
+                    height = chainInput.height,
+                    epoch = frameHistoryEpoch
+                )
+                history.params()
+            }
+        }
     }
 
-    return FabricateBuiltChain(plan, effects.map { requireNotNull(it) }, chainInput)
+    return FabricateBuiltChain(plan, effects.map { requireNotNull(it) }, chainInput, history)
 }
 
 /** A chain that has been planned and built: the plan, the effects, and live push-constant access. */
 class FabricateBuiltChain(
     val plan: FabricatePassChainPlan,
     val effects: List<FabricatePostEffect>,
-    val input: RenderToTexture
+    val input: RenderToTexture,
+    /**
+     * The chain's frame history — shared by every pass that declared
+     * [FabricatePassSpec.frameHistory], and inert if none did.
+     *
+     * Exposed because the two things a caller needs from it are not expressible as a push constant:
+     * [FrameHistory.invalidate], for a cut this chain cannot see, and [FrameHistory.available], which
+     * is the only honest way to answer "is my accumulation warm yet" from the CPU.
+     */
+    val history: FrameHistory = FrameHistory()
 ) {
     /** The chain's final image. */
     val output: RenderToTexture get() = effects.last().target
@@ -189,6 +294,9 @@ class FabricateBuiltChain(
     /** Persistent pass names, in run order — the chain's state fields. */
     fun stateNames(): List<String> = plan.persistentPasses.map { it.name }
 
+    /** Names of the passes that receive frame history — the chain's reprojecting passes. */
+    fun historyNames(): List<String> = plan.historyPasses.map { it.name }
+
     /**
      * Retune a pass's push constant in place, with no rebuild and no reallocation.
      *
@@ -222,5 +330,23 @@ fun FabricatePostEffect.setPush(name: String, value: Any): Boolean {
     val push = quad(this.name)?.push ?: return false
     if (!push.offsets.containsKey(name)) return false
     push[name] = value
+    return true
+}
+
+/**
+ * *Bind* one push constant on a post effect's fullscreen quad to a supplier re-read every frame.
+ *
+ * The difference from [setPush] is the difference between driving a parameter and poking it:
+ * `Structure.bind` keeps the lambda and re-invokes it every time the push-constant buffer is
+ * written, which for a post pass is once per frame. Anything derived from the camera has to come
+ * through here — a matrix written once at build time is that frame's camera forever, and the
+ * resulting image is not obviously wrong, it is a correct render of a stale viewpoint.
+ *
+ * @return true if the shader declares [name] and the supplier was bound.
+ */
+fun FabricatePostEffect.setPushBinding(name: String, value: () -> Any): Boolean {
+    val push = quad(this.name)?.push ?: return false
+    if (!push.offsets.containsKey(name)) return false
+    push.bind(name) { value() }
     return true
 }
