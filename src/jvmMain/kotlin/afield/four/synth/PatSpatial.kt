@@ -104,23 +104,12 @@ import kotlin.math.sqrt
  * Neither half of that argument survives here. [DoughEngine] is GraalWasm: every block enters a
  * polyglot context, and the JIT and the collector get a say in how long that takes.
  *
- * [PatSpatialBudgetProbe] measures it: four sources, 128 frames, 44.1 kHz, a 2.902 ms budget, 8000
- * blocks with the first tenth dropped as warmup. Two runs on the same machine, the second while
- * other work was loading it:
- *
- * | | idle | under load |
- * | --- | --- | --- |
- * | median block | 0.120 ms | 0.117 ms |
- * | p99 | 1.170 ms | 2.951 ms |
- * | p99.9 | 2.405 ms | 9.522 ms |
- * | worst block | 12.705 ms | **36.631 ms** |
- * | blocks over budget | 3 of 7200 | 74 of 7200 |
- *
- * Read the two columns together, because the pair is the finding. The **median is flat** -- the
- * arithmetic of four wasm engines and eight Steam Audio effects is 4% of a block either way, so
- * nothing here needs optimising. The **tail moves by a factor of three** with load the audio thread
- * has no say over. A path whose median fits twenty-five times over and which still misses one block
- * in a hundred is not a path to shave down; it is one to decouple.
+ * [PatSpatialBudgetProbe] measures it, idle and under load; the percentiles are in
+ * `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`. The **median is flat** -- the arithmetic of four wasm
+ * engines and eight Steam Audio effects is 4% of a block either way, so nothing here needs
+ * optimising. The **tail moves by a factor of three** with load the audio thread has no say over. A
+ * path whose median fits twenty-five times over and which still misses one block in a hundred is
+ * not a path to shave down; it is one to decouple.
  *
  * So [PatSpatialRoom] renders on its own thread into [PatSpatialRing], and the audio thread's entire
  * job is a bounded copy out of that ring. A ring holding more milliseconds than the worst stall
@@ -131,14 +120,13 @@ import kotlin.math.sqrt
  * [PatSpatialRoom.prescanCycles] exists for, and what [PatSpatialRoom.lateSourceBoots] counts when
  * a `spat` tag turns up too late to have been prescanned.
  *
- * # What actually limits this, measured
+ * # What limits the render thread
  *
- * Not the arithmetic. On a ten-core machine at load average 33 -- twenty-odd agent sessions and a
- * Gradle daemon at 180% CPU -- [PatSpatialEngineSmoke] recorded the render thread producing 1274 of
- * the 1500 blocks a four-second window needed, while being **busy only 1399 ms of those 4000**. A
- * thread that is idle two thirds of the time and still misses its deadline is not a thread that
- * needs faster code; it is a thread that is not being scheduled. Per-block Dough cost came out 4.5x
- * its idle figure in the same run.
+ * Not the arithmetic. Under heavy load [PatSpatialEngineSmoke] has recorded the render thread
+ * missing most of a window's blocks while **busy only a third of the elapsed time**; that run is in
+ * `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`. A thread that is idle two thirds of the time and still
+ * misses its deadline is not a thread that needs faster code; it is a thread that is not being
+ * scheduled.
  *
  * Two things follow, and both are in the code rather than in advice:
  *
@@ -154,7 +142,7 @@ import kotlin.math.sqrt
  * # Where this is written up for a reader
  *
  * `public/docs/pat_spatial.md` — the page that decides *whether* to use this, rather than how it
- * works. It carries the same tables and the same measurements, plus the two things this file cannot
+ * works. It carries the findings without the percentiles, plus the two things this file cannot
  * hold: [PatSpatialSoundDocs]' published clips of the mono source, and the argument for why the
  * spatialised output has no clip and cannot have one. It is also declared in [SoundPathMap] as the
  * `pat-spatial` path, which is what keeps that page and this file from drifting apart.

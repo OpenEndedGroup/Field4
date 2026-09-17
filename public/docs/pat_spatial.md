@@ -330,7 +330,7 @@ walks changes what it hears: lean toward a source and it is nearer, step past on
 ears. With the listener at the origin and level the two readings coincide exactly, which is what
 keeps every pattern on this page sounding as it did.
 
-Two things are worth knowing before wiring a real headset to it:
+Two things to get right before wiring a real headset to it:
 
 * **Pump from the frame, not from a timer**, for `OpenXRHmdTarget`. Its pose is written by
   `xrLocateViews` on the renderer's queue thread as loose floats, so a reader elsewhere can pick up a

@@ -511,8 +511,8 @@ The other half of [spatial artificial life](alife_examples.md): four boxes that
 **search** those rule spaces rather than measuring a rule someone chose. The fitness functions are
 `alife.kt`'s own 816 lines of morphology statistics, read as objectives instead of as reports. Box 1
 asks for a Lenia soliton (alive, in one piece, travelling) and scores it straight off `leniaRun`'s
-own DEATH/BOUNDED/SATURATION classification and wrapped centroid drift, so the phase is measured
-rather than asserted. Box 2 runs the *same engine* over a genome with nothing in common with the
+own DEATH/BOUNDED/SATURATION classification and wrapped centroid drift, so the phase comes off the
+run and not off the prompt. Box 2 runs the *same engine* over a genome with nothing in common with the
 first: 49 bits of birth and survival counts at radius 2, recombined by real uniform crossover,
 selected by lexicase over two soups because a rule that holds together on one initial condition and
 collapses on the other is exactly what a tournament's average hides. The radius is the lesson: at
@@ -1046,7 +1046,7 @@ solid — the two agree to about one marching cell — and then puts a recorded 
 eight runs each way, in three regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
 answer in eight on every row, every time; `parallel = true` never does, and at one floor it returns
 the wrong component count on all eight runs rather than a noisy one. That figure is recaptured on
-every docs build and its last column reads differently each time, which is the point. Every picture is `TriMesh.renderPng`
+every docs build and its last column reads differently each time, which is the claim itself. Every picture is `TriMesh.renderPng`
 — a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
 
 ![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
@@ -1111,7 +1111,7 @@ three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one some
 
 The same backend, over headings. `->face-travel` builds a `HeadingTrack`,
 which is `atan2` of a central finite difference, and covers 116 of the gallery corpus's 2754 tracks.
-The first box makes the lowering checkable rather than asserted: one figure-of-eight trajectory
+The first box makes the lowering checkable: one figure-of-eight trajectory
 drawn three times, with the sampler's own rotation on top, the lowered `Fn`'s beneath it, and
 `atan(dy/dx)` with the quadrant thrown away at the bottom. Bands one and two are the same picture (0
 differing pixels, measured) and in band three half the darts point backwards. Each dart wears a
@@ -1582,7 +1582,7 @@ and hands a fresh directory to a `suspend` callback that renders a still and a s
 beside the blended key as ordinary key JSON and a manifest of what went in at what weight. Twelve
 renders here, at about 8,300 an hour on an M-series laptop, so the box finishes while you watch; the
 sweep it is a scale model of runs until the disk floor, the clock or the morning stops it. Two of its
-ten lanes are awkward on purpose, because they are the two a blend cannot simply average: `palette`
+ten lanes need handling of their own, because they are the two a blend cannot simply average: `palette`
 is a name with no midpoint, so it is taken whole from one parent and the manifest records which, and
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still
