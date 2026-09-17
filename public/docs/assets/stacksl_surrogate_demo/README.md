@@ -33,7 +33,14 @@ Every one of those operations is piecewise constant with jumps at known places, 
 distributional derivative is a **delta train**. Mollify it: the partial becomes
 `jumpHeight × K_t(distance to the nearest jump)` with `K_t(u) = sech²(u / 2t) / 4t`. It carries
 `tanh(1 / 4t)` of the jump it stands for over a unit period and converges to the delta as `t → 0`,
-which is what makes an annealing schedule mean something rather than being decoration.
+so a temperature is a well-defined thing to choose rather than a knob with no limit.
+
+Whether *cooling* it during a fit helps is a separate question, and the measured answer is **no**: a
+fixed `t = 0.25` recovers marginally better than a `0.25 → 0.01` schedule on every continuous case,
+and cooling to `0.016` loses a nested predicate outright. Pick one hot temperature and leave it
+there. The second box anneals anyway, because that is the shape a reader will reach for first and it
+costs nothing here — swap `AdAnnealing.stepOnly(iterations)` for
+`AdAnnealing(0.25, 0.25, iterations, setOf(AdSurrogateFamily.STEP))` and watch it not get worse.
 
 It is **straight-through**: only the local partial changes, so every value pushed is still the value
 the `Float` path computes and the differentiable pass's primal stays bit-identical. The loss a

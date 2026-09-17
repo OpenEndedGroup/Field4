@@ -67,7 +67,9 @@ the logistic kernel, and each site's surrogate partial is `jumpHeight × K_t(dis
 jump)`. It integrates to 1 over the line and to `tanh(1 / 4t)` over one unit period, so a staircase
 surrogate at `t = 0.25` carries 76% of the jump it stands for and at `t = 0.05` carries 99.3%. As
 `t → 0` it converges to the delta and the surrogate converges to the exact (zero, almost everywhere)
-derivative — which is what makes annealing mean something rather than being decoration.
+derivative — so an annealing schedule is a well-defined thing to ask for rather than a knob with no
+limit. Whether cooling *helps* is a separate question, and [M5](#m5--the-schedule-sweep-a-negative-result)
+answers it: no.
 
 Computed through `exp(−|z|)` rather than `cosh`: `cosh(z)²` overflows a `Double` near `|z| = 355`,
 which `u / t` reaches easily at a small temperature, where the honest answer is an underflow to zero.
@@ -124,6 +126,12 @@ iterations in the top one. It is stepped by the **evaluation** counter, not the 
 `minimizeWithGradient` owns the loop and does not hand a closure its iteration number. Under `ADAM`
 and `SGD` those coincide; `LBFGS` line-searches and will cool the schedule *faster* than the
 iteration count suggests.
+
+**And the schedule turns out not to be what buys the recovery** — see
+[M5](#m5--the-schedule-sweep-a-negative-result). A *fixed* hot temperature recovers marginally
+better than the geometric schedule. The class stays, because a fixed temperature is expressible as
+equal ends and because converging to the exact gradient is a property worth having, but this section
+would be overselling it without that sentence.
 
 ## Measurements
 
@@ -262,16 +270,50 @@ with a central difference, this measurement is about something else. And the deg
 at 1e5 with the note that a soft floor becoming *harmless* on a noise lattice would mean this page's
 central claim is wrong and belongs rewritten, not quietly relaxed.
 
+### M5 — the schedule sweep, a negative result
+
+`AdAnnealing` was built on the assumption that *cooling* is what makes a surrogate work: hot early
+to find the jump, cold late to converge on the exact derivative. The second half of that is wrong.
+
+Population: the same **6 continuous walled wires**, 32×32, 60 Adam steps at `lr = 0.05`, four
+schedules. A fixed temperature is expressed as an `AdAnnealing` with equal ends, so all four arms run
+through the same code path.
+
+| schedule | worst relative error | mean | fits reaching loss exactly 0 |
+| --- | --- | --- | --- |
+| fixed hot, `t = 0.25` | **0.0204** | **0.0110** | 6 of 6 |
+| fixed warm, `t = 0.10` | 0.0264 | 0.0110 | 6 of 6 |
+| fixed cold, `t = 0.016` | **0.3548** | 0.0683 | 5 of 6 |
+| geometric, `0.25 → 0.01` | 0.0215 | 0.0146 | 6 of 6 |
+
+**A fixed hot temperature is marginally better than the schedule**, on both the worst case and the
+mean. So the honest statement is: *the temperature has to be hot enough, and the schedule's shape is
+second order.* Annealing is not harmful and the class stays — a fixed temperature is one of its
+cases, and converging to the exact gradient is worth having once a fit is nearly done — but it is
+not what buys the recovery, and this page would be overselling it to imply otherwise. Asserted
+**two-sided**: if annealing ever becomes clearly better than fixed-hot, the test says this paragraph
+needs rewriting rather than relaxing.
+
+**And the cold arm's failure is M3's collapse, in a fit.** On
+`red blue uv x 0.40 threshold select` the cold arm ends **0.3548** from the truth against a seed
+error of **0.3548** — it does not move *at all*, because a nested `step`'s kernel is `K_t(0.5)` and
+that is about `1e-12` at `t = 0.016`. Every other continuous case recovers even when cold, which is
+what makes this a statement about *nesting* rather than about the surrogate. Asserted as an exact
+"did not move", which is the sharpest form the claim has.
+
 ## How to use it
 
 | situation | setting |
 | --- | --- |
-| a `threshold`, `step`, `select` or `if` edge | `AdAnnealing.stepOnly(iterations)` — safe everywhere measured |
-| a `posterize` offset, a `bit-crush` offset, a bare `floor` quantiser | `AdAnnealing(0.25, 0.01, iterations, setOf(STAIRCASE))` |
+| a `threshold`, `step`, `select` or `if` edge | `AdSurrogate.stepOnly(0.25)` held **fixed**, or `AdAnnealing.stepOnly(iterations)` — measured equivalent, fixed marginally ahead |
+| a `posterize` offset, a `bit-crush` offset, a bare `floor` quantiser | the `STAIRCASE` family at `t = 0.25`: `AdAnnealing(0.25, 0.25, iterations, setOf(STAIRCASE))` |
 | an integer-valued count or bit depth | the same, and expect ~20% relative, not 2% |
-| a nested predicate (`select` over a `threshold`) | anneal to **0.1**, not 0.01 |
+| a nested predicate (`select` over a `threshold`) | keep `t` **at or above 0.1**. At 0.016 the wire does not move at all |
 | anything containing `noise`, `fbm`, `noise3`, `fbm3` … | **never** `STAIRCASE`. Use `stepOnly`, or exact |
 | a program that ends in `saturate` and is mostly pinned | nothing will help; the active clamp is the wall |
+
+The short version: **pick one hot temperature and leave it there.** Cooling below about 0.1 is the
+only setting measured to lose a wire, and no setting measured beats `t = 0.25`.
 
 ## Traps hit on this branch
 

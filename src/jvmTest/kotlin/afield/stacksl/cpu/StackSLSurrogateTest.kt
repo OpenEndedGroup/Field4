@@ -546,6 +546,140 @@ class StackSLSurrogateTest {
         )
     }
 
+    // -- M5: does the schedule earn its place? -----------------------------------------------------
+
+    /**
+     * The schedule sweep, whose result is a **negative** one and is kept for that reason.
+     *
+     * [AdAnnealing] was built on the assumption that cooling a surrogate is what makes it work: hot
+     * early to find the jump, cold late to converge on the exact derivative. Measured over the
+     * continuous corpus, that assumption is **wrong in its second half**. A *fixed hot* temperature
+     * recovers marginally better than the geometric schedule and has a better mean, and a *fixed
+     * cold* one fails outright on the nested-predicate case — which is the M3 collapse showing up in
+     * a fit rather than only in a gradient.
+     *
+     * So what the measurement actually says is: **the temperature has to be hot enough, and the
+     * shape of the schedule is second order.** Annealing is not harmful — it converges to the exact
+     * gradient, which is a property worth having when the fit is nearly done — but it is not what
+     * buys the recovery, and the documentation says so rather than implying otherwise.
+     */
+    @Test
+    fun `a hot enough temperature is what recovers, and the schedule shape is second order`() {
+        val continuous = WALLED.filter { it.kind == Kind.CONTINUOUS }
+        val worst = LinkedHashMap<String, Double>()
+        val zeroLosses = LinkedHashMap<String, Int>()
+        val perCase = LinkedHashMap<String, MutableMap<String, Double>>()
+        val seedError = HashMap<String, Double>()
+        continuous.forEach { case ->
+            val wired = StackSLWires.lift(case.program)
+            val wire = wired.literalWires.first { it.token == case.token }
+            seedError[case.label] = abs(wired.initial[wire.index] - case.star) / abs(case.star)
+        }
+
+        SCHEDULES.forEach { (label, ends) ->
+            var w = 0.0
+            var sum = 0.0
+            var zeros = 0
+            val here = LinkedHashMap<String, Double>()
+            continuous.forEach { case ->
+                val wired = StackSLWires.lift(case.program)
+                val wire = wired.literalWires.first { it.token == case.token }
+                val scratch = StackSLImageLoss(wired, StackSLCpu.stillTemplate(), FIT_DIM, rampTarget(FIT_DIM))
+                val target = scratch.render(wired.initial.copyOf().also { it[wire.index] = case.star })
+                val run = fit(case, target, AdAnnealing(ends.first, ends.second, ITERATIONS, case.families))
+                val e = abs(run.fittedWires[wire.index] - case.star) / abs(case.star)
+                if (run.fittedLoss == 0.0) zeros++
+                here[case.label] = e
+                w = maxOf(w, e)
+                sum += e
+            }
+            worst[label] = w
+            zeroLosses[label] = zeros
+            perCase[label] = here
+            println(
+                "M5 %-24s worst relative error %.4f   mean %.4f   %d of %d fits reached loss exactly 0"
+                    .format(label, w, sum / continuous.size, zeros, continuous.size)
+            )
+        }
+        val nested = continuous.first { it.program == NESTED_STEP_PROGRAM }.label
+        println(
+            "M5 schedule sweep: ${continuous.size} continuous walled wires x ${SCHEDULES.size} " +
+                "schedules, ${FIT_DIM}x$FIT_DIM, $ITERATIONS Adam steps at lr=$LEARNING_RATE. The " +
+                "surrogate-off arm cannot move at all, so its error is the seed's. The result is " +
+                "NEGATIVE for annealing: a fixed hot temperature " +
+                "(${"%.4f".format(worst.getValue(HOT))}) is marginally BETTER than the geometric " +
+                "schedule (${"%.4f".format(worst.getValue(GEOMETRIC))}), and a fixed cold one " +
+                "(${"%.4f".format(worst.getValue(COLD))}) fails outright. What matters is that the " +
+                "temperature is hot enough; the schedule's shape is second order."
+        )
+        println(
+            "M5 and the reason cold fails is M3's collapse, in a fit: on $nested the cold arm ended " +
+                "${"%.4f".format(perCase.getValue(COLD).getValue(nested))} from the truth against a " +
+                "seed error of ${"%.4f".format(seedError.getValue(nested))} — it did not move at all, " +
+                "because a nested `step`'s kernel is K_t(0.5) and that is ~1e-12 at t=0.016. Every " +
+                "other continuous case recovers even when cold."
+        )
+
+        assertEquals(SCHEDULES.size, worst.size, "a schedule label is duplicated, so one overwrote another")
+
+        // The three arms that work, held to M2's floor.
+        listOf(HOT, WARM, GEOMETRIC).forEach { label ->
+            assertTrue(
+                worst.getValue(label) <= CONTINUOUS_TOLERANCE,
+                "'$label' worst error ${"%.4f".format(worst.getValue(label))} is above the recovery " +
+                    "floor $CONTINUOUS_TOLERANCE that M2 holds a continuous parameter to"
+            )
+            assertEquals(
+                continuous.size, zeroLosses.getValue(label),
+                "'$label' drove ${zeroLosses.getValue(label)} of ${continuous.size} continuous fits to " +
+                    "a loss of exactly zero, not all of them"
+            )
+        }
+
+        // The finding, asserted two-sided in both directions it can move.
+        //
+        // One: annealing does NOT beat a fixed hot temperature, so nothing here may claim it does.
+        // Floored at a ratio, and if the schedule ever does become clearly better than hot then
+        // dev_docs/STACKSL_SURROGATE.md's recommendation is out of date and should be rewritten
+        // rather than left saying the opposite of the measurement.
+        assertTrue(
+            worst.getValue(GEOMETRIC) >= worst.getValue(HOT) / MAX_ANNEAL_ADVANTAGE,
+            "the geometric schedule's worst error ${"%.4f".format(worst.getValue(GEOMETRIC))} is now " +
+                "more than ${MAX_ANNEAL_ADVANTAGE}x better than a fixed hot temperature's " +
+                "${"%.4f".format(worst.getValue(HOT))} — annealing has started to earn its place, and " +
+                "the negative result recorded in dev_docs/STACKSL_SURROGATE.md needs rewriting"
+        )
+        assertTrue(
+            worst.getValue(GEOMETRIC) <= worst.getValue(HOT) * MAX_ANNEAL_PENALTY,
+            "the geometric schedule is ${"%.2f".format(worst.getValue(GEOMETRIC) / worst.getValue(HOT))}x " +
+                "WORSE than a fixed hot temperature, past the recorded ${MAX_ANNEAL_PENALTY}x — " +
+                "cooling has stopped being roughly free and the default should change"
+        )
+
+        // Two: a fixed COLD temperature really does fail, and it fails on exactly the case M3 says
+        // it must. Asserted as "did not move" rather than as a loose bound, which is the sharpest
+        // form the claim has.
+        assertEquals(
+            seedError.getValue(nested), perCase.getValue(COLD).getValue(nested), 1e-9,
+            "the cold arm moved the nested-predicate wire, which contradicts M3: a nested `step`'s " +
+                "surrogate kernel is K_t(0.5) ~ 1e-12 at t=0.016, so there is nothing to descend"
+        )
+        assertTrue(
+            worst.getValue(COLD) >= MIN_COLD_FAILURE,
+            "the cold arm's worst error ${"%.4f".format(worst.getValue(COLD))} is under the recorded " +
+                "$MIN_COLD_FAILURE — if annealing to 0.016 is now safe then the temperature-floor rule " +
+                "in dev_docs/STACKSL_SURROGATE.md is obsolete"
+        )
+        // Non-degeneracy for the cold arm: it must still recover everything *except* the nested one,
+        // or "cold fails" would be a statement about the surrogate rather than about nesting.
+        assertEquals(
+            continuous.size - 1, zeroLosses.getValue(COLD),
+            "the cold arm reached a loss of exactly zero on ${zeroLosses.getValue(COLD)} of " +
+                "${continuous.size} cases, expected all but the nested one — cold failing *everywhere* " +
+                "is a different finding from cold failing on a nested predicate"
+        )
+    }
+
     // -- M4: what the staircase family costs -------------------------------------------------------
 
     @Test
@@ -690,6 +824,25 @@ class StackSLSurrogateTest {
 
         /** The sweep: a quarter of a unit cell down to under two percent of one, geometric. */
         val TEMPERATURES = listOf(0.25, 0.1, 0.04, 0.016)
+
+        const val HOT = "fixed hot t=0.25"
+        const val WARM = "fixed warm t=0.10"
+        const val COLD = "fixed cold t=0.016"
+        const val GEOMETRIC = "geometric 0.25 -> 0.01"
+
+        /**
+         * M5's arms: three fixed temperatures spanning the schedule, and the schedule itself.
+         *
+         * A fixed temperature is expressible as an [AdAnnealing] whose ends are equal, so all four
+         * arms run through exactly the same code path and the comparison is between schedules
+         * rather than between a schedule and a special case.
+         */
+        val SCHEDULES: List<Pair<String, Pair<Double, Double>>> = listOf(
+            HOT to (0.25 to 0.25),
+            WARM to (0.10 to 0.10),
+            COLD to (0.016 to 0.016),
+            GEOMETRIC to (SURROGATE_START to SURROGATE_END)
+        )
         val STAIRCASE_TEMPERATURES = listOf(0.25, 0.1, 0.04, 0.016)
 
         /** Widths and resolutions the `true loss really moves` question is asked at. */
@@ -806,5 +959,20 @@ class StackSLSurrogateTest {
 
         /** Measured: with STAIRCASE on, 2.49e+06 to 1.33e+08 relative — and the sign flips. */
         const val MIN_FBM_DEGRADATION = 1e5
+
+        /**
+         * M5, measured: worst continuous relative error by schedule — hot **0.0204**, warm 0.0264,
+         * geometric **0.0215**, cold **0.3548**. Means 0.0110, 0.0110, 0.0146, 0.0683. So the
+         * annealed schedule is 1.05x *worse* than fixed hot rather than better, and cold fails.
+         *
+         * [MAX_ANNEAL_ADVANTAGE] is the two-sided half: if annealing ever becomes clearly better
+         * than a fixed hot temperature, the negative result on record is wrong and should be
+         * rewritten rather than left standing.
+         */
+        const val MAX_ANNEAL_ADVANTAGE = 1.3
+        const val MAX_ANNEAL_PENALTY = 2.0
+
+        /** Measured: a fixed t=0.016 leaves the nested-predicate wire exactly where it started. */
+        const val MIN_COLD_FAILURE = 0.2
     }
 }

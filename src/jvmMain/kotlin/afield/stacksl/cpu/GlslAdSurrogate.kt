@@ -27,8 +27,15 @@ import kotlin.math.tanh
  * The bump is the logistic kernel, `K_t(u) = sech²(u / 2t) / 4t`. It integrates to 1 over the whole
  * line and to `tanh(1 / 4t)` over one unit period, so at `t = 0.25` a staircase surrogate carries
  * 76% of the jump it stands for and at `t = 0.05` it carries 99.3%. As `t → 0` the kernel converges
- * to the delta and the surrogate converges to the true (zero, almost everywhere) derivative — which
- * is what makes an annealing schedule meaningful rather than decorative.
+ * to the delta and the surrogate converges to the true (zero, almost everywhere) derivative — so an
+ * annealing schedule is a well-defined thing to ask for rather than a knob with no limit.
+ *
+ * Whether it *helps* is a separate question, and the measured answer is **no**: a fixed `t = 0.25`
+ * recovers marginally better than a `0.25 → 0.01` schedule on every continuous case in
+ * `dev_docs/STACKSL_SURROGATE.md`'s corpus, and cooling to `0.016` loses a nested predicate
+ * outright. [AdAnnealing] stays because a fixed temperature is one of its cases and because
+ * convergence to the exact gradient is worth having near the end of a fit — not because cooling was
+ * shown to buy anything.
  *
  * #### Straight-through: the primal does not move, by construction
  *
