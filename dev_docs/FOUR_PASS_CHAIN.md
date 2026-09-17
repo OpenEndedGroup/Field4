@@ -78,7 +78,7 @@ can print itself. Two reasons it is a pure function and not a side effect of all
 2. **Arithmetic that is wrong about a resolution renders a picture that looks *fine*.** A slightly
    soft composite, a pyramid one texel off at the bottom, an aperture that quietly ran at full
    resolution — none of those read as bugs in an image. They read as failures in an assertion, which
-   is why `FabricatePassChainTest` is 20 CPU-only tests and the GPU builder is left with nothing to
+   is why `FabricatePassChainTest` is 35 CPU-only tests and the GPU builder is left with nothing to
    be clever about.
 
 ### `standardRenderer.kt` — `addShaderEffect` grew the arguments
@@ -222,23 +222,41 @@ something, and a `vorticity = 0` chain has no `curl` pass to bind it to. Gating 
 at runtime would fail in descriptor setup rather than producing an unforced fluid.
 
 **Painting.** The `force` and `dye` passes deliberately share push-constant names — `splatCenter`
-(UV), `splatVelocity`, `splatColor`, `splatRadius`, `splatMass` — so one loop drives both:
+(UV), `splatVelocity`, `splatColor`, `splatRadius`, `splatMass` — and `chain[name] = …` writes every
+pass in the chain that declares the name, so one assignment is one gesture:
 
 ```kotlin
+var paintAt = vec(0.5, 0.5)
+var paintPush = vec(0, 0)
+var paintMass = 0f
+
+fluid["splatCenter"] = { paintAt }        // a lambda BINDS: re-read every frame
+fluid["splatVelocity"] = { paintPush }
+fluid["splatMass"] = { paintMass }
+fluid["splatColor"] = vec(0.35, 0.8, 1.0) // a value is written once, now
+
 val mouse = MouseEvents(renderer)
+mouse.onDown("left", "paint") { _: MouseEvent -> DownResult.Keep }
 mouse.onDrag("paint") { ev ->
-    listOf("fluid-force", "fluid-dye").forEach { pass ->
-        chain.setPush(pass, "splatCenter", Vector2f(ev.pos.x / w, ev.pos.y / h))
-        chain.setPush(pass, "splatVelocity", Vector2f(ev.delta.x * 40f, ev.delta.y * 40f))
-        chain.setPush(pass, "splatMass", 0.03f)
-    }
+    paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
+    paintPush = vec(ev.delta.x * 30, ev.delta.y * 30)
+    paintMass = 0.05f
     true
 }
+mouse.onUp("left", "paint") { _: MouseEvent -> paintPush = vec(0, 0); paintMass = 0f; true }
 ```
 
-…and set `splatMass`/`splatVelocity` back to zero on the frames you are not painting. Nothing in the
-library reads a mouse; the splat is push constants, which is the seam that keeps the chain a
-declaration.
+**A lambda binds rather than sets**, which is the difference between driving a parameter and poking
+it: `Structure.bind` keeps the supplier and re-invokes it every time the push buffer is written, so
+the four assignments above are the whole animation and the drag handler only moves a `var`. There is
+nothing to call per frame and no loop to own. `setPush(pass, name, value)` is still there for the
+one-pass case.
+
+Clearing `splatMass` on mouse-up is not tidiness — a bound supplier keeps returning whatever it last
+returned, so the final splat would pump forever at wherever the drag ended.
+
+Nothing in the library reads a mouse; the splat is push constants, which is the seam that keeps the
+chain a declaration.
 
 **The chain ends on the simulation grid**, not the window's. `dye` is the last pass, so
 `postStack.output()` is a 256² field. To put it back at full resolution, append the `composite()`
@@ -289,13 +307,59 @@ spacing is also the check — a field whose bands crowd or stretch is not a dist
 `Bundle.addPassChain(passes, renderer, printReport)` plans against the current `postStack.output()`,
 then walks the plan calling `addShaderEffect` with sizes already resolved to `Absolute`. It computes
 nothing: there must not be a second, subtly different copy of the arithmetic living where only a GPU
-can reach it. `FabricateBuiltChain.setPush(pass, name, value)` retunes a live chain with no rebuild
-and no reallocation, which is the live-coding half of declaring a chain — an aperture radius is a
-number a person turns while watching.
+can reach it. `chain[name] = value` (or `= { supplier }`) retunes a live chain with no rebuild and no
+reallocation, which is the live-coding half of declaring a chain — an aperture radius is a number a
+person turns while watching.
 
 The passes land in the same `FabricatePostStack` as everything else, so `FabricateFrameGraph`
 schedules them, `postStack.output()` is the chain's output, `insertBefore`/`remove` still work on
 them by name, and a chain composes with `addBloom` and `setToneMapping` rather than replacing them.
+
+#### Declaring a chain twice: idempotent, and what "idempotent" has to mean here
+
+`addShaderEffect` used to open with `require(postStack[name] == null) { "already exists" }`, so
+re-running the box that declared a chain did not merely fail to remake it — it **threw**. Wrapping
+the declaration in a `once` hid that, at the cost of the thing a live-coding environment is for: you
+could edit `resolution = 256` to `128`, hit run, and nothing would happen.
+
+So a pass of an existing name is now *replaced*, and the interesting question is what becomes of its
+target:
+
+| the planned shape | what happens | why |
+| --- | --- | --- |
+| **unchanged** | the target is reused and the module is `reload`ed in place | the common edit — a shader, a number — and the only case where carrying the target over is safe |
+| **changed** | a new target is allocated | a 128² field cannot be written into a 256² image |
+
+That is not only an optimization, and both halves matter:
+
+- `RenderToTexture` has **no disposal path**, so allocating a fresh target every run leaks one per
+  run. Reuse is what stops ordinary live-coding from leaking.
+- For a `persistent` pass **the target is the simulation state**. Reallocating it silently empties
+  the fluid. Reuse is why editing a shader keeps your fluid running, and allocation is why editing
+  the resolution correctly gives you a new, empty one.
+
+`reload` rather than a fresh `Module` is deliberate: it swaps a running module's parameters in place
+and keeps the same `ModulePointer`, so the target's module map entry and the frame graph's reference
+to it both stay valid. Constructing a new `Module` against a reused target would leave the old
+pipeline registered on it and render the pass twice.
+
+**The sharp edge is that reuse keys on name and shape, not on the identity of the declaration.** Two
+passes that happen to share both will carry a target across even if they were meant to be unrelated.
+Names are already the chain's namespace, so this is consistent rather than surprising, but it is the
+thing to remember when a chain picks up state it should not have.
+
+Measured on a GPU, 2026-09-16, by probing `System.identityHashCode` of the fluid's ping-pong targets
+from a separate box either side of a re-run:
+
+```
+declare, re-run unchanged:      velocity=885876140 -> 885876140   dim=256, stack 44 -> 44
+declare, re-run at 128:         velocity=489523270 -> 1934424193  dim=256 -> 128, stack 44 -> 44
+```
+
+The stack size staying at 44 across both is the evidence that passes are being replaced rather than
+accumulated. (The probe has to live in *its own box*: `run <uid> --file` overwrites the target box's
+stored code, so probing from inside the fluid box replaces the declaration being tested and the
+first version of this measurement proved nothing.)
 
 ## What it costs — the plan report
 
@@ -330,15 +394,15 @@ argument for writing it that way.)
 
 ## Verification
 
-### GPU-free — `./gradlew jvmTest --tests 'afield.four.fabricated.*'`, 40 tests
+### GPU-free — `./gradlew jvmTest --tests 'afield.four.fabricated.*'`, 42 tests
 
-`FabricatePassChainTest` (33) covers sizes, formats, mip cost, input wiring, backwards-only reads,
+`FabricatePassChainTest` (35) covers sizes, formats, mip cost, input wiring, backwards-only reads,
 lifetimes, slot packing and the cost report. The one non-obvious test is
 `slotSharingNeverAliasesALiveInput`, which checks the packing invariant *directly* over four
 different chains rather than trusting the lifetime it is derived from: no sampler may be bound to a
 pass whose slot was retaken between producing and reading.
 
-Thirteen of those cover persistent passes and the two simulation templates: a previous-frame
+Fifteen of those cover persistent passes and the two simulation templates: a previous-frame
 reference resolving against a pass that has not run yet, a persistent pass reading *itself*, both
 rejections (a previous-frame reference to a non-persistent pass, and a persistent pass whose size or
 format would have to be inherited), a persistent slot proved exclusive and two images wide, the
@@ -492,6 +556,21 @@ client's patience. The managed-server log under `.field-backdoor/logs/` is what 
 `wait-native-renderer` writes a PNG of the window there as a side effect, which is the capture to
 look at; `native-screenshot` takes no `--out`.
 
+#### What the chain boxes deliberately do *not* do
+
+Both simulation boxes are written the way Marc reviewed them into, and two of the omissions are the
+point rather than brevity:
+
+- **No `fromContext()`.** The renderer box's `prop<Renderer>(renderer)` is inherited by every child
+  box through the preamble — the harvested preamble for these boxes carries
+  `var Box.renderer by Inheritance<Renderer>()`, and `window` and `bundle` alongside it — so a child
+  writes `renderer` and `bundle` directly. `val r: Renderer = fromContext()` is pure ceremony.
+- **No `once` around the chain declaration.** That is what idempotence above is *for*: a `once`
+  would mean the resolution you just edited never takes effect. The mouse handlers are outside one
+  too, because `MouseEvents` holds them by name and re-running replaces rather than stacks. The
+  bundle box *is* a `once`, and for a reason rather than out of habit — `StandardRenderer.build` has
+  no replace-in-place path, so re-running it would strand the bundle every chain is appended to.
+
 #### Two import traps these transcripts already pay for
 
 Both cost real time when the demo was first written, and neither is specific to this layer.
@@ -566,10 +645,13 @@ just this one.
   `RenderToTexture` tracks its own `colorLayout` independently and would emit wrong barriers. So the
   gap between `plannedBytes` and `unsharedBytes` is currently a statement about what is *possible*,
   and the demo's report is honest about which is which. The planner is where that work would land.
-- **Rebuilding a chain leaks.** `postStack.remove(name)` drops an effect from the ordered list but
-  disposes neither its `RenderToTexture` nor its module. That is pre-existing behaviour shared with
-  `addBloom` (which calls `remove` on four names and rebuilds), and `setPush` exists partly so the
-  common live-coding case does not hit it. A `FabricateBuiltChain.dispose()` is the obvious follow-up.
+- **A chain rebuilt at a *different shape* still leaks.** `RenderToTexture` has no disposal path and
+  `postStack.remove(name)` drops an effect from the ordered list without freeing either its target
+  or its module, which is pre-existing behaviour shared with `addBloom`. Target reuse (above) means
+  the common live-coding edit no longer leaks at all — that case used to leak a target per run and
+  now leaks none — but changing a resolution allocates a new target and strands the old one. A real
+  `dispose()` on `RenderToTexture` is the fix, and it is the same missing capability that blocks the
+  slot aliasing above.
 - **`addPassChain` plans against `postStack.output()` at call time**, so appending a chain after
   `addBloom` sees the bloomed image. That is the intended composition, but it means chain A's output
   is chain B's nominal input, and a second chain that wants the *original* input has to say

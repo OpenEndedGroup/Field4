@@ -44,8 +44,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 115 transcripts on every build, at three
-depths. 65 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 116 transcripts on every build, at three
+depths. 66 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -511,8 +511,8 @@ The other half of [spatial artificial life](alife_examples.md): four boxes that
 **search** those rule spaces rather than measuring a rule someone chose. The fitness functions are
 `alife.kt`'s own 816 lines of morphology statistics, read as objectives instead of as reports. Box 1
 asks for a Lenia soliton (alive, in one piece, travelling) and scores it straight off `leniaRun`'s
-own DEATH/BOUNDED/SATURATION classification and wrapped centroid drift, so the phase is measured
-rather than asserted. Box 2 runs the *same engine* over a genome with nothing in common with the
+own DEATH/BOUNDED/SATURATION classification and wrapped centroid drift, so the phase comes off the
+run and not off the prompt. Box 2 runs the *same engine* over a genome with nothing in common with the
 first: 49 bits of birth and survival counts at radius 2, recombined by real uniform crossover,
 selected by lexicase over two soups because a rule that holds together on one initial condition and
 collapses on the other is exactly what a tournament's average hides. The radius is the lesson: at
@@ -1025,6 +1025,34 @@ same shape through Field's own `marchingCubes` and names the difference.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/manifold_solids/metadata.edn)
 
+### photo_to_solid_chain
+
+A photograph becomes a printable solid, as four pure-compute boxes — the loadable version of
+[A Photograph, Closed and Mounted](chain_photo_to_solid.md). Four families that do not import one
+another: Depth Anything V2 Small over ONNX predicts monocular depth from one committed still (a
+Vision Pro passthrough frame of a living room, no depth camera and no network — the weights are
+cached under `~/.afield/onnx`), the imaging family normalises and smooths it, `Img.toReliefMesh`
+closes it into a watertight plaque, and Manifold does the Boolean. *Depth* prints the model's own raw
+window, which moves with resolution and is therefore read off the run rather than remembered, and
+shows why the solid comes out concave: the side walls and near floor are close, the far wall is not,
+so the room arrives as a basin. *Plaque* is the hop that did not exist until this page —
+`toHeightfieldMesh` returns a disc, `χ = 1` with one boundary loop, and `toSolid` refuses an open
+sheet — and prints `watertight=true manifold=true chi=2`, `boundary loops=0`, and a volume that
+Manifold and Field's own divergence-theorem sum agree on to the last digit despite sharing no code.
+*Boolean* checks inclusion–exclusion, `vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)`, rather than
+checking that the union got bigger, and shows the frame's genus going 1 → 0 as the plaque plugs its
+window. *Levelset* marches the same depth field as an independent second construction of the same
+solid — the two agree to about one marching cell — and then puts a recorded claim back on the bench:
+eight runs each way, in three regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
+answer in eight on every row, every time; `parallel = true` never does, and at one floor it returns
+the wrong component count on all eight runs rather than a noisy one. That figure is recaptured on
+every docs build and its last column reads differently each time, which is the claim itself. Every picture is `TriMesh.renderPng`
+— a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
+
+![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/photo_to_solid_chain/metadata.edn)
+
 ### solidsl_notation
 
 Two boxes on [`afield.solidsl`](solid_notation.md), the notation in which a
@@ -1083,7 +1111,7 @@ three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one some
 
 The same backend, over headings. `->face-travel` builds a `HeadingTrack`,
 which is `atan2` of a central finite difference, and covers 116 of the gallery corpus's 2754 tracks.
-The first box makes the lowering checkable rather than asserted: one figure-of-eight trajectory
+The first box makes the lowering checkable: one figure-of-eight trajectory
 drawn three times, with the sampler's own rotation on top, the lowered `Fn`'s beneath it, and
 `atan(dy/dx)` with the quadrant thrown away at the bottom. Bands one and two are the same picture (0
 differing pixels, measured) and in band three half the darts point backwards. Each dart wears a
@@ -1554,7 +1582,7 @@ and hands a fresh directory to a `suspend` callback that renders a still and a s
 beside the blended key as ordinary key JSON and a manifest of what went in at what weight. Twelve
 renders here, at about 8,300 an hour on an M-series laptop, so the box finishes while you watch; the
 sweep it is a scale model of runs until the disk floor, the clock or the morning stops it. Two of its
-ten lanes are awkward on purpose, because they are the two a blend cannot simply average: `palette`
+ten lanes need handling of their own, because they are the two a blend cannot simply average: `palette`
 is a name with no midpoint, so it is taken whole from one parent and the manifest records which, and
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still

@@ -1359,7 +1359,7 @@ the box's current one, and stops the job on the way out. That stop runs `NonCanc
 because the usual reason for reaching it is that the box was stopped and the stop still has to
 get to Sonic Pi.
 
-Which job is the awkward part, and `awaitJobId` is where it is settled: it waits for an id
+`awaitJobId` settles which job a launch refers to: it waits for an id
 different from the one that was current when the code was sent, so a re-running box cannot
 mistake the job it just replaced for its own.
 

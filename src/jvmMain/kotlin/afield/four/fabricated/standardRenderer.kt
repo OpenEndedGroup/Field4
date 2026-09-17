@@ -608,7 +608,6 @@ object StandardRenderer {
 			configure: Parameters.(source: RenderToTexture) -> Unit = {}
 		): FabricatePostEffect {
 			require(name.isNotBlank()) { "effect name must not be blank" }
-			require(postStack[name] == null) { "post effect '$name' already exists" }
 			require(mipLevels >= 1) { "post effect '$name' asked for $mipLevels mip levels" }
 			val primary = source ?: postStack.output()
 			val sourceFormat = primary.colorFormats.firstOrNull() ?: primary.parameters.format
@@ -628,7 +627,25 @@ object StandardRenderer {
 				shape = FabricatePassShape(passWidth, passHeight, passFormat, mipLevels),
 				rtt = rtt
 			)
-			val target = existingTarget ?: if (pingPong) {
+			// Re-running the box that declared a chain must *remake* it, not refuse. An effect of this
+			// name already in the stack is replaced — and its target is reused when the shape is
+			// identical, which is both the common live-coding case (you edited a shader or a push,
+			// not a resolution) and the only case where reuse is safe.
+			//
+			// Reuse is not only an optimization. There is no disposal path on `RenderToTexture`, so
+			// allocating a fresh target on every re-run leaks one per run; and for a `persistent`
+			// pass the target *is* the simulation state, so reallocating silently resets the fluid.
+			// The resulting rule is the one worth having: change a shader and the fluid keeps
+			// running, change its resolution and you get a new, empty one.
+			val existing = postStack[name]
+			val reusable = existing?.target?.takeIf { old ->
+				old.width == passWidth &&
+						old.height == passHeight &&
+						(old.colorFormats.firstOrNull() ?: old.parameters.format) == passFormat &&
+						old.parameters.mipLevels == mipLevels &&
+						(old is PingPongRenderToTexture) == pingPong
+			}
+			val target = existingTarget ?: reusable ?: if (pingPong) {
 				PingPongRenderToTexture(renderer, FabricatePassChain.PERSISTENT_IMAGE_COUNT, rttParameters)
 			} else {
 				RenderToTexture(renderer, rttParameters)
@@ -646,7 +663,7 @@ object StandardRenderer {
 			}
 			// A ping-pong half is one image, never a mip chain, so one sampler covers all of them.
 			val viewSampler = if (extraViews.isEmpty() && sourceView == null) null else TextureSampler(renderer, 1, false)
-			val module = Module(parameters(renderer) {
+			val moduleParameters = parameters(renderer) {
 				this.name = "prefab-post-$name"
 				target.apply()
 				blend = false
@@ -670,11 +687,19 @@ object StandardRenderer {
 					}
 				}
 				configure(primary)
-			}).pointer()
-			target += name to module
+			}
+			// `reload` is the live-coding path: it swaps a running module's parameters in place and
+			// keeps the same `ModulePointer`, so the target's module map entry and the frame graph's
+			// reference to it both stay valid. Building a fresh `Module` here instead would leave the
+			// old pipeline registered on a reused target and render the pass twice.
+			val module = if (existing != null && reusable != null) {
+				existing.module.also { it.reload(moduleParameters) }
+			} else {
+				Module(moduleParameters).pointer().also { target += name to it }
+			}
 			module.ensureFullscreenTriangle("${name}Quad")
 			val effect = FabricatePostEffect(name, target, module, FabricatePostEffect.Kind.SHADER)
-			postStack.append(effect)
+			if (existing != null) postStack.replace(name, effect) else postStack.append(effect)
 			return effect
 		}
 

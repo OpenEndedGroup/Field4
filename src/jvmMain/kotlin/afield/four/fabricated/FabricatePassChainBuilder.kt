@@ -60,7 +60,16 @@ fun StandardRenderer.Bundle.addPassChain(
     // makes that reference resolvable at all; the planner already guaranteed the shapes do not
     // depend on anything the walk computes.
     val persistentTargets = plan.persistentPasses.associate { pass ->
-        pass.index to PingPongRenderToTexture(
+        // Reuse the ping-pong pair a previous run of this same declaration left behind, when the
+        // shape still matches. For a persistent pass the target *is* the state, so this is the
+        // difference between re-running the box and keeping your fluid, and re-running it and
+        // silently starting from an empty one while leaking the old pair.
+        val carried = (postStack[pass.name]?.target as? PingPongRenderToTexture)?.takeIf { old ->
+            old.width == pass.shape.width &&
+                    old.height == pass.shape.height &&
+                    (old.colorFormats.firstOrNull() ?: old.parameters.format) == pass.shape.format
+        }
+        pass.index to (carried ?: PingPongRenderToTexture(
             renderer,
             FabricatePassChain.PERSISTENT_IMAGE_COUNT,
             postEffectTargetParameters(pass.name, pass.shape) {
@@ -77,7 +86,7 @@ fun StandardRenderer.Bundle.addPassChain(
                 // reproduce.
                 colorTransferDst = true
             }
-        )
+        ))
     }
 
     fun textureFor(ref: FabricatePassRef): RenderToTexture = when (ref) {
@@ -133,10 +142,39 @@ class FabricateBuiltChain(
     /** Pass names, in run order. */
     fun names(): List<String> = effects.map { it.name }
 
-    operator fun get(name: String): FabricatePostEffect? = effects.firstOrNull { it.name == name }
+    /** The named pass, or null if this chain has no such pass. */
+    fun pass(name: String): FabricatePostEffect? = effects.firstOrNull { it.name == name }
+
+    /**
+     * Set a push constant on **every pass in the chain that declares it**.
+     *
+     * ```kotlin
+     * fluid["splatCenter"] = vec(u, v)          // a value, written now
+     * fluid["splatCenter"] = { vec(u, v) }      // a supplier, re-read every frame
+     * ```
+     *
+     * By name across the whole chain rather than per pass, because that is how the library's specs
+     * are written: `stableFluid`'s `force` and `dye` passes deliberately share `splatCenter`,
+     * `splatVelocity` and `splatMass` so that one assignment is one gesture. A pass whose shader does
+     * not declare the name is skipped, which is the same tolerance [setPush] has and what lets a
+     * `push` map be a superset of any one shader's constants.
+     *
+     * **A lambda binds rather than sets.** `Structure.bind` keeps the supplier and re-invokes it
+     * every time the buffer is written, so `fluid["splatCenter"] = { vec(mouseU, mouseV) }` tracks
+     * two `var`s from then on with nothing to call per frame. That is the difference between driving
+     * a parameter and poking it, and it is why this takes `Any` and branches on `Function0` instead
+     * of overloading: an overload pair of `Any` and `() -> Any` is ambiguous for a bare lambda.
+     */
+    operator fun set(pushName: String, value: Any) {
+        effects.forEach { effect ->
+            val push = effect.quad(effect.name)?.push ?: return@forEach
+            if (!push.offsets.containsKey(pushName)) return@forEach
+            if (value is Function0<*>) push.bind(pushName) { value() as Any } else push[pushName] = value
+        }
+    }
 
     /** The target a named pass renders into, or null if there is no such pass. */
-    fun targetOf(name: String): RenderToTexture? = get(name)?.target
+    fun targetOf(name: String): RenderToTexture? = pass(name)?.target
 
     /**
      * The ping-pong target behind a [FabricatePassSpec.persistent] pass, or null if [name] is not one.
@@ -161,7 +199,7 @@ class FabricateBuiltChain(
      * @return true if the pass exists and declares [pushName].
      */
     fun setPush(passName: String, pushName: String, value: Any): Boolean {
-        val effect = get(passName) ?: return false
+        val effect = pass(passName) ?: return false
         return effect.setPush(pushName, value)
     }
 

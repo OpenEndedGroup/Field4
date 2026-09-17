@@ -724,7 +724,10 @@ class FieldBackdoor:
                 url,
                 ssl=self.ssl_context,
                 ping_interval=10,
-                ping_timeout=30,
+                # A cold document can compile its box imports on the RunLoop longer than
+                # 30 seconds. Keep transport liveness within the caller's startup budget;
+                # individual commands still enforce their own response deadlines.
+                ping_timeout=max(30.0, self.default_timeout),
                 max_size=None,
             )
         except Exception as exc:

@@ -1079,6 +1079,70 @@ A cheap two-octave field for something evaluated per particle per frame:
 input 2 fbm3.2
 ```
 
+## Fitting a program's literals
+
+Every number you type in a StackSL program is a free parameter, and the compiler already knows
+where each one came from. `externalizeConstants` lifts each literal into a *wire* and records its
+token, line and column; `StackSLWires.lift` makes the wired program runnable on the CPU backend; and
+`StackSLFit` descends on an image loss with the **exact** gradient, computed by reverse-mode
+automatic differentiation through the emitted GLSL itself.
+
+```diffstatic {data-lang=stacksl}
+uv 3.0 * fbm
+0.5 0.5 0.5 1 vec4
+0.5 0.5 0.5 1 vec4
+1.0 1.0 1.0 1 vec4
+0.0 0.33 0.67 1 vec4
+palette
+```
+
+Seventeen numbers, seventeen parameters. Fitted against a target that is the same program with
+twelve different palette numbers, eighty Adam steps at 64×64 take about nine seconds and drive the
+mean squared error down by 1129×:
+
+![Differentiable StackSL: target, seed, fitted and residual, with the loss trajectory](assets/stacksl_fit/stacksl_fit_recovery.png)
+
+```diffstatic {data-lang=kotlin}
+val template = StackSLCpu.stillTemplate()
+val target = StackSLCpu.renderProgram(targetProgram, template, 64, 64)
+val result = StackSLFit.fit(seedProgram, target, template, dim = 64, iterations = 80)
+
+println(result.fittedProgram)      // StackSL source, with the fitted numbers in place
+result.report().forEach(::println) // wire #1  '0.5' at 2:1  0.5 -> 0.59025836
+```
+
+The output of a fit is not a vector, it is a **program**: the fitted values are written back at the
+token positions the compiler recorded, so `result.fittedProgram` is something you can paste into a
+`stackSL` box and run on a GPU. Recompiled from scratch through the ordinary non-wired path, it
+renders bit-identically to the fitted parameter vector.
+
+**What that figure is, exactly.** It is a *recovery* experiment on **one program and seventeen
+wires**: the target was made by the same program with twelve of its numbers changed, so a correct
+answer exists and the descent can be scored against it. That is the right first experiment, because
+it separates "the gradient is wrong" from "the objective is wrong" — but it is not a claim about
+arbitrary images. What is verified broadly is the **gradient**, against central differences over
+nine programs and forty-six wires. Fitting a photograph, or any target no StackSL program generated,
+is unattempted here, and the paragraphs below are most of the reason why.
+
+Three things to know before fitting anything.
+
+**A `threshold` is a wall.** It lowers to a hard `step`, which carries exactly zero derivative, so
+nothing upstream of it can be reached. The same is true of `floor`, `ceil`, `round`, `posterize`,
+`hash`, `select` and the comparisons. Of the 325 documentable words, 154 pass a derivative from a
+wire upstream of them; most of the rest do not *lack* one, they discard the value — `uv`, `p`,
+`time`, `pi`, `drop`, `swap` and the twelve named colours replace what was on the stack.
+
+**A noise frequency, on the other hand, fits fine**, which is not obvious. `fbm` hashes a `floor`ed
+lattice *cell index*, and `floor`'s zero derivative means no gradient flows through the hash at
+all — only through `fract`'s interpolation weight, which is smooth.
+
+**`saturate` costs you signal.** A clamped pixel sits on a kink, so it contributes nothing to the
+gradient. A seed whose image is mostly blown out has almost nothing to descend on.
+
+The loss is a per-pixel sum of squares and rewards exactly that, with no term for structure — so
+read the residual panel rather than the loss number. `public/docs/assets/stacksl_fit_demo/` is a
+loadable three-box demo of all of this; open the directory as a Field document.
+
 ## Built-in vocabulary
 
 Stack and input:

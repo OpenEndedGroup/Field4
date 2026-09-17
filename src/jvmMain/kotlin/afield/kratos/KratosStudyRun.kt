@@ -24,7 +24,7 @@ import kotlin.math.abs
  * the full run and the smoke assert that the grid is built exactly once across a whole sweep, so a
  * sweep over a shape costs what a sweep over a coefficient costs.
  *
- * The objective is one whose answer can be checked rather than admired. Stationary conduction is
+ * The objective is one whose right answer is known in advance. Stationary conduction is
  * linear in the source and inverse in the conductivity, so the designs that put a target
  * temperature at a chosen point form a curve with a closed form, and
  * [KratosStudyDemo.verifyValley] holds every column of the sampled grid against it.

@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-31 source file(s), 1442 public symbol(s), 1207 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+31 source file(s), 1444 public symbol(s), 1209 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1272,7 +1272,7 @@ the `…Into` variants let a hot loop reuse one.
 |---|---|
 | `mesh.kt` | this: the type, [`TriMeshBuilder`](graphics.md#mesh-kt-trimeshbuilder) / `triMesh`, transforms, concatenation |
 | `mesh_topology.kt` | [`MeshTopology`](graphics.md#mesh-topology-kt-meshtopology) — adjacency, boundary loops, components, manifoldness, Euler characteristic / genus, `TriMesh.weld`, `TriMesh.fixWinding` |
-| `mesh_generate.kt` | `boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh` |
+| `mesh_generate.kt` | `boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh`, `reliefMesh` |
 | `mesh_sdf.kt` | [`ScalarField3D`](graphics.md#mesh-sdf-kt-scalarfield3d), the SDF primitives / combinators, and `marchingCubes` |
 | `mesh_process.kt` | `TriMesh.loopSubdivide`, `TriMesh.laplacianSmooth`, `TriMesh.taubinSmooth`, `TriMesh.withVertexNormals`, `TriMesh.decimate` |
 | `mesh_measure.kt` | `TriMesh.surfaceArea`, `TriMesh.signedVolume`, curvature, [`MeshBvh`](graphics.md#mesh-measure-kt-meshbvh) (rays, closest point, inside test) |
@@ -1477,9 +1477,9 @@ Constants: `and`, `so`.
 Where a [`TriMesh`](graphics.md#mesh-kt-trimesh) comes from: the primitives (`boxMesh`, `uvSphereMesh`, `icosphereMesh`,
 `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, the five platonics) and the *derived*
 generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`,
-`tubeMesh`, `heightfieldMesh`, `polygonMesh`).
+`tubeMesh`, `heightfieldMesh`, `reliefMesh`, `polygonMesh`).
 
-### Welding, and where the normals come from
+### Welding and normals
 
 **Everything here is welded and watertight where it can be.** A generator returns the minimal
 vertex set, so `MeshTopology.eulerCharacteristic` of a box, a sphere, a cone or a capped cylinder
@@ -1511,7 +1511,7 @@ facing `+y`: a plane is a wall and a heightfield is a landscape.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_generate/)
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Field's 3D output](../three_output.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [A photograph, closed and mounted](../chain_photo_to_solid.md), [Geometry from disk](../geometry_from_disk.md)
 
 ### Top-level functions { #mesh-generate-kt-functions }
 
@@ -1537,6 +1537,8 @@ facing `+y`: a plane is a wall and a heightfield is a landscape.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">tubeMesh</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">sides</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">closed</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">caps</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/stdlib/mesh_generate/#L672) | A round tube swept along a 3D polyline — the mesh you want for a drawn stroke, a trajectory or a graph edge in 3D. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">heightfieldMesh</span><span class="p">(</span><span class="n">nx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">nz</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="p">(</span><span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/stdlib/mesh_generate/#L778) | A landscape: a grid in the `xz` plane whose `y` comes from `height`, with computed normals and uvs. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">toHeightfieldMesh</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/stdlib/mesh_generate/#L820) | A heightfield sampled from an [`Img`](imaging.md#imaging-kt-img) — one grid vertex per pixel by default, with the image's luminance (or its single channel) as `y`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reliefMesh</span><span class="p">(</span><span class="n">nx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">nz</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">baseY</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="p">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="p">(</span><span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/stdlib/mesh_generate/#L880) | A relief plaque: `heightfieldMesh`'s surface, closed — skirt walls dropped to `baseY` and a flat base under them. Watertight, `χ = 2`, and therefore the first heightfield you can hand to `afield.manifold.Solid`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">toReliefMesh</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">baseThickness</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/stdlib/mesh_generate/#L948) | `Img.toHeightfieldMesh`'s closed sibling — an image as a printable relief plaque, via `reliefMesh`. |
 
 ## mesh_io.kt { #mesh-io-kt }
 
@@ -1695,8 +1697,8 @@ smoothing and decimation.
 These are the four operations that make the difference between a mesh you generated and a mesh you
 can use. In rough order of how often you will reach for them:
 
- - `TriMesh.withVertexNormals` / `TriMesh.flatShaded` / `TriMesh.shadedNormals` — shading. The
-   third is the interesting one: it splits a vertex only where the faces meeting there genuinely
+ - `TriMesh.withVertexNormals` / `TriMesh.flatShaded` / `TriMesh.shadedNormals` — shading.
+   `TriMesh.shadedNormals` splits a vertex only where the faces meeting there genuinely
    disagree, so a cylinder comes out smooth around its side and hard at its rim, from one call.
  - `TriMesh.loopSubdivide` — four triangles for one, converging on the Loop limit surface. Refines
    *and* smooths, and preserves the Euler characteristic exactly.

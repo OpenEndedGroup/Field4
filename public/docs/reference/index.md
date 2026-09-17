@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14082 public symbols across 356 source files**, 7946 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14131 public symbols across 360 source files**, 7995 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -12,8 +12,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 334 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 31 | 1442 | 1207 (83%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 27 | 574 | 230 (40%) | Turning a scene into pixels on a Vulkan device. |
+| [Graphics](graphics.md) | 31 | 1444 | 1209 (83%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Renderers](renderers.md) | 27 | 575 | 232 (40%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 27 | 821 | 414 (50%) | Making a shape behave. |
@@ -22,11 +22,11 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 15 | 484 | 430 (88%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 25 | 1059 | 436 (41%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 25 | 1059 | 438 (41%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 29 | 1002 | 523 (52%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 894 | 280 (31%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 73 | 2218 | 766 (34%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 77 | 2264 | 809 (35%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 1 | 45 | 43 (95%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -120,7 +120,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FabricateGltfBridge.kt](renderers.md#fabricategltfbridge-kt) | Renderers | 4 | 1 |  |  |
 | [FabricateMaterialLibrary.kt](renderers.md#fabricatemateriallibrary-kt) | Renderers | 17 | 2 | The flattened per-material record a render queue carries, and the table that hands out its ids. |  |
 | [FabricatePassChain.kt](renderers.md#fabricatepasschain-kt) | Renderers | 66 | 36 | The vocabulary for declaring a chain of post passes that are not all the same shape, and the pure planner that resolves one. |  |
-| [FabricatePassChainBuilder.kt](renderers.md#fabricatepasschainbuilder-kt) | Renderers | 15 | 10 | Materializes a planned pass chain onto the GPU, through the post stack that already exists. |  |
+| [FabricatePassChainBuilder.kt](renderers.md#fabricatepasschainbuilder-kt) | Renderers | 16 | 12 | Materializes a planned pass chain onto the GPU, through the post stack that already exists. |  |
 | [FabricatePassGraph.kt](renderers.md#fabricatepassgraph-kt) | Renderers | 13 | 1 | The ordered, name-keyed map both of this package's pass collections are built on. |  |
 | [FabricatePassLibrary.kt](renderers.md#fabricatepasslibrary-kt) | Renderers | 30 | 30 | Worked multi-resolution passes, as lists of `FabricatePassSpec` ready to hand to a chain. |  |
 | [FabricatePostEffects.kt](renderers.md#fabricateposteffects-kt) | Renderers | 4 | 3 | High-level post-processing helpers for `StandardRenderer.Bundle`, layered on top of the ordered `FabricatePostStack`. | [Fabricate Renderer](../fabricate_renderer.md) |
@@ -149,7 +149,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Filters.kt](synthesis.md#filters-kt) | Synthesis | 44 | 5 | The filters, and the one saturator that keeps them company. |  |
 | [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
 | [flowmatching.kt](machine-learning.md#flowmatching-kt) | Machine learning | 45 | 43 | Flow matching over 2D and 3D point clouds — `flowMatch` trains a velocity field that carries one distribution onto another, and the field it returns can be sampled, integrated part-way, or drawn. | [Flow Matching](../flow_matching.md) |
-| [FM.kt](synthesis.md#fm-kt) | Synthesis | 10 | 9 |  |  |
+| [FM.kt](synthesis.md#fm-kt) | Synthesis | 10 | 9 | Frequency-modulation synthesis in two pieces: `FMOperator` is one modulated sine, and `FMPatch` wires several of them into the classic algorithms. |  |
 | [FnMetric.kt](function.md#fnmetric-kt) | Function | 3 | 3 | The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface` scoring a candidate signal against a target on one even sample grid (lower is better), plus a companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`, `correlation` — and the `fromResidual` / `window` builders behind them. |  |
 | [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 13 | 1 |  |  |
 | [ForthInterpreter.kt](languages.md#forthinterpreter-kt) | Languages | 48 | 5 | ForthField — a compact, extensible Forth used by Field4 for live coding. |  |
@@ -166,8 +166,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 27 | 15 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |
 | [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 3 | Temporal sketches for source-conditioned generation, with prompt regions, onset events, and parameter curves that together express a generation intent. | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [GestureBoardVisualization.kt](audio-ai.md#gestureboardvisualization-kt) | Audio AI | 3 | 1 |  |  |
+| [GlslAd.kt](languages.md#glslad-kt) | Languages | 0 | 0 | Reverse-mode automatic differentiation for the GLSL interpreter: `d(pixel)/d(literal)`. |  |
 | [GlslInterpreter.kt](languages.md#glslinterpreter-kt) | Languages | 7 | 7 | The evaluator for parsed GLSL shaders, tree-walking and single-threaded per invocation. |  |
 | [GlslParser.kt](languages.md#glslparser-kt) | Languages | 5 | 5 | A parser for the GLSL that StackSL's emitter actually produces. |  |
+| [GlslScalars.kt](languages.md#glslscalars-kt) | Languages | 0 | 0 | The value type the GLSL interpreter is generic over, so that one interpreter serves both the `Float` reference path and the differentiable one. |  |
 | [GlslValue.kt](languages.md#glslvalue-kt) | Languages | 23 | 12 | The value model for the GLSL-subset interpreter behind StackSL's CPU backend. |  |
 | [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
@@ -221,7 +223,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [megaTextures.kt](graphics.md#megatextures-kt) | Graphics | 12 | 12 | A directory of images as one texture, however many of them there are. |  |
 | [mesh.kt](graphics.md#mesh-kt) | Graphics | 59 | 53 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. | [Meshes and 3D geometry](../mesh_examples.md) |
 | [mesh_field.kt](graphics.md#mesh-field-kt) | Graphics | 33 | 33 | What makes the mesh family *Field's* rather than a generic geometry library: the bridges out of `TriMesh` and into the things Field already draws, renders and displays. | [Geometry from disk](../geometry_from_disk.md), [Field's 3D output](../three_output.md), [Meshes and 3D geometry](../mesh_examples.md) |
-| [mesh_generate.kt](graphics.md#mesh-generate-kt) | Graphics | 20 | 20 | Where a `TriMesh` comes from: the primitives (`boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, the five platonics) and the *derived* generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh`, `polygonMesh`). | [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Field's 3D output](../three_output.md) |
+| [mesh_generate.kt](graphics.md#mesh-generate-kt) | Graphics | 22 | 22 | Where a `TriMesh` comes from: the primitives (`boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, the five platonics) and the *derived* generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh`, `reliefMesh`, `polygonMesh`). | [Meshes and 3D geometry](../mesh_examples.md), [A photograph, closed and mounted](../chain_photo_to_solid.md), [Geometry from disk](../geometry_from_disk.md) |
 | [mesh_io.kt](graphics.md#mesh-io-kt) | Graphics | 10 | 10 | Getting a `TriMesh` in and out of the two formats every 3D tool on the machine can already read: **OBJ** (text, indexed, carries normals and uvs) and **STL** (ASCII or binary, triangle soup, the lingua franca of 3D printing). | [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | [mesh_measure.kt](graphics.md#mesh-measure-kt) | Graphics | 41 | 41 | Asking a `TriMesh` questions: how big is it, where is its middle, how curved is it — and, through `MeshBvh`, what does this ray hit, what is the nearest point on the surface, and is this point inside. | [Meshes and 3D geometry](../mesh_examples.md), [FLine examples (Field graphics)](../fline_examples.md) |
 | [mesh_process.kt](graphics.md#mesh-process-kt) | Graphics | 15 | 15 | Changing a mesh's *sampling* without changing the shape it stands for: normals, subdivision, smoothing and decimation. | [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
@@ -297,7 +299,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatTranscriptionCorpus.kt](patterns.md#pattranscriptioncorpus-kt) | Patterns | 78 | 28 | A corpus that scores a transcription against the notation that generated the audio. |  |
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 | The figure that makes the round trip something you look at rather than read about. |  |
 | [pf.kt](math.md#pf-kt) | Math | 38 | 29 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
-| [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 1 |  |  |
+| [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 2 | Two processors over one delay line read at fractional sample positions: `FractionalDelay`, a plain echo, and `KarplusStrong`, the same line closed into a loop and tuned to a pitch. |  |
 | [plotly.kt](visualization.md#plotly-kt) | Visualization | 12 | 12 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md), [Projecting a distance matrix](../projection_examples.md) |
 | [PointController.kt](simulation.md#pointcontroller-kt) | Simulation | 58 | 10 | PointDriver -- position in, force out. |  |
 | [pointing.kt](graphics.md#pointing-kt) | Graphics | 43 | 29 | Turning a place a person is looking at back into a place in the world. |  |
@@ -327,7 +329,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. | [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md) |
 | [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
 | [RenderedAudioAnalysis.kt](audio-ai.md#renderedaudioanalysis-kt) | Audio AI | 28 | 14 | The render-to-analysis pipeline: render Field synthesis to a WAV, upload it once, and fan out durable analysis jobs. | [Render Field music, then analyse it](../audio_render_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [Sampling.kt](synthesis.md#sampling-kt) | Synthesis | 81 | 30 |  |  |
+| [Sampling.kt](synthesis.md#sampling-kt) | Synthesis | 81 | 31 | Playback of recorded audio, from reading a buffer straight through to scattering it into grains. |  |
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 4 | Notes with times on them, and a lazy player for a stream of them. | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
@@ -353,7 +355,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 36 | 36 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
-| [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 |  |  |
+| [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 | The frequency-domain end of the synth: an `FFT`, two short-time transforms built on it, and a wavetable that keeps its waveforms as spectra. |  |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Spectral examples](../spectral_examples.md) |
 | [SpectralEmbeddingProjection.kt](audio-ai.md#spectralembeddingprojection-kt) | Audio AI | 41 | 9 | Spectral embedding: decode, pool, and project the short-time spectral frames stored in an analysis artifact. | [Short-time spectral spaces](../audio_ai_spectral_embeddings.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SpeechEmbeddingMds.kt](audio-ai.md#speechembeddingmds-kt) | Audio AI | 54 | 12 | Speech embedding: decode, pool, and project the learned speech frames stored in an analysis artifact. |  |
@@ -361,7 +363,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SplatSequence.kt](renderers.md#splatsequence-kt) | Renderers | 28 | 22 | Playing a splat capture over time: the frame reader, the play head, and the box controls that drive it. |  |
 | [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
-| [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 13 | 12 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
+| [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 15 | 14 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
+| [StackSLFit.kt](languages.md#stackslfit-kt) | Languages | 26 | 23 | Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the fitted numbers back into the program. |  |
+| [StackSLWires.kt](languages.md#stackslwires-kt) | Languages | 18 | 18 | StackSL's dangling wires, made runnable on the CPU: the free-parameter vector a fit descends. |  |
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 41 | 41 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [standardRenderer.kt](renderers.md#standardrenderer-kt) | Renderers | 10 | 4 | The deferred renderer the rest of Fabricate is arranged around: the pass bundle, its shaders, and the configuration that sizes them. |  |
 | [standardShapes.kt](renderers.md#standardshapes-kt) | Renderers | 13 | 1 | Ten par_shapes primitives, written straight into vertex-pulling buffers as triangle soup. |  |

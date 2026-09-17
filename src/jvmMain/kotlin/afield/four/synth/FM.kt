@@ -5,6 +5,24 @@ import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.sin
 
+/**
+ * Frequency-modulation synthesis in two pieces: [FMOperator] is one modulated sine, and [FMPatch]
+ * wires several of them into the classic algorithms.
+ *
+ * An operator is phase modulation rather than true frequency modulation. Its phase advances at
+ * `freq`, and the modulation is added to that phase where the sine is read rather than to the
+ * frequency, so it does not accumulate. Operators are connected by assigning to `pmInput`, and since
+ * the modulator is an ordinary [Signal] the modulation index is a gain in front of it:
+ * `car.pmInput = mod * Param(3f)`. `feedbackAmount` adds an operator's own last sample to its phase,
+ * and unlike the rest it is a plain `Float` fixed at construction rather than a [Param].
+ *
+ * [FMPatch] is three builders over that one part, each returning a bare [Signal] to be enveloped and
+ * piped onward like any other source. `twoOp` is a modulator into a carrier at a frequency ratio,
+ * `threeOp` is a three-operator serial chain, and `fourOp` takes an `algorithm` number choosing
+ * between a serial chain, two modulators summed into one, two independent stacks mixed, and four
+ * carriers added together. Any other number throws.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  FMOperator – single FM synthesis operator
 // ═══════════════════════════════════════════════════════════════════

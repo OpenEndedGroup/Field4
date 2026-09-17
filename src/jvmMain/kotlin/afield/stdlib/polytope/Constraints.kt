@@ -17,7 +17,7 @@ import kotlin.math.sqrt
  * cycles and the initial coordinates once per solve, and hands a constraint nothing but flat
  * `DoubleArray` coordinates and integer indices — no [ElementId] bookkeeping, no FLines, no renderer.
  *
- * ## Units, and what a weight multiplies
+ * ## Units and weights
  *
  * Every residual in this file is a **length in the units of the coordinates**, and every one is
  * written as `weight * (measured - goal)`. So the families are directly comparable to each other, and

@@ -42,7 +42,7 @@ import kotlin.reflect.jvm.isAccessible
  * [properties] is the *single* enumerator, so `/tree` and the iframe cannot disagree about how many
  * fields a value has.
  *
- * ## What this does not know
+ * ## Getters are opaque
  *
  * A `KProperty1` getter is opaque: there is no way to tell a field read from a computed property
  * that opens a file, allocates a GPU buffer or builds a K2 REPL engine. `Box.ki` is a `lazyVar`

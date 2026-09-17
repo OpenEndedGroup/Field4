@@ -15,9 +15,9 @@ import kotlin.math.sqrt
  * Where a [TriMesh] comes from: the primitives ([boxMesh], [uvSphereMesh], [icosphereMesh],
  * [torusMesh], [cylinderMesh], [coneMesh], [capsuleMesh], the five platonics) and the *derived*
  * generators that build one out of something you already have ([extrudeMesh], [revolveMesh],
- * [tubeMesh], [heightfieldMesh], [polygonMesh]).
+ * [tubeMesh], [heightfieldMesh], [reliefMesh], [polygonMesh]).
  *
- * # Welding, and where the normals come from
+ * # Welding and normals
  *
  * **Everything here is welded and watertight where it can be.** A generator returns the minimal
  * vertex set, so [MeshTopology.eulerCharacteristic] of a box, a sphere, a cone or a capped cylinder
@@ -831,6 +831,137 @@ fun Img.toHeightfieldMesh(
     val nz = max(1, (src.height - 1) / step)
     val s = scale.toFloat()
     return heightfieldMesh(nx, nz, w, d) { x, z ->
+        val u = ((x / w) + 0.5f).coerceIn(0f, 1f)
+        val v = ((z / d) + 0.5f).coerceIn(0f, 1f)
+        val px = (u * (src.width - 1)).toInt().coerceIn(0, src.width - 1)
+        val py = (v * (src.height - 1)).toInt().coerceIn(0, src.height - 1)
+        src.at(px, py) * s
+    }
+}
+
+/**
+ * A relief plaque: [heightfieldMesh]'s surface, closed — skirt walls dropped to [baseY] and a flat
+ * base under them. Watertight, `χ = 2`, and therefore the first heightfield you can hand to
+ * [afield.manifold.Solid].
+ *
+ * [heightfieldMesh] deliberately returns a *disc* — one boundary loop, `χ = 1` — because a landscape
+ * has no underside. That is the right answer for rendering and the wrong one for anything that needs
+ * a volume: an exact Boolean, a printed object, a mass. `toSolid` refuses an open sheet, and capping
+ * the disc's own boundary loop with [TriMesh.repairToSolid] is not the same shape at all — it fits a
+ * warped lid across the rim and encloses only the sliver between the rim and the surface. This
+ * generator instead drops the rim vertically onto a plane, which is what a lithophane, a relief map
+ * or a stamp actually is.
+ *
+ * The vertex and face counts are exact, and the Euler characteristic is `2` at every resolution:
+ *
+ * | | count |
+ * | --- | --- |
+ * | perimeter vertices `P` | `2*nx + 2*nz` |
+ * | vertices | `(nx+1)*(nz+1) + P + 1` |
+ * | triangles | `2*nx*nz + 3*P` |
+ *
+ * — the grid, the perimeter ring at [baseY], and one centre vertex the base fans from. `χ = 2` falls
+ * out of those: the `-P/2` the fan and the walls contribute cancels the `+nx+nz` the grid does.
+ *
+ * No normals, following this file's rule: the surface meets its own skirt at a crease, so
+ * `.shadedNormals()` or `.flatShaded()` is the caller's choice. `signedVolume()` is positive.
+ *
+ * ```kotlin
+ * val plaque = reliefMesh(64, 64, 2.0, 2.0, baseY = -0.2) { x, z -> 0.1f * sin(x * 3f) * cos(z * 3f) }
+ * val solid = plaque.toSolid()          // legal, unlike heightfieldMesh's
+ * ```
+ *
+ * @param nx quads along x (>= 1). @param nz quads along z (>= 1).
+ * @param width extent along x, centred on the origin. @param depth extent along z.
+ * @param baseY the plane the skirt drops to; must be strictly below every sampled height, and the
+ *   check names the height that broke it rather than returning an inverted solid.
+ * @param height called with **world** `(x, z)`, exactly as in [heightfieldMesh].
+ */
+fun reliefMesh(
+    nx: Int = 64,
+    nz: Int = 64,
+    width: Number = 2.0,
+    depth: Number = 2.0,
+    baseY: Number = -0.25,
+    height: (Float, Float) -> Float,
+): TriMesh {
+    require(nx >= 1 && nz >= 1) { "reliefMesh needs at least one quad each way, got ${nx}x$nz" }
+    val w = width.toFloat(); val d = depth.toFloat()
+    val y0 = baseY.toFloat()
+    fun xAt(i: Int) = (i.toFloat() / nx - 0.5f) * w
+    fun zAt(j: Int) = (j.toFloat() / nz - 0.5f) * d
+    val ys = FloatArray((nx + 1) * (nz + 1))
+    for (j in 0..nz) for (i in 0..nx) {
+        val y = height(xAt(i), zAt(j))
+        require(y > y0) {
+            "reliefMesh's baseY must sit below the surface: height(${xAt(i)}, ${zAt(j)}) = $y is not above $y0"
+        }
+        ys[j * (nx + 1) + i] = y
+    }
+
+    // The rim, walked *clockwise in (x, z)*. That is the direction the grid quads already wind —
+    // x_hat cross z_hat is -y_hat, so a clockwise loop in these two coordinates is the one whose
+    // right-hand normal points +y — and matching it is what lets the walls share each rim edge in
+    // the opposite direction, which is the whole definition of a consistently oriented closed mesh.
+    val rim = ArrayList<Pair<Int, Int>>(2 * nx + 2 * nz)
+    for (j in 0..nz) rim.add(0 to j)
+    for (i in 1..nx) rim.add(i to nz)
+    for (j in nz - 1 downTo 0) rim.add(nx to j)
+    for (i in nx - 1 downTo 1) rim.add(i to 0)
+
+    return triMesh {
+        for (j in 0..nz) for (i in 0..nx) vertex(xAt(i), ys[j * (nx + 1) + i], zAt(j))
+        fun top(i: Int, j: Int) = j * (nx + 1) + i
+        for (j in 0 until nz) for (i in 0 until nx) {
+            quad(top(i, j), top(i, j + 1), top(i + 1, j + 1), top(i + 1, j))
+        }
+
+        val base = IntArray(rim.size) { k -> vertex(xAt(rim[k].first), y0, zAt(rim[k].second)) }
+        val centre = vertex(0f, y0, 0f)
+        for (k in rim.indices) {
+            val k1 = (k + 1) % rim.size
+            val a = top(rim[k].first, rim[k].second)
+            val b = top(rim[k1].first, rim[k1].second)
+            // The top traverses this rim edge a -> b, so the wall takes it b -> a.
+            quad(b, a, base[k], base[k1])
+            // and the walls traverse the base edge base[k] -> base[k1], so the floor reverses it.
+            triangle(base[k1], base[k], centre)
+        }
+    }
+}
+
+/**
+ * [Img.toHeightfieldMesh]'s closed sibling — an image as a printable relief plaque, via [reliefMesh].
+ *
+ * This is the hop that was missing between the imaging family and [afield.manifold.Solid]: an [Img]
+ * goes in and a watertight `χ = 2` mesh comes out, ready for an exact Boolean. Sampling matches
+ * [Img.toHeightfieldMesh] exactly — same grid, same nearest-pixel lookup — so the two agree
+ * vertex-for-vertex on the `(nx+1)*(nz+1)` grid they share, and differ only in being open or closed.
+ *
+ * @param scale multiplies the sampled value into world `y`, as in [Img.toHeightfieldMesh].
+ * @param width extent along x; [depth] defaults to width scaled by the image's aspect ratio.
+ * @param step sample every [step]th pixel.
+ * @param baseThickness how far below `y = 0` the base plane sits. A non-negative image gives a
+ *   plaque this thick where the image is black and `baseThickness + scale` where it is white, so
+ *   this is the number that decides whether the thing survives being picked up.
+ */
+fun Img.toReliefMesh(
+    scale: Number = 0.25,
+    width: Number = 2.0,
+    depth: Number? = null,
+    step: Int = 1,
+    baseThickness: Number = 0.1,
+): TriMesh {
+    require(step >= 1) { "step must be >= 1, got $step" }
+    require(baseThickness.toDouble() > 0.0) { "baseThickness must be positive, got $baseThickness" }
+    val src = if (channels == 1) this else luma()
+    require(src.min() >= 0f) { "toReliefMesh needs a non-negative image; the minimum here is ${src.min()}" }
+    val w = width.toFloat()
+    val d = depth?.toFloat() ?: (w * src.height / src.width)
+    val nx = max(1, (src.width - 1) / step)
+    val nz = max(1, (src.height - 1) / step)
+    val s = scale.toFloat()
+    return reliefMesh(nx, nz, w, d, -baseThickness.toDouble()) { x, z ->
         val u = ((x / w) + 0.5f).coerceIn(0f, 1f)
         val v = ((z / d) + 0.5f).coerceIn(0f, 1f)
         val px = (u * (src.width - 1)).toInt().coerceIn(0, src.width - 1)

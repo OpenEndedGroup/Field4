@@ -235,6 +235,69 @@ class MeshCoreTest {
         assertEquals(1, bumpy.topology().eulerCharacteristic)
     }
 
+    /**
+     * [reliefMesh] closes what [heightfieldMesh] leaves open, and the counts it closes it with are
+     * exact rather than approximately right.
+     *
+     * The oracle is set equality on the counts, not "χ came out even": `P = 2nx + 2nz` perimeter
+     * vertices, `(nx+1)(nz+1) + P + 1` vertices and `2·nx·nz + 3·P` triangles, checked at three
+     * aspect ratios so a formula that only works on a square grid fails here.
+     */
+    @Test
+    fun reliefMeshClosesAHeightfieldWithExactCounts() {
+        for ((nx, nz) in listOf(1 to 1, 8 to 8, 13 to 5)) {
+            val plaque = reliefMesh(nx, nz, 2.0, 2.0, baseY = -0.4) { x, z ->
+                (0.15 * kotlin.math.sin(x * 3.0) * kotlin.math.cos(z * 3.0)).toFloat()
+            }
+            val perimeter = 2 * nx + 2 * nz
+            assertEquals((nx + 1) * (nz + 1) + perimeter + 1, plaque.vertexCount, "${nx}x$nz vertices")
+            assertEquals(2 * nx * nz + 3 * perimeter, plaque.triangleCount, "${nx}x$nz triangles")
+            assertClosedGenus(plaque, 0, "reliefMesh(${nx}x$nz)")
+            assertEquals(0, plaque.topology().boundaryLoops.size, "${nx}x$nz has no rim left")
+        }
+    }
+
+    /**
+     * The volume is the integral of the height over the footprint plus the base slab — so a *flat*
+     * relief is an exactly-known cuboid, and a rigid lift of any surface adds exactly `footprint*dy`.
+     * Both are stronger than "the volume is positive and looks about right".
+     */
+    @Test
+    fun aFlatReliefIsExactlyItsCuboid() {
+        val slab = reliefMesh(7, 11, 2.0, 3.0, baseY = -0.25) { _, _ -> 0.5f }
+        assertEquals(2.0 * 3.0 * 0.75, slab.volume(), 1e-5, "2 x 3 footprint, 0.75 tall")
+        val ripple = { x: Float, z: Float -> (0.1 * kotlin.math.sin(x * 5.0) * kotlin.math.cos(z * 4.0)).toFloat() }
+        val low = reliefMesh(32, 48, 2.0, 3.0, baseY = -0.25) { x, z -> 0.5f + ripple(x, z) }
+        val high = reliefMesh(32, 48, 2.0, 3.0, baseY = -0.25) { x, z -> 0.9f + ripple(x, z) }
+        assertEquals(2.0 * 3.0 * 0.4, high.volume() - low.volume(), 1e-5, "a rigid lift adds footprint*dy")
+    }
+
+    @Test
+    fun reliefMeshRefusesABaseAboveItsOwnSurface() {
+        assertFailsWith<IllegalArgumentException> {
+            reliefMesh(4, 4, 2.0, 2.0, baseY = 0.5) { _, _ -> 0.2f }
+        }
+    }
+
+    /**
+     * [Img.toReliefMesh] samples the same grid as [Img.toHeightfieldMesh] — checked vertex for
+     * vertex over the shared grid, because "both look like the picture" is not an assertion.
+     */
+    @Test
+    fun imgToReliefAgreesWithImgToHeightfieldOnTheSharedGrid() {
+        val img = Img(9, 6, 1, FloatArray(54) { (it % 7) / 7f })
+        val open = img.toHeightfieldMesh(scale = 0.6, width = 2.0)
+        val closed = img.toReliefMesh(scale = 0.6, width = 2.0, baseThickness = 0.2)
+        assertEquals(1, open.topology().eulerCharacteristic, "the heightfield is still a disc")
+        assertClosedGenus(closed, 0, "Img.toReliefMesh")
+        assertTrue(closed.vertexCount > open.vertexCount, "the plaque adds a rim and a floor")
+        for (v in 0 until open.vertexCount) {
+            assertEquals(open.position(v).x, closed.position(v).x, 1e-6f, "vertex $v x")
+            assertEquals(open.position(v).y, closed.position(v).y, 1e-6f, "vertex $v y")
+            assertEquals(open.position(v).z, closed.position(v).z, 1e-6f, "vertex $v z")
+        }
+    }
+
     // ==========================================================================================
     // Generators: measurement against analytic answers
     // ==========================================================================================

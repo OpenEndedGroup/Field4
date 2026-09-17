@@ -28,7 +28,7 @@ import kotlin.math.sqrt
  * go round rather than through — and it rules it out silently, because an agent pressing into a
  * wall that does not exist just flies on.
  *
- * ### Three representations, and why each one is the one it is
+ * ### Three representations
  *
  * **Obstacles are a flat soup of line segments** ([ScriptObstacle], [ObstacleField]) and not
  * polygons-as-solids. The only predicate collision needs is "is this swept circle crossing a wall",
@@ -61,7 +61,7 @@ import kotlin.math.sqrt
  *
  * ### Determinism
  *
- * The same load-bearing property as the rest of `alife_script.kt`, and the same discipline. Segments
+ * The same property the rest of `alife_script.kt` depends on, and the same discipline. Segments
  * are held in insertion order in flat [DoubleArray]s. A*'s open set is ordered by `(f, cellIndex)`,
  * a **total** order, so two cells with equal estimated cost expand in a fixed order rather than in
  * whichever order a heap happened to leave them. Neighbours are visited through one fixed

@@ -643,8 +643,39 @@ def _classify_field_jvms(
     )
 
 
+def _orphaned_nonserving_pids(candidates: set[int]) -> set[int]:
+    """Checkout identity alone cannot authorize killing a sibling live session.
+
+    Retire only adopted JVMs (parent 1) that have no TCP listener. In particular,
+    preserve a same-checkout server on another port and a child smoke still owned
+    by its server/launcher. Missing process evidence fails closed.
+    """
+    if not candidates:
+        return set()
+    try:
+        parents = subprocess.run(["ps", "-axo", "pid=,ppid="], capture_output=True,
+                                 text=True, timeout=10)
+        sockets = subprocess.run(["lsof", "-nP", "-tiTCP", "-sTCP:LISTEN"],
+                                 capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    if parents.returncode != 0 or sockets.returncode not in (0, 1):
+        return set()
+    # lsof uses exit 1 for no matches, but diagnostics mean the census is incomplete.
+    if sockets.stderr.strip():
+        return set()
+    adopted = set()
+    for line in parents.stdout.splitlines():
+        words = line.split()
+        if len(words) == 2 and all(w.isdigit() for w in words) and words[1] == "1":
+            adopted.add(int(words[0]))
+    listening = {int(word) for word in sockets.stdout.split() if word.isdigit()}
+    return candidates & adopted - listening
+
+
 def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
-    return [pid for pid, _ in _classify_field_jvms(exclude=exclude)[0]]
+    mine = {pid for pid, _ in _classify_field_jvms(exclude=exclude)[0]}
+    return sorted(_orphaned_nonserving_pids(mine))
 
 
 def _describe_candidate(pid: int, attribution: Attribution) -> str:
@@ -665,7 +696,7 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
     backdoor websockets and inflated durations rather than assertion failures.
     Sweep only the current checkout before starting the gate.
 
-    Narrow in two independent directions:
+    Admit candidates only when all of these checks agree:
 
     * only JVMs whose command line carries one of [FIELD_JVM_MARKERS]. Gradle and Kotlin
       compile daemons are left alone: they are frequently the larger memory consumers, but
@@ -685,6 +716,9 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
       spare-only opinion for the case the command line got wrong on 2026-09-12: a checkout
       nested inside this one.
 
+    * only JVMs adopted by init (parent 1) with no TCP listener. Same-checkout live
+      sessions and owned child tests are not stale merely because their port differs.
+
     Every pid printed on either line carries the evidence that classified it
     ([_describe_candidate]), because a kill decision nobody can reconstruct after the process
     is dead is how the 2026-09-12 misattribution became unfalsifiable.
@@ -699,6 +733,13 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
     # dispose its GPU/window resources instead of leaking them.
     keep = set(_pids_listening_on(port))
     mine, foreign = _classify_field_jvms(exclude=keep)
+    orphaned = _orphaned_nonserving_pids({pid for pid, _ in mine})
+    live = [(pid, why) for pid, why in mine if pid not in orphaned]
+    if live:
+        print("Leaving owned, serving, or unverified Field JVM(s) in this checkout alone: "
+              + ", ".join(_describe_candidate(pid, why) for pid, why in live),
+              file=sys.stderr, flush=True)
+    mine = [(pid, why) for pid, why in mine if pid in orphaned]
     pids = [pid for pid, _ in mine]
 
     # Always say what was spared, so a run's log shows the scoping working rather than
@@ -712,7 +753,7 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
     if not pids:
         if dry_run:
             print(
-                f"  --reap-dry-run: no Field JVM belongs to {REPO_ROOT}; nothing to reap.",
+                f"  --reap-dry-run: no unowned, non-serving Field JVM in {REPO_ROOT}; nothing to reap.",
                 file=sys.stderr, flush=True,
             )
         return
@@ -721,7 +762,7 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
     # what this actually knows, and the stronger claim is what made a 16-hour-old live Field
     # from a nested checkout read as this run's own litter. Each pid carries the evidence.
     print(
-        f"Reaping {len(pids)} Field JVM(s) attributed to {REPO_ROOT} and presumed orphaned by "
+        f"Reaping {len(pids)} non-serving Field JVM(s) adopted by init and attributed to {REPO_ROOT} after "
         "earlier runs: " + ", ".join(_describe_candidate(pid, why) for pid, why in mine),
         file=sys.stderr, flush=True,
     )

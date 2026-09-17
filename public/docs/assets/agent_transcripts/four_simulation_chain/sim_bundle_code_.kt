@@ -11,11 +11,15 @@ import afield.stdlib.linalg.Vector3f
 
 prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
 
-val r: Renderer = fromContext()
-
+// `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
+// there is nothing to fetch with `fromContext()`.
+//
+// This one *is* a `once`, unlike the chain boxes below, and for a reason rather than out
+// of habit: `StandardRenderer.build` has no replace-in-place path, so re-running it would
+// strand the bundle every chain in the document is appended to.
 once.bundle {
     val b = StandardRenderer.build(
-        r,
+        renderer,
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
@@ -23,8 +27,8 @@ once.bundle {
         )
     )
     b.applyScenePlan()
-    b.present(renderer = r)
-    b.attachTo(r)
+    b.present(renderer = renderer)
+    b.attachTo(renderer)
     b
 }
 println("bundle ready: ${bundle.postStack.names()}")

@@ -1957,7 +1957,7 @@ regenerated when you ask, a view every time you look at a value.
 So the views are checked at the pixel rather than by eye. `AlifeGallery`'s `inline-view` figure decodes
 the base64 PNG back out of the emitted HTML and asserts individual pixels: all five of a glider's live
 cells read `#ffffff` and all 139 dead ones read `#000000` at coordinates taken from the grid (which is
-also how "one pixel per cell" is asserted rather than claimed); a `DEATH` run's centre pixel reads
+also how "one pixel per cell" is asserted); a `DEATH` run's centre pixel reads
 `#000004`, the bottom of `inferno`, and a `SATURATION` run's reads `#fcffa4`, the top; and an unseeded
 `GrayScottState`, the `v = 0` control arm, renders as exactly one colour, the bottom of `magma`,
 where `Img`'s own auto-normalising thumbnail would have turned its numerical dust into a texture.

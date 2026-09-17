@@ -31,7 +31,7 @@ expect:
  * through `PatPattern.events(...)`, and nothing is hand-placed; the only parts chosen by hand are
  * the colours and the mapping from cycle time to pixels.
  *
- * #### Lanes, and how a roll is read
+ * #### How a roll is read
  *
  * A roll is a stack of horizontal lanes drawn at one shared time scale, so reading down a column
  * compares the same instant across all of them. Most rolls are built as a source lane with its

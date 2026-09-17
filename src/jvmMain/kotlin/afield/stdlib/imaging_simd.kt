@@ -40,7 +40,7 @@ import jdk.incubator.vector.VectorSpecies
  * the inner loop of everything here. [axpy] survives only for the handful of border rows where each
  * tap resolves to a *different*, border-dependent source row and there is no single offset to fold.
  *
- * ### On unrolling, which is not optional
+ * ### Why the main loop keeps four accumulators
  *
  * [stencil] is a chain of `k` dependent FMAs into one accumulator. On Apple silicon an FMA has ~4
  * cycles of latency and can issue ~4 per cycle, so a single-accumulator 17-tap chain runs at

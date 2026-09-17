@@ -27,8 +27,11 @@ each have a named mechanism rather than a fudge factor. `dev_docs/STACKSL_CPU_BA
 table and the reasons; `dev_docs/assets/stacksl_cpu_backend/gallery_contact_sheet.png` is the
 picture.
 
-Speed is the honest caveat: this is a tree-walking interpreter, roughly 10⁵ pixel-shader
-invocations per second per core against a GPU's 10⁹. It is a reference, not a renderer.
+Speed is the honest caveat: this is a tree-walking interpreter, **1.3–1.6 × 10⁴** pixel-shader
+invocations per second per core against a GPU's 10⁹, and **4.4 × 10⁴** across ten cores — 3.3× the
+single-core figure rather than 10×. This paragraph said 10⁵ per core until 2026-09-16 and was wrong
+by about 7×; `StackSLCpuThroughputMeasurements` states the method. It is a reference, not a
+renderer.
 
 ## Editing it
 

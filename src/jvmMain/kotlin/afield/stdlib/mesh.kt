@@ -29,7 +29,7 @@ import kotlin.math.sqrt
  * |---|---|
  * | `mesh.kt` | this: the type, [TriMeshBuilder] / [triMesh], transforms, concatenation |
  * | `mesh_topology.kt` | [MeshTopology] — adjacency, boundary loops, components, manifoldness, Euler characteristic / genus, [TriMesh.weld], [TriMesh.fixWinding] |
- * | `mesh_generate.kt` | [boxMesh], [uvSphereMesh], [icosphereMesh], [torusMesh], [cylinderMesh], [extrudeMesh], [revolveMesh], [tubeMesh], [heightfieldMesh] |
+ * | `mesh_generate.kt` | [boxMesh], [uvSphereMesh], [icosphereMesh], [torusMesh], [cylinderMesh], [extrudeMesh], [revolveMesh], [tubeMesh], [heightfieldMesh], [reliefMesh] |
  * | `mesh_sdf.kt` | [ScalarField3D], the SDF primitives / combinators, and [marchingCubes] |
  * | `mesh_process.kt` | [TriMesh.loopSubdivide], [TriMesh.laplacianSmooth], [TriMesh.taubinSmooth], [TriMesh.withVertexNormals], [TriMesh.decimate] |
  * | `mesh_measure.kt` | [TriMesh.surfaceArea], [TriMesh.signedVolume], curvature, [MeshBvh] (rays, closest point, inside test) |
