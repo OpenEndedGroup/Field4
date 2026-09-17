@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-77 source file(s), 2264 public symbol(s), 816 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+77 source file(s), 2264 public symbol(s), 838 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -423,24 +423,46 @@ println(d.query("orphan(X), name(X, N)").table())
 
 ## DatalogEditorExtension.kt { #datalogeditorextension-kt }
 
+Serves `datalog.js`, the browser-side Datalog editor support, to the page and to the test that
+checks it.
+
+The JavaScript is the implementation and this file is a reader for it. `datalog.js` lives in
+`src/commonMain/resources`, reaches the browser as the AMD module `bithero/datalog` (one of the
+modules `bootstrapMonaco.js` requires by name while the editor starts), and is read back verbatim
+here, so the smoke test `datalog.editor-extension.workout` runs the same bytes the editor does. A
+browser-side language that can only be tested in a browser does not stay correct.
+
+Once installed, the extension brings syntax highlighting, lexical diagnostics, a context badge
+and completions to `#datalog` regions embedded in Kotlin triple-quoted strings, and to whole
+`.datalog` documents. Colouring is decoration-based rather than a Monarch grammar, so one tokenizer covers
+both contexts and there is no grammar here that can fail to compile and take Monaco's startup down
+with it. The same workout also compares the editor's vocabulary against `DatalogParser`'s, since
+the editor is JavaScript in a browser and the parser is Kotlin on a server, and the two lists can
+only be kept in step at build time.
+
+`datalog.js` installs itself either way it is loaded: as an AMD module when a Monaco loader
+is present, and immediately when it is evaluated bare, which is the path `html()` uses.
+
 `src/jvmMain/kotlin/afield/datalog/DatalogEditorExtension.kt` — [read the source](source/jvmMain/afield/datalog/DatalogEditorExtension/)
 
 ### Top-level functions { #datalogeditorextension-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L38) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L40) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L72) | `DatalogEditorExtension.javascript`, as a top-level function. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L75) | `DatalogEditorExtension.html`, as a top-level function. |
 
 ### DatalogEditorExtension { #datalogeditorextension-kt-datalogeditorextension }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">DatalogEditorExtension</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L5)
+[<code class="highlight"><span class="k">object</span> <span class="nc">DatalogEditorExtension</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L31)
+
+The Datalog editor extension, as bytes: the resource itself, and a page fragment that installs it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L6) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L15) | The Datalog editor extension. The single source of truth is the static resource `src/commonMain/resources/datalog.js`, which is served to the browser as the AMD module `bithero/datalog` (see bootstrapMonaco.js) and read verbatim here so the node-probe smoke test exercises the exact code that ships. The file self-installs under bare `eval` (no AMD loader) and registers an AMD module when a Monaco loader is present. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L24) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L33) | The extension's id, which is also the `extensionId` `datalog.js` registers itself under. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L42) | The bytes of `datalog.js`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L57) | The extension as a drop-in HTML fragment: a titled line of prose saying what it does, with the whole of `datalog.js` inlined in a script tag. |
 
 ## DatalogEngine.kt { #datalogengine-kt }
 
@@ -729,38 +751,69 @@ One step of a why-not walk: a literal, and how many answers the conjunction had 
 
 ## ForthInterface.kt { #forthinterface-kt }
 
+Makes ForthField a language a box can be written in.
+
+`ForthInterpreter.kt` is the language itself. This file is the half that joins it to the
+workspace: the `BoxExecution` a ForthField box runs under, and the registration that puts
+"Set Main Language: ForthField" in front of a user.
+
+### Running code
+
+[`ForthExecution`](languages.md#forthinterface-kt-forthexecution) answers the execution contract a box's editor talks to. Running a fragment,
+or the whole box, evaluates the source once and reports each diagnostic on the line that produced
+it, printing `ok` when a run finished cleanly and produced no visible output of its own.
+Completion offers the dictionary's words, each with the kind and the documentation the
+interpreter holds for it. Executing a symbol runs one named word as a single-line fragment.
+
+Launching is the one that is more than an evaluation. The code runs once to define its words, and
+if its last token names a colon definition, that word becomes a *strand*: a coroutine that
+re-executes it until the box's run generation for that strand moves on, yielding between passes.
+`frame` is available only there, and it ends a pass rather than the strand, so a word can be
+written as the body of a per-frame loop. Anything else the code ends with defines words and stops.
+Stopping the box cancels every strand job and bumps every run generation.
+
+### Becoming a ForthField box
+
+A box does not choose this language for itself; its parent does. `installForth` registers a
+`MainLanguageRuntime` under the id `forth`, and makes the `isForthRoot` flag one of the
+properties a document persists. `installForthPlugin` starts a `TopologyWatcher`, and
+`forthTopologyNeedsUpdating` is what that watcher calls on every graph edit: each child of a box
+flagged `isForthRoot`, or set to the `forth` main language, is given a `ForthExecution`, and a
+child left with no such parent goes back to Kotlin. Each child gets an interpreter of its own, so
+a stack and a dictionary belong to one box and outlive the run that filled them.
+
 `src/jvmMain/kotlin/afield/forth/ForthInterface.kt` — [read the source](source/jvmMain/afield/forth/ForthInterface/)
 
 ### Top-level functions { #forthinterface-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForth</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L260) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForthPlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L274) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">forthTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L278) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForth</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L357) | Register ForthField as a main language, and make `isForthRoot` a property documents keep. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForthPlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L372) | Start the watcher that re-applies `forthTopologyNeedsUpdating` whenever the graph changes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">forthTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L385) | Give every child of a ForthField root a `ForthExecution`, and take it back from a child whose roots have all been switched off. |
 
 ### Top-level values { #forthinterface-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isForthRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/forth/ForthInterface/#L257) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isForthRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/forth/ForthInterface/#L347) | Marks a box as a ForthField root, which makes its children ForthField boxes. |
 
 ### ForthExecution { #forthinterface-kt-forthexecution }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">ForthExecution</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/forth/ForthInterface/#L23)
+[<code class="highlight"><span class="k">class</span> <span class="nf">ForthExecution</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/forth/ForthInterface/#L50)
 
-BoxExecution implementation for the ForthField microlanguage.
+The execution a ForthField box runs under: one [`ForthInterpreter`](languages.md#forthinterpreter-kt-forthinterpreter), and the editor protocol around it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">forth</span></code>](source/jvmMain/afield/forth/ForthInterface/#L25) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L75) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L117) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L121) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L204) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L213) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L243) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterface/#L254) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">forth</span></code>](source/jvmMain/afield/forth/ForthInterface/#L57) | This box's interpreter, holding the stack, the dictionary and the variables. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L115) | Evaluate `execute`'s code once, with output and errors routed back to the box. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L163) | Run the whole box, which for ForthField is `executeFragment` over all of it. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L181) | Run `code` once, and then keep running its last word every pass if that word is a colon definition. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L271) | Stop every strand this box is running. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L288) | Complete the word being typed against this box's dictionary. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L325) | Run one named word, as though its name had been typed and evaluated on its own line. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterface/#L337) | `forth`, the name this execution reports itself under. |
 
 ## ForthInterpreter.kt { #forthinterpreter-kt }
 
@@ -5363,24 +5416,49 @@ One row of the bias table: what a given kernel, band width and geometry cost in 
 
 ## RectSLEditorExtension.kt { #rectsleditorextension-kt }
 
+Serves `rectsl.js`, the browser-side RectSL editor support, to the page and to the test that
+checks it.
+
+RectSL runs in Kotlin, in `RectSL.kt`; a RectSL program is a triple-quoted string beginning
+`#rectsl` inside an ordinary Kotlin box. So there is no execution path to hook, and this file is
+the whole of the language's presence in the editor. `rectsl.js` lives in
+`src/commonMain/resources`, reaches the browser as the AMD module `bithero/rectsl` (one of the
+modules `bootstrapMonaco.js` requires by name while the editor starts), and is read back verbatim
+here, so the smoke test `rectsl.editor-extension.workout` runs the same bytes the editor does. A
+browser-side language that can only be tested in a browser does not stay correct.
+
+Once installed, the extension brings syntax highlighting, flow decorations, lexical diagnostics,
+a context badge and completions to a `#rectsl` region. Colouring is decoration-based rather than a
+Monarch grammar, so there is no grammar here that can fail to compile and take Monaco's startup
+down with it.
+
+`rectsl.js` installs itself either way it is loaded: as an AMD module when a Monaco loader
+is present, and immediately when it is evaluated bare, which is the path `html()` uses. The two
+differ in one respect. The AMD path also registers a standalone `rectsl` Monaco language, so that
+a loose `.rectsl` file opened in the editor gets `#` comment toggling and bracket handling; it
+carries no tokenizer of its own, because the decoration highlighter already treats a whole
+`rectsl` model as one region.
+
 `src/jvmMain/kotlin/afield/rectsl/RectSLEditorExtension.kt` — [read the source](source/jvmMain/afield/rectsl/RectSLEditorExtension/)
 
 ### Top-level functions { #rectsleditorextension-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L37) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L39) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L74) | `RectSLEditorExtension.javascript`, as a top-level function. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L77) | `RectSLEditorExtension.html`, as a top-level function. |
 
 ### RectSLEditorExtension { #rectsleditorextension-kt-rectsleditorextension }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">RectSLEditorExtension</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L5)
+[<code class="highlight"><span class="k">object</span> <span class="nc">RectSLEditorExtension</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L34)
+
+The RectSL editor extension, as bytes: the resource itself, and a page fragment that installs it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L6) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L15) | The RectSL editor extension. The single source of truth is the static resource `src/commonMain/resources/rectsl.js`, which is served to the browser as the AMD module `bithero/rectsl` (see bootstrapMonaco.js) and read verbatim here so the node-probe smoke test exercises the exact code that ships. The file self-installs under bare `eval` (no AMD loader) and registers an AMD module when a Monaco loader is present. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L24) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L36) | The extension's id, which is also the `extensionId` `rectsl.js` registers itself under. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L45) | The bytes of `rectsl.js`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L60) | The extension as a drop-in HTML fragment: a titled line of prose saying what it does, with the whole of `rectsl.js` inlined in a script tag. |
 
 ## RectSLFit.kt { #rectslfit-kt }
 
