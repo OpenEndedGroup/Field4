@@ -1370,4 +1370,4 @@ And if you are documenting or testing it:
 - prefer **finite deterministic input** when the visualizer does not need motion
 - save `loop {}` + launch for genuinely live examples
 
-The nice part is that all of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
+All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
