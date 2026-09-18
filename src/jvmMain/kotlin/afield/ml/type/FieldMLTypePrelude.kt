@@ -6,7 +6,7 @@ package afield.ml.type
  *
  * [schemes] is the root environment `Inferencer` starts from, so a name here is in scope in every
  * FieldML box. Each entry is a [Scheme] rather than a bare type, because most of the prelude is
- * polymorphic and the interesting part is *how* polymorphic: `map` works over any element type,
+ * polymorphic and a bare type cannot say *how* polymorphic: `map` works over any element type,
  * `abs` over `Int` or `Float` but not over a string, `dot` over two vectors as long as they are
  * the same width. A scheme carries those restrictions on its quantified variables, which is what
  * lets one entry stand in for what would otherwise be a pile of overloads.

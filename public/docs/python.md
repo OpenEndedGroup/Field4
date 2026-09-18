@@ -123,7 +123,7 @@ intercepts that. `webbrowser.open`, `open_new`, `open_new_tab` and the controlle
 `webbrowser.get` are all replaced at interpreter startup, and the page is embedded in the box's
 output as a self-contained `srcdoc` iframe on a channel called `browser` (`_FIELD_EMBED_CHANNEL`).
 
-The interesting case is a library that starts a one-shot local HTTP server and then blocks until
+The hard case is a library that starts a one-shot local HTTP server and then blocks until
 someone fetches the URL — which is what plotly's default renderer does. `_field_open_url` fetches it
 itself on a daemon thread: the GET satisfies the waiting server so the cell never hangs, and the
 document that comes back is what gets embedded. No front end has to be present for any of that to
