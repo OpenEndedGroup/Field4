@@ -15,12 +15,12 @@ sequencer at all, because of one fact:
 **A net with a deterministic conflict policy is a pure function of time — so a net is a
 `PatPattern`.**
 
-That sounds like an implementation note. It is the whole design. `PatPattern` is not a list of
-notes; it is a function from a span of time to the events inside it, and every combinator in
-[the pattern language](pattern_language.md) is free to call it with any span, in any order, as
-often as it likes. A stateful sequencer cannot survive that. A memoised Petri net can. The moment
-it does, `every`, `jux`, `off`, `fast`, `rev`, `with gain(sine())`, the offline renderer, the piano
-roll and `respond {}` all apply to a Petri net without a line of new code.
+`PatPattern` is not a list of notes; it is a function from a span of time to the events inside it,
+and every combinator in [the pattern language](pattern_language.md) is free to call it with any
+span, in any order, as often as it likes. A stateful sequencer cannot survive that. A memoised
+Petri net can. The moment it does, `every`, `jux`, `off`, `fast`, `rev`, `with gain(sine())`, the
+offline renderer, the piano roll and `respond {}` all apply to a Petri net without a line of new
+code.
 
 ---
 
