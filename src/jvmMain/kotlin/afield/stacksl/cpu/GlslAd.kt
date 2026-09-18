@@ -12,7 +12,7 @@ import kotlin.math.absoluteValue
  * walks. Nothing about a GLSL builtin's *meaning* is restated; what is added is a local partial
  * beside each operation.
  *
- * #### Reverse, not forward
+ * #### Why reverse mode
  *
  * An image loss over a wire vector is many-inputs-one-output, which is reverse mode's shape:
  * one forward pass plus one backward sweep answers for every wire at once, so the cost does not

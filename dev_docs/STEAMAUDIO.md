@@ -732,7 +732,8 @@ Per source before a `ReflectionMixer`, which shares one decode across many.
 
 ## Handoff
 
-[INTEGRATION.md](INTEGRATION.md) is the document for whoever wires this into the engine:
+[STEAMAUDIO_INTEGRATION.md](STEAMAUDIO_INTEGRATION.md) is the document for whoever wires this into
+the engine:
 dependency coordinates, the two native-access gotchas, the coordinate mapping and why not to
 hand-roll it, the threading table, the signal chain with measured settings, pathing's probe
 dependency, lifetime rules, known gaps, and the command list.

@@ -14,19 +14,19 @@ import java.util.stream.IntStream
  * Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the
  * fitted numbers back into the program.
  *
- * #### Why a StackSL program is differentiable where a RectSL scene is not
- *
- * A shape language is the hard case. RectSL draws shapes, so a pixel's value depends on a
- * parameter through *coverage*, `d(pixel)/d(parameter)` needs a differentiable rasteriser, and a
- * coverage approximation is a modelling choice with a bias to characterise. `RectSLSoftRaster.kt`
- * is that choice, made there.
+ * #### Why a StackSL program is differentiable
  *
  * StackSL is not geometry. It is a **per-pixel field**: `main()` runs once per pixel with `fragUV`
  * as its only spatial input, and the output is an ordinary composition of arithmetic and GLSL
  * builtins. So `d(pixel)/d(wire)` is the chain rule. There is no rasteriser in the pipeline, no
  * coverage term, no approximation and so no bias to characterise.
  *
- * #### Three limits on what a fit can do
+ * RectSL, a shape language, is the harder case. There a pixel's value depends on a parameter
+ * through *coverage*, so `d(pixel)/d(parameter)` needs a differentiable rasteriser, and a coverage
+ * approximation is a modelling choice with a bias to characterise. `RectSLSoftRaster.kt` is that
+ * choice, made there.
+ *
+ * #### Limits on what a fit can do
  *
  *  1. **A fit can only move literal-backed wires.** See [StackSLWires]: a wire noted
  *     `"optional default palette a"` is a default the emitter supplied, with no literal in the
@@ -40,8 +40,8 @@ import java.util.stream.IntStream
  *  3. **The loss is a per-pixel sum of squares and rewards exactly that.** It has no term for
  *     structure, so a fit can lower it a long way by matching a target's colour and luminance
  *     statistics while the image does not resemble the target at all. `StackSLFitFigureTest`
- *     writes a figure of the target, the seed and the fit so the result is looked at and not only
- *     scored.
+ *     writes a figure of the target, the seed and the fit side by side, which is the comparison
+ *     the loss itself cannot make.
  */
 
 /**

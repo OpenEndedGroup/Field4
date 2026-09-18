@@ -3007,9 +3007,8 @@ Random programs, and small changes to programs.
 
 The thing a search actually mutates: a MorphoHDL **program, as text**.
 
-That choice is the whole design. A generator could build netlists directly and skip the compiler,
-and it would be faster and it would be a lie — the netlist would be Field's idea of what morpho
-compiles a design into, and the resulting search would optimise against that idea rather than
+A generator could build netlists directly and skip the compiler, and it would be faster. It
+would also optimise against Field's idea of what morpho compiles a design into rather than
 against MorphoHDL. So a genome renders to source, upstream's `parse()` reads it, upstream's
 `compileModule()` compiles it, and anything the search finds can be pasted into a morpho box and
 will still be there tomorrow.
@@ -4134,12 +4133,11 @@ Snapshot of a Nano execution, suitable for HTML rendering in Field output areas.
 Python as a Field main language: a box whose source is Python, executed **in this process** by
 CPython through JEP.
 
-In-process is the whole design and every consequence below follows from it. There is no
-subprocess and no socket, so a Python box and a Kotlin box exchange objects rather than text; and
-there is exactly **one interpreter and one namespace per Field process**, so two Python boxes
-share globals whether or not you wanted them to. That is a deliberate trade — it is what makes a
-cell in one box see a `DataFrame` another box built — and it is the first thing to know before
-debugging "why does this variable already exist".
+There is no subprocess and no socket, so a Python box and a Kotlin box exchange objects rather
+than text; and there is exactly **one interpreter and one namespace per Field process**, so two
+Python boxes share globals whether or not you wanted them to. That is a deliberate trade — it is
+what makes a cell in one box see a `DataFrame` another box built — and it is the first thing to
+know before debugging "why does this variable already exist".
 
 Read it in four layers:
 
@@ -7166,7 +7164,7 @@ interpreter's one copy of the control flow, over the same parse tree the `Float`
 walks. Nothing about a GLSL builtin's *meaning* is restated; what is added is a local partial
 beside each operation.
 
-### Reverse, not forward
+### Why reverse mode
 
 An image loss over a wire vector is many-inputs-one-output, which is reverse mode's shape:
 one forward pass plus one backward sweep answers for every wire at once, so the cost does not
@@ -7212,13 +7210,13 @@ while the adjoint is the derivative of the smooth relaxation, which is the quant
 The surrogate vocabulary a differentiable StackSL fit descends through: a mollified delta, the
 jump families it may be applied to, and the schedule that narrows it.
 
-Three types, and the split between them is the whole design. [`AdSurrogate`](languages.md#glsladsurrogate-kt-adsurrogate) is a *temperature plus
+Three types. [`AdSurrogate`](languages.md#glsladsurrogate-kt-adsurrogate) is a *temperature plus
 a set of families* — the one object `GlslAdScalars` consults at each jump site.
 [`AdSurrogateFamily`](languages.md#glsladsurrogate-kt-adsurrogatefamily) partitions the jump-discontinuous builtins by **where their jumps are** rather
 than by name, because that is what decides the partial, and because `floor` is not one thing: as a
 quantiser it is a wall worth softening, and as a noise lattice's cell index its zero is the *true*
 derivative and softening it destroys a wire that already worked. [`AdAnnealing`](languages.md#glsladsurrogate-kt-adannealing) is the schedule,
-and it is kept despite measuring as unnecessary rather than because it earned its place.
+and the measurements say a fit does not need it.
 
 Nothing here is on unless a caller asks: `AdSurrogate.OFF` is the default everywhere, and even
 switched on it replaces **only local partials** and never a primal value. The measurements —
@@ -7381,22 +7379,20 @@ The value type the GLSL interpreter is generic over, so that one interpreter ser
 
 ### One interpreter, two algebras
 
-The CPU backend's value is that it interprets **the emitted GLSL**, the artifact the GPU
-consumes. A hand-written per-word CPU evaluator would not be that, and would check nothing: two
-algebraically-identical implementations agree with each other while both drift from the spec. So
-a derivative has to flow through this parser and this interpreter.
+The interface factors out the *values*, leaving `GlslInterpreter.kt`'s machine (the statements,
+the branches, the loops, the call frames, the lvalue writes) as one copy of the control flow,
+shared by every scalar type. `GlslFloatScalars` is the `Float` instance, and each of its methods
+is a single `GlslValue` expression, so going through the interface neither widens nor reorders
+any arithmetic. `StackSLCpuFloatPathManifestTest` holds all 31 gallery programs to committed
+`Float` bits.
 
-That is what this interface is for. It factors out the *values*, leaving `GlslInterpreter.kt`'s
-machine (the statements, the branches, the loops, the call frames, the lvalue writes) as one copy
-of the control flow, shared by every scalar type. `GlslFloatScalars` is the `Float` instance, and
-each of its methods is a single `GlslValue` expression, so going through the interface neither
-widens nor reorders any arithmetic. `StackSLCpuFloatPathManifestTest` holds all 31 gallery
-programs to committed `Float` bits.
+Sharing the control flow is what lets a derivative run over **the emitted GLSL**, the artifact
+the GPU consumes, rather than over a second evaluator written beside it.
 
 `V` is a reference type in both instances ([`GlslValue`](languages.md#glslvalue-kt-glslvalue) and `AdValue`), so the `Float` path pays no
 boxing for the generic parameter: one interface dispatch per operation is the entire cost.
 
-### Whole values, not components
+### Why the methods take whole values
 
 Every method here takes and returns a *whole* GLSL value rather than a component, because
 `normalize`, `dot`, `length` and the matrix products are not component-wise, and an interface at
@@ -7574,19 +7570,19 @@ Render StackSL on the CPU.
 Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the
 fitted numbers back into the program.
 
-### Why a StackSL program is differentiable where a RectSL scene is not
-
-A shape language is the hard case. RectSL draws shapes, so a pixel's value depends on a
-parameter through *coverage*, `d(pixel)/d(parameter)` needs a differentiable rasteriser, and a
-coverage approximation is a modelling choice with a bias to characterise. `RectSLSoftRaster.kt`
-is that choice, made there.
+### Why a StackSL program is differentiable
 
 StackSL is not geometry. It is a **per-pixel field**: `main()` runs once per pixel with `fragUV`
 as its only spatial input, and the output is an ordinary composition of arithmetic and GLSL
 builtins. So `d(pixel)/d(wire)` is the chain rule. There is no rasteriser in the pipeline, no
 coverage term, no approximation and so no bias to characterise.
 
-### Three limits on what a fit can do
+RectSL, a shape language, is the harder case. There a pixel's value depends on a parameter
+through *coverage*, so `d(pixel)/d(parameter)` needs a differentiable rasteriser, and a coverage
+approximation is a modelling choice with a bias to characterise. `RectSLSoftRaster.kt` is that
+choice, made there.
+
+### Limits on what a fit can do
 
  1. **A fit can only move literal-backed wires.** See [`StackSLWires`](languages.md#stackslwires-kt-stackslwires): a wire noted
     `"optional default palette a"` is a default the emitter supplied, with no literal in the
@@ -7600,8 +7596,8 @@ coverage term, no approximation and so no bias to characterise.
  3. **The loss is a per-pixel sum of squares and rewards exactly that.** It has no term for
     structure, so a fit can lower it a long way by matching a target's colour and luminance
     statistics while the image does not resemble the target at all. `StackSLFitFigureTest`
-    writes a figure of the target, the seed and the fit so the result is looked at and not only
-    scored.
+    writes a figure of the target, the seed and the fit side by side, which is the comparison
+    the loss itself cannot make.
 
 `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/StackSLFit/)
 
@@ -7686,10 +7682,10 @@ runs is still the artifact the GPU consumes rather than a restatement of it:
     dropped, the initial values having moved into the globals.
 
 `StackSLWireLoweringTest` renders the lowered program with every wire at its recorded initial
-and asserts the raster is **bit-identical** to the ordinary non-externalised compile of the same
-program, which is what the two are supposed to be.
+and asserts the raster is **bit-identical** to the ordinary non-externalised compile of the
+same program.
 
-### Only some wires can be written back into the source
+### Which wires can be written back
 
 A wire's `note` says where it came from, and that is what governs the round trip. A `"number"`
 wire stands for a literal the human typed, so a fitted value can be substituted at the recorded
