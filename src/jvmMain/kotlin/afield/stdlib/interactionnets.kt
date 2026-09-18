@@ -1868,14 +1868,25 @@ object PairSelectors {
  * The engine: takes a [RuleBook] and a scheduler, and runs a net forward one reaction at a time.
  *
  * Each step finds every reaction the rules allow, lets the [PairSelector] pick one, deletes that pair, splices in the
- * replacement, and then **relaxes the layout by 8 iterations** — so a reduction is also an animation, and new nodes are
- * seeded at the collision's centre so they visibly emerge from it rather than appearing at the origin.
+ * replacement, and then relaxes the layout by [relaxIterations] iterations — so a reduction is also an animation, and
+ * new nodes are seeded at the collision's centre so they visibly emerge from it rather than appearing at the origin.
+ * Set [relaxIterations] to 0 for a headless run: the layout is `O(n²)` per iteration and a reduction you are not
+ * watching pays for a picture nobody looks at.
  *
  * Two side effects worth knowing, both in every step: every node's age is incremented, and the layout moves. And two
  * defensive skips: a passthrough is dropped when either end is already connected, and a reconnection when its
  * *outside* peer is — so a rule that double-books an outside port loses a wire with nothing to say so. The reconnection's own
  * new port is not checked, so a rule that wires a freshly built port internally and then reconnects it does
  * throw, out of [Net.connect].
+ *
+ * The third thing it does is **chase wires**. A loose end a rule reaches through `ext(...)` or `ctx.auxPeer(...)` can
+ * turn out to be a port of the vanishing pair itself — that is what a wire running *through* both nodes looks like, and
+ * `λx. x` compiled to a net has exactly one, from the abstraction's binder to its body. Reattaching to it would mean
+ * wiring to a node that has just been deleted, out of [Net.connect]. So every attachment the rule asked for is resolved
+ * first: an end that points back into the pair is followed across the internal wire to whichever *other* attachment
+ * named the far side of it, and the two surviving ends are joined to each other — which is what the vanished wire
+ * meant. This applies to reconnections and passthroughs alike, and it iterates, so a pair joined by more than one
+ * internal wire resolves too. A chain that runs out without reaching a surviving end was a closed loop, and is dropped.
  *
  * Use [step] or [stepDetailed] once per frame to watch it happen, [reduce] to run to normal form. There is a second
  * constructor taking one of the stock [ActivationOrder]s in place of a [PairSelector], for when you want a named
@@ -1884,7 +1895,8 @@ object PairSelectors {
 class Reducer(
     private val rules: RuleBook,
     private val selector: PairSelector = PairSelectors.firstFound,
-    private val layout: LayoutConfig = LayoutConfig()
+    private val layout: LayoutConfig = LayoutConfig(),
+    private val relaxIterations: Int = 8
 ) {
     // No KDoc block of its own, deliberately: the completion parser's declaration matcher does not
     // recognise `constructor`, so a comment here is dropped — or, if the next declaration had no KDoc
@@ -1892,8 +1904,9 @@ class Reducer(
     constructor(
         rules: RuleBook,
         order: ActivationOrder,
-        layout: LayoutConfig = LayoutConfig()
-    ) : this(rules, PairSelectors.from(order), layout)
+        layout: LayoutConfig = LayoutConfig(),
+        relaxIterations: Int = 8
+    ) : this(rules, PairSelectors.from(order), layout, relaxIterations)
 
     /** Fires one reaction. False means nothing fired — the net is in normal form, or no rule covers what is left. */
     fun step(net: Net): Boolean = stepDetailed(net) != null
@@ -1998,26 +2011,67 @@ class Reducer(
         val pair = candidate.pair
         val out = candidate.rule.rewrite(candidate.context)
 
+        // Read the pair's own wiring while the pair still exists: port id -> what it was attached to, for
+        // every port of both nodes. A loose end that turns out to be one of *these* ports is a wire that ran
+        // through the pair, and reattaching to it after the removal below would wire to a deleted node.
+        val insidePair = LinkedHashMap<String, Port>()
+        for (node in listOf(pair.left, pair.right)) {
+            for (port in node.ports) net.connected(port)?.let { insidePair[port.id] = it }
+        }
+
         net.incrementAges(1.0)
         net.remove(pair.left)
         net.remove(pair.right)
 
-        for ((p, q) in out.passthroughs) {
-            if (net.connected(p) == null && net.connected(q) == null) {
-                net.connect(p, q)
-            }
-        }
-
         val embed = net.absorb(out.fragment, Placement(candidate.context.center, candidate.context.radius))
 
-        for ((newPortRef, oldPeer) in out.reconnections) {
-            val newPort = embed[newPortRef.node].ports[newPortRef.portIndex]
-            if (net.connected(oldPeer) == null) {
-                net.connect(newPort, oldPeer)
-            }
+        // Every attachment the rule asked for, in one list, so wire chasing can see across the two kinds.
+        // A passthrough is two outside ends; a reconnection is one port the rule just built plus one
+        // outside end. `built` is tracked because a built port is deliberately *not* checked for being
+        // free — that is the documented throw.
+        val links = ArrayList<Link>()
+        for ((p, q) in out.passthroughs) links += Link(p, false, q, false)
+        for ((ref, oldPeer) in out.reconnections) {
+            links += Link(embed[ref.node].ports[ref.portIndex], true, oldPeer, false)
         }
 
-        net.relax(iterations = 8, config = layout)
+        // Which link named each port of the vanished pair, and what the far end of that link was. A rule
+        // names such a port whenever a wire ran between two ports of the pair: `auxPeer` handed back the
+        // pair's own other port rather than an outside one.
+        val namedInward = HashMap<String, Pair<Int, Endpoint>>()
+        links.forEachIndexed { index, link ->
+            if (link.a.id in insidePair) namedInward[link.a.id] = index to link.end(1)
+            if (link.b.id in insidePair) namedInward[link.b.id] = index to link.end(0)
+        }
+
+        val settled = HashSet<Int>()
+        links.forEachIndexed { index, link ->
+            if (index in settled) return@forEachIndexed
+            val aInward = link.a.id in insidePair
+            val bInward = link.b.id in insidePair
+            if (aInward && bInward) return@forEachIndexed // a pure connector; reached by chasing, or a loop
+            if (!aInward && !bInward) {
+                settled += index
+                join(net, link.end(0), link.end(1))
+                return@forEachIndexed
+            }
+            // One end points back into the pair. Follow the internal wire to the attachment that named its
+            // far side, and keep going while that one points inward too.
+            val anchor = if (aInward) link.end(1) else link.end(0)
+            var inward = if (aInward) link.a else link.b
+            val walked = hashSetOf(index)
+            var target: Endpoint? = null
+            while (true) {
+                val across = insidePair[inward.id] ?: break
+                val (hopIndex, far) = namedInward[across.id] ?: break
+                if (!walked.add(hopIndex)) break
+                if (far.port.id in insidePair) inward = far.port else { target = far; break }
+            }
+            settled += walked
+            if (target != null) join(net, anchor, target)
+        }
+
+        if (relaxIterations > 0) net.relax(iterations = relaxIterations, config = layout)
         return ReductionStep(
             ruleName = candidate.rule.name,
             context = candidate.context,
@@ -2026,6 +2080,26 @@ class Reducer(
             createdNodeIds = embed.nodes.map { it.id },
             events = out.events.map { RewriteEvent(it.kind, Vec2(it.at), it.magnitude, LinkedHashMap(it.data)) }
         )
+    }
+
+    /** One end of an attachment: the port, and whether the rule built it (built ports are not checked for being free). */
+    private class Endpoint(val port: Port, val built: Boolean)
+
+    /** One attachment the rule asked for, before wire chasing has decided what it actually joins. */
+    private class Link(val a: Port, val builtA: Boolean, val b: Port, val builtB: Boolean) {
+        fun end(which: Int): Endpoint = if (which == 0) Endpoint(a, builtA) else Endpoint(b, builtB)
+    }
+
+    /**
+     * Wires two resolved ends, keeping the two defensive skips this engine has always had: an outside end that is
+     * already connected loses its wire silently, and a built end is passed through unchecked so that a rule which
+     * double-books one of its own ports still throws out of [Net.connect].
+     */
+    private fun join(net: Net, first: Endpoint, second: Endpoint) {
+        if (first.port == second.port) return
+        if (!first.built && net.connected(first.port) != null) return
+        if (!second.built && net.connected(second.port) != null) return
+        net.connect(first.port, second.port)
     }
 }
 
@@ -2291,6 +2365,34 @@ object Lambda {
     /** An opaque constant. A nullary atom that [DUP] copies and [ERASE] consumes. */
     val CONST = Types.agent("CONST", 0)
 
+    /**
+     * The [NodeState.scalars] key a fan's label lives under.
+     *
+     * A [DUP] plays two roles in a λ-net — the *fan-out* that hands a shared subterm to each of its users, and the
+     * *fan-in* that `dup-lam` leaves on a duplicated abstraction's binder to gather the copies back up — and the only
+     * thing that tells one meeting from another is whether the two fans came from the same duplication. That is the
+     * label. [LambdaTerms.compile] mints a fresh one per fan it builds, and every rule that copies a fan copies its
+     * state, so the label is inherited for free.
+     */
+    const val FAN_LABEL: String = "fanLabel"
+
+    /**
+     * The fan label on a node, or **0.0** for a [DUP] built without one.
+     *
+     * That default is deliberate: the hand-wired demos in this file and any net you build with a bare
+     * `node(DUP)` all carry label 0, so two of them annihilate rather than commuting forever.
+     */
+    fun fanLabelOf(node: Node): Double = node.state.scalars[FAN_LABEL] ?: 0.0
+
+    /**
+     * A [NodeState] for a labelled fan — `node(DUP, state = Lambda.fan(3))`.
+     *
+     * Only the label matters to the rules; [energy] is here because every other state in this vocabulary carries one
+     * and the renderer reads it.
+     */
+    fun fan(label: Int, energy: Double = 1.0): NodeState =
+        NodeState(energy = energy, scalars = linkedMapOf(FAN_LABEL to label.toDouble()))
+
     private fun PairContext.structuralEcho(nodeOrdinal: Int, branch: Int, attenuation: Double = 0.9): NodeState =
         stateCopy(nodeOrdinal).split(
             parts = 2,
@@ -2330,8 +2432,14 @@ object Lambda {
      * `"annihilate"` — and splits or attenuates node energy as it goes, which is what
      * makes a reduction visibly decay rather than merely rewire — so the energies here are art direction, not semantics.
      *
-     * Not a complete optimal reducer: there is no fan/fan commuting rule and no lambda frontend. Enough to watch beta
-     * reduction happen, and to build your own vocabulary next to.
+     * `fan-fan` is the one rule that is not a fixed template: it reads [FAN_LABEL] off both nodes and **annihilates**
+     * two fans from the same duplication or **commutes** two from different ones. One rule rather than two, because
+     * [RuleBook.findMatch] takes the first signature that matches and a second `(DUP, DUP)` rule would never fire; the
+     * event it emits — `"annihilate"` or `"branch"` — is what tells the two cases apart in a log.
+     *
+     * With `fan-fan` present, and with the [Reducer] chasing wires through a vanished pair, this book has every rule a
+     * closed λ-term's reduction needs. It is still not *optimal* reduction in Lamping's sense — there are no brackets or
+     * croissants, so the sharing is correct but not maximal — and the energies remain art direction.
      */
     fun rules(): RuleBook = rules {
         // Linear beta: APP(fun,arg) ⟂ LAM(binder,body)
@@ -2357,6 +2465,13 @@ object Lambda {
         }
         autoRule("erase-root", ERASE, ROOT) { ctx ->
             emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
+        }
+
+        // Two sinks facing each other. Reachable the moment a binder is erased and the body it bound was
+        // erased too — `(\x. \y. y) k` gets there in three steps — and without this the net is stuck with a
+        // redex nothing covers, which looks exactly like a normal form until you count the nodes.
+        autoRule("erase-erase", ERASE, ERASE) { ctx ->
+            emit("annihilate", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy))
         }
 
         // ERASE against structure: recursively erase each auxiliary subtree.
@@ -2564,7 +2679,65 @@ object Lambda {
             emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
-        // A modest custom rule example remains available as the escape hatch.
+        // Fan against fan: the rule this vocabulary was missing, and the one that makes a duplicated
+        // abstraction reduce rather than deadlock. `dup-lam` leaves a fan-in on the binder of the two copies
+        // it makes; the fan-out that was already there, handing the binder to each of the body's uses of it,
+        // is now facing it principal to principal. Whether they cancel or copy each other is the whole
+        // question, and [FAN_LABEL] is the answer: same duplication, or two different ones.
+        //
+        // Written with the `rule` escape hatch rather than `autoRule` because the two cases produce different
+        // shapes, and as one rule rather than two because `RuleBook.findMatch` takes the first matching
+        // signature — a second (DUP, DUP) rule could never fire. The emitted event names the branch taken.
+        rule("fan-fan", DUP, DUP) { ctx ->
+            val firstLabel = fanLabelOf(ctx.first)
+            val secondLabel = fanLabelOf(ctx.second)
+            if (firstLabel == secondLabel) {
+                // Two halves of one duplication. Copy *i* of the fan-out is copy *i* of the fan-in, so the
+                // two fans cancel and each matching pair of copy wires is spliced straight through.
+                passthrough(ctx.auxPeer(0, 0), ctx.auxPeer(1, 0))
+                passthrough(ctx.auxPeer(0, 1), ctx.auxPeer(1, 1))
+                emit(
+                    "annihilate",
+                    magnitude = ctx.pairEnergy,
+                    data = mapOf("label" to firstLabel, "energy" to ctx.pairEnergy)
+                )
+            } else {
+                // Two different duplications, so each has to be applied to the other: four fans, keeping
+                // their own labels, wired in the same 2x2 crossing `dup-app` and `dup-lam` use —
+                // firstCopy[j].aux(i) to secondCopy[i].aux(j).
+                val firstCopies = List(2) { j ->
+                    node(
+                        "fanA$j",
+                        DUP,
+                        at = vec(if (j == 0) -26.0 else 26.0, -32.0),
+                        state = ctx.operatorTrace(0, j),
+                        impulse = Vec2(ctx.axis).mul(((if (j == 0) -1 else 1) * ctx.radius * 0.35).toFloat())
+                    )
+                }
+                val secondCopies = List(2) { i ->
+                    node(
+                        "fanB$i",
+                        DUP,
+                        at = vec(if (i == 0) -26.0 else 26.0, 32.0),
+                        state = ctx.structuralEcho(1, i),
+                        impulse = ctx.branchImpulse(i)
+                    )
+                }
+                for (i in 0..1) reconnect(principal(secondCopies[i]), 0, i)
+                for (j in 0..1) reconnect(principal(firstCopies[j]), 1, j)
+                for (i in 0..1) {
+                    for (j in 0..1) aux(firstCopies[j], i) to aux(secondCopies[i], j)
+                }
+                emit(
+                    "branch",
+                    magnitude = ctx.pairEnergy,
+                    data = mapOf("label" to firstLabel, "otherLabel" to secondLabel, "energy" to ctx.pairEnergy)
+                )
+            }
+        }
+
+        // A modest custom rule example remains available as the escape hatch. Note that it never fires:
+        // `erase-dup` above covers the same unordered pair of types and was declared first.
         rule("dup-erase-annihilate", DUP, ERASE) { ctx ->
             val e0 = node(
                 "e0",
