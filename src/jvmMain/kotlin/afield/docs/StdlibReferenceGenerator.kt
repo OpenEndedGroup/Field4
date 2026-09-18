@@ -542,6 +542,125 @@ object StdlibReferenceGenerator {
      */
     private const val UNCATEGORISED = "Uncategorised"
 
+    // ── page lints ──────────────────────────────────────────────────────────────────────────────
+    //
+    // Two checks over the *rendered* page text, run from [main] in the `failures` list **before**
+    // the drift guard. The ordering is the whole design, and it is the same argument
+    // [UNCATEGORISED] makes above: the drift guard only certifies that the committed pages equal
+    // what the source produces, so any defect that survives regeneration is certified rather than
+    // caught. A lint placed after it could always be silenced with
+    // `./gradlew generateCodebaseReference`. Placed before it — and the drift guard is gated on
+    // `failures.isEmpty()` — a planted defect reports the lint alone, with no drift noise, which
+    // is also what makes a red-first demonstration legible.
+
+    /**
+     * A markdown inline-link target that could name something.
+     *
+     * Anything else is a link markdown will *render* but that can resolve to nothing — the shape
+     * a Kotlin sample produces when it lands in prose, because `pat("[bd cp](3,8)")` is a
+     * perfectly good markdown link to the path `3,8`.
+     *
+     * Measured over the 20 committed pages at 4546d72b5: 12675 `](…)` occurrences, 11324 distinct
+     * targets, of which **1** fails this pattern — `3,8`, on `patterns.md:2508`, at indent 8. See
+     * [impossiblePathLinkFailures] for why that one is not a failure.
+     */
+    private val PLAUSIBLE_LINK_TARGET =
+        Regex("""^(?:#|https?://|mailto:)|^[A-Za-z0-9_./-]+(?:#[A-Za-z0-9_.-]+)?$""")
+
+    private val INLINE_LINK_TARGET = Regex("""\]\(([^)\n]*)\)""")
+
+    /**
+     * Pages whose prose renders a link that can resolve to nothing.
+     *
+     * The predicate is narrower than it first looks, and the narrowing is the measurement. A
+     * `](…)` with an impossible target only *matters* where markdown will actually make a link
+     * out of it, which means: not inside a ``` fence, and at an indent below 4 — at 4 or more the
+     * line is an indented code block and no link is produced.
+     *
+     * Both halves were established by counting rather than by reasoning. Over the 20 committed
+     * pages the impossible-target set has exactly one member, `patterns.md:2508`
+     * (`val groove = pat("[bd cp](3,8) hh!2")`), and it sits at **indent 8**. That line is the
+     * *fixed* form of the very defect this lint exists for: the bug was the same sample rendered
+     * at indent 3, where it did become a link. So a predicate without the indent clause would
+     * fail on the base commit over content that is already correct — and the floor this lint
+     * holds is **0**, not 1.
+     *
+     * Deliberately not grandfathered: the count is 0, so there is nothing to grandfather, and a
+     * ledger with no entries is the right state for a ratchet.
+     */
+    private fun impossiblePathLinkFailures(pages: Map<String, String>): List<String> {
+        val failures = mutableListOf<String>()
+        pages.forEach { (name, text) ->
+            var inFence = false
+            text.lineSequence().forEachIndexed { index, line ->
+                if (line.trimStart().startsWith("```")) {
+                    inFence = !inFence
+                    return@forEachIndexed
+                }
+                if (inFence) return@forEachIndexed
+                if (line.length - line.trimStart(' ').length >= 4) return@forEachIndexed
+                INLINE_LINK_TARGET.findAll(line).forEach { match ->
+                    val target = match.groupValues[1]
+                    if (target.isNotEmpty() && PLAUSIBLE_LINK_TARGET.containsMatchIn(target)) return@forEach
+                    failures += "$name:${index + 1}: renders a link to \"$target\", which can name " +
+                        "nothing — a code sample reached prose. Indent the sample by 4, or fence " +
+                        "it, so markdown stops reading `](…)` as a link: ${line.trim()}"
+                }
+            }
+        }
+        return failures
+    }
+
+    /**
+     * Fenced lines carrying a literal backtick, grandfathered by exact text with an owner.
+     *
+     * A backtick inside a ``` fence renders as a backtick, so it is almost always KDoc inline-code
+     * markup that escaped its prose and landed in a sample. Measured over the 20 committed pages
+     * at 4546d72b5: 416 lines sit inside a ``` fence and **1** carries a backtick — the entry
+     * below. The brief for this ratchet stated the rule as "no generated page contains a literal
+     * backtick inside a fence", and that is *false at the base commit*; it is implemented with the
+     * one real site named, rather than by widening the rule until it passes.
+     *
+     * Graded backwards as well, like `KNOWN_UNRESOLVED` in `tools/check_doc_site_links.py`: an
+     * entry that no longer reproduces is a failure, or the ledger becomes a list of problems that
+     * used to exist.
+     */
+    private val GRANDFATHERED_FENCE_BACKTICKS: Map<String, String> = linkedMapOf(
+        "// Forward `line` into your output channel / renderer." to
+            "A Kotlin *comment* inside a real ```kotlin fence, naming the local `line` it just " +
+                "bound — src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt:81, published at " +
+                "languages.md:886. Correct as authored: a comment that mentions an identifier is " +
+                "how Kotlin is written, and the fence is deliberate. Owner: whoever next edits " +
+                "that KDoc, and the fix if one is ever wanted is to drop the backticks from the " +
+                "comment, not to relax this lint.",
+    )
+
+    private fun fenceBacktickFailures(pages: Map<String, String>): List<String> {
+        val failures = mutableListOf<String>()
+        val seen = mutableSetOf<String>()
+        pages.forEach { (name, text) ->
+            var inFence = false
+            text.lineSequence().forEachIndexed { index, line ->
+                if (line.trimStart().startsWith("```")) {
+                    inFence = !inFence
+                    return@forEachIndexed
+                }
+                if (!inFence || '`' !in line) return@forEachIndexed
+                val trimmed = line.trim()
+                if (trimmed in GRANDFATHERED_FENCE_BACKTICKS) {
+                    seen += trimmed
+                    return@forEachIndexed
+                }
+                failures += "$name:${index + 1}: a literal backtick inside a ``` fence — KDoc " +
+                    "inline-code markup renders as a backtick in a code block: $trimmed"
+            }
+        }
+        (GRANDFATHERED_FENCE_BACKTICKS.keys - seen).forEach {
+            failures += "GRANDFATHERED_FENCE_BACKTICKS entry no longer reproduces, delete it: $it"
+        }
+        return failures
+    }
+
     /** Page order, and the prose that introduces each category page. */
     private val CATEGORY_BLURBS: Map<String, String> = linkedMapOf(
         "Math" to "Numerics: signal processing in both domains, estimation and fitting, " +
@@ -857,6 +976,12 @@ object StdlibReferenceGenerator {
         pages.forEach { (name, text) ->
             if (text.length < 200) failures += "$name is suspiciously short (${text.length} chars)"
         }
+        // Before the drift guard on purpose — see the comment above [PLAUSIBLE_LINK_TARGET]. The
+        // populations these two select, measured over the 20 committed pages at 4546d72b5:
+        // 12675 `](…)` occurrences (11324 distinct targets), 0 rendering an impossible link; and
+        // 416 lines inside ``` fences, 1 carrying a backtick and grandfathered by exact text.
+        failures += impossiblePathLinkFailures(pages)
+        failures += fenceBacktickFailures(pages)
 
         // Drift guard: the FIELD_TEST path (no explicit output dir) additionally asserts that the
         // committed pages are exactly what the current source produces.

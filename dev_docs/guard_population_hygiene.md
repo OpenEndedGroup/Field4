@@ -133,6 +133,58 @@ what each one counted.
 
 See `dev_docs/private_boundary.md` for what that guard is and why it is shaped this way.
 
+### 5. A predicate that cannot see what the guard's name claims
+
+Shapes 1 to 4 are all about a population that *drifted*. This one never matched. The guard selects
+its subject with a hand-written list, the thing it speaks for grew, and the two were never wired
+together — so the guard is not loose, it is simply pointed somewhere else, and it reports green with
+complete confidence. The repair is mechanical rather than numeric: derive the selector from the
+thing it speaks for, as `tools/check_staged_generated_artifacts.py:55#def _reference_source_roots`
+now does, and the two lists cannot disagree because there is one.
+
+Three instances, all measured on 2026-09-18, all in guards whose names describe exactly the right
+job:
+
+**The pre-commit selector for the codebase reference.** `check_staged_generated_artifacts.py`
+decides which gates a commit must pass by testing staged paths against per-guard predicates. Its
+`_reference_input` named two source roots. `StdlibReferenceGenerator.SOURCE_ROOTS`, the list the
+generator actually reads, names seventeen. Over the tracked tree at that commit, 402 `.kt` files are
+generator inputs and the predicate selected 170 — so 232 of them, 58%, spread over fifteen roots,
+could be staged with the staleness gate never firing. The largest invisible root held 83 files. The
+defect was not that the number was low; it was that there were two lists, and only one of them was
+ever going to be updated. Fixed by parsing `SOURCE_ROOTS` out of the generator, which is what the
+same file already does for the macro producers and the citation inputs — and the comment on the
+former already said why: keeping a second hand-written path list is how one file escaped that guard.
+
+**Anchors in the docs site.** `check_doc_site_links.py` resolves every reference on every built page
+and requires it to land on a real file. It had `"#"` in its skip list, and its resolver split the
+fragment off before resolving, so a `#anchor` was discarded on both paths. No guard in the tree
+could see a renamed heading. The measured population before the fix is the cleanest number on this
+page: **zero**. After: 20655 fragment-carrying refs, 10996 of them at a page the build wrote, 4418
+distinct page-and-fragment pairs, of which exactly one names no `id` — a theme-emitted
+skip-to-content link, grandfathered by name with an owner note.
+
+**A lint that could be silenced by regenerating.** Two new checks inside
+`StdlibReferenceGenerator.main` sit in the `failures` list *before* the drift guard, and the drift
+guard is gated on that list being empty. That ordering is the whole design, and it is the argument
+the generator's `UNCATEGORISED` check already makes: a drift guard certifies that the committed
+artifact equals what the source produces, so any defect that survives regeneration is certified
+rather than caught. A lint placed after it can always be silenced with one `generate` invocation.
+
+A fourth thing this pass established, which belongs with shape 1: **the population a lint selects
+moves by more than half depending on a definition nobody wrote down.** The same scanner for "KDoc
+lines at indent 4 or more, carrying an identifier-shaped reference" returns 950 lines and 34 refs
+over the generator's own 402 input files, 1352 and 39 over all of `jvmMain`, and 1502 and 47 over
+every tracked Kotlin source — 69 if the reference pattern also admits a lowercase initial. Four of
+those six numbers had been quoted in this project's own notes as if they were the same measurement.
+The lesson is narrower than "state the population": state the *predicate*, because two people
+scanning the same tree for the same thing disagreed by 58% on the count and by 100% on the refs.
+
+Test for this shape: take the list the guard *speaks for* — the generator's roots, the theme's
+attributes, the task's inputs — and diff it against the list the guard *selects on*. If the guard
+keeps its own copy, that diff is the defect, and the repair is to derive rather than to widen.
+Widening fixes today's instance and leaves the mechanism in place.
+
 ## The measurement that keeps being got wrong: compiled is not run
 
 The fourth instance is different in kind and worth its own section, because two separate passes at
@@ -244,6 +296,9 @@ found in guards written the same night by someone actively looking for this fail
 | Undeclared input | `citationGates` over `.gitmodules`, `tools/code-use-semantic-sidecar` | 2026-08-27, by argument rather than A/B |
 | Compiled, not run | 5 documented APIs with no evaluator anywhere | 2026-08-27, `DocumentedApiEvaluationTest` ledger |
 | Two populations | `PersonalBoundaryTest` walks the filesystem: 3460 files in the primary tree, 2666 in a worktree | 2026-09-05, documented rather than fixed — see below |
+| Predicate cannot see its subject | `check_staged_generated_artifacts.py:_reference_input` named 2 source roots against the generator's 17: 170 of 402 inputs selected | 2026-09-18, `SOURCE_ROOTS` parsed out of the generator |
+| Predicate cannot see its subject | `check_doc_site_links.py` discarded every `#fragment`: 0 anchors checked | 2026-09-18, 4418 page-and-fragment pairs, 1 grandfathered |
+| Silenceable by regenerating | no lint on the generated reference pages ran before the drift guard | 2026-09-18, two lints ahead of the drift check |
 
 One row of that ledger is a real gap rather than a justification.
 `src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt` opens a Window and exercises
