@@ -1,6 +1,6 @@
 # Field4 Quick Reference for AI Agents
 
-## TL;DR: How to Work with Field4
+## Editing a workspace from the shell
 
 ### Create a New Box
 ```bash
@@ -14,21 +14,29 @@ echo 'println("Updated!")' > existing-box_code_.kt
 ```
 ✅ Field reloads, updates UI, persists changes
 
-### Supported File Types
+### Which file names become which property
 
-| File Pattern | Purpose |
-|--------------|---------|
-| `id_code_.kt` | Kotlin code |
-| `id_fragment_.glsl` | Fragment shader |
-| `id_vertex_.glsl` | Vertex shader |
-| `id_metadata_.yaml` | Box metadata/tags |
-| `id_customization_.js` | JavaScript |
+The extension follows the property, so the name tells Field what it is holding:
+
+| File pattern | Property | Holds |
+|---|---|---|
+| `id_code_.kt` | `code` | Kotlin |
+| `id_metadata_.yaml` | `metadata` | tags and description |
+| `id_customization_.js` | `customization` | the box's on-canvas appearance and behaviour |
+| `id_notes_.md` | `notes` | prose kept with the box |
+| `id_fragment_.glsl`, `id_vertex_.glsl`, `id_compute_.glsl`, … | a shader stage | GLSL |
+| `id_fragment_s_.slang`, … | the same stage in Slang | Slang |
+| `id_msl_.metal` | `msl` | Metal, for a visionOS head |
+| `id_stackSL_.stacksl` | `stackSL` | a StackSL program |
+
+`Box.ioSeparateProperties` in the Field source is the whole list; the GLSL and Slang rows cover
+`fragment`, `vertex`, `compute`, `task`, `mesh` and the ray-tracing stages.
 
 ### File Naming Rules
 
 - Format: `<boxId>_<property>_.<ext>`
 - Box ID: lowercase with hyphens (`my-box`, `shader-1`)
-- Property: one of the types above
+- Property: one of the names above
 - **Important**: Underscore before dot (`_.`) is required!
 
 ### What Happens Automatically
@@ -132,8 +140,9 @@ info,file-watch: Reloaded external change: code in Shader System
 
 ## Full Documentation
 
-See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for comprehensive documentation.
+`dev_docs/agents/` in the Field repository is the reference: `README.md` maps the agent path,
+`OPERATION_TRANSCRIPT.md` is the build/edit/launch/save format, `FIELD_BACKDOOR.md` is the
+run/capture/screenshot harness, and `AGENT_QUICK_REF.md` is the current version of this card.
 
-## Questions?
-
-Check Field's console output or review `src/jvmMain/kotlin/afield/FileWatchManager.kt`
+Field's console output names every file operation, and
+`src/jvmMain/kotlin/afield/FileWatchManager.kt` is the implementation.
