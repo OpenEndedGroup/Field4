@@ -27,9 +27,12 @@ renderer parent — see the graphics topology rule in `dev_docs/agents/transcrip
 
 - **`metadata.edn`** is the document: it lists the boxes and their properties. Field manages it for
   you — you rarely need to edit it by hand.
-- **`<box>_<property>_.{kt,glsl,yaml,js}`** are *sidecar* files: the larger text properties of each
-  box kept as editable files on disk. Supported properties are `code` (`.kt`),
-  `fragment`/`vertex`/`compute` (`.glsl`), `metadata` (`.yaml`) and `customization` (`.js`).
+- **`<box>_<property>_.{kt,glsl,yaml,js,…}`** are *sidecar* files: the larger text properties of each
+  box kept as editable files on disk. The extension follows the property: `code` is `.kt`,
+  `metadata` is `.yaml`, `customization` is `.js`, `notes` is `.md`. A shader stage takes the
+  extension of its own language: `.glsl` for `fragment`, `vertex`, `compute` and the ray-tracing
+  stages, `.slang` for their Slang twins, `.metal` for `msl`, `.stacksl` for `stackSL`.
+  `Box.ioSeparateProperties` in the Field source is the whole list.
 - **Editing a sidecar is enough.** Field's file watcher picks a new or changed file up within a few
   seconds, creates the box if it did not exist, positions it, loads the property and saves to
   `metadata.edn`. The underscore before the dot (`_.`) is required.
