@@ -1987,9 +1987,18 @@ $FRAME_HISTORY_GLSL
      * agreement to within the readback's own quantisation, which is the strongest available statement
      * that `Summary` is the primitive and these two are producers of it.
      *
-     * The weight channel is the exception, and only by a constant: a raster cell's weight is its mean
-     * coverage *per texel* and a node's is its share of the *point budget*, so they differ by the
-     * known ratio of texels to points. Nothing else does.
+     * Including the weight, and that takes one decision: a node's weight is its **density relative to
+     * a uniform distribution** — its points' total weight over the number of points a cell of its
+     * size would hold if the set were spread evenly. That is the only normalisation under which the
+     * shared reduction ladder is correct, because the ladder averages, and a mean is the one
+     * per-cell quantity whose parent is the mean of its children. It is also the one that makes the
+     * two producers report the *same number* rather than the same number times a constant.
+     *
+     * It is unbounded, and that is a real asymmetry rather than an oversight: a raster texel's
+     * coverage is at most one, so a raster cell's mean coverage is at most one, while a point set can
+     * put half its mass in one cell. A crowded node therefore has a density over 1.0 and the 8-bit
+     * preview clamps it — the statistic is fine, the *picture* of it is not. [densityScale] is for
+     * when you want to look at one.
      *
      * @param prefix pass names are `$prefix-code`, `$prefix-rank`, `$prefix-sorted`,
      *   `$prefix-<plane>-<depth>`.
@@ -2000,6 +2009,11 @@ $FRAME_HISTORY_GLSL
      *   index divided by N is exact in fp32 and survives being stored in a colour channel.
      * @param depth the leaf depth: `2^depth` cells a side, `2 * depth` bits of code.
      * @param coarsest the shallowest depth to reduce to.
+     * @param densityScale multiplies the leaf normalisation. 1 leaves a node's weight as its density
+     *   against a uniform spread, which is the value at which the raster producer and this one report
+     *   identical numbers; anything else is for keeping a clustered set's leaf level inside the range
+     *   an 8-bit readback can show. It scales the weight and the moments together, so every statistic
+     *   derived as a ratio of them — centroid, covariance, mean, variance — is unaffected.
      * @param statistics as [summaryPyramid].
      * @param format the planes' format, fp32 for the same reason — and here it is load-bearing twice
      *   over, because the codes and indices are exact integers rather than quantities. See
@@ -2011,9 +2025,11 @@ $FRAME_HISTORY_GLSL
         pointGrid: Int = 32,
         depth: Int = 4,
         coarsest: Int = 0,
+        densityScale: Float = 1f,
         statistics: SummaryStatistics = SummaryStatistics.POOLED,
         format: Int = VK_FORMAT_R32G32B32A32_SFLOAT
     ): List<FabricatePassSpec> {
+        require(densityScale > 0f) { "densityScale must be positive, got $densityScale" }
         require(pointGrid >= 2 && pointGrid and (pointGrid - 1) == 0) {
             "the point grid must be a power of two of at least 2, got $pointGrid — an index divided " +
                     "by a non-power-of-two is not exact in fp32, and an index that rounds reads the wrong point"
@@ -2033,6 +2049,9 @@ $FRAME_HISTORY_GLSL
 
         val cells = 1 shl depth
         val steps = pointSearchSteps(count)
+        // Points per cell if the set were spread evenly — the divisor that turns a node's total
+        // weight into a *mean*, which is what the shared reduction ladder above the leaf averages.
+        val normalizer = densityScale * (cells.toFloat() * cells) / count
 
         val code = FabricatePassSpec(
             name = "$prefix-code",
@@ -2082,7 +2101,8 @@ $FRAME_HISTORY_GLSL
                 extraInputs = listOf(
                     FabricatePassInput("sortedTex", "$prefix-sorted"),
                     FabricatePassInput("pointsTex", points)
-                )
+                ),
+                push = mapOf("normalizer" to normalizer)
             )
         }
 
@@ -2142,6 +2162,48 @@ $FRAME_HISTORY_GLSL
                 "underGain" to underGain,
                 "tint" to tint
             )
+        )
+    }
+
+    /**
+     * The spatial covariance of every cell of one level, as `(cxx, cyy, cxy)` — the statistic the
+     * moment planes exist to make available, computed once.
+     *
+     * Three reasons this is a pass and not something a reader does with three numbers:
+     *
+     * - **It is the consumer's arithmetic, and it should exist once.** `Σwx²/w − (Σwx/w)²` in the
+     *   overlay, again in a subdivision criterion, again in a test, is three chances to get the
+     *   normalisation wrong in a way that still renders.
+     * - **A second moment is not measurable through the readback any other way.** The preview path
+     *   is 8-bit, and `cxx` at a fine level is the difference of two channels that agree to three
+     *   digits — so reading the planes back and subtracting on the CPU returns noise, whatever the
+     *   GPU computed. Subtracting *before* the readback and scaling the answer is the difference
+     *   between a measurement and a number-shaped thing.
+     * - **`cxy` is signed**, and the readback cannot carry a negative. The bias is here rather than
+     *   at the call site for the same reason the gain is.
+     *
+     * @param gain multiplies all three. A cell's spatial variance is about `(s² − 1)/12R²` for a cell
+     *   of `s` texels, which at a fine level is a very small number.
+     */
+    fun summaryCovariance(
+        name: String = "summary-covariance",
+        prefix: String = "summary",
+        depth: Int = 4,
+        gain: Float = 1f,
+        format: Int? = null
+    ): FabricatePassSpec {
+        require(depth >= 0) { "depth must not be negative, got $depth" }
+        return FabricatePassSpec(
+            name = name,
+            fragment = SUMMARY_COVARIANCE_FRAGMENT,
+            size = FabricatePassSize.MatchSource,
+            format = format,
+            source = summaryPlane(prefix, SUMMARY_MOMENT, depth),
+            extraInputs = listOf(
+                FabricatePassInput("valueTex", summaryPlane(prefix, SUMMARY_VALUE, depth)),
+                FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth))
+            ),
+            push = mapOf("gain" to gain)
         )
     }
 
@@ -2472,6 +2534,41 @@ $FRAME_HISTORY_GLSL
         }
     """
 
+    /**
+     * `(cxx, cyy, cxy)` from the three planes, scaled — and `cxy` biased, because it is signed.
+     *
+     * The empty-cell branch writes zeros rather than dividing: a cell with no mass has no centroid to
+     * take moments about, and `0/0` is a NaN that the readback shows as black, which is also what a
+     * covariance of zero looks like.
+     */
+    val SUMMARY_COVARIANCE_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D valueTex;
+        layout(set = 0, binding = 2) uniform sampler2D extentTex;
+        layout(push_constant) uniform CovariancePush {
+            float gain;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        void main() {
+            ivec2 cell = ivec2(gl_FragCoord.xy);
+            float w = texelFetch(valueTex, cell, 0).x;
+            if (w <= 1e-7) {
+                outColor = vec4(0.0, 0.0, 0.5, 0.0);
+                return;
+            }
+            vec4 moment = texelFetch(sourceTex, cell, 0);
+            float cross = texelFetch(extentTex, cell, 0).x;
+            vec2 middle = moment.xy / w;
+            float cxx = moment.z / w - middle.x * middle.x;
+            float cyy = moment.w / w - middle.y * middle.y;
+            float cxy = cross / w - middle.x * middle.y;
+            outColor = vec4(cxx * push.gain, cyy * push.gain, cxy * push.gain + 0.5, 1.0);
+        }
+    """
+
     /** The variance of a [SUMMARY_VALUE] cell, however that plane happens to carry it. */
     fun summaryVarianceFragment(statistics: SummaryStatistics): String {
         val expression = when (statistics) {
@@ -2713,6 +2810,10 @@ $FRAME_HISTORY_GLSL
      * is legal — it is what depth 1 looks like on a clustered set.
      */
     private fun pointLeafPreamble(count: Int, width: Int): String = """
+        layout(push_constant) uniform LeafPush {
+            float normalizer;
+        } push;
+
         const int COUNT = $count;
         const int WIDTH = $width;
 
@@ -2754,10 +2855,14 @@ $FRAME_HISTORY_GLSL
                     mean += w * v;
                     m2 += w * v * v;
         """
+        // The weight — and, in the raw form, the two moments with it — is extensive and takes the
+        // normalizer. The pooled mean and variance are ratios that have already divided it out, so
+        // scaling them would be scaling an answer rather than a total.
         val emit = if (pooled) {
-            "vec4(total / float(COUNT), mean, total > 0.0 ? m2 / total : 0.0, n > 0 ? 1.0 : 0.0)"
+            "vec4(total * push.normalizer, mean, total > 0.0 ? m2 / total : 0.0, n > 0 ? 1.0 : 0.0)"
         } else {
-            "vec4(total / float(COUNT), mean / float(COUNT), m2 / float(COUNT), n > 0 ? 1.0 : 0.0)"
+            // Here `mean` and `m2` are Σwv and Σwv², which are sums like the weight and scale with it.
+            "vec4(vec3(total, mean, m2) * push.normalizer, n > 0 ? 1.0 : 0.0)"
         }
         return """
         #version 450
@@ -2813,7 +2918,7 @@ $accumulate
                 vec2 p = point.xy;
                 moments += vec4(w * p.x, w * p.y, w * p.x * p.x, w * p.y * p.y);
             }
-            outSummary = moments / float(COUNT);
+            outSummary = moments * push.normalizer;
         }
     """
 
@@ -2847,7 +2952,7 @@ $accumulate
                     highest = max(highest, v);
                 }
             }
-            outSummary = vec4(cross / float(COUNT), lowest, highest, 0.0);
+            outSummary = vec4(cross * push.normalizer, lowest, highest, 0.0);
         }
     """
 

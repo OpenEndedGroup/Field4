@@ -1161,6 +1161,22 @@ class FabricatePassChainTest {
         // The cell count is compiled in, so the shader and the level it reads cannot disagree.
         assertTrue("const int CELLS = 4;" in overlay.spec.fragment, overlay.spec.fragment)
     }
+
+    @Test
+    fun theCovariancePassTakesAllThreePlanesAndRunsAtTheLevelsOwnSize() {
+        // Its size matters in a way the overlay's does not: it is one output per *cell*, so it has
+        // to be the level's size and not the image's. `MatchSource` against the moment plane is how
+        // that is guaranteed rather than restated.
+        val specs = FabricatePassLibrary.summaryPyramid(prefix = "field", resolution = 32) +
+                FabricatePassLibrary.summaryCovariance(prefix = "field", depth = 3, gain = 100f)
+        val plan = FabricatePassChain.plan(specs, 512, 512, srgb)
+        val covariance = plan.passes.last()
+        assertEquals(8, covariance.shape.width)
+        assertEquals(
+            listOf("sourceTex" to "field-moment-3", "valueTex" to "field-value-3", "extentTex" to "field-extent-3"),
+            covariance.inputs.map { it.samplerName to (it.from as FabricatePassRef.Pass).name }
+        )
+    }
 }
 
 /** Test-only: the persistent pass names, without going through a built chain. */

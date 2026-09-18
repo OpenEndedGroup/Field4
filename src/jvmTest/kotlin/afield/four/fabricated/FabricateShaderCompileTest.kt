@@ -106,6 +106,7 @@ class FabricateShaderCompileTest {
         compiles("fabricate-summary-extent-reduce.frag", FabricatePassLibrary.SUMMARY_EXTENT_REDUCE_FRAGMENT)
         compiles("fabricate-summary-range-reduce.frag", FabricatePassLibrary.SUMMARY_RANGE_REDUCE_FRAGMENT)
         compiles("fabricate-summary-readout.frag", FabricatePassLibrary.SUMMARY_READOUT_FRAGMENT)
+        compiles("fabricate-summary-covariance.frag", FabricatePassLibrary.SUMMARY_COVARIANCE_FRAGMENT)
         FabricatePassLibrary.SummaryStatistics.entries.forEach { statistics ->
             compiles(
                 "fabricate-summary-variance-$statistics.frag",
@@ -186,7 +187,8 @@ class FabricateShaderCompileTest {
             listOf(
                 FabricatePassLibrary.summaryEllipses(depth = 3),
                 FabricatePassLibrary.summaryReadout(from = FabricatePassChain.CHAIN_INPUT),
-                FabricatePassLibrary.summaryVariance(from = FabricatePassChain.CHAIN_INPUT)
+                FabricatePassLibrary.summaryVariance(from = FabricatePassChain.CHAIN_INPUT),
+                FabricatePassLibrary.summaryCovariance(depth = 3)
             )
         )
         val distinct = chains.flatten().map { it.fragment }.distinct()
