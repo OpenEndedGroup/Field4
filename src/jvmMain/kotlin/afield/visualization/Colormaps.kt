@@ -3,6 +3,22 @@ package afield
 import kotlin.math.floor
 
 /**
+ * The colour vocabulary the visualization helpers share: [Color4], a `[0,1]`-component colour value
+ * with no dependencies, and [Colormaps], eight named ramps that can be sampled at any parameter.
+ *
+ * A ramp here is a short table of evenly-spaced control points rather than a 256-entry lookup table
+ * (nine colours for each of the matplotlib maps, seventeen for turbo, three for the house
+ * cyan→orange), and [Colormaps.sampleStops] interpolates linearly between them. A caller that
+ * colours one pixel at a time builds its own table from that: `showHeatmap` quantises the ramp into
+ * 1024 entries once per image rather than interpolating per pixel.
+ *
+ * Names are matched after trimming and lowercasing, `gray`, `greys` and `cyan-orange` are aliases,
+ * and an unknown name raises with [Colormaps.names] in the message rather than falling back to a
+ * default. RectSL's `colormap` and `cmap` words, `showHeatmap` and the imaging visualizers all take
+ * that same vocabulary, so a ramp named in one place is the same ramp in another.
+ */
+
+/**
  * A colour with `[0,1]` components. A small, dependency-free colour value shared across the
  * visualization helpers ([showHeatmap], [Colormaps]) and the RectSL data-viz words.
  *

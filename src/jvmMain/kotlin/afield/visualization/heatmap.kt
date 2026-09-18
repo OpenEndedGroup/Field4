@@ -6,6 +6,28 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
+ * A rectangular array of numbers as a colour-mapped picture in a box output, in one call.
+ *
+ * The file is two layers. [heatmapImage] is pure: a rectangular matrix in, a [RasterImage] of ARGB
+ * pixels out, with the colour scale, the optional log transform, the bilinear upsample and the
+ * overlay trace all resolved there, so a test or a docs capture can render one without a Box.
+ * `Box.showHeatmap` adds the two steps a box wants, encoding to PNG and displaying it into an
+ * output channel, and returns the bytes so the caller can save or re-display them. `Box.showImage`
+ * is that same second layer over a pixel buffer you already have.
+ *
+ * Two conventions decide which way up the picture comes out. The matrix is read row-major, outer
+ * index the row and inner index the column, so rows are the vertical axis; and `flipY` defaults to
+ * true, drawing row 0 at the bottom, which is what a spectrogram's frequency bins want. A
+ * spectrogram stored the other way round, frame-outer and bin-inner, is the `transpose = true`
+ * case: frames become x and bins become y.
+ *
+ * Colour is a [Colormaps] name and a range. Under `normalize` the range is the data's own minimum
+ * and maximum; `vmin` and `vmax` pin it instead, which is what makes two captures comparable;
+ * `logScale` runs each value through `log10(max(v, 1e-12))` first, for magnitude spectra and
+ * anything else spanning orders of magnitude.
+ */
+
+/**
  * A colour-mapped raster produced by [heatmapImage]: ARGB [pixels] laid out row-major, [width] ×
  * [height]. Call [png] for PNG bytes ready to `display` or persist.
  */
