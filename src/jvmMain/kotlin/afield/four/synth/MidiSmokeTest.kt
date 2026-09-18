@@ -20,15 +20,17 @@ expect:
  * Smoke cover for the Standard MIDI File surface: writes a clip, reads it back, exports a pattern,
  * imports one, draws a roll, enumerates devices and opens a real output port.
  *
- * This deliberately does **not** open a MIDI *input*. Opening a CoreMIDI input spawns a non-daemon
+ * It does **not** open a MIDI *input*, and cannot. Opening a CoreMIDI input spawns a non-daemon
  * `Java Sound MidiInDevice Thread` that survives both `Transmitter.close()` and
- * `MidiDevice.close()`, so a JVM that has opened one never exits naturally — and a `jvm-main` smoke
+ * `MidiDevice.close()`, so a JVM that has opened one never exits naturally, and a `jvm-main` smoke
  * test is required to exit naturally. The live input loopback is covered by
  * `MidiRoundTripTest` instead, where Gradle tears the test JVM down regardless. See [MidiInput].
  *
  * Everything is written to a temp directory that is deleted on the way out, so a run leaves no
  * files in the repository.
  */
+
+/** Runs the Standard MIDI File smoke checks; `main` is the `synth.midi-file.smoke` entrypoint. */
 object MidiSmokeTest {
 
     @JvmStatic

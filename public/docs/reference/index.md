@@ -134,7 +134,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FaustEngine.kt](synthesis.md#faustengine-kt) | Synthesis | 51 | 23 | The Faust compiler, running inside Field. | [Faust](../faust.md) |
 | [FaustPattern.kt](synthesis.md#faustpattern-kt) | Synthesis | 62 | 35 | A pattern plays a Faust program. | [Faust](../faust.md) |
 | [FaustPoly.kt](synthesis.md#faustpoly-kt) | Synthesis | 48 | 34 | A Faust program played polyphonically, by a pattern. | [Making a sound in Field: every path there is](../sound_paths.md) |
-| [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 18 |  |  |
+| [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 18 | The two published clips that make polyphony audible: one chord progression, eight voices and one. |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 15 | The file that opens an audio device: the OpenAL output stream Field plays through, the optional capture stream `audioInput()` reads from, and the mixer that sums every registered patch into it. |  |
@@ -234,7 +234,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Midi.kt](audio.md#midi-kt) | Audio | 81 | 35 | A Standard MIDI File surface for Field. |  |
 | [MidiDevices.kt](audio.md#mididevices-kt) | Audio | 51 | 33 | Live MIDI device I/O, and offline rendering of a `MidiClip` to a WAV through the JDK's own software synthesizer. |  |
 | [MidiPat.kt](audio.md#midipat-kt) | Audio | 18 | 12 | The bridge between the pattern algebra and `MidiClip`, plus a piano roll drawn as FLines. |  |
-| [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 |  |  |
+| [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 | Smoke cover for the Standard MIDI File surface: writes a clip, reads it back, exports a pattern, imports one, draws a roll, enumerates devices and opens a real output port. |  |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
 | [MorphoCircuit.kt](languages.md#morphocircuit-kt) | Languages | 15 | 11 | The grow-and-draw handle: a compiled MorphoHDL circuit that expands a few cells per frame while its layout relaxes between expansions. |  |
 | [MorphoFLines.kt](languages.md#morphoflines-kt) | Languages | 12 | 11 | Drawing a MorphoHDL circuit with Field's FLines. | [Somebody else's language, running in Field](../morpho_examples.md) |
@@ -293,7 +293,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatSpatialBudgetProbe.kt](patterns.md#patspatialbudgetprobe-kt) | Patterns | 2 | 1 |  |  |
 | [PatSpatialEngineSmoke.kt](patterns.md#patspatialenginesmoke-kt) | Patterns | 2 | 1 |  |  |
 | [PatSpatialSmokeTest.kt](patterns.md#patspatialsmoketest-kt) | Patterns | 2 | 1 |  |  |
-| [PatSpatialSoundDocs.kt](audio.md#patspatialsounddocs-kt) | Audio | 23 | 23 |  |  |
+| [PatSpatialSoundDocs.kt](audio.md#patspatialsounddocs-kt) | Audio | 23 | 23 | The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches. |  |
 | [PatSynth.kt](patterns.md#patsynth-kt) | Patterns | 47 | 24 | A pattern on the audio seam: `pat(...)` driving Field's own voices in realtime. | [A pattern that moves particles](../chain_pattern_particles.md) |
 | [PatSynthDocs.kt](patterns.md#patsynthdocs-kt) | Patterns | 8 | 5 |  |  |
 | [PatTranscription.kt](patterns.md#pattranscription-kt) | Patterns | 74 | 25 | Recovered audio, written back out as notation Field can re-render. |  |
@@ -350,7 +350,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 driven from a Field box, in owned mode. | [Sonic Pi](../sonic_pi.md) |
-| [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 |  |  |
+| [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 | The `#sonicpi` editor extension and the vocabulary it completes against. |  |
 | [SonicPiLaunch.kt](audio.md#sonicpilaunch-kt) | Audio | 12 | 7 | The handle Field holds while Sonic Pi is playing, and the registration that ties it to a box's lifecycle. |  |
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |

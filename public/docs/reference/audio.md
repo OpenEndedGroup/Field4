@@ -742,35 +742,73 @@ polyphonic [`DirtSamplePlayer`](audio.md#dirtsamples-kt-dirtsampleplayer) from i
 
 ## FaustPolySoundDocs.kt { #faustpolysounddocs-kt }
 
+The two published clips that make polyphony audible: one chord progression, eight voices and one.
+
+`faust.md` describes a polyphonic instrument in prose, onset tables in samples and peak counts in
+Hz; these two clips are the part of it a reader can listen to. The path renders offline with no
+device, so `DocsAudioProvenance` re-renders both on every build and holds them against the
+numbers this file asserts.
+
+### Why two clips of one notation, rather than one good one
+
+Polyphony cannot be demonstrated by a single clip. A recording of a chord and a recording of an
+arpeggio sound different for reasons that have nothing to do with voices, so a reader has no way
+to tell a voice bank from a well-chosen pattern. What cannot be explained away is **the same
+notation, the same program and the same gain, rendered at `voices = 8` and at `voices = 1`**: the
+notes are identical, so everything you can hear between them is voice allocation. At one voice
+every note after the first steals the only voice there is, and that steal is audible:
+`FaustVoiceBank.stealReleaseFrames` measures the click it costs.
+
+This is the same demonstration the `faust_polyphony` starting point makes in its *three notes at
+once* box, which is where the shape of it came from. That box displays its two renders as players
+in its own output; these two fences are how the same comparison reaches the page.
+
+### The voice is one oscillator, and that is a measurement decision
+
+The program here is **not** the detuned pair the rest of `faust.md` uses. The starting point's
+chord box records why: two sawtooths 0.5% apart put a *beating pair* into the band the count is
+taken in, so four voices reported four peaks and one voice reported two — which muddies the only
+thing the figure is for. A clip whose stated measurement is a peak count has to be a signal with
+one partial per note.
+
+### The band, and why a peak in it is a note
+
+The smoke test counts spectral peaks between `BAND_LO_HZ` and `BAND_HI_HZ` during the first chord,
+`[c4,ef4,g4]`. Its fundamentals are 130.81, 155.56 and 196.00 Hz and the lowest second harmonic in
+the chord is 261.6 Hz, so nothing but a fundamental can appear in that band: counting peaks there
+counts notes sounding. Eight voices must show three and one voice must show one, and the one-voice
+render must report steals. Those are the assertions, and `faust.md` is required to carry both
+captions verbatim, so its prose cannot drift off the audio it publishes.
+
 `src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt` — [read the source](source/jvmMain/afield/four/synth/FaustPolySoundDocs/)
 
 ### FaustPolySoundDocs { #faustpolysounddocs-kt-faustpolysounddocs }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FaustPolySoundDocs</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L61)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FaustPolySoundDocs</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L65)
 
-The two published clips that make polyphony audible: one chord progression, eight voices and one.
+Renders the two `faust.md` polyphony clips, counts the fundamentals in each and writes the WAVs; `main` is the `synth.faust.poly.sound` entrypoint.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L63) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CPS</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L66) | Cycles per second, matching the example on `PAGE` exactly — see `progression`. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CYCLES</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L69) | How many cycles. Four chords fit in *one*, so this plays the progression twice, in 4s. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOTE&#95;GAIN</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L72) | Per-note gain. Three notes at once at full scale would clip, and that would not be the mixer. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BAND&#95;LO&#95;HZ</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L75) | Bottom of the fundamental-only band the peak count is taken in. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BAND&#95;HI&#95;HZ</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L78) | Top of it: below the first chord's lowest second harmonic, 261.6 Hz. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MEASURE&#95;AT&#95;SECONDS</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L89) | Where the peak count is taken, in seconds, and over how many samples. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MEASURE&#95;WINDOW</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L90) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L99) | The instrument. One sawtooth per voice through a resonant lowpass, `freq`/`gate`/`gain` as Faust's own polyphonic convention names them. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">progression</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L118) | The progression, **character for character the one the `faustPoly` example on `PAGE` plays**. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">cutoffPattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L122) | The cutoff pattern the example automates, likewise verbatim. |
-| [<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">pageLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedFundamentals</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectSteals</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L125) | One published clip: the same notation at a different voice count. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PAGE</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L137) | The page these are published on. Its prose is checked against `FIGURES`, not trusted. |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Figure</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L140) | The two figures, in the order the page presents them. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">figure</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Figure</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L164) | Looks a figure up by name, with a message that lists the alternatives. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustPatternRender</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L182) | Renders figure `name` offline — no audio device, no window, no GPU. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L207) | Offline-renders figure `name` to a mono 16-bit WAV at `outPath`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fundamentalsInFirstChord</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="nc">FaustPatternRender</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustPeak</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L216) | Peaks in the fundamental-only band during the first chord of `audio`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L232) | Renders both figures, audits them, and writes them. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L67) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CPS</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L70) | Cycles per second, matching the example on `PAGE` exactly — see `progression`. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CYCLES</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L73) | How many cycles. Four chords fit in *one*, so this plays the progression twice, in 4s. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOTE&#95;GAIN</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L76) | Per-note gain. Three notes at once at full scale would clip, and that would not be the mixer. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BAND&#95;LO&#95;HZ</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L79) | Bottom of the fundamental-only band the peak count is taken in. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BAND&#95;HI&#95;HZ</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L82) | Top of it: below the first chord's lowest second harmonic, 261.6 Hz. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MEASURE&#95;AT&#95;SECONDS</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L93) | Where the peak count is taken, in seconds, and over how many samples. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MEASURE&#95;WINDOW</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L94) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L103) | The instrument. One sawtooth per voice through a resonant lowpass, `freq`/`gate`/`gain` as Faust's own polyphonic convention names them. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">progression</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L122) | The progression, **character for character the one the `faustPoly` example on `PAGE` plays**. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">cutoffPattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L126) | The cutoff pattern the example automates, likewise verbatim. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">voices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">pageLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedFundamentals</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectSteals</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L129) | One published clip: the same notation at a different voice count. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PAGE</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L141) | The page these are published on. Its prose is checked against `FIGURES`, not trusted. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Figure</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L144) | The two figures, in the order the page presents them. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">figure</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Figure</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L168) | Looks a figure up by name, with a message that lists the alternatives. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaustPatternRender</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L186) | Renders figure `name` offline — no audio device, no window, no GPU. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L211) | Offline-renders figure `name` to a mono 16-bit WAV at `outPath`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fundamentalsInFirstChord</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="nc">FaustPatternRender</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FaustPeak</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L220) | Peaks in the fundamental-only band during the first chord of `audio`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/FaustPolySoundDocs/#L236) | Renders both figures, audits them, and writes them. |
 
 ## Midi.kt { #midi-kt }
 
@@ -1124,53 +1162,118 @@ Layout for `MidiClip.toFLines`. Sizes are in Field units, which for a box output
 
 ## MidiSmokeTest.kt { #midismoketest-kt }
 
+Smoke cover for the Standard MIDI File surface: writes a clip, reads it back, exports a pattern,
+imports one, draws a roll, enumerates devices and opens a real output port.
+
+It does **not** open a MIDI *input*, and cannot. Opening a CoreMIDI input spawns a non-daemon
+`Java Sound MidiInDevice Thread` that survives both `Transmitter.close()` and
+`MidiDevice.close()`, so a JVM that has opened one never exits naturally, and a `jvm-main` smoke
+test is required to exit naturally. The live input loopback is covered by
+`MidiRoundTripTest` instead, where Gradle tears the test JVM down regardless. See [`MidiInput`](audio.md#mididevices-kt-midiinput).
+
+Everything is written to a temp directory that is deleted on the way out, so a run leaves no
+files in the repository.
+
 `src/jvmMain/kotlin/afield/four/synth/MidiSmokeTest.kt` — [read the source](source/jvmMain/afield/four/synth/MidiSmokeTest/)
 
 ### MidiSmokeTest { #midismoketest-kt-midismoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">MidiSmokeTest</span></code>](source/jvmMain/afield/four/synth/MidiSmokeTest/#L32)
+[<code class="highlight"><span class="k">object</span> <span class="nc">MidiSmokeTest</span></code>](source/jvmMain/afield/four/synth/MidiSmokeTest/#L34)
 
-Smoke cover for the Standard MIDI File surface: writes a clip, reads it back, exports a pattern, imports one, draws a roll, enumerates devices and opens a real output port.
+Runs the Standard MIDI File smoke checks; `main` is the `synth.midi-file.smoke` entrypoint.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/MidiSmokeTest/#L35) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/MidiSmokeTest/#L39) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/MidiSmokeTest/#L37) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/four/synth/MidiSmokeTest/#L41) |  |
 
 ## PatSpatialSoundDocs.kt { #patspatialsounddocs-kt }
+
+The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches.
+
+`patSpatial`'s output cannot be published, and the reason is structural. Three separate things
+have to be true for a clip to appear behind an `audio=` fence, and this path fails two of them:
+
+ * **The docs runner renders offline**, through `renderWav(name, path)` over the backdoor. There
+   is no offline half of `patSpatial` to call: `PatSpatialLaunch.advanceOffline` consumes what
+   [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom)'s render thread has already produced, in real time, so asking it for four
+   seconds of audio takes four seconds and no flag makes it faster.
+ * **`DocsAudioProvenance` re-renders every fence on every build** and fails when a render
+   fails. The HRTF needs Steam Audio's `libphonon`, which is *not committed*;
+   `./gradlew fetchSteamAudioNatives` downloads it. So on a clean clone, on CI, and in `check`
+   that render does not merely differ, it cannot start.
+
+So what is published here is the half of the chain that *is* offline and *is* committed: the
+pattern through one [`DoughEngine`](synthesis.md#dough-kt-doughengine), taken as mono. That is not a stand-in for the spatialised
+output and is not labelled as one. It is the exact buffer [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom) copies into
+`source.mono` and hands to `afield.four.audio.steamaudio.BinauralEffect`: the input to the part
+that has no figure.
+
+### What the two clips are for
+
+A single clip of a synth voice makes no claim. These two are the same notation, the same engine
+and the same gain, differing only in a **tag that is not a spatial tag**: the second adds `lpf`,
+which `patSpatialEventsForArc` forwards to Dough untouched. So everything audible between them
+is the forwarding rule, which is the reason to reach for this path over `patSynth`, whose voice
+has no `lpf` to forward to.
+
+### The claims the audit asserts, which the clips cannot show on their own
+
+Both published clips are peak-normalised, exactly as every other figure in these docs is, so
+neither of them can carry a claim about *level*. Three claims about this path are therefore
+measured on the pre-normalisation buffers and printed rather than left to the reader's ears:
+
+ 1. **`pan/0` is a lossless mono tap, not a downmix.** Every event leaves
+    `patSpatialEventsForArc` carrying `pan/0`, which puts all of an engine's energy in its left
+    channel. The smoke test requires the right channel to peak below `RIGHT_CHANNEL_CEILING`,
+    which is what lets [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom) `arraycopy` the left channel rather than compute
+    `0.5*(L+R)`, and why the source signal has full amplitude rather than half of it.
+ 2. **The six spatial tags never reach Dough.** Asserted on the event maps, not on the audio:
+    `spat`, `az`, `elev`, `dist`, `occl` and `air` are consumed by this path and `lpf` is not.
+ 3. **`az` is not in the signal.** The same pattern rendered with `az = 0` and with
+    `az = -70` produces a **bit-identical** mono source. That is the cleanest statement of why
+    there is no figure of the spatialisation: the direction lives entirely in the effect, and the
+    effect is the part that needs the uncommitted binary.
+
+Claim 3 does a second job, and it is the one that makes these two clips publishable at all: it is
+a **determinism check on [`DoughEngine`](synthesis.md#dough-kt-doughengine)**. Two engines, separately booted and separately
+fed, agreeing to the bit is exactly what `DocsAudioProvenance` requires of a producer, and
+GraalWasm is not obviously the kind of thing that delivers it. If dough ever acquires an unseeded
+voice, claim 3 fails here — with a message about placement leaking into the signal — rather than
+showing up as an unexplained correlation drop in the corpus audit.
 
 `src/jvmMain/kotlin/afield/four/synth/PatSpatialSoundDocs.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/)
 
 ### PatSpatialSoundDocs { #patspatialsounddocs-kt-patspatialsounddocs }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialSoundDocs</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L77)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialSoundDocs</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L81)
 
-The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches.
+Renders the two `pat_spatial.md` source clips, asserts the three claims about them and writes the WAVs; `main` is the `synth.pat-spatial.sound` entrypoint.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L80) | Matching `patSpatial`'s own default, and `FieldAudioEngine.shared`'s rate on this machine. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CPS</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L83) | Cycles per second. Two, the rate `sound_paths.md`'s comparison beat uses, so they line up. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CYCLES</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L86) | How many cycles. Four at `CPS` is two seconds of pattern. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GAIN</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L89) | Per-event gain, on top of each event's own `velocity`. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TAIL&#95;SECONDS</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L92) | Seconds rendered past the last event, so the final note's release is in the clip. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PAGE</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L95) | The page these are published on. Its prose is checked against `FIGURES`, not trusted. |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">WASM</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L98) | The wasm module, tracked in this repository — which is the whole reason this half renders. |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">SPATIAL&#95;TAGS</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L107) | The tags `patSpatial` consumes rather than forwards. |
-| [<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">pageLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">forwarded</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L110) | One published clip. |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Figure</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L119) | The two figures, in the order the page presents them. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">figure</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Figure</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L140) | Looks a figure up by name, with a message that lists the alternatives. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">beat</span><span class="p">(</span><span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">-</span><span class="mf">70.0</span><span class="p">,</span> <span class="n">extra</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L167) | The notation the figures play: a low line, and a faster one two octaves up. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOTATION</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L182) | The mini-notation both figures play. See `beat` for the measurement that chose it. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUSTAIN</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L185) | Multiplier on each event's own span, so a note is longer than its slot. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PROBE</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L195) | The drum spelling of the same rhythm, kept as a measurement rather than as a figure. |
-| [<code class="highlight"><span class="k">class</span> <span class="nf">Source</span><span class="p">(</span><span class="k">val</span> <span class="n">mono</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialEvent</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L198) | What one offline render measured, alongside the samples it produced. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderSource</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Source</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L222) | Renders one `spat` group's mono source offline — no device, no thread, no Steam Audio. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Source</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L268) | Renders figure `name`'s mono source. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L279) | Offline-renders figure `name` to a mono 16-bit WAV at `outPath`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L295) | Renders both figures, asserts the three claims, and writes them. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RIGHT&#95;CHANNEL&#95;CEILING</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L452) | How much of the signal may appear in the right channel before `pan/0` is not a tap. |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FORWARDING&#95;CENTROID&#95;CEILING</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L455) | How far below the plain figure's centroid the `lpf` figure's has to sit to be the filter. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L84) | Matching `patSpatial`'s own default, and `FieldAudioEngine.shared`'s rate on this machine. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CPS</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L87) | Cycles per second. Two, the rate `sound_paths.md`'s comparison beat uses, so they line up. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CYCLES</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L90) | How many cycles. Four at `CPS` is two seconds of pattern. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GAIN</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L93) | Per-event gain, on top of each event's own `velocity`. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TAIL&#95;SECONDS</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L96) | Seconds rendered past the last event, so the final note's release is in the clip. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PAGE</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L99) | The page these are published on. Its prose is checked against `FIGURES`, not trusted. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">WASM</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L102) | The wasm module, tracked in this repository — which is the whole reason this half renders. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">SPATIAL&#95;TAGS</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L111) | The tags `patSpatial` consumes rather than forwards. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">pageLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">forwarded</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L114) | One published clip. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Figure</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L123) | The two figures, in the order the page presents them. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">figure</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Figure</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L144) | Looks a figure up by name, with a message that lists the alternatives. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">beat</span><span class="p">(</span><span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">-</span><span class="mf">70.0</span><span class="p">,</span> <span class="n">extra</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L171) | The notation the figures play: a low line, and a faster one two octaves up. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">NOTATION</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L186) | The mini-notation both figures play. See `beat` for the measurement that chose it. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SUSTAIN</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L189) | Multiplier on each event's own span, so a note is longer than its slot. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PROBE</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L199) | The drum spelling of the same rhythm, kept as a measurement rather than as a figure. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Source</span><span class="p">(</span><span class="k">val</span> <span class="n">mono</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatSpatialEvent</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L202) | What one offline render measured, alongside the samples it produced. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderSource</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Source</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L226) | Renders one `spat` group's mono source offline — no device, no thread, no Steam Audio. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Source</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L272) | Renders figure `name`'s mono source. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L283) | Offline-renders figure `name` to a mono 16-bit WAV at `outPath`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L299) | Renders both figures, asserts the three claims, and writes them. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RIGHT&#95;CHANNEL&#95;CEILING</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L456) | How much of the signal may appear in the right channel before `pan/0` is not a tap. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FORWARDING&#95;CENTROID&#95;CEILING</span></code>](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/#L459) | How far below the plain figure's centroid the `lpf` figure's has to sit to be the filter. |
 
 ## SonicPi.kt { #sonicpi-kt }
 
@@ -1326,25 +1429,35 @@ One styled line of Sonic Pi's log. Style `0` is Sonic Pi's own chatter, `1` is y
 
 ## SonicPiEditorExtension.kt { #sonicpieditorextension-kt }
 
+The `#sonicpi` editor extension and the vocabulary it completes against.
+
+Both are static resources rather than strings built here: `sonicpi.js` is served to the browser as
+the AMD module `bithero/sonicpi` (see bootstrapMonaco.js) and `sonicpi-vocabulary.json` is fetched
+by it at install time. Reading them verbatim is what lets the node-probe smoke test exercise the
+code and data that ship, rather than a copy that can drift.
+
+The vocabulary is generated by `tools/generate_sonic_pi_vocabulary.py` from the installed Sonic Pi;
+see that script for why it is extracted rather than written.
+
 `src/jvmMain/kotlin/afield/four/synth/SonicPiEditorExtension.kt` — [read the source](source/jvmMain/afield/four/synth/SonicPiEditorExtension/)
 
 ### Top-level functions { #sonicpieditorextension-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">sonicPiEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L37) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">sonicPiEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L39) |  |
 
 ### SonicPiEditorExtension { #sonicpieditorextension-kt-sonicpieditorextension }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SonicPiEditorExtension</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L17)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SonicPiEditorExtension</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L19)
 
-The `#sonicpi` editor extension and the vocabulary it completes against.
+Reads the two shipped `#sonicpi` resources: the Monaco module, and the vocabulary it completes against.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L18) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L20) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">vocabularyJson</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L22) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L20) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L22) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">vocabularyJson</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/SonicPiEditorExtension/#L24) |  |
 
 ## SonicPiLaunch.kt { #sonicpilaunch-kt }
 
