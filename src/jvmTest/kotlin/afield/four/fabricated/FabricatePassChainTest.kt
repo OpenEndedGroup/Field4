@@ -932,6 +932,235 @@ class FabricatePassChainTest {
         assertTrue("sampler2D depthTex;" in FabricatePassLibrary.temporalAccumulateFragment())
         assertTrue("sampler2D motionTex;" !in FabricatePassLibrary.temporalAccumulateFragment(perPixelMotion = false))
     }
+
+    // --- summarised quadtrees ---
+
+    @Test
+    fun aSummaryPyramidIsACompleteQuadtreeOnEveryPlaneAtOnce() {
+        // Three planes, each a full ladder from the leaf level to the root, and the levels are
+        // exact halvings. "Exact" is the claim worth asserting: a 2x2 reduction of a level with an
+        // odd side drops a row, which does not fail and does not look wrong — it biases every
+        // centroid above it towards the origin by a fraction of a cell.
+        val specs = FabricatePassLibrary.summaryPyramid(resolution = 64)
+        val plan = FabricatePassChain.plan(specs, 256, 256, srgb)
+        val leaf = 6
+        assertEquals(FabricatePassLibrary.SUMMARY_PLANES.size * (leaf + 1), plan.passCount)
+        FabricatePassLibrary.SUMMARY_PLANES.forEach { plane ->
+            (leaf downTo 0).forEach { depth ->
+                val name = FabricatePassLibrary.summaryPlane("summary", plane, depth)
+                val pass = plan[name] ?: error("$name is not in the plan:\n${plan.report()}")
+                assertEquals(1 shl depth, pass.shape.width, "$name width")
+                assertEquals(1 shl depth, pass.shape.height, "$name height")
+                assertEquals(VK_FORMAT_R32G32B32A32_SFLOAT, pass.shape.format, "$name format")
+            }
+        }
+    }
+
+    @Test
+    fun everyReductionReadsTheLevelBelowItOnItsOwnPlaneAndNothingElse() {
+        // The three ladders are interleaved in the pass list, so "reads the level below" and "reads
+        // its own plane" are two different mistakes with the same symptom: a summary that is a
+        // plausible statistic of the wrong thing. Neither is visible in a picture and neither is
+        // visible in the memory report.
+        val plan = FabricatePassChain.plan(FabricatePassLibrary.summaryPyramid(resolution = 16), 64, 64, srgb)
+        FabricatePassLibrary.SUMMARY_PLANES.forEach { plane ->
+            (3 downTo 0).forEach { depth ->
+                val pass = plan.passes.single { it.name == FabricatePassLibrary.summaryPlane("summary", plane, depth) }
+                assertEquals(1, pass.inputs.size, "${pass.name} binds more than its own child level")
+                val from = pass.inputs.single().from
+                assertEquals(
+                    FabricatePassLibrary.summaryPlane("summary", plane, depth + 1),
+                    (from as FabricatePassRef.Pass).name,
+                    "${pass.name} reduces the wrong level or the wrong plane"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theTwoProducersShareTheirReductionLaddersExactly() {
+        // The unification claim, asserted rather than commented: a raster pyramid and a point
+        // quadtree are two ways of *seeding* a level, and everything above the leaf is the same
+        // pass. So for every shared plane the reduce fragments must be the identical string — not
+        // an equivalent one, because two copies of this arithmetic would be two things to keep in
+        // step, and the one that drifted would still render.
+        val raster = FabricatePassChain
+            .plan(FabricatePassLibrary.summaryPyramid(prefix = "field", resolution = 16), 64, 64, srgb)
+        val points = FabricatePassChain.plan(
+            FabricatePassLibrary.mortonPointQuadtree(prefix = "cloud", points = FabricatePassChain.CHAIN_INPUT, pointGrid = 16, depth = 4),
+            64, 64, srgb
+        )
+        FabricatePassLibrary.SUMMARY_PLANES.forEach { plane ->
+            (3 downTo 0).forEach { depth ->
+                val one = raster.passes.single { it.name == FabricatePassLibrary.summaryPlane("field", plane, depth) }
+                val other = points.passes.single { it.name == FabricatePassLibrary.summaryPlane("cloud", plane, depth) }
+                assertSame(
+                    one.spec.fragment,
+                    other.spec.fragment,
+                    "the $plane reduction is a different string for the two producers at depth $depth"
+                )
+                assertEquals(one.shape.width, other.shape.width, "$plane depth $depth")
+            }
+        }
+        // And the range plane is the point producer's alone: a raster cell's contents are its
+        // texels, so there is no index for it to carry.
+        assertTrue(points.passes.any { FabricatePassLibrary.SUMMARY_RANGE in it.name })
+        assertTrue(raster.passes.none { FabricatePassLibrary.SUMMARY_RANGE in it.name })
+    }
+
+    @Test
+    fun onlyTheValuePlaneChangesWhenTheStatisticsDo() {
+        // The switch has to reach exactly one plane. Changing how the *spatial* moments merge would
+        // be a silent change to every centroid in the tree; changing nothing at all would be a
+        // switch that appears to work because the variance channel still holds a number.
+        val pooled = FabricatePassLibrary.summaryPyramid(resolution = 16)
+            .associate { it.name to it.fragment }
+        val raw = FabricatePassLibrary
+            .summaryPyramid(resolution = 16, statistics = FabricatePassLibrary.SummaryStatistics.RAW_MOMENTS)
+            .associate { it.name to it.fragment }
+        assertEquals(pooled.keys, raw.keys, "the two forms plan different passes")
+        val differing = pooled.keys.filter { pooled.getValue(it) != raw.getValue(it) }.toSet()
+        assertEquals(
+            (4 downTo 0).map { FabricatePassLibrary.summaryPlane("summary", FabricatePassLibrary.SUMMARY_VALUE, it) }.toSet(),
+            differing
+        )
+        // The pooled reduction is the one carrying the between-children term; that term IS the
+        // difference between the two forms, so its absence is what a silently-reverted switch
+        // would look like.
+        assertTrue(
+            "delta * delta" in FabricatePassLibrary.SUMMARY_VALUE_REDUCE_POOLED_FRAGMENT,
+            "the pooled reduction has lost its between-children term, which makes it a weighted " +
+                    "average of variances that ignores every difference between the cells it merged"
+        )
+    }
+
+    @Test
+    fun aPointQuadtreeSortsBeforeItBracketsAndBracketsBeforeItSummarises() {
+        // The order is the whole algorithm, and the planner is what enforces it: every one of these
+        // references is backwards-only, so a chain whose leaf pass ran before its sort would be
+        // refused rather than produce a summary of unsorted points.
+        val specs = FabricatePassLibrary.mortonPointQuadtree(
+            prefix = "q",
+            points = FabricatePassChain.CHAIN_INPUT,
+            pointGrid = 16,
+            depth = 3
+        )
+        val plan = FabricatePassChain.plan(specs, 64, 64, srgb)
+        val order = plan.passes.map { it.name }
+        assertEquals(listOf("q-code", "q-rank", "q-sorted"), order.take(3))
+        assertTrue(order.indexOf("q-range-3") < order.indexOf("q-value-3"), order.toString())
+
+        // The leaf summary is invoked for a *node*, and reads points through the sorted index. Both
+        // extra bindings are load-bearing and neither can be inferred from the pass's own name.
+        val leaf = plan.passes.single { it.name == "q-value-3" }
+        assertEquals(
+            listOf("sourceTex" to "q-range-3", "sortedTex" to "q-sorted", "pointsTex" to FabricatePassChain.CHAIN_INPUT),
+            leaf.inputs.map { input ->
+                input.samplerName to when (val from = input.from) {
+                    is FabricatePassRef.Pass -> from.name
+                    FabricatePassRef.ChainInput -> FabricatePassChain.CHAIN_INPUT
+                    else -> from.toString()
+                }
+            }
+        )
+        // The point texture is read by three leaf passes and the code pass, so it outlives all of
+        // them — which for a chain-input reference costs nothing, and for a *pass* would be the
+        // thing that stops its slot being reused underneath them.
+        assertEquals(8, plan[FabricatePassLibrary.summaryPlane("q", FabricatePassLibrary.SUMMARY_RANGE, 3)]!!.shape.width)
+    }
+
+    @Test
+    fun theBinarySearchGetsEnoughStepsToBracketEveryKeyItCanBeGiven() {
+        // A binary search one step short does not fail, it returns a bound that is *near* the right
+        // one — so a node gets a range starting a few points early, and its summary is a plausible
+        // average of slightly the wrong points. Nothing downstream can tell. So the step count is
+        // checked by running the same loop the shader runs, over every count the chain allows and
+        // every key position in it.
+        listOf(4, 16, 64, 100, 256, 1024, FabricatePassLibrary.MAX_POINT_QUADTREE_POINTS).forEach { count ->
+            val steps = FabricatePassLibrary.pointSearchSteps(count)
+            (0..count).forEach { target ->
+                // Keys are 0,1,…count-1; lowerBound(target) must land exactly on `target`.
+                var lo = 0
+                var hi = count
+                repeat(steps) {
+                    if (lo < hi) {
+                        val mid = (lo + hi) / 2
+                        if (mid < target) lo = mid + 1 else hi = mid
+                    }
+                }
+                assertEquals(target, lo, "a $steps-step search over $count keys stopped short of $target")
+            }
+        }
+    }
+
+    @Test
+    fun theBitBudgetAndThePointBudgetAreRefusedRatherThanRounded() {
+        // A Morton code is an identity, not a quantity, so a code that rounds is a point that
+        // changes cell — and because the rounding lands in the *low* bits of an fp32 significand
+        // while the tree reads from the top, the point moves at the leaf level of a tree whose
+        // upper levels look perfect.
+        val bits = assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.mortonPointQuadtree(
+                points = "p",
+                pointGrid = 16,
+                depth = FabricatePassLibrary.MAX_EXACT_MORTON_BITS / 2 + 1
+            )
+        }
+        assertTrue(FabricatePassLibrary.MAX_EXACT_MORTON_BITS.toString() in bits.message.orEmpty(), bits.message.orEmpty())
+
+        val budget = assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.mortonPointQuadtree(points = "p", pointGrid = 128, depth = 4)
+        }
+        assertTrue("rank" in budget.message.orEmpty(), budget.message.orEmpty())
+
+        // A non-power-of-two grid makes an index divided by N inexact, and an index that rounds
+        // reads a different point rather than failing.
+        assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.mortonPointQuadtree(points = "p", pointGrid = 12, depth = 3)
+        }
+        // And an odd pyramid leaf, for the row a 2x2 reduce would drop.
+        assertFailsWith<IllegalArgumentException> { FabricatePassLibrary.summaryPyramid(resolution = 96) }
+        assertFailsWith<IllegalArgumentException> { FabricatePassLibrary.summaryPyramid(resolution = 16, coarsest = 5) }
+        assertFailsWith<IllegalArgumentException> { FabricatePassLibrary.summaryReadout(channel = 4) }
+    }
+
+    @Test
+    fun stoppingAtACoarsestDepthDropsOnlyTheLevelsAboveIt() {
+        // The knob exists because a consumer that reads two levels should not pay for eight, and
+        // the failure it has to not have is dropping the *leaf* instead of the root.
+        val specs = FabricatePassLibrary.summaryPyramid(resolution = 64, coarsest = 4)
+        val plan = FabricatePassChain.plan(specs, 64, 64, srgb)
+        val depths = plan.passes
+            .filter { FabricatePassLibrary.SUMMARY_VALUE in it.name }
+            .map { it.name.substringAfterLast('-').toInt() }
+            .sorted()
+        assertEquals(listOf(4, 5, 6), depths)
+        assertEquals(64, plan[FabricatePassLibrary.summaryPlane("summary", FabricatePassLibrary.SUMMARY_VALUE, 6)]!!.shape.width)
+    }
+
+    @Test
+    fun theEllipseOverlayBindsAllThreePlanesOfOneLevelAtItsOwnResolution() {
+        // The overlay is the only pass in either chain that reads three planes at once, and it is
+        // the one whose mistakes are invisible: bound to the wrong *level*, it draws a coarser grid
+        // of correct ellipses, which looks exactly like a deliberate choice.
+        val specs = FabricatePassLibrary.summaryPyramid(prefix = "field", resolution = 32) +
+                FabricatePassLibrary.summaryEllipses(prefix = "field", depth = 2, over = FabricatePassChain.CHAIN_INPUT)
+        val plan = FabricatePassChain.plan(specs, 512, 512, srgb)
+        val overlay = plan.passes.last()
+        assertEquals(512, overlay.shape.width, "the overlay must run at the image's resolution, not the summary's")
+        assertEquals(
+            listOf("sourceTex" to FabricatePassChain.CHAIN_INPUT, "valueTex" to "field-value-2", "momentTex" to "field-moment-2", "extentTex" to "field-extent-2"),
+            overlay.inputs.map { input ->
+                input.samplerName to when (val from = input.from) {
+                    is FabricatePassRef.Pass -> from.name
+                    FabricatePassRef.ChainInput -> FabricatePassChain.CHAIN_INPUT
+                    else -> from.toString()
+                }
+            }
+        )
+        // The cell count is compiled in, so the shader and the level it reads cannot disagree.
+        assertTrue("const int CELLS = 4;" in overlay.spec.fragment, overlay.spec.fragment)
+    }
 }
 
 /** Test-only: the persistent pass names, without going through a built chain. */
