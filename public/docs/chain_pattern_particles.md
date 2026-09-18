@@ -19,9 +19,9 @@ Each ring follows one band, in the same four colours the plot further down uses:
 bloomed into a disc while the hats hold the outermost one thin. It is one frame of something moving,
 and that plot is the signal it is following.
 
-## The link that was missing
+## `patSynth`, the scheduler
 
-`patSynth` is the scheduler, and it is three parts whose division is the whole design.
+Three parts, split by where they run:
 
 | | where it runs | what it does |
 | --- | --- | --- |
