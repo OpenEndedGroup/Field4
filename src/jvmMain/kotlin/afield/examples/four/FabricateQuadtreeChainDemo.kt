@@ -193,6 +193,32 @@ object FabricateQuadtreeChainDemo {
      */
     private const val COVARIANCE_AGREEMENT_FLOOR = 0.15
 
+    /**
+     * The two variance thresholds the ramp is cut at, and the depth each one must stop at.
+     *
+     * A ramp's cell variance is `amp²(s² − 1)/12R²` for a cell of `s` texels, so a variance cut
+     * over it has a **closed-form answer**: every cell refines until its variance falls under the
+     * threshold, and because the ramp is uniform across the image every cell reaches that at the
+     * same depth. So the cut is a uniform grid at a depth arithmetic predicts — which makes the
+     * descent machinery (the criterion, the parent's flags, the floor at the finest level) testable
+     * against something other than a picture of some cells.
+     *
+     * At 16², amp 0.5: depth 0 is 0.02075, depth 1 is 0.005127, depth 2 is 0.001221, depth 3 is
+     * 0.000244. A threshold of 0.003 is crossed between depths 1 and 2; one of 0.0005 between 2
+     * and 3.
+     */
+    private const val CUT_COARSE_THRESHOLD = 0.003f
+    private const val CUT_COARSE_DEPTH = 2
+    private const val CUT_FINE_THRESHOLD = 0.0005f
+    private const val CUT_FINE_DEPTH = 3
+
+    /** Luma change that counts as "this texel was drawn on", and the fraction of the frame required. */
+    private const val MARKED_TEXEL = 0.05
+    private const val DREW_SOMETHING = 0.01
+
+    /** The clustered cut's criterion parameter: mass narrower than this fraction of its cell refines. */
+    private const val CLOUD_CUT_SPREAD = 0.2f
+
     /** Frames to let the renderer settle before anything is measured. */
     private const val WARMUP_FRAMES = 6
 
@@ -525,11 +551,62 @@ object FabricateQuadtreeChainDemo {
             "$moved cells with a displaced centroid, worst ${"%.2f".format(worst)} of a cell width"
         }
 
+        // --- the cut: the half of a quadtree that is not the pyramid ---
+
+        guard("a variance cut stops at the depth the closed form says it must, and only there") {
+            // A uniform field has a uniform answer, which is what makes this arithmetic rather than
+            // a picture of some cells. Every wrong version of the descent shows up here: a parent's
+            // flags read from the wrong level, a criterion off by a factor, or a finest level still
+            // allowed to refine (which drops every cell that was open there and leaves holes).
+            listOf(
+                Triple("ramp-cut-coarse", CUT_COARSE_THRESHOLD, CUT_COARSE_DEPTH),
+                Triple("ramp-cut-fine", CUT_FINE_THRESHOLD, CUT_FINE_DEPTH)
+            ).forEach { (cut, threshold, expected) ->
+                val drawn = (0..4).map { depth ->
+                    depth to drawnCells(renderer, ramp, "$cut-select-$depth", "19-$cut-$depth")
+                }
+                drawn.forEach { (depth, count) ->
+                    val wanted = if (depth == expected) (1 shl depth) * (1 shl depth) else 0
+                    require(count == wanted) {
+                        "$cut drew $count cells at depth $depth, wanted $wanted — the variance of a " +
+                                "$threshold cut crosses between depths ${expected - 1} and $expected, so " +
+                                "the whole cut has to sit at depth $expected and nowhere else"
+                    }
+                }
+            }
+            "0.003 cut lands entirely at depth $CUT_COARSE_DEPTH, 0.0005 at depth $CUT_FINE_DEPTH"
+        }
+
+        guard("a clustered set is cut to different depths in different places — the hierarchy, used") {
+            // The assertion the flat one-level overlay could not make. A cut that spans one level
+            // is a grid whatever produced it; what makes this a quadtree is that the *same* pass
+            // chain resolved empty space at depth 1 and the clusters four levels down.
+            val perDepth = (1..CLOUD_DEPTH).map { depth ->
+                depth to drawnCells(renderer, cloud, "cloud-cut-select-$depth", "20-cloud-cut-$depth")
+            }
+            val used = perDepth.filter { it.second > 0 }
+            require(used.size >= 3) {
+                "the cut used ${used.size} of ${perDepth.size} levels (${perDepth.joinToString()}) — " +
+                        "one level is a grid, and a cut that never stops early is a grid at the bottom"
+            }
+            // Exactly the property that makes it a *cut* and not a set of overlapping cells: drawn
+            // and open partition reached at every level, so the drawn cells' areas must sum to the
+            // whole domain. A cell drawn twice, or a subtree that was opened and never closed,
+            // shows up here and in no picture.
+            val area = perDepth.sumOf { (depth, count) -> count.toDouble() / (1 shl depth) / (1 shl depth) }
+            require(abs(area - 1.0) < 1e-6) {
+                "the chosen cells cover ${"%.6f".format(area)} of the domain, not 1.0 — the cut is " +
+                        "not a tiling, so some region is summarised twice or not at all"
+            }
+            "depths ${used.joinToString { "${it.first}:${it.second}" }}, covering exactly the domain"
+        }
+
         // --- the figures ---
 
-        val splat = capture(renderer, cloud.targetOf("cloud-splat")!!, "14-cloud-splat")
+        val splat = capture(renderer, cloud.targetOf("cloud-view")!!, "14-cloud-view")
         val cloudEllipses = capture(renderer, cloud.targetOf("cloud-ellipses")!!, "15-cloud-ellipses")
         val fieldEllipses = capture(renderer, cloud.targetOf("cloudfield-ellipses")!!, "16-cloudfield-ellipses")
+        val cut = capture(renderer, cloud.targetOf("cloud-cut-$CLOUD_DEPTH")!!, "21-cloud-adaptive-cut")
 
         guard("the overlay draws something the image underneath does not have") {
             require(splat.distinctLumaBuckets >= 8) { "the splatted cloud has ${splat.distinctLumaBuckets} levels" }
@@ -541,12 +618,18 @@ object FabricateQuadtreeChainDemo {
                         "cloud, and its disagreement with the point producer would be the clipping. " +
                         "Lower SPLAT_GAIN."
             }
-            require(cloudEllipses.differenceFrom(splat) > 0.02) {
-                "the ellipse overlay is within ${"%.4f".format(cloudEllipses.differenceFrom(splat))} of the " +
-                        "image it was drawn over — either the planes are unbound or every cell fell through " +
-                        "the zero-weight branch, both of which render as the picture you started with"
+            val drewEllipses = cloudEllipses.changedFraction(splat, MARKED_TEXEL)
+            val drewCut = cut.changedFraction(splat, MARKED_TEXEL)
+            require(drewEllipses > DREW_SOMETHING) {
+                "the ellipse overlay changed ${"%.4f".format(drewEllipses)} of the frame — either the " +
+                        "planes are unbound or every cell fell through the zero-weight branch, both of " +
+                        "which render as the picture you started with"
             }
-            "overlay differs from its source by ${"%.4f".format(cloudEllipses.differenceFrom(splat))} mean luma"
+            require(drewCut > DREW_SOMETHING) {
+                "the adaptive cut changed ${"%.4f".format(drewCut)} of the frame"
+            }
+            "the overlay marked ${"%.1f".format(drewEllipses * 100)}% of the frame, the cut " +
+                    "${"%.1f".format(drewCut * 100)}%"
         }
 
         guard("both producers find the same shape in the same cloud, where a cell holds enough of it") {
@@ -626,6 +709,20 @@ object FabricateQuadtreeChainDemo {
                     name = "ramp-variance-2",
                     from = FabricatePassLibrary.summaryPlane("ramp", FabricatePassLibrary.SUMMARY_VALUE, 2),
                     gain = RAMP_MID_VARIANCE_GAIN
+                ) +
+                FabricatePassLibrary.adaptiveSummaryCells(
+                    prefix = "ramp",
+                    name = "ramp-cut-coarse",
+                    coarsest = 0,
+                    finest = 4,
+                    threshold = CUT_COARSE_THRESHOLD
+                ) +
+                FabricatePassLibrary.adaptiveSummaryCells(
+                    prefix = "ramp",
+                    name = "ramp-cut-fine",
+                    coarsest = 0,
+                    finest = 4,
+                    threshold = CUT_FINE_THRESHOLD
                 )
 
     /** The same shape of chain at an amplitude fp32 cannot subtract, in one of the two forms. */
@@ -687,6 +784,17 @@ object FabricateQuadtreeChainDemo {
                 format = VK_FORMAT_R32G32B32A32_SFLOAT,
                 source = "cloud-points",
                 push = mapOf("radius" to SPLAT_RADIUS, "gain" to SPLAT_GAIN)
+            ),
+            // The plane you summarise is not the plane you look at, and this is the second time
+            // that has cost a figure. `cloud-splat` carries the mass in red and the value *ratio*
+            // in blue because that is what the raster pyramid weighs and averages — and a ratio
+            // stays at full strength wherever the mass is merely small, so drawing it directly is
+            // a blue blob the size of the cloud's faintest halo with the overlay lost inside it.
+            FabricatePassSpec(
+                name = "cloud-view",
+                fragment = CLOUD_VIEW_FRAGMENT,
+                size = FabricatePassSize.Absolute(SPLAT_DIM, SPLAT_DIM),
+                source = "cloud-splat"
             )
         ) + FabricatePassLibrary.mortonPointQuadtree(
             prefix = "cloud",
@@ -700,7 +808,7 @@ object FabricateQuadtreeChainDemo {
             densityScale = CLOUD_DENSITY_SCALE
         ) + FabricatePassLibrary.summaryEllipses(
             name = "cloud-ellipses",
-            over = "cloud-splat",
+            over = "cloud-view",
             prefix = "cloud",
             depth = CLOUD_DEPTH,
             weightGain = 60f
@@ -718,10 +826,21 @@ object FabricateQuadtreeChainDemo {
             valueChannel = 2
         ) + FabricatePassLibrary.summaryEllipses(
             name = "cloudfield-ellipses",
-            over = "cloud-splat",
+            over = "cloud-view",
             prefix = "cloudfield",
             depth = CLOUD_DEPTH,
             weightGain = 24f
+        ) + FabricatePassLibrary.adaptiveSummaryCells(
+            prefix = "cloud",
+            name = "cloud-cut",
+            over = "cloud-view",
+            coarsest = 1,
+            finest = CLOUD_DEPTH,
+            // The criterion that needs the second moments, and therefore the one an occupancy
+            // quadtree cannot express: refine where the mass is narrower than the cell holding it.
+            criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
+            threshold = CLOUD_CUT_SPREAD,
+            weightGain = 40f
         ) + FabricatePassLibrary.summaryCovariance(
             name = "cloud-covariance-2",
             prefix = "cloud",
@@ -745,6 +864,23 @@ object FabricateQuadtreeChainDemo {
         source = FabricatePassChain.CHAIN_INPUT,
         push = mapOf("base" to base, "amplitude" to amplitude)
     )
+
+    /** The cloud as something to look at: the value's colour, only where the mass is. */
+    private const val CLOUD_VIEW_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outColor;
+
+        void main() {
+            vec4 f = texture(sourceTex, vUv);
+            // Free to be as bright as it likes: nothing summarises this pass. The mass channel it
+            // is made from is held well under the readback's clamp because the *pyramid* reads
+            // that one, and the two constraints have no reason to be the same number.
+            vec4 colour = vec4(mix(vec3(0.16, 0.30, 0.85), vec3(1.0, 0.82, 0.32), f.b), 1.0);
+            outColor = vec4(colour.rgb * clamp(f.r * 4.0, 0.0, 1.0), 1.0);
+        }
+    """
 
     /** `value = base + amplitude * u` in red, a uniform weight in alpha. */
     private const val RAMP_FRAGMENT = """
@@ -1007,6 +1143,20 @@ object FabricateQuadtreeChainDemo {
                 "(${"%.4f".format(shape.centroidU)}, ${"%.4f".format(shape.centroidV)})"
     }
 
+    /**
+     * How many cells one level of a descent chose to stop at.
+     *
+     * The select plane's red is a flag, so it comes back as code 0 or code 255 and counting is
+     * exact — one of the few things an 8-bit readback is *better* at than the float target, in the
+     * sense that there is nothing to lose.
+     */
+    private fun drawnCells(renderer: Renderer, chain: FabricateBuiltChain, pass: String, name: String): Int {
+        val plane = plane(renderer, chain, pass, name)
+        return (0 until plane.height).sumOf { y ->
+            (0 until plane.width).count { x -> plane.code(x, y, 0) > 127 }
+        }
+    }
+
     /** The key channel of a point array, in the order the texels are laid out. */
     private fun keysInRasterOrder(plane: Plane): List<Int> =
         (0 until plane.height).flatMap { y -> (0 until plane.width).map { x -> plane.code(x, y, 0) } }
@@ -1065,6 +1215,22 @@ object FabricateQuadtreeChainDemo {
                 "$name is $size and ${other.name} is ${other.size}"
             }
             return luma.indices.sumOf { abs(luma[it] - other.luma[it]) } / luma.size
+        }
+
+        /**
+         * Fraction of texels this capture changed by more than [by], against another of it.
+         *
+         * The statistic to use for "did the overlay draw anything", and the mean absolute
+         * difference is not. An overlay is thin lines over a mostly empty frame, so its mean is a
+         * few hundredths whatever it drew — and it moves with the *background's* brightness, so a
+         * floor tuned against one backdrop fails against a darker one with nothing wrong. This
+         * counts the texels that actually changed.
+         */
+        fun changedFraction(other: Shot, by: Double): Double {
+            require(other.width == width && other.height == height) {
+                "$name is $size and ${other.name} is ${other.size}"
+            }
+            return luma.indices.count { abs(luma[it] - other.luma[it]) > by }.toDouble() / luma.size
         }
     }
 

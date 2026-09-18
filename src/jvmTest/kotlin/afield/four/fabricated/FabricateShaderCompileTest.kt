@@ -114,6 +114,20 @@ class FabricateShaderCompileTest {
             )
         }
         compiles("fabricate-summary-ellipses.frag", FabricatePassLibrary.summaryEllipsesFragment(16))
+        compiles("fabricate-summary-adaptive-draw.frag", FabricatePassLibrary.summaryAdaptiveDrawFragment(16))
+        // Eight sources behind one function: four criteria, each with and without a parent level —
+        // and the parent sampler is compiled *out* at the top of the descent rather than left
+        // unbound, which is the trap `fluidForceFragment` already pays for once.
+        FabricatePassLibrary.SubdivisionCriterion.entries.forEach { criterion ->
+            listOf(true, false).forEach { hasParent ->
+                FabricatePassLibrary.SummaryStatistics.entries.forEach { statistics ->
+                    compiles(
+                        "fabricate-summary-select-$criterion-$statistics-parent-$hasParent.frag",
+                        FabricatePassLibrary.summarySelectFragment(criterion, statistics, hasParent)
+                    )
+                }
+            }
+        }
     }
 
     /**
@@ -189,7 +203,8 @@ class FabricateShaderCompileTest {
                 FabricatePassLibrary.summaryReadout(from = FabricatePassChain.CHAIN_INPUT),
                 FabricatePassLibrary.summaryVariance(from = FabricatePassChain.CHAIN_INPUT),
                 FabricatePassLibrary.summaryCovariance(depth = 3)
-            )
+            ),
+            FabricatePassLibrary.adaptiveSummaryCells(coarsest = 1, finest = 3)
         )
         val distinct = chains.flatten().map { it.fragment }.distinct()
         assertTrue(distinct.size >= 5, "expected at least five distinct library shaders, got ${distinct.size}")

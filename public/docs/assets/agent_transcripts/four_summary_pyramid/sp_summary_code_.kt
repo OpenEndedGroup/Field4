@@ -93,13 +93,25 @@ summary = bundle.addPassChain(
         source = "field",
         weightChannel = 3,
         valueChannel = 0
-    ) + FabricatePassLibrary.summaryEllipses(
-        // The overlay runs at the *frame's* resolution while reading a 16x16 level of the
-        // tree, which is the combination the pass chain layer exists for.
-        name = "summary-ellipses",
-        over = "field-view",
+    ) + FabricatePassLibrary.adaptiveSummaryCells(
+        // The half that makes it a quadtree rather than a pyramid: descend from depth 1,
+        // stop wherever the cell already describes its contents well enough, and draw the
+        // cells you stopped at. Empty space keeps its big cells and the blobs' edges are
+        // resolved six levels down, in one pass chain, from one tree.
+        //
+        // Two passes per level and two *resolutions* per level: the decision runs at the
+        // tree's scale (one texel per cell) and the drawing at the picture's.
         prefix = "summary",
-        depth = 4,
+        name = "cut",
+        over = "field-view",
+        coarsest = 1,
+        finest = 6,
+        // Refine where the cell is partly full — so the cut tracks the blobs' boundaries
+        // and leaves both the inside and the outside coarse. Try SPREAD instead to refine
+        // where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
+        // image quadtree, which here follows the value ramp rather than the blobs.
+        criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
+        threshold = 0.02f,
         weightGain = 3f
     ),
     printReport = true
@@ -117,7 +129,10 @@ bundle.present(renderer = renderer)
 summary["time"] = { renderer.frameCounter * 0.01f }
 summary["sigma"] = 1f           // the ellipse's radius, in standard deviations
 summary["weightGain"] = 3f      // a mean coverage is a small number; this lifts the fill
-summary["underGain"] = 0.8f     // dims the field so the overlay reads against it
+// `threshold` reaches every level of the descent at once, because the cut's select
+// passes all declare it — so turning this one number re-cuts the whole tree on the next
+// frame with nothing rebuilt and nothing reallocated.
+summary["threshold"] = 0.02f
 
 println("summary pyramid: ${summary.names().size} passes, " +
         "root ${summary.targetOf("summary-value-0")?.width}x" +

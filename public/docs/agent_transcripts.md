@@ -1660,8 +1660,14 @@ extremes on a third. From the last two, `covariance = E[ppᵀ] − E[p]E[p]ᵀ`,
 orientation and an anisotropy: an adaptive cell stops saying "occupied" and starts carrying a crude
 geometric model of what is inside it. Every channel is a per-cell *mean* rather than a sum, which is
 what keeps the whole tree inside the range a readback can show and costs nothing, because centroid,
-covariance, mean and variance are all ratios in which the cell's area cancels. Change `depth` on the
-overlay to redraw the whole tree at another level with nothing rebuilt below it.
+covariance, mean and variance are all ratios in which the cell's area cancels. What the window shows
+is an **adaptive cut**, not a level: the descent starts at depth 1, stops wherever a cell already
+describes its contents well enough, and draws the cells it stopped at — so the empty quadrants stay
+whole and the blobs' boundaries are resolved six levels down. Without a criterion a consumer reads one
+level, and one level of a pyramid is a grid; with one, a descent turns out to be a pass chain in the
+same literal sense a Jacobi sweep is, two passes per level at two different resolutions because the
+decision lives at the tree's scale and the drawing at the picture's. Turn `threshold` and the whole
+cut coarsens or refines on the next frame with nothing rebuilt.
 `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
 `tools/run_field_tests.py --id four.quadtree-chain.smoke` compares it against **closed forms** — a
 linear ramp has an exact mean, variance, centroid and spatial variance at every level, so the pyramid
@@ -1683,9 +1689,12 @@ then each slot picks up the element whose rank it holds, two passes and exact, q
 sort is linear. And it cannot scan or compact, so boundary detection is asked *per node* rather than
 per element: a node knows its own prefix, because its prefix is the Morton code of its own
 coordinates, and finds its range with two binary searches. Nothing here is persistent — the points
-move and the codes, the sort, the ranges and every level are rebuilt from nothing each frame. The
-smoke test puts a point at every texel centre of a raster and finds the twelve summary channels
-bit-identical between the two producers.
+move and the codes, the sort, the ranges and every level are rebuilt from nothing each frame. It ends
+in the same adaptive cut as its companion, under the one criterion an occupancy quadtree cannot
+express: refine where the mass is *narrower than the cell holding it*, which needs the second
+moments. The smoke test puts a point at every texel centre of a raster and finds the twelve summary
+channels bit-identical between the two producers, and checks that the cells a cut chose tile the
+frame exactly.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/four_morton_quadtree/metadata.edn)
 

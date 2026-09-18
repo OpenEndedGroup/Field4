@@ -2208,6 +2208,181 @@ $FRAME_HISTORY_GLSL
     }
 
     /**
+     * What makes a cell worth splitting — the question a summarised quadtree exists to answer.
+     *
+     * Everything else in this file *builds* the tree. This is the half that spends it: a criterion
+     * over a cell's own statistics, evaluated top-down, that decides whether the cell is a good
+     * enough description of its contents or whether its four children would be better. Which is
+     * also the difference between a pyramid and a quadtree in any sense that matters — without a
+     * criterion every consumer reads one level, and one level of a pyramid is a grid.
+     *
+     * All four are two lines over the planes [summaryPyramid] already writes, and the choice is a
+     * statement about what "detail" means for the data in hand.
+     */
+    enum class SubdivisionCriterion {
+
+        /**
+         * Split where the *value* is not uniform — the classic image-quadtree rule.
+         *
+         * Reads the variance channel, so it is the one criterion that depends on
+         * [SummaryStatistics], and the one that a raw-moment pyramid gets wrong in exactly the
+         * regime where it matters: a cell whose values differ in the fourth decimal is a cell the
+         * subtraction cannot see, and it will be reported as flat.
+         */
+        VALUE_VARIANCE,
+
+        /**
+         * Split where the cell is *partly* full — neither empty nor covered.
+         *
+         * The occupancy channel is a fraction of the cell's finest cells that hold anything, so
+         * this refines exactly along boundaries and leaves both the interior and the exterior
+         * coarse. It is the criterion for a mask, and it needs no threshold tuning to speak of.
+         */
+        OCCUPANCY,
+
+        /**
+         * Split where the mass is not where the cell is — the centroid has walked off the centre.
+         *
+         * Measured in cell widths, so it is scale-free down the tree. This is the criterion that
+         * notices a cell describing its contents *dishonestly*: a cell reporting a position that no
+         * part of its contents occupies is one whose children would each report a true one.
+         */
+        CENTROID_OFFSET,
+
+        /**
+         * Split where the contents are *smaller than the cell* — the covariance says so.
+         *
+         * A uniformly filled cell has a spatial standard deviation of about 0.289 of its width
+         * (the uniform distribution's 1/12), so anything much below that is mass concentrated in
+         * part of the cell and a child would frame it better. This is the criterion that needs the
+         * second moments, and therefore the one that cannot be expressed by an occupancy quadtree
+         * at all.
+         */
+        SPREAD
+    }
+
+    /**
+     * An **adaptive cut** of a summarised quadtree: descend from the root, stop where the cell is a
+     * good enough description of its contents, and draw the cells you stopped at.
+     *
+     * This is the consumer the three planes exist for, and the answer to the reasonable complaint
+     * that a pyramid drawn at one level is a grid. Here the depth is chosen *per region*: empty
+     * space and flat regions keep their coarse cells, and detail is refined down to [finest]. The
+     * picture it makes is the one everybody means by "quadtree" — big squares where nothing is
+     * happening, small ones where something is.
+     *
+     * ### A descent is a pass chain, in the same literal sense a Jacobi sweep is
+     *
+     * Two passes per level, `finest - coarsest + 1` levels, and every reference points backwards:
+     *
+     * - `$name-select-d` runs at the *tree's* resolution — one texel per cell of depth d — and
+     *   computes two flags from the criterion and from its **parent's** flags one level up:
+     *   `open` (this cell was reached and is being split) and `drawn` (this cell was reached and is
+     *   where the descent stops). A cell is reached only if every ancestor split, which is a
+     *   conjunction down the whole chain — so it is propagated one level at a time rather than
+     *   recomputed, which is the thing a per-level pass can do and a single pass cannot.
+     * - `$name-d` runs at the *image's* resolution and composites that level's chosen cells over
+     *   what the coarser levels drew.
+     *
+     * The two resolutions are the reason they are two passes, and the reason this needed the
+     * heterogeneous chain layer rather than a loop: the decision lives at the tree's scale and the
+     * drawing at the picture's.
+     *
+     * ### What it guarantees
+     *
+     * The chosen cells **tile the domain exactly** — every point is inside exactly one drawn cell,
+     * because `drawn` and `open` partition `reached` at every level and `reached` is handed down
+     * unchanged. That is the defining property of a quadtree cut and it is the one thing here worth
+     * asserting numerically rather than looking at: `four.quadtree-chain.smoke` sums the drawn
+     * cells' areas across the levels and requires 1.0.
+     *
+     * @param prefix the quadtree's pass prefix — the planes are read by name from it.
+     * @param name pass names are `$name-select-<depth>` and `$name-<depth>`; the chain's output is
+     *   the [finest] draw pass.
+     * @param over the image the cut is drawn on top of.
+     * @param coarsest the depth the descent starts at. Depth 0 is the root and descending from it
+     *   is honest but dull — the first two levels almost always split.
+     * @param finest the depth the descent may not pass. A cell still open at [finest] is drawn
+     *   there, so the cut is always complete.
+     * @param criterion see [SubdivisionCriterion].
+     * @param threshold the criterion's parameter, in the criterion's own units — a variance, a
+     *   fraction, or a number of cell widths.
+     * @param weightFloor a cell holding less than this much mass is never split, whatever the
+     *   criterion says. Without it the statistics of an all-but-empty cell — a centroid divided by
+     *   1e-20, a variance of nothing — drive the descent all the way down over empty space, which
+     *   is both the most expensive thing the cut can do and the least useful.
+     */
+    fun adaptiveSummaryCells(
+        prefix: String = "summary",
+        name: String = "adaptive",
+        over: String = FabricatePassChain.CHAIN_INPUT,
+        coarsest: Int = 1,
+        finest: Int = 5,
+        criterion: SubdivisionCriterion = SubdivisionCriterion.VALUE_VARIANCE,
+        threshold: Float = 0.02f,
+        weightFloor: Float = 1e-4f,
+        statistics: SummaryStatistics = SummaryStatistics.POOLED,
+        sigma: Float = 1f,
+        weightGain: Float = 1f,
+        underGain: Float = 0.45f,
+        tint: Vector3f = Vector3f(0.35f, 0.9f, 1f),
+        format: Int? = null
+    ): List<FabricatePassSpec> {
+        require(coarsest >= 0) { "the descent starts at depth $coarsest" }
+        require(finest >= coarsest) {
+            "the descent's finest depth ($finest) is coarser than where it starts ($coarsest)"
+        }
+        require(threshold >= 0f) { "threshold must not be negative, got $threshold" }
+
+        return (coarsest..finest).flatMap { depth ->
+            val cells = 1 shl depth
+            val select = FabricatePassSpec(
+                name = "$name-select-$depth",
+                fragment = summarySelectFragment(criterion, statistics, hasParent = depth > coarsest),
+                size = FabricatePassSize.Absolute(cells, cells),
+                format = VK_FORMAT_R32G32B32A32_SFLOAT,
+                source = summaryPlane(prefix, SUMMARY_VALUE, depth),
+                extraInputs = listOfNotNull(
+                    FabricatePassInput("momentTex", summaryPlane(prefix, SUMMARY_MOMENT, depth)),
+                    FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth)),
+                    if (depth > coarsest) FabricatePassInput("parentTex", "$name-select-${depth - 1}") else null
+                ),
+                push = mapOf(
+                    "threshold" to threshold,
+                    "weightFloor" to weightFloor,
+                    "cells" to cells,
+                    // The last level may not split, whatever the criterion thinks: a cut has to end,
+                    // and a cell still open at the bottom is drawn there rather than dropped.
+                    "mayRefine" to if (depth < finest) 1 else 0
+                )
+            )
+            val draw = FabricatePassSpec(
+                name = "$name-$depth",
+                fragment = summaryAdaptiveDrawFragment(cells),
+                size = FabricatePassSize.MatchSource,
+                format = format,
+                source = if (depth == coarsest) over else "$name-${depth - 1}",
+                extraInputs = listOf(
+                    FabricatePassInput("selectTex", "$name-select-$depth"),
+                    FabricatePassInput("valueTex", summaryPlane(prefix, SUMMARY_VALUE, depth)),
+                    FabricatePassInput("momentTex", summaryPlane(prefix, SUMMARY_MOMENT, depth)),
+                    FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth))
+                ),
+                push = mapOf(
+                    "sigma" to sigma,
+                    "weightGain" to weightGain,
+                    // Dimming is the first pass's job alone. Applied at every level it would darken
+                    // the coarse cells once per level below them, which reads as the cut shading
+                    // itself by depth — a plausible and completely invented picture.
+                    "underGain" to if (depth == coarsest) underGain else 1f,
+                    "tint" to tint
+                )
+            )
+            listOf(select, draw)
+        }
+    }
+
+    /**
      * One channel of one plane, scaled into 0..1 — the instrument every assertion about a summary is
      * made through.
      *
@@ -2957,6 +3132,172 @@ $accumulate
     """
 
     /**
+     * One level of the descent: does this cell stop here, or do its children get a turn?
+     *
+     * Three things come out of one texel, and only the first is the criterion.
+     *
+     * - `reached` — did every ancestor split? Read from the parent's `open` at `cell / 2`, which is
+     *   why this is a per-level pass: the conjunction down the chain is maintained rather than
+     *   recomputed, so a level costs one tap instead of a walk to the root.
+     * - `drawn` = reached and not splitting. `open` = reached and splitting. They partition
+     *   `reached`, which is what makes the cut a tiling rather than a set of overlapping cells.
+     * - the criterion itself, which is the only part that differs between the four.
+     *
+     * The weight floor is checked before any of them, and it is not an optimisation. An all-but-
+     * empty cell has a centroid that is a ratio of two nothings and a variance of nothing, and
+     * those numbers are as large and as arbitrary as any other — so without the floor the descent
+     * refines hardest over exactly the regions with nothing in them.
+     */
+    fun summarySelectFragment(
+        criterion: SubdivisionCriterion,
+        statistics: SummaryStatistics,
+        hasParent: Boolean
+    ): String {
+        val variance = when (statistics) {
+            SummaryStatistics.POOLED -> "value.z"
+            SummaryStatistics.RAW_MOMENTS -> "(value.z / w - (value.y / w) * (value.y / w))"
+        }
+        val test = when (criterion) {
+            SubdivisionCriterion.VALUE_VARIANCE -> "refine = $variance > push.threshold;"
+            // Strictly between empty and full: a boundary, and nothing else in the image.
+            SubdivisionCriterion.OCCUPANCY ->
+                "refine = value.w > push.threshold && value.w < 1.0 - push.threshold;"
+            SubdivisionCriterion.CENTROID_OFFSET -> """
+                vec2 middle = vec4Moment.xy / w;
+                vec2 centre = (vec2(cell) + 0.5) / float(push.cells);
+                refine = length(middle - centre) * float(push.cells) > push.threshold;
+            """
+            SubdivisionCriterion.SPREAD -> """
+                vec2 middle = vec4Moment.xy / w;
+                float cxx = vec4Moment.z / w - middle.x * middle.x;
+                float cyy = vec4Moment.w / w - middle.y * middle.y;
+                // In cell widths. A uniformly filled cell sits at 1/sqrt(12) = 0.289 per axis, so
+                // a threshold under that asks "is the mass smaller than the cell it is in".
+                refine = sqrt(max(cxx + cyy, 0.0)) * float(push.cells) < push.threshold;
+            """
+        }
+        val parentDeclaration = if (hasParent) {
+            "layout(set = 0, binding = 3) uniform sampler2D parentTex;"
+        } else {
+            "// no parent: this level is where the descent starts, so every cell is reached"
+        }
+        // The root of the descent is reached by definition, and the sampler is compiled *out*
+        // rather than left unbound — an unbound declared sampler fails in descriptor setup, the
+        // same trap `fluidForceFragment`'s vorticity switch pays for.
+        val reached = if (hasParent) "texelFetch(parentTex, cell / 2, 0).y" else "1.0"
+        return """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D momentTex;
+        layout(set = 0, binding = 2) uniform sampler2D extentTex;
+        $parentDeclaration
+        layout(push_constant) uniform SelectPush {
+            float threshold;
+            float weightFloor;
+            int cells;
+            int mayRefine;
+        } push;
+        layout(location = 0) out vec4 outSelect;
+
+        void main() {
+            ivec2 cell = ivec2(gl_FragCoord.xy);
+            vec4 value = texelFetch(sourceTex, cell, 0);
+            vec4 vec4Moment = texelFetch(momentTex, cell, 0);
+            float reached = $reached;
+            float w = value.x;
+
+            bool refine = false;
+            if (push.mayRefine != 0 && w > push.weightFloor) {
+                $test
+            }
+
+            bool here = reached > 0.5;
+            outSelect = vec4(here && !refine ? 1.0 : 0.0, here && refine ? 1.0 : 0.0, w, 1.0);
+        }
+        """
+    }
+
+    /**
+     * Composites one level of the cut over the levels above it: a cell outline always, an ellipse
+     * and a centroid where there is mass.
+     *
+     * The outline is drawn for *every* chosen cell including the empty ones, and that is the whole
+     * picture rather than a decoration — a quadtree cut is legible as the sizes of its cells, and
+     * the coarse squares over empty space are the half of it that says the descent stopped early.
+     */
+    fun summaryAdaptiveDrawFragment(cells: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D selectTex;
+        layout(set = 0, binding = 2) uniform sampler2D valueTex;
+        layout(set = 0, binding = 3) uniform sampler2D momentTex;
+        layout(set = 0, binding = 4) uniform sampler2D extentTex;
+        layout(push_constant) uniform DrawPush {
+            float sigma;
+            float weightGain;
+            float underGain;
+            vec3 tint;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        const int CELLS = $cells;
+
+        void main() {
+            vec4 under = texture(sourceTex, vUv);
+            vec3 result = under.rgb * push.underGain;
+
+            ivec2 cell = clamp(ivec2(vUv * float(CELLS)), ivec2(0), ivec2(CELLS - 1));
+            if (texelFetch(selectTex, cell, 0).x < 0.5) {
+                outColor = vec4(result, 1.0);
+                return;
+            }
+
+            // The cell's own border, in the width of an output texel rather than of a cell, so the
+            // coarse levels do not draw fatter lines than the fine ones.
+            vec2 grid = abs(fract(vUv * float(CELLS)) - 0.5);
+            float edge = max(grid.x, grid.y) * 2.0;
+            float texel = 2.0 / float(textureSize(sourceTex, 0).x) * float(CELLS);
+            result += vec3(0.55) * smoothstep(1.0 - texel, 1.0, edge);
+
+            vec4 value = texelFetch(valueTex, cell, 0);
+            float w = value.x;
+            if (w > 1e-7) {
+                vec4 moment = texelFetch(momentTex, cell, 0);
+                float cross = texelFetch(extentTex, cell, 0).x;
+                vec2 middle = moment.xy / w;
+                float cxx = moment.z / w - middle.x * middle.x;
+                float cyy = moment.w / w - middle.y * middle.y;
+                float cxy = cross / w - middle.x * middle.y;
+
+                result += push.tint * clamp(w * push.weightGain, 0.0, 1.0) * 0.22;
+
+                float det = cxx * cyy - cxy * cxy;
+                vec2 offset = vUv - middle;
+                if (det > 1e-12) {
+                    float d2 = (cyy * offset.x * offset.x
+                              - 2.0 * cxy * offset.x * offset.y
+                              + cxx * offset.y * offset.y) / det;
+                    float d = sqrt(max(d2, 0.0));
+                    float wide = max(2.0 / float(textureSize(sourceTex, 0).x)
+                                     / max(push.sigma * sqrt(max(cxx + cyy, 1e-12)), 1e-6), 0.002);
+                    result += push.tint * (1.0 - smoothstep(0.0, wide, abs(d - push.sigma)));
+                }
+                float toCentroid = length(offset) * float(CELLS);
+                result += vec3(1.0) * (1.0 - smoothstep(0.0, 0.05, toCentroid));
+            }
+
+            // Opaque, and not `under.a`. An overlay inherits the alpha of whatever it was drawn
+            // over, and what it is usually drawn over here is a *mass* channel — so the readback of
+            // a perfectly correct overlay is an almost entirely transparent PNG, which every viewer
+            // then composites onto white. The pixels were right and all three committed figures
+            // were unreadable.
+            outColor = vec4(result, 1.0);
+        }
+    """
+
+    /**
      * A centroid, a 1σ ellipse and a weight tint per cell, over the image underneath.
      *
      * The ellipse is drawn by its **Mahalanobis distance** rather than by walking its boundary,
@@ -3035,7 +3376,12 @@ $accumulate
             float edge = max(grid.x, grid.y);
             result += vec3(0.12) * smoothstep(0.47, 0.5, edge);
 
-            outColor = vec4(result, under.a);
+            // Opaque, and not `under.a`. An overlay inherits the alpha of whatever it was drawn
+            // over, and what it is usually drawn over here is a *mass* channel — so the readback of
+            // a perfectly correct overlay is an almost entirely transparent PNG, which every viewer
+            // then composites onto white. The pixels were right and all three committed figures
+            // were unreadable.
+            outColor = vec4(result, 1.0);
         }
     """
 }

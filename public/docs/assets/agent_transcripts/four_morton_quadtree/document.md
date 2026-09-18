@@ -76,7 +76,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="mq_tree" index="2" -->
 
 ```edn [field-box id="mq_tree" role="properties"]
-{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 135 "characters" 5761 "sha256" "fa1ef66337e33237088ad04d388cd67dcc55f66e1267988c6f5ea5d03d0dfb9a"}]}
+{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 146 "characters" 6446 "sha256" "83a55e328e7ed24b7ca2a17347b9c0ec409180d5cdc2202dee28f5fe593c7e4b"}]}
 ```
 
 ```kotlin [field-property box="mq_tree" name="code" path="mq_tree_code_.kt"]
@@ -158,7 +158,7 @@ val splatFragment = """
         // mass: colour where there is something, black where there is not.
         float m = clamp(mass * 0.06, 0.0, 1.0);
         float v = mass > 0.0 ? value / mass : 0.0;
-        outColor = vec4(mix(vec3(0.20, 0.35, 0.95), vec3(1.0, 0.85, 0.35), v) * m, m);
+        outColor = vec4(mix(vec3(0.20, 0.35, 0.95), vec3(1.0, 0.85, 0.35), v) * m, 1.0);
     }
 """
 
@@ -178,7 +178,7 @@ tree = bundle.addPassChain(
             push = mapOf("time" to 0f)
         ),
         FabricatePassSpec(
-            name = "splat",
+            name = "view",
             fragment = splatFragment,
             size = FabricatePassSize.Absolute(512, 512),
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -193,12 +193,20 @@ tree = bundle.addPassChain(
         // uniform spread is then about 64. Correct, and four hundred times what an 8-bit
         // preview of that plane could show; this only affects looking at it.
         densityScale = 1f / 64f
-    ) + FabricatePassLibrary.summaryEllipses(
-        name = "quadtree-ellipses",
-        over = "splat",
+    ) + FabricatePassLibrary.adaptiveSummaryCells(
+        // The descent: from depth 1 down, stopping where a node already describes its
+        // points well enough. SPREAD refines where the mass is *narrower than the cell
+        // holding it* — which needs the second moments, and is therefore a criterion an
+        // occupancy quadtree cannot express at all. Empty space stops at depth 1; a tight
+        // cluster is chased to the leaves.
         prefix = "quadtree",
-        depth = depth,
-        weightGain = 4f
+        name = "cut",
+        over = "view",
+        coarsest = 1,
+        finest = depth,
+        criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
+        threshold = 0.2f,
+        weightGain = 40f
     ),
     printReport = true
 )
@@ -210,8 +218,11 @@ bundle.present(renderer = renderer)
 //    recomputed from them on each frame.
 tree["time"] = { renderer.frameCounter * 0.01f }
 tree["sigma"] = 1.2f
-tree["weightGain"] = 4f
+tree["weightGain"] = 40f
 tree["underGain"] = 0.5f
+// Reaches every level of the descent at once: one number re-cuts the whole tree on the
+// next frame, with nothing rebuilt and nothing reallocated.
+tree["threshold"] = 0.2f
 
 println("morton quadtree: ${tree.names().size} passes over ${grid * grid} points, " +
         "leaf level ${tree.targetOf("quadtree-range-$depth")?.width}² nodes")

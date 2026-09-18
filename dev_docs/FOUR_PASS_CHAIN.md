@@ -406,6 +406,40 @@ and that asymmetry is real: a texel's coverage is at most one, but a point set c
 in one cell. `densityScale` exists for looking at a crowded level, and scales the weight and the
 moments together so every ratio taken from them is unchanged.
 
+##### The cut — the half that makes it a quadtree rather than a pyramid
+
+Everything above builds the tree. `adaptiveSummaryCells()` spends it: descend from the root, stop
+where a cell already describes its contents well enough, draw the cells you stopped at. Without a
+criterion every consumer reads one level, and **one level of a pyramid is a grid** — which is a fair
+description of what the first version of this work shipped.
+
+A descent is a pass chain in the same literal sense a Jacobi sweep is. Two passes per level:
+
+- `$name-select-d` runs at the *tree's* resolution and writes two flags, `drawn` and `open`,
+  from the criterion and from its **parent's** flags at `cell / 2`. "Every ancestor split" is a
+  conjunction down the whole chain, so it is propagated one level at a time rather than recomputed —
+  the thing a per-level pass can do cheaply and a single pass cannot do at all.
+- `$name-d` runs at the *image's* resolution and composites that level's chosen cells over what the
+  coarser levels drew.
+
+Two resolutions per level is why this needed the heterogeneous layer rather than a loop: the
+decision lives at the tree's scale and the drawing at the picture's.
+
+`drawn` and `open` partition `reached` at every level, so the chosen cells **tile the domain
+exactly** — the defining property of a quadtree cut, and the one thing here worth asserting
+numerically rather than looking at.
+
+[`SubdivisionCriterion`](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassLibrary.kt) offers
+four, each two lines over planes that were already there: `VALUE_VARIANCE` (the classic image
+quadtree, and the only one that depends on `SummaryStatistics`), `OCCUPANCY` (refines along a
+boundary and leaves both sides coarse), `CENTROID_OFFSET` (refines where a cell reports a position
+no part of its contents occupies), and `SPREAD` (refines where the mass is narrower than the cell
+holding it — the one an occupancy quadtree cannot express, because it needs the second moments).
+
+The weight floor is not an optimisation. An all-but-empty cell has a centroid that is a ratio of two
+nothings and a variance of nothing, and those numbers are as large and arbitrary as any other — so
+without it the descent refines hardest over exactly the regions with nothing in them.
+
 Two smaller passes exist because of the *instrument* rather than the algorithm. `summaryReadout()`
 scales one channel into the range an 8-bit readback can carry, and `summaryCovariance()` computes
 `(cxx, cyy, cxy)` **on the GPU**: a second moment is the difference of two channels that agree to
@@ -645,6 +679,9 @@ variance `amp²(s² − 1)/12R²`, a centroid at its own centre and a spatial va
 | root node's range | `[0, 256)` | exact |
 | point vs raster producer, twelve channels | **0 codes** — bit-identical | 0.01 UV of centroid |
 | the two producers' covariance on a clustered set, depth 2 | 0.0826 at gain 200 | 0.15 |
+| a variance cut of a ramp, two thresholds | lands entirely at depth 2, then at depth 3 | exact, and nowhere else |
+| a cut of the clustered set | 4 levels used (1:1, 2:11, 3:1, 4:12) | ≥ 3 levels |
+| those cells' areas | 1.000000 of the domain | 1e-6 |
 
 Three of those are worth the words.
 
@@ -662,6 +699,15 @@ twelve channels. It is also the strongest available check on the sort and the ra
 bracketing the wrong points produces a summary that is wrong in no visible way and disagrees here
 immediately.
 
+**The cut is tested against a closed form too, which is the point of using a ramp.** A ramp's cell
+variance is `amp²(s² − 1)/12R²`, so a variance cut over it has an exact answer *and* a uniform one:
+every cell crosses the threshold at the same depth, so the whole cut has to sit at one level and
+nowhere else. That single assertion catches a parent's flags read from the wrong level, a criterion
+off by a factor, and a finest level still allowed to refine — which drops every cell that was open
+there and leaves holes in the tiling. The clustered cut then checks the thing the ramp cannot: that
+the *same* chain resolved empty space at depth 1 and a tight cluster four levels down, and that the
+cells it chose tile the frame to one part in a million.
+
 **The clustered set is there because the uniform one is a tautology.** With a uniform weight every
 centroid sits at its cell's centre whatever the moment planes are doing, so a chain with `momentTex`
 bound to the wrong plane passes everything above. On the cloud, 30 occupied cells hold a centroid off
@@ -670,6 +716,14 @@ anisotropic — which needs the cross moment, the one channel nothing else reads
 
 #### Three traps this cost, and all three were the harness
 
+0. **An overlay must not inherit the alpha of what it was drawn over.** Every one of these figures
+   composites over a *mass* channel, so `vec4(result, under.a)` wrote a PNG that was almost entirely
+   transparent — correct pixels, and every viewer shows them against white. Three committed figures
+   were unreadable and the pixels were never wrong. The same paragraph applies to the *colour*: a
+   splat's value channel is `Σwv / Σw`, a ratio that stays at full strength wherever the mass is
+   merely small, so drawing it directly is a blob the size of the cloud's faintest halo. The plane
+   you summarise is not the plane you look at, and both demos now carry a one-pass view of their
+   own.
 1. **The leaf normalisation has to be a density against a uniform spread**, not a share of the point
    budget. A share is a *sum*, and the shared reduction ladder averages — so every level above the
    leaf was a quarter of what it should have been, the weight channel read 13 codes against 71, and
@@ -741,8 +795,10 @@ points beside the others. The first drifts three anisotropic blobs through a nin
 draws each cell's centroid and covariance ellipse; the second does the same from a moving point set,
 rebuilding the codes, the sort, every node's range and every level from nothing each frame. Both
 replayed end to end into a fresh `--scratch` document on 2026-09-18: `applied=12 skipped=0 errors=0`,
-all three boxes printing normally, reporting 30 and 26 passes respectively, with a
-`wait-native-renderer` capture of each window.
+all three boxes printing normally, reporting 41 and 33 passes respectively, with a
+`wait-native-renderer` capture of each window. Both end in an **adaptive cut** rather than a flat
+level: the raster one refines six levels along the blobs' boundaries and leaves the empty quadrants
+whole, the point one chases a tight cluster to the leaves and stops at depth 1 over nothing.
 
 Two things the transcripts taught, both about *looking* at a summary rather than computing one, and
 both now comments in the yaml. A Gaussian is never actually zero, so without a floor on the mass
@@ -883,7 +939,9 @@ just this one.
   is 4096 so that the ceiling is a refusal with a reason rather than a frame that takes a second. The
   leaf loop has the same shape: it is bounded by the whole point count, because a cell holding every
   point is legal and is what depth 1 looks like on a clustered set.
-- **Every level of the tree is materialised dense, for a set that may be sparse.** 203 of 256 leaf
+- **Every level of the tree is materialised dense, for a set that may be sparse — and the cut does
+  not change that.** `adaptiveSummaryCells` chooses where to *stop reading*, which is the half that
+  matters to a consumer, but the pyramid underneath it was built in full first. 203 of 256 leaf
   cells are empty in the smoke's clustered case, and all 256 are allocated, written and reduced. The
   design sketch this came from ends with "if we're only interested in leaves above or below some
   population threshold, we don't have to materialize every level" — which is exactly right and is

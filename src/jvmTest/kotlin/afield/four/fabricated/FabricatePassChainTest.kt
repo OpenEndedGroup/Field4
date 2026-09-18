@@ -1163,6 +1163,105 @@ class FabricatePassChainTest {
     }
 
     @Test
+    fun anAdaptiveCutIsTwoPassesPerLevelAtTwoDifferentResolutions() {
+        // The shape is the claim: the decision runs at the *tree's* resolution and the drawing at
+        // the *image's*, which is why a descent is a chain rather than a loop inside one pass.
+        val specs = FabricatePassLibrary.summaryPyramid(prefix = "field", resolution = 64) +
+                FabricatePassLibrary.adaptiveSummaryCells(prefix = "field", coarsest = 1, finest = 4)
+        val plan = FabricatePassChain.plan(specs, 512, 512, srgb)
+        (1..4).forEach { depth ->
+            val select = plan["adaptive-select-$depth"] ?: error("no select at depth $depth")
+            val draw = plan["adaptive-$depth"] ?: error("no draw at depth $depth")
+            assertEquals(1 shl depth, select.shape.width, "the select pass runs per cell")
+            assertEquals(512, draw.shape.width, "the draw pass runs per pixel")
+        }
+        assertEquals(8, plan.passes.size - FabricatePassLibrary.summaryPyramid(prefix = "field", resolution = 64).size)
+    }
+
+    @Test
+    fun eachLevelOfTheDescentReadsItsParentsFlagsAndTheTopLevelHasNone() {
+        // `reached` is a conjunction over the whole ancestor chain, and it is *propagated* one
+        // level at a time rather than recomputed. Bind the wrong level's flags and the cut is
+        // still a picture of cells, just not a tiling — which is exactly the failure the smoke's
+        // area sum catches and a reader cannot.
+        val specs = FabricatePassLibrary.summaryPyramid(prefix = "field", resolution = 32) +
+                FabricatePassLibrary.adaptiveSummaryCells(prefix = "field", coarsest = 2, finest = 4)
+        val plan = FabricatePassChain.plan(specs, 256, 256, srgb)
+
+        val top = plan["adaptive-select-2"]!!
+        assertTrue(top.inputs.none { it.samplerName == "parentTex" }, "the top of a descent has no parent")
+        assertTrue(
+            "parentTex" !in top.spec.fragment,
+            "the parent sampler must be compiled out at the top, not left declared and unbound"
+        )
+        (3..4).forEach { depth ->
+            val select = plan["adaptive-select-$depth"]!!
+            val parent = select.inputs.single { it.samplerName == "parentTex" }
+            assertEquals("adaptive-select-${depth - 1}", (parent.from as FabricatePassRef.Pass).name)
+        }
+        // And the draw passes composite in order, each over the one above it.
+        assertEquals(
+            FabricatePassRef.ChainInput,
+            plan["adaptive-2"]!!.inputs.first().from,
+            "the coarsest draw goes over the chain input"
+        )
+        (3..4).forEach { depth ->
+            assertEquals(
+                "adaptive-${depth - 1}",
+                (plan["adaptive-$depth"]!!.inputs.first().from as FabricatePassRef.Pass).name
+            )
+        }
+    }
+
+    @Test
+    fun theFinestLevelOfACutMayNotRefineAndOnlyTheCoarsestDims() {
+        // Two off-by-one-shaped mistakes that both render. A cut whose last level may still refine
+        // drops every cell that was open there — holes in the tiling. And `underGain` applied at
+        // every level darkens a coarse cell once per level below it, which reads as the cut
+        // shading itself by depth: a plausible picture of nothing.
+        val specs = FabricatePassLibrary.adaptiveSummaryCells(coarsest = 1, finest = 3, underGain = 0.4f)
+        val mayRefine = specs.filter { it.name.startsWith("adaptive-select-") }.map { it.push["mayRefine"] }
+        assertEquals(listOf(1, 1, 0), mayRefine)
+        val dims = specs.filter { !it.name.startsWith("adaptive-select-") }.map { it.push["underGain"] }
+        assertEquals(listOf(0.4f, 1f, 1f), dims)
+    }
+
+    @Test
+    fun aCutRefusesTheRangesThatWouldNotBeADescent() {
+        assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.adaptiveSummaryCells(coarsest = 4, finest = 2)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            FabricatePassLibrary.adaptiveSummaryCells(threshold = -1f)
+        }
+        // One level is a legal cut and is exactly the old one-level overlay, which is the honest
+        // degenerate case rather than something to refuse.
+        assertEquals(2, FabricatePassLibrary.adaptiveSummaryCells(coarsest = 3, finest = 3).size)
+    }
+
+    @Test
+    fun onlyTheVarianceCriterionCaresWhichStatisticsThePyramidCarries() {
+        // The switch reaches one criterion, and it has to: the other three read weight, occupancy
+        // and moments, which are the same channels either way. A criterion that silently changed
+        // with the representation would be a cut that moved when you changed how the variance
+        // merges.
+        FabricatePassLibrary.SubdivisionCriterion.entries.forEach { criterion ->
+            val pooled = FabricatePassLibrary.summarySelectFragment(
+                criterion, FabricatePassLibrary.SummaryStatistics.POOLED, hasParent = true
+            )
+            val raw = FabricatePassLibrary.summarySelectFragment(
+                criterion, FabricatePassLibrary.SummaryStatistics.RAW_MOMENTS, hasParent = true
+            )
+            val differs = pooled != raw
+            assertEquals(
+                criterion == FabricatePassLibrary.SubdivisionCriterion.VALUE_VARIANCE,
+                differs,
+                "$criterion should ${if (differs) "not " else ""}depend on the statistics"
+            )
+        }
+    }
+
+    @Test
     fun theCovariancePassTakesAllThreePlanesAndRunsAtTheLevelsOwnSize() {
         // Its size matters in a way the overlay's does not: it is one output per *cell*, so it has
         // to be the level's size and not the image's. `MatchSource` against the moment plane is how

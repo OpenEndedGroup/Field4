@@ -22,6 +22,14 @@ description: |
   "occupied" and starts carrying a crude geometric model of what is inside it — where the mass is,
   which way it runs, how elongated it is. Watch the ellipses lean as the blobs rotate.
 
+  **And the statistics are what a descent is made of.** `adaptiveSummaryCells` walks the tree from
+  depth 1 down, stopping wherever a cell already describes its contents well enough, and draws the
+  cells it stopped at — big ones over empty space, small ones along the blobs' edges. That is the
+  difference between a quadtree and a pyramid in the only sense that matters to a consumer: without
+  a criterion every reader takes one level, and one level of a pyramid is a grid. A descent is also
+  a pass chain in the same literal sense a Jacobi sweep is — two passes per level, at two different
+  resolutions, because the decision lives at the tree's scale and the drawing at the picture's.
+
   **Every channel is a per-cell mean rather than a sum**, and that is not a compromise. A sum over a
   256² image leaves 0..1 immediately and a channel outside 0..1 cannot be read back at all, while
   every statistic that matters — centroid, covariance, mean, variance — is a ratio in which the
@@ -30,9 +38,17 @@ description: |
 
   Things worth trying in the summary box:
 
-    - `depth` on the overlay, from `4` down to `2` and up to `6`. This is the whole tree being
-      redrawn at a different level with no rebuild of anything below it — the pyramid already holds
-      every level, and the overlay is choosing one.
+    - `threshold` on the cut, from `0.02f` up to `0.4f` and down to `0.005f`. The cells coarsen and
+      refine as one; at the coarse end the whole cut collapses towards depth 1 and you can see it is
+      a *tiling* rather than a set of cells that happen not to overlap.
+    - `criterion`, between `OCCUPANCY`, `SPREAD`, `CENTROID_OFFSET` and `VALUE_VARIANCE`. Four
+      different pictures of the same tree, and each is two lines over planes that were already
+      there. `SPREAD` is the one that cannot be expressed by an occupancy quadtree at all: it refines
+      where the mass is *narrower than the cell holding it*, which needs the second moments.
+    - `coarsest = 0` and `finest = 8`. The full descent, root to leaf, on a 256² tree.
+    - swap the whole cut for `FabricatePassLibrary.summaryEllipses(prefix = "summary", depth = 4,
+      over = "field-view")` — the flat, one-level view. Useful for reading a single level, and a good
+      demonstration of why a level is not a tree.
     - `weightChannel = 0` instead of `3`. The pyramid then weighs cells by the red channel, which
       here is a vertical value ramp that covers the whole frame, so every centroid snaps back to its
       cell's centre and the ellipses go round. That is the correct answer for a uniform mass, and it
@@ -213,13 +229,25 @@ operations:
                   source = "field",
                   weightChannel = 3,
                   valueChannel = 0
-              ) + FabricatePassLibrary.summaryEllipses(
-                  // The overlay runs at the *frame's* resolution while reading a 16x16 level of the
-                  // tree, which is the combination the pass chain layer exists for.
-                  name = "summary-ellipses",
-                  over = "field-view",
+              ) + FabricatePassLibrary.adaptiveSummaryCells(
+                  // The half that makes it a quadtree rather than a pyramid: descend from depth 1,
+                  // stop wherever the cell already describes its contents well enough, and draw the
+                  // cells you stopped at. Empty space keeps its big cells and the blobs' edges are
+                  // resolved six levels down, in one pass chain, from one tree.
+                  //
+                  // Two passes per level and two *resolutions* per level: the decision runs at the
+                  // tree's scale (one texel per cell) and the drawing at the picture's.
                   prefix = "summary",
-                  depth = 4,
+                  name = "cut",
+                  over = "field-view",
+                  coarsest = 1,
+                  finest = 6,
+                  // Refine where the cell is partly full — so the cut tracks the blobs' boundaries
+                  // and leaves both the inside and the outside coarse. Try SPREAD instead to refine
+                  // where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
+                  // image quadtree, which here follows the value ramp rather than the blobs.
+                  criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
+                  threshold = 0.02f,
                   weightGain = 3f
               ),
               printReport = true
@@ -237,7 +265,10 @@ operations:
           summary["time"] = { renderer.frameCounter * 0.01f }
           summary["sigma"] = 1f           // the ellipse's radius, in standard deviations
           summary["weightGain"] = 3f      // a mean coverage is a small number; this lifts the fill
-          summary["underGain"] = 0.8f     // dims the field so the overlay reads against it
+          // `threshold` reaches every level of the descent at once, because the cut's select
+          // passes all declare it — so turning this one number re-cuts the whole tree on the next
+          // frame with nothing rebuilt and nothing reallocated.
+          summary["threshold"] = 0.02f
 
           println("summary pyramid: ${summary.names().size} passes, " +
                   "root ${summary.targetOf("summary-value-0")?.width}x" +

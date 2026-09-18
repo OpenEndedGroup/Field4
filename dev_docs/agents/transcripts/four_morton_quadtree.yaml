@@ -37,11 +37,22 @@ description: |
   and checks exactly that: the twelve summary channels come back **bit-identical** between the two
   pipelines, and both agree with the closed form of the field to within half a code.
 
+  What you are looking at is the **cut**, not a level: the descent stops at depth 1 over empty
+  space and is chased to the leaves inside a tight cluster, so the cells you see are different sizes
+  and they tile the frame exactly. Without a criterion a consumer takes one level, and one level of
+  a tree is a grid — which is the complaint the flat overlay deserves and this answers.
+
   Things worth trying in the quadtree box:
 
-    - `depth`, from `4` down to `2`. At depth 2 a cell holds a sixteenth of the set and the ellipses
-      become the *clusters*; at depth 5 most cells hold one point, the covariance is singular, and
-      every cell draws a dot and no ring — which is the honest picture of what one point knows about
+    - `threshold` on the cut, from `0.2f` up to `0.29f` and down to `0.05f`. A uniformly filled cell
+      has a spatial standard deviation of `1/sqrt(12) = 0.289` of its own width, so the criterion is
+      asking "is the mass smaller than the cell", and 0.289 is the value at which it stops being
+      able to tell.
+    - `criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY`, which refines along the
+      *boundary* of the occupied region instead of inside it.
+    - `depth`, from `4` down to `2`. This is the tree, not the cut: at depth 2 a leaf holds a
+      sixteenth of the set, and at depth 5 most leaves hold one point, whose covariance is singular
+      — so every cell draws a dot and no ring, the honest picture of what one point knows about
       shape.
     - `densityScale`. A node's weight is its density against a uniform spread, which is unbounded in
       a way a raster's mean coverage is not: a point set can put half its mass in one cell. This is
@@ -197,7 +208,7 @@ operations:
                   // mass: colour where there is something, black where there is not.
                   float m = clamp(mass * 0.06, 0.0, 1.0);
                   float v = mass > 0.0 ? value / mass : 0.0;
-                  outColor = vec4(mix(vec3(0.20, 0.35, 0.95), vec3(1.0, 0.85, 0.35), v) * m, m);
+                  outColor = vec4(mix(vec3(0.20, 0.35, 0.95), vec3(1.0, 0.85, 0.35), v) * m, 1.0);
               }
           """
 
@@ -217,7 +228,7 @@ operations:
                       push = mapOf("time" to 0f)
                   ),
                   FabricatePassSpec(
-                      name = "splat",
+                      name = "view",
                       fragment = splatFragment,
                       size = FabricatePassSize.Absolute(512, 512),
                       format = VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -232,12 +243,20 @@ operations:
                   // uniform spread is then about 64. Correct, and four hundred times what an 8-bit
                   // preview of that plane could show; this only affects looking at it.
                   densityScale = 1f / 64f
-              ) + FabricatePassLibrary.summaryEllipses(
-                  name = "quadtree-ellipses",
-                  over = "splat",
+              ) + FabricatePassLibrary.adaptiveSummaryCells(
+                  // The descent: from depth 1 down, stopping where a node already describes its
+                  // points well enough. SPREAD refines where the mass is *narrower than the cell
+                  // holding it* — which needs the second moments, and is therefore a criterion an
+                  // occupancy quadtree cannot express at all. Empty space stops at depth 1; a tight
+                  // cluster is chased to the leaves.
                   prefix = "quadtree",
-                  depth = depth,
-                  weightGain = 4f
+                  name = "cut",
+                  over = "view",
+                  coarsest = 1,
+                  finest = depth,
+                  criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
+                  threshold = 0.2f,
+                  weightGain = 40f
               ),
               printReport = true
           )
@@ -249,8 +268,11 @@ operations:
           //    recomputed from them on each frame.
           tree["time"] = { renderer.frameCounter * 0.01f }
           tree["sigma"] = 1.2f
-          tree["weightGain"] = 4f
+          tree["weightGain"] = 40f
           tree["underGain"] = 0.5f
+          // Reaches every level of the descent at once: one number re-cuts the whole tree on the
+          // next frame, with nothing rebuilt and nothing reallocated.
+          tree["threshold"] = 0.2f
 
           println("morton quadtree: ${tree.names().size} passes over ${grid * grid} points, " +
                   "leaf level ${tree.targetOf("quadtree-range-$depth")?.width}² nodes")
