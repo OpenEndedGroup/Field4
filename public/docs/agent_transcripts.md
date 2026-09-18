@@ -1673,6 +1673,13 @@ cut coarsens or refines on the next frame with nothing rebuilt.
 linear ramp has an exact mean, variance, centroid and spatial variance at every level, so the pyramid
 is checked against arithmetic rather than against a previous render.
 
+![A dark frame divided into quadtree cells of many sizes. The empty regions are left as large
+squares, a quarter and an eighth of the frame across; three pale blobs lying on a diagonal are
+wrapped in bands of progressively smaller cells, stepping down six levels at their edges. Inside
+every occupied cell a cyan ellipse and a white centroid dot mark what that cell's statistics say
+about its contents, and the ellipses in the elongated blobs lean the way the blob
+does](assets/summary_quadtree/raster-cut.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/four_summary_pyramid/metadata.edn)
 
 ### four_morton_quadtree
@@ -1695,6 +1702,12 @@ express: refine where the mass is *narrower than the cell holding it*, which nee
 moments. The smoke test puts a point at every texel centre of a raster and finds the twelve summary
 channels bit-identical between the two producers, and checks that the cells a cut chose tile the
 frame exactly.
+
+![The same kind of cut over a point set. Most of the frame is a handful of large empty cells; two
+teal-tinted cells a quarter of the frame across each hold one cluster drawn with its ellipse — one
+round, one leaning — and around a third, tighter cluster the cells step down through three more
+levels into small squares. Every cell edge meets its neighbours exactly, because the cells a
+descent stops at tile the frame](assets/summary_quadtree/point-cut.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/four_morton_quadtree/metadata.edn)
 
