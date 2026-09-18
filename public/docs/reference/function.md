@@ -1087,7 +1087,7 @@ keyed by the child-index path, and a test asserts the two agree leaf for leaf.
 
 How a fit obtains the gradient of its loss with respect to a graph's numeric leaves.
 
-Constants: `and`, `so`, `without`, `where`.
+Constants: `FINITE_DIFFERENCE`, `EXACT`, `AUTO`.
 
 ### FnAutoDiff { #autodiff-fn-kt-fnautodiff }
 

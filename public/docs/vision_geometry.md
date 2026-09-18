@@ -398,18 +398,18 @@ Each of these is a complete document (geometry, shader and uniforms) you can ope
 between them they are the examples this page is drawn from.
 
 - **visionos_start** — the smallest complete program: a cube, a shader, one animated uniform.
-  [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/visionos_start/metadata.edn)
+  [Open ↗](offline.html?file=assets/agent_transcripts/visionos_start/metadata.edn)
 - **vision_geometry_shapes** — cube, sphere, plane and tube side by side, with a shader that reads the
   uv the shapes write.
-  [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_shapes/metadata.edn)
+  [Open ↗](offline.html?file=assets/agent_transcripts/vision_geometry_shapes/metadata.edn)
 - **vision_geometry_heightfield** — the procedural mesh above, in full.
-  [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_heightfield/metadata.edn)
+  [Open ↗](offline.html?file=assets/agent_transcripts/vision_geometry_heightfield/metadata.edn)
 - **vision_geometry_animated** — a swept tube rebuilt from scratch every frame.
-  [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_animated/metadata.edn)
+  [Open ↗](offline.html?file=assets/agent_transcripts/vision_geometry_animated/metadata.edn)
 - **vision_geometry_desk_preview** — the preview above, without a headset: one box builds a lantern
   and draws it in its own output, the next builds the same ring wound backwards so you can see what
   the winding check catches.
-  [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
+  [Open ↗](offline.html?file=assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
 
 ## Where the pictures come from
 

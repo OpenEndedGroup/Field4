@@ -121,6 +121,8 @@ How close an embedding is to the canonical form, in the canonical form's own ter
 
 Which iteration drives the embedding toward the canonical conditions.
 
+Constants: `RECIPROCAL`, `LOCAL_RELAXATION`, `RECIPROCAL_THEN_LOCAL`.
+
 ### CanonicalizeOptions { #canonical-kt-canonicalizeoptions }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CanonicalizeOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">method</span><span class="p">:</span> <span class="nc">CanonicalMethod</span> <span class="o">=</span> <span class="nc">CanonicalMethod</span><span class="p">.</span><span class="nc">RECIPROCAL&#95;THEN&#95;LOCAL</span><span class="p">,</span> <span class="k">val</span> <span class="n">reciprocalIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">600</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">,</span> <span class="k">val</span> <span class="n">polishIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="k">val</span> <span class="n">stability</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="k">val</span> <span class="n">movementTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">10</span><span class="p">,</span> <span class="k">val</span> <span class="n">planarize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">tangentify</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">reseed</span><span class="p">:</span> <span class="nc">RealizationConstruction</span><span class="o">?</span> <span class="o">=</span> <span class="nc">SpectralRealization</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">acceptableSpread</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">RigidGauge</span><span class="o">?</span> <span class="o">=</span> <span class="nc">RigidGauge</span><span class="p">.</span><span class="nc">CANONICAL</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/polytope/Canonical/#L155)
@@ -221,6 +223,8 @@ The same [`RelaxationPlan`](polytopes.md#realizationsolver-kt-relaxationplan) th
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">PlaneFormulation</span></code>](source/jvmMain/afield/stdlib/polytope/CeresRealization/#L219)
 
 How a Ceres program should say "this face is planar". They minimise the same thing; they are not equally well conditioned.
+
+Constants: `ORIGIN_NORMAL`, `HESSE`, `NEWELL_FIT`, `HESSE_EXPRESSION`.
 
 ### CeresRelaxationOptions { #ceresrealization-kt-ceresrelaxationoptions }
 
@@ -1171,7 +1175,7 @@ Spectral (Laplacian eigenvector) embedding: the classic "draw the graph with its
 
 Which point of the embedding is moved to the origin.
 
-Constants: `NONE`, `VERTEX_CENTROID`.
+Constants: `NONE`, `VERTEX_CENTROID`, `EDGE_TANGENCY_CENTROID`.
 
 ### GaugeScale { #realize-kt-gaugescale }
 

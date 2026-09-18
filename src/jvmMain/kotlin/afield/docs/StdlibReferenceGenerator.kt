@@ -1344,16 +1344,34 @@ object StdlibReferenceGenerator {
      * has told the reader nothing. Reads the body between the opening brace and the first `;` (or
      * the closing brace), taking the leading identifier of each depth-one comma-separated entry, so
      * `HANN`, `HAMMING(2)` and a trailing-comma list all come out right.
+     *
+     * **Comments are stripped first, block comments included, and that is the whole reason this is
+     * not a one-liner.** A constant carrying its own KDoc is ordinary style in this codebase, and
+     * KDoc prose is full of commas — so a body that still contains it makes [parseEnumEntries] read
+     * the first word after every comma as a constant name. Until 2026-09-17 only `//` was removed,
+     * and the published reference carried lines like `Constants: which, because` and
+     * `Constants: or, and, counted, when` for enums whose real constants it never saw. Not a
+     * truncation a reader can spot: a list of plausible-looking lowercase words where the API
+     * should be. `EnumConstantCommentTest` pins it, and a block comment opened on one line and
+     * closed on another is why the flag lives outside the per-line loop.
+     *
+     * (The markers are named in words rather than spelled here, and neither is a glob written over
+     * a `reference` path, because **Kotlin block comments nest**: an opener anywhere in a KDoc
+     * block opens a comment that the block's own terminator does not close, and the rest of the
+     * file then parses as declarations inside a comment. Both mistakes were made while writing
+     * this, and the second one — a glob after a slash — is the one that looks completely innocent.)
      */
-    private fun enumConstantsAt(lines: List<String>, line: Int): List<String> {
+    internal fun enumConstantsAt(lines: List<String>, line: Int): List<String> {
         var index = line - 1
         if (index !in lines.indices) return emptyList()
         val body = StringBuilder()
         var depth = 0
         var started = false
+        var inBlockComment = false
         while (index < lines.size && index < line - 1 + MAX_ENUM_LINES) {
-            val raw = lines[index].substringBefore("//")
-            for (ch in raw) {
+            val (code, stillOpen) = stripComments(lines[index], inBlockComment)
+            inBlockComment = stillOpen
+            for (ch in code) {
                 when {
                     ch == '{' -> { depth++; if (depth == 1) { started = true; continue } }
                     ch == '}' -> { depth--; if (depth == 0 && started) return parseEnumEntries(body.toString()) }
@@ -1365,6 +1383,31 @@ object StdlibReferenceGenerator {
             index++
         }
         return if (started) parseEnumEntries(body.toString()) else emptyList()
+    }
+
+    /**
+     * [line] with its comments removed, and whether a block comment is still open at the end of it.
+     *
+     * Deliberately *not* string-literal aware, unlike [signatureAt]'s scan: an enum **body** has no
+     * business containing a string that spells a comment marker, where a parameter default very much
+     * does — that is the hazard `SignatureLiteralTest` exists for. Keeping this simple means it
+     * cannot mis-handle a case it will never see; if an enum ever does carry such a literal, the
+     * constant names still come out right, because a literal only ever appears inside a constant's
+     * argument list and [parseEnumEntries] takes the leading identifier.
+     */
+    internal fun stripComments(line: String, blockCommentOpen: Boolean): Pair<String, Boolean> {
+        val kept = StringBuilder(line.length)
+        var open = blockCommentOpen
+        var i = 0
+        while (i < line.length) {
+            when {
+                open -> if (line.startsWith("*/", i)) { open = false; i += 2 } else i++
+                line.startsWith("/*", i) -> { open = true; i += 2 }
+                line.startsWith("//", i) -> return kept.toString() to open
+                else -> { kept.append(line[i]); i++ }
+            }
+        }
+        return kept.toString() to open
     }
 
     private const val MAX_ENUM_LINES = 200

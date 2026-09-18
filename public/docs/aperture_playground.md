@@ -5,7 +5,7 @@ and dimmer as it loses focus; decreasing its alpha alone leaves a dim, sharp lin
 This starting point makes that distinction easy to edit and inspect.
 
 Open **aperture_playground** from the welcome screen, or
-[browse its boxes and shaders](/offline.html?file=/field4/assets/agent_transcripts/aperture_playground/metadata.edn).
+[browse its boxes and shaders](offline.html?file=assets/agent_transcripts/aperture_playground/metadata.edn).
 To start the whole graph, hold **Shift–Alt** and drag a short launch stroke through
 **1. Renderer**. Field's existing gesture includes its descendants and launches them in
 order. Use **Stop Box** (Alt–Down in the renderer's editor) to stop. Repeat the same

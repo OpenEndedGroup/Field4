@@ -7,7 +7,7 @@ A RAM cell's border says what happened to that byte, and where two things are tr
 The embedded viewer's "Open in Field4" button opens a prepared Nano document with a Nano root already set up.
 
 <iframe
-    src="/offline.html?file=/field4/assets/nano_examples/metadata.edn"
+    src="offline.html?file=assets/nano_examples/metadata.edn"
     title="Nano examples (offline viewer)"
     style="width:100%; height:680px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"

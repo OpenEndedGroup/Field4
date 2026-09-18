@@ -1495,7 +1495,7 @@ of these four is WFC-specific:
 ## The loadable demo
 
 Everything above as a Field document you can open and edit:
-[**wfc_worked_example**](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
+[**wfc_worked_example**](offline.html?file=assets/agent_transcripts/wfc_worked_example/metadata.edn)
 (six connected boxes, one per section, each of which runs on its own). The transcript that builds it,
 `dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
 

@@ -1,13 +1,16 @@
 # Local references under the published path prefix
 
 The docs site is published under a **path prefix**, not at a host root:
-`public/zensical.yml:356` says `site_url: http://openendedgroup.com/Field4/`. Almost nothing in
+`public/zensical.yml:361` says `site_url: http://openendedgroup.com/Field4/`. Almost nothing in
 this repo's tooling ever served it that way, and one whole class of broken reference lived in
 that gap for as long as the page that carried it.
 
 Written 2026-09-16, from `nightly/2026-09-16/2-docs-asset-prefix-guard`. Every number below was
 measured on the build described in *Reproducing it*, and every number is stated with its
-population.
+population. **Read [DOCS_REFERENCE_FAILURE_MODES.md](DOCS_REFERENCE_FAILURE_MODES.md) alongside
+this.** This page is the prefix family and the guard's design; that one is the four distinct
+failure modes the guard turned up, three of which are not the prefix family at all, and it
+carries the corrected populations from 2026-09-17.
 
 ## The mechanism, which is a frame-of-reference mistake
 
@@ -124,12 +127,25 @@ different things:
 
 ### What it selects — the population, stated
 
+**With the flag that produced it**, which the first version of this table omitted and should not
+have: the source mirror (`reference/source/**`) is generated per build and is the largest page
+family, so the same site measures two completely different ways. The guard now prints a
+`build shape:` line saying which one you are looking at.
+
 ```
+--no-source-pages, 2026-09-16 at cb4377a6c + that branch
 155 built pages          of 287 *.html in public/field4
                          (the other 132 are copied/vendored, see below)
 39943 local references   from rendered HTML: 301 site-absolute, 39642 relative
 8939 refs skipped        external / data: / mailto: / protocol-relative / bare #fragment
 1462 distinct targets    = 1109 resolve + 350 un-generated source mirror + 3 grandfathered
+
+default build (mirror present), 2026-09-17 after the four fixes
+613 built pages          of 745 *.html; 455 of the 613 ARE the mirror
+121655 local references  170 site-absolute, 121485 relative
+25016 refs skipped       external / data: / mailto: / protocol-relative / bare #fragment
+51 matches masked        inside <pre>/<code>; 0 of them resolved to a real file
+1575 distinct targets    = 1575 resolve. Nothing grandfathered, nothing excused.
 ```
 
 Before the fix, **50** distinct targets escaped the prefix, all on `rectsl_examples/index.html`.
@@ -183,28 +199,31 @@ from `site_url`. So this build is prefix-committed by construction, and a build 
 the root cannot satisfy the guard in its default mode either. Stated plainly: the site works under
 `/Field4/` and not at `/`, and that is a property of `site_url`, not a defect introduced here.
 
-## Grandfathered debt (`KNOWN_UNRESOLVED`)
+## Grandfathered debt (`KNOWN_UNRESOLVED`) — retired 2026-09-17, and it is empty
 
-Three references were already broken under the prefix at `cb4377a6c`, on pages this branch must
-not edit. They are printed on every run and do not gate;
-`stale_known_unresolved` **fails** when an entry stops reproducing, so the list cannot quietly
-become policy. It is graded only against the real site — not a fixture, not another prefix.
+Three references were already broken under the prefix at `cb4377a6c`, on pages this branch could
+not edit. They were printed on every run and did not gate; `stale_known_unresolved` **fails** when
+an entry stops reproducing, so the list could not quietly become policy, and it is graded only
+against the real site — not a fixture, not another prefix.
 
-1. **`/offline.html`** — on **134** pages, written `/offline.html?file=/field4/...`. Both halves
-   are wrong under the prefix: server-absolute instead of `/Field4/offline.html`, and the query
-   says lowercase `/field4/` (the local `site_dir`) against a published `/Field4/`, which 404s on
-   any case-sensitive host. Sources: `agent_transcripts.md`, `afield_four_graphics.md`.
-2. **`/extensions/remote_ar/index.html`** — `ar_reference.md:45` iframes a path served by a
-   *running Field instance* (`https://FIELD_HOST:9092/...`), not by the docs site. Dead on the
-   published site by nature, not by mistake; wants an absolute URL or a note.
-3. **`/Field4/reference/3,8`** — `public/docs/reference/patterns.md:2295` shows
-   `pat("[bd cp](3,8) hh!2")` in a block indented **7** spaces inside already-4-space-indented
-   KDoc output, so its relative indent is 3 — one short of a code block. Markdown then read the
-   pat figure `[bd cp](3,8)` as a **link**. Origin:
-   `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:75`;
-   `PatCondense.kt:589` writes the same figure in backticks and is immune. **This is the best
-   argument for reading rendered HTML**: no markdown reader would ever flag `[bd cp](3,8)` as a
-   broken reference, because in `pat` notation it is not one.
+All three were fixed at source the following night, so the dict is now `{}` and the guard reports
+`1575 of 1575`. Two of the three turned out not to be broken references at all. Each is written up
+in full, with its re-derived mechanism and its guard, in
+[DOCS_REFERENCE_FAILURE_MODES.md](DOCS_REFERENCE_FAILURE_MODES.md); in one line each:
+
+1. **`/offline.html`** — **137** occurrences on **17** authored pages (not "134 pages"), both
+   halves server-absolute and case-mismatched against `site_url`. Now viewer-relative
+   (`offline.html?file=assets/…`) and guarded by `tools/check_doc_offline_links.py`.
+2. **`/extensions/remote_ar/index.html`** — never a live reference: it is the `src` of an
+   **escaped** `&lt;iframe` shown inside a `diffstatic` fence on `ar_reference.md:45`, which the
+   extractor was reading as markup. Masked with all other displayed code; the page now also says
+   in prose that `/extensions/…` is served by a running Field.
+3. **`/Field4/reference/3,8`** — `patterns.md` showed `pat("[bd cp](3,8) hh!2")` in a block
+   indented **7** spaces inside 4-space-indented KDoc output, one short of Python-Markdown's
+   8-space threshold for a code block inside a list item, so markdown read the pat figure as a
+   **link**. Fixed in `TidalPatterns.kt` and regenerated. **Still the best argument for reading
+   rendered HTML**: no markdown reader would ever flag `[bd cp](3,8)` as a broken reference,
+   because in `pat` notation it is not one.
 
 ## Reproducing it
 
@@ -274,7 +293,7 @@ renders.** The screenshots were 19 KB and 105 KB respectively, which is its own 
 | | |
 |---|---|
 | `tools/check_doc_site_links.py` | the guard; `--summary`, `--prefix`, `--include-copied-assets` |
-| `tools/test_check_doc_site_links.py` | 25 tests, auto-wired into `docsGates` by `run_python_tests.py`'s `tools/test_*.py` glob |
+| `tools/test_check_doc_site_links.py` | 33 tests, auto-wired into `docsGates` by `run_python_tests.py`'s `tools/test_*.py` glob |
 | `tools/build_zensical_docs.py` | `normalize_over_climbing_refs`, and the guard invocation after the site is complete |
 | `tools/check_doc_assets.py` | the complementary source-tree guard, and the placeholder-pixel detector |
 | `public/docs_hooks.py:267` | `page_directory_depth`, where the rebasing contract was first recorded |

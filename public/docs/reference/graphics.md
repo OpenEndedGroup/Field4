@@ -70,7 +70,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 What kind of thing on a figure a click landed on — the same three-way distinction the editable FLine widget already draws its hit targets with (`data-fline-hit-kind` in `sliders.js`), now reported to `FLine.onClick` as well.
 
-Constants: `and`, `with`.
+Constants: `POINT`, `EDGE`, `FACE`, `UNKNOWN`.
 
 ### FLineFaceCoordinates { #standarddrawing-kt-flinefacecoordinates }
 
@@ -78,7 +78,7 @@ Constants: `and`, `with`.
 
 Which convention `FLineIntersection.u` and `v` follow for a `FLineHitKind.FACE` hit — because there is no one right answer for a face nobody chose, and a plausible wrong number is worse than a labelled one.
 
-Constants: `or`, `so`, `and`, `monotone`.
+Constants: `NONE`, `BILINEAR`, `BOUNDING_BOX`.
 
 ### FLineIntersection { #standarddrawing-kt-flineintersection }
 
@@ -616,7 +616,7 @@ instance is called something other than `pc` sets `CodeBlendOptions.stackSLRead`
 
 Which of the two languages a [`CodeBlendPlan`](graphics.md#keyframecodeblend-kt-codeblendplan) was built from.
 
-Constants: `held`.
+Constants: `STACKSL`, `KOTLIN`.
 
 ### CodeBlendMode { #keyframecodeblend-kt-codeblendmode }
 
@@ -624,7 +624,7 @@ Constants: `held`.
 
 What `KeyframeScope.interpolate` should do when both sides of a slot are code.
 
-Constants: `and`, `producing`.
+Constants: `STEP`, `STATIC`, `RUNTIME`.
 
 ### CodeBlendLane { #keyframecodeblend-kt-codeblendlane }
 
@@ -632,7 +632,7 @@ Constants: `and`, `producing`.
 
 Which component of the blend `vec4` a runtime-blended program reads.
 
-Constants: `unclamped`, `as`, `and`, `the`.
+Constants: `RAW`, `CLAMPED`, `SMOOTH`, `COMPLEMENT`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -658,7 +658,7 @@ How a scope should blend code: which [`CodeBlendMode`](graphics.md#keyframecodeb
 
 How the numbers of one [`CodeBlendSite`](graphics.md#keyframecodeblend-kt-codeblendsite) are interpolated.
 
-Constants: `linearly`, `along`, `rotation`.
+Constants: `LERP`, `SLERP`, `SCLERP`.
 
 ### CodeBlendSiteKind { #keyframecodeblend-kt-codeblendsitekind }
 
@@ -666,7 +666,7 @@ Constants: `linearly`, `along`, `rotation`.
 
 What kind of thing one blended site is, which decides both how its numbers move and whether a runtime blend can reach it.
 
-Constants: `Kotlin`, `blended`, `whose`, `likewise`.
+Constants: `NUMBER`, `VECTOR`, `QUATERNION`, `DUAL_QUATERNION`, `RANGE`, `MODIFIER`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -806,7 +806,7 @@ says the night is broken. And `SweepConfig.minFreeBytes` stops the sweep before 
 
 What a blend does with the lanes that have no midpoint: strings, [`StackSLString`](graphics.md#keyframer-kt-stackslstring) programs and `SourceBackedBlock` Kotlin.
 
-Constants: `drawn`, `so`, `which`, `independently`, `by`, `and`, `because`.
+Constants: `ANCHOR`, `ROULETTE_PER_LANE`, `AS_INTERPOLATED`.
 
 ### MissingSlots { #keyframesweep-kt-missingslots }
 
@@ -814,7 +814,7 @@ Constants: `drawn`, `so`, `which`, `independently`, `by`, `and`, `because`.
 
 What a blend does when its participants disagree about which lanes exist.
 
-Constants: `because`, `and`, `keeping`.
+Constants: `FILL_FROM_LIVE`, `FILL_FROM_ANCHOR`, `INTERSECT`, `REQUIRE_ALL`.
 
 ### SweepConfig { #keyframesweep-kt-sweepconfig }
 
@@ -1443,7 +1443,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 Which lines `TriMesh.toFLines` should produce.
 
-Constants: `as`, `plus`, `and`, `along`, `but`.
+Constants: `EDGES`, `CREASES`, `BOUNDARY`, `NORMALS`, `FACES`.
 
 ### MeshView { #mesh-field-kt-meshview }
 
@@ -1470,7 +1470,7 @@ How to draw a [`TriMesh`](graphics.md#mesh-kt-trimesh) in a preview: where the c
 
 Which renderer the `showMesh` family draws with.
 
-Constants: `and`, `so`.
+Constants: `GPU`, `CPU`.
 
 ## mesh_generate.kt { #mesh-generate-kt }
 
@@ -1827,11 +1827,15 @@ Two families of damage need the repairs in this file:
 
 How much a defect matters — the distinction between "Manifold will refuse this" and "Manifold will accept this and give you a wrong answer without saying so".
 
+Constants: `BLOCKING`, `SUSPICIOUS`, `INFORMATIONAL`.
+
 ### MeshDefectKind { #mesh-repair-kt-meshdefectkind }
 
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MeshDefectKind</span></code>](source/jvmMain/afield/stdlib/mesh_repair/#L93)
 
 The kinds of thing that can be wrong with a mesh, **declared in the order worth fixing them**.
+
+Constants: `NON_FINITE_POSITION`, `UNWELDED_VERTICES`, `DEGENERATE_FACE`, `DUPLICATE_FACE`, `NON_MANIFOLD_EDGE`, `NON_MANIFOLD_VERTEX`, `OPEN_BOUNDARY`, `UNWALKABLE_BOUNDARY`, `INCONSISTENT_WINDING`, `INVERTED_ORIENTATION`, `MULTIPLE_COMPONENTS`, `UNREFERENCED_VERTEX`.
 
 ### MeshDefect { #mesh-repair-kt-meshdefect }
 
@@ -1913,6 +1917,8 @@ Everything wrong with one [`TriMesh`](graphics.md#mesh-kt-trimesh), with the evi
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">HoleFillMethod</span></code>](source/jvmMain/afield/stdlib/mesh_repair/#L633)
 
 How one hole got filled — the difference between a fill you can trust and one you should look at.
+
+Constants: `SINGLE_TRIANGLE`, `EAR_CLIP`, `CENTROID_FAN`, `SKIPPED_TOO_LARGE`.
 
 ### HoleFillReport { #mesh-repair-kt-holefillreport }
 
@@ -2701,7 +2707,7 @@ A [`Pointer`](graphics.md#pointing-pointer-kt-pointer) from a lambda. What every
 
 What a [`PointerInteraction`](graphics.md#pointing-pointer-kt-pointerinteraction) is doing.
 
-Constants: `or`, `not`, `and`.
+Constants: `IDLE`, `HOVER`, `PRESSED`, `DRAGGING`.
 
 ### PointerInteraction { #pointing-pointer-kt-pointerinteraction }
 

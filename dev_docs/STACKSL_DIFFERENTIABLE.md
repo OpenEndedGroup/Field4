@@ -275,3 +275,20 @@ import failure, which is why the boxes are also run by hand.
   does not have one.
 - **No GPU gradient.** The derivative is a CPU-side property of the emitted GLSL; the fitted
   *program* runs on a GPU, the fit itself does not.
+
+## Since: the jump surrogate
+
+The "zero by convention" row above is no longer the only option. `dev_docs/STACKSL_SURROGATE.md`
+(2026-09-17) adds `AdSurrogate`, a **mode** of `GlslAdScalars` that replaces the exact zero partial
+at a jump with a mollified delta of width `t`, annealed. It is off by default and changes only the
+partial, so every claim on this page still holds unchanged.
+
+What it buys: **10 of the 74 blocked words** gain a gradient the true loss confirms (2 more gain a
+fictitious one), and a wire behind a `threshold`, `select`, `posterize` or `bit-crush` becomes
+recoverable — worst relative error **0.0247** over 6 continuous parameters, against a surrogate-off
+arm that provably cannot move at all.
+
+What it costs, and it is this page's own finding turned into a fence: switching the staircase family
+on over `fbm`'s lattice makes the frequency wire's gradient wrong by **2.49e+06 to 1.33e+08**
+relative, with the sign flipped. *`floor` is what makes a noise frequency differentiable* is exactly
+why a soft `floor` must never be a global default.

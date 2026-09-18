@@ -499,7 +499,14 @@ object RectSLExamples {
         // not words the RectSL VM has ever heard of, so demanding a worked example for
         // each of them is a category error. (Their evidence is a rendered still apiece
         // on the examples page, which is a stronger guarantee than this guard gives.)
-        val skip = setOf("Model", "Kotlin entry points", "The looks, rendered")
+        //
+        // "Fidelity" is the same category error arriving from the other end. Its table
+        // is keyed on the three `RectSLSdfBake` classifications — `STEPPED`, `SAMPLED`,
+        // `ALIASED` — with `fidelity` itself as the column head. Those are values the
+        // emitter *reports* about a bake it just made, not words the VM parses, so there
+        // is no gallery program that could "demonstrate `ALIASED`". What documents them
+        // is `sdf.notes`, which that section exists to read aloud.
+        val skip = setOf("Model", "Kotlin entry points", "The looks, rendered", "Fidelity")
         val phrase = mapOf(
             "->wall meters" to listOf("->wall", "meters"), "->wall pixels" to listOf("->wall", "pixels"),
             "->wall abstract" to listOf("->wall", "abstract"), "->fit contain" to listOf("->fit", "contain"),

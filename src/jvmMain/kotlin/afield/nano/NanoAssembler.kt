@@ -1,11 +1,16 @@
 package afield.nano
 
 /**
- * Nano assembler: converts Nano assembly source text into a [ByteArray] bytecode program.
+ * Turns Nano assembly source text into a bytecode `ByteArray`: one pass over the lines emitting
+ * bytes, then a patch pass that fills in the labels the first pass left as placeholders.
  *
- * ## Syntax
+ * `NanoVM.kt` has the machine and the opcode map; this is the text side of the same instruction
+ * set. The listing below is the whole language: one directive, no macros, and operands that are
+ * registers, integer literals or labels.
  *
- * ```
+ * #### Syntax
+ *
+ * ```nano
  * ; line comment (rest of line)
  * label:            ; defines a label at the current address
  *
@@ -32,8 +37,8 @@ package afield.nano
  * or  r0, r1
  * xor r0, r1
  * cmp r0, r1       ; flags = r0 <=> r1  (no reg change)
- * ldr r0, r1       ; r0 = RAM[r1]  (load indirect)
- * str r0, r1       ; RAM[r0] = r1  (store indirect)
+ * ldr r0, r1       ; r0 = the RAM byte at address r1  (load indirect)
+ * str r0, r1       ; the RAM byte at address r0 = r1  (store indirect)
  * div r0, r1       ; r0 = r0 / r1  (integer; r1==0 → r0=0xFF)
  *
  * ldi r0, 42       ; r0 = 42   (immediate, 0–255)
@@ -61,32 +66,53 @@ package afield.nano
  * ```
  *
  * Labels can appear on their own line (`start:`) or before a mnemonic on the same line
- * (`start: ldi r0, 0`).  Labels used in branch instructions are resolved as the
- * **signed 8-bit relative offset from the byte following the branch** (i.e. PC+2 for 2-byte
- * instructions like `jmp`), capped to −128..+127.  For [JMPA] and [CALLA], labels resolve
- * to the absolute address (0–255).
+ * (`start: ldi r0, 0`).  A label used by a relative branch resolves to the
+ * **signed 8-bit offset from the byte following the branch** (PC+2 for the two-byte forms like
+ * `jmp`), and an offset that will not fit in −128..+127 is an error on that line. `jmpa` and
+ * `calla` take the absolute address instead, so there the error is an address past 255.
  *
- * Returns [AssemblyResult] which contains either the bytecode or a list of [AssemblyError]s.
+ * #### Results and errors
+ *
+ * Every bad register, number, mnemonic, duplicate label and out-of-range branch goes into a list
+ * that assembly keeps filling, so one run reports all of them with the line each came from rather
+ * than stopping at the first. `assemble` hands back `AssemblyResult`, which is either the bytes
+ * or that list. `assembleWithSourceMap` hands back the same bytes plus a program-counter-to-line
+ * array, which is what `NanoInterface.kt` and `NanoVisualization.kt` use to mark the source line a
+ * running program is on. The throwing wrapper a live-coding box calls is the top-level
+ * `nanoAssemble` in `NanoInterface.kt`.
+ */
+
+/**
+ * The assembler. It keeps no state between calls, so one instance can assemble any number of
+ * programs.
  */
 class NanoAssembler {
 
+    /** One assembly failure: the 1-based source [line] it was found on, and what was wrong. */
     data class AssemblyError(val line: Int, val message: String)
 
+    /** The bytecode, or every error the source produced. */
     sealed class AssemblyResult {
         data class Ok(val bytes: ByteArray) : AssemblyResult()
         data class Err(val errors: List<AssemblyError>) : AssemblyResult()
     }
 
+    /**
+     * Bytecode plus the source map: [pcToLine] is one entry per emitted byte, holding the 1-based
+     * line that byte came from, so a program counter indexes straight into it.
+     */
     data class AssemblyDebugInfo(
         val bytes: ByteArray,
         val pcToLine: IntArray
     )
 
+    /** [AssemblyDebugInfo], or every error the source produced. */
     sealed class AssemblyDebugResult {
         data class Ok(val info: AssemblyDebugInfo) : AssemblyDebugResult()
         data class Err(val errors: List<AssemblyError>) : AssemblyDebugResult()
     }
 
+    /** Assemble [source] into bytecode, or into the list of everything wrong with it. */
     fun assemble(source: String): AssemblyResult {
         return when (val result = assembleInternal(source, captureSourceMap = false)) {
             is InternalAssemblyResult.Ok -> AssemblyResult.Ok(result.bytes)
@@ -94,6 +120,10 @@ class NanoAssembler {
         }
     }
 
+    /**
+     * Assemble [source] and keep the byte-to-line map, for a caller that has to point at the line
+     * a program counter is sitting on.
+     */
     fun assembleWithSourceMap(source: String): AssemblyDebugResult {
         return when (val result = assembleInternal(source, captureSourceMap = true)) {
             is InternalAssemblyResult.Ok ->

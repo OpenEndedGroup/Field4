@@ -71,9 +71,18 @@ private fun fl(v: Double): Double = v.toFloat().toDouble()
  * The differentiable instance of [GlslScalars], over one [ADTape].
  *
  * One instance per tape, and one tape per pixel; the instance is cheap (it holds the tape and
- * nothing else) and is emphatically not thread-safe, exactly like `GlslInvocation`.
+ * a surrogate mode) and is emphatically not thread-safe, exactly like `GlslInvocation`.
+ *
+ * [surrogate] selects which of the jump-discontinuous operations get a mollified-delta partial in
+ * place of their exact zero — see [AdSurrogate]. It is a **mode of this instance**, not a second
+ * evaluator: the same parse tree, the same [GlslMachine] control flow, the same primal values. With
+ * the default [AdSurrogate.OFF] every partial and every tape node is what it was before the mode
+ * existed, and the tape does not even change length.
  */
-internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
+internal class GlslAdScalars(
+    val tape: ADTape,
+    val surrogate: AdSurrogate = AdSurrogate.OFF
+) : GlslScalars<AdValue> {
 
     // -- tape primitives -----------------------------------------------------------------------
 
@@ -104,6 +113,125 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
     /** Derivative-free: a value the gradient must not flow through (`floor`, a comparison, `int`). */
     private fun frozen(value: Double): AD = tape.constant(fl(value))
 
+    // -- the jump sites: exactly zero, or [surrogate]'s mollified delta ---------------------------
+
+    /**
+     * A piecewise-constant operation with one parent: the **exact** value, and either its exact
+     * zero partial or [AdSurrogate]'s mollified delta.
+     *
+     * [u] is the signed distance from the argument to the nearest jump and [height] is that jump's
+     * size. When [family] is not surrogated — or when the kernel underflows, which it does a few
+     * temperatures away from a jump — this falls back to [frozen], so the off path pushes the same
+     * parentless constant it always did and the tape's length is unchanged.
+     */
+    private fun jumpNode(
+        x: AD,
+        value: Double,
+        family: AdSurrogateFamily,
+        u: Double,
+        height: Double = 1.0
+    ): AD {
+        if (!surrogate.covers(family)) return frozen(value)
+        val d = surrogate.kernel(u, height)
+        return if (d == 0.0) frozen(value) else node(x, fl(value), d)
+    }
+
+    /** Signed distance to the nearest integer — where `floor`, `ceil` and `trunc` jump. */
+    private fun toNearestInteger(x: Double): Double = x - Math.rint(x)
+
+    /** Signed distance to the nearest half-integer — where `round` and `roundEven` jump. */
+    private fun toNearestHalfInteger(x: Double): Double = (x - 0.5) - Math.rint(x - 0.5)
+
+    /**
+     * `step(edge, x)`: one jump of height 1 at `x == edge`, so the partial is `+K` in `x` and `−K`
+     * in `edge`. Two parents, which is why it cannot go through [jumpNode].
+     *
+     * The [isMask] branch is the one place this file departs from "one jump, one kernel", and it
+     * does so because the composition it fires on **is not a second jump**. See [maskNodes].
+     */
+    private fun stepAd(e: AD, x: AD): AD {
+        val value = if (x.value < e.value) 0.0 else 1.0
+        if (!surrogate.covers(AdSurrogateFamily.STEP)) return frozen(value)
+        // Re-thresholding a mask is the IDENTITY, not a jump: for `x` in {0, 1} and an edge
+        // strictly inside (0, 1), `step(edge, x) == x` exactly. So the local partial is 1 in `x`
+        // and — because moving the edge anywhere inside (0, 1) changes nothing — 0 in `edge`, and
+        // the kernel belongs to whichever real jump produced `x` rather than being applied twice.
+        if (isMask(x) && e.value > 0.0 && e.value < 1.0) return markMask(node(x, fl(value), 1.0))
+        val d = surrogate.kernel(x.value - e.value, 1.0)
+        return markMask(if (d == 0.0) frozen(value) else node(x, e, fl(value), d, -d))
+    }
+
+    // -- boolean-ish masks, which is what StackSL's predicate words actually produce ---------------
+
+    /**
+     * Tape indices whose value is 0.0 or 1.0 *by construction* — a **mask** in the sense
+     * `public/docs/stacksl_cheatsheet.md` fixes as the contract of `select`, `if`, `and`, `or`,
+     * `not`, `any`, `all` and `band`: a condition is read "boolean-ish, with threshold `0.5`".
+     *
+     * #### Why this set exists, and why a value test could not replace it
+     *
+     * `select`/`if` lowers to `mix(f, t, step(0.5, abs(cond)))`. When `cond` is itself a mask — the
+     * common case, since `threshold` lowers to `step` — that `step(0.5, abs(·))` pair is the
+     * identity on the values `cond` can take, so its *correct* mollified partial is 1, and the
+     * kernel that belongs to the chain is the inner jump's alone. Treated as a jump of its own
+     * instead, its argument sits at distance **exactly 0.5** from its edge forever, `K_t(0.5)`
+     * decays like `exp(−1/2t)`, and a gradient that has to cross two of them is multiplied by it —
+     * so `select` switches itself off as a schedule cools. That was measured at 1.45e+11× across
+     * `dev_docs/STACKSL_SURROGATE.md`'s sweep before this set existed.
+     *
+     * The tempting cheap version is to test the *value*: pass the partial through whenever the
+     * argument happens to be 0.0 or 1.0. That is wrong, and not in a corner — a wire seeded at
+     * exactly 1.0 under `w 0.5 threshold` would get a partial of 1 where the honest answer is
+     * `K_t(0.5) ≈ 0`, turning a wall into a cliff. The question is not what the argument *is* here,
+     * it is what the argument *ranges over*, and only the expression that built it knows that. So
+     * membership is structural: pushed at the operations whose range really is {0, 1}, and
+     * propagated only through the ones that map {0, 1} into itself.
+     *
+     * Every pass-through is then exact rather than approximate, which is why this is a fix and not
+     * a second surrogate with a second bias to measure.
+     *
+     * #### Extent, deliberately small
+     *
+     * `step` produces a mask; `abs`, `min` and `max` propagate one (`|0|=0`, `|1|=1`, and both
+     * reducers of {0,1} stay in {0,1}) — which covers `threshold`/`step`/`select`/`if` and the
+     * `and`/`or` that lower to `min`/`max` of two of them. `not`'s `vec4(1.0) − mask` is **not**
+     * tracked: it would put a mask test on `sub`, the hottest arithmetic site in the file, to
+     * recover one word. `band` is `step(a) − step(b)` and is outside for the same reason. So
+     * `x not select` still nests, and [AdSurrogateFamily.STEP]'s KDoc and the surrogate doc both
+     * say so rather than leaving it to be discovered.
+     *
+     * A *constant* is never marked, even one whose value is 0.0 or 1.0. That is what stops the
+     * [minAd]/[maxAd] propagation leaking through `clamp`: `saturate` of a mask is
+     * `min(max(mask, 0.0), 1.0)`, and since the bounds are unmarked the result is not a mask
+     * either. Marking them would be sound — a constant's range is a single point inside {0, 1} and
+     * it carries no derivative regardless — but it buys nothing measured, and the smaller surface
+     * is the one whose every pass-through is easy to check by hand.
+     *
+     * Only populated when [AdSurrogateFamily.STEP] is surrogated: with [AdSurrogate.OFF] a `step`
+     * is a parentless constant, nothing downstream of it carries a derivative at all, and this
+     * file's promise that the off path pushes the same tape it always did is kept by allocating
+     * nothing.
+     */
+    private var maskNodes: java.util.BitSet? = null
+
+    /** True when a mask's provenance can change a partial — i.e. when `step` is surrogated. */
+    private val trackMasks: Boolean = surrogate.covers(AdSurrogateFamily.STEP)
+
+    /** Record [a] as 0/1-valued by construction, and return it unchanged. */
+    private fun markMask(a: AD): AD {
+        if (trackMasks) (maskNodes ?: java.util.BitSet().also { maskNodes = it }).set(a.index)
+        return a
+    }
+
+    /**
+     * Is [a] a mask?
+     *
+     * The value test is redundant with the invariant and kept anyway: it is the cheap guard that
+     * makes a mis-propagated mark unable to produce a *wrong* partial, only a missed one.
+     */
+    private fun isMask(a: AD): Boolean =
+        trackMasks && (a.value == 0.0 || a.value == 1.0) && maskNodes?.get(a.index) == true
+
     // -- Float-faithful elementary arithmetic --------------------------------------------------
 
     private fun add(a: AD, b: AD): AD = fnode(a, b, a.value + b.value, 1.0, 1.0)
@@ -120,8 +248,18 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
     private fun mulK(a: AD, k: Double): AD = fnode(a, a.value * k, k)
     private fun subFromK(k: Double, a: AD): AD = fnode(a, k - a.value, -1.0)
 
-    /** `floor`, as the `Float` path computes it, with the zero derivative its jumps require. */
-    private fun floorAd(a: AD): AD = frozen(kotlin.math.floor(a.value))
+    /**
+     * `floor`, as the `Float` path computes it, with the zero derivative its jumps require — or
+     * [AdSurrogate]'s mollified delta train when the [AdSurrogateFamily.STAIRCASE] family is on.
+     *
+     * `fract` and `mod` route through here, so a surrogated `floor` mollifies the sawtooth's `−1`
+     * jump and `mod`'s too, with no separate site. That is also the reason the staircase family is
+     * dangerous: `_noise`'s lattice cell index is a `floor`, and a gradient through *that* one is
+     * `_hash21`'s, which is chaotic.
+     */
+    private fun floorAd(a: AD): AD = jumpNode(
+        a, kotlin.math.floor(a.value), AdSurrogateFamily.STAIRCASE, toNearestInteger(a.value)
+    )
 
     /** `mod(x, y) = x - y * floor(x / y)` — the same four `Float` roundings, in the same places. */
     private fun modAd(x: AD, y: AD): AD = sub(x, mul(y, floorAd(div(x, y))))
@@ -129,23 +267,44 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
     /** `mix(x, y, a) = x * (1 - a) + y * a` — the spec's form, not the `x + a*(y-x)` rewrite. */
     private fun mixAd(x: AD, y: AD, a: AD): AD = add(mul(x, subFromK(1.0, a)), mul(y, a))
 
-    /** `max`, splitting the derivative evenly at an exact tie, as `autodiff.kt` does. */
-    private fun maxAd(a: AD, b: AD): AD = when {
+    /**
+     * `max`, splitting the derivative evenly at an exact tie, as `autodiff.kt` does.
+     *
+     * `max` of two masks is a mask, which is what carries `or` through to a `select`: `or` lowers
+     * to `max(step(0.5, abs(a)), step(0.5, abs(b)))`. See [maskNodes].
+     */
+    private fun maxAd(a: AD, b: AD): AD = maybeMask(a, b, when {
         a.value > b.value -> node(a, b, a.value, 1.0, 0.0)
         a.value < b.value -> node(a, b, b.value, 0.0, 1.0)
         else -> node(a, b, a.value, 0.5, 0.5)
-    }
+    })
 
-    private fun minAd(a: AD, b: AD): AD = when {
+    /** `min`, and the `and` half of the pair [maxAd] documents. */
+    private fun minAd(a: AD, b: AD): AD = maybeMask(a, b, when {
         a.value < b.value -> node(a, b, a.value, 1.0, 0.0)
         a.value > b.value -> node(a, b, b.value, 0.0, 1.0)
         else -> node(a, b, a.value, 0.5, 0.5)
-    }
+    })
+
+    /** Mark [out] a mask when both reducer inputs were — {0,1} is closed under `min` and `max`. */
+    private fun maybeMask(a: AD, b: AD, out: AD): AD =
+        if (trackMasks && isMask(a) && isMask(b)) markMask(out) else out
 
     private fun clampAd(x: AD, lo: AD, hi: AD): AD = minAd(maxAd(x, lo), hi)
 
-    private fun absAd(a: AD): AD =
-        node(a, a.value.absoluteValue, if (a.value > 0.0) 1.0 else if (a.value < 0.0) -1.0 else 0.0)
+    /**
+     * `abs`, splitting evenly at the origin — except on a mask, where it is the identity.
+     *
+     * The exception matters as much as `step`'s does, and for the same reason: `select` lowers to
+     * `step(0.5, abs(cond))`, so `abs` sees a mask whose false lanes are *exactly* 0.0, and the
+     * even split reports 0 there. Left alone, the `abs` would kill every false lane's gradient even
+     * after [stepAd] stopped squaring the kernel. `|0| = 0` and `|1| = 1`, so the honest partial on
+     * a mask is 1 and the whole `step(0.5, abs(·))` pair passes a gradient straight through.
+     */
+    private fun absAd(a: AD): AD {
+        if (isMask(a)) return markMask(node(a, a.value, 1.0))
+        return node(a, a.value.absoluteValue, if (a.value > 0.0) 1.0 else if (a.value < 0.0) -1.0 else 0.0)
+    }
 
     private fun sqrtAd(a: AD): AD {
         val root = kotlin.math.sqrt(a.value)
@@ -349,12 +508,38 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
         }
 
         "abs" -> unary(a[0]) { x -> absAd(x) }
-        "sign" -> unary(a[0]) { x -> frozen(kotlin.math.sign(x.value)) }
+        // `sign`'s single jump at the origin is the only one in the subset that is not height 1:
+        // it goes from -1 to +1, so its distributional derivative is 2·delta.
+        "sign" -> unary(a[0]) { x ->
+            jumpNode(x, kotlin.math.sign(x.value), AdSurrogateFamily.SIGN, x.value, height = 2.0)
+        }
+
         "floor" -> unary(a[0]) { x -> floorAd(x) }
-        "trunc" -> unary(a[0]) { x -> frozen(x.value.toFloat().let { if (it < 0f) kotlin.math.ceil(it) else kotlin.math.floor(it) }.toDouble()) }
-        "round" -> unary(a[0]) { x -> frozen(Math.round(x.value.toFloat()).toDouble()) }
-        "roundEven" -> unary(a[0]) { x -> frozen(Math.rint(x.value)) }
-        "ceil" -> unary(a[0]) { x -> frozen(kotlin.math.ceil(x.value)) }
+        "trunc" -> unary(a[0]) { x ->
+            val t = x.value.toFloat().let { if (it < 0f) kotlin.math.ceil(it) else kotlin.math.floor(it) }.toDouble()
+            // `trunc` is flat across the origin — it is 0 on the whole of (-1, 1) — so the integer
+            // at zero is not a jump. An infinite distance is how the kernel is told there is none.
+            val nearest = Math.rint(x.value)
+            val u = if (nearest == 0.0) Double.POSITIVE_INFINITY else x.value - nearest
+            jumpNode(x, t, AdSurrogateFamily.STAIRCASE, u)
+        }
+
+        "round" -> unary(a[0]) { x ->
+            jumpNode(
+                x, Math.round(x.value.toFloat()).toDouble(), AdSurrogateFamily.STAIRCASE,
+                toNearestHalfInteger(x.value)
+            )
+        }
+
+        "roundEven" -> unary(a[0]) { x ->
+            jumpNode(x, Math.rint(x.value), AdSurrogateFamily.STAIRCASE, toNearestHalfInteger(x.value))
+        }
+
+        "ceil" -> unary(a[0]) { x ->
+            jumpNode(
+                x, kotlin.math.ceil(x.value), AdSurrogateFamily.STAIRCASE, toNearestInteger(x.value)
+            )
+        }
         "fract" -> unary(a[0]) { x -> sub(x, floorAd(x)) }
         "mod" -> pair(a[0], a[1]) { x, y -> modAd(x, y) }
         "min" -> pair(a[0], a[1]) { x, y -> minAd(x, y) }
@@ -373,7 +558,10 @@ internal class GlslAdScalars(val tape: ADTape) : GlslScalars<AdValue> {
             triple(a) { x, y, t -> mixAd(x, y, t) }
         }
 
-        "step" -> pair(a[0], a[1]) { e, x -> frozen(if (x.value < e.value) 0.0 else 1.0) }
+        // Three StackSL words lower to `step`: `threshold` is `step(edge, value)`, `step` is
+        // itself, and `select`/`if` is `mix(f, t, step(0.5, abs(cond)))` — so this one site is also
+        // what lets a gradient reach a `select`'s condition.
+        "step" -> pair(a[0], a[1]) { e, x -> stepAd(e, x) }
         "smoothstep" -> triple(a) { e0, e1, x -> smoothstepAd(e0, e1, x) }
 
         "length" -> scalar(lengthAd(a[0]))

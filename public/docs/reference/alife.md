@@ -618,7 +618,7 @@ Named continuous-Lenia parameter sets. These are labelled by the behaviour this 
 
 Which of the three things a Lenia run can do.
 
-Constants: `non`.
+Constants: `DEATH`, `BOUNDED`, `SATURATION`.
 
 ### LeniaRun { #alife-continuous-kt-leniarun }
 

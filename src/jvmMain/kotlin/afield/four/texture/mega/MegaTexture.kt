@@ -149,6 +149,16 @@ class MegaTextureConfig {
     /** Slots not sampled for this many frames may be evicted. */
     var evictionGraceFrames: Int = 20
 
+    /**
+     * Frames a newly arrived page takes to fade in over the one it replaces. 0 to switch instantly.
+     *
+     * Only *upgrades* fade. Losing a level to eviction cannot: by the time the page table stops
+     * naming a page, its pixels are already somebody else's, and a fade needs both halves to still
+     * be there. That asymmetry is not as visible as it sounds — an image refines while you are
+     * looking at it and coarsens as it leaves the screen.
+     */
+    var crossfadeFrames: Int = 10
+
     /** Evictions started per level per frame when a level is under pressure. */
     var evictionsPerFramePerLevel: Int = 16
 
@@ -276,11 +286,13 @@ data class MegaTextureStats(
  * is implied by its layer and the shader never has to index a sampler array dynamically (which
  * would need `nonuniformEXT` and descriptor indexing, neither of which this needs).
  *
- * The page table publishes exactly **one** page per image: the highest-resolution one currently
- * resident. The shader samples it and separately requests what it wanted, so there is no search
- * in the shader and no way for the two to disagree. Level 0 is sized to hold every image, so
- * after the first pass over the directory there is always *something* to draw; before that, and
- * for anything that fails to decode, the table carries the image's mean colour.
+ * The page table publishes one page per image to *sample* — the highest-resolution one currently
+ * resident — and, alongside it, the page that one is fading in over. The shader samples, blends,
+ * and separately requests what it wanted, so there is no search in the shader and no way for the
+ * two to disagree. Level 0 is sized to hold every image, so after the first pass over the
+ * directory there is always *something* to draw; before that, and for anything that fails to
+ * decode, the table carries the image's mean colour — which is also what a first page fades out
+ * of. See [MegaTextureConfig.crossfadeFrames] for what the second entry costs and what it buys.
  *
  * ## Why uploads are recorded, not submitted
  *
@@ -356,6 +368,19 @@ class MegaTexture(
     private val wantFrame = IntArray(imageCount) { Int.MIN_VALUE }
     private val pendingLevel = ByteArray(imageCount) { -1 }
     private val pendingFrame = IntArray(imageCount) { Int.MIN_VALUE }
+
+    // --- crossfade ------------------------------------------------------------------------
+    //
+    // The page a fading image is fading *out* of, held separately from the resident bookkeeping:
+    // the outgoing page is still resident at its own level (upgrading never releases the coarser
+    // page), so this is a pointer into that, not a second claim on the slot. `fadeStart` doubles
+    // as the membership test for `fading`, which is why it is Int.MIN_VALUE rather than 0 when
+    // absent.
+
+    private val outgoingLevel = ByteArray(imageCount) { -1 }
+    private val outgoingSlot = IntArray(imageCount) { -1 }
+    private val fadeStart = IntArray(imageCount) { Int.MIN_VALUE }
+    private val fading = ArrayList<Int>()
 
     // --- buffers --------------------------------------------------------------------------
 
@@ -433,7 +458,7 @@ class MegaTexture(
         sampler = TextureSampler(renderer, mipLevels = 1, anisotropyEnable = false)
 
         pageTableParameters = buffer(name = config.pageTableName) {
-            size = imageCount.toLong() * 16
+            size = imageCount.toLong() * MegaTextureLayout.ENTRY_STRIDE_BYTES
             perFrame = true
             storage()
             hosted()
@@ -538,7 +563,7 @@ class MegaTexture(
         val previousSizer = parameters.ssboSizer
         parameters.ssboSizer = { ubo: Introspected.UBO ->
             when (ubo.name) {
-                config.pageTableName -> imageCount * 16
+                config.pageTableName -> imageCount * MegaTextureLayout.ENTRY_STRIDE_BYTES
                 config.feedbackName -> imageCount * 4
                 else -> previousSizer(ubo)
             }
@@ -666,6 +691,7 @@ class MegaTexture(
         pumpWarmUp()
         startEvictions()
         uploadReadyPages(command, imageIndex)
+        advanceFades()
         publishPageTable(imageIndex)
     }
 
@@ -853,6 +879,11 @@ class MegaTexture(
         slotOfImage[level]?.remove(occupant)
         residentPages[level]--
         residentMask[occupant] = residentMask[occupant] and (1 shl level).inv()
+        // Something is fading out of these pixels and they are about to stop being its. Snapping
+        // is the only option: the fade needs both halves resident, and this half no longer is.
+        if (outgoingLevel[occupant].toInt() == level && outgoingSlot[occupant] == slot) {
+            endFade(occupant)
+        }
         // Frames already in flight still have page tables naming this slot, so its pixels must
         // survive until every one of them has been retired.
         slotFreeAt[level][slot] = frame + numImages + 1
@@ -957,6 +988,7 @@ class MegaTexture(
             residentPages[page.level]++
             residentMask[page.index] = residentMask[page.index] or (1 shl page.level)
             if (page.level > publishedLevel[page.index]) {
+                beginFade(page.index)
                 publishedLevel[page.index] = page.level.toByte()
                 publishedSlot[page.index] = slot
             }
@@ -1072,27 +1104,116 @@ class MegaTexture(
         }
     }
 
+    /**
+     * Both halves of this image's page table entry: what it is showing, and what it is fading out
+     * of.
+     *
+     * The outgoing half is written at full weight — the fade is entirely described by the *current*
+     * half's weight, so there is one number for the shader to read and one for this to compute.
+     */
     private fun writeEntry(into: java.nio.IntBuffer, index: Int) {
-        val at = index * 4
-        val level = publishedLevel[index].toInt()
-        if (level < 0) {
-            val entry = layout.encodeAbsent(averageColor[index])
-            for (word in 0 until 4) into.put(at + word, entry[word])
-            return
-        }
-        val pageW = layout.pageWidth(level)
-        val pageH = layout.pageHeight(level)
-        val source = pyramid.sourceSize(index)
-        val used = if (source == null) pageW to pageH
-        else MegaTextureDecoder.fitInto(source.first, source.second, pageW, pageH)
-        val entry = layout.encode(
-            level = level,
-            slot = publishedSlot[index],
-            averageColor = averageColor[index],
-            usedWidth = used.first,
-            usedHeight = used.second
+        val at = index * MegaTextureLayout.ENTRY_STRIDE_WORDS
+        writeHalf(into, at, index, publishedLevel[index].toInt(), publishedSlot[index], fadeOf(index))
+        writeHalf(
+            into,
+            at + MegaTextureLayout.ENTRY_WORDS,
+            index,
+            outgoingLevel[index].toInt(),
+            outgoingSlot[index],
+            MegaTextureLayout.FADE_FULL
         )
-        for (word in 0 until 4) into.put(at + word, entry[word])
+    }
+
+    private fun writeHalf(
+        into: java.nio.IntBuffer,
+        at: Int,
+        index: Int,
+        level: Int,
+        slot: Int,
+        fade: Int
+    ) {
+        val entry = if (level < 0 || slot < 0) layout.encodeAbsent(averageColor[index]) else {
+            val pageW = layout.pageWidth(level)
+            val pageH = layout.pageHeight(level)
+            val source = pyramid.sourceSize(index)
+            val used = if (source == null) pageW to pageH
+            else MegaTextureDecoder.fitInto(source.first, source.second, pageW, pageH)
+            layout.encode(
+                level = level,
+                slot = slot,
+                averageColor = averageColor[index],
+                usedWidth = used.first,
+                usedHeight = used.second,
+                fade = fade
+            )
+        }
+        for (word in 0 until MegaTextureLayout.ENTRY_WORDS) into.put(at + word, entry[word])
+    }
+
+    /** This image's fade weight right now: full unless it is mid-fade. */
+    private fun fadeOf(index: Int): Int =
+        if (fadeStart[index] == Int.MIN_VALUE) MegaTextureLayout.FADE_FULL
+        else MegaTextureLayout.fadeWeight(frame - fadeStart[index], config.crossfadeFrames)
+
+    /**
+     * Start fading whatever is published now out, in favour of what is about to be.
+     *
+     * Called *before* the new page is published, because the old one is still in
+     * [publishedLevel]/[publishedSlot] at that moment and this is the only chance to record it.
+     * An image with nothing published yet fades out of its mean colour, which is the case that
+     * matters most: the flat-colour-to-photograph snap is the one visible at every scale.
+     */
+    private fun beginFade(index: Int) {
+        if (config.crossfadeFrames <= 0) return
+        outgoingLevel[index] = publishedLevel[index]
+        outgoingSlot[index] = publishedSlot[index]
+        if (fadeStart[index] == Int.MIN_VALUE) fading.add(index)
+        fadeStart[index] = frame.toInt()
+    }
+
+    /** Stop fading: either it finished, or the page underneath it went away. */
+    private fun endFade(index: Int) {
+        if (fadeStart[index] == Int.MIN_VALUE) return
+        fadeStart[index] = Int.MIN_VALUE
+        outgoingLevel[index] = -1
+        outgoingSlot[index] = -1
+        markDirty(index)
+    }
+
+    /**
+     * Republish every fading image with this frame's weight, and retire the ones that are done.
+     *
+     * The weight has to be re-sent every frame of a fade, so this is the one thing in the system
+     * that dirties entries on a timer rather than on an event. It is bounded by the upload budget
+     * — nothing starts a fade except a page arriving — so the list is at most a few frames' worth
+     * of uploads, not a share of the image count.
+     *
+     * It also touches the outgoing slot, which keeps the eviction scanner off a page that is still
+     * being sampled. [touch] does the same for every resident level, but only for images the
+     * shader asked about this pass, and a fade can outlive that.
+     */
+    private fun advanceFades() {
+        if (fading.isEmpty()) return
+        var keep = 0
+        for (read in fading.indices) {
+            val index = fading[read]
+            val start = fadeStart[index]
+            if (start == Int.MIN_VALUE) continue
+            markDirty(index)
+            if (MegaTextureLayout.fadeWeight(frame - start, config.crossfadeFrames) >=
+                MegaTextureLayout.FADE_FULL
+            ) {
+                endFade(index)
+                continue
+            }
+            val level = outgoingLevel[index].toInt()
+            val slot = outgoingSlot[index]
+            if (level >= 0 && slot >= 0 && slot < slotLastUsed[level].size) {
+                slotLastUsed[level][slot] = frame
+            }
+            fading[keep++] = index
+        }
+        while (fading.size > keep) fading.removeAt(fading.size - 1)
     }
 
     private fun stillWanted(index: Int, level: Int, requestedGeneration: Long): Boolean {

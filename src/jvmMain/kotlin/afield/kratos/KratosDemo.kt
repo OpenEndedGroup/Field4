@@ -3,8 +3,35 @@ package afield.kratos
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
+/**
+ * The two Kratos smoke runs, and the small piece of geometry they share.
+ *
+ * Both are `jvm-main` entry points rather than unit tests, because both need a worker process.
+ * Each asks `Kratos.probeAny` for whichever launch this machine can actually run and prints a
+ * passing line naming what was missing when the answer is none, so a checkout with no Kratos
+ * installed still runs them green. Both read their startup budget off the resolved launch, since a
+ * container under x86-64 emulation takes far longer to reach its first frame than a native venv.
+ *
+ * `kratos.embedded.thermal` covers the embedded route: one session over a fixed box, a committed
+ * solve of [KratosDemo.body], then two preview solves with a shorter arm. What it establishes is
+ * the pair of claims the route is for — that a geometric change is a reclassification of the same
+ * [BackgroundDomain] instance rather than a remesh, with `buildCount` still 1 and the temperatures
+ * moved; and that a preview overtaken by a later edit completes with null instead of arriving late.
+ *
+ * `kratos.structural.quadratic` covers the body-fitted route, and it checks physics rather than
+ * plumbing: the same cantilever meshed at both tetrahedron orders, against the Euler-Bernoulli tip
+ * deflection of a uniformly loaded beam. It skips when TetGen or Manifold is absent, because
+ * body-fitted meshing goes through both.
+ */
+
 /** Reusable cuboid assembly: resize `armEnd` without changing authored identity. */
 object KratosDemo {
+    /**
+     * A base box with an arm reaching out of it, as one union named `body`.
+     *
+     * [armEnd] moves the arm's far face; the three ids stay `body`, `base` and `arm` whatever it is,
+     * which is what lets a formulation keep its region keys across the edit.
+     */
     fun body(armEnd: Double = .71): SimulationCSG = SimulationCSG("body",
         SimulationBox("base",SimulationBounds(-.73,-.63,-.52,.23,.53,.62)),
         SimulationBox("arm",SimulationBounds(-.13,-.32,-.42,armEnd,.33,.42)))
@@ -22,8 +49,17 @@ expect:
   stdoutContains:
     - "Kratos smoke passed"
 */
+/**
+ * The embedded thermal route end to end: one background grid, three solves, two of them previews.
+ *
+ * The asserted claim is that the second geometry reaches a different answer on the same grid. A
+ * rebuilt domain would produce just as plausible a picture, so the check is on the domain's identity
+ * and `buildCount` and not on the numbers alone.
+ */
 object KratosSmokeTest {
-    @JvmStatic fun main(args: Array<String>) {
+    /** Solves the demo body at three arm lengths and checks the background domain survived all of them. */
+    @JvmStatic
+    fun main(args: Array<String>) {
         // Whichever launch this machine can run: the venv on a Linux checkout, the container on a
         // macOS one, and a clear skip when neither is installed.
         val found = Kratos.probeAny().get(600,TimeUnit.SECONDS)
@@ -92,7 +128,9 @@ object KratosStructuralSmokeTest {
     private const val RHO = 1000.0
     private const val G = 9.81
 
-    @JvmStatic fun main(args: Array<String>) {
+    /** Meshes the cantilever at order 1 and order 2 and reports each tip deflection against theory. */
+    @JvmStatic
+    fun main(args: Array<String>) {
         if (!afield.tetgen.TetgenLibrary.isAvailable) {
             println("Kratos structural smoke passed (SKIPPED: ${afield.tetgen.TetgenLibrary.describe()})")
             return

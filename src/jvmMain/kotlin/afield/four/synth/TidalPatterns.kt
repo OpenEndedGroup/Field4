@@ -27,80 +27,80 @@
  *
  * 1. Parse:
  *
- *        val hats = pat("bd [hh hh] sd")
+ *         val hats = pat("bd [hh hh] sd")
  *
  * 2. Transform in cycle space:
  *
- *        val varied = pat("a b c d")
- *            .every(4) { it.rev() }
- *            .sometimes { it.fast(2) }
+ *         val varied = pat("a b c d")
+ *             .every(4) { it.rev() }
+ *             .sometimes { it.fast(2) }
  *
- *        val layered = stack(
- *            pat("bd ~ sd"),
- *            pat("[hh hh hh hh]").degradeBy(0.2)
- *        )
+ *         val layered = stack(
+ *             pat("bd ~ sd"),
+ *             pat("[hh hh hh hh]").degradeBy(0.2)
+ *         )
  *
  *     Simultaneous events (chords in music contexts):
  *
- *        val triad = pat("c, e, g")     // All three fire at once during the same beat
- *        val voicing = pat("<c e g>, <g b d>")  // Pick one set per cycle, stacked
+ *         val triad = pat("c, e, g")     // All three fire at once during the same beat
+ *         val voicing = pat("<c e g>, <g b d>")  // Pick one set per cycle, stacked
  *
  *     Arpeggiate over a chord or note sequence:
  *
- *        val bassArp = pat("bass bass bass").arp(60, 64, 67, speed = 4) // C major chord, 4 steps
- *        val upAndDown = pat("pad").arp(listOf("C3", "E3", "G3"), mode = ArpMode.UPDOWN, speed = 8)
- *        val randomArp = pat("keys").arp(48, 50, 52, 55, 57, mode = ArpMode.RANDOM, seed = 42)
+ *         val bassArp = pat("bass bass bass").arp(60, 64, 67, speed = 4) // C major chord, 4 steps
+ *         val upAndDown = pat("pad").arp(listOf("C3", "E3", "G3"), mode = ArpMode.UPDOWN, speed = 8)
+ *         val randomArp = pat("keys").arp(48, 50, 52, 55, 57, mode = ArpMode.RANDOM, seed = 42)
  *
  * 3. Schedule into seconds:
  *
- *        val events = pat("kick <snare rim>")
- *            .scheduled(cps = 2.0, startAt = 1.5)
- *            .take(8)
- *            .toList()
+ *         val events = pat("kick <snare rim>")
+ *             .scheduled(cps = 2.0, startAt = 1.5)
+ *             .take(8)
+ *             .toList()
  *
- *        events.first().start
- *        events.first().duration
+ *         events.first().start
+ *         events.first().duration
  *
  *     Or align directly to a shared musical clock:
  *
- *        val master = musicClock()
- *        val sixteenth = master.subdivide(4.0)
- *        val upcoming = pat("bd [hh hh] sd")
- *            .scheduled(cps = 0.5, clock = sixteenth)
- *            .take(8)
- *            .toList()
+ *         val master = musicClock()
+ *         val sixteenth = master.subdivide(4.0)
+ *         val upcoming = pat("bd [hh hh] sd")
+ *             .scheduled(cps = 0.5, clock = sixteenth)
+ *             .take(8)
+ *             .toList()
  *
  *     Euclidean suffixes attach directly to the preceding event or subgroup:
  *
- *        val groove = pat("[bd cp](3,8) hh!2")
+ *         val groove = pat("[bd cp](3,8) hh!2")
  *
  *     A `k` or `g` in the same brackets asks for a Kolakoski figure over that many steps instead —
  *     `k` for the self-describing run-length reading, `g` for the gaps one. See PatKolakoski.kt:
  *
- *        val selfDescribing = pat("bd(k16) hh*4")
- *        val dense = pat("bd(g16,3)")
+ *         val selfDescribing = pat("bd(k16) hh*4")
+ *         val dense = pat("bd(g16,3)")
  *
  *     Repetition and density are distinct:
  *
- *        val replicated = pat("bd!2 cp")
- *        val densified = pat("bd*2 cp")
+ *         val replicated = pat("bd!2 cp")
+ *         val densified = pat("bd*2 cp")
  *
  *     Elongation holds an event across later steps:
  *
- *        val held = pat("superpiano@3 superpiano")
+ *         val held = pat("superpiano@3 superpiano")
  *
  *     Curly-brace polymeters can also take an explicit subdivision:
  *
- *        val polymeter = pat("{bd hh 808:4}%8")
- *        val layeredPolymeter = pat("{bd sd stab, cp arpy cr arpy}")
+ *         val polymeter = pat("{bd hh 808:4}%8")
+ *         val layeredPolymeter = pat("{bd sd stab, cp arpy cr arpy}")
  *
  *     Inside square brackets, `|` picks one alternative per cycle:
  *
- *        val randomChoice = pat("[bd*4|hh*12|cp*2]")
+ *         val randomChoice = pat("[bd*4|hh*12|cp*2]")
  *
  *     Atom names can still carry sample-style parameter payloads:
  *
- *        val parameterized = pat("bd:(1,2,3) hh")
+ *         val parameterized = pat("bd:(1,2,3) hh")
  *
  *     By default, `scheduled(...)`, `respond(...)`, `respondAhead(...)`, and
  *     `asNotes(...)` use the ambient `PatClock` from box context if one exists,
@@ -109,36 +109,36 @@
  *
  * 4. Map atoms into existing note processes:
  *
- *        val bass = pat("0 3 5 7").asNotes(cps = 2.0) { event ->
- *            val degree = event.value.toIntOrNull() ?: return@asNotes emptyList()
- *            listOf(
- *                note(
- *                    pitch = 36 + degree,
- *                    duration = event.duration * 0.95,
- *                    start = event.start,
- *                    label = event.value
- *                )
- *            )
- *        }
+ *         val bass = pat("0 3 5 7").asNotes(cps = 2.0) { event ->
+ *             val degree = event.value.toIntOrNull() ?: return@asNotes emptyList()
+ *             listOf(
+ *                 note(
+ *                     pitch = 36 + degree,
+ *                     duration = event.duration * 0.95,
+ *                     start = event.start,
+ *                     label = event.value
+ *                 )
+ *             )
+ *         }
  *
  * 5. Or respond directly, without assuming anything about the atom:
  *
- *        pat("flash spin fade").respond(cps = 1.0) { event ->
- *            box.display("atoms", "${event.value} @ ${event.start}")
- *        }
+ *         pat("flash spin fade").respond(cps = 1.0) { event ->
+ *             box.display("atoms", "${event.value} @ ${event.start}")
+ *         }
  *
  *     If you want callback time slightly before event time, use lookahead:
  *
- *        pat("flash spin fade").respondAhead(ahead = 0.05, clock = musicClock()) { event ->
- *            box.display("atoms", "${event.value} in ${event.start - now}")
- *        }
+ *         pat("flash spin fade").respondAhead(ahead = 0.05, clock = musicClock()) { event ->
+ *             box.display("atoms", "${event.value} in ${event.start - now}")
+ *         }
  *
  *     Scheduled events also retain the source span of the atom that produced
  *     them, so live debug tools can point back into the pattern text:
  *
- *        pat("bd [hh hh] sd").respond(cps = 2.0) { event ->
- *            __m("pat").patHighlight(event)
- *        }
+ *         pat("bd [hh hh] sd").respond(cps = 2.0) { event ->
+ *             __m("pat").patHighlight(event)
+ *         }
  *
  * You can also map the parsed atom text immediately:
  *

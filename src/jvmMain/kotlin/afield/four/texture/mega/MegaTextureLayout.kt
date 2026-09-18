@@ -160,13 +160,21 @@ class MegaTextureLayout(
         return 0
     }
 
-    /** One page table entry, as the four `uint`s the shader unpacks. */
+    /**
+     * One page table entry, as the four `uint`s the shader unpacks.
+     *
+     * [fade] is how far this page has faded in over the one it replaced, 0..255, and it rides in
+     * the second word because that word had four spare bits above the resident flag and this
+     * needed eight. It is only meaningful on the *current* half of an image's two entries; the
+     * outgoing half is always written at full weight and blended against by the shader.
+     */
     fun encode(
         level: Int,
         slot: Int,
         averageColor: Int,
         usedWidth: Int,
-        usedHeight: Int
+        usedHeight: Int,
+        fade: Int = FADE_FULL
     ): IntArray {
         require(level in 0 until levels) { "level $level is outside 0..${levels - 1}" }
         require(slot in 0 until pageCapacity[level]) {
@@ -174,7 +182,8 @@ class MegaTextureLayout(
         }
         return intArrayOf(
             (pageX(level, slot) and 0xffff) or ((pageY(level, slot) and 0xffff) shl 16),
-            (layerOf(level, slot) and MAX_LAYER) or ((level and 0xf) shl LEVEL_SHIFT) or RESIDENT_BIT,
+            (layerOf(level, slot) and MAX_LAYER) or ((level and 0xf) shl LEVEL_SHIFT) or
+                    RESIDENT_BIT or ((fade.coerceIn(0, FADE_FULL)) shl FADE_SHIFT),
             averageColor,
             (usedWidth and 0xffff) or ((usedHeight and 0xffff) shl 16)
         )
@@ -199,7 +208,8 @@ class MegaTextureLayout(
             level = (y ushr LEVEL_SHIFT) and 0xf,
             averageColor = entry[at + 2],
             usedWidth = entry[at + 3] and 0xffff,
-            usedHeight = (entry[at + 3] ushr 16) and 0xffff
+            usedHeight = (entry[at + 3] ushr 16) and 0xffff,
+            fade = (y ushr FADE_SHIFT) and FADE_FULL
         )
     }
 
@@ -211,7 +221,8 @@ class MegaTextureLayout(
         val level: Int,
         val averageColor: Int,
         val usedWidth: Int,
-        val usedHeight: Int
+        val usedHeight: Int,
+        val fade: Int = FADE_FULL
     )
 
     override fun toString(): String =
@@ -229,5 +240,40 @@ class MegaTextureLayout(
         /** The level occupies bits 12..15, so the layer gets the low 12. */
         const val LEVEL_SHIFT = 12
         const val MAX_LAYER = (1 shl LEVEL_SHIFT) - 1
+
+        /** The fade weight occupies bits 21..28, above the resident flag. */
+        const val FADE_SHIFT = 21
+        const val FADE_FULL = 255
+
+        /** `uint`s in one entry. */
+        const val ENTRY_WORDS = 4
+
+        /**
+         * `uint`s per image in the page table: a current entry and the one it is fading in over.
+         *
+         * Two entries always, rather than one when crossfading is off. The alternative was a page
+         * table whose stride depended on a config flag, which means two shapes of GLSL and two
+         * shapes of [MegaTexture.writeEntry] to get wrong independently, to save 16 bytes an image
+         * against an atlas that spends 67 MiB on a single 4096² layer.
+         */
+        const val ENTRY_STRIDE_WORDS = ENTRY_WORDS * 2
+
+        /** Bytes per image in the page table. */
+        const val ENTRY_STRIDE_BYTES = ENTRY_STRIDE_WORDS * 4
+
+        /**
+         * How far a page published [elapsed] frames ago has faded in over [frames].
+         *
+         * Never 0 for a fade that has begun: a weight of zero is indistinguishable from "this page
+         * is not here yet", and a fade that publishes it on its first frame shows the old page for
+         * one extra frame at every level change for no reason. Pure so that a test can hold the
+         * ramp to account without a device — which is most of what there is to check, the rest
+         * being visible only to an eye.
+         */
+        fun fadeWeight(elapsed: Long, frames: Int): Int {
+            if (frames <= 0) return FADE_FULL
+            if (elapsed < 0) return FADE_FULL
+            return (((elapsed + 1) * FADE_FULL) / frames).toInt().coerceIn(1, FADE_FULL)
+        }
     }
 }

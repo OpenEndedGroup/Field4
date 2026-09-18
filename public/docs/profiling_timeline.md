@@ -19,7 +19,7 @@ Runloop measurements in **Coroutines & scopes**. The panel resizes from its edge
 ## Try the demo
 
 The **profiling_timeline** starting point has four editable boxes. Find it on Field's
-welcome screen, or [browse its code here](/offline.html?file=/field4/assets/agent_transcripts/profiling_timeline/metadata.edn).
+welcome screen, or [browse its code here](offline.html?file=assets/agent_transcripts/profiling_timeline/metadata.edn).
 Launch boxes 1–3 together, then run **4. Record and explore**. It opens the timeline
 and starts a three-second capture with JVM stacks enabled. Stop the workload boxes
 when you have your recording. Turn stacks off in the panel for counter-only comparisons.

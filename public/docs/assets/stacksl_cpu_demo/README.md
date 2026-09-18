@@ -9,29 +9,27 @@ Open this directory as a Field document. Two boxes; press run on either.
 
 No GPU. No window. No graphics context. No AWT. `PngEncoder` → `display()`.
 
-## The point
+## Why the backend cannot drift from the emitter
 
-Until `afield.stacksl.cpu` existed, a StackSL program could only be *run* on a GPU, so every
-claim about what a word does was checked either by eye against a screenshot or against a
-hand-written Kotlin twin of the emitted GLSL. The first box prints the emitted GLSL next to the
-image it produced deliberately: that text is not a description of what the CPU did, it **is** what
-the CPU did, and it is byte for byte what a GPU is handed. The CPU backend has no opinion about
-any StackSL word — it only knows GLSL — so it cannot drift from the emitter.
+It interprets the emitted GLSL, and nothing else. The first box prints that GLSL beside the image
+it produced, and the text is not a description of what the CPU did: it **is** what the CPU did, byte
+for byte what a GPU is handed. The backend has no opinion about any StackSL word — it only knows
+GLSL. Before it existed, a claim about what a word does could only be checked by eye against a
+screenshot, or against a hand-written Kotlin twin of the same GLSL.
 
-## What to expect, and what not to
+## Agreement with a GPU
 
-Agreement with a GPU is bounded by GLSL's own promises, and they differ per program. Measured
-against the 31 committed gallery stills: 24 of 29 comparable programs agree at **every** pixel to
-within one 8-bit level, `uv saturate` is bit-identical across all 262144 pixels, and the outliers
-each have a named mechanism rather than a fudge factor. `dev_docs/STACKSL_CPU_BACKEND.md` has the
-table and the reasons; `dev_docs/assets/stacksl_cpu_backend/gallery_contact_sheet.png` is the
-picture.
+Bounded by GLSL's own promises, which differ per program. Measured against the 31 committed gallery
+stills: 24 of 29 comparable programs agree at **every** pixel to within one 8-bit level, `uv
+saturate` is bit-identical across all 262144 pixels, and each outlier has a named mechanism.
+`dev_docs/STACKSL_CPU_BACKEND.md` has the table and the reasons;
+`dev_docs/assets/stacksl_cpu_backend/gallery_contact_sheet.png` is the picture.
 
-Speed is the honest caveat: this is a tree-walking interpreter, **1.3–1.6 × 10⁴** pixel-shader
-invocations per second per core against a GPU's 10⁹, and **4.4 × 10⁴** across ten cores — 3.3× the
-single-core figure rather than 10×. This paragraph said 10⁵ per core until 2026-09-16 and was wrong
-by about 7×; `StackSLCpuThroughputMeasurements` states the method. It is a reference, not a
-renderer.
+## Speed
+
+A tree-walking interpreter: **1.3–1.6 × 10⁴** pixel-shader invocations per second per core against a
+GPU's 10⁹, and **4.4 × 10⁴** across ten cores, which is 3.3× the single-core figure rather than 10×.
+`StackSLCpuThroughputMeasurements` is where those come from. It is a reference, not a renderer.
 
 ## Editing it
 
