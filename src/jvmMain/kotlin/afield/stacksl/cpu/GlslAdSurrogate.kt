@@ -5,6 +5,27 @@ import kotlin.math.exp
 import kotlin.math.tanh
 
 /**
+ * The surrogate vocabulary a differentiable StackSL fit descends through: a mollified delta, the
+ * jump families it may be applied to, and the schedule that narrows it.
+ *
+ * Three types, and the split between them is the whole design. [AdSurrogate] is a *temperature plus
+ * a set of families* — the one object `GlslAdScalars` consults at each jump site.
+ * [AdSurrogateFamily] partitions the jump-discontinuous builtins by **where their jumps are** rather
+ * than by name, because that is what decides the partial, and because `floor` is not one thing: as a
+ * quantiser it is a wall worth softening, and as a noise lattice's cell index its zero is the *true*
+ * derivative and softening it destroys a wire that already worked. [AdAnnealing] is the schedule,
+ * and it is kept despite measuring as unnecessary rather than because it earned its place.
+ *
+ * Nothing here is on unless a caller asks: [AdSurrogate.OFF] is the default everywhere, and even
+ * switched on it replaces **only local partials** and never a primal value. The measurements —
+ * including the two that argue against enabling it globally — are `dev_docs/STACKSL_SURROGATE.md`.
+ *
+ * What is deliberately *not* here is `GlslAdScalars`' mask tracking, which is what stops a nested
+ * predicate being charged a second kernel. That is a property of the AD path rather than of the
+ * surrogate, so it sits in `GlslAd.kt` beside the jump sites it corrects.
+ */
+
+/**
  * A differentiable surrogate for the jump-discontinuous GLSL operations, as a **mode** of the one
  * AD evaluation rather than a second one.
  *

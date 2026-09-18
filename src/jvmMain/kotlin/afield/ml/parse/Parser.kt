@@ -42,15 +42,65 @@ import afield.ml.diag.SourceRange
 import afield.ml.lex.Token
 import afield.ml.lex.TokenKind
 
+/**
+ * FieldML's second stage: tokens in, the surface tree out, by recursive descent with precedence
+ * climbing for the operators.
+ *
+ * There is no error recovery. The first token the parser cannot use throws, [parse] catches it, and
+ * the result is no tree and exactly one diagnostic. Where the lexer reports every character it
+ * could not read, the parser reports only the first thing it could not fit into the grammar.
+ *
+ * Two places in the grammar are settled by columns rather than by tokens, and they are what lets a
+ * box be written as a stack of bindings with no `in` and a record as a block with no separators.
+ * The value of a top-level `let` ends at the next line that starts no further right than the `let`
+ * itself, so a continuation has to be indented. A record field's value ends at `}`, at a `,` or
+ * `;`, or at the next `name =` that starts a later line. Both are carried down into the expression
+ * parser as predicates, so they apply at whatever depth the expression has reached rather than only
+ * at the top.
+ *
+ * Function application binds tighter than every operator, and prefix `-` binds looser than
+ * application, so `-f x` negates the call. `::` is the one right-associative operator. `|>` gets no
+ * node of its own: `a |> f` is parsed as the call `f a`, which is why nothing after this stage has a
+ * case for a pipe.
+ *
+ * A program is a chain of `let` and `type` declarations ending in an expression. One that ends on a
+ * binding instead evaluates to `Unit`, and a `type` declaration with nothing after it is an error
+ * rather than a program.
+ */
+
+/**
+ * The surface tree, or nothing and the reason why.
+ *
+ * The two fields are not independent: the parser stops at its first complaint, so a null [expr]
+ * comes with exactly one diagnostic and a non-null one comes with none.
+ */
 data class ParseResult(
+    /**
+     * The tree, or null when parsing gave up. Non-null means the whole token list parsed, `EOF`
+     * included, so nothing was left over.
+     */
     val expr: Expr?,
+    /** Empty when [expr] is non-null, and one error long when it is null. */
     val diagnostics: List<Diagnostic>,
 )
 
+/**
+ * Recursive descent over a finished token list.
+ *
+ * The list is expected to end with `EOF`, as the lexer's does: reading past the end hands back that
+ * last token again rather than failing, so a program that stops in the middle of a form gets a
+ * diagnostic about what was missing instead of an index error.
+ */
 class Parser(private val tokens: List<Token>) {
     private var cursor = 0
     private val diagnostics = mutableListOf<Diagnostic>()
 
+    /**
+     * Parse the token list as one FieldML program, reporting a failure rather than throwing it.
+     *
+     * The whole list has to be consumed: a token left over after the program's final expression is
+     * an error, not a place to stop.
+     */
     fun parse(): ParseResult =
         try {
             val expr = parseTopLevelExpression()
