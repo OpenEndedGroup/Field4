@@ -200,6 +200,46 @@ class MegaTextureShaderTest {
         }
     }
 
+    /**
+     * The stride the shader indexes with is the stride the CPU writes.
+     *
+     * Nothing catches this disagreement at runtime: a shader reading with stride 1 from a table
+     * written with stride 2 finds a valid-looking entry for every image — the *wrong* image's, for
+     * odd indices, and a half-page of mean colour for even ones. It would look like a shuffled
+     * wall rather than like a bug.
+     */
+    @Test
+    fun theShaderIndexesThePageTableWithTheStrideTheCpuWrites() {
+        val stride = MegaTextureLayout.ENTRY_STRIDE_WORDS / MegaTextureLayout.ENTRY_WORDS
+        assertTrue(
+            "megaEntryStride  = ${stride}u" in megaDeclarationsSource(layout, config),
+            "the shader's entry stride must be the layout's $stride uvec4s per image"
+        )
+        assertEquals(
+            MegaTextureLayout.ENTRY_STRIDE_BYTES,
+            stride * MegaTextureLayout.ENTRY_WORDS * 4,
+            "the sizer's bytes per image must be the stride's"
+        )
+    }
+
+    /** The crossfade's two taps and the entry accessors compile and are reachable. */
+    @Test
+    fun theCrossfadePathCompiles() {
+        introspect(
+            "megaTexture-crossfade.frag",
+            fragment(
+                """
+                    uvec4 now = megaEntry(fid);
+                    uvec4 was = megaOutgoingEntry(fid);
+                    vec4 a = megaSampleEntry(now, ftc);
+                    vec4 b = megaSampleEntry(was, ftc);
+                    outColor = mix(b, a, float((now.y >> megaFadeShift) & 255u) / 255.0);
+                """.trimIndent()
+            ),
+            ShaderKind.FRAGMENT_SHADER
+        )
+    }
+
     @Test
     fun renamingInTheConfigRenamesInTheShader() {
         val renamed = MegaTextureConfig().apply {

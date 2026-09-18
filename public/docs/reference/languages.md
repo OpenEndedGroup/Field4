@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-78 source file(s), 2286 public symbol(s), 827 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+78 source file(s), 2286 public symbol(s), 884 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -423,24 +423,46 @@ println(d.query("orphan(X), name(X, N)").table())
 
 ## DatalogEditorExtension.kt { #datalogeditorextension-kt }
 
+Serves `datalog.js`, the browser-side Datalog editor support, to the page and to the test that
+checks it.
+
+The JavaScript is the implementation and this file is a reader for it. `datalog.js` lives in
+`src/commonMain/resources`, reaches the browser as the AMD module `bithero/datalog` (one of the
+modules `bootstrapMonaco.js` requires by name while the editor starts), and is read back verbatim
+here, so the smoke test `datalog.editor-extension.workout` runs the same bytes the editor does. A
+browser-side language that can only be tested in a browser does not stay correct.
+
+Once installed, the extension brings syntax highlighting, lexical diagnostics, a context badge
+and completions to `#datalog` regions embedded in Kotlin triple-quoted strings, and to whole
+`.datalog` documents. Colouring is decoration-based rather than a Monarch grammar, so one tokenizer covers
+both contexts and there is no grammar here that can fail to compile and take Monaco's startup down
+with it. The same workout also compares the editor's vocabulary against `DatalogParser`'s, since
+the editor is JavaScript in a browser and the parser is Kotlin on a server, and the two lists can
+only be kept in step at build time.
+
+`datalog.js` installs itself either way it is loaded: as an AMD module when a Monaco loader
+is present, and immediately when it is evaluated bare, which is the path `html()` uses.
+
 `src/jvmMain/kotlin/afield/datalog/DatalogEditorExtension.kt` — [read the source](source/jvmMain/afield/datalog/DatalogEditorExtension/)
 
 ### Top-level functions { #datalogeditorextension-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L38) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L40) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L72) | `DatalogEditorExtension.javascript`, as a top-level function. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">datalogEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L75) | `DatalogEditorExtension.html`, as a top-level function. |
 
 ### DatalogEditorExtension { #datalogeditorextension-kt-datalogeditorextension }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">DatalogEditorExtension</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L5)
+[<code class="highlight"><span class="k">object</span> <span class="nc">DatalogEditorExtension</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L31)
+
+The Datalog editor extension, as bytes: the resource itself, and a page fragment that installs it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L6) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L15) | The Datalog editor extension. The single source of truth is the static resource `src/commonMain/resources/datalog.js`, which is served to the browser as the AMD module `bithero/datalog` (see bootstrapMonaco.js) and read verbatim here so the node-probe smoke test exercises the exact code that ships. The file self-installs under bare `eval` (no AMD loader) and registers an AMD module when a Monaco loader is present. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L24) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L33) | The extension's id, which is also the `extensionId` `datalog.js` registers itself under. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L42) | The bytes of `datalog.js`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/datalog/DatalogEditorExtension/#L57) | The extension as a drop-in HTML fragment: a titled line of prose saying what it does, with the whole of `datalog.js` inlined in a script tag. |
 
 ## DatalogEngine.kt { #datalogengine-kt }
 
@@ -729,38 +751,69 @@ One step of a why-not walk: a literal, and how many answers the conjunction had 
 
 ## ForthInterface.kt { #forthinterface-kt }
 
+Makes ForthField a language a box can be written in.
+
+`ForthInterpreter.kt` is the language itself. This file is the half that joins it to the
+workspace: the `BoxExecution` a ForthField box runs under, and the registration that puts
+"Set Main Language: ForthField" in front of a user.
+
+### Running code
+
+[`ForthExecution`](languages.md#forthinterface-kt-forthexecution) answers the execution contract a box's editor talks to. Running a fragment,
+or the whole box, evaluates the source once and reports each diagnostic on the line that produced
+it, printing `ok` when a run finished cleanly and produced no visible output of its own.
+Completion offers the dictionary's words, each with the kind and the documentation the
+interpreter holds for it. Executing a symbol runs one named word as a single-line fragment.
+
+Launching is the one that is more than an evaluation. The code runs once to define its words, and
+if its last token names a colon definition, that word becomes a *strand*: a coroutine that
+re-executes it until the box's run generation for that strand moves on, yielding between passes.
+`frame` is available only there, and it ends a pass rather than the strand, so a word can be
+written as the body of a per-frame loop. Anything else the code ends with defines words and stops.
+Stopping the box cancels every strand job and bumps every run generation.
+
+### Becoming a ForthField box
+
+A box does not choose this language for itself; its parent does. `installForth` registers a
+`MainLanguageRuntime` under the id `forth`, and makes the `isForthRoot` flag one of the
+properties a document persists. `installForthPlugin` starts a `TopologyWatcher`, and
+`forthTopologyNeedsUpdating` is what that watcher calls on every graph edit: each child of a box
+flagged `isForthRoot`, or set to the `forth` main language, is given a `ForthExecution`, and a
+child left with no such parent goes back to Kotlin. Each child gets an interpreter of its own, so
+a stack and a dictionary belong to one box and outlive the run that filled them.
+
 `src/jvmMain/kotlin/afield/forth/ForthInterface.kt` — [read the source](source/jvmMain/afield/forth/ForthInterface/)
 
 ### Top-level functions { #forthinterface-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForth</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L260) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForthPlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L274) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">forthTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L278) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForth</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L357) | Register ForthField as a main language, and make `isForthRoot` a property documents keep. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installForthPlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L372) | Start the watcher that re-applies `forthTopologyNeedsUpdating` whenever the graph changes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">forthTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L385) | Give every child of a ForthField root a `ForthExecution`, and take it back from a child whose roots have all been switched off. |
 
 ### Top-level values { #forthinterface-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isForthRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/forth/ForthInterface/#L257) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isForthRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/forth/ForthInterface/#L347) | Marks a box as a ForthField root, which makes its children ForthField boxes. |
 
 ### ForthExecution { #forthinterface-kt-forthexecution }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">ForthExecution</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/forth/ForthInterface/#L23)
+[<code class="highlight"><span class="k">class</span> <span class="nf">ForthExecution</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/forth/ForthInterface/#L50)
 
-BoxExecution implementation for the ForthField microlanguage.
+The execution a ForthField box runs under: one [`ForthInterpreter`](languages.md#forthinterpreter-kt-forthinterpreter), and the editor protocol around it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">forth</span></code>](source/jvmMain/afield/forth/ForthInterface/#L25) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L75) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L117) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L121) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L204) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L213) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L243) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterface/#L254) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">forth</span></code>](source/jvmMain/afield/forth/ForthInterface/#L57) | This box's interpreter, holding the stack, the dictionary and the variables. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L115) | Evaluate `execute`'s code once, with output and errors routed back to the box. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L163) | Run the whole box, which for ForthField is `executeFragment` over all of it. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L181) | Run `code` once, and then keep running its last word every pass if that word is a colon definition. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L271) | Stop every strand this box is running. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L288) | Complete the word being typed against this box's dictionary. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/forth/ForthInterface/#L325) | Run one named word, as though its name had been typed and evaluated on its own line. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/forth/ForthInterface/#L337) | `forth`, the name this execution reports itself under. |
 
 ## ForthInterpreter.kt { #forthinterpreter-kt }
 
@@ -2080,108 +2133,196 @@ The reflective half of FieldML's JVM bridge: given a name, a receiver and some a
 
 ## Diagnostics.kt { #diagnostics-kt }
 
+Where a FieldML compile says something is wrong, and how badly.
+
+This is the package the rest of the front end shares, and the only one that depends on nothing:
+the lexer, the parser, the inferencer and the lowerer all import it, and it imports none of them.
+A stage with something to report either adds a [`Diagnostic`](languages.md#diagnostics-kt-diagnostic) to the list it returns or, where
+carrying on would mean inventing a tree, throws [`CompileAbort`](languages.md#diagnostics-kt-compileabort) and lets its own entry point turn
+that back into a diagnostic.
+
+Only an error stops a compile. Each stage runs if no earlier diagnostic was an error, so a
+[`Severity`](languages.md#diagnostics-kt-severity) of `Warning` or `Info` is collected and reported without holding the run up.
+
+Nothing outside `afield.ml` imports these types. They leave the front end inside
+`CompilationResult`, and the box runtime reads them from there to put a message on a line.
+
 `src/jvmMain/kotlin/afield/ml/diag/Diagnostics.kt` — [read the source](source/jvmMain/afield/ml/diag/Diagnostics/)
 
 ### SourcePos { #diagnostics-kt-sourcepos }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourcePos</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L3)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourcePos</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L25)
+
+One character position in the compiled source, in the three forms its readers need.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> | Characters from the start of the source, counting from zero. |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> | Lines from the start of the source, counting from one. |
+| <code class="highlight"><span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span></code> | Characters from the start of the line, counting from one. |
 
 ### SourceRange { #diagnostics-kt-sourcerange }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourceRange</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L9)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourceRange</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L52)
+
+A half-open span of source: `start` is the first character, `end` is the position just past the last.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SourcePos</span></code> | The first character of the span. |
+| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SourcePos</span></code> | The position just past the last character of the span. |
 
 ### Diagnostic { #diagnostics-kt-diagnostic }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Diagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L19)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Diagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L76)
+
+One thing a stage has to say about one place in the source.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">Severity</span></code> | How much it matters. |
+| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> | The sentence shown to whoever wrote the program. It is also the exception message when the diagnostic arrives as a [`CompileAbort`](languages.md#diagnostics-kt-compileabort). |
+| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="o">?</span></code> | What the message is about, or null when there is nothing to point at. |
 
 ### Severity { #diagnostics-kt-severity }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Severity</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L25)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Severity</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L100)
+
+How much a [`Diagnostic`](languages.md#diagnostics-kt-diagnostic) matters.
 
 Constants: `Error`, `Warning`, `Info`.
 
 ### CompileAbort { #diagnostics-kt-compileabort }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">CompileAbort</span><span class="p">(</span><span class="k">val</span> <span class="n">diagnostic</span><span class="p">:</span> <span class="nc">Diagnostic</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">diagnostic</span><span class="p">.</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L31)
+[<code class="highlight"><span class="k">class</span> <span class="nf">CompileAbort</span><span class="p">(</span><span class="k">val</span> <span class="n">diagnostic</span><span class="p">:</span> <span class="nc">Diagnostic</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">diagnostic</span><span class="p">.</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/ml/diag/Diagnostics/#L114)
+
+The exception a stage throws to stop where it stands, carrying the [`Diagnostic`](languages.md#diagnostics-kt-diagnostic) that says why.
 
 ## Lexer.kt { #lexer-kt }
+
+FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything
+that could not be read.
+
+The scan never stops early. A character the lexer cannot use costs one diagnostic and no token,
+and the scan carries on, so a typo halfway down a box does not hide what is below it. Whether the
+*compile* carries on is a separate decision, made by `FieldMLCompiler`, which does not reach the
+parser at all once lexing has reported an error.
+
+Trivia is skipped rather than emitted: `//` to the end of the line, and `(* … *)` blocks, which
+nest by depth count, so a region commented out this way can contain comments of its own. An
+unterminated block is reported at the position it was opened.
+
+The shapes a literal can take are all decided here. A number is digits, and a `.` opens a
+fraction only when a digit follows it, which leaves `.` free to be the field-access token and
+makes `1.` an `INT` and then a `DOT`; there is no exponent form, and a leading `-` is always a
+token of its own rather than part of the literal. An identifier starts with a letter or `_` and
+may carry `'` after that. A string runs to the next unescaped `"`, and one that reaches the end
+of the source first is reported rather than closed. `&`, `:` and `!` are errors on their own,
+since only `&&`, `::` and `!=` exist, and the first two say so in the message.
 
 `src/jvmMain/kotlin/afield/ml/lex/Lexer.kt` — [read the source](source/jvmMain/afield/ml/lex/Lexer/)
 
 ### LexResult { #lexer-kt-lexresult }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LexResult</span><span class="p">(</span><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L8)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LexResult</span><span class="p">(</span><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L36)
+
+The whole of what one scan produced.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span></code> | The tokens, in source order, ending with `EOF`. Trivia is not among them. |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> | One entry per thing the lexer could not read, in source order. All of them are errors. |
 
 ### Lexer { #lexer-kt-lexer }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">Lexer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L13)
+[<code class="highlight"><span class="k">class</span> <span class="nf">Lexer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L50)
+
+A single-use scanner over one string.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lex</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">LexResult</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L20) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lex</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">LexResult</span></code>](source/jvmMain/afield/ml/lex/Lexer/#L58) | Scan to the end of the source, appending the `EOF` token. Reports rather than throws. |
 
 ## Token.kt { #token-kt }
+
+One [`TokenKind`](languages.md#token-kt-tokenkind) for every lexeme FieldML has, and the [`Token`](languages.md#token-kt-token) that pairs a kind with the text it
+was read from.
+
+There is no kind for whitespace or for a comment: the lexer skips trivia instead of emitting it,
+so a token list cannot be printed back as the source it came from. Keywords are kinds of their
+own rather than identifiers with reserved text, which is what lets the parser ask for `LET` or
+`WITH` by kind, and also what stops those words being used as names.
 
 `src/jvmMain/kotlin/afield/ml/lex/Token.kt` — [read the source](source/jvmMain/afield/ml/lex/Token/)
 
 ### TokenKind { #token-kt-tokenkind }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TokenKind</span></code>](source/jvmMain/afield/ml/lex/Token/#L5)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TokenKind</span></code>](source/jvmMain/afield/ml/lex/Token/#L23)
+
+Every lexeme FieldML has: its keywords, its identifier, its three literal kinds, its punctuation, its operators, and `EOF`.
 
 Constants: `LET`, `TYPE`, `IN`, `IF`, `THEN`, `ELSE`, `FUN`, `MATCH`, `WITH`, `TRUE`, `FALSE`, `IDENT`, `INT`, `FLOAT`, `STRING`, `LPAREN`, `RPAREN`, `LBRACKET`, `RBRACKET`, `LBRACE`, `RBRACE`, `COMMA`, `SEMICOLON`, `BAR`, `PIPE_FORWARD`, `DOT`, `ARROW`, `EQ`, `EQEQ`, `NEQ`, `PLUS`, `PLUSPLUS`, `MINUS`, `STAR`, `SLASH`, `AMPAMP`, `BARBAR`, `COLONCOLON`, `LT`, `LTE`, `GT`, `GTE`, `EOF`.
 
 ### Token { #token-kt-token }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Token/#L51)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Token</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/ml/lex/Token/#L70)
+
+A lexeme: what it is, the text it was read from, and where that text was.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokenKind</span></code> | Which lexeme this is. |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> | The exact slice of source the token was read from, undecoded: a `STRING` still has its quotes and its backslashes, and an `INT` is still text. Converting them is the parser's job. Empty for `EOF`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code> | Where `text` was. `EOF` gets an empty range at the end of the source, so a diagnostic about a program that stopped too early still has somewhere to point. |
 
 ## Parser.kt { #parser-kt }
+
+FieldML's second stage: tokens in, the surface tree out, by recursive descent with precedence
+climbing for the operators.
+
+There is no error recovery. The first token the parser cannot use throws, `parse` catches it, and
+the result is no tree and exactly one diagnostic. Where the lexer reports every character it
+could not read, the parser reports only the first thing it could not fit into the grammar.
+
+Two places in the grammar are settled by columns rather than by tokens, and they are what lets a
+box be written as a stack of bindings with no `in` and a record as a block with no separators.
+The value of a top-level `let` ends at the next line that starts no further right than the `let`
+itself, so a continuation has to be indented. A record field's value ends at `}`, at a `,` or
+`;`, or at the next `name =` that starts a later line. Both are carried down into the expression
+parser as predicates, so they apply at whatever depth the expression has reached rather than only
+at the top.
+
+Function application binds tighter than every operator, and prefix `-` binds looser than
+application, so `-f x` negates the call. `::` is the one right-associative operator. `|>` gets no
+node of its own: `a |> f` is parsed as the call `f a`, which is why nothing after this stage has a
+case for a pipe.
+
+A program is a chain of `let` and `type` declarations ending in an expression. One that ends on a
+binding instead evaluates to `Unit`, and a `type` declaration with nothing after it is an error
+rather than a program.
 
 `src/jvmMain/kotlin/afield/ml/parse/Parser.kt` — [read the source](source/jvmMain/afield/ml/parse/Parser/)
 
 ### ParseResult { #parser-kt-parseresult }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ParseResult</span><span class="p">(</span><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L45)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ParseResult</span><span class="p">(</span><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L77)
+
+The surface tree, or nothing and the reason why.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span></code> | The tree, or null when parsing gave up. Non-null means the whole token list parsed, `EOF` included, so nothing was left over. |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> | Empty when `expr` is non-null, and one error long when it is null. |
 
 ### Parser { #parser-kt-parser }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">Parser</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L50)
+[<code class="highlight"><span class="k">class</span> <span class="nf">Parser</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/parse/Parser/#L94)
+
+Recursive descent over a finished token list.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParseResult</span></code>](source/jvmMain/afield/ml/parse/Parser/#L54) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParseResult</span></code>](source/jvmMain/afield/ml/parse/Parser/#L104) | Parse the token list as one FieldML program, reporting a failure rather than throwing it. |
 
 ## FieldMLTypePrelude.kt { #fieldmltypeprelude-kt }
 
@@ -3517,60 +3658,215 @@ Compiles a candidate at every width in the spec and scores it.
 
 ## NanoAssembler.kt { #nanoassembler-kt }
 
+Turns Nano assembly source text into a bytecode `ByteArray`: one pass over the lines emitting
+bytes, then a patch pass that fills in the labels the first pass left as placeholders.
+
+`NanoVM.kt` has the machine and the opcode map; this is the text side of the same instruction
+set. The listing below is the whole language: one directive, no macros, and operands that are
+registers, integer literals or labels.
+
+### Syntax
+
+```diffstatic {data-lang=nano}
+; line comment (rest of line)
+label:            ; defines a label at the current address
+
+; Data directive – place raw bytes into the program stream
+.data 0x1A 0x2B 42 ...
+
+; Instructions
+nop
+hlt
+ret
+inc r0
+dec r1
+not r2
+neg r3
+clr r0
+out r1           ; print reg value
+rng r2           ; fill with random byte
+
+mov r0, r1       ; r0 = r1
+add r0, r1       ; r0 += r1
+sub r0, r1
+mul r0, r1
+and r0, r1
+or  r0, r1
+xor r0, r1
+cmp r0, r1       ; flags = r0 <=> r1  (no reg change)
+ldr r0, r1       ; r0 = the RAM byte at address r1  (load indirect)
+str r0, r1       ; the RAM byte at address r0 = r1  (store indirect)
+div r0, r1       ; r0 = r0 / r1  (integer; r1==0 → r0=0xFF)
+
+ldi r0, 42       ; r0 = 42   (immediate, 0–255)
+ldi r0, 0xFF
+lda r0, 5        ; r0 = RAM[5]  (absolute load)
+sta r0, 5        ; RAM[5] = r0  (absolute store)
+addi r0, -3      ; r0 += -3     (signed immediate, -128..127)
+ldrr r0, -2      ; r0 = RAM[PC + (-2)]  (PC-relative load)
+strr r0, 4       ; RAM[PC + 4] = r0     (PC-relative store)
+shl r0, 2        ; r0 <<= 2
+shr r0, 1        ; r0 >>= 1
+
+jmp  target      ; unconditional (relative, or label)
+jz   target
+jnz  target
+jgt  target
+jlt  target
+jge  target
+jle  target
+jc   target
+jnc  target
+call target      ; relative call
+jmpa target      ; absolute jump (0–255)
+calla target     ; absolute call
+```
+
+Labels can appear on their own line (`start:`) or before a mnemonic on the same line
+(`start: ldi r0, 0`).  A label used by a relative branch resolves to the
+**signed 8-bit offset from the byte following the branch** (PC+2 for the two-byte forms like
+`jmp`), and an offset that will not fit in −128..+127 is an error on that line. `jmpa` and
+`calla` take the absolute address instead, so there the error is an address past 255.
+
+### Results and errors
+
+Every bad register, number, mnemonic, duplicate label and out-of-range branch goes into a list
+that assembly keeps filling, so one run reports all of them with the line each came from rather
+than stopping at the first. `assemble` hands back `AssemblyResult`, which is either the bytes
+or that list. `assembleWithSourceMap` hands back the same bytes plus a program-counter-to-line
+array, which is what `NanoInterface.kt` and `NanoVisualization.kt` use to mark the source line a
+running program is on. The throwing wrapper a live-coding box calls is the top-level
+`nanoAssemble` in `NanoInterface.kt`.
+
 `src/jvmMain/kotlin/afield/nano/NanoAssembler.kt` — [read the source](source/jvmMain/afield/nano/NanoAssembler/)
 
 ### NanoAssembler { #nanoassembler-kt-nanoassembler }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">NanoAssembler</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L71)
+[<code class="highlight"><span class="k">class</span> <span class="nc">NanoAssembler</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L89)
 
-Nano assembler: converts Nano assembly source text into a `ByteArray` bytecode program.
+The assembler. It keeps no state between calls, so one instance can assemble any number of programs.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyError</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L73) |  |
-| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L75) |  |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyDebugInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pcToLine</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L80) |  |
-| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L85) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L90) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">assembleWithSourceMap</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L97) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parseNumber</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L348) | Parse an integer literal: decimal, 0x hex, or 0b binary. Returns null on failure. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">extractLabels</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L365) | Returns all label names defined in `source`. Useful for completion. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyError</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L92) | One assembly failure: the 1-based source `line` it was found on, and what was wrong. |
+| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L95) | The bytecode, or every error the source produced. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AssemblyDebugInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pcToLine</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L104) | Bytecode plus the source map: `pcToLine` is one entry per emitted byte, holding the 1-based line that byte came from, so a program counter indexes straight into it. |
+| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L110) | `AssemblyDebugInfo`, or every error the source produced. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L116) | Assemble `source` into bytecode, or into the list of everything wrong with it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">assembleWithSourceMap</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">AssemblyDebugResult</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L127) | Assemble `source` and keep the byte-to-line map, for a caller that has to point at the line a program counter is sitting on. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parseNumber</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L378) | Parse an integer literal: decimal, 0x hex, or 0b binary. Returns null on failure. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">extractLabels</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoAssembler/#L395) | Returns all label names defined in `source`. Useful for completion. |
 
 ## NanoComputeShader.kt { #nanocomputeshader-kt }
+
+The host side of `nano_compute.glsl`, the GLSL compute port of the Nano VM: the buffer layout a
+caller has to honour, the mapping struct, and the packing helpers for getting bytes in and out.
+
+The shader runs one independent Nano VM instance per GPU invocation, decoding the same opcode
+map `NanoVM.kt` documents. Three of its four storage buffers hold bytes and are cut into
+non-overlapping per-instance slices; the fourth, at binding 0, holds one `NanoMapping` per
+dispatch id and says where that instance's three slices begin. **Nothing in the tree dispatches
+it.** `SOURCE` reads the GLSL off the classpath and the helpers below build the buffers, so what
+is missing is the Vulkan plumbing: pipeline, descriptor sets, submit and readback.
+
+### Buffer bindings
+
+| binding | layout           | access | description                          |
+|---------|------------------|--------|--------------------------------------|
+| 0       | `NanoMapping[]`  | r-only | dispatch-id → slice offsets          |
+| 1       | `uint[]` (bytes) | r/w    | RAM: persistent working memory       |
+| 2       | `uint[]` (bytes) | r-only | code: assembled Nano programs        |
+| 3       | `uint[]` (bytes) | r/w    | OUT stream: results of OUT rX        |
+
+#### Byte-packing
+
+All three byte buffers pack 4 bytes per `uint`: the byte at logical offset B lives in word
+`B >> 2` at bit-shift `(B & 3) << 3`.  A host has to honour that when uploading code and RAM and
+when reading OUT results back, which is what `packBytes`, `packPrograms` and `unpackBytes` are
+for.
+
+### Push constants (16 bytes, std430)
+
+| field            | type   | description                                  |
+|------------------|--------|----------------------------------------------|
+| numInstances     | uint32 | total instances (over-dispatch guard)        |
+| defaultMaxSteps  | uint32 | step limit when mapping.maxSteps == 0        |
+| ramSize          | uint32 | RAM bytes per instance; **must be power-of-2**|
+| codeSize         | uint32 | code bytes per instance (≤ 256)              |
+
+### Mapping buffer layout (NanoMapping struct, 16 bytes each)
+
+| field      | type   | description                                       |
+|------------|--------|---------------------------------------------------|
+| ramBase    | uint32 | byte offset into RAM buffer for this instance     |
+| codeBase   | uint32 | byte offset into code buffer for this instance    |
+| outputBase | uint32 | byte offset into OUT buffer for this instance     |
+| maxSteps   | uint32 | per-instance step cap (0 → use push-constant)     |
+
+### Minimal dispatch example (pseudocode)
+
+```diffstatic {data-lang=kotlin}
+val N         = 1024               // number of Nano instances
+val ramSize   = 32                 // bytes per VM
+val codeSize  = 64                 // bytes per program
+val outSize   = 64                 // max OUT bytes per VM
+
+val mappings  = NanoComputeShader.buildMappings(N, ramSize, codeSize, outSize)
+// upload mappings, ramBytes (N*ramSize), codeBytes (N*codeSize), outBytes (N*outSize)
+// bind as buffers 0..3
+// dispatch ceil(N / 64) groups of 64
+```
 
 `src/jvmMain/kotlin/afield/nano/NanoComputeShader.kt` — [read the source](source/jvmMain/afield/nano/NanoComputeShader/)
 
 ### NanoComputeShader { #nanocomputeshader-kt-nanocomputeshader }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">NanoComputeShader</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L63)
+[<code class="highlight"><span class="k">object</span> <span class="nc">NanoComputeShader</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L70)
 
-GLSL compute-shader implementation of the Nano VM.
+The GLSL source, the mapping-buffer builder and the byte-packing helpers, and nothing that talks to a device.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L66) | Source of the `nano_compute.glsl` compute shader. |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NanoMapping</span><span class="p">(</span><span class="k">val</span> <span class="n">ramBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codeBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L84) | Kotlin mirror of the `NanoMapping` GPU struct (16 bytes, std430). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">buildMappings</span><span class="p">(</span><span class="n">numInstances</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ramSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">NanoVM</span><span class="p">.</span><span class="nc">RAM&#95;SIZE</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">outSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L106) | Build a flat `ByteBuffer` containing one `NanoMapping` per instance, with each instance allocated contiguous, non-overlapping slices. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">packBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L142) | Pack `bytes` into a `uint[]`-compatible `ByteBuffer` using the shader's 4-bytes-per-uint little-endian layout. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">unpackBytes</span><span class="p">(</span><span class="n">buf</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">baseOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L157) | Unpack `length` bytes from a `uint[]`-packed `ByteBuffer` starting at byte offset `baseOffset`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">packPrograms</span><span class="p">(</span><span class="n">programs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ByteArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L174) | Pack `numInstances` assembled programs (each up to `codeSize` bytes) into a single flat `ByteBuffer` ready for binding as the code SSBO. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L198) | Assemble `source` with [`NanoAssembler`](languages.md#nanoassembler-kt-nanoassembler) and return the raw bytes, or throw [`NanoAssemblyException`](languages.md#nanointerface-kt-nanoassemblyexception) on error. Useful for building code buffers inline. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L73) | Source of the `nano_compute.glsl` compute shader. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NanoMapping</span><span class="p">(</span><span class="k">val</span> <span class="n">ramBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codeBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L91) | Kotlin mirror of the `NanoMapping` GPU struct (16 bytes, std430). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">buildMappings</span><span class="p">(</span><span class="n">numInstances</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ramSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">NanoVM</span><span class="p">.</span><span class="nc">RAM&#95;SIZE</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">outSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L113) | Build a flat `ByteBuffer` containing one `NanoMapping` per instance, with each instance allocated contiguous, non-overlapping slices. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">packBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L149) | Pack `bytes` into a `uint[]`-compatible `ByteBuffer` using the shader's 4-bytes-per-uint little-endian layout. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">unpackBytes</span><span class="p">(</span><span class="n">buf</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">baseOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L164) | Unpack `length` bytes from a `uint[]`-packed `ByteBuffer` starting at byte offset `baseOffset`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">packPrograms</span><span class="p">(</span><span class="n">programs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ByteArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L181) | Pack `programs` (each up to `codeSize` bytes) into a single flat `ByteBuffer` ready for binding as the code SSBO. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/nano/NanoComputeShader/#L205) | Assemble `source` with [`NanoAssembler`](languages.md#nanoassembler-kt-nanoassembler) and return the raw bytes, or throw [`NanoAssemblyException`](languages.md#nanointerface-kt-nanoassemblyexception) on error. Useful for building code buffers inline. |
 
 ## NanoDisassembler.kt { #nanodisassembler-kt }
+
+Reads a Nano bytecode `ByteArray` back as assembly text, one `DisasmLine` per instruction.
+
+It walks the program twice. The first walk collects every branch target, so that the second can
+put a name on each one and a branch reads as a label rather than as a raw offset. The name is
+the target address in hex, so `L00` and `L0A`, and it arrives as its own `DisasmLine` with an
+empty `bytes` list, which is how `NanoVisualization.kt` tells a label apart from an instruction
+when it is deciding which line to highlight.
+
+`DisasmLine.toString` is the printable form:
+
+    addr:  hex  hex   mnemonic  operands    ; optional annotation
+
+The annotation is the part the bytes do not say: the signed offset behind a relative branch, and
+the absolute address behind `jmpa` or `calla`. A byte that decodes to no instruction prints as
+`???` with its hex value, which is the five of the 256 that `NanoVM.kt` lists as executing
+nothing: `0x03`, and `0xFC`–`0xFF` past `DIV`'s last register pair.
 
 `src/jvmMain/kotlin/afield/nano/NanoDisassembler.kt` — [read the source](source/jvmMain/afield/nano/NanoDisassembler/)
 
 ### NanoDisassembler { #nanodisassembler-kt-nanodisassembler }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">NanoDisassembler</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L13)
+[<code class="highlight"><span class="k">class</span> <span class="nc">NanoDisassembler</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L25)
 
-Nano disassembler: converts a `ByteArray` bytecode program back into human-readable Nano assembly.
+The disassembler. Like the assembler it keeps no state between calls.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DisasmLine</span><span class="p">(</span><span class="k">val</span> <span class="n">addr</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L15) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassemble</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DisasmLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L31) | Disassemble `program` starting at offset `startAddr`. Returns a list of `DisasmLine`s. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassembleToString</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L54) | Disassemble and join into a single printable string. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DisasmLine</span><span class="p">(</span><span class="k">val</span> <span class="n">addr</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L33) | One output line: its `addr`, the program `bytes` it decoded from, and the `text` to show. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassemble</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DisasmLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L49) | Disassemble `program` starting at offset `startAddr`. Returns a list of `DisasmLine`s. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">disassembleToString</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">startAddr</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/nano/NanoDisassembler/#L72) | Disassemble and join into a single printable string. |
 
 ## NanoInterface.kt { #nanointerface-kt }
 
@@ -5208,24 +5504,49 @@ One row of the bias table: what a given kernel, band width and geometry cost in 
 
 ## RectSLEditorExtension.kt { #rectsleditorextension-kt }
 
+Serves `rectsl.js`, the browser-side RectSL editor support, to the page and to the test that
+checks it.
+
+RectSL runs in Kotlin, in `RectSL.kt`; a RectSL program is a triple-quoted string beginning
+`#rectsl` inside an ordinary Kotlin box. So there is no execution path to hook, and this file is
+the whole of the language's presence in the editor. `rectsl.js` lives in
+`src/commonMain/resources`, reaches the browser as the AMD module `bithero/rectsl` (one of the
+modules `bootstrapMonaco.js` requires by name while the editor starts), and is read back verbatim
+here, so the smoke test `rectsl.editor-extension.workout` runs the same bytes the editor does. A
+browser-side language that can only be tested in a browser does not stay correct.
+
+Once installed, the extension brings syntax highlighting, flow decorations, lexical diagnostics,
+a context badge and completions to a `#rectsl` region. Colouring is decoration-based rather than a
+Monarch grammar, so there is no grammar here that can fail to compile and take Monaco's startup
+down with it.
+
+`rectsl.js` installs itself either way it is loaded: as an AMD module when a Monaco loader
+is present, and immediately when it is evaluated bare, which is the path `html()` uses. The two
+differ in one respect. The AMD path also registers a standalone `rectsl` Monaco language, so that
+a loose `.rectsl` file opened in the editor gets `#` comment toggling and bracket handling; it
+carries no tokenizer of its own, because the decoration highlighter already treats a whole
+`rectsl` model as one region.
+
 `src/jvmMain/kotlin/afield/rectsl/RectSLEditorExtension.kt` — [read the source](source/jvmMain/afield/rectsl/RectSLEditorExtension/)
 
 ### Top-level functions { #rectsleditorextension-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L37) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L39) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L74) | `RectSLEditorExtension.javascript`, as a top-level function. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rectSLEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L77) | `RectSLEditorExtension.html`, as a top-level function. |
 
 ### RectSLEditorExtension { #rectsleditorextension-kt-rectsleditorextension }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">RectSLEditorExtension</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L5)
+[<code class="highlight"><span class="k">object</span> <span class="nc">RectSLEditorExtension</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L34)
+
+The RectSL editor extension, as bytes: the resource itself, and a page fragment that installs it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L6) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L15) | The RectSL editor extension. The single source of truth is the static resource `src/commonMain/resources/rectsl.js`, which is served to the browser as the AMD module `bithero/rectsl` (see bootstrapMonaco.js) and read verbatim here so the node-probe smoke test exercises the exact code that ships. The file self-installs under bare `eval` (no AMD loader) and registers an AMD module when a Monaco loader is present. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L24) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L36) | The extension's id, which is also the `extensionId` `rectsl.js` registers itself under. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L45) | The bytes of `rectsl.js`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLEditorExtension/#L60) | The extension as a drop-in HTML fragment: a titled line of prose saying what it does, with the whole of `rectsl.js` inlined in a script tag. |
 
 ## RectSLFit.kt { #rectslfit-kt }
 

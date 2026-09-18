@@ -11,17 +11,49 @@ import afield.stdlib.Delegation
 import io.ktor.websocket.WebSocketSession
 
 /**
- * BoxExecution implementation for the ForthField microlanguage.
+ * Makes ForthField a language a box can be written in.
  *
- * Integrates the ForthField interpreter with Field4's execution model:
- * - executeFragment / executeAll: run ForthField code once, report errors/output
- * - launchAll: register a ForthField word as a run-loop strand (executes every frame)
- * - stop: remove all strands
- * - complete: word completion from the ForthField dictionary
- * - executeSymbol: run a named word
+ * `ForthInterpreter.kt` is the language itself. This file is the half that joins it to the
+ * workspace: the `BoxExecution` a ForthField box runs under, and the registration that puts
+ * "Set Main Language: ForthField" in front of a user.
+ *
+ * #### Running code
+ *
+ * [ForthExecution] answers the execution contract a box's editor talks to. Running a fragment,
+ * or the whole box, evaluates the source once and reports each diagnostic on the line that produced
+ * it, printing `ok` when a run finished cleanly and produced no visible output of its own.
+ * Completion offers the dictionary's words, each with the kind and the documentation the
+ * interpreter holds for it. Executing a symbol runs one named word as a single-line fragment.
+ *
+ * Launching is the one that is more than an evaluation. The code runs once to define its words, and
+ * if its last token names a colon definition, that word becomes a *strand*: a coroutine that
+ * re-executes it until the box's run generation for that strand moves on, yielding between passes.
+ * `frame` is available only there, and it ends a pass rather than the strand, so a word can be
+ * written as the body of a per-frame loop. Anything else the code ends with defines words and stops.
+ * Stopping the box cancels every strand job and bumps every run generation.
+ *
+ * #### Becoming a ForthField box
+ *
+ * A box does not choose this language for itself; its parent does. `installForth` registers a
+ * `MainLanguageRuntime` under the id `forth`, and makes the `isForthRoot` flag one of the
+ * properties a document persists. `installForthPlugin` starts a `TopologyWatcher`, and
+ * `forthTopologyNeedsUpdating` is what that watcher calls on every graph edit: each child of a box
+ * flagged `isForthRoot`, or set to the `forth` main language, is given a `ForthExecution`, and a
+ * child left with no such parent goes back to Kotlin. Each child gets an interpreter of its own, so
+ * a stack and a dictionary belong to one box and outlive the run that filled them.
+ */
+
+/**
+ * The execution a ForthField box runs under: one [ForthInterpreter], and the editor protocol
+ * around it.
  */
 class ForthExecution(val inside: Box) : BoxExecution {
 
+    /**
+     * This box's interpreter, holding the stack, the dictionary and the variables.
+     *
+     * One per box and never replaced, so everything a run leaves behind is there for the next one.
+     */
     val forth = ForthInterpreter()
 
     // Strand jobs: strandName -> Job (for run-loop integration)
@@ -72,6 +104,14 @@ class ForthExecution(val inside: Box) : BoxExecution {
         )
     }
 
+    /**
+     * Evaluate [execute]'s code once, with output and errors routed back to the box.
+     *
+     * A clean run that printed nothing of its own gets an `ok` marker on the line after the
+     * fragment, so that a run is always visibly a run. A run with diagnostics gets each of them on
+     * the line that produced it, counted from the fragment's own first line. `frame` is refused
+     * here: it belongs to `launchAll`.
+     */
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
         inMain {
@@ -114,10 +154,30 @@ class ForthExecution(val inside: Box) : BoxExecution {
         }
     }
 
+    /**
+     * Run the whole box, which for ForthField is `executeFragment` over all of it.
+     *
+     * The interpreter keeps its stack and dictionary between calls either way, so there is nothing
+     * for a whole-box run to reset that a fragment run would not.
+     */
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         executeFragment(inside, execute, reply)
     }
 
+    /**
+     * Run [code] once, and then keep running its last word every pass if that word is a colon
+     * definition.
+     *
+     * The single run defines the words and reports any diagnostic from doing so, and stops there if
+     * it found one. Otherwise the last token decides: a name the dictionary holds as a colon
+     * definition becomes the strand's body, and anything else leaves the definitions in place
+     * without starting anything. A second launch of the same [strand] cancels the first.
+     *
+     * The strand is a coroutine that calls the word until this box's run generation for [strand]
+     * changes, yielding between passes. `frame` inside the word ends a pass early rather than the
+     * strand, which is how a word is written as a per-frame body. A ForthField error stops the
+     * strand and is reported on its line.
+     */
     override fun launchAll(
         inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit
     ) {
@@ -201,6 +261,13 @@ class ForthExecution(val inside: Box) : BoxExecution {
         }
     }
 
+    /**
+     * Stop every strand this box is running.
+     *
+     * The jobs are cancelled, the interpreter's strand table is emptied, and every run generation
+     * is bumped, so a pass already in flight finds its generation stale and does not start another.
+     * The dictionary and the stack are left alone.
+     */
     override fun stop(inside: Box) {
         strandJobs.forEach { (_, job) -> job.cancel() }
         strandJobs.clear()
@@ -210,6 +277,14 @@ class ForthExecution(val inside: Box) : BoxExecution {
         }
     }
 
+    /**
+     * Complete the word being typed against this box's dictionary.
+     *
+     * The prefix is whatever non-whitespace run ends at the cursor, which is all a Forth needs:
+     * every word is whitespace-delimited. Each candidate carries its kind (builtin, word, variable,
+     * constant, lambda) as both icon and tail, and a colon definition shows its own body as
+     * documentation. Nothing is sent when nothing matches.
+     */
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
         val code = completionRequest.allCode
         val cursor = completionRequest.position.coerceIn(0, code.length)
@@ -240,6 +315,13 @@ class ForthExecution(val inside: Box) : BoxExecution {
         }
     }
 
+    /**
+     * Run one named word, as though its name had been typed and evaluated on its own line.
+     *
+     * The editor sends this when a word in the source is run by itself. The symbol text is
+     * evaluated rather than looked up, so it takes the same path as any other fragment and reports
+     * the same way.
+     */
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
         val exec = Execute(
             uid = executeSymbol.uid,
@@ -251,11 +333,26 @@ class ForthExecution(val inside: Box) : BoxExecution {
         executeFragment(inside, exec, reply)
     }
 
+    /** `forth`, the name this execution reports itself under. */
     override val languageName: String get() = "forth"
 }
 
+/**
+ * Marks a box as a ForthField root, which makes its children ForthField boxes.
+ *
+ * The language registry knows this as the legacy root flag and sets it alongside `mainLanguage`, so
+ * a box switched with the Set Main Language action carries both. Both are persisted with the
+ * document, and `forthTopologyNeedsUpdating` accepts either.
+ */
 var Box.isForthRoot by Delegation<Boolean?>()
 
+/**
+ * Register ForthField as a main language, and make `isForthRoot` a property documents keep.
+ *
+ * Registering is what puts "Set Main Language: ForthField" among a root box's actions, and what
+ * lets `refreshMainLanguageRuntimes` apply the toggle synchronously instead of leaving it to the
+ * watcher below.
+ */
 @RunsAt(early)
 fun installForth() {
     Box.ioPersistentProperties.add("isForthRoot")
@@ -270,11 +367,21 @@ fun installForth() {
     )
 }
 
+/** Start the watcher that re-applies `forthTopologyNeedsUpdating` whenever the graph changes. */
 @RunsAt(plugins)
 fun installForthPlugin() {
     TopologyWatcher("forth") { forthTopologyNeedsUpdating(it) }.start()
 }
 
+/**
+ * Give every child of a ForthField root a `ForthExecution`, and take it back from a child whose
+ * roots have all been switched off.
+ *
+ * A box is a root if `isForthRoot` is set or its main language is `forth`. A child that already
+ * runs ForthField is left with the interpreter it has, so editing elsewhere in the graph does not
+ * cost a box its stack. A child that is losing the language reverts to Kotlin, unless another root
+ * still claims it, which is what lets a box be the child of two roots at once.
+ */
 fun forthTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,

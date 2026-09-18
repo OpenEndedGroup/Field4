@@ -77,8 +77,8 @@ operations:
           layout(location = 1) flat in uint fid;
           layout(location = 0) out vec4 outColor;
 
-          // Set to 1 and reload (alt-r) to see residency directly: red is the 8-pixel base level,
-          // green is 512. Flying towards the wall should turn it green ahead of the camera.
+          // Set to 1 and reload (alt-r) to see residency directly: red is the 15x7 base level,
+          // green is a whole source frame. Flying at the wall turns it green ahead of the camera.
           const int showResidentLevel = 0;
 
           void main()
@@ -105,12 +105,16 @@ operations:
           // For your own set, say its frame size and how many levels you want between the base
           // and it. Eight from 1920x798 puts the base at 15x7, which is 105 texels an image —
           // small enough that all 1639 base pages fit one atlas layer and the wall is never bare.
+          //
+          // Pages fade in rather than snapping — over the page they replace, or over the image's
+          // own mean colour when there was none. Set crossfadeFrames to 0 to compare.
           val mega = megaTextureHere {
               folder("/Users/marc/Movies/blade/scenes/allBlade")
               config.sourcePage(1920, 798)
               config.levels = 8
               config.atlasEdge = 4096
               config.layersPerLevel = 1
+              config.crossfadeFrames = 10
           }
 
           // An execution break. moduleHere compiles this box's shaders when its macro expands,

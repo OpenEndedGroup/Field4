@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14173 public symbols across 361 source files**, 8032 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14173 public symbols across 361 source files**, 8093 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -16,7 +16,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 27 | 595 | 251 (42%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 27 | 821 | 414 (50%) | Making a shape behave. |
+| [Simulation](simulation.md) | 27 | 821 | 418 (50%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 398 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 29 | 1002 | 523 (52%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 894 | 280 (31%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 78 | 2286 | 827 (36%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 78 | 2286 | 884 (38%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 1 | 45 | 43 (95%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -95,13 +95,13 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Datalog.kt](languages.md#datalog-kt) | Languages | 33 | 20 | The facade over parser and engine: a `Datalog` holds a program, answers queries as `DlRows`, and reconstructs the proof of a derived fact. |  |
 | [DatalogAst.kt](languages.md#datalogast-kt) | Languages | 35 | 16 | The abstract syntax of Field's Datalog — see `Datalog` for the facade, `DatalogParser` for the concrete syntax and `DatalogEngine` for what evaluates this. |  |
 | [DatalogBoxes.kt](languages.md#datalogboxes-kt) | Languages | 4 | 4 | The Field bridge: the live box graph as Datalog base relations. | [Datalog in a box](../datalog.md) |
-| [DatalogEditorExtension.kt](languages.md#datalogeditorextension-kt) | Languages | 6 | 1 |  |  |
+| [DatalogEditorExtension.kt](languages.md#datalogeditorextension-kt) | Languages | 6 | 6 | Serves `datalog.js`, the browser-side Datalog editor support, to the page and to the test that checks it. |  |
 | [DatalogEngine.kt](languages.md#datalogengine-kt) | Languages | 39 | 17 | Storage and evaluation: indexed relations, a safety-directed body planner, stratification, and a semi-naive fixpoint. |  |
 | [DatalogInterface.kt](languages.md#dataloginterface-kt) | Languages | 14 | 3 | Datalog as a box language: the `DatalogExecution` that runs fragments inside a box, and the registration that puts Datalog in the Main Language menu. |  |
 | [DatalogObjects.kt](languages.md#datalogobjects-kt) | Languages | 4 | 4 | Any live object graph as Datalog base relations, by way of `afield.graphquery`. | [Datalog in a box](../datalog.md) |
 | [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 6 | 4 | Source text to abstract syntax: the lexer and recursive-descent parser every Datalog program in Field goes through, and the two word lists that decide what the notation reserves. |  |
 | [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 | The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the one that took the answer count to zero. |  |
-| [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 0 |  |  |
+| [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 13 | Where a FieldML compile says something is wrong, and how badly. |  |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 | Offline rendering of a pattern through the **real** Dirt sample library. | [Sound: from a pattern to something you can hear](../sound.md) |
 | [DirtSamples.kt](audio.md#dirtsamples-kt) | Audio | 59 | 4 | The TidalCycles Dirt-Samples collection loaded, indexed, and played from Field. | [Boolean network music examples](../boolean_network_music_examples.md) |
@@ -151,7 +151,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [flowmatching.kt](machine-learning.md#flowmatching-kt) | Machine learning | 45 | 43 | Flow matching over 2D and 3D point clouds — `flowMatch` trains a velocity field that carries one distribution onto another, and the field it returns can be sampled, integrated part-way, or drawn. | [Flow Matching](../flow_matching.md) |
 | [FM.kt](synthesis.md#fm-kt) | Synthesis | 10 | 9 | Frequency-modulation synthesis in two pieces: `FMOperator` is one modulated sine, and `FMPatch` wires several of them into the classic algorithms. |  |
 | [FnMetric.kt](function.md#fnmetric-kt) | Function | 3 | 3 | The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface` scoring a candidate signal against a target on one even sample grid (lower is better), plus a companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`, `correlation` — and the `fromResidual` / `window` builders behind them. |  |
-| [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 13 | 1 |  |  |
+| [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 13 | 13 | Makes ForthField a language a box can be written in. |  |
 | [ForthInterpreter.kt](languages.md#forthinterpreter-kt) | Languages | 48 | 5 | ForthField — a compact, extensible Forth used by Field4 for live coding. |  |
 | [FunctionEvolve.kt](function.md#functionevolve-kt) | Function | 42 | 21 | Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of a fixed structure's numbers in FunctionFit.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md), [Spatial artificial life](../alife_examples.md) |
 | [FunctionFit.kt](function.md#functionfit-kt) | Function | 60 | 32 | Gradient-based fitting of `Fn` graphs — the differentiable counterpart to the genetic `evolve` in FunctionEvolve.kt. | [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md) |
@@ -208,16 +208,16 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KotlinJs.kt](languages.md#kotlinjs-kt) | Languages | 12 | 0 | SPIKE — a "Kotlin in the head" main language. |  |
 | [KotlinJsHeadProfiles.kt](languages.md#kotlinjsheadprofiles-kt) | Languages | 29 | 4 | Which remote head a Kotlin/JS box runs on, chosen by a marker on its first line. |  |
 | [KotlinToJsCompiler.kt](languages.md#kotlintojscompiler-kt) | Languages | 7 | 4 | SPIKE — Kotlin source -> JavaScript, for RemoteJS boxes. |  |
-| [KratosDemo.kt](simulation.md#kratosdemo-kt) | Simulation | 6 | 2 |  |  |
-| [KratosLaunch.kt](simulation.md#kratoslaunch-kt) | Simulation | 10 | 7 |  |  |
+| [KratosDemo.kt](simulation.md#kratosdemo-kt) | Simulation | 6 | 6 | The two Kratos smoke runs, and the small piece of geometry they share. |  |
+| [KratosLaunch.kt](simulation.md#kratoslaunch-kt) | Simulation | 10 | 7 | Where the Kratos worker process comes from, and which end of the socket Field owns. |  |
 | [KratosSession.kt](simulation.md#kratossession-kt) | Simulation | 68 | 20 | The JVM side of the Kratos link: finding a worker, opening a session on it, and asking for solves. |  |
 | [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
-| [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 |  |  |
+| [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 | A `StudyLandscape` and a `StudyOptimisation`, as a picture. |  |
 | [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 | One parameter study over a heated part, in the three sizes a demo has to exist in. |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 0 |  |  |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 0 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
-| [Lexer.kt](languages.md#lexer-kt) | Languages | 5 | 0 |  |  |
+| [Lexer.kt](languages.md#lexer-kt) | Languages | 5 | 5 | FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything that could not be read. |  |
 | [linalg.kt](math.md#linalg-kt) | Math | 86 | 77 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Datalog in a box](../datalog.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md) |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 0 |  |  |
 | [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
@@ -251,9 +251,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Somebody else's language, running in Field](../morpho_examples.md) |
 | [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 | Typed decoder for the versioned note document a multi-instrument transcription job leaves behind. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
-| [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
-| [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
-| [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
+| [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 9 | Turns Nano assembly source text into a bytecode `ByteArray`: one pass over the lines emitting bytes, then a patch pass that fills in the labels the first pass left as placeholders. |  |
+| [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 | The host side of `nano_compute.glsl`, the GLSL compute port of the Nano VM: the buffer layout a caller has to honour, the mapping struct, and the packing helpers for getting bytes in and out. |  |
+| [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 4 | Reads a Nano bytecode `ByteArray` back as assembly text, one `DisasmLine` per instruction. |  |
 | [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 | Field4 language adapter for the Nano 8-bit assembly language. | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 21 | Runs a Nano program and hands back its final machine state, either as data or as a self-contained HTML panel for a box's output area. |  |
 | [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 | Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations: four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an instruction. |  |
@@ -265,7 +265,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Oscillators.kt](synthesis.md#oscillators-kt) | Synthesis | 94 | 39 | The sources: oscillators, noise, and the samplers that stand in for one. |  |
 | [Parameters.kt](polytopes.md#parameters-kt) | Polytopes | 29 | 22 | Naming a subset of elements, and attaching a number to each one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 5 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
-| [Parser.kt](languages.md#parser-kt) | Languages | 5 | 0 |  |  |
+| [Parser.kt](languages.md#parser-kt) | Languages | 5 | 5 | FieldML's second stage: tokens in, the surface tree out, by recursive descent with precedence climbing for the operators. |  |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 | The parameter-application algebra: combining patterns of different types, and choosing whose rhythm survives. | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 11 | The transport everything scheduled in `afield.four.synth` reads: one monotonic number that can be paused, sought and subdivided, so that patterns, Boolean networks and audio launches share a single notion of the current time. |  |
 | [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 | Compositional structure: the transforms that build a piece out of a pattern, and the pitch vocabulary — scales, named chords, and voice leading. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How completions are ranked](../completion_ranking.md), [Faust](../faust.md) |
@@ -319,7 +319,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [RectSL.kt](languages.md#rectsl-kt) | Languages | 556 | 40 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLCoverage.kt](languages.md#rectslcoverage-kt) | Languages | 35 | 35 | The **exact** coverage a soft raster is approximating, and the measurement of how far off it is. |  |
-| [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 1 |  |  |
+| [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 6 | Serves `rectsl.js`, the browser-side RectSL editor support, to the page and to the test that checks it. |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
 | [RectSLFn.kt](languages.md#rectslfn-kt) | Languages | 18 | 18 | RectSL tracks as differentiable `Fn` graphs — the third backend. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [A solid, written down: `afield.solidsl`](../solid_notation.md) |
 | [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
@@ -381,7 +381,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 171 | 37 | Field's pattern language: a compact text notation for musical structure, an exact algebra over cycles, and a scheduler that turns the result into events in seconds. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
-| [Token.kt](languages.md#token-kt) | Languages | 5 | 0 |  |  |
+| [Token.kt](languages.md#token-kt) | Languages | 5 | 5 | One `TokenKind` for every lexeme FieldML has, and the `Token` that pairs a kind with the text it was read from. |  |
 | [Topology.kt](polytopes.md#topology-kt) | Polytopes | 89 | 61 | The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Transforms.kt](polytopes.md#transforms-kt) | Polytopes | 82 | 63 | The Conway operator algebra: thirteen named operations that rewrite a polyhedron's combinatorics, each paired with a policy for giving the result coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [tuio.kt](data.md#tuio-kt) | Data | 10 | 2 | A minimal TUIO receiver. |  |

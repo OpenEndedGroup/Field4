@@ -16,25 +16,35 @@ import kotlin.math.roundToInt
  * A [StudyLandscape] and a [StudyOptimisation], as a picture.
  *
  * A sweep's result is a table of numbers and a table of numbers is easy to be wrong about. What a
- * study is *for* is the shape — where the valley runs, whether the optimum is interior or pinned to
+ * study is *for* is the shape: where the valley runs, whether the optimum is interior or pinned to
  * an edge, whether the search found the same place the grid did. All of that is one glance and none
  * of it is a summary line.
  *
- * A CPU raster on purpose, through [RasterImage]: no AWT, no window, no GPU, so the same code makes
- * the figure inside a Field box, inside a `jvm-main` verification run and inside a unit test. Text
- * is [PLOT_GLYPHS], the repository's 3x5 dot-matrix font — one font, in one place, rather than a
- * third copy of the same table. Its alphabet is upper case, digits and a handful of punctuation, so
- * labels are upper-cased on the way in and anything outside that alphabet draws as a blank —
- * [drawable] is how a caller checks a label before the figure disappoints it.
+ * The raster is built on the CPU, through [RasterImage], with no AWT, no window and no GPU, so the
+ * same code makes the figure inside a Field box, inside a `jvm-main` verification run and inside a
+ * unit test. Text is drawn from the 3x5 dot-matrix font in `RectSL.kt`, so the repository has one
+ * such table rather than a third copy of it. That font's alphabet is upper case, digits and a
+ * handful of punctuation; labels are upper-cased on the way in, anything outside the alphabet draws
+ * as a blank, and `drawable` is how a caller checks a label before the figure disappoints it.
  *
- * # Reading the landscape panel
+ * #### Reading the landscape panel
  *
- * Axis 0 runs up the left edge, axis 1 along the bottom, which is the `[row][col]` reading of
- * [StudyLandscape.matrix]. Cells are drawn as cells — no bilinear smoothing — because a study's
- * resolution is a real property of the answer and a smoothed picture invents a landscape between
- * sample points that nobody solved. Infeasible points are hatched grey, not coloured zero. The
- * grid's best cell gets a white ring; an optimiser's best, when one is supplied, gets a cross, so
- * agreement between the two methods is visible rather than asserted.
+ * Axis 0 runs up the left edge and axis 1 along the bottom, which is the row-then-column reading
+ * `StudyLandscape.matrix` returns. Cells are drawn as cells, with no bilinear smoothing, because a
+ * study's resolution is a real property of the answer and a smoothed picture invents a landscape
+ * between sample points that nobody solved. Infeasible points are hatched grey rather than coloured
+ * zero. The grid's best cell gets a white ring, and an optimiser's best, when one is supplied, gets
+ * a cross, so a reader can see where the two methods agree.
+ *
+ * A study with one axis draws as a profile instead: the objective as a line across the panel, with
+ * the infeasible points marked along the floor. Three axes or more are refused, naming the rank.
+ */
+
+/**
+ * The three figures: the landscape panel, the convergence panel, and both stacked as a sheet.
+ *
+ * Each exists twice, once returning a [RasterImage] and once returning PNG bytes, so a caller that
+ * wants to look at pixels does not have to decode a PNG first.
  */
 object KratosStudyFigure {
 
