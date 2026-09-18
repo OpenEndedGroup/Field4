@@ -2331,7 +2331,7 @@ type checker sees it.
 
 `schemes` is the root environment `Inferencer` starts from, so a name here is in scope in every
 FieldML box. Each entry is a [`Scheme`](languages.md#types-kt-scheme) rather than a bare type, because most of the prelude is
-polymorphic and the interesting part is *how* polymorphic: `map` works over any element type,
+polymorphic and a bare type cannot say *how* polymorphic: `map` works over any element type,
 `abs` over `Int` or `Float` but not over a string, `dot` over two vectors as long as they are
 the same width. A scheme carries those restrictions on its quantified variables, which is what
 lets one entry stand in for what would otherwise be a pile of overloads.
@@ -5749,7 +5749,7 @@ through Fn-lowered tracks, so the oracle shares no code path with the thing unde
 reports the worst disagreement, and it reports coverage, how much of the corpus lowered at all,
 because a differential test that refused everything would otherwise read as a pass.
 
-The corpus is not uniform in what it proves, and the difference is the reason to trust it. The
+The corpus is not uniform in what it proves, and its rows differ in what they rule out. The
 rows for the programs that predate this backend were dumped from code that knew nothing about
 it, so a disagreement on one of those can only be this file's. The rows for the four
 `musicality-*` programs were produced by the current `SceneProgram.sample`: still a real
