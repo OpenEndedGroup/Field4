@@ -6,7 +6,17 @@ An interaction net is a graph you compute with by rewriting it. Each node is an 
 
 So: build a net with `net { }`, wiring ports with `to`; `relax` it to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The four examples below each take a single step and show three cards over a before-and-after drawing; [Reference](#reference) is the whole surface in one table.
 
-Every rule splits or attenuates the energy its nodes carry, so a reduction visibly decays instead of merely rewiring. That is art direction rather than semantics, and it is where the energy figures quoted below come from. Two things it does not have: a fan/fan commuting rule, and a lambda frontend. It is enough to watch beta reduction happen and to grow your own vocabulary beside it, and it is not a complete optimal reducer.
+Every rule splits or attenuates the energy its nodes carry, so a reduction visibly decays instead of merely rewiring. That is art direction rather than semantics, and it is where the energy figures quoted below come from.
+
+## There is a λ-calculus front end now
+
+Until 2026-09-18 this page said two things were missing — a fan/fan commuting rule, and a lambda frontend — and both have arrived. `LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `Lambda.rules()` gained `fan-fan`, which reads a label off each `DUP` and annihilates two fans from the same duplication or commutes two from different ones, and `erase-erase`. `Reducer` gained a `relaxIterations` parameter, because a reduction nobody is watching should not pay for a layout, and it now chases a wire that runs *through* a vanishing pair — which is what `λx. x` looks like from the inside, and what used to make duplicating the identity throw.
+
+![Five panels, left to right, following one reduction: the compiled net of six agents, then the four reactions beta-linear, dup-lam, beta-linear and fan-fan, ending in two agents — a ROOT holding a single abstraction](assets/interaction_nets_lambda/lambda_reduction.svg)
+
+Those are the five stages of `(λx. x x) (λy. y)`, the smallest term that shows the whole vocabulary at work. Left to right: the compiled net, 6 agents (ROOT, two APP, two LAM, one DUP — the fan for `x`, used twice); after `beta-linear`, 4; after `dup-lam`, 6, with the two fans facing each other, which is the pair the old rule book had no rule for; after a second `beta-linear`, 4; and after `fan-fan` annihilates the matched pair, 2 agents holding `λa. a`. Each panel is fitted to its own box, so the scales are not comparable — the agent counts are what say how big each net was.
+
+What is checked, and how: `readback(reduce(compile(t)))` is asserted α-equivalent to a plain capture-avoiding normal-order evaluator over a named corpus of 25 closed terms — Church numerals with `succ`, `add`, `mul` and `pred`, Church booleans with `if`, `S`/`K`/`I`, terms whose reduction copies a redex, and terms that erase an argument — and the same normal form is asserted across four `ActivationOrder`s, since the scheduler is a free choice and the answer must not be one. That is `stdlib.lambda-terms.smoke`. Over the corpus it takes 228 net reactions against the evaluator's 117 β-steps; those are two different units and neither is the word *optimal*. This is not Lamping's optimal reduction — there are no brackets or croissants, so the sharing is correct rather than maximal. `dev_docs/INTERACTION_NETS_LAMBDA.md` has the rest, including what a normal form that still carries fans means for reading one back.
 
 ## Beta bridge with swapped pair orientation
 
@@ -337,4 +347,19 @@ Looking at it:
 | `net.totalEnergy()` / `.averageAge()` | the two aggregates the cards quote |
 | `net.incrementAges(dt)` | advances `age` on whatever clock you choose |
 
-Starting points: `Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` are the nets behind the third and fourth examples above.
+λ-terms:
+
+| | |
+|---|---|
+| `LambdaTerms.parse(source)` | reads `\x. x x` or `λx. x x`; `\x y. e` is sugar, application associates left |
+| `LambdaTerms.format(term)` | the printer, with the fewest parentheses that parse back to the same term |
+| `LambdaTerms.compile(term)` | a `CompiledTerm`: a net with one `ROOT`, a fan tree per multiply-used variable, an `ERASE` per unused binder |
+| `LambdaTerms.readback(compiled)` | a reduced net back to a term, carrying a stack of fan choices |
+| `LambdaTerms.normalise(term, order, maxSteps, relaxIterations)` | the whole pipeline; `relaxIterations` defaults to 0 |
+| `LambdaTerms.referenceNormalOrder(term)` | the oracle — normal-order reduction by substitution, no nets, no sharing |
+| `LambdaTerms.alphaEquivalent(a, b)` / `.deBruijnKey(term)` | how to compare two terms, and what to print when they differ |
+| `LambdaTerms.corpus()` | the 25 named closed terms the smoke test asserts against the oracle |
+| `Lambda.fan(label)` / `Lambda.fanLabelOf(node)` | a labelled `DUP`, and its label; an unlabelled one reads as 0 |
+| `Reducer(rules, order, layout, relaxIterations)` | `relaxIterations = 0` skips the `O(n²)` layout for a headless run |
+
+Starting points: `Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` are the nets behind the third and fourth examples above, and `dev_docs/agents/demos/interaction_nets_lambda` is a loadable document that normalises a term, draws a reduction and runs the whole corpus against the oracle.
