@@ -167,7 +167,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 3 | Temporal sketches for source-conditioned generation, with prompt regions, onset events, and parameter curves that together express a generation intent. | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [GestureBoardVisualization.kt](audio-ai.md#gestureboardvisualization-kt) | Audio AI | 3 | 1 |  |  |
 | [GlslAd.kt](languages.md#glslad-kt) | Languages | 0 | 0 | Reverse-mode automatic differentiation for the GLSL interpreter: `d(pixel)/d(literal)`. |  |
-| [GlslAdSurrogate.kt](languages.md#glsladsurrogate-kt) | Languages | 21 | 17 |  |  |
+| [GlslAdSurrogate.kt](languages.md#glsladsurrogate-kt) | Languages | 21 | 17 | The surrogate vocabulary a differentiable StackSL fit descends through: a mollified delta, the jump families it may be applied to, and the schedule that narrows it. |  |
 | [GlslInterpreter.kt](languages.md#glslinterpreter-kt) | Languages | 7 | 7 | The evaluator for parsed GLSL shaders, tree-walking and single-threaded per invocation. |  |
 | [GlslParser.kt](languages.md#glslparser-kt) | Languages | 5 | 5 | A parser for the GLSL that StackSL's emitter actually produces. |  |
 | [GlslScalars.kt](languages.md#glslscalars-kt) | Languages | 0 | 0 | The value type the GLSL interpreter is generic over, so that one interpreter serves both the `Float` reference path and the differentiable one. |  |

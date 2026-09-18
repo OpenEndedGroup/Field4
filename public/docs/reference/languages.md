@@ -6888,11 +6888,30 @@ while the adjoint is the derivative of the smooth relaxation, which is the quant
 
 ## GlslAdSurrogate.kt { #glsladsurrogate-kt }
 
+The surrogate vocabulary a differentiable StackSL fit descends through: a mollified delta, the
+jump families it may be applied to, and the schedule that narrows it.
+
+Three types, and the split between them is the whole design. [`AdSurrogate`](languages.md#glsladsurrogate-kt-adsurrogate) is a *temperature plus
+a set of families* — the one object `GlslAdScalars` consults at each jump site.
+[`AdSurrogateFamily`](languages.md#glsladsurrogate-kt-adsurrogatefamily) partitions the jump-discontinuous builtins by **where their jumps are** rather
+than by name, because that is what decides the partial, and because `floor` is not one thing: as a
+quantiser it is a wall worth softening, and as a noise lattice's cell index its zero is the *true*
+derivative and softening it destroys a wire that already worked. [`AdAnnealing`](languages.md#glsladsurrogate-kt-adannealing) is the schedule,
+and it is kept despite measuring as unnecessary rather than because it earned its place.
+
+Nothing here is on unless a caller asks: `AdSurrogate.OFF` is the default everywhere, and even
+switched on it replaces **only local partials** and never a primal value. The measurements —
+including the two that argue against enabling it globally — are `dev_docs/STACKSL_SURROGATE.md`.
+
+What is deliberately *not* here is `GlslAdScalars`' mask tracking, which is what stops a nested
+predicate being charged a second kernel. That is a property of the AD path rather than of the
+surrogate, so it sits in `GlslAd.kt` beside the jump sites it corrects.
+
 `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAdSurrogate.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/)
 
 ### AdSurrogate { #glsladsurrogate-kt-adsurrogate }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">AdSurrogate</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L72)
+[<code class="highlight"><span class="k">class</span> <span class="nc">AdSurrogate</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L93)
 
 A differentiable surrogate for the jump-discontinuous GLSL operations, as a **mode** of the one AD evaluation rather than a second one.
 
@@ -6900,18 +6919,18 @@ A differentiable surrogate for the jump-discontinuous GLSL operations, as a **mo
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span></code> | The bump width, in the units of the quantity being floored. `0.0` means off. |
 | <code class="highlight"><span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span></code> | Which jump families get a surrogate partial; the rest keep their exact zero. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L83) | True when any partial in this object differs from the exact zero. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">covers</span><span class="p">(</span><span class="n">family</span><span class="p">:</span> <span class="nc">AdSurrogateFamily</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L86) | Is `family` surrogated here? |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L89) | The same families at a different temperature — what an annealing schedule steps. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">kernel</span><span class="p">(</span><span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">jump</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L98) | The mollified delta: `jump · sech²(u / 2t) / 4t`, with `u` the signed distance to the jump. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">unitPeriodMass</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L117) | The fraction of a unit-period jump this kernel actually carries: `tanh(1 / 4t)`. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L119) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L123) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L126) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L104) | True when any partial in this object differs from the exact zero. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">covers</span><span class="p">(</span><span class="n">family</span><span class="p">:</span> <span class="nc">AdSurrogateFamily</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L107) | Is `family` surrogated here? |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L110) | The same families at a different temperature — what an annealing schedule steps. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">kernel</span><span class="p">(</span><span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">jump</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L119) | The mollified delta: `jump · sech²(u / 2t) / 4t`, with `u` the signed distance to the jump. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">unitPeriodMass</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L138) | The fraction of a unit-period jump this kernel actually carries: `tanh(1 / 4t)`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L140) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L144) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L147) |  |
 
 ### AdSurrogateFamily { #glsladsurrogate-kt-adsurrogatefamily }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AdSurrogateFamily</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L164)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AdSurrogateFamily</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L185)
 
 The three jump families, split by *where the jumps are* rather than by builtin name — because that is what decides the surrogate partial, and two builtins with the same jump lattice want the same treatment.
 
@@ -6919,7 +6938,7 @@ Constants: `STAIRCASE`, `STEP`, `SIGN`.
 
 ### AdAnnealing { #glsladsurrogate-kt-adannealing }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">AdAnnealing</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L213)
+[<code class="highlight"><span class="k">class</span> <span class="nf">AdAnnealing</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L234)
 
 A geometric annealing schedule from `start` down to `end`, plus the driver that steps it.
 
@@ -6929,10 +6948,10 @@ A geometric annealing schedule from `start` down to `end`, plus the driver that 
 | <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span></code> | The temperature at the last evaluation of the budget. |
 | <code class="highlight"><span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span></code> | The evaluation count the schedule is scaled to — normally the iteration count. |
 | <code class="highlight"><span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span></code> | Which families the schedule anneals. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">temperatureAt</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L231) | The temperature at evaluation `index`, counting from zero. Pure — no state is touched. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L238) | The surrogate for the *next* evaluation, and advance. Call once per loss evaluation. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">used</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L245) | How many times `next` has been called. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L247) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">temperatureAt</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L252) | The temperature at evaluation `index`, counting from zero. Pure — no state is touched. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L259) | The surrogate for the *next* evaluation, and advance. Call once per loss evaluation. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">used</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L266) | How many times `next` has been called. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/GlslAdSurrogate/#L268) |  |
 
 ## GlslInterpreter.kt { #glslinterpreter-kt }
 
