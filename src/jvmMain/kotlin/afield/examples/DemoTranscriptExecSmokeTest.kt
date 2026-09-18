@@ -375,11 +375,16 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
-        // A native window plus a directory of images that is nobody's to commit. Both shaders are
-        // compiled here, which is the part worth having: `{{ mega.all }}` is generated GLSL, so a
-        // mistake in MegaTexture's declarations would otherwise only surface on a machine with a
-        // GPU and a folder of photographs. MegaTextureShaderTest checks that same GLSL through
-        // shaderc without either.
+        // A native window plus a directory of images that is nobody's to commit.
+        //
+        // Its GLSL is *not* checked here, and the comment that used to say so was wrong in a way
+        // worth recording: `{{ mega.* }}` is registered by `megaTextureHere` at run time, and this
+        // bucket never runs anything — so `moduleHere`'s expansion cannot resolve the template and
+        // logs a TemplateException. That is survivable (the macro falls back to the no-shader
+        // `_moduleHere` and the Kotlin still compiles, which is what this bucket is for), but it
+        // means the shaders here are compiled by nothing. MegaTextureShaderTest and
+        // MegaTextureLayoutTest check that same generated GLSL through shaderc without a GPU or a
+        // folder, and they are where that coverage actually lives.
         "mega_texture_wall",
         // Builds its own Window + Renderer and a six-pass chain across three resolutions, so it
         // wants a GLFW window and a Vulkan device the lightweight build does not own. The plan
