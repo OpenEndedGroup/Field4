@@ -33,10 +33,11 @@ expect:
  *
  * The condenser earns its place in the middle of that: it is a **measurement**. A row with
  * structure gets a much shorter spelling than one without, so [CaBar.compression] separates rule
- * 90's self-similar rows from rule 30's centre column by about a factor of two. Both are below one,
- * because a flat spelling carries overhead that any grouping saves, which is why the `rule30-hats`
- * scene asserts the *ratio* between the two rather than a floor on either. That gap is the
- * difference between the two scenes here, and you can hear it.
+ * 90's self-similar rows from rule 30's centre column. Neither ratio can exceed one, because the
+ * search is never allowed to lose to the flat spelling and a flat spelling carries overhead that
+ * any grouping saves, so the `rule30-hats` scene asserts the *ratio* between the two -- rule 30's
+ * at least 1.4 times rule 90's -- rather than a floor on either. That gap is the difference between
+ * the two scenes here, and you can hear it.
  *
  * # Every scene has an oracle outside the CA
  *
@@ -44,16 +45,22 @@ expect:
  * stepper should have produced without stepping anything, and [gasketBar] checks the two against
  * each other before any sound is made. Row *n*'s population is exactly `2^popcount(n)`, which is
  * what [gasketScale] turns into pitch, so the melody's note sequence is checkable digit by digit.
- * [rule30Bar] has no such formula, which is the point of it, so what is asserted there is the
- * run-length statistic that says the sequence has no long runs in it.
+ * [rule30Bar] has no such closed form, so what is asserted there is the negative: a population near
+ * half, and a longest run short enough that the sequence has no long runs in it.
  *
  * # What it does not do
  *
  * No realtime engine, no audio device, no GPU, no Field window. The renders are deterministic, so a
  * committed `.wav` regenerates byte-stably, which is the contract `DOUGH_DSP_PLOT_GALLERY.md` sets
- * and [PatSoundDocs] follows. As the `synth.ca.sound` FIELD_TEST every scene renders to a temp dir
- * and is asserted for real correctness, and nothing committed is written. Pass an output directory
- * as `args[0]` to regenerate the page's `.wav`s.
+ * and [PatSoundDocs] follows. Run as the `synth.ca.sound` FIELD_TEST, every scene renders to a
+ * temporary directory and runs its own checks, and nothing committed is written. Pass an output
+ * directory as `args[0]` to regenerate the page's `.wav`s.
+ */
+
+/**
+ * The three cellular-automaton scenes, their oracles, and the renderer that writes them out.
+ *
+ * [SCENES] is the gallery in order; [renderWav] writes one of them to a path.
  */
 object CaSoundDocs {
 
