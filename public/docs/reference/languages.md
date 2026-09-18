@@ -3007,9 +3007,8 @@ Random programs, and small changes to programs.
 
 The thing a search actually mutates: a MorphoHDL **program, as text**.
 
-That choice is the whole design. A generator could build netlists directly and skip the compiler,
-and it would be faster and it would be a lie — the netlist would be Field's idea of what morpho
-compiles a design into, and the resulting search would optimise against that idea rather than
+A generator could build netlists directly and skip the compiler, and it would be faster. It
+would also optimise against Field's idea of what morpho compiles a design into rather than
 against MorphoHDL. So a genome renders to source, upstream's `parse()` reads it, upstream's
 `compileModule()` compiles it, and anything the search finds can be pasted into a morpho box and
 will still be there tomorrow.
@@ -4134,12 +4133,11 @@ Snapshot of a Nano execution, suitable for HTML rendering in Field output areas.
 Python as a Field main language: a box whose source is Python, executed **in this process** by
 CPython through JEP.
 
-In-process is the whole design and every consequence below follows from it. There is no
-subprocess and no socket, so a Python box and a Kotlin box exchange objects rather than text; and
-there is exactly **one interpreter and one namespace per Field process**, so two Python boxes
-share globals whether or not you wanted them to. That is a deliberate trade — it is what makes a
-cell in one box see a `DataFrame` another box built — and it is the first thing to know before
-debugging "why does this variable already exist".
+There is no subprocess and no socket, so a Python box and a Kotlin box exchange objects rather
+than text; and there is exactly **one interpreter and one namespace per Field process**, so two
+Python boxes share globals whether or not you wanted them to. That is a deliberate trade — it is
+what makes a cell in one box see a `DataFrame` another box built — and it is the first thing to
+know before debugging "why does this variable already exist".
 
 Read it in four layers:
 
@@ -7212,13 +7210,13 @@ while the adjoint is the derivative of the smooth relaxation, which is the quant
 The surrogate vocabulary a differentiable StackSL fit descends through: a mollified delta, the
 jump families it may be applied to, and the schedule that narrows it.
 
-Three types, and the split between them is the whole design. [`AdSurrogate`](languages.md#glsladsurrogate-kt-adsurrogate) is a *temperature plus
+Three types. [`AdSurrogate`](languages.md#glsladsurrogate-kt-adsurrogate) is a *temperature plus
 a set of families* — the one object `GlslAdScalars` consults at each jump site.
 [`AdSurrogateFamily`](languages.md#glsladsurrogate-kt-adsurrogatefamily) partitions the jump-discontinuous builtins by **where their jumps are** rather
 than by name, because that is what decides the partial, and because `floor` is not one thing: as a
 quantiser it is a wall worth softening, and as a noise lattice's cell index its zero is the *true*
 derivative and softening it destroys a wire that already worked. [`AdAnnealing`](languages.md#glsladsurrogate-kt-adannealing) is the schedule,
-and it is kept despite measuring as unnecessary rather than because it earned its place.
+and the measurements say a fit does not need it.
 
 Nothing here is on unless a caller asks: `AdSurrogate.OFF` is the default everywhere, and even
 switched on it replaces **only local partials** and never a primal value. The measurements —
