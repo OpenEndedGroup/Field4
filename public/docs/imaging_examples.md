@@ -478,20 +478,12 @@ operator, and three lessons about register accumulators that cost real time to l
 
 <!-- END imaging-bench table -->
 
-"Before" is the original scalar implementation, still in the source as
-`convolveSeparableReference`, so the claim can be re-measured at any time. Only the
-separable-convolution family has one; a dash means that operation has no preserved scalar original
-to compare against, not that the speedup is unknown. Where there is a before, all three gains land
-within a few percent of each other, and they should: the win came from dropping a bounds-checked
-accessor call out of every multiply-add, and that saving does not depend on which kernel is running.
+Bold means we are faster. A dash in the "before" column means that operation has no preserved
+scalar original to compare against, not that its speedup is unknown.
 
-OpenCV is pinned to one thread, because this code is single-threaded; letting OpenCV use every core
-does not help at this size either. Bold means we are faster.
-
-Three rows (Gaussian blur, box blur and the Laplacian) are
-the same operation with the same parameters on both sides, and the benchmark *fails the run* if the
-outputs stop agreeing (Gaussian to 2.4e-7, box blur to 7.8e-6, Laplacian exactly). The rest are
-matched in work but not in definition, and the difference is real: our `luma` is BT.709 where
+Gaussian blur, box blur and the Laplacian run the same operation with the same parameters on both
+sides, and the benchmark fails if their outputs stop agreeing. The rest are matched in work but not
+in definition, so their ratios compare slightly different operations: our `luma` is BT.709 where
 `cvtColor` is BT.601; our Sobel and Scharr are scaled to true units-per-pixel, so ours is OpenCV's
 divided by a constant; our `pyrDown` takes a configurable sigma where OpenCV's is a fixed 5-tap
 kernel; and `median`/`bilateral` have matched parameters but different internal algorithms. Our API
@@ -499,8 +491,8 @@ also returns a fresh `Img` each call, so part of our cost is an allocation OpenC
 
 Gaussian blur, dense convolution and the RGB blur are at or slightly past OpenCV; box blur, the
 Laplacian, Scharr, Sobel, luma and bilateral are all inside about 2x, close enough that the
-pure-Kotlin path is the reasonable default. Three rows are meaningfully behind, and you should know
-which before choosing:
+pure-Kotlin path is the reasonable default. `bilateral`'s interval is wide, so read its row as
+"about 1.2x". Three rows are meaningfully behind, and you should know which before choosing:
 
 - **`median`** is an algorithmic gap: it sorts 25 floats per pixel where OpenCV uses a sorting
   network.
@@ -509,11 +501,8 @@ which before choosing:
   9 taps at the default, where OpenCV's `pyrDown` is a fixed 5-tap `[1,4,6,4,1]/16`. That is close to
   twice the work, in exchange for a better filter and a sigma that is yours to choose.
 
-Read the intervals before reading the ratios: these are laptop numbers, a wide interval on a short
-benchmark is scheduler noise rather than a real difference, and two arms whose intervals overlap are
-a tie. `bilateral` is the one arm whose interval is wide, so read it as "about 1.2x".
-`dev_docs/IMAGING_VECTOR_KERNELS.md` has the rules the absolute milliseconds depend on, and what
-contention did to a run that ignored them.
+The benchmark's conditions, the agreement tolerances, and what the absolute milliseconds depend on
+are in `dev_docs/IMAGING_MEASUREMENTS.md`.
 
 ## Reference
 
