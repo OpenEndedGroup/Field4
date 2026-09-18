@@ -328,11 +328,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:153` |
 | `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:170` |
 | `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:582` |
-| `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:148` |
-| `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:154` |
-| `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:169` |
-| `PythonExecution` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:234` |
-| `PythonInterface` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:1433` |
+| `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:147` |
+| `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:153` |
+| `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:168` |
+| `PythonExecution` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:233` |
+| `PythonInterface` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:1432` |
 | `Vec2d` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:105` |
 | `Vec4f` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:117` |
 | `Token` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:144` |
