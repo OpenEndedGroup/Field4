@@ -185,6 +185,27 @@ attributes, the task's inputs — and diff it against the list the guard *select
 keeps its own copy, that diff is the defect, and the repair is to derive rather than to widen.
 Widening fixes today's instance and leaves the mechanism in place.
 
+### A postscript, observed rather than reasoned: the tree-write guard's empty population
+
+`checkTestTreeWrites` compares a before-and-after snapshot of the working tree around whatever test
+task shared its build, and it announces its own empty case: *"no test task ran in this build, so
+this check observed nothing"*, printed under `BUILD SUCCESSFUL`. The comment beside that branch is
+already honest about it — "not a failure and not a pass".
+
+What is worth adding is where that branch is actually reached. It is not only the
+invoked-alone case. On 2026-09-18 an ordinary pre-commit run, the second commit of an evening to
+touch the same files, printed `Task :citationGates UP-TO-DATE` and then the empty-population line,
+and the build was green. So the guard's vacuous mode is reachable by the normal path — a repeat
+commit, with nothing to rebuild — rather than only by a deliberate solo invocation.
+
+The tempting repair, making that branch return non-zero, would be wrong: an `UP-TO-DATE` test task
+is a correct build outcome, so failing there reddens ordinary repeat commits and teaches people to
+pass a skip flag. The distinction the guard does not currently draw is between *no test task was
+requested* and *a test task was requested and did not run*. Only the second is a wiring failure, and
+only the second should fail. Until it does, the operational rule stands: this guard means something
+only in a build where a test task actually executed, which in practice means pairing it with
+`jvmTest --rerun`.
+
 ## The measurement that keeps being got wrong: compiled is not run
 
 The fourth instance is different in kind and worth its own section, because two separate passes at
