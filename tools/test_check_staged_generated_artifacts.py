@@ -3,9 +3,15 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from tools.check_staged_generated_artifacts import (
+    _REFERENCE_GENERATOR_REL,
+    _SOURCE_ROOTS_DECL,
+    ReferenceRootsUnreadable,
+    _reference_input,
+    _reference_source_roots,
     conflicting_unstaged_paths,
     guards_for_paths,
 )
@@ -105,6 +111,95 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ),
             ["public/docs/reference/controls.md"],
         )
+
+
+class ReferenceSourceRootsTests(unittest.TestCase):
+    """The codebase-reference predicate must select the *generator's* population, not a copy of it.
+
+    Until 2026-09-18 ``_reference_input`` named two source roots while
+    ``StdlibReferenceGenerator.SOURCE_ROOTS`` named seventeen. Measured over ``git ls-files`` in a
+    nightly worktree at ``4546d72b5``: 402 tracked ``.kt`` files sit under the generator's roots,
+    of which the old predicate selected 170, so **232 were staged-able with the staleness guard
+    never firing**. Three branches did that on 2026-09-17 and two were caught only because they
+    also happened to stage a Markdown file.
+
+    Every test here asserts its own premise first, so that a generator that moves or is reshaped
+    fails **by name** rather than turning these into tautologies over an empty root list.
+    """
+
+    def test_the_generator_this_predicate_reads_is_where_we_think_it_is(self) -> None:
+        generator = REPO / _REFERENCE_GENERATOR_REL
+        self.assertTrue(
+            generator.is_file(),
+            f"{_REFERENCE_GENERATOR_REL} is gone. The predicate derives its population from that "
+            "file; if the generator moved, re-point _REFERENCE_GENERATOR_REL rather than letting "
+            "the guard fall back to a hand-written list.",
+        )
+        self.assertIsNotNone(
+            _SOURCE_ROOTS_DECL.search(generator.read_text()),
+            "no `private val SOURCE_ROOTS = listOf(...)` block in the generator — the declaration "
+            "this predicate parses was renamed or reformatted.",
+        )
+
+    def test_every_generator_root_selects_the_reference_guard(self) -> None:
+        roots = _reference_source_roots()
+        # Premise, asserted rather than assumed: a one-root or empty read would make every
+        # assertion below pass while the predicate saw almost nothing.
+        self.assertGreaterEqual(
+            len(roots), 17, f"only {len(roots)} source root(s) parsed out of the generator"
+        )
+        for root in roots:
+            with self.subTest(root=root):
+                self.assertIn(
+                    "checkCodebaseReference",
+                    task_names([f"{root}/Planted.kt"]),
+                    f"{root} is a generateCodebaseReference input and the pre-commit predicate "
+                    "cannot see it",
+                )
+
+    def test_the_roots_that_were_blind_are_named_individually(self) -> None:
+        # Named one at a time, not as a loop over the parsed list, so deleting a root from the
+        # generator fails here instead of shrinking the loop to nothing. These are the four the
+        # 2026-09-17 evidence actually caught: +43 public symbols under `afield/four` went by
+        # unguarded, and `afield/stacksl` was in neither branch of the old predicate.
+        for root in (
+            "src/jvmMain/kotlin/afield/four/synth",
+            "src/jvmMain/kotlin/afield/four/physics",
+            "src/jvmMain/kotlin/afield/four/fabricated",
+            "src/jvmMain/kotlin/afield/stacksl",
+        ):
+            with self.subTest(root=root):
+                self.assertIn(root, _reference_source_roots())
+                self.assertIn("checkCodebaseReference", task_names([f"{root}/Planted.kt"]))
+
+    def test_the_generator_itself_is_an_input(self) -> None:
+        # It is under none of SOURCE_ROOTS, and every page's prose comes out of its blurbs.
+        self.assertIn("checkCodebaseReference", task_names([_REFERENCE_GENERATOR_REL]))
+
+    def test_a_package_outside_the_generator_roots_is_still_not_selected(self) -> None:
+        # The widening has to stay a widening to the generator's population, not to all of `src`.
+        self.assertNotIn(
+            "checkCodebaseReference",
+            task_names(["src/jvmMain/kotlin/afield/graphics/FLine.kt"]),
+        )
+        self.assertNotIn("src/jvmMain/kotlin/afield/graphics", _reference_source_roots())
+
+    def test_non_kotlin_files_under_a_root_are_not_inputs(self) -> None:
+        self.assertFalse(_reference_input("src/jvmMain/kotlin/afield/stacksl/notes.txt"))
+
+    def test_a_missing_generator_raises_instead_of_passing_vacuously(self) -> None:
+        # The recorded soft spot is `if (!file.exists()) return`. This asserts the opposite:
+        # an unreadable generator is an error, never an empty population.
+        _reference_source_roots.cache_clear()
+        self.addCleanup(_reference_source_roots.cache_clear)
+        try:
+            with unittest.mock.patch(
+                "tools.check_staged_generated_artifacts.Path.is_file", return_value=False
+            ):
+                with self.assertRaises(ReferenceRootsUnreadable):
+                    _reference_source_roots()
+        finally:
+            _reference_source_roots.cache_clear()
 
 
 class MergeSelectionTests(unittest.TestCase):

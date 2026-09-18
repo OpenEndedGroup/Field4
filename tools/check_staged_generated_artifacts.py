@@ -37,11 +37,76 @@ def _kotlin_source(path: str) -> bool:
     return _under(path, "src") and path.endswith(".kt")
 
 
+_REFERENCE_GENERATOR_REL = "src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt"
+_SOURCE_ROOTS_DECL = re.compile(r"private val SOURCE_ROOTS = listOf\((.*?)\n    \)", re.DOTALL)
+_KOTLIN_STRING = re.compile(r'"([^"\n]+)"')
+
+
+class ReferenceRootsUnreadable(RuntimeError):
+    """`SOURCE_ROOTS` could not be read out of the generator.
+
+    Raised rather than falling back to a hard-coded list, because a silent fallback is the defect
+    this whole derivation exists to remove: the guard would keep passing over whatever the fallback
+    happened to name on the day the generator moved.
+    """
+
+
+@functools.lru_cache(maxsize=1)
+def _reference_source_roots() -> tuple[str, ...]:
+    """The source roots ``generateCodebaseReference`` actually reads, from the generator itself.
+
+    Derived, never copied. This predicate used to name two roots —
+    ``afield/stdlib`` and ``afield/visualization`` — while
+    :data:`afield.docs.StdlibReferenceGenerator.SOURCE_ROOTS` named seventeen. Measured over
+    ``git ls-files`` in this worktree on 2026-09-18: **402** tracked ``.kt`` files sit under the
+    generator's roots and the old two-root predicate selected **170** of them, so **232 (58%)** of
+    the generator's own input set could be staged with the staleness guard never firing. Three
+    branches did exactly that on 2026-09-17, and two of them were caught only incidentally,
+    because they happened to also stage a Markdown file under ``public/docs`` — so whether an
+    agent was made to commit regenerated pages was decided by whether it touched a ``.md``, not by
+    whether it changed the API.
+
+    The same argument, and nearly the same sentence, is already written above
+    :func:`_macro_producer`: keeping a second hand-written path list is how ``stdlib/shaders.kt``
+    escaped that guard. One list, read from the thing that owns it.
+
+    Deliberately *not* derived: the generator's ``EXCLUDE_PREFIXES``. Selecting an excluded file
+    over-runs one gate, which costs time; failing to select an included one is the defect. The
+    asymmetry is the whole point, so the conservative direction is the coarser read.
+    """
+    repo = Path(__file__).resolve().parents[1]
+    generator = repo / _REFERENCE_GENERATOR_REL
+    if not generator.is_file():
+        raise ReferenceRootsUnreadable(
+            f"{_REFERENCE_GENERATOR_REL} is missing — the codebase-reference generator moved. "
+            "Point _REFERENCE_GENERATOR_REL at its new home; do not re-introduce a copy of "
+            "SOURCE_ROOTS here."
+        )
+    match = _SOURCE_ROOTS_DECL.search(generator.read_text())
+    if match is None:
+        raise ReferenceRootsUnreadable(
+            f"no `private val SOURCE_ROOTS = listOf(...)` in {_REFERENCE_GENERATOR_REL} — the "
+            "declaration this predicate reads was renamed or reshaped. Update "
+            "_SOURCE_ROOTS_DECL; do not re-introduce a copy of the list here."
+        )
+    roots = tuple(_KOTLIN_STRING.findall(match.group(1)))
+    if not roots:
+        raise ReferenceRootsUnreadable(
+            f"`SOURCE_ROOTS` in {_REFERENCE_GENERATOR_REL} parsed to an empty list"
+        )
+    return roots
+
+
 def _reference_input(path: str) -> bool:
-    return (
-        (_under(path, "src/jvmMain/kotlin/afield/stdlib") and path.endswith(".kt"))
-        or (_under(path, "src/jvmMain/kotlin/afield/visualization") and path.endswith(".kt"))
-        or (_under(path, "public/docs") and path.endswith(".md"))
+    # The generator is its own input: every page's text comes out of this file's blurbs, category
+    # map and renderers, so editing it restages all 20 committed pages. It is not under any of
+    # SOURCE_ROOTS, so it has to be named.
+    if path == _REFERENCE_GENERATOR_REL:
+        return True
+    if _under(path, "public/docs") and path.endswith(".md"):
+        return True
+    return path.endswith(".kt") and any(
+        _under(path, root) for root in _reference_source_roots()
     )
 
 
