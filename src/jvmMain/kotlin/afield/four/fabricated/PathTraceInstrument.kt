@@ -50,7 +50,7 @@ import kotlin.math.min
  *    values, grouped rather than flat, with the derived facts beside them and the sub-objects still
  *    reachable so each one lands on its own printer.
  *
- * ## The fact reflection cannot reach
+ * ## The up vector the tracer actually uses
  *
  * The tracer does not use `camera.up`. `updateFrame` builds its own up as `right × forward`, i.e.
  * the part of the declared up that is perpendicular to the view direction, normalised, and that is

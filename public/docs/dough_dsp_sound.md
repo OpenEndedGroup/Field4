@@ -13,8 +13,8 @@ plots are `showSignals` Plotly figures of the same run.
 [Sound: the Pattern → Audio Path](sound.md) audits every audio clip in these docs and names the
 family that produced each one.
 
-In each runner block the interesting part, constructing and driving the primitive, is in focus,
-and the render-and-plot boilerplate is folded behind a `+ …` pill you can click to reveal. The
+In each runner block the code that constructs and drives the primitive is in focus, and the
+render-and-plot boilerplate is folded behind a `+ …` pill you can click to reveal. The
 offline `dough*` helpers it calls
 (`doughRenderMono`, `doughRenderStereoMono`, `doughRenderGated`, `doughPluckEnv`, and the
 plot-shaping `doughAbsEnvelope` / `doughShortTimeRms` / `doughShortTimeBrightness` /

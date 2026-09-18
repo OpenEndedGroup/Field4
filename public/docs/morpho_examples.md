@@ -281,8 +281,8 @@ showPlaneGrid(
 The middle panel does the work here. It is the view along the axis the flat renderer throws away,
 and if the layout were planar it would be a single horizontal line. It is not.
 
-A still can always be accused of a lucky camera, so here is the camera moving. The circuit is fully
-grown and completely static; only the azimuth changes.
+The clip below orbits the same circuit, so no single angle is doing the work. It is fully grown and
+completely static; only the azimuth changes.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/morpho_examples/orbit.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="12" fps="20" timeout="360" w="820" name="morpho-orbit-video" alt="a fully grown 32-bit Brent-Kung adder rotating slowly about its vertical axis, never flattening into a line at any angle, showing that the force-directed layout occupies three dimensions"}
 :::static

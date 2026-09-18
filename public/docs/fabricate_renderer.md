@@ -51,7 +51,7 @@ Use the high-level layer for:
 - `bundle.addLight(...)` + `bundle.syncLights()`: directional/point/spot lights; `bundle.showEnvironmentBackground()` draws the environment map as the backdrop.
 - `bundle.postStack`, `bundle.addShaderEffect(...)`, `bundle.setToneMapping(...)`, `bundle.addBloom(...)`: fullscreen image effects, tone mapping, and bloom after opaque and transparent composition.
 
-Drop down to raw `Module`, `Mesh`, `RenderToTexture`, or push constants when you need a shader or buffer layout that the bundle does not know about yet. The important part is to keep transform/material intent in the scene graph and let the planner classify it before the module maps are committed.
+Drop down to raw `Module`, `Mesh`, `RenderToTexture`, or push constants when you need a shader or buffer layout that the bundle does not know about yet. Keep transform/material intent in the scene graph even then, and let the planner classify it before the module maps are committed.
 
 The current built-in frame graph is:
 

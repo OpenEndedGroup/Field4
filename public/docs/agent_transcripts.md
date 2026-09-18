@@ -439,8 +439,8 @@ the first box to a mesh file of your own; boxes two and three clean up the temp 
 
 ### typography_worked_example
 
-[Typography as geometry](typography_examples.md) as eight boxes, and
-the interesting thing about it is that there is no AWT rasteriser anywhere in the file: AWT is touched
+[Typography as geometry](typography_examples.md) as eight boxes, none of
+which uses an AWT rasteriser: AWT is touched
 only to read a font's glyph outlines, and every picture after that is Field's own scanline filler or
 Skia SVG. *A string becomes contours* prints, per glyph, the contour and hole counts, the advance, and
 each ring's depth and *signed* area, which is where the winding convention becomes visible. *The

@@ -9,8 +9,8 @@ has to it lives in `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
 three, and the argument it makes is that *"are they related?"* is six different questions with six
 different answers, and picking the wrong one is how you miss a relationship that is staring at you.
 
-The boring, indispensable half gives you count, quartiles, IQR, MAD, skew, kurtosis, histograms and
-a streaming window of all of it. The interesting half gives you Pearson, Spearman, Kendall,
+Summary statistics are one half: count, quartiles, IQR, MAD, skew, kurtosis, histograms and a
+streaming window of all of it. Dependence coefficients are the other: Pearson, Spearman, Kendall,
 Chatterjee's xi, distance correlation, a MIC-like grid scan, and rolling versions of the last two.
 And one file is the odd one out. `quantilewarp.kt` reshapes a signal's *distribution* into one you
 chose, which is what you reach for when the problem is not "are these related" but "this signal is
