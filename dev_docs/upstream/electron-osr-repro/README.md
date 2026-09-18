@@ -12,4 +12,4 @@ solid animating background, so a correct buffer cannot be zero.
 
 The full report and evidence table are in
 [`../electron-osr-linux-shared-texture.md`](../electron-osr-linux-shared-texture.md); the Field-side
-context is in [`../external_browser_surfaces.md`](../external_browser_surfaces.md).
+context is in [`../../external_browser_surfaces.md`](../../external_browser_surfaces.md).
