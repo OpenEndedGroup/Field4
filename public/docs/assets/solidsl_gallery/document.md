@@ -58,7 +58,7 @@ part.allRefusals().forEach {
 if (part.allRefusals().isEmpty()) println("  (nothing — every node has an exact CSG form)")
 println()
 
-// There are two flavours here, and flattening them would lose the interesting one.
+// The catalogue, and why the last two refusals are a different kind from the first two.
 println("The catalogue, in full — try each of these:")
 listOf<Pair<String, SolidExpr>>(
     "smoothUnion(a, b, k)" to smoothUnion(sphere(1.0), cuboid(1.0, 1.0, 1.0), k = 0.2),
@@ -91,7 +91,7 @@ println("---- the hybrid build ----")
 println(build.report())
 println()
 
-// What the naive version would have cost, measured rather than asserted.
+// What the naive version would have cost: one level set over the whole part, same edge length.
 val raw = part.bounds()!!
 val edge = maxOf(raw.size.x, raw.size.y, raw.size.z) / 90.0
 val naive = afield.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge, parallel = true) { x, y, z ->
@@ -193,12 +193,11 @@ if (!ManifoldLibrary.isAvailable) {
 val q = SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 110.0)
 val agreement = part.crossCheck(q)
 
-// First: is side B actually independent of side A? Claiming "they share no code" is not
-// worth much on its own — if this shape had refused the exact path, side B would be a level
-// set over the SAME field side A samples, and the two would agree even if the field were
-// wrong. So it is demonstrated rather than asserted, by a property the two paths cannot
-// share: the exact lowering has no edgeLength input at all. Refine the march and a genuinely
-// exact solid CANNOT move.
+// First: is side B actually independent of side A? If this shape had refused the exact path,
+// side B would be a level set over the SAME field side A samples, and the two would agree
+// even if the field were wrong. The property the two paths cannot share is edgeLength: the
+// exact lowering has no edgeLength input at all, so refine the march and a genuinely exact
+// solid CANNOT move.
 println("---- is the comparison independent? ----")
 val coarse = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 40.0))
 val fine = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 110.0))
