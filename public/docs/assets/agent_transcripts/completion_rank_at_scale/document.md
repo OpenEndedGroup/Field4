@@ -101,7 +101,7 @@ index declines rather than borrowing -- which is exactly the population the defe
 about. `afield.stdlib.TriMesh` is another Field type.
 
 ```edn [field-box id="classify" role="properties"]
-{"id" "classify" "index" 1 "name" "category + prior" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "category + prior" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "classify_code_.kt" "lines" 87 "characters" 5235 "sha256" "4d0dfe695cc0910d5bd57818a74673e6afbe1b85768c7e22f4b4d1f7adeef5a4"}]}
+{"id" "classify" "index" 1 "name" "category + prior" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "category + prior" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "classify_code_.kt" "lines" 88 "characters" 5261 "sha256" "24d3e686cdc5c56661edab6cd03f2611d864b7c2346150a3061c046bbe46465e"}]}
 ```
 
 ```kotlin [field-property box="classify" name="code" path="classify_code_.kt"]
@@ -161,8 +161,9 @@ val classified = shown.map { r ->
     Triple(r, fromIndex, CommonMemberPrior.rankOf(RECEIVER, r[0]))
 }
 
-// The rows with a prior first: the popup's only prior is the point, and it would be invisible in a
-// slice of an alphabetical list (FLine's eight declared members all sort past the `by…` family).
+// The rows with a prior first: a prior is the only thing that moves a member up the popup, and
+// it would be invisible in a slice of an alphabetical list (FLine's eight declared members all
+// sort past the `by…` family).
 val ordered = classified.sortedWith(compareBy({ if (it.third > 0) 0 else 1 }, { it.third }))
 
 // The last expression is what the box shows in its output panel.

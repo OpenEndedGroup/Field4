@@ -205,7 +205,7 @@ pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION,
 the note count does not change when you read it.
 
 ```edn [field-box id="pat_demo_parameter" role="properties"]
-{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 26 "characters" 1183 "sha256" "ff4f430d58ad8a1e9aa9dc69c3cce6e6f6a92ff24048e3f6102626029c29a0a4"}]}
+{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 27 "characters" 1222 "sha256" "cfbd4b6bea20a14089fe8bfc51a65195f380501aa27c2bba31e84c66a970ae35"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_parameter" name="code" path="pat_demo_parameter_code_.kt"]
@@ -222,7 +222,8 @@ for (n in listOf(4, 8, 16)) {
     println("bd*%-2d -> %2d notes, cutoff %s".format(n, notes.size,
         notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) }))
 }
-// appBoth is the other choice, and it is not a bug — it fragments on purpose:
+// appBoth is the other choice: it intersects both sides, so a 16-step sweep cuts
+// each note where the curve steps:
 println("appBoth against a 16-step sweep -> " +
     pat("45*4").appBoth(curve.segment(16)) { a, _ -> a }
         .events(PatArc(PatQ.ZERO, PatQ.ONE)).size + " events")

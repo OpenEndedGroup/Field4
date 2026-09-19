@@ -298,7 +298,7 @@ is what makes the result watertight, and what makes genus a meaningful question 
 letter.
 
 ```edn [field-box id="typo_mesh" role="properties"]
-{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 48 "characters" 2763 "sha256" "92b28fe33099a5f6bcc70eb6894184fb106649ea67d92855eddcbbabc4f4b540"}]}
+{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 48 "characters" 2750 "sha256" "f0344396b211d9f840bab5788774168b4a1f0d1c8933b488c117ea9065b06b7a"}]}
 ```
 
 ```kotlin [field-property box="typo_mesh" name="code" path="typo_mesh_code_.kt"]
@@ -333,10 +333,10 @@ println("'o': ink area x depth = ${"%.0f".format(expected)}, mesh volume ${"%.0f
     "relative difference ${"%.2e".format(kotlin.math.abs(expected - measured) / expected)}")
 
 // Back-face culling is on in MeshView, so a wall wound inside out would be a MISSING wall
-// here rather than merely odd shading. Note what is NOT here: flatShaded(). showMeshGrid
-// computes topology() on what you hand it and prints it in the caption, and flatShaded()
-// un-welds every triangle — so a flat-shaded copy would caption these as open, directly
-// under a title stating their genus. It is also unnecessary: the render path applies
+// here rather than merely odd shading. No flatShaded() either: showMeshGrid computes
+// topology() on what you hand it and prints it in the caption, and flatShaded() un-welds
+// every triangle — so a flat-shaded copy would caption these as open, directly under a
+// title stating their genus. It is also unnecessary: the render path applies
 // shadedNormals to an unshaded mesh for you (mesh_field.kt:246).
 showMeshGrid(
     "o — genus ${o.genus()}" to o,

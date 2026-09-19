@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_vision_geometry_desk_preview" index="0" -->
 
 ```edn [field-box id="agent_vision_geometry_desk_preview" role="properties"]
-{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 2985 "sha256" "385d2650eface64ff78bb3bb02fa038dbffd84f7590599bf58b0cecb3cc590fb"}]}
+{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 2988 "sha256" "37bb3186068b290e5035be50a2891c4fbd7832f154dee20a1f948fed1f7a5856"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview" name="code" path="agent_vision_geometry_desk_preview_code_.kt"]
@@ -72,8 +72,8 @@ val program = """
 val capture = try {
     previewVisionGeometry(source = program)
 } catch (missing: VisionGeometryPreview.NodeUnavailable) {
-    // The preview runs the box's real compiled program, so there is nothing honest to draw
-    // without node. Say so rather than inventing a picture.
+    // The mesh comes from running the box's own compiled program, so without node there
+    // is no mesh at all. Print why instead of a stand-in picture.
     println("geometry preview needs node on PATH: " + missing.message)
     null
 }

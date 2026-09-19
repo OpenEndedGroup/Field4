@@ -70,8 +70,8 @@ operations:
           val capture = try {
               previewVisionGeometry(source = program)
           } catch (missing: VisionGeometryPreview.NodeUnavailable) {
-              // The preview runs the box's real compiled program, so there is nothing honest to draw
-              // without node. Say so rather than inventing a picture.
+              // The mesh comes from running the box's own compiled program, so without node there
+              // is no mesh at all. Print why instead of a stand-in picture.
               println("geometry preview needs node on PATH: " + missing.message)
               null
           }
