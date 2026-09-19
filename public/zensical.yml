@@ -156,6 +156,7 @@ nav:
     - FieldML Cheatsheet: fieldml_cheatsheet.md
     - FieldML Examples: fieldml_examples.md
     - FieldML JVM Bridge: fieldml_host_bridge.md
+    - FieldML Stage by Stage: fieldml_stages.md
     - StackSL Cheatsheet: stacksl_cheatsheet.md
     - StackSL Examples: stacksl_examples.md
     - RectSL Cheatsheet: rectsl_cheatsheet.md

@@ -350,7 +350,7 @@ object LambdaTerms {
      * The interesting case is a variable, because an interaction net has no notion of a wire that forks. A binder used
      * *once* is a single wire from `LAM.aux(0)` to the use. Used *n* times it is a right-nested tree of `n - 1`
      * [Lambda.DUP] fans, each carrying **its own fresh [Lambda.FAN_LABEL]** — distinct labels rather than one per
-     * binder, so that no two fans of the same tree can ever meet and wrongly annihilate. Never used, it is a
+     * binder, so that no two fans of the same tree START OUT able to meet and wrongly annihilate. Reduction does not preserve that: copying a fan copies its label. Never used, it is a
      * [Lambda.ERASE]: the binder still has to go somewhere, and an interaction net may not simply drop a wire.
      *
      * Positions are seeded by syntactic depth so the net is legible before any [Net.relax] has run. That matters for a

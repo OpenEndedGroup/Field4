@@ -16,7 +16,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [synth.kt](../src/jvmMain/kotlin/afield/four/synth/synth.kt) | Synthesis | sound_paths | 52 | 0 | 25% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 43 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
-| [Expr.kt](../src/jvmMain/kotlin/afield/ml/ast/Expr.kt) | Languages | pattern_rewrite | 32 | 57 | 3% |
+| [Expr.kt](../src/jvmMain/kotlin/afield/ml/ast/Expr.kt) | Languages | fieldml_stages, pattern_rewrite | 32 | 57 | 3% |
+| [TypedAst.kt](../src/jvmMain/kotlin/afield/ml/type/TypedAst.kt) | Languages | fieldml_stages | 29 | 60 | 3% |
+| [Core.kt](../src/jvmMain/kotlin/afield/ml/core/Core.kt) | Languages | fieldml_stages | 29 | 45 | 2% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 103 | 3% |
@@ -119,8 +121,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorphoFLines.kt](../src/jvmMain/kotlin/afield/morpho/MorphoFLines.kt) | Languages | morpho_examples | 0 | 1 | 91% |
 | [keyframer.kt](../src/jvmMain/kotlin/afield/stdlib/keyframer.kt) | Graphics | keyframer_examples, interpolants_examples | 0 | 1 | 98% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 93% |
-| [TypedAst.kt](../src/jvmMain/kotlin/afield/ml/type/TypedAst.kt) | Languages | — | 29 | 60 | 3% |
-| [Core.kt](../src/jvmMain/kotlin/afield/ml/core/Core.kt) | Languages | — | 29 | 45 | 2% |
 | [AbletonSet.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSet.kt) | Audio | — | 26 | 163 | 0% |
 | [PatFunctions.kt](../src/jvmMain/kotlin/afield/four/synth/PatFunctions.kt) | Patterns | — | 21 | 21 | 12% |
 | [RemoteJS.kt](../src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt) | Languages | — | 18 | 8 | 7% |
@@ -327,54 +327,54 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `EField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:147` |
 | `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:153` |
 | `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:170` |
-| `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:582` |
-| `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:147` |
-| `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:153` |
-| `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:168` |
-| `PythonExecution` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:233` |
-| `PythonInterface` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:1432` |
-| `Vec2d` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:105` |
-| `Vec4f` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:117` |
-| `Token` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:144` |
-| `RectLangException` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:155` |
-| `Value` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:171` |
-| `VNum` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:172` |
-| `VStr` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:173` |
-| `VColor` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:174` |
-| `VVec2` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:175` |
-| `VPaint` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:176` |
-| `VTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:177` |
-| `VRect` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:178` |
-| `VGroup` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:179` |
-| `VSelection` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:180` |
-| `VQuote` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:181` |
-| `VMaterialRef` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:182` |
-| `VFn` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:183` |
-| `VData` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:184` |
-| `RectLangTokenizer` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:204` |
-| `TrackValueKind` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:384` |
-| `TrackOp2` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:468` |
-| `TrackOp3` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:528` |
-| `Track` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:662` |
-| `ConstantTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:667` |
-| `TcbTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:731` |
-| `LinearScalarTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:819` |
-| `HoldScalarTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:840` |
-| `MappedDoubleTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1018` |
-| `BinaryDoubleTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1026` |
-| `TernaryDoubleTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1035` |
-| `TimeWarpTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1045` |
-| `UnitKind` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1121` |
-| `Origin` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1127` |
-| `FitPolicy` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1132` |
-| `WallSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1138` |
-| `PaintSpec` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1145` |
-| `GradientSpace` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1157` |
-| `MaterialBinding` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1162` |
-| `Node` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1170` |
-| `RectNode` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1174` |
-| `GroupNode` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1190` |
-| `ShaderModuleSpec` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1202` |
-| `MaterialTable` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1211` |
+| `CInt` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:29` |
+| `CFloat` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:30` |
+| `CBool` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:31` |
+| `CString` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:32` |
+| `CVar` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:33` |
+| `CTuple` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:34` |
+| `CList` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:35` |
+| `CTypeDecl` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:37` |
+| `CoreConstructor` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:44` |
+| `CLet` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:49` |
+| `CLam` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:58` |
+| `CApp` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:65` |
+| `CIf` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:71` |
+| `CorePattern` | interface | `src/jvmMain/kotlin/afield/ml/core/Core.kt:78` |
+| `CPWildcard` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:82` |
+| `CPVar` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:83` |
+| `CPInt` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:84` |
+| `CPBool` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:85` |
+| `CPString` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:86` |
+| `CPTuple` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:87` |
+| `CPList` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:88` |
+| `CPConstructor` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:90` |
+| `CPCons` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:96` |
+| `CMatchCase` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:102` |
+| `CMatch` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:107` |
+| `CRecord` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:113` |
+| `CField` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:118` |
+| `CBinary` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:124` |
+| `CNegate` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:131` |
+| `TExprInt` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:35` |
+| `TExprFloat` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:36` |
+| `TExprBool` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:37` |
+| `TExprString` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:38` |
+| `TExprVar` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:39` |
+| `TExprTuple` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:40` |
+| `TExprList` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:41` |
+| `TExprTypeDecl` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:43` |
+| `TypedConstructor` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:51` |
+| `TExprLet` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:57` |
+| `TExprLambda` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:72` |
+| `TExprCall` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:79` |
+| `TExprIf` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:86` |
+| `TPattern` | interface | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:94` |
+| `TPWildcard` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:99` |
+| `TPVar` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:100` |
+| `TPInt` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:101` |
+| `TPBool` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:102` |
+| `TPString` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:103` |
+| `TPTuple` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:104` |
 
 …and **643 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

@@ -1823,7 +1823,7 @@ tasks.register<JavaExec>("runAgentToolDemo") {
 
 tasks.register<JavaExec>("generateCodebaseReference") {
     group = "documentation"
-    description = "Regenerates the committed codebase reference (public/docs/reference/) from the KDoc in afield.stdlib and afield.visualization. Pass -Pout=<dir> to write elsewhere; with no output dir the generator drift-checks the committed pages instead."
+    description = "Regenerates the committed codebase reference (public/docs/reference/) from the KDoc in the 17 packages StdlibReferenceGenerator.SOURCE_ROOTS names — afield.stdlib and afield.visualization, the audio/physics/renderer roots, and the ten small languages. Pass -Pout=<dir> to write elsewhere; with no output dir the generator drift-checks the committed pages instead."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.StdlibReferenceGenerator")
@@ -1839,9 +1839,13 @@ tasks.register<JavaExec>("checkCodebaseReference") {
     mainClass.set("afield.docs.StdlibReferenceGenerator")
 }
 
-// public/docs/reference/ and dev_docs/kdoc_worklist.md are generated from the KDoc in
-// afield.stdlib and afield.visualization, so *any* edit to a summary in those packages can put them
-// out of date — and the pages are published. Wiring the byte-exact guard into `check` means the
+// public/docs/reference/ and dev_docs/kdoc_worklist.md are generated from the KDoc in the packages
+// StdlibReferenceGenerator.SOURCE_ROOTS names — seventeen of them as of 2026-09-11, not the two this
+// comment used to claim — so *any* edit to a summary in any of them can put the pages
+// out of date, and the pages are published. `tools/check_staged_generated_artifacts.py` reads that
+// same list out of the generator rather than keeping its own copy; the copy it used to keep named
+// two roots and so was blind to 232 of the generator's 402 tracked input files. Wiring the
+// byte-exact guard into `check` means the
 // staleness is caught by an ordinary build rather than only by the docs.codebase-reference.generate
 // FIELD_TEST, which needs the test catalog to be run. Fix a failure with:
 //   ./gradlew generateCodebaseReference

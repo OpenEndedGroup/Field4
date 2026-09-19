@@ -1228,6 +1228,8 @@ in is written down.
 
 `src/jvmMain/kotlin/afield/ml/FieldMLCompiler.kt` — [read the source](source/jvmMain/afield/ml/FieldMLCompiler/)
 
+**Used in:** [FieldML stage by stage](../fieldml_stages.md)
+
 ### CompilationResult { #fieldmlcompiler-kt-compilationresult }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CompilationResult</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Token</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">surface</span><span class="p">:</span> <span class="nc">Expr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">TExpr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">core</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/FieldMLCompiler/#L38)
@@ -1459,7 +1461,7 @@ after it gets `EVar("Unit")` for a body.
 
 `src/jvmMain/kotlin/afield/ml/ast/Expr.kt` — [read the source](source/jvmMain/afield/ml/ast/Expr/)
 
-**Used in:** [Rewriting your own syntax](../pattern_rewrite.md)
+**Used in:** [FieldML stage by stage](../fieldml_stages.md), [Rewriting your own syntax](../pattern_rewrite.md)
 
 ### Expr { #expr-kt-expr }
 
@@ -1744,6 +1746,8 @@ this point a `let f x = ...`'s parameters are the lambda sitting in its `value`.
 already done its work in inference.
 
 `src/jvmMain/kotlin/afield/ml/core/Core.kt` — [read the source](source/jvmMain/afield/ml/core/Core/)
+
+**Used in:** [FieldML stage by stage](../fieldml_stages.md)
 
 ### CoreExpr { #core-kt-coreexpr }
 
@@ -2478,6 +2482,8 @@ probe program and looks for the [`TExprLambda`](languages.md#typedast-kt-texprla
 caret, which is how a callback's parameters have types before a reader has written any.
 
 `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt` — [read the source](source/jvmMain/afield/ml/type/TypedAst/)
+
+**Used in:** [FieldML stage by stage](../fieldml_stages.md)
 
 ### Top-level functions { #typedast-kt-functions }
 

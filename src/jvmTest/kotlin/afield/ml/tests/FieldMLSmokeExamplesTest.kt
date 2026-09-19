@@ -65,6 +65,7 @@ class FieldMLSmokeExamplesTest {
             Path.of("public/docs/fieldml_examples.md"),
             Path.of("public/docs/fieldml_cheatsheet.md"),
             Path.of("public/docs/fieldml_host_bridge.md"),
+            Path.of("public/docs/fieldml_stages.md"),
         )
 
         docsPages.forEach { docsPath ->
@@ -446,6 +447,7 @@ class FieldMLSmokeExamplesTest {
             Path.of("public/docs/fieldml_examples.md"),
             Path.of("public/docs/fieldml_cheatsheet.md"),
             Path.of("public/docs/fieldml_host_bridge.md"),
+            Path.of("public/docs/fieldml_stages.md"),
         ).forEach { page ->
             fieldMLDocSnippets(page.toFile().readText()).forEach { FieldMLCompiler.compile(it) }
         }
