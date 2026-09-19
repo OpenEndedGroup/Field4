@@ -1,5 +1,8 @@
 package afield.four
 
+import afield.four.fabricated.GltfSkinPose
+import afield.four.fabricated.PathTraceScene
+import afield.four.fabricated.importGltf
 import afield.four.modules.GltfSkinning
 import afield.four.modules.GltfSupport
 import afield.four.modules.RiggedFixture
@@ -7,6 +10,7 @@ import afield.four.modules.assimpToTriMesh
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.stdlib.TriMesh
 import afield.stdlib.Vec3
+import afield.stdlib.bounds
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -269,6 +273,37 @@ class GltfSkinningTest {
         println("[skinning] transforms.gltf: ${rigid.meshes.size} meshes, " +
             "${rigid.meshes.count { it.skin != null }} skinned")
         assertEquals(0, rigid.meshes.count { it.skin != null }, "a rigid file must gain no skin")
+    }
+
+    @Test
+    fun thePathTracerNoLongerRefusesASkinnedMeshAndTracesItDeformed() {
+        // Until 2026-09-19 this line was `require(mesh.mNumBones()==0)` and the whole file's only
+        // mention of a bone was its error message. The two-sided version of "the refusal is lifted"
+        // is that the import now succeeds AND that what it traced is the deformed surface, measured
+        // against the CPU bridge's bounds rather than merely against a non-zero triangle count.
+        val bind = PathTraceScene().let { it to it.importGltf(fixture) }
+        val bent = PathTraceScene().let { it to it.importGltf(fixture, pose = GltfSkinPose("bend", 1f)) }
+        println("[skinning] path trace @ rest: ${bind.second.triangleCount} triangles, " +
+            "x in [${bind.second.boundsMin.x}, ${bind.second.boundsMax.x}]")
+        println("[skinning] path trace @ bend t=1: ${bent.second.triangleCount} triangles, " +
+            "x in [${bent.second.boundsMin.x}, ${bent.second.boundsMax.x}]")
+        assertEquals(RiggedFixture.TRIANGLE_COUNT, bind.second.triangleCount)
+        assertEquals(RiggedFixture.TRIANGLE_COUNT, bent.second.triangleCount)
+
+        val cpu = skinnedGltfToTriMesh(fixture, clip = "bend", seconds = 1f).bounds()
+        println("[skinning] CPU bridge @ bend t=1: x in [${cpu.min.x}, ${cpu.max.x}], " +
+            "y in [${cpu.min.y}, ${cpu.max.y}]")
+        assertEquals(cpu.min.x, bent.second.boundsMin.x, 1e-5f, "the tracer and the CPU bridge must agree")
+        assertEquals(cpu.max.x, bent.second.boundsMax.x, 1e-5f)
+        assertEquals(cpu.min.y, bent.second.boundsMin.y, 1e-5f)
+        assertEquals(cpu.max.y, bent.second.boundsMax.y, 1e-5f)
+        // And the rest pose is genuinely different, so `pose` is not being ignored.
+        assertEquals(-RiggedFixture.RADIUS, bind.second.boundsMin.x, 1e-5f, "the rest pose is a straight tube")
+        assertTrue(bent.second.boundsMin.x < -1.9f, "t = 1 reaches past x = -1.9; got ${bent.second.boundsMin.x}")
+
+        val named = bent.second.warnings.any { "traced deformed" in it }
+        println("[skinning] path-trace warnings: ${bent.second.warnings}")
+        assertTrue(named, "the import must say which pose it traced; got ${bent.second.warnings}")
     }
 
     @Test

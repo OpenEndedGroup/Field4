@@ -1,5 +1,6 @@
 package afield.four.fabricated
 
+import afield.four.modules.GltfSkinning
 import afield.four.modules.GltfSupport
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
@@ -37,6 +38,24 @@ import kotlinx.serialization.json.*
  * and `PathTraceGltfGpuSmoke` pins all of it against known byte values through real GPU traversal.
  */
 
+/**
+ * Which pose a **skinned** mesh is traced in.
+ *
+ * The tracer holds world-space triangles and has no scene graph, so a skinned mesh has to be
+ * deformed before it can be traced at all. Until 2026-09-19 `importGltf` refused one outright
+ * (`"Skinned glTF meshes need skin deformation before path tracing"`); it now runs
+ * [afield.four.modules.GltfSkinning] and traces the deformed surface. This says at what time.
+ *
+ * `null` — the default — is the rest pose, which for a file whose first keys are its bind
+ * transforms is the bind pose and is identical to what the old refusal was protecting you from
+ * getting silently.
+ *
+ * @param clip the animation's name, or `null` for the rest pose. An unknown name fails the import
+ *   rather than quietly tracing the rest pose.
+ * @param seconds the time within the clip, clamped at both ends.
+ */
+data class GltfSkinPose(val clip: String? = null, val seconds: Float = 0f)
+
 /** Details of one static import. Material IDs also select materials in shadeMaterial(). */
 data class PathTraceGltfImport(val triangleCount: Int, val materialIds: Map<String, Int>,
     val boundsMin: Vector3f, val boundsMax: Vector3f, val warnings: List<String>)
@@ -49,7 +68,8 @@ data class PathTraceGltfImport(val triangleCount: Int, val materialIds: Map<Stri
  */
 fun PathTraceScene.importGltf(path: String, transform: Matrix4f = Matrix4f(),
     material: (name: String, value: PathTraceMaterial) -> PathTraceMaterial = { _, value -> value },
-    warning: (String) -> Unit = { println("glTF: $it") }): PathTraceGltfImport {
+    warning: (String) -> Unit = { println("glTF: $it") },
+    pose: GltfSkinPose? = null): PathTraceGltfImport {
     require(Path.of(path).fileName.toString().substringAfterLast('.').lowercase() in setOf("gltf", "glb")) {
         "Expected a glTF 2.0 .gltf or .glb file"
     }
@@ -75,7 +95,8 @@ fun PathTraceScene.importGltf(path: String, transform: Matrix4f = Matrix4f(),
     try {
         require(imported.mFlags() and AI_SCENE_FLAGS_INCOMPLETE == 0) { "Incomplete glTF scene" }
         val root = requireNotNull(imported.mRootNode()) { "glTF has no scene root" }
-        if (imported.mNumAnimations()>0) messages += "Animation is not evaluated; importing the default node transforms."
+        // Node-level (rigid) animation is still not evaluated. Skin deformation IS, per-mesh, below.
+        if (imported.mNumAnimations()>0) messages += "Node animation is not evaluated; importing the default node transforms."
         val textureCache = mutableMapOf<List<Any>,Int>()
         data class Slot(val texture: Int = -1, val uv: Int = 0,
             val ox: Float = 0f, val oy: Float = 0f, val sx: Float = 1f, val sy: Float = 1f, val rotation: Float = 0f)
@@ -160,6 +181,22 @@ fun PathTraceScene.importGltf(path: String, transform: Matrix4f = Matrix4f(),
             val id=staging.material(material(name,value));materialSlots+=slots
             names[if (name in names) "$name#$i" else name]=materials.size+id
         }
+        // The skeleton is scene-wide, so it is read once and only when some mesh actually has bones.
+        val skeletonNodes by lazy { GltfSkinning.readNodes(imported) }
+        val skeletonClips by lazy { GltfSkinning.readClips(imported,skeletonNodes,60f) }
+        fun deform(mesh: AIMesh): GltfSkinning.SkinnedVertices {
+            val skin=requireNotNull(GltfSkinning.readMeshSkin(mesh,skeletonNodes,skeletonClips)) {
+                "Skinned glTF mesh '${mesh.mName().dataString()}' has bones Assimp would not hand over"
+            }
+            val n=mesh.mNumVertices()
+            val p=FloatArray(n*3); val src=mesh.mVertices()
+            for (j in 0 until n) { val v=src[j];p[j*3]=v.x();p[j*3+1]=v.y();p[j*3+2]=v.z() }
+            val ns=mesh.mNormals()?.let { normals -> FloatArray(n*3).also {
+                for (j in 0 until n) { val v=normals[j];it[j*3]=v.x();it[j*3+1]=v.y();it[j*3+2]=v.z() } } }
+            val clip=pose?.clip?.let { name -> requireNotNull(skin.skeleton.clip(name)) {
+                "glTF has no animation named '$name'; it has ${skin.skeleton.clips.map { c -> c.name }}" } }
+            return GltfSkinning.skin(p,ns,skin.influences,skin.skeleton.palette(clip,pose?.seconds ?: 0f))
+        }
         fun walk(node: AINode, parent: Matrix4f) {
             val m=node.mTransformation()
             val local=Matrix4f(m.a1(),m.b1(),m.c1(),m.d1(),m.a2(),m.b2(),m.c2(),m.d2(),
@@ -170,11 +207,25 @@ fun PathTraceScene.importGltf(path: String, transform: Matrix4f = Matrix4f(),
             val normalMatrix=Matrix4f(world).invert().transpose()
             for (k in 0 until node.mNumMeshes()) {
                 val mesh=AIMesh.create(imported.mMeshes()!![node.mMeshes()!![k]])
-                require(mesh.mNumBones()==0) { "Skinned glTF meshes need skin deformation before path tracing" }
                 require(mesh.mNumAnimMeshes()==0) { "Morph-target glTF meshes are not supported yet" }
+                // Skinned meshes are traced DEFORMED at `pose`, not silently traced at bind. Linear
+                // blend skinning puts them in scene space already -- glTF 2.0 3.7.3.2 ignores a
+                // skinned mesh node's own transform -- so the node's world matrix must NOT be applied
+                // on top; only the caller's root `transform` is.
+                val skinned=if (mesh.mNumBones()==0) null else deform(mesh)
+                if (skinned!=null) messages += "Skinned mesh '${mesh.mName().dataString()}' is traced " +
+                    "deformed at ${pose?.let { "'${it.clip ?: "rest"}' t=${it.seconds}s" } ?: "the rest pose"}."
+                val place=if (skinned!=null) transform else world
+                val placeDeterminant=if (skinned!=null) transform.determinant() else determinant
+                require(placeDeterminant.isFinite() && kotlin.math.abs(placeDeterminant)>1e-20f) { "Singular glTF import transform" }
+                val placeNormal=if (skinned!=null) Matrix4f(transform).invert().transpose() else normalMatrix
                 val mat=mesh.mMaterialIndex();val slots=materialSlots[mat]
-                val positions=List(mesh.mNumVertices()) { j -> mesh.mVertices()[j].let { world.transformPosition(Vector3f(it.x(),it.y(),it.z())) } }
-                val normals=mesh.mNormals()?.let { ns -> List(mesh.mNumVertices()) { j -> ns[j].let { normalMatrix.transformDirection(Vector3f(it.x(),it.y(),it.z())).normalize() } } }
+                val positions=if (skinned!=null)
+                    List(mesh.mNumVertices()) { j -> place.transformPosition(Vector3f(skinned.position[j*3],skinned.position[j*3+1],skinned.position[j*3+2])) }
+                else List(mesh.mNumVertices()) { j -> mesh.mVertices()[j].let { world.transformPosition(Vector3f(it.x(),it.y(),it.z())) } }
+                val normals=if (skinned?.normal!=null)
+                    List(mesh.mNumVertices()) { j -> placeNormal.transformDirection(Vector3f(skinned.normal[j*3],skinned.normal[j*3+1],skinned.normal[j*3+2])).normalize() }
+                else mesh.mNormals()?.let { ns -> List(mesh.mNumVertices()) { j -> ns[j].let { normalMatrix.transformDirection(Vector3f(it.x(),it.y(),it.z())).normalize() } } }
                 val coords=List(mesh.mNumVertices()) { j -> FloatArray(8).also { out ->
                     slots.forEachIndexed { t,s -> if (s.texture>=0) {
                         require(s.uv in 0..7) { "Unsupported UV channel ${s.uv}" }
@@ -190,7 +241,7 @@ fun PathTraceScene.importGltf(path: String, transform: Matrix4f = Matrix4f(),
                     val face=mesh.mFaces()[f]
                     if (face.mNumIndices()!=3) { messages += "Point and line primitives are omitted.";continue }
                     val ids=IntArray(3) { face.mIndices()[it] }
-                    if (determinant<0f) { val temp=ids[1];ids[1]=ids[2];ids[2]=temp }
+                    if (placeDeterminant<0f) { val temp=ids[1];ids[1]=ids[2];ids[2]=temp }
                     val p=ids.map { positions[it] }
                     val area=Vector3f(p[1]).sub(p[0]).cross(Vector3f(p[2]).sub(p[0])).lengthSquared()
                     if (area<=1e-16f) { messages += "Degenerate triangles are omitted.";continue }
