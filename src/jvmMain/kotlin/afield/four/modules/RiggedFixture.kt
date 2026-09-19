@@ -146,6 +146,17 @@ object RiggedFixture {
         val curlLower = zQuat(0.0) + zQuat(25.0) + zQuat(0.0)
         val curlUpper = zQuat(0.0) + zQuat(55.0) + zQuat(0.0)
 
+        // `twist` rotates about the BONE'S OWN AXIS, which is the one case linear blend skinning
+        // cannot do. The bones run up +y, so this is a +y rotation, and 180 degrees is where it is
+        // worst: at the joint ring the two influences are near 0.5/0.5, and averaging a matrix with
+        // its own 180-degree rotation gives a matrix that has collapsed the cross-section to a line.
+        // That is the "candy wrapper", and it is why `twist` exists rather than a third bend.
+        fun yQuat(degrees: Double): FloatArray {
+            val half = Math.toRadians(degrees) / 2.0
+            return floatArrayOf(0f, Math.sin(half).toFloat(), 0f, Math.cos(half).toFloat())
+        }
+        val twistUpper = yQuat(0.0) + yQuat(180.0) + yQuat(0.0)
+
         val views = ArrayList<IntArray>() // (byteOffset, byteLength)
         val bytes = java.io.ByteArrayOutputStream()
         fun align() { while (bytes.size() % 4 != 0) bytes.write(0) }
@@ -172,6 +183,7 @@ object RiggedFixture {
         val vBendUpper = floats(bendUpper)
         val vCurlLower = floats(curlLower)
         val vCurlUpper = floats(curlUpper)
+        val vTwistUpper = floats(twistUpper)
 
         val base64 = Base64.getEncoder().encodeToString(bytes.toByteArray())
         val bufferViews = views.joinToString(",\n   ") { (o, l) ->
@@ -206,7 +218,10 @@ object RiggedFixture {
            "samplers": [{"input": 6, "output": 8, "interpolation": "LINEAR"},
                         {"input": 6, "output": 9, "interpolation": "LINEAR"}],
            "channels": [{"sampler": 0, "target": {"node": 2, "path": "rotation"}},
-                        {"sampler": 1, "target": {"node": 3, "path": "rotation"}}]}
+                        {"sampler": 1, "target": {"node": 3, "path": "rotation"}}]},
+          {"name": "twist",
+           "samplers": [{"input": 6, "output": 10, "interpolation": "LINEAR"}],
+           "channels": [{"sampler": 0, "target": {"node": 3, "path": "rotation"}}]}
          ],
          "accessors": [
           {"bufferView": $vPos, "componentType": 5126, "count": $VERTEX_COUNT, "type": "VEC3",
@@ -220,7 +235,8 @@ object RiggedFixture {
            "min": [${times.first()}], "max": [${times.last()}]},
           {"bufferView": $vBendUpper, "componentType": 5126, "count": ${times.size}, "type": "VEC4"},
           {"bufferView": $vCurlLower, "componentType": 5126, "count": ${times.size}, "type": "VEC4"},
-          {"bufferView": $vCurlUpper, "componentType": 5126, "count": ${times.size}, "type": "VEC4"}
+          {"bufferView": $vCurlUpper, "componentType": 5126, "count": ${times.size}, "type": "VEC4"},
+          {"bufferView": $vTwistUpper, "componentType": 5126, "count": ${times.size}, "type": "VEC4"}
          ],
          "bufferViews": [
           $bufferViews

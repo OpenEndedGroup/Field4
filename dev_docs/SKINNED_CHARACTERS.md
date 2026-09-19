@@ -224,7 +224,8 @@ max |difference| = 0.0000000
 - **A TRS cannot carry the rig.** `SkeletonNode.local` is a full `Matrix4f`, not a `TRS`, for the
   reason `MeshInstance.bindMatrix` exists: `Matrix4f.getScale` is `sqrt(...)` per column and is
   therefore always positive, so `decomposeToTRS` flattens a mirrored node to a *pure translation*
-  without saying so. See `AssimpSceneBridgeTest` for the measured version of that.
+  without saying so
+  (reproducer: `AssimpSceneBridgeTest.kt#fun bindPoseStillCannotRepresentAMirrorWhichIsWhyBindMatrixExists`).
 - **A slerp at `t = 0` is not the identity.** `sampleAt`/`keyQuat` return the key itself, bit for
   bit, when the time is at or before a key, rather than slerping with `f = 0`. A slerp renormalises,
   and the bind-pose assertion is measured at exactly `t = 0`.

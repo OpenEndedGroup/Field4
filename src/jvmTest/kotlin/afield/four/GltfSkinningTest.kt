@@ -118,7 +118,10 @@ class GltfSkinningTest {
         // skeleton root (armature) is NOT the mesh's node (cylinder) -- the case the model exists for.
         assertEquals(listOf("ROOT", "cylinder", "armature", "boneLower", "boneUpper"), s.nodes.map { it.name })
         assertEquals(listOf(-1, 0, 0, 2, 3), s.nodes.map { it.parent }, "cylinder and armature are siblings")
-        assertEquals(listOf("bend", "curl"), s.clips.map { it.name }, "both clips, not just mAnimations()[0]")
+        assertEquals(
+            listOf("bend", "curl", "twist"), s.clips.map { it.name },
+            "all three clips, not just mAnimations()[0]",
+        )
         assertEquals(1, s.clip("bend")!!.channels.size)
         assertEquals(2, s.clip("curl")!!.channels.size, "curl animates both joints")
     }

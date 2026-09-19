@@ -58,7 +58,7 @@ class CpuSkinnerTest {
     fun whatIsWrittenIntoTheVertexBufferIsExactlyWhatTheSkinnerComputed() {
         withInstance { instance ->
             val skinner = CpuSkinner(instance)
-            assertEquals(listOf("bend", "curl"), skinner.clips)
+            assertEquals(listOf("bend", "curl", "twist"), skinner.clips)
             val out = skinner.pose("bend", 1f)
             val inBuffer = positions(instance)
             var worst = 0f

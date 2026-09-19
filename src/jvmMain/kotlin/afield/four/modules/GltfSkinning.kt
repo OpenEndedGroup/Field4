@@ -248,8 +248,30 @@ object GltfSkinning {
             "MeshSkin(${influences.vertexCount} vertices, $skeleton)"
     }
 
+    /**
+     * How [skin] averages the influences of a vertex that several joints pull on.
+     *
+     * The default is [LINEAR_BLEND] because it is what every GPU skinning path and every other
+     * engine defaults to, and changing that silently would make this codebase disagree with the
+     * files it loads. [DUAL_QUATERNION] is strictly better under twist and slightly worse under a
+     * stretched joint; `DualQuaternionSkinningTest` measures both directions rather than asserting
+     * one is better.
+     */
+    enum class SkinningMethod {
+        /** Average the joint matrices. Fast, universal, and collapses a twisted joint to a line. */
+        LINEAR_BLEND,
+
+        /**
+         * Average the joint *motions* as unit dual quaternions — see [DualQuaternionSkinning]. Keeps
+         * a twisted joint round; bulges slightly where linear blending pinches.
+         */
+        DUAL_QUATERNION,
+    }
+
     /** Knobs on [skin]. */
     data class SkinningOptions(
+        /** Which blend [skin] performs. See [SkinningMethod]. */
+        val method: SkinningMethod = SkinningMethod.LINEAR_BLEND,
         /**
          * Transform normals by the exact inverse transpose of the blended 3×3 rather than by the
          * blended 3×3 itself. On by default; see the class comment for what turning it off costs.
@@ -272,6 +294,19 @@ object GltfSkinning {
         val normal: FloatArray?,
         /** Vertices whose blended 3×3 could not be inverted, so the plain 3×3 was used for the normal. */
         val singularNormalMatrices: Int,
+        /**
+         * Palette entries that carried scale, shear or a reflection. Always 0 for
+         * [SkinningMethod.LINEAR_BLEND], which needs no such split; for
+         * [SkinningMethod.DUAL_QUATERNION] it is how many joints needed the residual path, and a
+         * caller that expected a rigid rig can assert it is 0.
+         */
+        val nonRigidJoints: Int = 0,
+        /**
+         * Influences whose sign was flipped to match their vertex's pivot. Always 0 for
+         * [SkinningMethod.LINEAR_BLEND]. A non-zero count here is antipodality handling doing its
+         * job, not a warning.
+         */
+        val antipodalFlips: Int = 0,
     )
 
     // ------------------------------------------------------------------------
@@ -292,6 +327,10 @@ object GltfSkinning {
         palette: List<Matrix4f>,
         options: SkinningOptions = SkinningOptions(),
     ): SkinnedVertices {
+        if (options.method == SkinningMethod.DUAL_QUATERNION) {
+            return DualQuaternionSkinning.skin(positions, normals, influences, palette, options)
+        }
+
         val n = influences.vertexCount
         require(positions.size >= n * 3) { "positions has ${positions.size} floats, need ${n * 3}" }
         require(normals == null || normals.size >= n * 3) { "normals has ${normals?.size} floats, need ${n * 3}" }
