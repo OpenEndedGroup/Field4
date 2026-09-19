@@ -198,6 +198,24 @@ object GltfSupport {
         var bindMatrix: Matrix4f? = null
 
         /**
+         * This mesh's skeleton and per-vertex bone weights, or `null` when the mesh is rigid.
+         *
+         * A body property rather than a constructor parameter for the same reason as [bindMatrix]:
+         * making it a `data class` component would put a scene-wide node tree into every
+         * `MeshInstance`'s `equals` and `hashCode`.
+         *
+         * Note what this does **not** change: [buffers] still holds the *bind-pose* vertices, and
+         * [bindPose] / [bindMatrix] still hold the mesh node's own transform. Deforming is a separate
+         * step, [GltfSkinning.skin], and its output is in **scene** space — glTF 2.0 §3.7.3.2 says a
+         * skinned mesh node's own transform is ignored — so a caller that skins must *not* also apply
+         * [bindMatrix]. [afield.four.modules.skinnedGltfToTriMesh] is the path that gets this right.
+         *
+         * Populated by [loadGltfBasic] when [GltfLoadConfig.loadSkins] is on, which it is by default;
+         * the cost when a file has no bones is one `mNumBones() == 0` test per mesh.
+         */
+        var skin: GltfSkinning.MeshSkin? = null
+
+        /**
          * Upload this instance's buffers and set the push constants the bundled shaders expect.
          *
          * @param model the model matrix, composed into `modelView` as `view * model`. The default is
@@ -276,7 +294,15 @@ object GltfSupport {
      * (we fill white if source has no COLOR_0).
      */
     data class GltfLoadConfig(
-        val sampleRate: Float = 60f, val includeVertexColors: Boolean = true, val loadTextures: Boolean = true
+        val sampleRate: Float = 60f,
+        val includeVertexColors: Boolean = true,
+        val loadTextures: Boolean = true,
+        /**
+         * Read `aiMesh.mBones()` into [MeshInstance.skin]. On by default and close to free for a rigid
+         * file — the node tree is walked once per import and every mesh short-circuits on
+         * `mNumBones() == 0`. Turn it off to load a rigged file as its undeformed bind pose.
+         */
+        val loadSkins: Boolean = true,
     )
 
     // ------------------------------------------------------------------------
@@ -306,7 +332,13 @@ object GltfSupport {
         val root = scene.mRootNode()
         val identity = Matrix4f()
 
-        traverseNode(scene, root!!, identity, meshes, config, baseDir)
+        // The node tree and the clips are scene-wide, so they are read once and shared by every
+        // MeshInstance's skin rather than rebuilt per mesh. `null` when skins are switched off, which
+        // is what makes the rigid path cost nothing.
+        val skeletonNodes = if (config.loadSkins) GltfSkinning.readNodes(scene) else null
+        val clips = if (skeletonNodes != null) GltfSkinning.readClips(scene, skeletonNodes, config.sampleRate) else null
+
+        traverseNode(scene, root!!, identity, meshes, config, baseDir, skeletonNodes, clips)
 
         Assimp.aiReleaseImport(scene)
         return GltfModel(meshes)
@@ -318,7 +350,9 @@ object GltfSupport {
         parentTransform: Matrix4f,
         outMeshes: MutableList<MeshInstance>,
         config: GltfLoadConfig,
-        baseDir: Path?
+        baseDir: Path?,
+        skeletonNodes: List<GltfSkinning.SkeletonNode>? = null,
+        clips: List<GltfSkinning.AnimationClip>? = null,
     ) {
         val local = aiToMatrix4f(node.mTransformation())
         val world = Matrix4f(parentTransform).mul(local)
@@ -343,7 +377,12 @@ object GltfSupport {
                     animationSamples = animSamples.ifEmpty { null },
                     // The un-decomposed world matrix, kept because bindTrs cannot represent a mirror or
                     // a shear. See MeshInstance.bindMatrix.
-                ).also { it.bindMatrix = Matrix4f(world) }
+                ).also {
+                    it.bindMatrix = Matrix4f(world)
+                    if (skeletonNodes != null) {
+                        it.skin = GltfSkinning.readMeshSkin(aiMesh, skeletonNodes, clips ?: emptyList())
+                    }
+                }
             }
         }
 
@@ -351,7 +390,7 @@ object GltfSupport {
         if (children != null) {
             for (i in 0 until children.remaining()) {
                 val child = AINode.create(children[i])
-                traverseNode(scene, child, world, outMeshes, config, baseDir)
+                traverseNode(scene, child, world, outMeshes, config, baseDir, skeletonNodes, clips)
             }
         }
     }

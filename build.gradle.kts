@@ -1785,6 +1785,15 @@ tasks.register<JavaExec>("runKratosStudy") {
     args((project.findProperty("kratos") as String? ?: "").split(" ").filter { it.isNotBlank() })
 }
 
+tasks.register<JavaExec>("runSkinningEvidence") {
+    group = "verification"
+    description = "Regenerates the rigged glTF fixture, measures skeletal skinning against it, and writes the deformation frames under dev_docs/agents/evidence/skinning."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.four.modules.SkinningEvidence")
+    jvmArgs(vectorizationJvmArgs)
+}
+
 tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     group = "application"
     description = "Analyzes a WAV file with TrackingResonatorBank and writes three additive-resynthesis WAV variants."
