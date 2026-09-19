@@ -52,7 +52,8 @@ bit-identity rather than a tolerance.
 ## Run captured here
 
 Every box was launched one at a time through `tools/field_backdoor.py --port 9101`, and both
-sliders were then driven with a `slider-update` message:
+sliders were then driven with a `slider-update` message. Re-run once more at the end, all four in
+one fresh session from this committed document, with `--graphics-context` so box 4 had a renderer:
 
 ```
 box 1  nodes [ROOT, cylinder, armature, boneLower, boneUpper], parents [-1, 0, 0, 2, 3]
