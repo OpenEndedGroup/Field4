@@ -245,6 +245,18 @@ object LambdaTerms {
         IllegalStateException("Normal-order reduction did not terminate within $steps beta-steps")
 
     /**
+     * What [referenceNormalOrder] throws when the terms it is building get too big, which a β-step budget does not
+     * bound: one substitution can nearly double a term, so a reduction can exhaust memory hundreds of steps inside a
+     * budget of thousands.
+     *
+     * Measured 2026-09-19: a generated term took 3.3 GB and was still going, 300 β-steps into a 300-step budget. The
+     * two budgets are different questions — "is this term diverging" and "is answering it affordable" — and only the
+     * first one had an answer before.
+     */
+    class IntermediateTermTooLarge(val nodes: Int) :
+        IllegalStateException("Normal-order reduction built more than $nodes intermediate term nodes")
+
+    /**
      * The **oracle**: [term]'s normal form under leftmost-outermost (normal-order) reduction, by capture-avoiding
      * substitution.
      *
@@ -252,28 +264,62 @@ object LambdaTerms {
      * point of having this. Normal order rather than applicative order because it reaches a normal form whenever one
      * exists, so a disagreement with the net is a bug in the net rather than a difference of strategy.
      *
+     * Two budgets, because they answer different questions. [maxSteps] is "did this term diverge". [maxWorkNodes] is
+     * "was answering it affordable": every substitution's result is charged against it, so it bounds the *work* and
+     * therefore the memory, which a step count does not — an unshared reducer's intermediate terms can grow
+     * geometrically while the step counter is still in the low hundreds. Both defaults are loose enough that the
+     * 25-term [corpus] never sees either.
+     *
      * @throws ReductionBudgetExceeded after [maxSteps] β-steps
+     * @throws IntermediateTermTooLarge after [maxWorkNodes] nodes of substitution output
      */
-    fun referenceNormalOrder(term: Term, maxSteps: Int = 1_000_000): Term =
-        normalForm(term, intArrayOf(maxSteps), maxSteps)
+    fun referenceNormalOrder(term: Term, maxSteps: Int = 1_000_000, maxWorkNodes: Int = 40_000_000): Term =
+        normalForm(term, intArrayOf(maxSteps), maxSteps, intArrayOf(maxWorkNodes), maxWorkNodes)
 
-    private fun normalForm(term: Term, fuel: IntArray, budget: Int): Term =
-        when (val head = weakHead(term, fuel, budget)) {
+    private fun normalForm(term: Term, fuel: IntArray, budget: Int, work: IntArray, workBudget: Int): Term =
+        when (val head = weakHead(term, fuel, budget, work, workBudget)) {
             is Term.Var -> head
-            is Term.Lam -> Term.Lam(head.param, normalForm(head.body, fuel, budget))
+            is Term.Lam -> Term.Lam(head.param, normalForm(head.body, fuel, budget, work, workBudget))
             // `head.fn` is already in weak head normal form and is not an abstraction, so this cannot loop.
-            is Term.App -> Term.App(normalForm(head.fn, fuel, budget), normalForm(head.arg, fuel, budget))
+            is Term.App -> Term.App(
+                normalForm(head.fn, fuel, budget, work, workBudget),
+                normalForm(head.arg, fuel, budget, work, workBudget)
+            )
         }
 
-    private fun weakHead(term: Term, fuel: IntArray, budget: Int): Term {
+    private fun weakHead(term: Term, fuel: IntArray, budget: Int, work: IntArray, workBudget: Int): Term {
         var current = term
         while (true) {
             if (current !is Term.App) return current
-            val fn = weakHead(current.fn, fuel, budget)
+            val fn = weakHead(current.fn, fuel, budget, work, workBudget)
             if (fn !is Term.Lam) return Term.App(fn, current.arg)
             if (fuel[0]-- <= 0) throw ReductionBudgetExceeded(budget)
             current = substitute(fn.body, fn.param, current.arg)
+            // Charged after the fact rather than predicted: the size of a substitution's result is not a function of
+            // its inputs' sizes alone, since a variable may occur any number of times in the body.
+            work[0] -= sizeOf(current)
+            if (work[0] < 0) throw IntermediateTermTooLarge(workBudget)
         }
+    }
+
+    // Nodes in a term. Iterative rather than recursive: the terms this is asked about are exactly the oversized ones,
+    // and a recursive count on a term deep enough to matter is a StackOverflowError instead of an answer.
+    private fun sizeOf(term: Term): Int {
+        var n = 0
+        val stack = ArrayDeque<Term>()
+        stack.addLast(term)
+        while (stack.isNotEmpty()) {
+            n += 1
+            when (val t = stack.removeLast()) {
+                is Term.Var -> {}
+                is Term.Lam -> stack.addLast(t.body)
+                is Term.App -> {
+                    stack.addLast(t.fn)
+                    stack.addLast(t.arg)
+                }
+            }
+        }
+        return n
     }
 
     /**
@@ -282,25 +328,55 @@ object LambdaTerms {
      * Public because it is the one piece of the oracle worth testing on its own: the capture case is the only place a
      * substitution evaluator is ever wrong, and `substitute(parse("λy. x y"), "x", parse("y"))` is that test.
      */
-    fun substitute(body: Term, name: String, value: Term): Term = when (body) {
+    fun substitute(body: Term, name: String, value: Term): Term =
+        // `value` does not change as the walk descends, so its free variables are computed once here rather than at
+        // every abstraction on the way down. That is not a micro-optimisation: recomputing it per Lam makes one
+        // substitution cost O(|body| x |value|), which is why a reduction whose *step* count is bounded could still
+        // run for minutes. Measured 2026-09-19 on the generated corpus in `stdlib.lambda-terms.property`.
+        substituteUnder(body, name, value, freeVariablesOf(value))
+
+    private fun substituteUnder(body: Term, name: String, value: Term, valueFree: Set<String>): Term = when (body) {
         is Term.Var -> if (body.name == name) value else body
-        is Term.App -> Term.App(substitute(body.fn, name, value), substitute(body.arg, name, value))
+        is Term.App -> Term.App(
+            substituteUnder(body.fn, name, value, valueFree),
+            substituteUnder(body.arg, name, value, valueFree)
+        )
         is Term.Lam -> when {
             body.param == name -> body // shadowed: nothing inside refers to the outer `name`
-            body.param in freeVariablesOf(value) -> {
-                val taken = freeVariablesOf(value) + freeVariablesOf(body.body) + name
+            body.param in valueFree -> {
+                val taken = valueFree + freeVariablesOf(body.body) + name
                 val fresh = freshName(body.param, taken)
-                Term.Lam(fresh, substitute(substitute(body.body, body.param, Term.Var(fresh)), name, value))
+                // The renaming pass is a substitution in its own right, and `Term.Var(fresh)` has exactly one free
+                // name, so it goes through the same entry point rather than reusing `valueFree`.
+                Term.Lam(fresh, substituteUnder(substitute(body.body, body.param, Term.Var(fresh)), name, value, valueFree))
             }
-            else -> Term.Lam(body.param, substitute(body.body, name, value))
+            else -> Term.Lam(body.param, substituteUnder(body.body, name, value, valueFree))
         }
     }
 
     /** The names occurring free in [term]. Empty for a closed term, which is what [corpus] asserts of every entry. */
-    fun freeVariablesOf(term: Term): Set<String> = when (term) {
-        is Term.Var -> setOf(term.name)
-        is Term.Lam -> freeVariablesOf(term.body) - term.param
-        is Term.App -> freeVariablesOf(term.fn) + freeVariablesOf(term.arg)
+    fun freeVariablesOf(term: Term): Set<String> {
+        // Accumulated into one set rather than built by `setOf` plus union per node: the union form allocates a fresh
+        // HashSet at every application, which dominates the cost on the large intermediate terms a normal-order
+        // reduction passes through. `bound` is the binders in scope, so a shadowed name is not reported free.
+        val out = LinkedHashSet<String>()
+        collectFree(term, ArrayList(), out)
+        return out
+    }
+
+    private fun collectFree(term: Term, bound: MutableList<String>, out: MutableSet<String>) {
+        when (term) {
+            is Term.Var -> if (term.name !in bound) out += term.name
+            is Term.Lam -> {
+                bound.add(term.param)
+                collectFree(term.body, bound, out)
+                bound.removeAt(bound.size - 1)
+            }
+            is Term.App -> {
+                collectFree(term.fn, bound, out)
+                collectFree(term.arg, bound, out)
+            }
+        }
     }
 
     private fun freshName(base: String, taken: Set<String>): String {

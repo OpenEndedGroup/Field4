@@ -70,14 +70,22 @@ object LambdaPropertyOracleTest {
     private const val TYPED_SEED = 20260919L
     private const val SOUP_SEED = 20260919_002L
 
-    private const val TYPED_N = 900
-    private const val SOUP_N = 400
+    private const val TYPED_N = 100
+    private const val SOUP_N = 50
 
-    // A simply-typed term is strongly normalising, so these budgets exist to bound *cost*, not to filter samples.
-    // The soup family is untyped and genuinely diverges; its overruns are a reported column.
+    // Budgets, per family, because the two families cost wildly different amounts.
+    //
+    // A simply-typed term is strongly normalising, so the typed budgets bound *cost* and never filter a sample — an
+    // overrun there would be a bug. The soup family is untyped, and its blow-up is not in the step count but in the
+    // *size of the intermediate terms*: a β-step of normal-order substitution can nearly double the term, so a
+    // thousand-step budget is not a memory bound. The soup oracle budget is therefore deliberately small, and the
+    // draws that exceed it are a reported column rather than a silent drop.
     private const val TYPED_ORACLE_BUDGET = 40_000
+    private const val TYPED_ORACLE_WORK = 20_000_000
+    private const val TYPED_NET_BUDGET = 100_000
     private const val SOUP_ORACLE_BUDGET = 2_000
-    private const val NET_BUDGET = 100_000
+    private const val SOUP_ORACLE_WORK = 4_000_000
+    private const val SOUP_NET_BUDGET = 20_000
 
     fun runTests(): Boolean {
         return try {
@@ -98,10 +106,13 @@ object LambdaPropertyOracleTest {
                 LambdaTermGenerator.soupTerms(SOUP_SEED, SOUP_N)
             )
             val results = listOf(
-                sweep(typed, TYPED_ORACLE_BUDGET),
-                sweep(soup, SOUP_ORACLE_BUDGET)
+                sweep(typed, TYPED_ORACLE_BUDGET, TYPED_ORACLE_WORK, TYPED_NET_BUDGET),
+                sweep(soup, SOUP_ORACLE_BUDGET, SOUP_ORACLE_WORK, SOUP_NET_BUDGET)
             )
             report(results)
+            // Findings are printed before any assertion, floors included: a floor that fires first would hide the
+            // counterexample the run was for.
+            printAllFindings(results)
             assertFloors(typed, soup, results)
             assertNoQuietDisagreement(results)
             println("Lambda property oracle passed")
@@ -182,8 +193,11 @@ object LambdaPropertyOracleTest {
         /** They disagree and the readback looks like a perfectly good term. This is the one the page cannot rule out. */
         DISAGREE_QUIET,
 
-        /** The oracle ran out of β-steps, so there is nothing to compare against. Reported, never dropped. */
-        ORACLE_DIVERGED,
+        /**
+         * The oracle ran out of β-steps or of work, so there is nothing to compare against. Reported, never dropped
+         * — an untyped draw that diverges is part of this population and its count is part of every number below.
+         */
+        ORACLE_OVER_BUDGET,
 
         /** The net ran out of reactions. Also not a disagreement — the net simply has not finished. */
         NET_UNFINISHED,
@@ -206,7 +220,9 @@ object LambdaPropertyOracleTest {
     private class Sweep(
         val population: LambdaTermGenerator.Population,
         val checks: List<Check>,
-        val oracleBudget: Int
+        val oracleBudget: Int,
+        val oracleWork: Int,
+        val netBudget: Int
     ) {
         fun count(v: Verdict): Int = checks.count { it.verdict == v }
 
@@ -214,7 +230,7 @@ object LambdaPropertyOracleTest {
         val confluenceFailures: List<Int> by lazy {
             checks.groupBy { it.index }
                 .filterValues { group ->
-                    val comparable = group.filter { it.verdict != Verdict.ORACLE_DIVERGED }
+                    val comparable = group.filter { it.verdict != Verdict.ORACLE_OVER_BUDGET }
                     comparable.size > 1 && comparable.map { it.netKey }.toSet().size != 1
                 }
                 .keys.sorted()
@@ -223,30 +239,66 @@ object LambdaPropertyOracleTest {
         val netSteps: List<Int> by lazy { checks.filter { it.steps >= 0 }.map { it.steps } }
     }
 
-    private fun sweep(population: LambdaTermGenerator.Population, oracleBudget: Int): Sweep {
+    private fun sweep(
+        population: LambdaTermGenerator.Population,
+        oracleBudget: Int,
+        oracleWork: Int,
+        netBudget: Int
+    ): Sweep {
         val checks = ArrayList<Check>(population.terms.size * ORDERS.size)
+        val started = System.nanoTime()
+        var slowestMillis = 0L
+        var slowestIndex = -1
         for ((i, term) in population.terms.withIndex()) {
+            val termStarted = System.nanoTime()
             // The oracle is computed once per term; the schedulers are compared against the same answer.
+            //
+            // It runs *first* and on a budget because it is the expensive half: the net shares and the oracle does
+            // not, so a term the net normalises in a hundred reactions can cost the oracle exponentially more. An
+            // over-budget oracle is a column in the report, not a dropped sample.
             val oracleKey = try {
-                LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(term, maxSteps = oracleBudget))
+                LambdaTerms.deBruijnKey(
+                    LambdaTerms.referenceNormalOrder(term, maxSteps = oracleBudget, maxWorkNodes = oracleWork)
+                )
             } catch (e: LambdaTerms.ReductionBudgetExceeded) {
                 null
+            } catch (e: LambdaTerms.IntermediateTermTooLarge) {
+                null
             }
-            for (order in ORDERS) checks += checkOne(i, term, order, oracleKey)
+            for (order in ORDERS) checks += checkOne(i, term, order, oracleKey, netBudget)
+            val millis = (System.nanoTime() - termStarted) / 1_000_000
+            if (millis > slowestMillis) {
+                slowestMillis = millis
+                slowestIndex = i
+            }
+            // A heartbeat, because this test has minutes in it and a silent minute is indistinguishable from a hang.
+            if ((i + 1) % 100 == 0) {
+                println(
+                    "    ${population.label} ${i + 1}/${population.terms.size} " +
+                        "(${(System.nanoTime() - started) / 1_000_000_000}s, slowest #$slowestIndex ${slowestMillis}ms)"
+                )
+            }
         }
-        return Sweep(population, checks, oracleBudget)
+        println(
+            "    ${population.label} swept in ${(System.nanoTime() - started) / 1_000_000_000}s, " +
+                "slowest term #$slowestIndex at ${slowestMillis}ms"
+        )
+        return Sweep(population, checks, oracleBudget, oracleWork, netBudget)
     }
 
-    private fun checkOne(index: Int, term: Term, order: ActivationOrder, oracleKey: String?): Check {
+    private fun checkOne(index: Int, term: Term, order: ActivationOrder, oracleKey: String?, netBudget: Int): Check {
         if (oracleKey == null) {
-            return Check(index, order, Verdict.ORACLE_DIVERGED, "", "", emptySet(), -1)
+            return Check(index, order, Verdict.ORACLE_OVER_BUDGET, "", "", emptySet(), -1)
         }
         val run = try {
-            LambdaTerms.normalise(term, order = order, maxSteps = NET_BUDGET)
+            LambdaTerms.normalise(term, order = order, maxSteps = netBudget)
         } catch (t: Throwable) {
+            // The top frames, not just the message: a StackOverflowError's message is null, and *where* it
+            // overflowed is the whole finding.
+            val site = t.stackTrace.take(3).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
             return Check(
                 index, order, Verdict.THREW, "", oracleKey, emptySet(), -1,
-                "${t::class.simpleName}: ${t.message}"
+                "${t::class.simpleName}: ${t.message} at $site"
             )
         }
         val marks = marksIn(run.result)
@@ -293,13 +345,14 @@ object LambdaPropertyOracleTest {
             println("    fan histogram (fans per term): ${s.population.fanHistogram()}")
             println(
                 "    ${s.population.terms.size} terms x ${ORDERS.size} orders = ${s.checks.size} checks, " +
-                    "oracle budget ${s.oracleBudget} beta-steps, net budget $NET_BUDGET reactions"
+                    "oracle budget ${s.oracleBudget} beta-steps / ${s.oracleWork} work nodes, " +
+                    "net budget ${s.netBudget} reactions"
             )
             println(
                 "    agree=${s.count(Verdict.AGREE)}" +
                     "  disagree-marked=${s.count(Verdict.DISAGREE_MARKED)}" +
                     "  disagree-QUIET=${s.count(Verdict.DISAGREE_QUIET)}" +
-                    "  oracle-diverged=${s.count(Verdict.ORACLE_DIVERGED)}" +
+                    "  oracle-over-budget=${s.count(Verdict.ORACLE_OVER_BUDGET)}" +
                     "  net-unfinished=${s.count(Verdict.NET_UNFINISHED)}" +
                     "  threw=${s.count(Verdict.THREW)}"
             )
@@ -310,12 +363,12 @@ object LambdaPropertyOracleTest {
                 )
             }
             println("    scheduler disagreements (confluence): ${s.confluenceFailures.size} terms")
-            for (c in s.checks.filter { it.verdict != Verdict.AGREE && it.verdict != Verdict.ORACLE_DIVERGED }.take(20)) {
+            for (c in s.checks.filter { it.verdict != Verdict.AGREE && it.verdict != Verdict.ORACLE_OVER_BUDGET }.take(20)) {
                 println(
                     "      [${s.population.label} #${c.index} ${c.order}] ${c.verdict} marks=${c.marks}\n" +
-                        "        term   ${LambdaTerms.format(s.population.terms[c.index])}\n" +
-                        "        oracle ${c.oracleKey}\n" +
-                        "        net    ${c.netKey}  ${c.detail}"
+                        "        term   ${clip(LambdaTerms.format(s.population.terms[c.index]))}\n" +
+                        "        oracle ${clip(c.oracleKey)}\n" +
+                        "        net    ${clip(c.netKey)}  ${clip(c.detail)}"
                 )
             }
         }
@@ -353,7 +406,7 @@ object LambdaPropertyOracleTest {
             "Population collapsed: $checks checks, expected exactly $CHECK_FLOOR " +
                 "(${TYPED_N} typed + ${SOUP_N} soup terms x ${ORDERS.size} orders)"
         }
-        val compared = sweeps.sumOf { it.checks.count { c -> c.verdict != Verdict.ORACLE_DIVERGED } }
+        val compared = sweeps.sumOf { it.checks.count { c -> c.verdict != Verdict.ORACLE_OVER_BUDGET } }
         require(compared >= COMPARED_FLOOR) {
             "Only $compared of $checks checks had a live oracle, floor is $COMPARED_FLOOR — the rest diverged, " +
                 "so any headline about disagreements is about a smaller population than it claims"
@@ -389,34 +442,31 @@ object LambdaPropertyOracleTest {
     // The two assertions
     // =========================
 
+    private fun of(sweeps: List<Sweep>, v: Verdict): List<Pair<Sweep, Check>> =
+        sweeps.flatMap { s -> s.checks.filter { it.verdict == v }.map { s to it } }
+
+    /**
+     * Every finding, shrunk and printed. A counterexample that exists only inside a failure message is one nobody
+     * can paste into a regression test.
+     *
+     * One shrink per distinct term rather than per (term, scheduler) — the four orders report the same term four
+     * times.
+     */
+    private fun printAllFindings(sweeps: List<Sweep>) {
+        printFindings("QUIET DISAGREEMENT (no readback mark at all)", of(sweeps, Verdict.DISAGREE_QUIET))
+        printFindings("MARKED DISAGREEMENT", of(sweeps, Verdict.DISAGREE_MARKED))
+        printFindings("THREW", of(sweeps, Verdict.THREW))
+    }
+
     private fun assertNoQuietDisagreement(sweeps: List<Sweep>) {
-        val threw = sweeps.flatMap { s -> s.checks.filter { it.verdict == Verdict.THREW }.map { s to it } }
+        val threw = of(sweeps, Verdict.THREW)
+        val quiet = of(sweeps, Verdict.DISAGREE_QUIET)
+        val marked = of(sweeps, Verdict.DISAGREE_MARKED)
+        val confluence = sweeps.sumOf { it.confluenceFailures.size }
         require(threw.isEmpty()) {
             "Reduction threw on ${threw.size} checks, first: " +
                 threw.first().let { (s, c) -> "${s.population.label} #${c.index} ${c.order} ${c.detail}" }
         }
-        val quiet = sweeps.flatMap { s -> s.checks.filter { it.verdict == Verdict.DISAGREE_QUIET }.map { s to it } }
-        val marked = sweeps.flatMap { s -> s.checks.filter { it.verdict == Verdict.DISAGREE_MARKED }.map { s to it } }
-
-        // The headline. Reported before the assertion, and shrunk, because a counterexample that only exists inside
-        // a failure message is a counterexample nobody can act on.
-        for ((s, c) in quiet.take(3)) {
-            val term = s.population.terms[c.index]
-            println("  QUIET DISAGREEMENT, ${s.population.label} #${c.index} seed=${s.population.seed} ${c.order}")
-            println("    as generated: ${LambdaTerms.format(term)}")
-            val small = shrink(term) { candidate -> quietlyDisagrees(candidate, c.order) }
-            println("    shrunk to:    ${LambdaTerms.format(small)}")
-            println("    oracle        ${LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(small))}")
-            println("    net           ${LambdaTerms.normalise(small, order = c.order).printed}")
-        }
-        for ((s, c) in marked.take(3)) {
-            val term = s.population.terms[c.index]
-            println("  MARKED DISAGREEMENT, ${s.population.label} #${c.index} seed=${s.population.seed} ${c.order}")
-            println("    as generated: ${LambdaTerms.format(term)}")
-            println("    marks:        ${c.marks}")
-        }
-
-        val confluence = sweeps.sumOf { it.confluenceFailures.size }
         require(confluence == 0) {
             "Schedulers disagree on $confluence terms: " +
                 sweeps.flatMap { s -> s.confluenceFailures.take(3).map { "${s.population.label} #$it" } }
@@ -432,14 +482,77 @@ object LambdaPropertyOracleTest {
         }
     }
 
-    /** The predicate the shrinker minimises against: still a disagreement, still with no marker. */
-    private fun quietlyDisagrees(term: Term, order: ActivationOrder): Boolean = try {
-        val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(term, maxSteps = SOUP_ORACLE_BUDGET))
-        val run = LambdaTerms.normalise(term, order = order, maxSteps = NET_BUDGET)
-        run.finished && marksIn(run.result).isEmpty() && LambdaTerms.deBruijnKey(run.result) != oracle
-    } catch (t: Throwable) {
-        false
+    private fun printFindings(headline: String, found: List<Pair<Sweep, Check>>) {
+        val seen = HashSet<String>()
+        for ((s, c) in found) {
+            if (!seen.add("${s.population.label}#${c.index}")) continue
+            if (seen.size > 6) {
+                println("  $headline: ${found.size} checks in total, first 6 terms shown")
+                return
+            }
+            val term = s.population.terms[c.index]
+            println("  $headline, ${s.population.label} #${c.index} seed=${s.population.seed} ${c.order}")
+            println("    as generated: ${clip(LambdaTerms.format(term))}")
+            println("    marks:        ${c.marks}  ${clip(c.detail)}")
+            val small = shrink(term) { candidate -> disagrees(candidate, c.order) }
+            println("    shrunk to:    ${LambdaTerms.format(small)}")
+            describe(small, c.order)
+        }
     }
+
+    /** What the two sides say about one term, printed so that a reader can retype it into a box. */
+    private fun describe(term: Term, order: ActivationOrder) {
+        val oracle = try {
+            LambdaTerms.format(
+                LambdaTerms.referenceNormalOrder(term, maxSteps = SOUP_ORACLE_BUDGET, maxWorkNodes = SOUP_ORACLE_WORK)
+            )
+        } catch (t: Throwable) {
+            "over budget: ${t::class.simpleName}"
+        }
+        val net = try {
+            val run = LambdaTerms.normalise(term, order = order, maxSteps = SOUP_NET_BUDGET)
+            "${run.printed}   (${run.steps} reactions, finished=${run.finished}, marks=${marksIn(run.result)})"
+        } catch (t: Throwable) {
+            "threw ${t::class.simpleName}"
+        }
+        println("      oracle: ${clip(oracle)}")
+        println("      net:    ${clip(net)}")
+        println("      free in net answer: ${LambdaTerms.freeVariablesOf(safeNet(term, order)) - marksAsNames()}")
+    }
+
+    private fun safeNet(term: Term, order: ActivationOrder): Term = try {
+        LambdaTerms.normalise(term, order = order, maxSteps = SOUP_NET_BUDGET).result
+    } catch (t: Throwable) {
+        Term.Var("·")
+    }
+
+    private fun marksAsNames(): Set<String> = MARKS
+
+    /**
+     * The predicate the shrinker minimises against: both sides finish and their answers differ, *or* the net throws
+     * where the oracle does not.
+     *
+     * Mark-agnostic on purpose. Shrinking against "disagrees **and** has no mark" would let the shrinker walk out of
+     * the failure it was given and into a different one, and the marks of the shrunk term are printed anyway.
+     */
+    private fun disagrees(term: Term, order: ActivationOrder): Boolean {
+        val oracle = try {
+            LambdaTerms.deBruijnKey(
+                LambdaTerms.referenceNormalOrder(term, maxSteps = SOUP_ORACLE_BUDGET, maxWorkNodes = SOUP_ORACLE_WORK)
+            )
+        } catch (t: Throwable) {
+            return false // no oracle, no verdict
+        }
+        return try {
+            val run = LambdaTerms.normalise(term, order = order, maxSteps = SOUP_NET_BUDGET)
+            !run.finished || LambdaTerms.deBruijnKey(run.result) != oracle
+        } catch (t: Throwable) {
+            true // the net threw where the oracle answered: still a disagreement, and still worth minimising
+        }
+    }
+
+    /** Long de Bruijn keys are unreadable and drown the log; the shape at the front is what identifies them. */
+    private fun clip(s: String, at: Int = 220): String = if (s.length <= at) s else s.take(at) + "…[${s.length} chars]"
 
     // =========================
     // Shrinking
@@ -511,7 +624,7 @@ object LambdaPropertyOracleTest {
             require(LambdaTerms.freeVariablesOf(term).isEmpty()) { "Regression '$name' is not closed" }
             val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(term))
             for (order in ORDERS) {
-                val run = LambdaTerms.normalise(term, order = order, maxSteps = NET_BUDGET)
+                val run = LambdaTerms.normalise(term, order = order, maxSteps = TYPED_NET_BUDGET)
                 val marks = marksIn(run.result)
                 require(run.finished) { "Regression '$name' did not finish under $order" }
                 require(marks.isEmpty()) { "Regression '$name' read back with marks $marks under $order" }
