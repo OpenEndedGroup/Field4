@@ -1,5 +1,5 @@
 // The whole reason StatsDependence has six coefficients instead of one. Six shapes, every
-// coefficient on each, and the disagreements are the point.
+// coefficient on each, printed as one table so the disagreements line up in a row.
 val n = 400
 val rng = java.util.Random(7)
 val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }

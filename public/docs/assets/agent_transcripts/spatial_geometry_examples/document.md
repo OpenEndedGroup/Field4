@@ -109,7 +109,7 @@ the nearest and the second nearest site recovers it from a completely different
 algorithm. Except at exactly zero — see below.
 
 ```edn [field-box id="spatial_contours" role="properties"]
-{"id" "spatial_contours" "index" 1 "name" "A field, and the seam through it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A field, and the seam through it" "_tombstone" false "frame" #afield/rect [1020.0 80.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_contours_code_.kt" "lines" 69 "characters" 3438 "sha256" "6a8d31ea72d50958773b79f6a5c17d2f663e9a117c88d84102ce9b3ccf97ffe4"}]}
+{"id" "spatial_contours" "index" 1 "name" "A field, and the seam through it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A field, and the seam through it" "_tombstone" false "frame" #afield/rect [1020.0 80.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_contours_code_.kt" "lines" 69 "characters" 3402 "sha256" "fafaf4bb504a70ca1d92aea5cb56c7f7e851b1eb7ac8e5dcd18ecb2b0e55dd0d"}]}
 ```
 
 ```kotlin [field-property box="spatial_contours" name="code" path="spatial_contours_code_.kt"]
@@ -126,8 +126,8 @@ val gap: ScalarField2D = { x, y ->
 
 // This field is NON-NEGATIVE: it touches zero on the seams and is positive everywhere
 // else. Marching squares finds SIGN CHANGES, so iso 0.0 finds nothing at all, and that is
-// the right answer rather than a bug. Every min-of-distances or absolute-value field has
-// this property, so it is worth internalising once.
+// the right answer rather than a bug. Every min-of-distances or absolute-value field
+// behaves this way.
 val atZero = generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, 0.0)
 var lo = Double.MAX_VALUE
 var hi = -Double.MAX_VALUE
@@ -366,7 +366,7 @@ and the changeover is a frame where the marcher's four corner values decide the 
 Contours are coloured by index, so the merge reads as a colour vanishing.
 
 ```edn [field-box id="spatial_iso_sweep" role="properties"]
-{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2414 "sha256" "037be9d61d45c762dc689182d009878682ebce59c5b393b4a543fbcf82befb3a"}]}
+{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2386 "sha256" "00886c5826371860d8d5df7155f862e0c52575f0255a40e9a37d35d9f012d0ff"}]}
 ```
 
 ```kotlin [field-property box="spatial_iso_sweep" name="code" path="spatial_iso_sweep_code_.kt"]
@@ -390,7 +390,7 @@ val saddleDot = pointCloudFLine(
 val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
 val sweepSeconds = 8.0
 
-// The saddle level, measured rather than assumed: the field's own value at the col.
+// The saddle level is the field's own value at the col.
 val saddle = field(0.0, 0.0)
 println("saddle level %.3f — below it one contour, above it two".format(saddle))
 val started = AnimationClock.nowSeconds()

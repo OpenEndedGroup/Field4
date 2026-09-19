@@ -36,15 +36,14 @@ process = os.sawtoothX(440);
 <!-- field-box id="faust_voice_waveform" index="1" -->
 
 ```edn [field-box id="faust_voice_waveform" role="properties"]
-{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 16 "characters" 637 "sha256" "53d6714a4ff305e9d12cac56c2fd2385fcf2fb1147a06f2549a752991dde76af"}]}
+{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 15 "characters" 540 "sha256" "95e402bc418428509b515f7dc283d64d06fc0ede7245d82f9c09a4ade4ad298a"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_waveform" name="code" path="faust_voice_waveform_code_.kt"]
 import afield.four.synth.*
 
-// The same program, rendered offline and plotted. Nothing here touches the audio engine —
-// which is what makes an honest Faust figure possible in the documentation, and what makes
-// this box safe to run on a machine with no sound card.
+// The same program, rendered offline and plotted. Nothing here touches the audio engine,
+// so this box runs on a machine with no sound card.
 //
 // The source is identical to the diagram box above, so this compile is a cache hit: compiles
 // are memoised on a hash of the source.
@@ -104,7 +103,7 @@ program.ui.meters.forEach { println(it.label + "  " + it.type + " (read-only, us
 <!-- field-box id="faust_voice_diagram" index="3" -->
 
 ```edn [field-box id="faust_voice_diagram" role="properties"]
-{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 15 "characters" 622 "sha256" "8c9dad069cae25d2307514dce0a2d5370100157943d2796dfc525e0b2204029c"}]}
+{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 15 "characters" 616 "sha256" "4d0324fc93a5497ba2920a8826cce900308e99dee6578ef6d89401130a7f2645"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_diagram" name="code" path="faust_voice_diagram_code_.kt"]
@@ -113,8 +112,8 @@ import afield.four.synth.*
 // Faust is a language about signal flow, and the block diagram *is* the signal flow. This
 // comes out of the embedded compiler, so there is no `faust -svg` and no command line.
 //
-// A quirk worth knowing: generateAuxFiles throws *after* writing the SVG (it goes on to try
-// a C++ backend that is not built), so FaustEngine reads the files regardless.
+// generateAuxFiles throws *after* writing the SVG (it goes on to try a C++ backend that
+// is not built), so FaustEngine reads the files regardless of the exception.
 val program = faustCompile("""
 #faust
 import("stdfaust.lib");

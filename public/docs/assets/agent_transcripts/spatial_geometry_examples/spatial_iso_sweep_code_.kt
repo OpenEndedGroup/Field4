@@ -18,7 +18,7 @@ val saddleDot = pointCloudFLine(
 val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
 val sweepSeconds = 8.0
 
-// The saddle level, measured rather than assumed: the field's own value at the col.
+// The saddle level is the field's own value at the col.
 val saddle = field(0.0, 0.0)
 println("saddle level %.3f — below it one contour, above it two".format(saddle))
 val started = AnimationClock.nowSeconds()

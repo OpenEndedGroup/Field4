@@ -11,8 +11,8 @@ val gap: ScalarField2D = { x, y ->
 
 // This field is NON-NEGATIVE: it touches zero on the seams and is positive everywhere
 // else. Marching squares finds SIGN CHANGES, so iso 0.0 finds nothing at all, and that is
-// the right answer rather than a bug. Every min-of-distances or absolute-value field has
-// this property, so it is worth internalising once.
+// the right answer rather than a bug. Every min-of-distances or absolute-value field
+// behaves this way.
 val atZero = generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, 0.0)
 var lo = Double.MAX_VALUE
 var hi = -Double.MAX_VALUE

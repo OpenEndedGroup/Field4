@@ -184,8 +184,8 @@ val equal = diagramOf(List(5) { 1.0 })
 val mixed = diagramOf(listOf(1.0, 1.35, 0.8, 1.1, 1.6))
 val swallowed = diagramOf(listOf(1.0, 2.6, 1.0, 1.0, 1.0))
 
-// With equal weights every bisector must degenerate to a straight line. Count them: this is the
-// claim "a line only when the weights match", checked rather than asserted in prose.
+// With equal weights every bisector degenerates to a straight line: a line only when the weights
+// match. These two counts go into the captions below.
 fun arcCount(d: CircularDirichlet.Diagram) =
     d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
 fun lineCount(d: CircularDirichlet.Diagram) =
@@ -745,7 +745,7 @@ val sweepSeconds = 8.0
 val started = AnimationClock.nowSeconds()
 :::endfold
 
-// The saddle level, measured rather than assumed: the field's own value at the col between the peaks.
+// The saddle level is the field's own value at the col between the peaks.
 val saddle = field(0.0, 0.0)
 
 // The line that turns elapsed time into the swept parameter. A triangle ramp over a range that

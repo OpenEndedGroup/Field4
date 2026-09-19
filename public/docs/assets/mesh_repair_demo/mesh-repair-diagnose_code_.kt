@@ -41,14 +41,14 @@ if (ManifoldLibrary.isAvailable) println("valid solid? ${broken.isValidSolid()}"
 println()
 
 // Not a boolean: the ordered list of what is wrong, worst first, each with the call that
-// addresses it. Note what is NOT blocking — Manifold accepts a pinch vertex and accepts
-// disjoint components, so those are reported at a lower severity rather than as failures.
+// addresses it. A pinch vertex and disjoint components do not block — Manifold accepts both,
+// so they are reported at a lower severity rather than as failures.
 println(broken.diagnose().report())
 
 // The same facts as a picture. Red is an open boundary, orange a non-manifold edge,
 // yellow a pinch vertex — so the red patch is where to look.
-// No `view` argument: the camera aims itself at the worst defect, because a card captioned
-// "4 faces removed" over a picture of a flawless sphere argues that nothing is wrong.
+// No `view` argument: the camera aims itself at the worst defect, so the title and the
+// picture are always about the same place on the mesh.
 showMeshDiagnosis(
     broken,
     title = "$holeFaces faces removed" + (if (crackAFace) ", plus one unwelded face" else ""),
