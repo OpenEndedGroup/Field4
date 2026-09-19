@@ -29,8 +29,8 @@ for (i in 0 until total) {
     absR += if (bx.size >= 2) abs(StatsDependence.pearson(bx, by)) else 0.0
 }
 
-// The threshold that makes the traces readable: the 95th percentile of the dCor null at
-// THIS window size, measured rather than assumed.
+// The threshold that makes the traces readable: the 95th percentile of the dCor null,
+// drawn at THIS window size because the null shifts with the window.
 val r2 = java.util.Random(1234)
 val k = 300
 val threshold = DoubleArray(k) {

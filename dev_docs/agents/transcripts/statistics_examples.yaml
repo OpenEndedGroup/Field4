@@ -158,7 +158,7 @@ operations:
       properties:
         code: |
           // The whole reason StatsDependence has six coefficients instead of one. Six shapes, every
-          // coefficient on each, and the disagreements are the point.
+          // coefficient on each, printed as one table so the disagreements line up in a row.
           val n = 400
           val rng = java.util.Random(7)
           val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
@@ -279,8 +279,8 @@ operations:
               absR += if (bx.size >= 2) abs(StatsDependence.pearson(bx, by)) else 0.0
           }
 
-          // The threshold that makes the traces readable: the 95th percentile of the dCor null at
-          // THIS window size, measured rather than assumed.
+          // The threshold that makes the traces readable: the 95th percentile of the dCor null,
+          // drawn at THIS window size because the null shifts with the window.
           val r2 = java.util.Random(1234)
           val k = 300
           val threshold = DoubleArray(k) {

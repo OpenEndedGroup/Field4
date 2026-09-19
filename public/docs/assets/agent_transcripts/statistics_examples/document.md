@@ -85,15 +85,15 @@ showRow("histograms", svgs)
 From `code`
 
 The whole reason StatsDependence has six coefficients instead of one. Six shapes, every
-coefficient on each, and the disagreements are the point.
+coefficient on each, printed as one table so the disagreements line up in a row.
 
 ```edn [field-box id="stats_dependence" role="properties"]
-{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 84 "characters" 4404 "sha256" "b28314eabc8d255382241f0fbb8b295a8a4c04d8cf5df11d14310ab468765fb2"}]}
+{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 84 "characters" 4427 "sha256" "1b243eeb2ec281c4b202f04fadd110d1300966fc8d871351a838aabb64205831"}]}
 ```
 
 ```kotlin [field-property box="stats_dependence" name="code" path="stats_dependence_code_.kt"]
 // The whole reason StatsDependence has six coefficients instead of one. Six shapes, every
-// coefficient on each, and the disagreements are the point.
+// coefficient on each, printed as one table so the disagreements line up in a row.
 val n = 400
 val rng = java.util.Random(7)
 val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
@@ -253,7 +253,7 @@ relationship comes and goes. RollingDistanceCorrelation maintains its sums
 incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
 
 ```edn [field-box id="stats_rolling" role="properties"]
-{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 73 "characters" 3665 "sha256" "f70afdc082289973f056a4530565a740207ea48bb01910c3c19ba05bccdcd0f9"}]}
+{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 73 "characters" 3682 "sha256" "7d89229281b00ad076206fca45acea225f3e818a63dd0831077ce407c00a9890"}]}
 ```
 
 ```kotlin [field-property box="stats_rolling" name="code" path="stats_rolling_code_.kt"]
@@ -288,8 +288,8 @@ for (i in 0 until total) {
     absR += if (bx.size >= 2) abs(StatsDependence.pearson(bx, by)) else 0.0
 }
 
-// The threshold that makes the traces readable: the 95th percentile of the dCor null at
-// THIS window size, measured rather than assumed.
+// The threshold that makes the traces readable: the 95th percentile of the dCor null,
+// drawn at THIS window size because the null shifts with the window.
 val r2 = java.util.Random(1234)
 val k = 300
 val threshold = DoubleArray(k) {
