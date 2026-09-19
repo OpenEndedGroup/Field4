@@ -197,9 +197,42 @@ object SkinningEvidence {
             println("${f.path}  ${f.length()} bytes")
         }
 
+        // ---------------------------------------------------------------- throughput
+        // Not a benchmark -- one JVM, one warm-up, wall clock -- but a number is better than a
+        // shrug when someone asks whether CPU skinning is fast enough to drive from a slider.
+        run {
+            val big = GltfSupport.loadGltfBasic(FIXTURE, GltfSupport.GltfLoadConfig(loadTextures = false))
+            val inst = big.meshes.first { it.skin != null }
+            val sk2 = inst.skin!!
+            val n = sk2.influences.vertexCount
+            val pos = FloatArray(n * 3); val nrm = FloatArray(n * 3)
+            val fb = inst.buffers.vertexData.asFloatBuffer()
+            for (v in 0 until n) {
+                for (k in 0..2) { pos[v * 3 + k] = fb.get(v * 12 + k); nrm[v * 3 + k] = fb.get(v * 12 + 3 + k) }
+            }
+            val pal = sk2.skeleton.palette(sk2.skeleton.clip("bend"), 1f)
+            repeat(2000) { GltfSkinning.skin(pos, nrm, sk2.influences, pal) }
+            val reps = 20000
+            val t0 = System.nanoTime()
+            repeat(reps) { GltfSkinning.skin(pos, nrm, sk2.influences, pal) }
+            val ns = (System.nanoTime() - t0).toDouble()
+            println()
+            println("=== throughput (one JVM, 2000 warm-up + $reps timed calls of $n vertices) ===")
+            println("%.1f ns per vertex, %.2f M vertices/s, exact inverse-transpose normals on"
+                .format(ns / (reps.toDouble() * n), reps.toDouble() * n / ns * 1000.0))
+            val t1 = System.nanoTime()
+            val plain = SkinningOptionsPlain
+            repeat(reps) { GltfSkinning.skin(pos, nrm, sk2.influences, pal, plain) }
+            val ns1 = (System.nanoTime() - t1).toDouble()
+            println("%.1f ns per vertex, %.2f M vertices/s, with exactNormalMatrix = false"
+                .format(ns1 / (reps.toDouble() * n), reps.toDouble() * n / ns1 * 1000.0))
+        }
+
         println()
         println("done")
     }
+
+    private val SkinningOptionsPlain = GltfSkinning.SkinningOptions(exactNormalMatrix = false)
 
     /** The frames written by [main], named so the sequence reads in sorted order. */
     fun frames(): List<Pair<String, () -> TriMesh>> = listOf(
