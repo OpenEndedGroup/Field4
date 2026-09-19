@@ -895,16 +895,18 @@ that it answers.
 
 ### 6. Hold the bridge to the original
 
-A bridge is worth something only while it still agrees with the implementation it bridges, and
-agreement is not evident from reading either side. Three classes cover the three ways this one can
-be wrong. `MorphoBridgeTest` checks the seam twice over, by integer arithmetic and by gate counts
-against `tiny_morpho.py`, because arithmetic alone would pass a circuit that is correct and twice
-the size it should be. `MorphoLanguageTest` checks the directive, the growth loop and the FLine
-output, with no browser and no server, so it stays a unit test. `MorphoRegistrationTest` checks that
-the language is registered rather than merely implemented. Figures that are measurements rather than
-assertions live in `MorphoMeasurements` and run under `./gradlew jvmMeasurements`.
+A bridge can be wrong in three separate places, so pin all three: the seam, where your Kotlin
+either agrees with the original implementation or does not; the language itself, meaning the
+directive, the growth loop and the output; and the registration, which is a different claim from
+"implemented".
 
-### Two conventions this bridge had to discover
+Pin the seam *two* ways. Integer arithmetic on its own will pass a circuit that is correct and twice
+the size it should be, so this bridge also pins gate counts against `tiny_morpho.py`. Keep the
+language check free of a browser and a server so it stays a unit test, and keep figures that are
+measurements rather than assertions out of the test run: here they are in `MorphoMeasurements`,
+under `./gradlew jvmMeasurements`.
+
+### Two invariants that live only in morpho's own code
 
 Step 6 is where you find out that the implementation you are bridging has invariants written down
 nowhere but its own code. Two of morpho's are like that, and the optimized Wallace multiplier is the
@@ -949,11 +951,11 @@ then asserts the property is absent rather than present-and-null.
 
 ### What it cost
 
-Getting a language *registered* in Field is nearly free: of the bridge's 2,868 lines, registration
-proper is sixty, and those sixty were a copy. What costs is the other three things — carrying the
-language's data across a process boundary, deciding what running the language should *do*, and
-reading the other implementation carefully enough not to disagree with it by accident. The boundary
-in steps 1 and 2 is 890 lines and checking it in step 6 is 706.
+Getting a language *registered* in Field is nearly free: registration proper is sixty lines, and
+those sixty were a copy. What costs is the other three things — carrying the language's data across
+a process boundary, deciding what running the language should *do*, and reading the other
+implementation carefully enough not to disagree with it by accident. Steps 1, 2 and 6 are most of
+the bridge between them.
 
 `dev_docs/MORPHO_MEASUREMENTS.md` has the file-by-file counts for both halves: the plumbing, and
 what morpho left to its host.
