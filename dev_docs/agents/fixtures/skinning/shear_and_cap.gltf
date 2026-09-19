@@ -1,0 +1,76 @@
+     {
+      "asset": {"version": "2.0", "generator": "afield.four.modules.StressFixture"},
+      "scene": 0,
+      "scenes": [{"nodes": [0, 1]}],
+      "nodes": [
+       {"name": "plate", "mesh": 0, "skin": 0, "translation": [0.0, 10.0, 0.0]},
+       {"name": "rig", "children": [2, 3, 4, 5, 6, 7, 8]},
+       {"name": "shearBone", "translation": [0.0, 2.0, 0.0]},
+       {"name": "capBone1"}, {"name": "capBone2"}, {"name": "capBone3"}, {"name": "capBone4"}, {"name": "capBone5"}, {"name": "capBone6"}
+      ],
+      "skins": [
+       {"name": "stress", "skeleton": 1, "joints": [2, 3, 4, 5, 6, 7, 8], "inverseBindMatrices": 7}
+      ],
+      "meshes": [{"name": "plate", "primitives": [
+        {"attributes": {"POSITION": 0, "NORMAL": 1,
+                        "JOINTS_0": 2, "WEIGHTS_0": 3,
+                        "JOINTS_1": 4, "WEIGHTS_1": 5},
+         "indices": 6, "mode": 4}]}],
+      "animations": [
+       {"name": "shear",
+        "samplers": [{"input": 8, "output": 9, "interpolation": "LINEAR"},
+                     {"input": 8, "output": 10, "interpolation": "LINEAR"},
+                     {"input": 8, "output": 11, "interpolation": "LINEAR"},
+                     {"input": 8, "output": 12, "interpolation": "LINEAR"},
+                     {"input": 8, "output": 13, "interpolation": "LINEAR"},
+                     {"input": 8, "output": 14, "interpolation": "LINEAR"},
+                     {"input": 8, "output": 15, "interpolation": "LINEAR"}],
+        "channels": [{"sampler": 0, "target": {"node": 2, "path": "scale"}},
+                    {"sampler": 1, "target": {"node": 3, "path": "translation"}},
+                    {"sampler": 2, "target": {"node": 4, "path": "translation"}},
+                    {"sampler": 3, "target": {"node": 5, "path": "translation"}},
+                    {"sampler": 4, "target": {"node": 6, "path": "translation"}},
+                    {"sampler": 5, "target": {"node": 7, "path": "translation"}},
+                    {"sampler": 6, "target": {"node": 8, "path": "translation"}}]}
+      ],
+      "accessors": [
+       {"bufferView": 0, "componentType": 5126, "count": 7, "type": "VEC3",
+        "min": [-1.0, 1.2928932, -0.70710677], "max": [4.0, 2.7071068, 0.70710677]},
+       {"bufferView": 1, "componentType": 5126, "count": 7, "type": "VEC3"},
+       {"bufferView": 2, "componentType": 5121, "count": 7, "type": "VEC4"},
+       {"bufferView": 3, "componentType": 5126, "count": 7, "type": "VEC4"},
+       {"bufferView": 4, "componentType": 5121, "count": 7, "type": "VEC4"},
+       {"bufferView": 5, "componentType": 5126, "count": 7, "type": "VEC4"},
+       {"bufferView": 6, "componentType": 5123, "count": 9, "type": "SCALAR"},
+       {"bufferView": 7, "componentType": 5126, "count": 7, "type": "MAT4"},
+       {"bufferView": 8, "componentType": 5126, "count": 2, "type": "SCALAR",
+        "min": [0.0], "max": [1.0]},
+       {"bufferView": 9, "componentType": 5126, "count": 2, "type": "VEC3"},
+       {"bufferView": 10, "componentType": 5126, "count": 2, "type": "VEC3"},
+       {"bufferView": 11, "componentType": 5126, "count": 2, "type": "VEC3"},
+       {"bufferView": 12, "componentType": 5126, "count": 2, "type": "VEC3"},
+       {"bufferView": 13, "componentType": 5126, "count": 2, "type": "VEC3"},
+       {"bufferView": 14, "componentType": 5126, "count": 2, "type": "VEC3"},
+       {"bufferView": 15, "componentType": 5126, "count": 2, "type": "VEC3"}
+      ],
+      "bufferViews": [
+       {"buffer": 0, "byteOffset": 0, "byteLength": 84},
+{"buffer": 0, "byteOffset": 84, "byteLength": 84},
+{"buffer": 0, "byteOffset": 168, "byteLength": 28},
+{"buffer": 0, "byteOffset": 196, "byteLength": 112},
+{"buffer": 0, "byteOffset": 308, "byteLength": 28},
+{"buffer": 0, "byteOffset": 336, "byteLength": 112},
+{"buffer": 0, "byteOffset": 448, "byteLength": 18},
+{"buffer": 0, "byteOffset": 468, "byteLength": 448},
+{"buffer": 0, "byteOffset": 916, "byteLength": 8},
+{"buffer": 0, "byteOffset": 924, "byteLength": 24},
+{"buffer": 0, "byteOffset": 948, "byteLength": 24},
+{"buffer": 0, "byteOffset": 972, "byteLength": 24},
+{"buffer": 0, "byteOffset": 996, "byteLength": 24},
+{"buffer": 0, "byteOffset": 1020, "byteLength": 24},
+{"buffer": 0, "byteOffset": 1044, "byteLength": 24},
+{"buffer": 0, "byteOffset": 1068, "byteLength": 24}
+      ],
+      "buffers": [{"byteLength": 1092,
+                   "uri": "data:application/octet-stream;base64,AACAv4Z9pT/zBDU/AACAP4Z9pT/zBDU/AACAPz1BLUDzBDW/AACAvz1BLUDzBDW/AABAQAAAAAAAAAAAAACAQAAAAAAAAAAAAABAQAAAgD8AAAAAAAAAAPMENT/zBDU/AAAAAPMENT/zBDU/AAAAAPMENT/zBDU/AAAAAPMENT/zBDU/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAECAwQBAgMEAQIDBAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAACamZk+AACAPs3MTD6amRk+mpmZPgAAgD7NzEw+mpkZPpqZmT4AAIA+zcxMPpqZGT4AAAAAAAAAAAAAAAAAAAAABQYAAAUGAAAFBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI/CdT0K1yM9AAAAAAAAAACPwnU9CtcjPQAAAAAAAAAAj8J1PQrXIz0AAAAAAAAAAAAAAQACAAAAAgADAAQABQAGAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAMAAAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAIA/AACAPwAAgD8AAIA/AACAPwAAAEAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgQAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAQAAAAAAAAAAA"}]
+     }

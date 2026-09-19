@@ -198,6 +198,34 @@ object GltfSupport {
         var bindMatrix: Matrix4f? = null
 
         /**
+         * This mesh's skeleton and per-vertex bone weights, or `null` when the mesh is rigid.
+         *
+         * A body property rather than a constructor parameter for the same reason as [bindMatrix]:
+         * making it a `data class` component would put a scene-wide node tree into every
+         * `MeshInstance`'s `equals` and `hashCode`.
+         *
+         * Note what this does **not** change: [buffers] still holds the *bind-pose* vertices, and
+         * [bindPose] / [bindMatrix] still hold the mesh node's own transform. Deforming is a separate
+         * step, [GltfSkinning.skin], and its output is in **scene** space — glTF 2.0 §3.7.3.2 says a
+         * skinned mesh node's own transform is ignored — so a caller that skins must *not* also apply
+         * [bindMatrix]. [afield.four.modules.skinnedGltfToTriMesh] is the path that gets this right.
+         *
+         * Populated by [loadGltfBasic] when [GltfLoadConfig.loadSkins] is on, which it is by default;
+         * the cost when a file has no bones is one `mNumBones() == 0` test per mesh.
+         */
+        var skin: GltfSkinning.MeshSkin? = null
+
+        /**
+         * The GPU buffers [applyToMesh] holds when it is called with `reuseBuffers = true`.
+         *
+         * Body properties rather than constructor parameters for the same reason as [bindMatrix]:
+         * a `FrameBufferGroup` has no business in a `data class`'s `equals`. `null` until the first
+         * reusing call, and never populated by the default path.
+         */
+        private var heldVertexBuffer: afield.four.buffers.BufferParameters? = null
+        private var heldIndexBuffer: afield.four.buffers.BufferParameters? = null
+
+        /**
          * Upload this instance's buffers and set the push constants the bundled shaders expect.
          *
          * @param model the model matrix, composed into `modelView` as `view * model`. The default is
@@ -209,11 +237,29 @@ object GltfSupport {
          *   `modelView` is a **push constant**, so a box that writes it again per frame (`loop {
          *   module.VertexData.modelView = camera.m() }`) overwrites this and gets the origin back.
          *   Compose the model matrix in there too if you drive the camera that way.
+         *
+         * @param reuseBuffers keep this instance's GPU buffers between calls instead of allocating a
+         *   fresh pair. **Required for a per-frame call**, and off by default so that no existing
+         *   caller changes behaviour.
+         *
+         *   Without it, every call builds a new `BufferParameters` through `defaultBuffer { … }` —
+         *   and `BufferParameters.result`, the cache that makes `toBuffer()` hand back the same
+         *   allocation twice, lives on *that object*. So a call allocates a fresh `FrameBufferGroup`
+         *   and a fresh `VulkanBuffer`. Once at setup, which is what the documentation shows, that
+         *   is invisible. Sixty times a second — which is what a CPU-skinned character needs, since
+         *   [afield.four.modules.CpuSkinner] rewrites [buffers] in place and the new contents have
+         *   to be re-uploaded — it is a leak at frame rate.
+         *
+         *   With it on, the two `BufferParameters` are held on this instance, so `toBuffer()`
+         *   returns the same allocation and the `write { }` below simply overwrites it. One
+         *   consequence worth knowing: the buffers are bound to the renderer in scope at the *first*
+         *   such call, so do not share one instance across two renderers with this on.
          */
         fun applyToMesh(
             m: Mesh,
             camera: Camera = fromContext(),
             model: Matrix4f = bindMatrix ?: bindPose.toMatrix(),
+            reuseBuffers: Boolean = false,
         ) {
 
             m.initializePushConstantsFromModule(m.inside)
@@ -226,13 +272,15 @@ object GltfSupport {
             m.push["materialBaseColor"] = material.baseColor
             m.push["useVertexColor"] = 1
 
-            val vertexData = defaultBuffer {
-                size = (buffers.vertexCount * 12).floats
-            }.buffer
+            fun freshVertexParameters() = defaultBuffer { size = (buffers.vertexCount * 12).floats }
+            fun freshIndexParameters() = defaultBuffer { size = buffers.indexCount.ints }
 
-            val indexData = defaultBuffer {
-                size = buffers.indexCount.ints
-            }.buffer
+            val vertexData = if (!reuseBuffers) freshVertexParameters().buffer else {
+                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).buffer
+            }
+            val indexData = if (!reuseBuffers) freshIndexParameters().buffer else {
+                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).buffer
+            }
 
             m.push["vertexBuffer"] = vertexData
             m.push["indexBuffer"] = indexData
@@ -276,7 +324,15 @@ object GltfSupport {
      * (we fill white if source has no COLOR_0).
      */
     data class GltfLoadConfig(
-        val sampleRate: Float = 60f, val includeVertexColors: Boolean = true, val loadTextures: Boolean = true
+        val sampleRate: Float = 60f,
+        val includeVertexColors: Boolean = true,
+        val loadTextures: Boolean = true,
+        /**
+         * Read `aiMesh.mBones()` into [MeshInstance.skin]. On by default and close to free for a rigid
+         * file — the node tree is walked once per import and every mesh short-circuits on
+         * `mNumBones() == 0`. Turn it off to load a rigged file as its undeformed bind pose.
+         */
+        val loadSkins: Boolean = true,
     )
 
     // ------------------------------------------------------------------------
@@ -306,7 +362,13 @@ object GltfSupport {
         val root = scene.mRootNode()
         val identity = Matrix4f()
 
-        traverseNode(scene, root!!, identity, meshes, config, baseDir)
+        // The node tree and the clips are scene-wide, so they are read once and shared by every
+        // MeshInstance's skin rather than rebuilt per mesh. `null` when skins are switched off, which
+        // is what makes the rigid path cost nothing.
+        val skeletonNodes = if (config.loadSkins) GltfSkinning.readNodes(scene) else null
+        val clips = if (skeletonNodes != null) GltfSkinning.readClips(scene, skeletonNodes, config.sampleRate) else null
+
+        traverseNode(scene, root!!, identity, meshes, config, baseDir, skeletonNodes, clips)
 
         Assimp.aiReleaseImport(scene)
         return GltfModel(meshes)
@@ -318,7 +380,9 @@ object GltfSupport {
         parentTransform: Matrix4f,
         outMeshes: MutableList<MeshInstance>,
         config: GltfLoadConfig,
-        baseDir: Path?
+        baseDir: Path?,
+        skeletonNodes: List<GltfSkinning.SkeletonNode>? = null,
+        clips: List<GltfSkinning.AnimationClip>? = null,
     ) {
         val local = aiToMatrix4f(node.mTransformation())
         val world = Matrix4f(parentTransform).mul(local)
@@ -343,7 +407,12 @@ object GltfSupport {
                     animationSamples = animSamples.ifEmpty { null },
                     // The un-decomposed world matrix, kept because bindTrs cannot represent a mirror or
                     // a shear. See MeshInstance.bindMatrix.
-                ).also { it.bindMatrix = Matrix4f(world) }
+                ).also {
+                    it.bindMatrix = Matrix4f(world)
+                    if (skeletonNodes != null) {
+                        it.skin = GltfSkinning.readMeshSkin(aiMesh, skeletonNodes, clips ?: emptyList())
+                    }
+                }
             }
         }
 
@@ -351,7 +420,7 @@ object GltfSupport {
         if (children != null) {
             for (i in 0 until children.remaining()) {
                 val child = AINode.create(children[i])
-                traverseNode(scene, child, world, outMeshes, config, baseDir)
+                traverseNode(scene, child, world, outMeshes, config, baseDir, skeletonNodes, clips)
             }
         }
     }
