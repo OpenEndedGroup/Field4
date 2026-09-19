@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14246 public symbols across 362 source files**, 8166 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14246 public symbols across 362 source files**, 8173 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 29 | 1002 | 523 (52%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 894 | 280 (31%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 78 | 2286 | 884 (38%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 78 | 2286 | 891 (38%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 1 | 45 | 43 (95%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -188,7 +188,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [imaging_geometry.kt](imaging.md#imaging-geometry-kt) | Imaging | 53 | 39 | Geometry and motion for `Img`: affine and perspective warps, homography estimation from point correspondences (DLT + RANSAC), and pyramidal Lucas–Kanade optical flow. | [Imaging and computer vision](../imaging_examples.md) |
 | [imaging_simd.kt](imaging.md#imaging-simd-kt) | Imaging | 0 | 0 | The SIMD span kernels the imaging filters are built out of. |  |
 | [ImagingVisualizer.kt](visualization.md#imagingvisualizer-kt) | Visualization | 4 | 4 |  |  |
-| [Inferencer.kt](languages.md#inferencer-kt) | Languages | 5 | 0 |  |  |
+| [Inferencer.kt](languages.md#inferencer-kt) | Languages | 5 | 5 | FieldML's type checker: a Hindley-Milner inference pass over the surface tree, producing the typed tree the lowerer consumes. |  |
 | [interactionnets.kt](visualization.md#interactionnets-kt) | Visualization | 199 | 199 | Interaction nets as a live-codeable medium: a graph whose nodes rewrite each other wherever two of them touch principal port to principal port, with a DSL for building nets, a rule language for the rewrites, a scheduler that decides which collision fires next, and a force-directed layout so you can watch it happen. | [Interaction Nets examples](../interaction_nets_examples.md) |
 | [InteractiveSolving.kt](solvers.md#interactivesolving-kt) | Solvers | 43 | 28 | The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and over at interactive rates. |  |
 | [interpolants.kt](math.md#interpolants-kt) | Math | 10 | 10 | `smoothTo` wraps a target-producing lambda so that reading it eases toward the target instead of jumping to it. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
@@ -220,7 +220,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
 | [Lexer.kt](languages.md#lexer-kt) | Languages | 5 | 5 | FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything that could not be read. |  |
 | [linalg.kt](math.md#linalg-kt) | Math | 86 | 77 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Datalog in a box](../datalog.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md) |
-| [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 0 |  |  |
+| [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
 | [megaTextures.kt](graphics.md#megatextures-kt) | Graphics | 12 | 12 | A directory of images as one texture, however many of them there are. |  |
 | [mesh.kt](graphics.md#mesh-kt) | Graphics | 59 | 53 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. | [Meshes and 3D geometry](../mesh_examples.md) |

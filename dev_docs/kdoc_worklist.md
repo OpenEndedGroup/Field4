@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8166 of 14246 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8173 of 14246 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**763 undocumented entry points** (types, top-level functions and values) and 4999 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**760 undocumented entry points** (types, top-level functions and values) and 4995 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -155,7 +155,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AbletonLinkAudio.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt) | Audio | — | 2 | 30 | 0% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
-| [Inferencer.kt](../src/jvmMain/kotlin/afield/ml/type/Inferencer.kt) | Languages | — | 2 | 3 | 0% |
 | [FabricateGltfBridge.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateGltfBridge.kt) | Renderers | — | 2 | 1 | 25% |
 | [PathTraceShaderBoxes.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceShaderBoxes.kt) | Renderers | — | 2 | 0 | 33% |
 | [alife_dla.kt](../src/jvmMain/kotlin/afield/stdlib/alife_dla.kt) | ALife | — | 1 | 33 | 2% |
@@ -168,7 +167,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FaustEditorExtension.kt](../src/jvmMain/kotlin/afield/four/synth/FaustEditorExtension.kt) | Synthesis | — | 1 | 3 | 20% |
 | [SonicPiEditorExtension.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiEditorExtension.kt) | Audio | — | 1 | 3 | 20% |
 | [MorphoProblems.kt](../src/jvmMain/kotlin/afield/morpho/MorphoProblems.kt) | Languages | — | 1 | 3 | 73% |
-| [Lowerer.kt](../src/jvmMain/kotlin/afield/ml/core/Lowerer.kt) | Languages | — | 1 | 1 | 0% |
 | [GestureBoardVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt) | Audio AI | — | 1 | 1 | 33% |
 | [AudioReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/AudioReturnValue.kt) | Synthesis | — | 1 | 0 | 0% |
 | [H2DomainAdapters.kt](../src/jvmMain/kotlin/afield/visualization/H2DomainAdapters.kt) | Visualization | — | 1 | 0 | 0% |
@@ -377,4 +375,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `TPString` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:103` |
 | `TPTuple` | class | `src/jvmMain/kotlin/afield/ml/type/TypedAst.kt:104` |
 
-…and **643 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **640 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
