@@ -177,7 +177,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_philosophers" index="4" -->
 
 ```edn [field-box id="petri_demo_philosophers" role="properties"]
-{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1540 "sha256" "77468310251981b0718d86d6aef989ac206a53b071e15ecf31debb639d624fb3"}]}
+{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1525 "sha256" "6faa855b02fe49154c09fb3ca4e9df92f8dd5803a8c80b15ce1ebbe733f08c0d"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_philosophers" name="code" path="petri_demo_philosophers_code_.kt"]
@@ -213,8 +213,8 @@ for ((label, net) in listOf(
         label, net.willDeadlock(), stuck.ifEmpty { listOf("—") }.joinToString(", ")))
 }
 
-// The middle line is the interesting one: breaking the symmetry removes the deadlock and
-// leaves a starvation behind it. Two faults, two different fixes.
+// The middle line is where breaking the symmetry removes the deadlock and leaves a
+// starvation behind it. Two faults, two different fixes.
 ```
 
 ## 6. 2 — five against three

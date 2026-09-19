@@ -17,8 +17,8 @@ val triangleRefusal = runCatching { abstract.triangulate() }
 // perfectly legal thing for a polytope to be.
 val realized = cube().dual(DualCentroidRealization).polyhedron
 
-markdown("honesty", """
-    #### `cube()` &rarr; dual, with and without an embedding
+markdown("dual", """
+    #### The dual of `cube()` with and without an embedding
 
     | | abstract | after a realization policy |
     |---|---|---|

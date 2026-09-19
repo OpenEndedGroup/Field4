@@ -30,5 +30,5 @@ for ((label, net) in listOf(
         label, net.willDeadlock(), stuck.ifEmpty { listOf("—") }.joinToString(", ")))
 }
 
-// The middle line is the interesting one: breaking the symmetry removes the deadlock and
-// leaves a starvation behind it. Two faults, two different fixes.
+// The middle line is where breaking the symmetry removes the deadlock and leaves a
+// starvation behind it. Two faults, two different fixes.

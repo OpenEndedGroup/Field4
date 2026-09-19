@@ -209,8 +209,8 @@ operations:
                   label, net.willDeadlock(), stuck.ifEmpty { listOf("—") }.joinToString(", ")))
           }
 
-          // The middle line is the interesting one: breaking the symmetry removes the deadlock and
-          // leaves a starvation behind it. Two faults, two different fixes.
+          // The middle line is where breaking the symmetry removes the deadlock and leaves a
+          // starvation behind it. Two faults, two different fixes.
 
   # 6 ── the box to edit.
   - create:
