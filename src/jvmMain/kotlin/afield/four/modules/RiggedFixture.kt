@@ -234,6 +234,29 @@ object RiggedFixture {
     /** Where the committed copy lives, relative to the repository root. */
     const val COMMITTED_PATH: String = "dev_docs/agents/fixtures/skinning/bending_cylinder.gltf"
 
+    /**
+     * An absolute path to the committed fixture, found by walking up from the working directory.
+     *
+     * A box does not get to choose the server's working directory, and a demo whose first line is a
+     * relative path is a demo that works on the machine it was written on. This walks up to eight
+     * levels looking for [COMMITTED_PATH], and if it finds nothing it *writes* the fixture to a
+     * temporary file from the generator above — which costs nothing, because the generator is the
+     * source of truth for that file anyway.
+     */
+    fun locate(): String {
+        var dir: java.io.File? = java.io.File(".").absoluteFile
+        repeat(8) {
+            val candidate = java.io.File(dir, COMMITTED_PATH)
+            if (candidate.isFile) return candidate.path
+            dir = dir?.parentFile ?: return@repeat
+        }
+        val fallback = java.io.File(
+            System.getProperty("java.io.tmpdir"), "afield-bending_cylinder.gltf",
+        )
+        if (!fallback.isFile) fallback.writeText(bendingCylinderGltf())
+        return fallback.path
+    }
+
     /** Rewrite the committed asset from this source. Run from the repository root. */
     @JvmStatic
     fun main(args: Array<String>) {

@@ -153,7 +153,7 @@ object SkinningEvidence {
         "bend_t100.png" to { skinnedGltfToTriMesh(FIXTURE, clip = "bend", seconds = 1f) },
         "curl_t100.png" to { skinnedGltfToTriMesh(FIXTURE, clip = "curl", seconds = 1f) },
         "blend_bend_curl.png" to {
-            skinnedGltfToTriMesh(FIXTURE) { s ->
+            posedGltfToTriMesh(FIXTURE) { s ->
                 s.blendedPalette(s.clip("bend"), 1f, s.clip("curl"), 1f, 0.5f)
             }
         },

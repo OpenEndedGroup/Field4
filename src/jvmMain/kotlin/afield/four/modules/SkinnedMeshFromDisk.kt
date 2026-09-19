@@ -21,8 +21,7 @@ import org.lwjgl.system.MemoryUtil.memFree
  * part character and part prop arrives whole.
  *
  * ```kotlin
- * val bent = skinnedGltfToTriMesh("dev_docs/agents/fixtures/skinning/bending_cylinder.gltf",
- *                                 clip = "bend", seconds = 1.0f)
+ * val bent = skinnedGltfToTriMesh(RiggedFixture.locate(), clip = "bend", seconds = 1.0f)
  * showMesh(bent)
  * ```
  *
@@ -38,7 +37,7 @@ fun skinnedGltfToTriMesh(
     seconds: Float = 0f,
     keepColors: Boolean = true,
     options: GltfSkinning.SkinningOptions = GltfSkinning.SkinningOptions(),
-): TriMesh = skinnedGltfToTriMesh(path, keepColors, options) { skeleton ->
+): TriMesh = posedGltfToTriMesh(path, keepColors, options) { skeleton ->
     skeleton.palette(clip?.let { skeleton.clip(it) }, seconds)
 }
 
@@ -46,11 +45,16 @@ fun skinnedGltfToTriMesh(
  * The same, with the palette chosen by the caller — for a clip blend, a pose driven by an IK solver,
  * or anything else that is not "clip *x* at time *t*".
  *
+ * A different *name* rather than an overload of [skinnedGltfToTriMesh], deliberately. Box code is
+ * compiled by the K2 REPL against a different import set from `jvmMain`, and an overload pair that
+ * differs only in a trailing lambda is exactly the shape that resolves in the library and goes
+ * ambiguous in a box — where no Gradle gate can see it.
+ *
  * @param palette called once per skinned mesh with that mesh's skeleton; must return one matrix per
  *   entry of [GltfSkinning.Skeleton.bones], in that order. [GltfSkinning.Skeleton.palette] and
  *   [GltfSkinning.Skeleton.blendedPalette] are the two ready-made ones.
  */
-fun skinnedGltfToTriMesh(
+fun posedGltfToTriMesh(
     path: String,
     keepColors: Boolean = true,
     options: GltfSkinning.SkinningOptions = GltfSkinning.SkinningOptions(),

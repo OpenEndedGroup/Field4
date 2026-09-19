@@ -7,6 +7,7 @@ import afield.four.modules.GltfSkinning
 import afield.four.modules.GltfSupport
 import afield.four.modules.RiggedFixture
 import afield.four.modules.assimpToTriMesh
+import afield.four.modules.posedGltfToTriMesh
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.stdlib.TriMesh
 import afield.stdlib.Vec3
@@ -244,7 +245,7 @@ class GltfSkinningTest {
     fun blendingTwoClipsLandsBetweenThem() {
         val rest = assimpToTriMesh(fixture)
         val pose = { mix: Float ->
-            skinnedGltfToTriMesh(fixture) { s ->
+            posedGltfToTriMesh(fixture) { s ->
                 s.blendedPalette(s.clip("bend"), 1f, s.clip("curl"), 1f, mix)
             }
         }
