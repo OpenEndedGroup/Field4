@@ -157,7 +157,7 @@ audio contract rules it out, in three steps:
   committed bytes, and fails when a render fails. So a clip of this path behind a fence would not be
   a figure with a caveat; it would be a red build on every machine that has not run one optional
   Gradle task. See
-  [how the captions on every clip are checked](sound.md#how-the-voice-captions-are-checked).
+  [what a clip's caption promises](sound.md#what-a-voice-caption-promises).
 
 The two clips above make the smaller claim instead: they are rendered by the code that really ships,
 which is what the provenance audit can check. Why an offline stand-in for the spatialised output was

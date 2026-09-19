@@ -343,16 +343,14 @@ A loadable Field document with all of this side by side is committed at
 
 ---
 
-## How the "Voice:" captions are checked
+## What a "Voice:" caption promises
 
-Every sentence on this page in the form *"Voice: …"* is produced by a check, not written by hand. On each build,
-`SoundProvenanceGuardTest` decodes the committed `.wav` under each figure and compares it against a
-fresh render: a clip captioned as the stand-in has to match one, and a clip captioned as real
-samples has to not. So a figure whose producing code changed underneath it fails the build, instead
-of keeping a caption that has become false. The check needs no sample library, which is why it runs
-on a machine that has never downloaded one.
+Every *"Voice: …"* sentence on this page is produced by a check rather than typed, so a caption
+cannot outlive the code that rendered its clip. What the check establishes is narrower than it
+looks: a clip captioned as the stand-in has to match a fresh synth render, and a clip captioned as
+real samples has to *not* match one. It can tell you an asset did not come from the synth; it
+cannot tell you it came from the Tidal library specifically.
 
-The same sweep runs over every audio clip in these docs, so every row of the table above comes from
-a decode. The method, the correlation figures and the pinned family counts
-are in `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`; the audit prints its whole table with
-`run_field_tests.py --id synth.docs.audio.provenance`.
+Print the whole table with `run_field_tests.py --id synth.docs.audio.provenance`. The method, the
+correlation figures and the pinned family counts are in
+`dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`.
