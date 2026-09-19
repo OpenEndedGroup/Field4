@@ -121,6 +121,12 @@ operations:
           // which is before any code in the next fragment runs — so the slots have to be
           // registered here, in an earlier fragment, or {{ mega.all }} has nothing to resolve to.
           //%-
+          // The renderer comes from the `agent_graphics_context` parent this box is connected
+          // under, and it is fetched rather than inherited so the box still *compiles* on its own —
+          // which is what the transcript corpus harness does to it. `afield_four_traditional_triangle`,
+          // the other child of that parent, has always done it this way.
+          val renderer: Renderer = fromContext()
+
           val camera = Camera()
           camera.at = vec(0, 0, -18)
           var kc by keyCamera(camera = camera)
@@ -134,8 +140,12 @@ operations:
           // republish the page table. Recorded into this module's own command buffer.
           mega.attach(module)
 
-          m.p = camera.p
-          m.m = camera.m
+          // The two matrices the vertex shader's `matrices` push block declares, by the names it
+          // declares them under. Assigning the camera's `HasUniform` rather than calling it —
+          // `camera.p()` — is what makes them live: `Structure` re-evaluates a HasUniform every
+          // time it writes the push buffer, so the wall tracks `keyCamera` with nothing per frame.
+          m.push["p"] = camera.p
+          m.push["m"] = camera.m
 
           // Six vertices, no index buffer, one instance per image.
           m.resize(6)

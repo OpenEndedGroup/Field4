@@ -481,7 +481,7 @@ val twoLobe = tracer.integratorSource()
 println(tracer.reloadIntegrator(twoLobe))   // RELOADED; accumulation restarts
 ```
 
-**The check for this already exists, and it is the reason to trust the result.**
+A check for this already exists.
 `PathTraceMediumGpuSmoke`'s white furnace puts an albedo-one medium in a uniform unit
 radiance field with no geometry at all, where the answer is an analytic **1.0** for *any*
 correctly normalised phase function. It runs at six anisotropies precisely because that

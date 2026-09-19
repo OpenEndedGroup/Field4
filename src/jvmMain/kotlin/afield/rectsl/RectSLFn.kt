@@ -112,7 +112,7 @@ import kotlin.math.abs
  * reports the worst disagreement, and it reports coverage, how much of the corpus lowered at all,
  * because a differential test that refused everything would otherwise read as a pass.
  *
- * The corpus is not uniform in what it proves, and the difference is the reason to trust it. The
+ * The corpus is not uniform in what it proves, and its rows differ in what they rule out. The
  * rows for the programs that predate this backend were dumped from code that knew nothing about
  * it, so a disagreement on one of those can only be this file's. The rows for the four
  * `musicality-*` programs were produced by the current [SceneProgram.sample]: still a real

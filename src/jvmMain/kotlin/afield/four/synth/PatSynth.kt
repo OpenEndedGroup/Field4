@@ -26,7 +26,7 @@ import kotlin.math.sqrt
  * whole buffer, because a pattern has to be *queried* over an arc and there is no "next 128 frames"
  * to ask it for without a scheduler. This file is that scheduler, for Field's own voices.
  *
- * Three parts, and the division between them is the whole design:
+ * Three parts, split by where they run:
  *
  * | | where it runs | what it does |
  * | --- | --- | --- |

@@ -1,0 +1,284 @@
+name: four_summary_pyramid
+description: |
+  A **summarised quadtree over a raster**, declared as one pass chain: three moving blobs, a 2×2
+  reduction pyramid that carries mergeable statistics instead of colour, and an overlay that draws
+  what each cell of the tree knows as a centroid and an ellipse. Three boxes — a renderer, a bundle,
+  and one declaration.
+
+  The structure is free. A 2×2 reduction has a parent for every four cells and one cell at the top,
+  which *is* a complete quadtree — no nodes, no pointers, no subdivision criterion and no build step
+  that can disagree with the data. `summary-value-0` is the root and `summary-value-8` is the leaf
+  level, and a node at depth d is a texel of the d-th pass. So the interesting question is not the
+  structure, it is what each cell carries, and that is where this differs from the downsample
+  pyramid in [four_pass_chain](#four_pass_chain): instead of an average colour, three planes of
+  **sufficient statistics**.
+
+    - `summary-value-d` — weight, value mean, value variance, occupancy.
+    - `summary-moment-d` — Σwx, Σwy, Σwx², Σwy².
+    - `summary-extent-d` — Σwxy, and the two extremes of the value.
+
+  From the last two, `centroid = E[p]` and `covariance = E[ppᵀ] − E[p]E[p]ᵀ`, so every cell has an
+  orientation and an anisotropy. That is the payoff the overlay draws: an adaptive cell stops saying
+  "occupied" and starts carrying a crude geometric model of what is inside it — where the mass is,
+  which way it runs, how elongated it is. Watch the ellipses lean as the blobs rotate.
+
+  **And the statistics are what a descent is made of.** `adaptiveSummaryCells` walks the tree from
+  depth 1 down, stopping wherever a cell already describes its contents well enough, and draws the
+  cells it stopped at — big ones over empty space, small ones along the blobs' edges. That is the
+  difference between a quadtree and a pyramid in the only sense that matters to a consumer: without
+  a criterion every reader takes one level, and one level of a pyramid is a grid. A descent is also
+  a pass chain in the same literal sense a Jacobi sweep is — two passes per level, at two different
+  resolutions, because the decision lives at the tree's scale and the drawing at the picture's.
+
+  **Every channel is a per-cell mean rather than a sum**, and that is not a compromise. A sum over a
+  256² image leaves 0..1 immediately and a channel outside 0..1 cannot be read back at all, while
+  every statistic that matters — centroid, covariance, mean, variance — is a ratio in which the
+  cell's area cancels. A mean also merges by averaging four children, which is one `+` per channel
+  with a `0.25` on the end.
+
+  Things worth trying in the summary box:
+
+    - `threshold` on the cut, from `0.02f` up to `0.4f` and down to `0.005f`. The cells coarsen and
+      refine as one; at the coarse end the whole cut collapses towards depth 1 and you can see it is
+      a *tiling* rather than a set of cells that happen not to overlap.
+    - `criterion`, between `OCCUPANCY`, `SPREAD`, `CENTROID_OFFSET` and `VALUE_VARIANCE`. Four
+      different pictures of the same tree, and each is two lines over planes that were already
+      there. `SPREAD` is the one that cannot be expressed by an occupancy quadtree at all: it refines
+      where the mass is *narrower than the cell holding it*, which needs the second moments.
+    - `coarsest = 0` and `finest = 8`. The full descent, root to leaf, on a 256² tree.
+    - swap the whole cut for `FabricatePassLibrary.summaryEllipses(prefix = "summary", depth = 4,
+      over = "field-view")` — the flat, one-level view. Useful for reading a single level, and a good
+      demonstration of why a level is not a tree.
+    - `weightChannel = 0` instead of `3`. The pyramid then weighs cells by the red channel, which
+      here is a vertical value ramp that covers the whole frame, so every centroid snaps back to its
+      cell's centre and the ellipses go round. That is the correct answer for a uniform mass, and it
+      is a good way to see how much of what you are looking at is *mass* rather than geometry.
+    - `statistics = FabricatePassLibrary.SummaryStatistics.RAW_MOMENTS`. The picture does not change,
+      which is the point: the two forms differ only in how the *value variance* survives a small
+      spread on a large offset, and at this amplitude both are fine. The measurement where they come
+      apart is in `four.quadtree-chain.smoke`, at an amplitude of 1/4096, where the raw form returns
+      noise of the same order as the answer.
+    - `println(summary.plan.report())`. Twenty-seven passes on far fewer targets: the three ladders
+      are independent, so a level that is dead once its parent has read it hands its target on.
+
+  `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
+  `tools/run_field_tests.py --id four.quadtree-chain.smoke` is this chain driven headlessly against
+  **closed forms** — a linear ramp has an exact mean, variance, centroid and spatial variance at
+  every level, so the pyramid is compared against arithmetic rather than against a previous render.
+  [four_morton_quadtree](#four_morton_quadtree) is the same three planes produced from a point set
+  instead of a raster, by a completely different pipeline.
+operations:
+  # 1. the renderer: owns the Window and pumps the loop. Run this one first.
+  - create:
+      box: sp_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Summary pyramid")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  # 2. the bundle: no scene. The chain below synthesises its own field, so what is needed here is a
+  #    post stack for it to be appended to and nothing else.
+  - create:
+      box: sp_bundle
+      name: bundle
+      frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
+          // itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
+          // rewrites the box's code and the rewrite does not carry the snippet's own imports, so
+          // `prop<StandardRenderer.Bundle>(bundle)` under an
+          // `import afield.four.fabricated.StandardRenderer` fails with
+          // `Unresolved reference 'StandardRenderer'` reported against the *import* line.
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.applyScenePlan
+          import afield.stdlib.linalg.Vector3f
+
+          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+
+          // `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
+          // there is nothing to fetch with `fromContext()`.
+          //
+          // This one *is* a `once`, unlike the chain box below, and for a reason rather than out of
+          // habit: `StandardRenderer.build` has no replace-in-place path, so re-running it would
+          // strand the bundle the chain is appended to.
+          once.bundle {
+              val b = StandardRenderer.build(
+                  renderer,
+                  StandardRenderer.Config(
+                      renderWidth = 1024,
+                      renderHeight = 1024,
+                      backgroundColor = Vector3f(0.02f, 0.02f, 0.03f)
+                  )
+              )
+              b.applyScenePlan()
+              b.present(renderer = renderer)
+              b.attachTo(renderer)
+              b
+          }
+          println("bundle ready: ${bundle.postStack.names()}")
+  # 3. the pyramid: a field, twenty-seven reduction passes, and an overlay that draws the tree.
+  - create:
+      box: sp_summary
+      name: summary pyramid
+      frame: { x: 720.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.FabricatePassChain
+          import afield.four.fabricated.FabricatePassLibrary
+          import afield.four.fabricated.FabricatePassSize
+          import afield.four.fabricated.FabricatePassSpec
+          import afield.four.fabricated.addPassChain
+          import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
+
+          prop<afield.four.fabricated.FabricateBuiltChain>(summary)
+
+          // The field being summarised: three anisotropic blobs that drift and rotate, with the
+          // mass in alpha and a value ramp in red. A chain head that synthesises its own input is
+          // self-contained whatever the post stack looked like before it.
+          val fieldFragment = """
+              #version 450
+              layout(location = 0) in vec2 vUv;
+              layout(push_constant) uniform FieldPush {
+                  float time;
+              } push;
+              layout(location = 0) out vec4 outColor;
+
+              float blob(vec2 uv, vec2 centre, float lean, vec2 radii) {
+                  vec2 d = uv - centre;
+                  float s = sin(lean);
+                  float c = cos(lean);
+                  vec2 r = vec2(d.x * c + d.y * s, -d.x * s + d.y * c) / radii;
+                  return exp(-dot(r, r));
+              }
+
+              void main() {
+                  float t = push.time;
+                  float mass = blob(vUv, vec2(0.32 + 0.05 * sin(t), 0.34), t * 0.5, vec2(0.10, 0.035))
+                             + blob(vUv, vec2(0.70, 0.36 + 0.05 * cos(t * 0.8)), -t * 0.3, vec2(0.05, 0.05))
+                             + blob(vUv, vec2(0.50, 0.72), 0.7 + 0.25 * sin(t * 0.6), vec2(0.13, 0.03));
+                  // A Gaussian is never actually zero, so without a floor every cell in the frame
+                  // has a weight of about 1e-20 — which is over the overlay's own threshold, and
+                  // draws an ellipse of the rounding error in an empty cell. The picture is then a
+                  // grid of ellipses everywhere and the interesting ones are lost in it.
+                  mass = mass < 0.01 ? 0.0 : clamp(mass, 0.0, 1.0);
+                  // The value is deliberately NOT the mass: a summary carries a value *and* a
+                  // weight, and keeping them different is what makes "the mean value where the mass
+                  // is" a different question from "how much mass".
+                  float value = 0.25 + 0.7 * vUv.y;
+                  outColor = vec4(value, mass * 0.45, mass, mass);
+              }
+          """
+
+          // The field as a *picture*, which is not the same thing as the field. `field` carries a
+          // value in red over the whole frame because that is what the pyramid weighs and averages;
+          // looking at it directly is looking at a red wash with the interesting part in the alpha
+          // channel. One pass turns it into something to draw on: the value's colour, where the
+          // mass is.
+          val viewFragment = """
+              #version 450
+              layout(location = 0) in vec2 vUv;
+              layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+              layout(location = 0) out vec4 outColor;
+
+              void main() {
+                  vec4 f = texture(sourceTex, vUv);
+                  vec3 warm = mix(vec3(0.65, 0.16, 0.06), vec3(1.0, 0.82, 0.30), f.r);
+                  outColor = vec4(warm * f.a, 1.0);
+              }
+          """
+
+          // Declared every run. `addPassChain` replaces passes of the same name and reuses a target
+          // whose shape has not changed, so editing a number and hitting run remakes the chain
+          // without reallocating anything — which is why there is no `once` here. Wrapping the
+          // declaration in one would mean a `resolution` you edited never took effect.
+          summary = bundle.addPassChain(
+              listOf(
+                  FabricatePassSpec(
+                      name = "field",
+                      fragment = fieldFragment,
+                      size = FabricatePassSize.Absolute(256, 256),
+                      // fp32, and it matters here rather than being caution: the second moments are
+                      // differences that need every bit of the first ones, and an 8-bit field would
+                      // quantise the mass before the pyramid ever saw it.
+                      format = VK_FORMAT_R32G32B32A32_SFLOAT,
+                      source = FabricatePassChain.CHAIN_INPUT,
+                      push = mapOf("time" to 0f)
+                  ),
+                  FabricatePassSpec(
+                      name = "field-view",
+                      fragment = viewFragment,
+                      size = FabricatePassSize.Absolute(512, 512),
+                      source = "field"
+                  )
+              ) + FabricatePassLibrary.summaryPyramid(
+                  // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
+                  // holding the statistics of the whole field.
+                  prefix = "summary",
+                  resolution = 256,
+                  source = "field",
+                  weightChannel = 3,
+                  valueChannel = 0
+              ) + FabricatePassLibrary.adaptiveSummaryCells(
+                  // The half that makes it a quadtree rather than a pyramid: descend from depth 1,
+                  // stop wherever the cell already describes its contents well enough, and draw the
+                  // cells you stopped at. Empty space keeps its big cells and the blobs' edges are
+                  // resolved six levels down, in one pass chain, from one tree.
+                  //
+                  // Two passes per level and two *resolutions* per level: the decision runs at the
+                  // tree's scale (one texel per cell) and the drawing at the picture's.
+                  prefix = "summary",
+                  name = "cut",
+                  over = "field-view",
+                  coarsest = 1,
+                  finest = 6,
+                  // Refine where the cell is partly full — so the cut tracks the blobs' boundaries
+                  // and leaves both the inside and the outside coarse. Try SPREAD instead to refine
+                  // where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
+                  // image quadtree, which here follows the value ramp rather than the blobs.
+                  criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
+                  threshold = 0.02f,
+                  weightGain = 3f
+              ),
+              printReport = true
+          )
+          // The frame graph has to re-sync before the new passes are scheduled.
+          bundle.attachTo(renderer)
+          bundle.present(renderer = renderer)
+
+          // ── live knobs ──
+          //
+          // A lambda *binds*: the supplier is re-read every time the push buffer is written, so
+          // this one line is the whole animation and there is nothing to call per frame. The whole
+          // pyramid is rebuilt from the field every frame — twenty-seven passes over 256² and down,
+          // which is cheaper than the blur in four_pass_chain.
+          summary["time"] = { renderer.frameCounter * 0.01f }
+          summary["sigma"] = 1f           // the ellipse's radius, in standard deviations
+          summary["weightGain"] = 3f      // a mean coverage is a small number; this lifts the fill
+          // `threshold` reaches every level of the descent at once, because the cut's select
+          // passes all declare it — so turning this one number re-cuts the whole tree on the next
+          // frame with nothing rebuilt and nothing reallocated.
+          summary["threshold"] = 0.02f
+
+          println("summary pyramid: ${summary.names().size} passes, " +
+                  "root ${summary.targetOf("summary-value-0")?.width}x" +
+                  "${summary.targetOf("summary-value-0")?.height}")
+  - connect: { parent: sp_renderer, child: sp_bundle }
+  - connect: { parent: sp_bundle, child: sp_summary }
+  - launch: { box: sp_renderer, property: code, strand: renderer }
+  - await: {}
+  - execute: { box: sp_bundle, property: code }
+  - await: {}
+  - execute: { box: sp_summary, property: code }
+  - await: {}
+  - wait: { frames: 24 }

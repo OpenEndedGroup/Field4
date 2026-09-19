@@ -40,12 +40,11 @@ import java.util.concurrent.TimeUnit
  * Python as a Field main language: a box whose source is Python, executed **in this process** by
  * CPython through JEP.
  *
- * In-process is the whole design and every consequence below follows from it. There is no
- * subprocess and no socket, so a Python box and a Kotlin box exchange objects rather than text; and
- * there is exactly **one interpreter and one namespace per Field process**, so two Python boxes
- * share globals whether or not you wanted them to. That is a deliberate trade — it is what makes a
- * cell in one box see a `DataFrame` another box built — and it is the first thing to know before
- * debugging "why does this variable already exist".
+ * There is no subprocess and no socket, so a Python box and a Kotlin box exchange objects rather
+ * than text; and there is exactly **one interpreter and one namespace per Field process**, so two
+ * Python boxes share globals whether or not you wanted them to. That is a deliberate trade — it is
+ * what makes a cell in one box see a `DataFrame` another box built — and it is the first thing to
+ * know before debugging "why does this variable already exist".
  *
  * Read it in four layers:
  *

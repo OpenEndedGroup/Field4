@@ -164,7 +164,7 @@ from another module, the ordinary readback path to pull it to the CPU. `latestIm
 
 A 13-tap (Jimenez) downsample pyramid, a separable blur reusing the nine-tap kernel `addBloom`
 already ships, a disc/aperture blur, a tent upsample-add, a composite, a bright pass, and two whole
-chains: `apertureChain()` and `bloomPyramid()`.
+chains: `apertureChain()` and `bloomPyramid()`. Then two simulations, and two summarised quadtrees.
 
 Two of these are new capability rather than new shaders:
 
@@ -301,6 +301,151 @@ subtly wrong in the far reaches of a large one rather than visibly broken.
 `distanceBands()` is the companion that makes a distance field something you can look at: even
 bands, a dark isoline at zero, and the two sides of a signed field coloured differently. Even
 spacing is also the check — a field whose bands crowd or stretch is not a distance.
+
+#### `summaryPyramid()` and `mortonPointQuadtree()` — one `Summary`, two producers
+
+The third and fourth templates are not effects and not simulations. They are a **data structure**:
+a quadtree whose cells carry mergeable sufficient statistics rather than a colour, built two ways.
+
+A 2×2 reduction already has a parent for every four cells and one cell at the top, so a pyramid
+*is* a complete quadtree — no nodes, no pointers, no subdivision criterion, and no build step that
+can disagree with the data. `summary-value-0` is the root and `summary-value-8` the leaf level of a
+256² field. The structure is therefore free, and the whole design question is what a cell carries:
+
+| plane | channels | recovers |
+| --- | --- | --- |
+| `value` | weight, value mean, value variance, occupancy | how much is here, how bright, how uniform, how full |
+| `moment` | Σwx, Σwy, Σwx², Σwy² | the centroid, and the diagonal of the spatial covariance |
+| `extent` | Σwxy, min v, max v | the off-diagonal, and the two extremes |
+
+From the last two, `centroid = E[p]` and `covariance = E[ppᵀ] − E[p]E[p]ᵀ`, whose eigenvectors and
+eigenvalues give a cell an orientation and an anisotropy. That is the payoff over an occupancy
+quadtree: an adaptive cell stops saying "there is something here" and starts carrying a crude
+geometric model of what — where the mass is, which way it runs, how elongated and how dispersed.
+`summaryEllipses()` draws exactly that, by Mahalanobis distance rather than by walking a curve,
+because a fragment shader is already being asked "how far is this pixel from that cell's
+distribution".
+
+**Every channel is a per-cell mean and not a sum**, and the two reasons point the same way. A sum
+over a 256² image leaves 0..1 immediately, and a channel outside 0..1 cannot be read back at all
+(`TexturePreviewCache` blits to `R8G8B8A8_SRGB`), so it is a statistic nobody can check — fatal for
+arithmetic whose mistakes render as plausible pictures. And every statistic that *matters* is
+normalisation-invariant: centroid, covariance, mean and variance are ratios in which the cell's area
+cancels. A mean also merges by averaging four equal-area children, which is one `+` per channel with
+a `0.25` on the end. Only total mass needs the area back, and that is one multiplication at the
+point of asking.
+
+##### The value statistics are the one place the obvious representation is wrong
+
+`(weight, Σwv, Σwv²)` merges by addition and recovers the variance as `E[v²] − E[v]²`. It is
+simpler, it is what everyone reaches for, and on a field whose values sit near 0.5 with a spread of
+a thousandth the two terms agree to eight digits — more digits than an fp32 accumulator has. The
+subtraction returns noise of the same order as the answer, and the cell still reports a weight, a
+mean, and a plausible-looking number.
+
+So the default is `SummaryStatistics.POOLED`: `(weight, mean, variance)` merged by the weighted
+pooled-variance identity, which is the Welford/Chan parallel form normalised so every channel stays
+in 0..1.
+
+```
+W    = w₁ + w₂
+mean = (w₁m₁ + w₂m₂) / W
+var  = (w₁v₁ + w₂v₂) / W + (w₁w₂ / W²)(m₂ − m₁)²
+```
+
+The last term is the whole difference: it carries the variance *between* the two children
+explicitly, rather than recovering it as the difference of two nearly equal large numbers. Both
+forms ship, because the switch is what makes the claim measurable rather than asserted — see the
+A/B below.
+
+##### The point producer, and the two steps a fragment chain has to go round
+
+`mortonPointQuadtree()` reaches the same three planes from a point set:
+
+```
+points ─▶ Morton code ─▶ rank ─▶ sorted ─▶ node ranges ─▶ leaf Summary ─▶ 2×2 reductions
+```
+
+Quantise a point into a `2^depth` grid, interleave the bits of its cell coordinates, and its code
+*is* its path down the tree — two bits per level, most significant first — so a node at depth d is
+the set of points sharing the first `2d` bits, which in a sorted array is a **contiguous range**. A
+node needs no pointers and no contents, only `(first, count)`, which is what the `range` plane
+carries and what reduces by `(min, sum)` up the tree.
+
+- **A fragment shader cannot scatter**, so it cannot run a radix sort: a histogram, a prefix sum and
+  a scatter is three things, and the last is the one that writes somewhere other than the texel the
+  invocation is for. Every pass in this layer is a fullscreen quad over one colour attachment
+  (`standardRenderer.kt:630#addShaderEffect`), and its fragment stage's only output is the texel it
+  was invoked for — so the rank pass (`FabricatePassLibrary.kt:2690#pointRankFragment`) is what a
+  sort looks like when it may only gather. The gather form of the same answer is two passes — each element counts how many
+  elements precede it, then each slot picks up the element whose rank it holds. Exact, O(N) taps per
+  texel, and therefore O(N²) over the pass, which is why `MAX_POINT_QUADTREE_POINTS` is 4096. The
+  version that keeps the complexity is a bitonic network, `log₂N (log₂N + 1) / 2` partner-and-compare
+  passes, which this layer expresses fine and which at 4096 points is 78 passes against these two.
+  The tie-break on `(key, index)` is not a refinement: two points in one leaf cell share a code, and
+  a rank counting only `key < key` puts both in one slot and leaves another empty. Duplicate codes
+  are what a leaf cell *is*.
+- **It cannot scan or compact either** — same reason, same citation, and
+  `FabricatePassLibrary.kt:2757#pointNodesFragment` is the shape that falls out. Boundary detection
+  is inverted. The usual formulation
+  flags `morton[i] >> shift != morton[i-1] >> shift` per element, prefix-sums the flags and compacts
+  them. Asking the question *per node* needs neither: a node's prefix is the Morton code of its own
+  coordinates, so it finds its own range with two binary searches over the sorted keys. A complete
+  level of a shallow tree is a small image — depth 5 is 32² — so materialising all of it costs less
+  than compacting the sparse part of it would.
+
+Everything above the leaf is `summaryReduceLevels`, which is **one function called twice**. The
+unification is not a claim in a comment; `theTwoProducersShareTheirReductionLaddersExactly` asserts
+the two chains hold the identical fragment string for every shared plane at every depth.
+
+A node's weight is its **density against a uniform spread** — its points' weight over the number a
+cell of its size would hold if the set were spread evenly. That is the only normalisation under
+which an averaging ladder is correct, and it is also the one that makes the two producers report the
+same number rather than the same number times a constant. It is unbounded where a raster's is not,
+and that asymmetry is real: a texel's coverage is at most one, but a point set can put half its mass
+in one cell. `densityScale` exists for looking at a crowded level, and scales the weight and the
+moments together so every ratio taken from them is unchanged.
+
+##### The cut — the half that makes it a quadtree rather than a pyramid
+
+Everything above builds the tree. `adaptiveSummaryCells()` spends it: descend from the root, stop
+where a cell already describes its contents well enough, draw the cells you stopped at. Without a
+criterion every consumer reads one level, and **one level of a pyramid is a grid** — which is a fair
+description of what the first version of this work shipped.
+
+A descent is a pass chain in the same literal sense a Jacobi sweep is. Two passes per level:
+
+- `$name-select-d` runs at the *tree's* resolution and writes two flags, `drawn` and `open`,
+  from the criterion and from its **parent's** flags at `cell / 2`. "Every ancestor split" is a
+  conjunction down the whole chain, so it is propagated one level at a time rather than recomputed —
+  the thing a per-level pass can do cheaply and a single pass cannot do at all.
+- `$name-d` runs at the *image's* resolution and composites that level's chosen cells over what the
+  coarser levels drew.
+
+Two resolutions per level is why this needed the heterogeneous layer rather than a loop: the
+decision lives at the tree's scale and the drawing at the picture's.
+
+`drawn` and `open` partition `reached` at every level, so the chosen cells **tile the domain
+exactly** — the defining property of a quadtree cut, and the one thing here worth asserting
+numerically rather than looking at.
+
+[`SubdivisionCriterion`](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassLibrary.kt) offers
+four, each two lines over planes that were already there: `VALUE_VARIANCE` (the classic image
+quadtree, and the only one that depends on `SummaryStatistics`), `OCCUPANCY` (refines along a
+boundary and leaves both sides coarse), `CENTROID_OFFSET` (refines where a cell reports a position
+no part of its contents occupies), and `SPREAD` (refines where the mass is narrower than the cell
+holding it — the one an occupancy quadtree cannot express, because it needs the second moments).
+
+The weight floor is not an optimisation. An all-but-empty cell has a centroid that is a ratio of two
+nothings and a variance of nothing, and those numbers are as large and arbitrary as any other — so
+without it the descent refines hardest over exactly the regions with nothing in them.
+
+Two smaller passes exist because of the *instrument* rather than the algorithm. `summaryReadout()`
+scales one channel into the range an 8-bit readback can carry, and `summaryCovariance()` computes
+`(cxx, cyy, cxy)` **on the GPU**: a second moment is the difference of two channels that agree to
+three digits at any fine level, so reading the planes back and subtracting on the CPU returns the
+readback's noise whatever the GPU computed. Subtracting before the readback and scaling the answer
+is the difference between a measurement and a number-shaped thing.
 
 ### `FabricatePassChainBuilder.kt` — materialize, and decide nothing
 
@@ -511,6 +656,101 @@ percentage of a linear value could not have expressed that: one code step near t
 field is 2.6% of the linear value there, so a 2% ceiling on linear error is a ceiling *below the
 instrument's own resolution*, and it failed at 2.34% with nothing wrong.
 
+### The summarised quadtrees, on the GPU — `tools/run_field_tests.py --id four.quadtree-chain.smoke`
+
+Fourteen guards, PNGs in `build/quadtree-chain/`. Measured 2026-09-18 on an Apple M1 Max.
+
+This one is **mostly ground truth rather than A/Bs**, and the reason is that a summary produces no
+picture. Every other GPU test in this family measures something you can look at; here the output is
+eleven numbers per cell, and a centroid half a texel off, a variance that lost its between-children
+term, or a node bracketing a range that starts three points early are all invisible and none of them
+is caught by the planner. A linear ramp with a uniform weight has a closed form for every statistic
+at every level — a cell of `s` texels starting at column `c` has mean `base + amp(c + s/2)/R`,
+variance `amp²(s² − 1)/12R²`, a centroid at its own centre and a spatial variance of `(s² − 1)/12R²`
+— so the pyramid is compared against a formula, in the 8-bit codes the readback produces.
+
+| what | measured | floor |
+| --- | --- | --- |
+| nine summary channels vs the closed form, root and depth 2, both producers | ≤ 2 codes of 255 | 2 codes |
+| value variance vs `amp²(s²−1)/12R²`, two depths | ≤ 2 codes | 2 codes |
+| pooled vs raw moments, ramp at amplitude 1/4096 | 0.4969 vs 1.0000, exact 0.4948 | raw must miss by > 8 code steps |
+| the gather as a permutation | 0 holes in 256 slots | exact |
+| sorted keys non-decreasing; unsorted not | 0 descents of 255, against 14 before | exact |
+| root node's range | `[0, 256)` | exact |
+| point vs raster producer, twelve channels | **0 codes** — bit-identical | 0.01 UV of centroid |
+| the two producers' covariance on a clustered set, depth 2 | 0.0826 at gain 200 | 0.15 |
+| a variance cut of a ramp, two thresholds | lands entirely at depth 2, then at depth 3 | exact, and nowhere else |
+| a cut of the clustered set | 4 levels used (1:1, 2:11, 3:1, 4:12) | ≥ 3 levels |
+| those cells' areas | 1.000000 of the domain | 1e-6 |
+
+Three of those are worth the words.
+
+**The A/B is the argument for the default.** The same field, the same gain, the same readout pass,
+differing only in how the value statistics merge on the way up: the pooled form lands 0.4% from the
+exact answer and the raw form saturates the instrument. The assertion is not "the raw form is worse"
+— it is that the raw form's answer must be *outside* the readback's own resolution of the right one,
+so if fp32 ever got wider or the field ever got louder the test would say so rather than quietly
+agreeing.
+
+**Bit-identical is the strongest form the unification claim can take.** Put one point at every texel
+centre of the raster and the two pipelines — one of which sorts Morton codes and brackets prefixes,
+the other of which averages 2×2 blocks — produce readbacks that differ in zero codes across all
+twelve channels. It is also the strongest available check on the sort and the range search: a node
+bracketing the wrong points produces a summary that is wrong in no visible way and disagrees here
+immediately.
+
+**The cut is tested against a closed form too, which is the point of using a ramp.** A ramp's cell
+variance is `amp²(s² − 1)/12R²`, so a variance cut over it has an exact answer *and* a uniform one:
+every cell crosses the threshold at the same depth, so the whole cut has to sit at one level and
+nowhere else. That single assertion catches a parent's flags read from the wrong level, a criterion
+off by a factor, and a finest level still allowed to refine — which drops every cell that was open
+there and leaves holes in the tiling. The clustered cut then checks the thing the ramp cannot: that
+the *same* chain resolved empty space at depth 1 and a tight cluster four levels down, and that the
+cells it chose tile the frame to one part in a million.
+
+**The clustered set is there because the uniform one is a tautology.** With a uniform weight every
+centroid sits at its cell's centre whatever the moment planes are doing, so a chain with `momentTex`
+bound to the wrong plane passes everything above. On the cloud, 30 occupied cells hold a centroid off
+their own centre by more than a quarter of a cell, and two depth-2 cells come back measurably
+anisotropic — which needs the cross moment, the one channel nothing else reads.
+
+#### Three traps this cost, and all three were the harness
+
+0. **An overlay must not inherit the alpha of what it was drawn over.** Every one of these figures
+   composites over a *mass* channel, so `vec4(result, under.a)` wrote a PNG that was almost entirely
+   transparent — correct pixels, and every viewer shows them against white. Three committed figures
+   were unreadable and the pixels were never wrong. The same paragraph applies to the *colour*: a
+   splat's value channel is `Σwv / Σw`, a ratio that stays at full strength wherever the mass is
+   merely small, so drawing it directly is a blob the size of the cloud's faintest halo. The plane
+   you summarise is not the plane you look at, and both demos now carry a one-pass view of their
+   own.
+1. **The leaf normalisation has to be a density against a uniform spread**, not a share of the point
+   budget. A share is a *sum*, and the shared reduction ladder averages — so every level above the
+   leaf was a quarter of what it should have been, the weight channel read 13 codes against 71, and
+   the centroids that came out of dividing by it disagreed with the raster's by 0.056 UV. The fix
+   made the two producers agree exactly, which the wrong normalisation had been hiding behind a
+   plausible constant.
+2. **A cluster centred on a cell boundary makes the two producers disagree for reasons that are
+   about neither of them.** The raster producer summarises a *splat* of the points, and a splat
+   spreads mass across whatever boundary it sits on, so a cluster centre exactly on `u = 0.5`
+   measured a covariance disagreement of 0.89 that was entirely the discretisation. The clusters now
+   sit inside their cells and the residual is 0.0826 at gain 200 — which is 4.1e-4, and the splat
+   kernel's own variance is `r² = 4e-4`. The measurement is now explained to one significant figure.
+3. **Summarising the luminance of a splat summarises a ratio channel.** The splat writes `Σwv / Σw`
+   into a channel, and a ratio stays at full strength wherever the mass is merely small rather than
+   zero — so the raster producer saw a uniform pedestal of about 0.2 over every cell and reported the
+   cell's *own* covariance, 4.1e-3 against the point producer's 7.4e-4. Naming the mass channel
+   explicitly fixed it. The picture of the wrong version looked fine, and the same mistake in the
+   `four_morton_quadtree` transcript painted the whole frame blue, which is how it was recognised.
+
+#### And one about the readback that is not in the six below
+
+**The four channels do not come back the same way.** `TexturePreviewCache` blits to
+`VK_FORMAT_R8G8B8A8_SRGB`, which is display-encoded in *rgb* and linear in *a* — that is what the
+format means. A statistic in the alpha channel therefore decodes by dividing by 255 and one in red
+decodes through the sRGB curve, and using one rule for all four reads the alpha channel about 2.2
+times too small in the dark. `Σwy²` lives in alpha, so this is not hypothetical.
+
 ### In a live Field
 
 `dev_docs/agents/transcripts/four_pass_chain.yaml` is in the guarded corpus, classified
@@ -546,6 +786,32 @@ new shader through shaderc and every pipeline created clean in the managed-serve
 uv run --project . --group backdoor python tools/field_backdoor.py --scratch --timeout 900 \
   --command 'macro write four_simulation_chain --file dev_docs/agents/transcripts/four_simulation_chain.yaml' \
   --command 'macro run four_simulation_chain' \
+  --command 'wait-native-renderer'
+```
+
+`dev_docs/agents/transcripts/four_summary_pyramid.yaml` and `four_morton_quadtree.yaml` are the two
+summarised-quadtree templates, three boxes each, classified the same way and offered as starting
+points beside the others. The first drifts three anisotropic blobs through a nine-level pyramid and
+draws each cell's centroid and covariance ellipse; the second does the same from a moving point set,
+rebuilding the codes, the sort, every node's range and every level from nothing each frame. Both
+replayed end to end into a fresh `--scratch` document on 2026-09-18: `applied=12 skipped=0 errors=0`,
+all three boxes printing normally, reporting 41 and 33 passes respectively, with a
+`wait-native-renderer` capture of each window. Both end in an **adaptive cut** rather than a flat
+level: the raster one refines six levels along the blobs' boundaries and leaves the empty quadrants
+whole, the point one chases a tight cluster to the leaves and stops at depth 1 over nothing.
+
+Two things the transcripts taught, both about *looking* at a summary rather than computing one, and
+both now comments in the yaml. A Gaussian is never actually zero, so without a floor on the mass
+every cell in the frame has a weight of about 1e-20 — over the overlay's threshold — and the picture
+is a grid of ellipses of the rounding error with the real ones lost in it. And the plane you
+summarise is not the plane you look at: the field carries its value over the whole frame because
+that is what the pyramid weighs, so drawing it directly is a red wash with the interesting part in
+the alpha channel. One extra pass turns it into something to draw on.
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --scratch --timeout 900 \
+  --command 'macro write four_summary_pyramid --file dev_docs/agents/transcripts/four_summary_pyramid.yaml' \
+  --command 'macro run four_summary_pyramid' \
   --command 'wait-native-renderer'
 ```
 
@@ -667,6 +933,34 @@ just this one.
   twenty-one targets. At 128² `R16_SFLOAT` that is 640 KiB of waste rather than a problem, but the
   ratio is the worst in the library, and it is the concrete case to point at if the aliasing work
   above ever gets picked up.
+- **The point quadtree's sort is quadratic, and the fix is known rather than done.** Rank-then-gather
+  is O(N) taps per texel because it is a gather, and the bitonic network that keeps the complexity is
+  `log₂N (log₂N + 1) / 2` passes of exactly the kind this layer is good at. `MAX_POINT_QUADTREE_POINTS`
+  is 4096 so that the ceiling is a refusal with a reason rather than a frame that takes a second. The
+  leaf loop has the same shape: it is bounded by the whole point count, because a cell holding every
+  point is legal and is what depth 1 looks like on a clustered set.
+- **Every level of the tree is materialised dense, for a set that may be sparse — and the cut does
+  not change that.** `adaptiveSummaryCells` chooses where to *stop reading*, which is the half that
+  matters to a consumer, but the pyramid underneath it was built in full first. 203 of 256 leaf
+  cells are empty in the smoke's clustered case, and all 256 are allocated, written and reduced. The
+  design sketch this came from ends with "if we're only interested in leaves above or below some
+  population threshold, we don't have to materialize every level" — which is exactly right and is
+  exactly what a fragment chain cannot do, because skipping a cell is a compaction. A shallow tree is
+  cheap enough that this has not mattered (depth 5 is 32²); a deep one over a sparse set is where it
+  would, and a compute pass is the honest answer there rather than a cleverer chain.
+- **The spatial moments are raw, and that is a decision with a horizon.** `E[x²] − E[x]²` at cell
+  scale is fine in fp32 to about depth 10, because the cancellation is bounded by how small a cell
+  is and a cell's size is known. The *value* statistics got the mergeable form instead precisely
+  because their spread is not bounded by anything — which is the distinction, and it is why only one
+  of the two planes needed it. Below depth 10 the moment plane wants the same treatment.
+- **`summaryEllipses` recomputes the covariance rather than reading `summaryCovariance`.** Two copies
+  of `Σwx²/w − (Σwx/w)²`, and the one that drifted would still render. They are independent today
+  because the overlay predates the probe; folding the overlay onto the probe pass is a small change
+  and would make the drawn ellipse and the measured covariance the same number by construction.
+- **The extremes are gated on weight but not weighted.** `min` and `max` ignore how much mass a texel
+  holds, so one texel with a weight of 1e-6 and a value of 1.0 sets the cell's maximum. That is the
+  usual definition and it is what makes them cheap to merge; it is also not what "the brightest thing
+  in this cell" means on a sparse field.
 - **There is no per-pass sampler filter mode.** `addShaderEffect` builds every sampler
   `VK_FILTER_LINEAR`. The two templates added here want opposite things — semi-Lagrangian advection
   *needs* bilinear, a jump flood cannot tolerate it — and both got what they needed without the

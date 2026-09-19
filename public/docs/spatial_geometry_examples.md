@@ -686,7 +686,7 @@ println("negating every corner value leaves the crossing put: $negationIsInvaria
 
 ![Four panels. Top left: a unit cell with two blue and two orange corner dots and two short green segments cutting off the pair of corners nearer the iso level. Top right: the same sign pattern with the deep diagonal swapped, and the two green cuts now isolating the other pair. Bottom left and right: the two branches of x times y equals zero over an 8x8 and a 32x32 grid, both showing the same elbow pairing at the origin](assets/spatial_geometry_examples/saddle_decider.png)
 
-The top row is the decider working, and it is a sharper pair than it looks. **The two cells have the
+The top row is the decider working. **The two cells have the
 same sign pattern**, the same two corners inside in both, and the crossings still land on
 opposite diagonals, because all that changed is which diagonal is the *deep* one and therefore which
 side of `iso` the saddle falls on. Nothing but the four corner values went in, so nothing but the four
@@ -698,7 +698,7 @@ crossing exactly where it was. It has to, because `{f = 0}` and `{−f = 0}` are
 it does: negation flips which corners are inside *and* the sign of the saddle, and the decider
 compares the two.
 
-The bottom row is the decider having nothing to say, and it is the more interesting half. Read the
+The bottom row is the decider having nothing to say. Read the
 numerators in the captions: `-1.7e-21` and `0.0` are both *zero*, so the saddle is exactly on `iso`,
 the level set through that cell is an X meeting at a point, and both pairings are equally correct.
 Left to the numerator's sign the pairing would be decided by which way a multiplication rounded, and

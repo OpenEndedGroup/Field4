@@ -726,7 +726,7 @@ Use `fn` when the shape is easiest to write directly as `x -> y` code over a dom
 
 **Simple**
 
-This should produce a quadratic curve over the default domain, where each output is `x * x`.
+Produces a quadratic curve over the default domain, where each output is `x * x`.
 
 ```diffstatic {data-lang=kotlin}
 val f = fn { x -> x * x }
@@ -751,7 +751,7 @@ Use constants when a scalar needs to participate in `Fn` arithmetic or carry a d
 
 **Simple**
 
-This should produce a flat function that evaluates to `0.5` everywhere in the default domain.
+Produces a flat function that evaluates to `0.5` everywhere in the default domain.
 
 ```diffstatic {data-lang=kotlin}
 val f = constant(0.5)
@@ -776,7 +776,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a gate that stays at `1.0` across the whole domain.
+Produces a gate that stays at `1.0` across the whole domain.
 
 ```diffstatic {data-lang=kotlin}
 val gate = one()
@@ -801,7 +801,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce the raw input coordinate as the output value.
+Produces the raw input coordinate as the output value.
 
 ```diffstatic {data-lang=kotlin}
 val x = identity()
@@ -826,7 +826,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a linear 0-to-1 ramp across the default domain.
+Produces a linear 0-to-1 ramp across the default domain.
 
 ```diffstatic {data-lang=kotlin}
 val r = ramp(0.0, 1.0)
@@ -851,7 +851,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a hard binary switch at `x = 0.5`.
+Produces a hard binary switch at `x = 0.5`.
 
 ```diffstatic {data-lang=kotlin}
 val s = step(0.5)
@@ -876,7 +876,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a softened 0-to-1 transition between `0.2` and `0.8`.
+Produces a softened 0-to-1 transition between `0.2` and `0.8`.
 
 ```diffstatic {data-lang=kotlin}
 val s = smoothStep(0.2, 0.8)
@@ -937,7 +937,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a sine wave with three cycles over the unit domain and peak amplitude `0.8`.
+Produces a sine wave with three cycles over the unit domain and peak amplitude `0.8`.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(frequency = 3.0, amplitude = 0.8)
@@ -962,7 +962,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a cosine wave with two cycles and full-scale amplitude.
+Produces a cosine wave with two cycles and full-scale amplitude.
 
 ```diffstatic {data-lang=kotlin}
 val f = cos(frequency = 2.0, amplitude = 1.0)
@@ -987,7 +987,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a sawtooth wave that repeats every quarter of the domain.
+Produces a sawtooth wave that repeats every quarter of the domain.
 
 ```diffstatic {data-lang=kotlin}
 val f = saw(period = 0.25, amplitude = 1.0)
@@ -1012,7 +1012,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a triangle wave with a `0.2` period and `0.9` amplitude.
+Produces a triangle wave with a `0.2` period and `0.9` amplitude.
 
 ```diffstatic {data-lang=kotlin}
 val f = triangle(period = 0.2, amplitude = 0.9)
@@ -1037,7 +1037,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce an even-duty square wave that flips every half-period.
+Produces an even-duty square wave that flips every half-period.
 
 ```diffstatic {data-lang=kotlin}
 val f = square(period = 0.25, duty = 0.5, amplitude = 1.0)
@@ -1062,7 +1062,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce repeating pulses that are high for 35% of each `0.2` period.
+Produces repeating pulses that are high for 35% of each `0.2` period.
 
 ```diffstatic {data-lang=kotlin}
 val f = pulseTrain(period = 0.2, duty = 0.35)
@@ -1087,7 +1087,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce repeating pulses whose high portion is `0.08` units wide.
+Produces repeating pulses whose high portion is `0.08` units wide.
 
 ```diffstatic {data-lang=kotlin}
 val f = pulseTrainWidth(period = 0.2, width = 0.08)
@@ -1112,7 +1112,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce eight pulses per unit, with each pulse high for 30% of its cycle.
+Produces eight pulses per unit, with each pulse high for 30% of its cycle.
 
 ```diffstatic {data-lang=kotlin}
 val f = pulseTrainHz(frequency = 8.0, duty = 0.3)
@@ -1137,7 +1137,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a pulse train whose pulse heights cycle through the supplied pattern.
+Produces a pulse train whose pulse heights cycle through the supplied pattern.
 
 ```diffstatic {data-lang=kotlin}
 val f = pulseTrainPattern(doubleArrayOf(1.0, 0.5, 1.0, 0.2), period = 0.2)
@@ -1162,7 +1162,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce narrow repeating impulses every `0.1` units.
+Produces narrow repeating impulses every `0.1` units.
 
 ```diffstatic {data-lang=kotlin}
 val f = impulseTrain(period = 0.1, width = 0.01)
@@ -1187,7 +1187,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce five short pulses starting at `0.2` and spaced by `0.1`.
+Produces five short pulses starting at `0.2` and spaced by `0.1`.
 
 ```diffstatic {data-lang=kotlin}
 val f = pulseBurst(count = 5, period = 0.1, start = 0.2)
@@ -1212,7 +1212,7 @@ with(Functions) {
 
 **Simple**
 
-This should produce a unit Gaussian bump centered at `0.5` with `0.1` spread.
+Produces a unit Gaussian bump centered at `0.5` with `0.1` spread.
 
 ```diffstatic {data-lang=kotlin}
 val f = gaussian(mean = 0.5, sigma = 0.1, amplitude = 1.0)
@@ -1240,7 +1240,7 @@ Arithmetic combines functions pointwise, intersecting domains where both inputs 
 
 **Simple**
 
-This should produce the pointwise sum of a sine wave and a sawtooth wave.
+Produces the pointwise sum of a sine wave and a sawtooth wave.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0) + saw(0.2)
@@ -1265,7 +1265,7 @@ with(Functions) {
 
 **Simple**
 
-This should halve the sine wave's output values without changing its timing.
+Halves the sine wave's output values without changing its timing.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).mapY { it * 0.5 }
@@ -1290,7 +1290,7 @@ with(Functions) {
 
 **Simple**
 
-This should compress the sine wave horizontally by sampling it at half the input coordinate.
+Compresses the sine wave horizontally by sampling it at half the input coordinate.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).mapX { x -> x * 0.5 }
@@ -1315,7 +1315,7 @@ with(Functions) {
 
 **Simple**
 
-This should move the sine wave forward in time by `0.1` units.
+Moves the sine wave forward in time by `0.1` units.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).shift(0.1)
@@ -1340,7 +1340,7 @@ Time-scaling changes how quickly the source is traversed.
 
 **Simple**
 
-This should stretch the saw wave's time axis by a factor of two.
+Stretches the saw wave's time axis by a factor of two.
 
 ```diffstatic {data-lang=kotlin}
 val f = saw(0.2).scaleX(2.0)
@@ -1365,7 +1365,7 @@ Y-scaling and offsetting change the amplitude range without moving events in tim
 
 **Simple**
 
-This should halve the sine wave's amplitude and lift it upward by `0.2`.
+Halves the sine wave's amplitude and lifts it upward by `0.2`.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).scaleY(0.5).offsetY(0.2)
@@ -1390,7 +1390,7 @@ Reverse mirrors time around a point, while flip negates the output.
 
 **Simple**
 
-This should reverse the ramp so it falls from one to zero across the domain.
+Reverses the ramp so it falls from one to zero across the domain.
 
 ```diffstatic {data-lang=kotlin}
 val f = ramp(0.0, 1.0).reverse()
@@ -1415,7 +1415,7 @@ These turn bipolar signals into magnitude, sign, or positive-only shapes.
 
 **Simple**
 
-This should fold negative sine values upward into positive values.
+Folds negative sine values upward into positive values.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(3.0).abs()
@@ -1440,7 +1440,7 @@ Power and logarithmic transforms bend a signal curve nonlinearly.
 
 **Simple**
 
-This should square the linear ramp, bending it into an ease-in curve.
+Squares the linear ramp, bending it into an ease-in curve.
 
 ```diffstatic {data-lang=kotlin}
 val f = ramp(0.0, 1.0).pow(2.0)
@@ -1465,7 +1465,7 @@ Limiters and wrappers keep outputs in a usable range, either gently or with hard
 
 **Simple**
 
-This should limit the sine wave so values never exceed `0.7` in magnitude.
+Limits the sine wave so values never exceed `0.7` in magnitude.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).clip(0.7)
@@ -1490,7 +1490,7 @@ with(Functions) {
 
 **Simple**
 
-This should make out-of-domain samples clamp to the nearest edge value.
+Makes out-of-domain samples clamp to the nearest edge value.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(3.0).withEdge(Functions.EdgeMode.CLAMP)
@@ -1515,7 +1515,7 @@ Quantizers reduce continuous values into stepped or bit-depth-like levels.
 
 **Simple**
 
-This should reduce the sine wave to eight discrete value levels.
+Reduces the sine wave to eight discrete value levels.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).quantize(8)
@@ -1540,7 +1540,7 @@ Mixing blends between functions, either by a fixed amount or over a transition r
 
 **Simple**
 
-This should blend halfway between the sine and saw waves.
+Blends halfway between the sine and saw waves.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).mix(saw(0.2), 0.5)
@@ -1565,7 +1565,7 @@ Interval edits keep or swap parts of a function over a target range.
 
 **Simple**
 
-This should keep only the `0.2..0.8` portion of the sine wave as the function's domain.
+Keeps only the `0.2..0.8` portion of the sine wave as the function's domain.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).cut(0.2..0.8)
@@ -1590,7 +1590,7 @@ Modulation tools multiply, ring, or time-warp one signal by another.
 
 **Simple**
 
-This should multiply the sine wave by a Hann envelope over the default domain.
+Multiplies the sine wave by a Hann envelope over the default domain.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).window(hannWindow())
@@ -1615,7 +1615,7 @@ X-quantization and sample-hold create stepped time sampling.
 
 **Simple**
 
-This should hold the sine wave constant over `0.05`-wide sample steps.
+Holds the sine wave constant over `0.05`-wide sample steps.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).sampleHold(0.05)
@@ -1640,7 +1640,7 @@ Phase and frequency modulation are aliases for controlled time warping.
 
 **Simple**
 
-This should modulate the sine wave's phase with a faster sine signal.
+Modulates the sine wave's phase with a faster sine signal.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).phaseMod(sin(8.0), 0.02)
@@ -1665,7 +1665,7 @@ Saturation compresses output values while jitter perturbs sampling positions.
 
 **Simple**
 
-This should push the sine through a saturation curve without changing its timing.
+Pushes the sine through a saturation curve without changing its timing.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).saturate(1.0)
@@ -1690,7 +1690,7 @@ Repetition tools loop, mirror, bound, extend, and echo a source function.
 
 **Simple**
 
-This should tile the sine wave into repeated `0.25`-wide copies.
+Tiles the sine wave into repeated `0.25`-wide copies.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).repeat(0.25, 0.0)
@@ -1715,7 +1715,7 @@ Calculus helpers estimate slope and accumulated area over a sampled function.
 
 **Simple**
 
-This should estimate the sine wave's slope as a new function.
+Estimates the sine wave's slope as a new function.
 
 ```diffstatic {data-lang=kotlin}
 val slope = sin(2.0).derivative()
@@ -1740,7 +1740,7 @@ Filtering helpers smooth or compare a function with a local kernel.
 
 **Simple**
 
-This should smooth the noise by averaging nearby samples over a short window.
+Smooths the noise by averaging nearby samples over a short window.
 
 ```diffstatic {data-lang=kotlin}
 val sm = valueNoise(3, 14.0, 1.0).movingAverage(0.08, samples = 64)
@@ -1765,7 +1765,7 @@ with(Functions) {
 
 **Simple**
 
-This should show the difference between relabeling a domain and remapping a source into a target interval.
+Shows the difference between relabeling a domain and remapping a source into a target interval.
 
 ```diffstatic {data-lang=kotlin}
 val relabeled = sin(5.0) over (0.0..10.0)
@@ -1792,7 +1792,7 @@ with(Functions) {
 
 **Simple**
 
-This should pipe the sine wave through a transform that halves its amplitude.
+Pipes the sine wave through a transform that halves its amplitude.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(3.0) / gain(0.5)
@@ -1821,7 +1821,7 @@ Array conversion turns sampled numeric data into an interpolated `Fn`.
 
 **Simple**
 
-This should interpolate the four array values across `0.0..1.0` as a function.
+Interpolates the four array values across `0.0..1.0` as a function.
 
 ```diffstatic {data-lang=kotlin}
 val f = doubleArrayOf(0.0, 1.0, 0.4, -0.2).toFn(domain = 0.0..1.0)
@@ -1846,7 +1846,7 @@ Sampling helpers extract values or weighted sample records from chosen x positio
 
 **Simple**
 
-This should sample the sine wave at three explicit x positions.
+Samples the sine wave at three explicit x positions.
 
 ```diffstatic {data-lang=kotlin}
 val ys = sin(2.0).sampleAt(doubleArrayOf(0.0, 0.25, 0.5))
@@ -1872,7 +1872,7 @@ Array exporters resample an `Fn` for analysis, drawing, or interop.
 
 **Simple**
 
-This should resample the sine wave into 128 numeric values.
+Resamples the sine wave into 128 numeric values.
 
 ```diffstatic {data-lang=kotlin}
 val ys = sin(3.0).toDoubleArray(128)
@@ -1898,7 +1898,7 @@ A cursor walks through a function at a fixed step and remembers its position.
 
 **Simple**
 
-This should create a reusable cursor that advances through the sine wave in `0.01` steps.
+Creates a reusable cursor that advances through the sine wave in `0.01` steps.
 
 ```diffstatic {data-lang=kotlin}
 val c0 = sin(2.0).cursor(start = 0.0, step = 0.01)
@@ -1923,7 +1923,7 @@ Streams expose lazy samples, with or without their x coordinate.
 
 **Simple**
 
-This should create a lazy stream of sine values and collect the first eight samples.
+Creates a lazy stream of sine values and collects the first eight samples.
 
 ```diffstatic {data-lang=kotlin}
 val first = sin(2.0).stream(start = 0.0, step = 0.01).take(8).toList()
@@ -1949,7 +1949,7 @@ with(Functions) {
 
 **Simple**
 
-This should convert the sine wave into drawable line geometry sampled across its domain.
+Converts the sine wave into drawable line geometry sampled across its domain.
 
 ```diffstatic {data-lang=kotlin}
 val line = sin(2.0).toFLine(samples = 600)
@@ -1978,7 +1978,7 @@ Window functions create smooth masks for tapering, blending, and weighting.
 
 **Simple**
 
-This should produce a Hann window over the default domain, rising from zero and returning to zero.
+Produces a Hann window over the default domain, rising from zero and returning to zero.
 
 ```diffstatic {data-lang=kotlin}
 val w = hannWindow()
@@ -2003,7 +2003,7 @@ Noise functions generate stochastic texture with different continuity properties
 
 **Simple**
 
-This should produce seeded smooth value noise with repeatable random-looking variation.
+Produces seeded smooth value noise with repeatable random-looking variation.
 
 ```diffstatic {data-lang=kotlin}
 val n = valueNoise(seed = 1, frequency = 12.0, amplitude = 0.5)
@@ -2028,7 +2028,7 @@ Fractal and walk generators layer randomness into rougher, multi-scale signals.
 
 **Simple**
 
-This should produce layered fractal noise by summing several octaves.
+Produces layered fractal noise by summing several octaves.
 
 ```diffstatic {data-lang=kotlin}
 val n = fbm(seed = 2, frequency = 2.0, amplitude = 1.0, octaves = 5)
@@ -2053,7 +2053,7 @@ Normalization helpers reshape the distribution of a sampled function.
 
 **Simple**
 
-This should rescale the sampled noise so its values fit a normalized range.
+Rescales the sampled noise so its values fit a normalized range.
 
 ```diffstatic {data-lang=kotlin}
 val f = fbm(4, 2.0, 1.0).autoScale()
@@ -2078,7 +2078,7 @@ Sampling-set helpers choose x positions uniformly, randomly, or with jitter.
 
 **Simple**
 
-This should return 32 evenly spaced samples from the sine wave.
+Returns 32 evenly spaced samples from the sine wave.
 
 ```diffstatic {data-lang=kotlin}
 val s = sin(2.0).sampleUniform(32)
@@ -2104,7 +2104,7 @@ Feature samplers find points by density, zero crossings, or prominent peaks.
 
 **Simple**
 
-This should find x positions where the sine wave crosses zero.
+Finds x positions where the sine wave crosses zero.
 
 ```diffstatic {data-lang=kotlin}
 val zc = sin(6.0).sampleZeroCrossings()
@@ -2133,7 +2133,7 @@ with(Functions) {
 
 **Simple**
 
-This should make reusable point data from explicit coordinate pairs.
+Makes reusable point data from explicit coordinate pairs.
 
 ```diffstatic {data-lang=kotlin}
 val pts = points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2)
@@ -2159,7 +2159,7 @@ with(Functions) {
 
 **Simple**
 
-This should choose different source functions over the two specified intervals.
+Chooses different source functions over the two specified intervals.
 
 ```diffstatic {data-lang=kotlin}
 val f = piecewise(zero(), 0.0..0.5 to one(), 0.5..1.0 to zero())
@@ -2184,7 +2184,7 @@ Spline constructors turn keyframes into continuous curves with different interpo
 
 **Simple**
 
-This should linearly interpolate between two keyframes.
+Linearly interpolates between two keyframes.
 
 ```diffstatic {data-lang=kotlin}
 val f = piecewiseLinear(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")))
@@ -2209,7 +2209,7 @@ Handle and B-spline helpers make smoother keyframe-derived curves.
 
 **Simple**
 
-This should build a smooth quadratic B-spline through the keyframe values.
+Builds a smooth quadratic B-spline through the keyframe values.
 
 ```diffstatic {data-lang=kotlin}
 val f = bSplineQuadratic(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")))
@@ -2234,7 +2234,7 @@ Discrete and eased interpolators choose how keyframes are held or blended.
 
 **Simple**
 
-This should hold each keyframe value until the next keyframe is reached.
+Holds each keyframe value until the next keyframe is reached.
 
 ```diffstatic {data-lang=kotlin}
 val f = stepHold(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")))
@@ -2259,7 +2259,7 @@ Curve utilities smooth, differentiate, import, and resample keyframed functions.
 
 **Simple**
 
-This should approximate the derivative of the sine wave.
+Approximates the derivative of the sine wave.
 
 ```diffstatic {data-lang=kotlin}
 val f = differentiate(sin(2.0))
@@ -2284,7 +2284,7 @@ RBF helpers fit smooth curves through scattered samples, optionally blended with
 
 **Simple**
 
-This should interpolate the points with a thin-plate radial basis function.
+Interpolates the points with a thin-plate radial basis function.
 
 ```diffstatic {data-lang=kotlin}
 val f = rbfThinPlate(points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2))
@@ -2312,7 +2312,7 @@ with(Functions) {
 
 **Simple**
 
-This should make a fade-in/fade-out window for splicing a chunk into a timeline.
+Makes a fade-in/fade-out window for splicing a chunk into a timeline.
 
 ```diffstatic {data-lang=kotlin}
 val w = spliceWindow(fadeIn = 0.1, fadeOut = 0.1)
@@ -2337,7 +2337,7 @@ Timeline builders place functions as chunks that can overlap, repeat, or be stre
 
 **Simple**
 
-This should build a one-chunk timeline graph from a placed sine function.
+Builds a one-chunk timeline graph from a placed sine function.
 
 ```diffstatic {data-lang=kotlin}
 val t = timeline {
@@ -2368,7 +2368,7 @@ Composition operators concatenate or crossfade functions along a timeline.
 
 **Simple**
 
-This should place the saw after the sine, producing a two-part phrase.
+Places the saw after the sine, producing a two-part phrase.
 
 ```diffstatic {data-lang=kotlin}
 val phrase = (sin(2.0) over (0.0..1.0)) then (saw(0.15) over (0.0..1.0))
@@ -2394,7 +2394,7 @@ List combiners arrange multiple functions into ordered, mirrored, or cycling phr
 
 **Simple**
 
-This should concatenate the list of functions with a small overlap between neighbors.
+Concatenates the list of functions with a small overlap between neighbors.
 
 ```diffstatic {data-lang=kotlin}
 val phrase = [sin(2.0), saw(0.12), square(0.18)].sequence(overlap = 0.05)
@@ -2419,7 +2419,7 @@ Looping list combiners repeat a sequence, optionally shuffled by seed.
 
 **Simple**
 
-This should repeat the listed functions forever, then trim the result to `0.0..8.0`.
+Repeats the listed functions forever, then trims the result to `0.0..8.0`.
 
 ```diffstatic {data-lang=kotlin}
 val f = [sin(2.0), saw(0.2)].sequenceLoop() over (0.0..8.0)
@@ -2444,7 +2444,7 @@ Random sequence helpers choose chunks by seed, slot size, and optional weights.
 
 **Simple**
 
-This should choose random list entries in fixed-width slots, then trim to six seconds.
+Chooses random list entries in fixed-width slots, then trims to six seconds.
 
 ```diffstatic {data-lang=kotlin}
 val f = [sin(2.0), saw(0.2)].randomSequence(seed = 3, slot = 0.4) over (0.0..6.0)
@@ -2469,7 +2469,7 @@ Stacking and selection helpers combine many functions at the same x position.
 
 **Simple**
 
-This should sum the list's functions into a single stacked result.
+Sums the list's functions into a single stacked result.
 
 ```diffstatic {data-lang=kotlin}
 val f = [sin(2.0), saw(0.2) * 0.3].stack()
@@ -2494,7 +2494,7 @@ Transform-palette helpers make compact chains of common time and value edits.
 
 **Simple**
 
-This should stretch the sine across four units, then speed up, smooth, and scale it through a transform chain.
+Stretches the sine across four units, then speeds up, smooths, and scales it through a transform chain.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(3.0) / stretch(0.0..4.0) / faster(2.0) / lowPass(0.04) / gain(0.8)
@@ -2527,7 +2527,7 @@ Every member of the family (`fold`, `rectify`, `quantize`, `crush`, `chebyshev`,
 
 **Simple**
 
-This should fold the ramp back on itself past `0.7`, so the rising line becomes a triangle bounded to `[-0.7, 0.7]`.
+Folds the ramp back on itself past `0.7`, so the rising line becomes a triangle bounded to `[-0.7, 0.7]`.
 
 ```diffstatic {data-lang=kotlin}
 val f = (ramp(-2.0, 2.0) over (0.0..1.0)) / fold(0.7)
@@ -2619,7 +2619,7 @@ Copy and repeat transforms reuse source fragments deterministically or randomly.
 
 **Simple**
 
-This should copy the `0.1..0.3` slice of the sine wave into `0.7..0.9`.
+Copies the `0.1..0.3` slice of the sine wave into `0.7..0.9`.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(3.0) / copyPaste(0.1..0.3, 0.7..0.9)
@@ -2644,7 +2644,7 @@ Timeline utilities fit sources to durations or reuse recently placed material.
 
 **Simple**
 
-This should fill a two-unit timeline span by repeating the source function.
+Fills a two-unit timeline span by repeating the source function.
 
 ```diffstatic {data-lang=kotlin}
 val g = timelineGraph {
@@ -2675,7 +2675,7 @@ with(Functions) {
 
 **Simple**
 
-This should rebuild the sine wave from overlapping short grains.
+Rebuilds the sine wave from overlapping short grains.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(3.0).granular(grainSize = 0.05, spacing = 0.04)
@@ -2700,7 +2700,7 @@ Stream filters process sampled values lazily for lightweight smoothing or edge e
 
 **Simple**
 
-This should stream low-pass filtered sine samples into a list.
+Streams low-pass filtered sine samples into a list.
 
 ```diffstatic {data-lang=kotlin}
 val s = sin(2.0).lowpassStream(alpha = 0.2).take(64).toList()
@@ -2726,7 +2726,7 @@ with(Functions) {
 
 **Simple**
 
-This should run the built-in demo over the default domain and return sampled result data.
+Runs the built-in demo over the default domain and returns sampled result data.
 
 ```diffstatic {data-lang=kotlin}
 val result = demo(sampleCount = 256)
@@ -2762,7 +2762,7 @@ Domain helpers create and combine numeric intervals for construction and samplin
 
 **Simple**
 
-This should create numeric domains with terse range notation and use them directly in functions.
+Creates numeric domains with terse range notation and uses them directly in functions.
 
 ```diffstatic {data-lang=kotlin}
 val a = 0.0..1.0
@@ -2782,7 +2782,7 @@ Containment checks ask whether an x value lies inside a domain.
 
 **Simple**
 
-This should report that `0.2` lies inside the domain.
+Reports that `0.2` lies inside the domain.
 
 ```diffstatic {data-lang=kotlin}
 val inside = d.containsInclusive(0.2)   // → true
@@ -2800,7 +2800,7 @@ Expansion and shrinking grow or contract a domain around its endpoints.
 
 **Simple**
 
-This should widen the domain by `0.1` on both sides.
+Widens the domain by `0.1` on both sides.
 
 ```diffstatic {data-lang=kotlin}
 val wide = d.expand(0.1)          // → Domain(-0.1..1.1)
@@ -2818,7 +2818,7 @@ Domain shifts and scales move or zoom intervals without sampling an `Fn`.
 
 **Simple**
 
-This should shift the whole domain forward by `0.15`.
+Shifts the whole domain forward by `0.15`.
 
 ```diffstatic {data-lang=kotlin}
 val moved = d.shift(0.15)         // → Domain(0.15..1.15)
@@ -2836,7 +2836,7 @@ Interpolation helpers convert between normalized alpha and concrete x positions.
 
 **Simple**
 
-This should return the point one-quarter of the way across the domain.
+Returns the point one-quarter of the way across the domain.
 
 ```diffstatic {data-lang=kotlin}
 val x = d.lerp(0.25)              // → 0.25 (a quarter across 0..1)
@@ -2855,7 +2855,7 @@ Domain edge helpers keep x values inside an interval by clamping, wrapping, or r
 
 **Simple**
 
-This should clamp an outside value back to the domain's upper edge.
+Clamps an outside value back to the domain's upper edge.
 
 ```diffstatic {data-lang=kotlin}
 val x = d.clamp(1.2)              // → 1.0 (pulled back to the upper edge)
@@ -2873,7 +2873,7 @@ Domain set operations find overlap or coverage across intervals.
 
 **Simple**
 
-This should compute the overlapping interval between `d` and `0.2..0.7`.
+Computes the overlapping interval between `d` and `0.2..0.7`.
 
 ```diffstatic {data-lang=kotlin}
 val i = d.intersect(domain(0.2..0.7))   // → Domain(0.2..0.7)
@@ -2896,7 +2896,7 @@ Evaluation samples a function at one x value, either explicitly or with call syn
 
 **Simple**
 
-This should evaluate the sine wave directly at `x = 0.5`.
+Evaluates the sine wave directly at `x = 0.5`.
 
 ```diffstatic {data-lang=kotlin}
 val y = sin(2.0).eval(0.5)
@@ -2914,7 +2914,7 @@ val y = (fbm(3, 4.0, 0.6))(0.37)
 
 **Simple**
 
-This should safely return the outside value when sampling beyond the domain.
+Safely returns the outside value when sampling beyond the domain.
 
 ```diffstatic {data-lang=kotlin}
 val y = sin(2.0).evalSafe(2.0, outside = 0.0)
@@ -2932,7 +2932,7 @@ Lifecycle helpers relabel a function with a new interval or display name. Prefer
 
 **Simple**
 
-This should rename the sine wave to `lead` while preserving its behavior.
+Renames the sine wave to `lead` while preserving its behavior.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).withName("lead")
@@ -2961,7 +2961,7 @@ Cursor entries show how to pull sequential samples from an `Fn` when array or st
 
 **Simple**
 
-This should advance the cursor once and return the first sampled value.
+Advances the cursor once and returns the first sampled value.
 
 ```diffstatic {data-lang=kotlin}
 val cur = sin(2.0).cursor(0.0, 0.01)
@@ -2989,7 +2989,7 @@ with(Functions) {
 
 **Simple**
 
-This should return the next sixteen cursor samples as a batch.
+Returns the next sixteen cursor samples as a batch.
 
 ```diffstatic {data-lang=kotlin}
 val ys = sin(2.0).cursor().next(16)
@@ -3033,7 +3033,7 @@ Timeline chunks map a placed domain back into source time before sampling.
 
 **Simple**
 
-This should sample the timeline chunk at `x = 0.3`.
+Samples the timeline chunk at `x = 0.3`.
 
 ```diffstatic {data-lang=kotlin}
 val ch = Functions.TimelineChunk(sin(2.0), domain = 0.0..1.0)
@@ -3061,7 +3061,7 @@ Chunk weights report the local fade, gain, and window contribution at a time.
 
 **Simple**
 
-This should return the chunk's blend weight at the midpoint of its domain.
+Returns the chunk's blend weight at the midpoint of its domain.
 
 ```diffstatic {data-lang=kotlin}
 val w = Functions.TimelineChunk(sin(2.0), domain = 0.0..1.0).weightAt(0.5)
@@ -3088,7 +3088,7 @@ Timeline graphs evaluate the active placed chunks at a given time.
 
 **Simple**
 
-This should evaluate the timeline graph at `x = 0.4`.
+Evaluates the timeline graph at `x = 0.4`.
 
 ```diffstatic {data-lang=kotlin}
 val g = timelineGraph {
@@ -3120,7 +3120,7 @@ Timeline graphs can be exposed as ordinary functions or sampled as delayed taps.
 
 **Simple**
 
-This should expose the timeline graph as a named `Fn`.
+Exposes the timeline graph as a named `Fn`.
 
 ```diffstatic {data-lang=kotlin}
 val f = timelineGraph {
@@ -3154,7 +3154,7 @@ Timeline markers name positions so later placements can jump back to them.
 
 **Simple**
 
-This should create a timeline builder and record a mark named `A` at the current time.
+Creates a timeline builder and records a mark named `A` at the current time.
 
 ```diffstatic {data-lang=kotlin}
 val t = timeline {
@@ -3185,7 +3185,7 @@ Timeline cursor controls place the next chunk at an absolute or relative time.
 
 **Simple**
 
-This should move the builder cursor to `0.3`, advance it, then rewind it slightly.
+Moves the builder cursor to `0.3`, advances it, then rewinds it slightly.
 
 ```diffstatic {data-lang=kotlin}
 val t = timeline {
@@ -3219,7 +3219,7 @@ Fit helpers fill a target duration by wrapping or stretching a source.
 
 **Simple**
 
-This should place repeated copies of the source function until two timeline units are filled.
+Places repeated copies of the source function until two timeline units are filled.
 
 ```diffstatic {data-lang=kotlin}
 val t = timeline {
@@ -3248,7 +3248,7 @@ Placement helpers add source functions to the active timeline with optional join
 
 **Simple**
 
-This should place the sine function at the builder's current time.
+Places the sine function at the builder's current time.
 
 ```diffstatic {data-lang=kotlin}
 val t = timeline {
@@ -3279,7 +3279,7 @@ Builder outputs expose the placed chunks as graphs or ordinary functions.
 
 **Simple**
 
-This should build a graph from placed chunks and create an empty named timeline.
+Builds a graph from placed chunks and creates an empty named timeline.
 
 ```diffstatic {data-lang=kotlin}
 val g = timelineGraph {
@@ -3315,7 +3315,7 @@ Built-in RBF kernels choose the shape used for radial fitting.
 
 **Simple**
 
-This should interpolate the two points with a linear radial basis kernel.
+Interpolates the two points with a linear radial basis kernel.
 
 ```diffstatic {data-lang=kotlin}
 val f = rbf(points(0.0 to 0.0, 1.0 to 1.0), kernel = RbfKernels.linear)
@@ -3340,7 +3340,7 @@ Parameterized RBF kernels tune how strongly samples influence nearby x positions
 
 **Simple**
 
-This should interpolate the points with a Gaussian radial basis kernel.
+Interpolates the points with a Gaussian radial basis kernel.
 
 ```diffstatic {data-lang=kotlin}
 val f = rbf(points(0.0 to 0.0, 1.0 to 0.4), kernel = RbfKernels.gaussian(2.0))
@@ -3365,7 +3365,7 @@ An RBF interpolator can be kept as an object and sampled directly.
 
 **Simple**
 
-This should evaluate the cubic radial basis interpolator halfway between its two points.
+Evaluates the cubic radial basis interpolator halfway between its two points.
 
 ```diffstatic {data-lang=kotlin}
 val i = RbfInterpolator(points(0.0 to 0.0, 1.0 to 1.0), RbfKernels.cubic)
@@ -3447,7 +3447,7 @@ The rewrite language is a compact "selector `=>` action" layer over `Fn.rewriteG
 
 **Simple**
 
-This should inspect the graph of a nested function, then rewrite the `saw` under a `sin` into a `triangle`.
+Inspects the graph of a nested function, then rewrites the `saw` under a `sin` into a `triangle`.
 
 ```diffstatic {data-lang=kotlin}
 val base = sin(sin(saw(0.25)))

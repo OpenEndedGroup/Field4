@@ -140,6 +140,20 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Open **Live Metal** in Field4Vision to see it on a visionOS device or simulator.
 - `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
+- `four_summary_pyramid.yaml`: a **summarised quadtree over a raster** as one pass chain — three
+  moving blobs, a 2x2 reduction pyramid that carries mergeable statistics rather than colour, and an
+  overlay that draws each cell's centroid and 1-sigma covariance ellipse. A 2x2 reduction already
+  *is* a complete quadtree, so the interesting part is what a cell carries: weight, value mean and
+  variance, occupancy, and the spatial moments that give every cell an orientation and an
+  anisotropy. Requires a GPU/Vulkan window. Its companion is `four_morton_quadtree.yaml`, and the
+  measured version is `tools/run_field_tests.py --id four.quadtree-chain.smoke`.
+- `four_morton_quadtree.yaml`: the same three planes of statistics produced from a **moving point
+  set** instead of a raster — Morton codes, a sort, node ranges found by bracketing prefixes in the
+  sorted array, and then literally the same reduction ladder. Worth reading for the two inversions a
+  fragment chain forces: a sort becomes a rank-then-gather because a fragment shader cannot scatter,
+  and boundary detection becomes a per-node binary search because it cannot scan or compact either.
+  Rebuilt from scratch every frame. Requires a GPU/Vulkan window.
+
 - `imgui_vr_panel.yaml`: **Dear ImGui as an in-VR panel**. A renderer box plus a child box that runs `ImGuiVrPanelDemo` (`afield.examples.four`): an ImGui panel rendered to a texture, mapped onto a world-space `ImGuiPanel` quad, drawn once per eye by `SideBySideStereoTarget`, packed side-by-side, and blitted to the window. The mouse drives the mock controller ray (a real controller in XR); the hit is converted to panel UV and injected into ImGui. On Windows/Linux the same packed image feeds a headset via `OpenXRHmdTarget.copySideBySideToEyes`; macOS previews on the desktop. Requires a GPU/Vulkan window — capture with a follow-on `native-screenshot <path>` (`--with-playwright`). Functional coverage of the pipeline is the `examples.four.imgui-vr-panel-smoke` FIELD_TEST.
 
 ## Verified in CI — the executing harness

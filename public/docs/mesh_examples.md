@@ -229,7 +229,7 @@ collapses every crossing out of that corner onto the corner itself.
 ## Subdivide, and smooth without shrinking
 
 `loopSubdivide(times)` quadruples the triangles and preserves χ exactly, so a watertight input stays
-watertight at the same genus. Smoothing is the more interesting one, because the naive answer is
+watertight at the same genus. Smoothing needs more care: the naive answer is
 subtly wrong and the mesh will not tell you unless you measure it.
 
 A Laplacian pass moves every vertex toward the average of its neighbours. That is **diffusion**, and

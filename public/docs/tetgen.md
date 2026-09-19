@@ -223,7 +223,7 @@ shape for Delaunay refinement, so judge a mesh by its tail rather than by its me
 ### Choosing the `quality` bound
 
 TetGen's own default bound is `1.414`; `Tetgen.tetrahedralize` defaults to `1.2`. Swept on the same
-bracket at `targetEdgeLength = 5.0`, timing the median of three runs:
+bracket at `targetEdgeLength = 5.0`:
 
 <div class="field-data-table" markdown>
 

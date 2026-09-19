@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8123 of 14203 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8165 of 14245 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **763 undocumented entry points** (types, top-level functions and values) and 4999 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -328,11 +328,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:153` |
 | `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:170` |
 | `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:582` |
-| `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:148` |
-| `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:154` |
-| `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:169` |
-| `PythonExecution` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:234` |
-| `PythonInterface` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:1433` |
+| `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:147` |
+| `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:153` |
+| `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:168` |
+| `PythonExecution` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:233` |
+| `PythonInterface` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:1432` |
 | `Vec2d` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:105` |
 | `Vec4f` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:117` |
 | `Token` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:144` |

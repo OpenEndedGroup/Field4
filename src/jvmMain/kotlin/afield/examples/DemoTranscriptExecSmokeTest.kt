@@ -375,11 +375,16 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
-        // A native window plus a directory of images that is nobody's to commit. Both shaders are
-        // compiled here, which is the part worth having: `{{ mega.all }}` is generated GLSL, so a
-        // mistake in MegaTexture's declarations would otherwise only surface on a machine with a
-        // GPU and a folder of photographs. MegaTextureShaderTest checks that same GLSL through
-        // shaderc without either.
+        // A native window plus a directory of images that is nobody's to commit.
+        //
+        // Its GLSL is *not* checked here, and the comment that used to say so was wrong in a way
+        // worth recording: `{{ mega.* }}` is registered by `megaTextureHere` at run time, and this
+        // bucket never runs anything — so `moduleHere`'s expansion cannot resolve the template and
+        // logs a TemplateException. That is survivable (the macro falls back to the no-shader
+        // `_moduleHere` and the Kotlin still compiles, which is what this bucket is for), but it
+        // means the shaders here are compiled by nothing. MegaTextureShaderTest and
+        // MegaTextureLayoutTest check that same generated GLSL through shaderc without a GPU or a
+        // folder, and they are where that coverage actually lives.
         "mega_texture_wall",
         // Builds its own Window + Renderer and a six-pass chain across three resolutions, so it
         // wants a GLFW window and a Vulkan device the lightweight build does not own. The plan
@@ -392,6 +397,13 @@ object DemoTranscriptExecSmokeTest {
         // FabricatePassChainTest, and the pixels (including the fluid actually advancing with no
         // input) by the four.simulation-chain.smoke jvm-main.
         "four_simulation_chain",
+        // A raster summary pyramid and a Morton-code point quadtree, both declared as pass chains
+        // on their own Window and Renderer. Same classification and for the same reason as the two
+        // above: the plan arithmetic is covered without a device by FabricatePassChainTest, every
+        // shader by FabricateShaderCompileTest, and the numbers each cell of the tree holds — in
+        // both producers, against closed forms — by the four.quadtree-chain.smoke jvm-main.
+        "four_summary_pyramid",
+        "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
         // keyframe blends, so it wants a device CI does not own. The sweeper's arithmetic is covered
         // without one by KeyframeSweepTest, and its pixels by the keyframe.sweep.smoke jvm-main.

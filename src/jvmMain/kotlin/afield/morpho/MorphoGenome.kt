@@ -5,9 +5,8 @@ import kotlin.random.Random
 /**
  * The thing a search actually mutates: a MorphoHDL **program, as text**.
  *
- * That choice is the whole design. A generator could build netlists directly and skip the compiler,
- * and it would be faster and it would be a lie — the netlist would be Field's idea of what morpho
- * compiles a design into, and the resulting search would optimise against that idea rather than
+ * A generator could build netlists directly and skip the compiler, and it would be faster. It
+ * would also optimise against Field's idea of what morpho compiles a design into rather than
  * against MorphoHDL. So a genome renders to source, upstream's `parse()` reads it, upstream's
  * `compileModule()` compiles it, and anything the search finds can be pasted into a morpho box and
  * will still be there tomorrow.

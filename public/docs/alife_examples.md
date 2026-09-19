@@ -1940,7 +1940,7 @@ the two terms fight round every corner, and the arrival fraction drops by roughl
 `IntGrid`, `GrayScottState` and `LeniaRun` implement Field's `ToHTML`, so *evaluating* one of them in a
 box, or `grid.h`, draws it. Nothing to set up, no `montage` call, no colour map to choose.
 
-The interesting part is the range policy, and it is not a matter of taste. **Every scale is fixed by
+The range policy is the same in each: **every scale is fixed by
 meaning and named in the caption**, never derived from the frame:
 
 | view | panels | scale |

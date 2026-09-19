@@ -4,6 +4,7 @@ import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16_SFLOAT
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
 /**
  * Worked multi-resolution passes, as lists of [FabricatePassSpec] ready to hand to a chain.
@@ -1695,4 +1696,1692 @@ $FRAME_HISTORY_GLSL
         }
         """
     }
+
+    // ── Summarised quadtrees: one Summary, two producers ─────────────────────────────────────────
+
+    /**
+     * How a cell's *value* statistics are carried up the pyramid.
+     *
+     * Both forms are mergeable and both are three floats, so this is not a cost/accuracy trade in
+     * the usual sense — it is a choice about which arithmetic the merge does, and it is the one
+     * place in this file where the obvious representation is the wrong one.
+     */
+    enum class SummaryStatistics {
+
+        /**
+         * `(weight, mean, variance)` merged by the weighted pooled-variance identity — the
+         * Welford/Chan parallel form, normalised so every channel stays in 0..1.
+         *
+         * ```
+         * W    = w₁ + w₂
+         * mean = (w₁m₁ + w₂m₂) / W
+         * var  = (w₁v₁ + w₂v₂) / W + (w₁w₂ / W²)(m₂ − m₁)²
+         * ```
+         *
+         * The last term is the whole difference: it carries the variance *between* the two children
+         * explicitly, instead of recovering it as the difference of two nearly equal large numbers.
+         */
+        POOLED,
+
+        /**
+         * `(weight, Σwv, Σwv²)` merged by addition, with the variance recovered at the end as
+         * `E[v²] − E[v]²`.
+         *
+         * Kept because it is the representation everyone reaches for first, because it is genuinely
+         * simpler — one `+` per channel, no special case at zero weight — and because it is *wrong*
+         * in a way no picture shows. A field whose values sit near 0.5 with a spread of a thousandth
+         * has `E[v²]` and `E[v]²` agreeing to eight digits, which is more digits than an fp32
+         * accumulator has, so the subtraction returns noise of the same order as the answer. The
+         * cell still reports a weight, a mean and a plausible-looking number.
+         *
+         * `four.quadtree-chain.smoke` measures the two against the analytic variance of a ramp, in
+         * the same run, and that A/B is the reason [POOLED] is the default.
+         */
+        RAW_MOMENTS
+    }
+
+    /** Plane carrying `(weight, value mean, value variance, occupancy)` — see [SummaryStatistics]. */
+    const val SUMMARY_VALUE = "value"
+
+    /** Plane carrying the first and second **spatial** raw moments, `(Σwx, Σwy, Σwx², Σwy²)`. */
+    const val SUMMARY_MOMENT = "moment"
+
+    /** Plane carrying `(Σwxy, min value, max value, ·)` — the cross moment and the two extremes. */
+    const val SUMMARY_EXTENT = "extent"
+
+    /**
+     * Plane carrying `(first, count, prefix, ·)` — a node's **range in the sorted array**.
+     *
+     * Only the point producer has one: it is the half of [mortonPointQuadtree] that a raster has no
+     * analogue of, because a raster cell's contents are its texels and need no index at all.
+     */
+    const val SUMMARY_RANGE = "range"
+
+    /** The three planes both producers write, in the order [summaryPyramid] emits them. */
+    val SUMMARY_PLANES: List<String> = listOf(SUMMARY_VALUE, SUMMARY_MOMENT, SUMMARY_EXTENT)
+
+    /**
+     * Largest Morton code an fp32 channel holds exactly, as a bit count.
+     *
+     * A code is not a quantity, it is an *identity* — the same distinction [jumpFloodDistance] draws
+     * about seed coordinates, and it fails the same way. fp32 has a 24-bit significand, so every
+     * integer below 2²⁴ is exact and 2²⁴+1 is not; a code that rounds is a point that changes cell,
+     * and it changes cell at the *top* of the tree, where the rounding lands. Two bits per level
+     * makes 12 levels, which is 4096 cells a side. Above that the keys want an integer format, and
+     * an integer format wants a `usampler2D`, which `addShaderEffect` does not build.
+     */
+    const val MAX_EXACT_MORTON_BITS = 24
+
+    /**
+     * Largest point count [mortonPointQuadtree] accepts.
+     *
+     * Not a memory bound — 4096 points is a 64² texture. It is a bound on the *rank* pass, which is
+     * O(N) taps per texel and therefore O(N²) over the pass; see [pointRankFragment] for why a
+     * fragment chain sorts that way and what it is standing in for.
+     */
+    const val MAX_POINT_QUADTREE_POINTS = 4096
+
+    /** The pass name a plane's level lands on: `$prefix-$plane-$depth`. */
+    fun summaryPlane(prefix: String, plane: String, depth: Int): String = "$prefix-$plane-$depth"
+
+    /**
+     * Binary-search steps needed to bracket [count] sorted keys — `1 + ⌈log₂ count⌉`.
+     *
+     * Interpolated into [pointNodesFragment] as a loop bound, because a fragment shader's loop has
+     * to terminate on a constant. **One step short does not fail loudly**: the search returns a
+     * bound that is merely *near* the right one, so a node gets a range that starts a few points
+     * early or late, and its summary is a slightly wrong average of slightly the wrong points. The
+     * step count is therefore asserted in `FabricatePassChainTest` against the count it was derived
+     * from rather than trusted.
+     */
+    fun pointSearchSteps(count: Int): Int {
+        require(count >= 1) { "a search over $count keys" }
+        var steps = 1
+        var span = 1
+        while (span < count) {
+            span *= 2
+            steps++
+        }
+        return steps
+    }
+
+    /**
+     * A **summarised quadtree over a raster**: every 2×2 block reduced to its parent, all the way up,
+     * carrying mergeable sufficient statistics instead of a colour.
+     *
+     * ### Why a pyramid is already a quadtree
+     *
+     * A 2×2 reduction has a parent for every four cells and a single cell at the top, which is a
+     * complete quadtree with nothing left to declare — no nodes, no pointers, no subdivision
+     * criterion, and no build step that can disagree with the data. `$prefix-value-0` is the root and
+     * `$prefix-value-$L` (for `L = log₂ resolution`) is the leaf level, and a "node at depth d" is a
+     * texel of the d-th pass. The interesting question is not the structure, it is **what each cell
+     * carries**, and the answer is what makes this different from [downsamplePyramid]:
+     *
+     * | plane | channels | recovers |
+     * | --- | --- | --- |
+     * | [SUMMARY_VALUE] | weight, value mean, value variance, occupancy | how much is here, how bright, how uniform, how full |
+     * | [SUMMARY_MOMENT] | Σwx, Σwy, Σwx², Σwy² | the **centroid**, and the diagonal of the spatial covariance |
+     * | [SUMMARY_EXTENT] | Σwxy, min v, max v | the off-diagonal, and the two extremes |
+     *
+     * From the last two, `centroid = E[p]` and `covariance = E[ppᵀ] − E[p]E[p]ᵀ`, whose eigenvectors
+     * and eigenvalues give each cell an **orientation and an anisotropy**. That is the payoff: an
+     * adaptive cell stops saying "occupied" and starts carrying a crude geometric model of what is
+     * inside it — where the contents are, which way they run, how elongated and how dispersed they
+     * are. [summaryEllipses] draws exactly that.
+     *
+     * ### Why every channel is a *mean* and not a sum
+     *
+     * The mergeable thing is a sum, so storing means looks like a mistake. It is not, for two
+     * reasons, and they point the same way:
+     *
+     * - A sum over a 256² image is up to 65536, and a pyramid channel that leaves 0..1 cannot be
+     *   read back at all: `TexturePreviewCache` blits a float target to `R8G8B8A8_SRGB`, so
+     *   everything over 1.0 returns as exactly 1.0. A statistic you cannot read is a statistic you
+     *   cannot check, which for arithmetic that produces plausible pictures is fatal.
+     * - Every statistic that *matters* is normalisation-invariant. Centroid, covariance, mean and
+     *   variance are all ratios in which the cell's area cancels — which is also why the two
+     *   producers in this file can be compared at all. Only total mass needs the area back, and that
+     *   is one multiplication at the point of asking.
+     *
+     * A mean merges by averaging four equal-area children, which is the same one `+` per channel
+     * with a `0.25` on the end.
+     *
+     * @param prefix pass names are `$prefix-<plane>-<depth>`; see [summaryPlane].
+     * @param resolution the leaf level's resolution, a power of two. Depth `L = log₂ resolution` is
+     *   the leaf and depth 0 is the root.
+     * @param source the pass (or [FabricatePassChain.CHAIN_INPUT]) holding the field. Sampled with
+     *   filtering at the leaf level, so it may be any resolution.
+     * @param coarsest the shallowest depth to build. 0 is the root; stopping early is what you want
+     *   when the consumer only ever reads a few levels, and it costs nothing to reach the root.
+     * @param weightChannel which channel of [source] is the mass — 0=r, 1=g, 2=b, 3=a, or -1 for
+     *   luminance. Mass is what makes the centroid move; a uniform weight puts every centroid at its
+     *   cell's centre and the whole spatial half of the summary says nothing.
+     * @param valueChannel which channel is the value the statistics are about, or -1 for luminance.
+     * @param statistics how the value statistics merge. See [SummaryStatistics] — the default is the
+     *   one that survives a small spread on a large offset.
+     * @param format the planes' format. fp32 and not half-float: a half-float mantissa is 11 bits,
+     *   and the second moments are differences that need every bit of the first ones.
+     */
+    fun summaryPyramid(
+        prefix: String = "summary",
+        resolution: Int = 256,
+        source: String = FabricatePassChain.CHAIN_INPUT,
+        coarsest: Int = 0,
+        weightChannel: Int = -1,
+        valueChannel: Int = -1,
+        statistics: SummaryStatistics = SummaryStatistics.POOLED,
+        format: Int = VK_FORMAT_R32G32B32A32_SFLOAT
+    ): List<FabricatePassSpec> {
+        require(resolution >= 2 && resolution and (resolution - 1) == 0) {
+            "a summary pyramid's leaf resolution must be a power of two of at least 2, got $resolution — " +
+                    "a 2x2 reduction of an odd level drops a row"
+        }
+        require(weightChannel in -1..3) { "weight channel must be -1 (luma) or 0..3, got $weightChannel" }
+        require(valueChannel in -1..3) { "value channel must be -1 (luma) or 0..3, got $valueChannel" }
+        val leaf = Integer.numberOfTrailingZeros(resolution)
+        require(coarsest in 0..leaf) { "coarsest depth must be in 0..$leaf for a $resolution² leaf, got $coarsest" }
+
+        val seeds = listOf(
+            SUMMARY_VALUE to when (statistics) {
+                SummaryStatistics.POOLED -> SUMMARY_VALUE_SEED_POOLED_FRAGMENT
+                SummaryStatistics.RAW_MOMENTS -> SUMMARY_VALUE_SEED_RAW_FRAGMENT
+            },
+            SUMMARY_MOMENT to SUMMARY_MOMENT_SEED_FRAGMENT,
+            SUMMARY_EXTENT to SUMMARY_EXTENT_SEED_FRAGMENT
+        ).map { (plane, fragment) ->
+            FabricatePassSpec(
+                name = summaryPlane(prefix, plane, leaf),
+                fragment = fragment,
+                size = FabricatePassSize.Absolute(resolution, resolution),
+                format = format,
+                source = source,
+                push = mapOf("weightChannel" to weightChannel, "valueChannel" to valueChannel)
+            )
+        }
+
+        return seeds + SUMMARY_PLANES.flatMap { plane ->
+            summaryReduceLevels(prefix, plane, leaf, coarsest, statistics, format)
+        }
+    }
+
+    /**
+     * The 2×2 reduction ladder for one plane, leaf-to-root — the half both producers share.
+     *
+     * This is where the two halves of the file meet. [summaryPyramid] seeds its leaf level from a
+     * raster and [mortonPointQuadtree] seeds its leaf level from a sorted point array, and from that
+     * level up **the passes are identical**, because a mergeable statistic does not remember where
+     * it came from. So the unification is not a claim in a comment; the reduce passes are one
+     * function called twice.
+     */
+    private fun summaryReduceLevels(
+        prefix: String,
+        plane: String,
+        leaf: Int,
+        coarsest: Int,
+        statistics: SummaryStatistics,
+        format: Int
+    ): List<FabricatePassSpec> {
+        val fragment = when (plane) {
+            SUMMARY_VALUE -> when (statistics) {
+                // A pooled (weight, mean, variance) triple does NOT merge by averaging; a raw
+                // (weight, Σwv, Σwv²) one does, which is exactly why the raw form is tempting.
+                SummaryStatistics.POOLED -> SUMMARY_VALUE_REDUCE_POOLED_FRAGMENT
+                SummaryStatistics.RAW_MOMENTS -> SUMMARY_MEAN_REDUCE_FRAGMENT
+            }
+            SUMMARY_MOMENT -> SUMMARY_MEAN_REDUCE_FRAGMENT
+            SUMMARY_EXTENT -> SUMMARY_EXTENT_REDUCE_FRAGMENT
+            SUMMARY_RANGE -> SUMMARY_RANGE_REDUCE_FRAGMENT
+            else -> throw IllegalArgumentException("no reduction known for plane '$plane'")
+        }
+        return (leaf - 1 downTo coarsest).map { depth ->
+            FabricatePassSpec(
+                name = summaryPlane(prefix, plane, depth),
+                fragment = fragment,
+                size = FabricatePassSize.Half,
+                format = format,
+                source = summaryPlane(prefix, plane, depth + 1)
+            )
+        }
+    }
+
+    /**
+     * A **summarised quadtree over a point set**: Morton codes, a sort, one node level found by
+     * bracketing prefixes in the sorted array, and then the same reduction ladder as
+     * [summaryPyramid].
+     *
+     * ### The pipeline, and the one step a fragment chain cannot take
+     *
+     * ```
+     * points ─▶ Morton code ─▶ rank ─▶ sorted ─▶ node ranges ─▶ leaf Summary ─▶ 2×2 reductions
+     * ```
+     *
+     * Quantise each point into a `2^depth` grid, interleave the bits of its cell coordinates, and a
+     * point's code *is* its path down the tree: two bits per level, most significant first. So a node
+     * at depth d is the set of points sharing the first `2d` bits of their code — and once the codes
+     * are sorted, that set is a **contiguous range**. A node needs no pointers and no contents, only
+     * `(first, count)`, which is what [SUMMARY_RANGE] carries.
+     *
+     * The step this layer cannot express is the sort itself. A GPU radix sort is a histogram, a
+     * prefix sum and a **scatter**, and a fragment shader cannot scatter: it writes the texel it was
+     * invoked for and nothing else. What it can do is the gather form of the same answer — each
+     * element counts how many elements precede it (`$prefix-rank`), then each output slot picks up
+     * the element whose rank it holds (`$prefix-sorted`). Two passes, exact, and O(N) taps per texel;
+     * see [pointRankFragment].
+     *
+     * Boundary detection goes the same way round, and this is the more interesting inversion. The
+     * usual formulation flags `morton[i] >> shift != morton[i-1] >> shift` *per element*, prefix-sums
+     * the flags and compacts them into a node array — a scan and a compaction, so two more things a
+     * fragment chain does not have. Asking the question **per node** instead needs neither: the node
+     * at texel `(x, y)` of the leaf level knows its own prefix, because its prefix is the Morton code
+     * of its coordinates, and it finds its range with two binary searches over the sorted keys. A
+     * complete level of a shallow tree is a small image — depth 5 is 32² — so materialising all of it
+     * costs less than compacting the sparse part of it would.
+     *
+     * ### Where it meets the raster
+     *
+     * The leaf passes write the same three planes as [summaryPyramid], in the same normalised layout,
+     * and everything above the leaf is [summaryReduceLevels] — literally the same passes. Point the
+     * two producers at the same distribution and every normalisation-invariant statistic agrees:
+     * centroid, covariance, value mean, value variance. `four.quadtree-chain.smoke` asserts that
+     * agreement to within the readback's own quantisation, which is the strongest available statement
+     * that `Summary` is the primitive and these two are producers of it.
+     *
+     * Including the weight, and that takes one decision: a node's weight is its **density relative to
+     * a uniform distribution** — its points' total weight over the number of points a cell of its
+     * size would hold if the set were spread evenly. That is the only normalisation under which the
+     * shared reduction ladder is correct, because the ladder averages, and a mean is the one
+     * per-cell quantity whose parent is the mean of its children. It is also the one that makes the
+     * two producers report the *same number* rather than the same number times a constant.
+     *
+     * It is unbounded, and that is a real asymmetry rather than an oversight: a raster texel's
+     * coverage is at most one, so a raster cell's mean coverage is at most one, while a point set can
+     * put half its mass in one cell. A crowded node therefore has a density over 1.0 and the 8-bit
+     * preview clamps it — the statistic is fine, the *picture* of it is not. [densityScale] is for
+     * when you want to look at one.
+     *
+     * @param prefix pass names are `$prefix-code`, `$prefix-rank`, `$prefix-sorted`,
+     *   `$prefix-<plane>-<depth>`.
+     * @param points the pass holding the point set, one point per texel as
+     *   `(x, y, weight, value)` with `xy` in UV. Read with `texelFetch`, so its resolution must be
+     *   exactly [pointGrid]².
+     * @param pointGrid the side of that texture; `N = pointGrid²` points. A power of two, so a point
+     *   index divided by N is exact in fp32 and survives being stored in a colour channel.
+     * @param depth the leaf depth: `2^depth` cells a side, `2 * depth` bits of code.
+     * @param coarsest the shallowest depth to reduce to.
+     * @param densityScale multiplies the leaf normalisation. 1 leaves a node's weight as its density
+     *   against a uniform spread, which is the value at which the raster producer and this one report
+     *   identical numbers; anything else is for keeping a clustered set's leaf level inside the range
+     *   an 8-bit readback can show. It scales the weight and the moments together, so every statistic
+     *   derived as a ratio of them — centroid, covariance, mean, variance — is unaffected.
+     * @param statistics as [summaryPyramid].
+     * @param format the planes' format, fp32 for the same reason — and here it is load-bearing twice
+     *   over, because the codes and indices are exact integers rather than quantities. See
+     *   [MAX_EXACT_MORTON_BITS].
+     */
+    fun mortonPointQuadtree(
+        prefix: String = "quadtree",
+        points: String,
+        pointGrid: Int = 32,
+        depth: Int = 4,
+        coarsest: Int = 0,
+        densityScale: Float = 1f,
+        statistics: SummaryStatistics = SummaryStatistics.POOLED,
+        format: Int = VK_FORMAT_R32G32B32A32_SFLOAT
+    ): List<FabricatePassSpec> {
+        require(densityScale > 0f) { "densityScale must be positive, got $densityScale" }
+        require(pointGrid >= 2 && pointGrid and (pointGrid - 1) == 0) {
+            "the point grid must be a power of two of at least 2, got $pointGrid — an index divided " +
+                    "by a non-power-of-two is not exact in fp32, and an index that rounds reads the wrong point"
+        }
+        val count = pointGrid * pointGrid
+        require(count <= MAX_POINT_QUADTREE_POINTS) {
+            "$pointGrid² is $count points, over the $MAX_POINT_QUADTREE_POINTS this chain sorts — the " +
+                    "rank pass is O(N) taps per texel"
+        }
+        require(depth >= 1) { "a point quadtree needs at least one level, got depth $depth" }
+        require(2 * depth <= MAX_EXACT_MORTON_BITS) {
+            "depth $depth needs ${2 * depth} bits of Morton code, over the $MAX_EXACT_MORTON_BITS an " +
+                    "fp32 channel holds exactly — a code that rounds moves a point between cells at the " +
+                    "top of the tree"
+        }
+        require(coarsest in 0..depth) { "coarsest depth must be in 0..$depth, got $coarsest" }
+
+        val cells = 1 shl depth
+        val steps = pointSearchSteps(count)
+        // Points per cell if the set were spread evenly — the divisor that turns a node's total
+        // weight into a *mean*, which is what the shared reduction ladder above the leaf averages.
+        val normalizer = densityScale * (cells.toFloat() * cells) / count
+
+        val code = FabricatePassSpec(
+            name = "$prefix-code",
+            fragment = mortonCodeFragment(depth, count, pointGrid),
+            size = FabricatePassSize.Absolute(pointGrid, pointGrid),
+            format = format,
+            source = points
+        )
+        val rank = FabricatePassSpec(
+            name = "$prefix-rank",
+            fragment = pointRankFragment(count, pointGrid),
+            size = FabricatePassSize.Absolute(pointGrid, pointGrid),
+            format = format,
+            source = "$prefix-code"
+        )
+        val sorted = FabricatePassSpec(
+            name = "$prefix-sorted",
+            fragment = pointGatherFragment(count, pointGrid),
+            size = FabricatePassSize.Absolute(pointGrid, pointGrid),
+            format = format,
+            source = "$prefix-rank"
+        )
+        val nodes = FabricatePassSpec(
+            name = summaryPlane(prefix, SUMMARY_RANGE, depth),
+            fragment = pointNodesFragment(depth, count, pointGrid, steps),
+            size = FabricatePassSize.Absolute(cells, cells),
+            format = format,
+            source = "$prefix-sorted"
+        )
+
+        val leaves = listOf(
+            SUMMARY_VALUE to when (statistics) {
+                SummaryStatistics.POOLED -> pointLeafValueFragment(count, pointGrid, pooled = true)
+                SummaryStatistics.RAW_MOMENTS -> pointLeafValueFragment(count, pointGrid, pooled = false)
+            },
+            SUMMARY_MOMENT to pointLeafMomentFragment(count, pointGrid),
+            SUMMARY_EXTENT to pointLeafExtentFragment(count, pointGrid)
+        ).map { (plane, fragment) ->
+            FabricatePassSpec(
+                name = summaryPlane(prefix, plane, depth),
+                fragment = fragment,
+                size = FabricatePassSize.Absolute(cells, cells),
+                format = format,
+                // The node level is the primary input: a leaf pass's whole job is to turn one node's
+                // range into one node's summary, and the range is what it is invoked for.
+                source = summaryPlane(prefix, SUMMARY_RANGE, depth),
+                extraInputs = listOf(
+                    FabricatePassInput("sortedTex", "$prefix-sorted"),
+                    FabricatePassInput("pointsTex", points)
+                ),
+                push = mapOf("normalizer" to normalizer)
+            )
+        }
+
+        val reductions = (SUMMARY_PLANES + SUMMARY_RANGE).flatMap { plane ->
+            summaryReduceLevels(prefix, plane, depth, coarsest, statistics, format)
+        }
+
+        return listOf(code, rank, sorted, nodes) + leaves + reductions
+    }
+
+    /**
+     * Draws a level of a summarised quadtree **as geometry**: a centroid, a 1σ covariance ellipse and
+     * a weight tint per cell, over the image it summarises.
+     *
+     * The companion to [distanceBands], and for the same reason: a plane of raw moments is not a
+     * picture, and looking at one tells you nothing. What it *is* is a per-cell ellipse, and an
+     * ellipse is something you can check by eye — it should sit on the mass, lean the way the mass
+     * leans, and be round where the mass is isotropic. A cell whose centroid has walked away from its
+     * own centre is the interesting case and the one this makes obvious; a uniform field draws a grid
+     * of identical circles, which is the correct and boring answer.
+     *
+     * @param over the image the ellipses are drawn on top of, at its own resolution.
+     * @param prefix the quadtree's pass prefix.
+     * @param depth which level to draw. The three planes at that depth are bound by name.
+     * @param sigma the ellipse's radius in standard deviations.
+     * @param weightGain multiplies the cell's weight for the fill tint — a mean coverage is a small
+     *   number and needs lifting before it is visible.
+     * @param underGain dims the underlying image so the overlay reads against it.
+     */
+    fun summaryEllipses(
+        name: String = "summary-ellipses",
+        over: String = FabricatePassChain.CHAIN_INPUT,
+        prefix: String = "summary",
+        depth: Int = 4,
+        sigma: Float = 1f,
+        weightGain: Float = 1f,
+        underGain: Float = 0.35f,
+        tint: Vector3f = Vector3f(0.35f, 0.9f, 1f),
+        format: Int? = null
+    ): FabricatePassSpec {
+        require(depth >= 0) { "depth must not be negative, got $depth" }
+        require(sigma > 0f) { "sigma must be positive, got $sigma" }
+        return FabricatePassSpec(
+            name = name,
+            fragment = summaryEllipsesFragment(1 shl depth),
+            size = FabricatePassSize.MatchSource,
+            format = format,
+            source = over,
+            extraInputs = listOf(
+                FabricatePassInput("valueTex", summaryPlane(prefix, SUMMARY_VALUE, depth)),
+                FabricatePassInput("momentTex", summaryPlane(prefix, SUMMARY_MOMENT, depth)),
+                FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth))
+            ),
+            push = mapOf(
+                "sigma" to sigma,
+                "weightGain" to weightGain,
+                "underGain" to underGain,
+                "tint" to tint
+            )
+        )
+    }
+
+    /**
+     * The spatial covariance of every cell of one level, as `(cxx, cyy, cxy)` — the statistic the
+     * moment planes exist to make available, computed once.
+     *
+     * Three reasons this is a pass and not something a reader does with three numbers:
+     *
+     * - **It is the consumer's arithmetic, and it should exist once.** `Σwx²/w − (Σwx/w)²` in the
+     *   overlay, again in a subdivision criterion, again in a test, is three chances to get the
+     *   normalisation wrong in a way that still renders.
+     * - **A second moment is not measurable through the readback any other way.** The preview path
+     *   is 8-bit, and `cxx` at a fine level is the difference of two channels that agree to three
+     *   digits — so reading the planes back and subtracting on the CPU returns noise, whatever the
+     *   GPU computed. Subtracting *before* the readback and scaling the answer is the difference
+     *   between a measurement and a number-shaped thing.
+     * - **`cxy` is signed**, and the readback cannot carry a negative. The bias is here rather than
+     *   at the call site for the same reason the gain is.
+     *
+     * @param gain multiplies all three. A cell's spatial variance is about `(s² − 1)/12R²` for a cell
+     *   of `s` texels, which at a fine level is a very small number.
+     */
+    fun summaryCovariance(
+        name: String = "summary-covariance",
+        prefix: String = "summary",
+        depth: Int = 4,
+        gain: Float = 1f,
+        format: Int? = null
+    ): FabricatePassSpec {
+        require(depth >= 0) { "depth must not be negative, got $depth" }
+        return FabricatePassSpec(
+            name = name,
+            fragment = SUMMARY_COVARIANCE_FRAGMENT,
+            size = FabricatePassSize.MatchSource,
+            format = format,
+            source = summaryPlane(prefix, SUMMARY_MOMENT, depth),
+            extraInputs = listOf(
+                FabricatePassInput("valueTex", summaryPlane(prefix, SUMMARY_VALUE, depth)),
+                FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth))
+            ),
+            push = mapOf("gain" to gain)
+        )
+    }
+
+    /**
+     * What makes a cell worth splitting — the question a summarised quadtree exists to answer.
+     *
+     * Everything else in this file *builds* the tree. This is the half that spends it: a criterion
+     * over a cell's own statistics, evaluated top-down, that decides whether the cell is a good
+     * enough description of its contents or whether its four children would be better. Which is
+     * also the difference between a pyramid and a quadtree in any sense that matters — without a
+     * criterion every consumer reads one level, and one level of a pyramid is a grid.
+     *
+     * All four are two lines over the planes [summaryPyramid] already writes, and the choice is a
+     * statement about what "detail" means for the data in hand.
+     */
+    enum class SubdivisionCriterion {
+
+        /**
+         * Split where the *value* is not uniform — the classic image-quadtree rule.
+         *
+         * Reads the variance channel, so it is the one criterion that depends on
+         * [SummaryStatistics], and the one that a raw-moment pyramid gets wrong in exactly the
+         * regime where it matters: a cell whose values differ in the fourth decimal is a cell the
+         * subtraction cannot see, and it will be reported as flat.
+         */
+        VALUE_VARIANCE,
+
+        /**
+         * Split where the cell is *partly* full — neither empty nor covered.
+         *
+         * The occupancy channel is a fraction of the cell's finest cells that hold anything, so
+         * this refines exactly along boundaries and leaves both the interior and the exterior
+         * coarse. It is the criterion for a mask, and it needs no threshold tuning to speak of.
+         */
+        OCCUPANCY,
+
+        /**
+         * Split where the mass is not where the cell is — the centroid has walked off the centre.
+         *
+         * Measured in cell widths, so it is scale-free down the tree. This is the criterion that
+         * notices a cell describing its contents *dishonestly*: a cell reporting a position that no
+         * part of its contents occupies is one whose children would each report a true one.
+         */
+        CENTROID_OFFSET,
+
+        /**
+         * Split where the contents are *smaller than the cell* — the covariance says so.
+         *
+         * A uniformly filled cell has a spatial standard deviation of about 0.289 of its width
+         * (the uniform distribution's 1/12), so anything much below that is mass concentrated in
+         * part of the cell and a child would frame it better. This is the criterion that needs the
+         * second moments, and therefore the one that cannot be expressed by an occupancy quadtree
+         * at all.
+         */
+        SPREAD
+    }
+
+    /**
+     * An **adaptive cut** of a summarised quadtree: descend from the root, stop where the cell is a
+     * good enough description of its contents, and draw the cells you stopped at.
+     *
+     * This is the consumer the three planes exist for, and the answer to the reasonable complaint
+     * that a pyramid drawn at one level is a grid. Here the depth is chosen *per region*: empty
+     * space and flat regions keep their coarse cells, and detail is refined down to [finest]. The
+     * picture it makes is the one everybody means by "quadtree" — big squares where nothing is
+     * happening, small ones where something is.
+     *
+     * ### A descent is a pass chain, in the same literal sense a Jacobi sweep is
+     *
+     * Two passes per level, `finest - coarsest + 1` levels, and every reference points backwards:
+     *
+     * - `$name-select-d` runs at the *tree's* resolution — one texel per cell of depth d — and
+     *   computes two flags from the criterion and from its **parent's** flags one level up:
+     *   `open` (this cell was reached and is being split) and `drawn` (this cell was reached and is
+     *   where the descent stops). A cell is reached only if every ancestor split, which is a
+     *   conjunction down the whole chain — so it is propagated one level at a time rather than
+     *   recomputed, which is the thing a per-level pass can do and a single pass cannot.
+     * - `$name-d` runs at the *image's* resolution and composites that level's chosen cells over
+     *   what the coarser levels drew.
+     *
+     * The two resolutions are the reason they are two passes, and the reason this needed the
+     * heterogeneous chain layer rather than a loop: the decision lives at the tree's scale and the
+     * drawing at the picture's.
+     *
+     * ### What it guarantees
+     *
+     * The chosen cells **tile the domain exactly** — every point is inside exactly one drawn cell,
+     * because `drawn` and `open` partition `reached` at every level and `reached` is handed down
+     * unchanged. That is the defining property of a quadtree cut and it is the one thing here worth
+     * asserting numerically rather than looking at: `four.quadtree-chain.smoke` sums the drawn
+     * cells' areas across the levels and requires 1.0.
+     *
+     * @param prefix the quadtree's pass prefix — the planes are read by name from it.
+     * @param name pass names are `$name-select-<depth>` and `$name-<depth>`; the chain's output is
+     *   the [finest] draw pass.
+     * @param over the image the cut is drawn on top of.
+     * @param coarsest the depth the descent starts at. Depth 0 is the root and descending from it
+     *   is honest but dull — the first two levels almost always split.
+     * @param finest the depth the descent may not pass. A cell still open at [finest] is drawn
+     *   there, so the cut is always complete.
+     * @param criterion see [SubdivisionCriterion].
+     * @param threshold the criterion's parameter, in the criterion's own units — a variance, a
+     *   fraction, or a number of cell widths.
+     * @param weightFloor a cell holding less than this much mass is never split, whatever the
+     *   criterion says. Without it the statistics of an all-but-empty cell — a centroid divided by
+     *   1e-20, a variance of nothing — drive the descent all the way down over empty space, which
+     *   is both the most expensive thing the cut can do and the least useful.
+     */
+    fun adaptiveSummaryCells(
+        prefix: String = "summary",
+        name: String = "adaptive",
+        over: String = FabricatePassChain.CHAIN_INPUT,
+        coarsest: Int = 1,
+        finest: Int = 5,
+        criterion: SubdivisionCriterion = SubdivisionCriterion.VALUE_VARIANCE,
+        threshold: Float = 0.02f,
+        weightFloor: Float = 1e-4f,
+        statistics: SummaryStatistics = SummaryStatistics.POOLED,
+        sigma: Float = 1f,
+        weightGain: Float = 1f,
+        underGain: Float = 0.45f,
+        tint: Vector3f = Vector3f(0.35f, 0.9f, 1f),
+        format: Int? = null
+    ): List<FabricatePassSpec> {
+        require(coarsest >= 0) { "the descent starts at depth $coarsest" }
+        require(finest >= coarsest) {
+            "the descent's finest depth ($finest) is coarser than where it starts ($coarsest)"
+        }
+        require(threshold >= 0f) { "threshold must not be negative, got $threshold" }
+
+        return (coarsest..finest).flatMap { depth ->
+            val cells = 1 shl depth
+            val select = FabricatePassSpec(
+                name = "$name-select-$depth",
+                fragment = summarySelectFragment(criterion, statistics, hasParent = depth > coarsest),
+                size = FabricatePassSize.Absolute(cells, cells),
+                format = VK_FORMAT_R32G32B32A32_SFLOAT,
+                source = summaryPlane(prefix, SUMMARY_VALUE, depth),
+                extraInputs = listOfNotNull(
+                    FabricatePassInput("momentTex", summaryPlane(prefix, SUMMARY_MOMENT, depth)),
+                    FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth)),
+                    if (depth > coarsest) FabricatePassInput("parentTex", "$name-select-${depth - 1}") else null
+                ),
+                push = mapOf(
+                    "threshold" to threshold,
+                    "weightFloor" to weightFloor,
+                    "cells" to cells,
+                    // The last level may not split, whatever the criterion thinks: a cut has to end,
+                    // and a cell still open at the bottom is drawn there rather than dropped.
+                    "mayRefine" to if (depth < finest) 1 else 0
+                )
+            )
+            val draw = FabricatePassSpec(
+                name = "$name-$depth",
+                fragment = summaryAdaptiveDrawFragment(cells),
+                size = FabricatePassSize.MatchSource,
+                format = format,
+                source = if (depth == coarsest) over else "$name-${depth - 1}",
+                extraInputs = listOf(
+                    FabricatePassInput("selectTex", "$name-select-$depth"),
+                    FabricatePassInput("valueTex", summaryPlane(prefix, SUMMARY_VALUE, depth)),
+                    FabricatePassInput("momentTex", summaryPlane(prefix, SUMMARY_MOMENT, depth)),
+                    FabricatePassInput("extentTex", summaryPlane(prefix, SUMMARY_EXTENT, depth))
+                ),
+                push = mapOf(
+                    "sigma" to sigma,
+                    "weightGain" to weightGain,
+                    // Dimming is the first pass's job alone. Applied at every level it would darken
+                    // the coarse cells once per level below them, which reads as the cut shading
+                    // itself by depth — a plausible and completely invented picture.
+                    "underGain" to if (depth == coarsest) underGain else 1f,
+                    "tint" to tint
+                )
+            )
+            listOf(select, draw)
+        }
+    }
+
+    /**
+     * One channel of one plane, scaled into 0..1 — the instrument every assertion about a summary is
+     * made through.
+     *
+     * A summary channel is a *number*, and the readback path is an 8-bit sRGB PNG: a weight of 0.004
+     * and a variance of 3e-6 are both "black". So a measurement needs a gain, the gain has to be
+     * declared rather than guessed, and it belongs in a pass rather than in the reader — put it in
+     * the reader and the number being checked is not the number the GPU produced.
+     *
+     * @param channel 0..3 of [from]'s four channels.
+     * @param gain multiplies the channel. Choose it so the expected value lands in the middle of
+     *   0..1, where an 8-bit code is worth least.
+     * @param bias added after the gain, so a signed statistic can be centred on 0.5.
+     */
+    fun summaryReadout(
+        name: String = "summary-readout",
+        from: String? = null,
+        channel: Int = 0,
+        gain: Float = 1f,
+        bias: Float = 0f,
+        format: Int? = null
+    ): FabricatePassSpec {
+        require(channel in 0..3) { "channel must be 0..3, got $channel" }
+        return FabricatePassSpec(
+            name = name,
+            fragment = SUMMARY_READOUT_FRAGMENT,
+            size = FabricatePassSize.MatchSource,
+            format = format,
+            source = from,
+            push = mapOf("channel" to channel, "gain" to gain, "bias" to bias)
+        )
+    }
+
+    /**
+     * The cell variance of a [SUMMARY_VALUE] plane, scaled — which takes different arithmetic for the
+     * two [SummaryStatistics], and is the only consumer that has to know which it is looking at.
+     *
+     * That asymmetry is the point of having the pass. Weight, centroid and covariance read the same
+     * either way; the variance is the one statistic whose *representation* differs, so a chain that
+     * switches `statistics` and forgets to switch its reader gets a wrong number rather than an
+     * error. One pass, named for what it computes, is how that stops being possible.
+     */
+    fun summaryVariance(
+        name: String = "summary-variance",
+        from: String? = null,
+        statistics: SummaryStatistics = SummaryStatistics.POOLED,
+        gain: Float = 1f,
+        format: Int? = null
+    ): FabricatePassSpec = FabricatePassSpec(
+        name = name,
+        fragment = summaryVarianceFragment(statistics),
+        size = FabricatePassSize.MatchSource,
+        format = format,
+        source = from,
+        push = mapOf("gain" to gain)
+    )
+
+    // --- summary shaders ---
+
+    /**
+     * Channel selection and the leaf's weight/value pair, shared by every seed pass.
+     *
+     * `-1` selects luminance rather than a channel, which is what you want of an ordinary image: an
+     * RGB photograph has no mass channel, and its luminance is the closest thing to one.
+     */
+    const val SUMMARY_CHANNEL_GLSL = """
+        float summaryChannel(vec4 c, int which) {
+            if (which == 0) return c.r;
+            if (which == 1) return c.g;
+            if (which == 2) return c.b;
+            if (which == 3) return c.a;
+            return dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+        }
+    """
+
+    /**
+     * Seeds `(weight, mean, variance, occupancy)` from one texel.
+     *
+     * One texel has no spread, so the variance it seeds is exactly zero and **every** number the
+     * variance channel ever holds is produced by the merge. That makes the leaf level a poor test of
+     * the merge and the root level an excellent one.
+     */
+    val SUMMARY_VALUE_SEED_POOLED_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform SeedPush {
+            int weightChannel;
+            int valueChannel;
+        } push;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHANNEL_GLSL
+
+        void main() {
+            vec4 c = texture(sourceTex, vUv);
+            float w = clamp(summaryChannel(c, push.weightChannel), 0.0, 1.0);
+            float v = clamp(summaryChannel(c, push.valueChannel), 0.0, 1.0);
+            outSummary = vec4(w, v, 0.0, w > 0.0 ? 1.0 : 0.0);
+        }
+    """
+
+    /** Seeds `(weight, Σwv, Σwv², occupancy)` — the raw-moment alternative. */
+    val SUMMARY_VALUE_SEED_RAW_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform SeedPush {
+            int weightChannel;
+            int valueChannel;
+        } push;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHANNEL_GLSL
+
+        void main() {
+            vec4 c = texture(sourceTex, vUv);
+            float w = clamp(summaryChannel(c, push.weightChannel), 0.0, 1.0);
+            float v = clamp(summaryChannel(c, push.valueChannel), 0.0, 1.0);
+            outSummary = vec4(w, w * v, w * v * v, w > 0.0 ? 1.0 : 0.0);
+        }
+    """
+
+    /**
+     * Seeds the spatial first and second moments, `(Σwx, Σwy, Σwx², Σwy²)`, from one texel.
+     *
+     * The position is `vUv`, which is the texel's **centre** — the same half-texel that
+     * `four.simulation-chain.smoke` paid for in its jump-flood ground truth. A moment taken about a
+     * texel's corner is a centroid displaced by half a texel at every level, which at the root is
+     * half a cell.
+     */
+    val SUMMARY_MOMENT_SEED_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform SeedPush {
+            int weightChannel;
+            int valueChannel;
+        } push;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHANNEL_GLSL
+
+        void main() {
+            vec4 c = texture(sourceTex, vUv);
+            float w = clamp(summaryChannel(c, push.weightChannel), 0.0, 1.0);
+            outSummary = vec4(w * vUv.x, w * vUv.y, w * vUv.x * vUv.x, w * vUv.y * vUv.y);
+        }
+    """
+
+    /**
+     * Seeds `(Σwxy, min v, max v, 0)`.
+     *
+     * The extremes are gated on weight, and the sentinels for "nothing here" are the *reversed*
+     * pair — min 1, max 0 — so an empty cell is neutral under `min` and `max` instead of dragging
+     * both towards its own missing value. An ungated minimum reports the value of texels that hold
+     * no mass, which on a masked field is the mask's background and therefore always 0.
+     */
+    val SUMMARY_EXTENT_SEED_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform SeedPush {
+            int weightChannel;
+            int valueChannel;
+        } push;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHANNEL_GLSL
+
+        void main() {
+            vec4 c = texture(sourceTex, vUv);
+            float w = clamp(summaryChannel(c, push.weightChannel), 0.0, 1.0);
+            float v = clamp(summaryChannel(c, push.valueChannel), 0.0, 1.0);
+            bool any = w > 0.0;
+            outSummary = vec4(w * vUv.x * vUv.y, any ? v : 1.0, any ? v : 0.0, 0.0);
+        }
+    """
+
+    /**
+     * The 2×2 gather every reduction does: the four children of the texel being written.
+     *
+     * `texelFetch` and `gl_FragCoord`, for the reason [jumpFloodDistance] gives at length — a
+     * bilinear tap between two cells of a summary averages two *statistics*, which is a statistic of
+     * nothing. Every level here is exactly half the one below, so `2 * p` and its three neighbours
+     * are the four children with no rounding and no sampler involved.
+     */
+    const val SUMMARY_CHILDREN_GLSL = """
+        void summaryChildren(sampler2D tex, out vec4 a, out vec4 b, out vec4 c, out vec4 d) {
+            ivec2 p = ivec2(gl_FragCoord.xy) * 2;
+            a = texelFetch(tex, p, 0);
+            b = texelFetch(tex, p + ivec2(1, 0), 0);
+            c = texelFetch(tex, p + ivec2(0, 1), 0);
+            d = texelFetch(tex, p + ivec2(1, 1), 0);
+        }
+    """
+
+    /**
+     * Reduce by averaging: correct for every channel that is a per-area **sum**.
+     *
+     * Which is the spatial moment plane, and the raw-moment form of the value plane, and nothing
+     * else. It is one `+` per channel, and it is what makes the raw form so easy to reach for.
+     */
+    val SUMMARY_MEAN_REDUCE_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHILDREN_GLSL
+
+        void main() {
+            vec4 a, b, c, d;
+            summaryChildren(sourceTex, a, b, c, d);
+            outSummary = 0.25 * (a + b + c + d);
+        }
+    """
+
+    /**
+     * Reduce `(weight, mean, variance, occupancy)` by the weighted pooled-variance identity.
+     *
+     * Merged pairwise — `(a,b)` then `(c,d)` then the two halves — because the identity is binary and
+     * associative, and writing it once and applying it three times is one place for the zero-weight
+     * case to be handled rather than three.
+     *
+     * The weights are cell *means* over equal areas, so their ratio is the ratio of the total
+     * weights the identity wants, and the area cancels. The returned weight is halved at each merge
+     * because the merged cell has twice the area.
+     */
+    val SUMMARY_VALUE_REDUCE_POOLED_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHILDREN_GLSL
+
+        vec4 mergeValue(vec4 x, vec4 y) {
+            float w = x.x + y.x;
+            float occupancy = 0.5 * (x.w + y.w);
+            // No mass on either side: there is no mean to take a weighted average of, and dividing
+            // by zero would poison the whole branch above this cell with a NaN that renders black.
+            if (w <= 0.0) return vec4(0.0, 0.5 * (x.y + y.y), 0.0, occupancy);
+            float mean = (x.x * x.y + y.x * y.y) / w;
+            float delta = y.y - x.y;
+            // The between-children term. Without it this is a weighted average of variances, which
+            // is a plausible number that ignores every difference between the children it merged.
+            float variance = (x.x * x.z + y.x * y.z) / w + (x.x * y.x / (w * w)) * delta * delta;
+            return vec4(0.5 * w, mean, variance, occupancy);
+        }
+
+        void main() {
+            vec4 a, b, c, d;
+            summaryChildren(sourceTex, a, b, c, d);
+            outSummary = mergeValue(mergeValue(a, b), mergeValue(c, d));
+        }
+    """
+
+    /** Reduce `(Σwxy, min, max, ·)`: the cross moment averages, the extremes take their own operator. */
+    val SUMMARY_EXTENT_REDUCE_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHILDREN_GLSL
+
+        void main() {
+            vec4 a, b, c, d;
+            summaryChildren(sourceTex, a, b, c, d);
+            outSummary = vec4(
+                0.25 * (a.x + b.x + c.x + d.x),
+                min(min(a.y, b.y), min(c.y, d.y)),
+                max(max(a.z, b.z), max(c.z, d.z)),
+                0.0
+            );
+        }
+    """
+
+    /**
+     * Reduce `(first, count, prefix, ·)`: the parent's range is its children's.
+     *
+     * `min` on the start and a **sum** — not a mean — on the count, which is the arithmetic statement
+     * of the property the whole point pipeline rests on: four contiguous ranges that are adjacent in
+     * Morton order concatenate into one contiguous range. If they did not, this pass would be
+     * impossible rather than merely wrong, which is why `four.quadtree-chain.smoke` asserts that
+     * every level's ranges tile the array exactly.
+     */
+    val SUMMARY_RANGE_REDUCE_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outSummary;
+
+        $SUMMARY_CHILDREN_GLSL
+
+        void main() {
+            vec4 a, b, c, d;
+            summaryChildren(sourceTex, a, b, c, d);
+            float first = min(min(a.x, b.x), min(c.x, d.x));
+            float count = a.y + b.y + c.y + d.y;
+            // The parent's prefix is its children's, two bits shorter; the codes are normalised, so
+            // the shortest of the four *is* the parent's cell in the same normalisation.
+            outSummary = vec4(first, count, min(min(a.z, b.z), min(c.z, d.z)), 1.0);
+        }
+    """
+
+    /** One channel, scaled and biased into something an 8-bit readback can carry. */
+    val SUMMARY_READOUT_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform ReadoutPush {
+            int channel;
+            float gain;
+            float bias;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        void main() {
+            vec4 c = texelFetch(sourceTex, ivec2(gl_FragCoord.xy), 0);
+            float v = push.channel == 0 ? c.r : push.channel == 1 ? c.g : push.channel == 2 ? c.b : c.a;
+            float s = v * push.gain + push.bias;
+            outColor = vec4(s, s, s, 1.0);
+        }
+    """
+
+    /**
+     * `(cxx, cyy, cxy)` from the three planes, scaled — and `cxy` biased, because it is signed.
+     *
+     * The empty-cell branch writes zeros rather than dividing: a cell with no mass has no centroid to
+     * take moments about, and `0/0` is a NaN that the readback shows as black, which is also what a
+     * covariance of zero looks like.
+     */
+    val SUMMARY_COVARIANCE_FRAGMENT = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D valueTex;
+        layout(set = 0, binding = 2) uniform sampler2D extentTex;
+        layout(push_constant) uniform CovariancePush {
+            float gain;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        void main() {
+            ivec2 cell = ivec2(gl_FragCoord.xy);
+            float w = texelFetch(valueTex, cell, 0).x;
+            if (w <= 1e-7) {
+                outColor = vec4(0.0, 0.0, 0.5, 0.0);
+                return;
+            }
+            vec4 moment = texelFetch(sourceTex, cell, 0);
+            float cross = texelFetch(extentTex, cell, 0).x;
+            vec2 middle = moment.xy / w;
+            float cxx = moment.z / w - middle.x * middle.x;
+            float cyy = moment.w / w - middle.y * middle.y;
+            float cxy = cross / w - middle.x * middle.y;
+            outColor = vec4(cxx * push.gain, cyy * push.gain, cxy * push.gain + 0.5, 1.0);
+        }
+    """
+
+    /** The variance of a [SUMMARY_VALUE] cell, however that plane happens to carry it. */
+    fun summaryVarianceFragment(statistics: SummaryStatistics): String {
+        val expression = when (statistics) {
+            // Already the variance: the merge maintained it.
+            SummaryStatistics.POOLED -> "c.z"
+            // E[v²] - E[v]², from two per-area sums and a weight. Every digit the two terms agree to
+            // is a digit of the answer that has been cancelled away.
+            SummaryStatistics.RAW_MOMENTS ->
+                "c.x <= 0.0 ? 0.0 : (c.z / c.x - (c.y / c.x) * (c.y / c.x))"
+        }
+        return """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(push_constant) uniform VariancePush {
+            float gain;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        void main() {
+            vec4 c = texelFetch(sourceTex, ivec2(gl_FragCoord.xy), 0);
+            float variance = $expression;
+            float s = variance * push.gain;
+            outColor = vec4(s, s, s, 1.0);
+        }
+        """
+    }
+
+    /**
+     * Bit interleave, and the reason a Morton code is a tree path rather than a hash.
+     *
+     * `part1by1` spreads the low 16 bits of an integer into every other bit position by the standard
+     * five-step doubling shuffle, so `(spread(y) << 1) | spread(x)` alternates `y x y x …` from the
+     * most significant pair down. Each pair is one quadrant decision, so truncating the code to `2d`
+     * bits *is* descending to depth d — no arithmetic, just a shift.
+     */
+    const val MORTON_GLSL = """
+        uint fieldSpreadBits(uint x) {
+            x &= 0x0000ffffu;
+            x = (x ^ (x << 8)) & 0x00ff00ffu;
+            x = (x ^ (x << 4)) & 0x0f0f0f0fu;
+            x = (x ^ (x << 2)) & 0x33333333u;
+            x = (x ^ (x << 1)) & 0x55555555u;
+            return x;
+        }
+
+        uint fieldMortonCode(uvec2 q) {
+            return (fieldSpreadBits(q.y) << 1) | fieldSpreadBits(q.x);
+        }
+    """
+
+    /**
+     * Quantise a point into the leaf grid and interleave — `(code, index, ·, ·)`, both normalised.
+     *
+     * The clamp is at `0.999999` and not at `1.0` deliberately: a point exactly on the far edge
+     * quantises to `2^depth`, which is one cell past the last one and whose code collides with a cell
+     * near the *origin* once the bits interleave. That is a point that teleports across the tree, and
+     * it happens to every point on the boundary of a normalised domain.
+     *
+     * Both outputs are divided by their own range so the channel stays inside 0..1 and the readback
+     * can show it. The divisors are powers of two, so the division is exact and multiplying back is
+     * exact — the one case where scaling a value does not cost accuracy.
+     */
+    fun mortonCodeFragment(depth: Int, count: Int, width: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outCode;
+
+        const int DEPTH = $depth;
+        const int COUNT = $count;
+        const int WIDTH = $width;
+
+        $MORTON_GLSL
+
+        void main() {
+            // The grid comes from Kotlin and not from `textureSize(sourceTex)`, because the index
+            // this pass writes is the key every later pass looks a point up by — so it has to be an
+            // index into the point *set*, which is this pass's own size, and not into whatever
+            // texture happened to be bound as its source.
+            ivec2 p = ivec2(gl_FragCoord.xy);
+            vec4 point = texelFetch(sourceTex, p, 0);
+            uvec2 q = uvec2(clamp(point.xy, vec2(0.0), vec2(0.999999)) * float(1u << uint(DEPTH)));
+            outCode = vec4(
+                float(fieldMortonCode(q)) / float(1u << uint(2 * DEPTH)),
+                float(p.y * WIDTH + p.x) / float(COUNT),
+                0.0,
+                1.0
+            );
+        }
+    """
+
+    /**
+     * Each element counts the elements that precede it — the gather half of a sort.
+     *
+     * ### Why this and not a radix sort
+     *
+     * A GPU radix sort is a histogram, a prefix sum and a scatter, and **a fragment shader cannot
+     * scatter**: it writes the one texel it was invoked for. The same total order can be reached by
+     * asking each element where it belongs instead of telling each slot what it gets, which is a
+     * gather, and gathers are all this layer does. Two passes and no scan.
+     *
+     * The bill is O(N) taps per texel, so O(N²) over the pass, against a radix sort's O(N) — which is
+     * why [MAX_POINT_QUADTREE_POINTS] is 4096 and not a million. The alternative that keeps the
+     * complexity is a bitonic sorting network, which *is* expressible here: `log₂N (log₂N + 1) / 2`
+     * passes, each one a partner-and-compare gather. That is the version to reach for at scale, and
+     * at 4096 points it is 78 passes against these two.
+     *
+     * ### The tie-break is not a detail
+     *
+     * Two points in the same leaf cell have the same code, and a rank that counts `key < key` leaves
+     * them both at the same rank — so a slot is written twice and another is never written at all.
+     * The comparison is therefore on `(key, index)`, which is a strict total order, which makes the
+     * rank a permutation. Duplicate codes are not an edge case: they are what a leaf cell *is*.
+     *
+     * The `==` on floats is exact and is meant to be. The codes are integers divided by a power of
+     * two, so every one of them is exactly representable and two equal codes compare equal.
+     */
+    fun pointRankFragment(count: Int, width: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outRank;
+
+        const int COUNT = $count;
+        const int WIDTH = $width;
+
+        void main() {
+            ivec2 p = ivec2(gl_FragCoord.xy);
+            int self = p.y * WIDTH + p.x;
+            vec4 mine = texelFetch(sourceTex, p, 0);
+            float key = mine.x;
+
+            int rank = 0;
+            for (int j = 0; j < COUNT; ++j) {
+                float other = texelFetch(sourceTex, ivec2(j % WIDTH, j / WIDTH), 0).x;
+                if (other < key || (other == key && j < self)) rank += 1;
+            }
+            outRank = vec4(float(rank) / float(COUNT), key, mine.y, 1.0);
+        }
+    """
+
+    /**
+     * Each slot picks up the element whose rank it is — the other half of the sort.
+     *
+     * Writes `(code, point index)`, both still normalised. The `.w` channel is 1 only if a slot found
+     * an element, so an incomplete permutation leaves a hole that says so rather than a plausible
+     * duplicate; the rank above cannot produce one, which is exactly why it is worth being able to
+     * see that it did not.
+     */
+    fun pointGatherFragment(count: Int, width: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outSorted;
+
+        const int COUNT = $count;
+        const int WIDTH = $width;
+
+        void main() {
+            ivec2 p = ivec2(gl_FragCoord.xy);
+            int slot = p.y * WIDTH + p.x;
+
+            vec4 found = vec4(1.0, 0.0, 0.0, 0.0);
+            for (int j = 0; j < COUNT; ++j) {
+                vec4 r = texelFetch(sourceTex, ivec2(j % WIDTH, j / WIDTH), 0);
+                if (int(r.x * float(COUNT) + 0.5) == slot) found = vec4(r.y, r.z, 0.0, 1.0);
+            }
+            outSorted = found;
+        }
+    """
+
+    /**
+     * One node per texel: its Morton prefix, and the range of the sorted array holding its points.
+     *
+     * The texel's own coordinates interleave into its prefix — which is what makes a *raster* of
+     * nodes the natural shape for a level of a quadtree, and what lets the level above be a 2×2
+     * reduction of this one. Then two binary searches bracket the prefix in the sorted keys, and the
+     * node is `(first, count)`.
+     *
+     * Both bounds are found by the same `lowerBound`, the second one on the next prefix, because
+     * `upperBound(k)` is `lowerBound(k + 1)` on an integer key and one routine is one place to be
+     * wrong. The loop bound comes from [pointSearchSteps]; the `lo >= hi` break is what makes a
+     * generous bound free rather than a source of drift.
+     */
+    fun pointNodesFragment(depth: Int, count: Int, width: Int, steps: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outNode;
+
+        const int DEPTH = $depth;
+        const int COUNT = $count;
+        const int WIDTH = $width;
+        const int STEPS = $steps;
+
+        $MORTON_GLSL
+
+        float keyAt(int i) {
+            return texelFetch(sourceTex, ivec2(i % WIDTH, i / WIDTH), 0).x;
+        }
+
+        int lowerBound(float key) {
+            int lo = 0;
+            int hi = COUNT;
+            for (int step = 0; step < STEPS; ++step) {
+                if (lo >= hi) break;
+                int mid = (lo + hi) >> 1;
+                if (keyAt(mid) < key) lo = mid + 1; else hi = mid;
+            }
+            return lo;
+        }
+
+        void main() {
+            ivec2 cell = ivec2(gl_FragCoord.xy);
+            float codes = float(1u << uint(2 * DEPTH));
+            float prefix = float(fieldMortonCode(uvec2(cell))) / codes;
+            // Half a code short of the next prefix: the keys are exact multiples of 1/codes, so any
+            // point strictly inside the gap brackets the same set and the search never has to
+            // compare equal to a key it is bounding.
+            float next = prefix + 1.0 / codes;
+
+            int first = lowerBound(prefix);
+            int last = lowerBound(next);
+            outNode = vec4(float(first) / float(COUNT), float(last - first) / float(COUNT), prefix, 1.0);
+        }
+    """
+
+    /**
+     * The loop every leaf pass runs: over one node's range, by index, into the point texture.
+     *
+     * Two indirections, and the second is the one that makes a sorted array worth having. `sortedTex`
+     * holds *indices*, not points, so the sort moved 8 bytes per point rather than a whole point —
+     * and the points themselves never move, which is why `pointsTex` can be whatever pass produced
+     * them and does not have to be reordered to be read.
+     *
+     * The loop is bounded by `COUNT` because a fragment shader's loop must terminate on a constant,
+     * and broken out of at `count` because a node holds what it holds. A cell that holds every point
+     * is legal — it is what depth 1 looks like on a clustered set.
+     */
+    private fun pointLeafPreamble(count: Int, width: Int): String = """
+        layout(push_constant) uniform LeafPush {
+            float normalizer;
+        } push;
+
+        const int COUNT = $count;
+        const int WIDTH = $width;
+
+        int nodeFirst(vec4 node) { return int(node.x * float(COUNT) + 0.5); }
+        int nodeCount(vec4 node) { return int(node.y * float(COUNT) + 0.5); }
+
+        vec4 pointAtSlot(sampler2D sortedTex, sampler2D pointsTex, int slot) {
+            float index = texelFetch(sortedTex, ivec2(slot % WIDTH, slot / WIDTH), 0).y;
+            int i = int(index * float(COUNT) + 0.5);
+            return texelFetch(pointsTex, ivec2(i % WIDTH, i / WIDTH), 0);
+        }
+    """
+
+    /**
+     * Seeds the value plane for a node, by Welford over its points.
+     *
+     * The incremental form and not `Σwv²` for the reason [SummaryStatistics] gives — and here it is
+     * the *same* arithmetic as the merge above it, one sample at a time, which is what makes the
+     * whole pyramid one identity applied repeatedly rather than two representations meeting at the
+     * leaf level.
+     *
+     * Normalised by the point **count**, not by the cell's area: a node's weight is its share of the
+     * point budget. The raster producer normalises by texels instead, so the two weights differ by
+     * the ratio of texels to points — and nothing else does, because every other statistic here is a
+     * ratio in which the normalisation cancels.
+     */
+    fun pointLeafValueFragment(count: Int, width: Int, pooled: Boolean): String {
+        val accumulate = if (pooled) """
+                    // Weighted Welford: the mean moves by the residual scaled by the new weight's
+                    // share, and M2 picks up the product of the two. Stated in weight-mean form so
+                    // the channels match what the merge above expects.
+                    float next = total + w;
+                    float delta = v - mean;
+                    mean += delta * w / next;
+                    m2 += w * delta * (v - mean);
+                    total = next;
+        """ else """
+                    total += w;
+                    mean += w * v;
+                    m2 += w * v * v;
+        """
+        // The weight — and, in the raw form, the two moments with it — is extensive and takes the
+        // normalizer. The pooled mean and variance are ratios that have already divided it out, so
+        // scaling them would be scaling an answer rather than a total.
+        val emit = if (pooled) {
+            "vec4(total * push.normalizer, mean, total > 0.0 ? m2 / total : 0.0, n > 0 ? 1.0 : 0.0)"
+        } else {
+            // Here `mean` and `m2` are Σwv and Σwv², which are sums like the weight and scale with it.
+            "vec4(vec3(total, mean, m2) * push.normalizer, n > 0 ? 1.0 : 0.0)"
+        }
+        return """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D sortedTex;
+        layout(set = 0, binding = 2) uniform sampler2D pointsTex;
+        layout(location = 0) out vec4 outSummary;
+
+        ${pointLeafPreamble(count, width)}
+
+        void main() {
+            vec4 node = texelFetch(sourceTex, ivec2(gl_FragCoord.xy), 0);
+            int first = nodeFirst(node);
+            int n = nodeCount(node);
+
+            float total = 0.0;
+            float mean = 0.0;
+            float m2 = 0.0;
+            for (int i = 0; i < COUNT; ++i) {
+                if (i >= n) break;
+                vec4 point = pointAtSlot(sortedTex, pointsTex, first + i);
+                float w = clamp(point.z, 0.0, 1.0);
+                float v = clamp(point.w, 0.0, 1.0);
+$accumulate
+            }
+            outSummary = $emit;
+        }
+        """
+    }
+
+    /** Seeds `(Σwx, Σwy, Σwx², Σwy²)` for a node, from the points in its range. */
+    fun pointLeafMomentFragment(count: Int, width: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D sortedTex;
+        layout(set = 0, binding = 2) uniform sampler2D pointsTex;
+        layout(location = 0) out vec4 outSummary;
+
+        ${pointLeafPreamble(count, width)}
+
+        void main() {
+            vec4 node = texelFetch(sourceTex, ivec2(gl_FragCoord.xy), 0);
+            int first = nodeFirst(node);
+            int n = nodeCount(node);
+
+            vec4 moments = vec4(0.0);
+            for (int i = 0; i < COUNT; ++i) {
+                if (i >= n) break;
+                vec4 point = pointAtSlot(sortedTex, pointsTex, first + i);
+                float w = clamp(point.z, 0.0, 1.0);
+                vec2 p = point.xy;
+                moments += vec4(w * p.x, w * p.y, w * p.x * p.x, w * p.y * p.y);
+            }
+            outSummary = moments * push.normalizer;
+        }
+    """
+
+    /** Seeds `(Σwxy, min v, max v, 0)` for a node, with the same empty-cell sentinels as the raster. */
+    fun pointLeafExtentFragment(count: Int, width: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D sortedTex;
+        layout(set = 0, binding = 2) uniform sampler2D pointsTex;
+        layout(location = 0) out vec4 outSummary;
+
+        ${pointLeafPreamble(count, width)}
+
+        void main() {
+            vec4 node = texelFetch(sourceTex, ivec2(gl_FragCoord.xy), 0);
+            int first = nodeFirst(node);
+            int n = nodeCount(node);
+
+            float cross = 0.0;
+            float lowest = 1.0;
+            float highest = 0.0;
+            for (int i = 0; i < COUNT; ++i) {
+                if (i >= n) break;
+                vec4 point = pointAtSlot(sortedTex, pointsTex, first + i);
+                float w = clamp(point.z, 0.0, 1.0);
+                float v = clamp(point.w, 0.0, 1.0);
+                cross += w * point.x * point.y;
+                if (w > 0.0) {
+                    lowest = min(lowest, v);
+                    highest = max(highest, v);
+                }
+            }
+            outSummary = vec4(cross * push.normalizer, lowest, highest, 0.0);
+        }
+    """
+
+    /**
+     * One level of the descent: does this cell stop here, or do its children get a turn?
+     *
+     * Three things come out of one texel, and only the first is the criterion.
+     *
+     * - `reached` — did every ancestor split? Read from the parent's `open` at `cell / 2`, which is
+     *   why this is a per-level pass: the conjunction down the chain is maintained rather than
+     *   recomputed, so a level costs one tap instead of a walk to the root.
+     * - `drawn` = reached and not splitting. `open` = reached and splitting. They partition
+     *   `reached`, which is what makes the cut a tiling rather than a set of overlapping cells.
+     * - the criterion itself, which is the only part that differs between the four.
+     *
+     * The weight floor is checked before any of them, and it is not an optimisation. An all-but-
+     * empty cell has a centroid that is a ratio of two nothings and a variance of nothing, and
+     * those numbers are as large and as arbitrary as any other — so without the floor the descent
+     * refines hardest over exactly the regions with nothing in them.
+     */
+    fun summarySelectFragment(
+        criterion: SubdivisionCriterion,
+        statistics: SummaryStatistics,
+        hasParent: Boolean
+    ): String {
+        val variance = when (statistics) {
+            SummaryStatistics.POOLED -> "value.z"
+            SummaryStatistics.RAW_MOMENTS -> "(value.z / w - (value.y / w) * (value.y / w))"
+        }
+        val test = when (criterion) {
+            SubdivisionCriterion.VALUE_VARIANCE -> "refine = $variance > push.threshold;"
+            // Strictly between empty and full: a boundary, and nothing else in the image.
+            SubdivisionCriterion.OCCUPANCY ->
+                "refine = value.w > push.threshold && value.w < 1.0 - push.threshold;"
+            SubdivisionCriterion.CENTROID_OFFSET -> """
+                vec2 middle = vec4Moment.xy / w;
+                vec2 centre = (vec2(cell) + 0.5) / float(push.cells);
+                refine = length(middle - centre) * float(push.cells) > push.threshold;
+            """
+            SubdivisionCriterion.SPREAD -> """
+                vec2 middle = vec4Moment.xy / w;
+                float cxx = vec4Moment.z / w - middle.x * middle.x;
+                float cyy = vec4Moment.w / w - middle.y * middle.y;
+                // In cell widths. A uniformly filled cell sits at 1/sqrt(12) = 0.289 per axis, so
+                // a threshold under that asks "is the mass smaller than the cell it is in".
+                refine = sqrt(max(cxx + cyy, 0.0)) * float(push.cells) < push.threshold;
+            """
+        }
+        val parentDeclaration = if (hasParent) {
+            "layout(set = 0, binding = 3) uniform sampler2D parentTex;"
+        } else {
+            "// no parent: this level is where the descent starts, so every cell is reached"
+        }
+        // The root of the descent is reached by definition, and the sampler is compiled *out*
+        // rather than left unbound — an unbound declared sampler fails in descriptor setup, the
+        // same trap `fluidForceFragment`'s vorticity switch pays for.
+        val reached = if (hasParent) "texelFetch(parentTex, cell / 2, 0).y" else "1.0"
+        return """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D momentTex;
+        layout(set = 0, binding = 2) uniform sampler2D extentTex;
+        $parentDeclaration
+        layout(push_constant) uniform SelectPush {
+            float threshold;
+            float weightFloor;
+            int cells;
+            int mayRefine;
+        } push;
+        layout(location = 0) out vec4 outSelect;
+
+        void main() {
+            ivec2 cell = ivec2(gl_FragCoord.xy);
+            vec4 value = texelFetch(sourceTex, cell, 0);
+            vec4 vec4Moment = texelFetch(momentTex, cell, 0);
+            float reached = $reached;
+            float w = value.x;
+
+            bool refine = false;
+            if (push.mayRefine != 0 && w > push.weightFloor) {
+                $test
+            }
+
+            bool here = reached > 0.5;
+            outSelect = vec4(here && !refine ? 1.0 : 0.0, here && refine ? 1.0 : 0.0, w, 1.0);
+        }
+        """
+    }
+
+    /**
+     * Composites one level of the cut over the levels above it: a cell outline always, an ellipse
+     * and a centroid where there is mass.
+     *
+     * The outline is drawn for *every* chosen cell including the empty ones, and that is the whole
+     * picture rather than a decoration — a quadtree cut is legible as the sizes of its cells, and
+     * the coarse squares over empty space are the half of it that says the descent stopped early.
+     */
+    fun summaryAdaptiveDrawFragment(cells: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D selectTex;
+        layout(set = 0, binding = 2) uniform sampler2D valueTex;
+        layout(set = 0, binding = 3) uniform sampler2D momentTex;
+        layout(set = 0, binding = 4) uniform sampler2D extentTex;
+        layout(push_constant) uniform DrawPush {
+            float sigma;
+            float weightGain;
+            float underGain;
+            vec3 tint;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        const int CELLS = $cells;
+
+        void main() {
+            vec4 under = texture(sourceTex, vUv);
+            vec3 result = under.rgb * push.underGain;
+
+            ivec2 cell = clamp(ivec2(vUv * float(CELLS)), ivec2(0), ivec2(CELLS - 1));
+            if (texelFetch(selectTex, cell, 0).x < 0.5) {
+                outColor = vec4(result, 1.0);
+                return;
+            }
+
+            // The cell's own border, in the width of an output texel rather than of a cell, so the
+            // coarse levels do not draw fatter lines than the fine ones.
+            vec2 grid = abs(fract(vUv * float(CELLS)) - 0.5);
+            float edge = max(grid.x, grid.y) * 2.0;
+            float texel = 2.0 / float(textureSize(sourceTex, 0).x) * float(CELLS);
+            result += vec3(0.55) * smoothstep(1.0 - texel, 1.0, edge);
+
+            vec4 value = texelFetch(valueTex, cell, 0);
+            float w = value.x;
+            if (w > 1e-7) {
+                vec4 moment = texelFetch(momentTex, cell, 0);
+                float cross = texelFetch(extentTex, cell, 0).x;
+                vec2 middle = moment.xy / w;
+                float cxx = moment.z / w - middle.x * middle.x;
+                float cyy = moment.w / w - middle.y * middle.y;
+                float cxy = cross / w - middle.x * middle.y;
+
+                result += push.tint * clamp(w * push.weightGain, 0.0, 1.0) * 0.22;
+
+                float det = cxx * cyy - cxy * cxy;
+                vec2 offset = vUv - middle;
+                if (det > 1e-12) {
+                    float d2 = (cyy * offset.x * offset.x
+                              - 2.0 * cxy * offset.x * offset.y
+                              + cxx * offset.y * offset.y) / det;
+                    float d = sqrt(max(d2, 0.0));
+                    float wide = max(2.0 / float(textureSize(sourceTex, 0).x)
+                                     / max(push.sigma * sqrt(max(cxx + cyy, 1e-12)), 1e-6), 0.002);
+                    result += push.tint * (1.0 - smoothstep(0.0, wide, abs(d - push.sigma)));
+                }
+                float toCentroid = length(offset) * float(CELLS);
+                result += vec3(1.0) * (1.0 - smoothstep(0.0, 0.05, toCentroid));
+            }
+
+            // Opaque, and not `under.a`. An overlay inherits the alpha of whatever it was drawn
+            // over, and what it is usually drawn over here is a *mass* channel — so the readback of
+            // a perfectly correct overlay is an almost entirely transparent PNG, which every viewer
+            // then composites onto white. The pixels were right and all three committed figures
+            // were unreadable.
+            outColor = vec4(result, 1.0);
+        }
+    """
+
+    /**
+     * A centroid, a 1σ ellipse and a weight tint per cell, over the image underneath.
+     *
+     * The ellipse is drawn by its **Mahalanobis distance** rather than by walking its boundary,
+     * because a fragment shader is already being asked "how far is this pixel from that cell's
+     * distribution" — `d² = (p − c)ᵀ Σ⁻¹ (p − c)`, and the 1σ contour is `d = 1`. No
+     * eigendecomposition and no parametric curve; the orientation and the anisotropy come out of the
+     * inverse for free, which is the whole reason the covariance is worth carrying.
+     *
+     * A cell with fewer than two distinct positions has a singular covariance, and the inverse of a
+     * singular matrix is not a big ellipse, it is a NaN — which renders as a black hole in the middle
+     * of a perfectly good overlay. The determinant is therefore floored, and below the floor the cell
+     * draws its centroid dot and no ring, which is the honest picture: one point has a position and
+     * no shape.
+     */
+    fun summaryEllipsesFragment(cells: Int): String = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(set = 0, binding = 1) uniform sampler2D valueTex;
+        layout(set = 0, binding = 2) uniform sampler2D momentTex;
+        layout(set = 0, binding = 3) uniform sampler2D extentTex;
+        layout(push_constant) uniform EllipsePush {
+            float sigma;
+            float weightGain;
+            float underGain;
+            vec3 tint;
+        } push;
+        layout(location = 0) out vec4 outColor;
+
+        const int CELLS = $cells;
+
+        void main() {
+            vec4 under = texture(sourceTex, vUv);
+            vec3 result = under.rgb * push.underGain;
+
+            ivec2 cell = clamp(ivec2(vUv * float(CELLS)), ivec2(0), ivec2(CELLS - 1));
+            vec4 value = texelFetch(valueTex, cell, 0);
+            vec4 moment = texelFetch(momentTex, cell, 0);
+            vec4 extent = texelFetch(extentTex, cell, 0);
+
+            float w = value.x;
+            if (w > 1e-7) {
+                // `centroid` is a reserved word in GLSL — an interpolation qualifier nobody has
+                // written since 1.30 — so the obvious name for this is a syntax error.
+                vec2 middle = moment.xy / w;
+                float cxx = moment.z / w - middle.x * middle.x;
+                float cyy = moment.w / w - middle.y * middle.y;
+                float cxy = extent.x / w - middle.x * middle.y;
+
+                // A fill that says how much is in the cell, before anything says where.
+                result += push.tint * clamp(w * push.weightGain, 0.0, 1.0) * 0.25;
+
+                float det = cxx * cyy - cxy * cxy;
+                vec2 offset = vUv - middle;
+                if (det > 1e-12) {
+                    float d2 = (cyy * offset.x * offset.x
+                              - 2.0 * cxy * offset.x * offset.y
+                              + cxx * offset.y * offset.y) / det;
+                    float d = sqrt(max(d2, 0.0));
+                    // A ring whose width is one output texel, so the ellipse stays one pixel thick
+                    // at every cell size instead of thinning out as the cells shrink.
+                    float texel = 1.5 / float(textureSize(sourceTex, 0).x);
+                    float wide = max(texel / max(push.sigma * sqrt(max(cxx + cyy, 1e-12)), 1e-6), 0.002);
+                    result += push.tint * (1.0 - smoothstep(0.0, wide, abs(d - push.sigma)));
+                }
+                // The centroid itself, which is the statistic a cell has even when it has no shape.
+                // Not named `dot`: GLSL lets a variable shadow a built-in function, and the next
+                // person to want a dot product in this shader would be told it is not a function.
+                float toCentroid = length(offset) * float(CELLS);
+                result += vec3(1.0) * (1.0 - smoothstep(0.0, 0.06, toCentroid));
+            }
+
+            // Cell borders, so a centroid that has walked away from its own cell's centre is visible
+            // as a displacement rather than only as a dot somewhere.
+            vec2 grid = abs(fract(vUv * float(CELLS)) - 0.5);
+            float edge = max(grid.x, grid.y);
+            result += vec3(0.12) * smoothstep(0.47, 0.5, edge);
+
+            // Opaque, and not `under.a`. An overlay inherits the alpha of whatever it was drawn
+            // over, and what it is usually drawn over here is a *mass* channel — so the readback of
+            // a perfectly correct overlay is an almost entirely transparent PNG, which every viewer
+            // then composites onto white. The pixels were right and all three committed figures
+            // were unreadable.
+            outColor = vec4(result, 1.0);
+        }
+    """
 }

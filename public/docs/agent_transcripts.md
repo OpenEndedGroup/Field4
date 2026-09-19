@@ -44,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 116 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 118 transcripts on every build, at three
 depths. 66 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-43 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+45 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -439,8 +439,8 @@ the first box to a mesh file of your own; boxes two and three clean up the temp 
 
 ### typography_worked_example
 
-[Typography as geometry](typography_examples.md) as eight boxes, and
-the interesting thing about it is that there is no AWT rasteriser anywhere in the file: AWT is touched
+[Typography as geometry](typography_examples.md) as eight boxes, none of
+which uses an AWT rasteriser: AWT is touched
 only to read a font's glyph outlines, and every picture after that is Field's own scanline filler or
 Skia SVG. *A string becomes contours* prints, per glyph, the contour and hole counts, the advance, and
 each ring's depth and *signed* area, which is where the winding convention becomes visible. *The
@@ -1646,6 +1646,70 @@ flood against exact ground truth, and the fluid against the one thing no plan ca
 switched off, the picture has to keep changing.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/four_simulation_chain/metadata.edn)
+
+### four_summary_pyramid
+
+A **summarised quadtree over a raster**, declared as one pass chain: three drifting, rotating blobs, a
+2×2 reduction pyramid that carries mergeable statistics instead of colour, and an overlay that draws
+what each cell of the tree knows as a centroid and an ellipse. The structure comes free — a 2×2
+reduction has a parent for every four cells and one cell at the top, which *is* a complete quadtree,
+with no nodes, no pointers and no build step that can disagree with the data. What differs from the
+downsample pyramid in `four_pass_chain` is what a cell carries: weight, value mean, value variance and
+occupancy on one plane, the spatial moments `Σwx, Σwy, Σwx², Σwy²` on another, and `Σwxy` with the two
+extremes on a third. From the last two, `covariance = E[ppᵀ] − E[p]E[p]ᵀ`, so every cell has an
+orientation and an anisotropy: an adaptive cell stops saying "occupied" and starts carrying a crude
+geometric model of what is inside it. Every channel is a per-cell *mean* rather than a sum, which is
+what keeps the whole tree inside the range a readback can show and costs nothing, because centroid,
+covariance, mean and variance are all ratios in which the cell's area cancels. What the window shows
+is an **adaptive cut**, not a level: the descent starts at depth 1, stops wherever a cell already
+describes its contents well enough, and draws the cells it stopped at — so the empty quadrants stay
+whole and the blobs' boundaries are resolved six levels down. Without a criterion a consumer reads one
+level, and one level of a pyramid is a grid; with one, a descent turns out to be a pass chain in the
+same literal sense a Jacobi sweep is, two passes per level at two different resolutions because the
+decision lives at the tree's scale and the drawing at the picture's. Turn `threshold` and the whole
+cut coarsens or refines on the next frame with nothing rebuilt.
+`dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
+`tools/run_field_tests.py --id four.quadtree-chain.smoke` compares it against **closed forms** — a
+linear ramp has an exact mean, variance, centroid and spatial variance at every level, so the pyramid
+is checked against arithmetic rather than against a previous render.
+
+![A dark frame divided into quadtree cells of many sizes. The empty regions are left as large
+squares, a quarter and an eighth of the frame across; three pale blobs lying on a diagonal are
+wrapped in bands of progressively smaller cells, stepping down six levels at their edges. Inside
+every occupied cell a cyan ellipse and a white centroid dot mark what that cell's statistics say
+about its contents, and the ellipses in the elongated blobs lean the way the blob
+does](assets/summary_quadtree/raster-cut.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/four_summary_pyramid/metadata.edn)
+
+### four_morton_quadtree
+
+The same three planes of statistics, produced from a **moving point set** by a completely different
+pipeline: Morton codes, a sort, one level of nodes found by bracketing prefixes in the sorted array,
+and then literally the same reduction ladder as `four_summary_pyramid` — one Kotlin function called
+twice, so a consumer cannot tell which producer made a summary. Quantise a point into a `2^depth` grid
+and interleave the bits of its cell coordinates and its code *is* its path down the tree, two bits per
+level; sort the codes and every node's points are a contiguous range, so a node needs no pointers and
+no contents, only `(first, count)`. Two things a fragment chain cannot do shape the rest. It cannot
+scatter, so the sort is the gather form of the same answer — each element counts how many precede it,
+then each slot picks up the element whose rank it holds, two passes and exact, quadratic where a radix
+sort is linear. And it cannot scan or compact, so boundary detection is asked *per node* rather than
+per element: a node knows its own prefix, because its prefix is the Morton code of its own
+coordinates, and finds its range with two binary searches. Nothing here is persistent — the points
+move and the codes, the sort, the ranges and every level are rebuilt from nothing each frame. It ends
+in the same adaptive cut as its companion, under the one criterion an occupancy quadtree cannot
+express: refine where the mass is *narrower than the cell holding it*, which needs the second
+moments. The smoke test puts a point at every texel centre of a raster and finds the twelve summary
+channels bit-identical between the two producers, and checks that the cells a cut chose tile the
+frame exactly.
+
+![The same kind of cut over a point set. Most of the frame is a handful of large empty cells; two
+teal-tinted cells a quarter of the frame across each hold one cluster drawn with its ellipse — one
+round, one leaning — and around a third, tighter cluster the cells step down through three more
+levels into small squares. Every cell edge meets its neighbours exactly, because the cells a
+descent stops at tile the frame](assets/summary_quadtree/point-cut.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/four_morton_quadtree/metadata.edn)
 
 ### aperture_playground
 
