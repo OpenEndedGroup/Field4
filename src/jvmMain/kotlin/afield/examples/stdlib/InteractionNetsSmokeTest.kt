@@ -27,6 +27,9 @@ object InteractionNetsSmokeTest {
             testEnergyBiasedSchedulerPrefersHotterPair()
             testDuplicationSplitsStateAndReportsEvent()
             testEraseRuleCreatesDecayAgents()
+            testEraseCascadeRunsToAFixedPoint()
+            testDifferentlyLabelledFansCommuteAndThenKeepReducing()
+            testErasingTheIdentityReachesTheEraseEraseRule()
             testDrawingHelpersProvideReusableFLinePrimitives()
             testFLineRendererFeedsOutputAreas()
             println("Interaction nets smoke tests passed")
@@ -136,6 +139,125 @@ object InteractionNetsSmokeTest {
         created.forEach {
             requireClose(it.state.energy, 0.39375, message = "Decay agents should attenuate inherited energy")
         }
+    }
+
+    /**
+     * The erase cascade, **all the way down** rather than one step.
+     *
+     * Every other test in this file — and all four `docs.interaction-nets.*` boxes on
+     * `public/docs/interaction_nets_examples.md` — calls `stepDetailed` exactly once, which is why they passed
+     * unchanged on 2026-09-18 when `erase-erase` and `fan-fan` were added and `(ERASE, ERASE)` stopped being a
+     * normal form. A rule book gains a rule at the *end* of a reduction, so a single-step test cannot see it.
+     *
+     * This drives `eraseApplicationDemo` to a fixed point and pins the whole sequence.
+     */
+    private fun testEraseCascadeRunsToAFixedPoint() {
+        val reducer = Reducer(Lambda.rules(), relaxIterations = 0)
+        val net = Lambda.eraseApplicationDemo()
+        val before = net.nodes.size
+        val fired = ArrayList<String>()
+        reducer.reduceDetailed(net, maxSteps = 32) { _, _, detail -> fired += detail.ruleName }
+
+        require(fired == listOf("erase-app", "erase-const", "erase-var")) {
+            "Expected the cascade erase-app, erase-const, erase-var; got $fired"
+        }
+        require(before == 4) { "eraseApplicationDemo should start with 4 agents, found $before" }
+        require(net.nodes.isEmpty()) {
+            "The cascade should consume the whole net; ${net.nodes.size} left: ${net.nodes.map { it.id }}"
+        }
+        // The fixed point is a fixed point: asking again does nothing at all.
+        require(reducer.stepDetailed(net) == null) { "An empty net should offer no further rewrite" }
+        println("  erase cascade: 4 agents -> 0 in ${fired.size} steps (${fired.joinToString(", ")})")
+    }
+
+    /**
+     * Two fans with **different** labels, driven to a fixed point.
+     *
+     * `fan-fan`'s commuting branch is the half of the rule that no hand-wired net in this tree exercised: the
+     * demos all carry the default label 0, so they annihilate. Here the labels differ, so one `fan-fan` becomes
+     * four fans, and those four then have to go somewhere — which is the multi-step part, and the part a single
+     * `stepDetailed` cannot reach.
+     *
+     * Four constants in, four copies out, and not one fan standing.
+     */
+    private fun testDifferentlyLabelledFansCommuteAndThenKeepReducing() {
+        val reducer = Reducer(Lambda.rules(), relaxIterations = 0)
+        val subject = net {
+            val fanA = node(Lambda.DUP, id = "fanA", at = vec(-80.0, 0.0), state = Lambda.fan(1))
+            val fanB = node(Lambda.DUP, id = "fanB", at = vec(80.0, 0.0), state = Lambda.fan(2))
+            val c1 = node(Lambda.CONST, id = "c1", at = vec(-180.0, -70.0), state = NodeState(energy = 1.0))
+            val c2 = node(Lambda.CONST, id = "c2", at = vec(-180.0, 70.0), state = NodeState(energy = 1.0))
+            val c3 = node(Lambda.CONST, id = "c3", at = vec(180.0, -70.0), state = NodeState(energy = 1.0))
+            val c4 = node(Lambda.CONST, id = "c4", at = vec(180.0, 70.0), state = NodeState(energy = 1.0))
+
+            fanA.principal to fanB.principal
+            fanA.aux(0) to c1.principal
+            fanA.aux(1) to c2.principal
+            fanB.aux(0) to c3.principal
+            fanB.aux(1) to c4.principal
+        }
+
+        val fired = ArrayList<String>()
+        val events = ArrayList<String>()
+        reducer.reduceDetailed(subject, maxSteps = 64) { _, _, detail ->
+            fired += detail.ruleName
+            events += detail.events.map { it.kind }
+        }
+
+        require(fired.first() == "fan-fan") { "Expected fan-fan first, got ${fired.first()}" }
+        require(events.first() == "branch") {
+            "Different labels must commute, not annihilate — the first event was ${events.first()}"
+        }
+        require(fired == listOf("fan-fan", "dup-const", "dup-const", "dup-const", "dup-const")) {
+            "A commuting fan-fan leaves four fans facing four constants, so the sequence is one branch and four " +
+                "duplications; got $fired"
+        }
+        require(subject.nodes.size == 8) {
+            "Four constants through a commuting pair of fans is eight copies, found ${subject.nodes.size}"
+        }
+        require(subject.nodes.none { it.type == Lambda.DUP }) {
+            "Fans survived to the fixed point: ${subject.nodes.filter { it.type == Lambda.DUP }.map { it.id }}"
+        }
+        require(subject.nodes.all { it.type == Lambda.CONST }) {
+            "Only constants should be left, found ${subject.nodes.map { it.type.name }.distinct()}"
+        }
+        println(
+            "  labelled fan-fan commuting: ${fired.size} steps (${fired.joinToString(", ")}) " +
+                "-> ${subject.nodes.size} constants"
+        )
+    }
+
+    /**
+     * `erase-erase`, reached the only way it can be reached: several steps in.
+     *
+     * Erasing `λx. x` puts an `ERASE` on the binder and an `ERASE` on the body — and in the identity the binder
+     * *is* the body, so the two face each other down the wire that the vanishing `LAM` used to hold. Before
+     * 2026-09-18 that pair was a normal form and this net stopped with two agents standing that nothing could
+     * consume, which looks exactly like a finished reduction until you count the nodes.
+     *
+     * Two things had to land for this to work and both are multi-step-only: the rule itself, and the wire chasing
+     * in `Reducer.apply` that lets `erase-lam` reattach through the pair it is deleting.
+     */
+    private fun testErasingTheIdentityReachesTheEraseEraseRule() {
+        val reducer = Reducer(Lambda.rules(), relaxIterations = 0)
+        val subject = net {
+            val er = node(Lambda.ERASE, id = "er", at = vec(-90.0, 0.0), state = NodeState(energy = 0.9))
+            val lam = node(Lambda.LAM, id = "lam", at = vec(90.0, 0.0), state = NodeState(energy = 1.1))
+            er.principal to lam.principal
+            lam.aux(0) to lam.aux(1) // λx. x — the binder is the body
+        }
+
+        val fired = ArrayList<String>()
+        reducer.reduceDetailed(subject, maxSteps = 32) { _, _, detail -> fired += detail.ruleName }
+
+        require(fired == listOf("erase-lam", "erase-erase")) {
+            "Erasing the identity should be erase-lam then erase-erase; got $fired"
+        }
+        require(subject.nodes.isEmpty()) {
+            "Nothing should survive erasing the identity; ${subject.nodes.size} left: " +
+                subject.nodes.map { "${it.id}:${it.type.name}" }
+        }
+        println("  erasing the identity: ${fired.joinToString(" then ")} -> empty net")
     }
 
     private fun testDrawingHelpersProvideReusableFLinePrimitives() {

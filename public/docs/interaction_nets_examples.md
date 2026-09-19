@@ -16,7 +16,25 @@ Until 2026-09-18 this page said two things were missing — a fan/fan commuting 
 
 Those are the five stages of `(λx. x x) (λy. y)`, the smallest term that shows the whole vocabulary at work. Left to right: the compiled net, 6 agents (ROOT, two APP, two LAM, one DUP — the fan for `x`, used twice); after `beta-linear`, 4; after `dup-lam`, 6, with the two fans facing each other, which is the pair the old rule book had no rule for; after a second `beta-linear`, 4; and after `fan-fan` annihilates the matched pair, 2 agents holding `λa. a`. Each panel is fitted to its own box, so the scales are not comparable — the agent counts are what say how big each net was.
 
-What is checked, and how: `readback(reduce(compile(t)))` is asserted α-equivalent to a plain capture-avoiding normal-order evaluator over a named corpus of 25 closed terms — Church numerals with `succ`, `add`, `mul` and `pred`, Church booleans with `if`, `S`/`K`/`I`, terms whose reduction copies a redex, and terms that erase an argument — and the same normal form is asserted across four `ActivationOrder`s, since the scheduler is a free choice and the answer must not be one. That is `stdlib.lambda-terms.smoke`. Over the corpus it takes 228 net reactions against the evaluator's 117 β-steps; those are two different units and neither is the word *optimal*. This is not Lamping's optimal reduction — there are no brackets or croissants, so the sharing is correct over the 25-term corpus, checked against the oracle, rather than maximal. `dev_docs/INTERACTION_NETS_LAMBDA.md` has the rest, including what a normal form that still carries fans means for reading one back.
+What is checked, and how: `readback(reduce(compile(t)))` is asserted α-equivalent to a plain capture-avoiding normal-order evaluator over a named corpus of 25 closed terms — Church numerals with `succ`, `add`, `mul` and `pred`, Church booleans with `if`, `S`/`K`/`I`, terms whose reduction copies a redex, and terms that erase an argument — and the same normal form is asserted across four `ActivationOrder`s, since the scheduler is a free choice and the answer must not be one. That is `stdlib.lambda-terms.smoke`. Over the corpus it takes 228 net reactions against the evaluator's 117 β-steps; those are two different units and neither is the word *optimal*.
+
+## It is right on the corpus and wrong in general
+
+This page used to end that paragraph by saying the sharing was "correct over the 25-term corpus, checked against the oracle, rather than maximal". The corpus part is still true. The general part is false, and since 2026-09-19 there is a second test that says so with a population rather than an adjective.
+
+`stdlib.lambda-terms.property` generates closed terms from a seed instead of taking a hand-written list, and runs the same oracle identity over them: 4 000 simply-typed terms and 300 untyped ones, each under four schedulers, 17 200 checks. Four of those are a **wrong answer carrying no warning mark of any kind**, which is the case worth separating out — a marked answer at least tells you not to trust it. The smallest of the quiet four:
+
+| | |
+|---|---|
+| term | `(\m n f x. f (f x)) (\f. f) (\x. x) ((\n f x. f (n f x)) (\n f x. n f x))` |
+| correct | `λx. λx'. x (λx'1. x (λx''. x (λx''. x x' x'') x'') x'1)` |
+| net | `λa. λb. a (λc. a (λd. a (λe. a b e) d) e)` |
+
+One variable occurrence is wrong, and out of scope. Nothing in the answer says so.
+
+The smallest disagreement of *any* kind is smaller — twelve nodes and four β-steps, `(\x z. x z x) (\x y. y y)`, where a duplicated abstraction that erases its own argument loses one copy of the answer to the eraser. But that one reads back as `λa. λb. b ⊥`, so it announces itself, and it is the easy case. Four counterexamples are pinned as named regressions, two quiet and two marked, and the four schedulers disagree with *each other* on 9 of the 4 300 generated terms — so confluence is a property of the corpus too, and not of the rule book.
+
+The one clean line to draw is by type: **not one of the 4 000 simply-typed terms disagrees, under any scheduler.** Self-application, and an erasing abstraction under duplication, are exactly the shapes simple types forbid. This is not Lamping's optimal reduction — there are no brackets and no croissants — and without that bookkeeping a distinct label per fan is not enough once reduction starts copying the labels. `dev_docs/INTERACTION_NETS_LAMBDA.md` has the whole ledger, the shrunk counterexamples, and what it would take to fix.
 
 ## Beta bridge with swapped pair orientation
 
@@ -307,6 +325,107 @@ showInteractionOverview(
 )
 
 println("interaction erase ready")
+```
+
+## Two fans that commute, run to a fixed point
+
+The four examples above each take one step, and one step is not enough to see `fan-fan` at all — a rule book reaches its fan meetings and its facing erasers at the *end* of a reduction, which is why those four passed unchanged on the day `fan-fan` and `erase-erase` were added.
+
+This one runs to a fixed point. Two `DUP` fans face each other with **different** labels, 1 and 2, so `fan-fan` takes its commuting branch rather than its annihilating one: each duplication has to be applied to the other, and one fan pair becomes four fans wired in a 2×2 crossing. The count goes up before it goes down. Those four fans are then facing the four constants, so four `dup-const` reactions follow and the four constants come out as eight copies — five reactions in total, 6 agents to 8, and not one fan left standing. Give the two fans the *same* label and the first step is an annihilation instead: two reactions, and the constants are spliced straight through in pairs.
+
+Read the last card carefully, because it is the point of running a net to its end rather than one step: it says **4 active pairs** and it is nevertheless finished. The eight constants are wired principal to principal in four pairs, and no rule in the book covers `CONST ⟂ CONST`, so `stepDetailed` returns null. An active pair is a wiring, not a promise — the number to watch is the rule that fires, and until 2026-09-18 two facing fans and two facing erasers looked exactly like this and were not finished at all.
+
+<!--
+FIELD_TEST
+id: docs.interaction-nets.multi-step
+runner: backdoor-box
+tags: [docs, interaction-nets, fan, multi-step]
+timeoutSec: 45
+withPlaywright: true
+waitSec: 2.0
+expect:
+  outputContains:
+    - "interaction multi-step ready"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 12
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/multi_step.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-multi-step" w="1240" padding="12"}
+:::static
+import afield.Rect
+
+val reducer = Reducer(Lambda.rules())
+val subject = net {
+    val fanA = node(Lambda.DUP, id = "fanA", at = vec(-80.0, 0.0), state = Lambda.fan(1))
+    val fanB = node(Lambda.DUP, id = "fanB", at = vec(80.0, 0.0), state = Lambda.fan(2))
+    val c1 = node(Lambda.CONST, id = "c1", at = vec(-200.0, -80.0), state = NodeState(energy = 1.0, hue = 0.04))
+    val c2 = node(Lambda.CONST, id = "c2", at = vec(-200.0, 80.0), state = NodeState(energy = 1.0, hue = 0.12))
+    val c3 = node(Lambda.CONST, id = "c3", at = vec(200.0, -80.0), state = NodeState(energy = 1.0, hue = 0.20))
+    val c4 = node(Lambda.CONST, id = "c4", at = vec(200.0, 80.0), state = NodeState(energy = 1.0, hue = 0.28))
+
+    fanA.principal to fanB.principal
+    fanA.aux(0) to c1.principal
+    fanA.aux(1) to c2.principal
+    fanB.aux(0) to c3.principal
+    fanB.aux(1) to c4.principal
+}
+
+subject.relax(20)
+val beforeLines = subject.toFLines()
+val beforeSummary = subject.summaryHtml("Before: labels 1 and 2", maxNodes = 6)
+
+// One step, so the commuting branch can be shown on its own.
+val branch = reducer.stepDetailed(subject)!!
+subject.relax(24)
+val middleLines = subject.toFLines()
+val middleSummary = subject.summaryHtml("After fan-fan", maxNodes = 8)
+
+// The rest of the way. This is the part a single stepDetailed cannot reach.
+val rest = reducer.reduceDetailed(subject, maxSteps = 32)
+subject.relax(28)
+val afterLines = subject.toFLines()
+
+val firstFrame = Rect(28.0, 54.0, 296.0, 232.0)
+val middleFrame = Rect(372.0, 54.0, 296.0, 232.0)
+val lastFrame = Rect(716.0, 54.0, 296.0, 232.0)
+val comparisonLines = listOf(
+    firstFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+    middleFrame.toFLine(filled = true, color = vec(0.16, 0.13, 0.08, 0.54)),
+    lastFrame.toFLine(filled = true, color = vec(0.08, 0.17, 0.12, 0.54)),
+    arrow(
+        firstFrame.right + 12.0, 170.0,
+        middleFrame.x - 12.0, 170.0,
+        color = vec(0.92, 0.90, 0.84, 0.95),
+        thickness = 2.0
+    ),
+    arrow(
+        middleFrame.right + 12.0, 170.0,
+        lastFrame.x - 12.0, 170.0,
+        color = vec(0.92, 0.90, 0.84, 0.95),
+        thickness = 2.0
+    ),
+) +
+    beforeLines.fitInto(firstFrame, padding = 22.0) +
+    middleLines.fitInto(middleFrame, padding = 22.0) +
+    afterLines.fitInto(lastFrame, padding = 22.0)
+
+showInteractionOverview(
+    graphicLines = comparisonLines,
+    cards = listOf(
+        beforeSummary,
+        branch.summaryHtml("fan-fan, commuting branch"),
+        middleSummary,
+        subject.summaryHtml("Fixed point after $rest more steps", maxNodes = 8)
+    ),
+    channel = "overview",
+    graphicTitle = "Two fans, one commute, four duplications",
+    graphicWidth = 1040.0,
+    graphicHeight = 340.0
+)
+
+println("interaction multi-step ready: 1 + $rest reactions, ${subject.nodes.size} agents left")
 ```
 
 ## Reference
