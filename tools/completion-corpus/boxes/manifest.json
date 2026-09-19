@@ -183,7 +183,7 @@
   {"doc": "keyframe_code_blend", "box": "kfb_runtime", "codeSha256": "0af5ed8c1cb270a3", "codeLines": 82, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_code_blend", "box": "kfb_static", "codeSha256": "0988b322a05f053e", "codeLines": 26, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_key_discovery", "box": "kf_before_after", "codeSha256": "d03d699bfb9d73ab", "codeLines": 69, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "keyframe_key_discovery", "box": "kf_junk_vs_damage", "codeSha256": "d115dbc8e2959357", "codeLines": 45, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "keyframe_key_discovery", "box": "kf_junk_vs_damage", "codeSha256": "3fae1c460f6bebe3", "codeLines": 46, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_key_discovery", "box": "kf_orphaned_slots", "codeSha256": "33b51e73ce226bf8", "codeLines": 64, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframer_worked_example", "box": "keyframe_camera", "codeSha256": "5c321d95b7fda75f", "codeLines": 101, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframer_worked_example", "box": "keyframe_persist", "codeSha256": "b8a2a6d572a91f7d", "codeLines": 84, "receivers": ["afield.Box"], "preamble": ""},

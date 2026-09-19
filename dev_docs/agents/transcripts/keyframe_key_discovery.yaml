@@ -115,9 +115,9 @@ operations:
           // Two files fail to decode. Only one of them is your problem.
           //
           // This directory holds four good keys, two files that were never keys, and one key that Field wrote
-          // and that is now truncated. Before, all three failures were one red list, so a `.DS_Store` — a file
-          // the operating system wrote without asking, in a directory where nothing is wrong — looked exactly
-          // like a corrupt key. A permanent false alarm teaches you to stop reading the alarm.
+          // and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
+          // not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
+          // A permanent false alarm teaches you to stop reading the alarm.
 
           import afield.stdlib.KeyframeCollection
           import afield.stdlib.KeyframeScope
@@ -149,7 +149,8 @@ operations:
           println("notice:   " + c.skipSummary())
           println()
           // The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
-          // have filed it as "not JSON, not a key" — the important case, backwards. What proves Field wrote it
+          // have filed it as "not JSON, not a key": a damaged key reported as junk, which is the
+          // misclassification that loses work. What proves Field wrote it
           // is the `.versions` directory still sitting beside it, which is also exactly what you now want.
           println("e is unparseable, and e.versions still holds " +
                   (dir.resolve("e.versions").toFile().list()?.count { it.endsWith(".json") } ?: 0) +

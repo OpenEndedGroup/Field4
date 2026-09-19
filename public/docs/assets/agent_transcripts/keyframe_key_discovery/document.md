@@ -17,21 +17,21 @@ From `code`
 Two files fail to decode. Only one of them is your problem.
 
 This directory holds four good keys, two files that were never keys, and one key that Field wrote
-and that is now truncated. Before, all three failures were one red list, so a `.DS_Store` — a file
-the operating system wrote without asking, in a directory where nothing is wrong — looked exactly
-like a corrupt key. A permanent false alarm teaches you to stop reading the alarm.
+and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
+not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
+A permanent false alarm teaches you to stop reading the alarm.
 
 ```edn [field-box id="kf_junk_vs_damage" role="properties"]
-{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 45 "characters" 2272 "sha256" "e8746b71948343c3f4d24718699f816d9d04aa96d543eed546abca72666319e4"}]}
+{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 46 "characters" 2299 "sha256" "f2eff2759c8c15e8c9d3d59091022729585e6c1105acc03803ea3d599ce39d19"}]}
 ```
 
 ```kotlin [field-property box="kf_junk_vs_damage" name="code" path="kf_junk_vs_damage_code_.kt"]
 // Two files fail to decode. Only one of them is your problem.
 //
 // This directory holds four good keys, two files that were never keys, and one key that Field wrote
-// and that is now truncated. Before, all three failures were one red list, so a `.DS_Store` — a file
-// the operating system wrote without asking, in a directory where nothing is wrong — looked exactly
-// like a corrupt key. A permanent false alarm teaches you to stop reading the alarm.
+// and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
+// not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
+// A permanent false alarm teaches you to stop reading the alarm.
 
 import afield.stdlib.KeyframeCollection
 import afield.stdlib.KeyframeScope
@@ -63,7 +63,8 @@ println("ignored:  " + c.skipped.filter { it.kind.name == "NotAKey" }.map { it.r
 println("notice:   " + c.skipSummary())
 println()
 // The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
-// have filed it as "not JSON, not a key" — the important case, backwards. What proves Field wrote it
+// have filed it as "not JSON, not a key": a damaged key reported as junk, which is the
+// misclassification that loses work. What proves Field wrote it
 // is the `.versions` directory still sitting beside it, which is also exactly what you now want.
 println("e is unparseable, and e.versions still holds " +
         (dir.resolve("e.versions").toFile().list()?.count { it.endsWith(".json") } ?: 0) +
