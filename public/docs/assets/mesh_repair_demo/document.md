@@ -107,7 +107,7 @@ point — diagnose() and showMeshDiagnosis exist only where mesh_repair.kt does,
 box compiles at all, the Field running it has that code.
 
 ```edn [field-box id="mesh-repair-diagnose" role="properties"]
-{"id" "mesh-repair-diagnose" "index" 2 "name" "Mesh repair — why is this not a solid?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — why is this not a solid?" "frame" #afield/rect [60.0 60.0 520.0 430.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-diagnose_code_.kt" "lines" 57 "characters" 2546 "sha256" "6d3086d124e59245de42c0d1884303e1e2e7af2d397f11b59aae21a314a8cc49"}]}
+{"id" "mesh-repair-diagnose" "index" 2 "name" "Mesh repair — why is this not a solid?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — why is this not a solid?" "frame" #afield/rect [60.0 60.0 520.0 430.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-diagnose_code_.kt" "lines" 57 "characters" 2494 "sha256" "49c9120b22a73220a3124712d1996a305353f20d274ba31c1b2d6dcbea5bf3ec"}]}
 ```
 
 ```kotlin [field-property box="mesh-repair-diagnose" name="code" path="mesh-repair-diagnose_code_.kt"]
@@ -154,14 +154,14 @@ if (ManifoldLibrary.isAvailable) println("valid solid? ${broken.isValidSolid()}"
 println()
 
 // Not a boolean: the ordered list of what is wrong, worst first, each with the call that
-// addresses it. Note what is NOT blocking — Manifold accepts a pinch vertex and accepts
-// disjoint components, so those are reported at a lower severity rather than as failures.
+// addresses it. A pinch vertex and disjoint components do not block — Manifold accepts both,
+// so they are reported at a lower severity rather than as failures.
 println(broken.diagnose().report())
 
 // The same facts as a picture. Red is an open boundary, orange a non-manifold edge,
 // yellow a pinch vertex — so the red patch is where to look.
-// No `view` argument: the camera aims itself at the worst defect, because a card captioned
-// "4 faces removed" over a picture of a flawless sphere argues that nothing is wrong.
+// No `view` argument: the camera aims itself at the worst defect, so the title and the
+// picture are always about the same place on the mesh.
 showMeshDiagnosis(
     broken,
     title = "$holeFaces faces removed" + (if (crackAFace) ", plus one unwelded face" else ""),
