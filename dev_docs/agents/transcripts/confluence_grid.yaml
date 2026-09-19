@@ -15,7 +15,7 @@ description: |
   verdict per row: `one answer: true` when all four de Bruijn keys agree *with each other and with the
   oracle*, and `identical pose: true` when the four final layouts are point-for-point equal.
 
-  **Two things it has to get right to say that honestly.**
+  **The picture has to get two things right before either verdict is visible in it.**
 
     - *The layout must not invent difference.* `Net.relax` is 2D and path-dependent, so four
       isomorphic graphs draw four different ways and the picture claims the opposite of the theorem.
@@ -71,13 +71,14 @@ operations:
           // What differs is WHICH reaction fires at each beat: 2 to 13 pairs are available, mean 8.5 on
           // 3^4. So the columns take visibly different routes through the same number of steps.
           //
-          // Two things this has to get right to say that honestly.
+          // The picture has to get two things right before any of that is visible in it.
           //
           // 1. The layout must not invent difference. `Net.relax` is 2D and path-dependent, so identical
           //    graphs draw four different ways and the picture claims the opposite of the theorem. The
           //    pose here is built from a Weisfeiler-Leman refinement — a node's label is its type folded
           //    with its neighbours' labels, in PORT ORDER, three rounds — so the ordering is a structural
-          //    invariant. Nothing reads an id or an insertion order, which is what leaked last time.
+          //    invariant. Nothing reads an id or an insertion order, which is how a layout leaks the
+          //    path it took into a picture of where it arrived.
           // 2. The landing must be legible. While a cell reduces it runs its own 3D physics; when it
           //    reaches normal form it interpolates over 40 frames onto the canonical pose. Four dances,
           //    one final shape.
@@ -99,7 +100,7 @@ operations:
           // Type -> colour, hand-converted from interactionnets.kt's own baseHueDegrees (APP 208, LAM 280,
           // DUP 28, ERASE 8, ROOT 160, VAR 190, CONST 48) so the 3D view and the 2D one agree. Note ERASE
           // and DUP are only 20 degrees apart there and VAR and APP 18, which is not eye-discriminable, so
-          // these are pushed apart deliberately. Alpha is low: this should read as a haze, not as discs.
+          // these are pushed apart deliberately. Alpha is low, so a cell reads as a haze, not as discs.
           val rgbOf = mapOf(
               "APP" to listOf(0.38, 0.62, 0.95),
               "LAM" to listOf(0.72, 0.45, 0.95),
@@ -300,16 +301,10 @@ operations:
           // so the box drives its own clock and blocks its own thread, which is what a running box is.
           // Re-calling the viewer helper emits a byte-identical iframe string, so it does not remount;
           // the geometry streams over the socket the first call opened.
-          // Sizing: there is NO box-side lever, measured rather than assumed. In the live window
-          // (page-eval on getBoundingClientRect) the panel sits at 480x174 -- exactly `DEFAULT_W = 480` and
-          // `DEFAULT_H = 150` plus the header -- while `dataset.afieldIntrinsicWidth/Height` correctly reads
-          // 1460/840. So the viewer does publish `afield-iframe-size`, the listener at
-          // `outputareas2.js:560` does fire `markContentChanged`, and the panel still never grows. Four
-          // candidate fixes were each killed by that same measurement: `threeLines(height = ...)`,
-          // `three(width = ...)` in pixels, a 1480x880 box, and a fresh channel name (so it is not a
-          // persisted size either). The remaining fix is in the output-area sizing pass, which is shared,
-          // load-bearing and pinned by `tools/run_ui_regressions.py --id h2-panel-sizing`, so it is not
-          // something to change from in here. Drag the panel once and the size sticks.
+          // The width and height below size the iframe, not the output panel. An iframe-bearing
+          // panel opens at 480x174 whatever the iframe asks for, and no argument from in here moves
+          // it; drag the panel once and that size sticks. `dev_docs/OUTPUT_PANEL_SIZING.md` traces
+          // where the chain breaks.
           val panelW = 1460
           val panelH = 840
           three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
