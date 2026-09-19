@@ -19,13 +19,13 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 
-// The world. A collider is a POST-SOLVE POSITION PROJECTION and not a penalty force, and
-// that is the one design decision here worth knowing about. The constraint solve is
-// force-based -- all `iterations` corrections land in one accumulator -- so a cloth spring
-// of stiffness k acts at k*iterations while a bulk force runs once. A penalty collider is
-// therefore sixteen times too soft at the setting below, and stiffening it by sixteen puts
-// it past the explicit-integration limit. Measured, in dev_docs/physics/SIMDVERLET_5_WORLD.md:
-// nothing in a 256x sweep of penalty stiffness got within two orders of magnitude of this.
+// The world. A collider is a POST-SOLVE POSITION PROJECTION, not a penalty force. The
+// constraint solve is force-based -- all `iterations` corrections land in one accumulator
+// -- so a cloth spring of stiffness k acts at k*iterations while a bulk force runs once.
+// A penalty collider is therefore sixteen times too soft at the setting below, and
+// stiffening it by sixteen puts it past the explicit-integration limit: nothing in a 256x
+// sweep of penalty stiffness got within two orders of magnitude of the projection.
+// dev_docs/physics/SIMDVERLET_5_WORLD.md has the sweep.
 val world = sim.addColliders(
     // friction is Coulomb, bounded by mu * penetration. Turn it down to 0f and watch the
     // sheet slide off the shoulder of the sphere instead of gripping it.

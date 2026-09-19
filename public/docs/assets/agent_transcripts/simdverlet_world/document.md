@@ -72,7 +72,7 @@ loop {
 <!-- field-box id="world_all" index="1" -->
 
 ```edn [field-box id="world_all" role="properties"]
-{"id" "world_all" "index" 1 "name" "4 - Everything at once, and one knob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Everything at once, and one knob" "_tombstone" false "frame" #afield/rect [500.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_all_code_.kt" "lines" 99 "characters" 5321 "sha256" "82c06e9572c64bbfeb3d66bc8184e37cb7ab1211b6aec0484a6cc8c3078ebc86"}]}
+{"id" "world_all" "index" 1 "name" "4 - Everything at once, and one knob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Everything at once, and one knob" "_tombstone" false "frame" #afield/rect [500.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_all_code_.kt" "lines" 99 "characters" 5309 "sha256" "29930e475d21c9367e50e9ab682c855ef75c254e517b9d41b9818f588985e9a6"}]}
 ```
 
 ```kotlin [field-property box="world_all" name="code" path="world_all_code_.kt"]
@@ -98,10 +98,10 @@ import afield.stdlib.vec
 // everything under it, so "the collider contact count went from 0 to 236" and "the sheet failed"
 // are the same event, and the scene is watchable for as long as you leave it running.
 //
-// One honest warning before you turn it down. Below about 0.5 the torn sheet keeps being blown
+// One warning before you turn it down. Below about 0.5 the torn sheet keeps being blown
 // downwind by a wind that never stops, and over thousands of frames it stretches into a thin web
-// pinned across the whole room -- measured, by frame 2500 the cloth's bounding box was the room.
-// The first few hundred frames are the interesting part; after that, re-run the box.
+// pinned across the whole room: by frame 2500 the cloth's bounding box was the room.
+// The sheet stops telling you anything after a few hundred frames; re-run the box to reset.
 // ---------------------------------------------------------------------------------------------
 val tearThreshold = 0.6f
 
@@ -248,7 +248,7 @@ loop {
 <!-- field-box id="world_drape" index="3" -->
 
 ```edn [field-box id="world_drape" role="properties"]
-{"id" "world_drape" "index" 3 "name" "1 - A cloth draping over a sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A cloth draping over a sphere" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_drape_code_.kt" "lines" 52 "characters" 2443 "sha256" "23d76c5e06d26e53fc8454cfb37f62f00843e0dfa90eda055abd9e1f32f8a6fe"}]}
+{"id" "world_drape" "index" 3 "name" "1 - A cloth draping over a sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A cloth draping over a sphere" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_drape_code_.kt" "lines" 52 "characters" 2389 "sha256" "849cc8bbfea06af6a10fbc33f2e0ec34943f8b98c1f6180492199e381279985d"}]}
 ```
 
 ```kotlin [field-property box="world_drape" name="code" path="world_drape_code_.kt"]
@@ -273,13 +273,13 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 
-// The world. A collider is a POST-SOLVE POSITION PROJECTION and not a penalty force, and
-// that is the one design decision here worth knowing about. The constraint solve is
-// force-based -- all `iterations` corrections land in one accumulator -- so a cloth spring
-// of stiffness k acts at k*iterations while a bulk force runs once. A penalty collider is
-// therefore sixteen times too soft at the setting below, and stiffening it by sixteen puts
-// it past the explicit-integration limit. Measured, in dev_docs/physics/SIMDVERLET_5_WORLD.md:
-// nothing in a 256x sweep of penalty stiffness got within two orders of magnitude of this.
+// The world. A collider is a POST-SOLVE POSITION PROJECTION, not a penalty force. The
+// constraint solve is force-based -- all `iterations` corrections land in one accumulator
+// -- so a cloth spring of stiffness k acts at k*iterations while a bulk force runs once.
+// A penalty collider is therefore sixteen times too soft at the setting below, and
+// stiffening it by sixteen puts it past the explicit-integration limit: nothing in a 256x
+// sweep of penalty stiffness got within two orders of magnitude of the projection.
+// dev_docs/physics/SIMDVERLET_5_WORLD.md has the sweep.
 val world = sim.addColliders(
     // friction is Coulomb, bounded by mu * penetration. Turn it down to 0f and watch the
     // sheet slide off the shoulder of the sphere instead of gripping it.

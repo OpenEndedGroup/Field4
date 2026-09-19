@@ -20,10 +20,10 @@ import afield.stdlib.vec
 // everything under it, so "the collider contact count went from 0 to 236" and "the sheet failed"
 // are the same event, and the scene is watchable for as long as you leave it running.
 //
-// One honest warning before you turn it down. Below about 0.5 the torn sheet keeps being blown
+// One warning before you turn it down. Below about 0.5 the torn sheet keeps being blown
 // downwind by a wind that never stops, and over thousands of frames it stretches into a thin web
-// pinned across the whole room -- measured, by frame 2500 the cloth's bounding box was the room.
-// The first few hundred frames are the interesting part; after that, re-run the box.
+// pinned across the whole room: by frame 2500 the cloth's bounding box was the room.
+// The sheet stops telling you anything after a few hundred frames; re-run the box to reset.
 // ---------------------------------------------------------------------------------------------
 val tearThreshold = 0.6f
 
