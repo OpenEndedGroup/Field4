@@ -165,3 +165,108 @@ fun gltfClipNames(path: String): List<String> {
         }
     }
 }
+
+/**
+ * CPU skinning straight into the GPU vertex buffer a loaded `MeshInstance` already owns — so the
+ * bundled glTF shaders draw a deforming character with **no shader change at all**.
+ *
+ * `GltfSupport.MeshInstance.buffers.vertexData` is plain host memory in the fixed 12-float layout
+ * `[pos.xyz][normal.xyz][uv.xy][color.rgba]`, and `applyToMesh` uploads it. Overwriting the position
+ * and normal fields in place before each upload is therefore the whole of GPU-rendered skeletal
+ * animation, at [GltfSkinning]'s measured 17.7 M vertices/s. A real GPU skinning path — a joint
+ * palette buffer and a blend in the vertex shader — saves the upload and is the obvious next step,
+ * but it cannot produce a picture this does not.
+ *
+ * ### The bug this class exists to make impossible
+ *
+ * Skinning in place is not idempotent if you read what you last wrote: the second frame would skin
+ * an already-skinned mesh and the character would fly apart over a few seconds — slowly enough to
+ * look like a physics problem rather than a bookkeeping one. So the bind-pose positions and normals
+ * are **snapshotted at construction** and every [pose] call reads that snapshot, never the buffer.
+ * `CpuSkinnerTest.posingTwiceWithTheSamePaletteGivesTheSameAnswer` is the assertion.
+ *
+ * ```kotlin
+ * val (module, models) = gltfModelHere("character.glb") { }
+ * val skinner = CpuSkinner(models[0].meshes[0])
+ * loop {
+ *     skinner.pose("walk", time)
+ *     models[0].meshes[0].applyToMesh(mesh, camera)   // but see the warning below
+ * }
+ * ```
+ *
+ * ### One thing in the way of that loop, read off the code and not measured on a device
+ *
+ * `MeshInstance.applyToMesh` calls `defaultBuffer { … }.buffer` for its vertex and index buffers.
+ * `defaultBuffer` builds a **fresh** `BufferParameters` on every call, and `BufferParameters.result`
+ * — the cache that makes `toBuffer()` return the same allocation twice — lives on that object. So a
+ * per-frame `applyToMesh` allocates a new `FrameBufferGroup` and a new `VulkanBuffer` every frame.
+ * Fine for the once-at-setup call the documentation shows; not fine for a sixty-times-a-second
+ * re-upload.
+ *
+ * Making this loop right therefore wants the two `BufferParameters` hoisted onto the `MeshInstance`
+ * so their `result` caches across frames, and `applyToMesh` writing into them rather than rebuilding
+ * them. That has not been done, because it cannot be verified without a device and this branch had
+ * no GPU verification path; the deformation itself is exercised through the CPU rasterizer and the
+ * path tracer instead. Deforming *into* the buffer — the part this class does — is independent of
+ * that and is unit-tested by `CpuSkinnerTest`.
+ *
+ * @throws IllegalArgumentException if the instance has no skin — a rigid mesh needs no skinner, and
+ *   silently doing nothing would be the wrong answer to a typo in a filename.
+ */
+class CpuSkinner(
+    val instance: GltfSupport.MeshInstance,
+    val options: GltfSkinning.SkinningOptions = GltfSkinning.SkinningOptions(),
+) {
+    /** The mesh's skin; non-null by construction. */
+    val skin: GltfSkinning.MeshSkin = requireNotNull(instance.skin) {
+        "MeshInstance '${instance.name}' has no skin; CpuSkinner has nothing to deform"
+    }
+
+    /** Clip names available on this mesh's skeleton, in file order. */
+    val clips: List<String> get() = skin.skeleton.clips.map { it.name }
+
+    private val vertexCount = instance.buffers.vertexCount
+    private val bindPositions = FloatArray(vertexCount * 3)
+    private val bindNormals = FloatArray(vertexCount * 3)
+
+    init {
+        val f = instance.buffers.vertexData.asFloatBuffer()
+        for (v in 0 until vertexCount) {
+            for (k in 0..2) {
+                bindPositions[v * 3 + k] = f.get(v * 12 + k)
+                bindNormals[v * 3 + k] = f.get(v * 12 + 3 + k)
+            }
+        }
+    }
+
+    /**
+     * Deform to [palette] — one matrix per entry of `skin.skeleton.bones` — and write the result
+     * into the instance's vertex buffer, overwriting only the position and normal fields.
+     */
+    fun pose(palette: List<Matrix4f>): GltfSkinning.SkinnedVertices {
+        val out = GltfSkinning.skin(bindPositions, bindNormals, skin.influences, palette, options)
+        val f = instance.buffers.vertexData.asFloatBuffer()
+        for (v in 0 until vertexCount) {
+            for (k in 0..2) {
+                f.put(v * 12 + k, out.position[v * 3 + k])
+                f.put(v * 12 + 3 + k, (out.normal ?: bindNormals)[v * 3 + k])
+            }
+        }
+        return out
+    }
+
+    /** Deform to clip [clip] at [seconds]. `null` is the rest pose. */
+    fun pose(clip: String?, seconds: Float): GltfSkinning.SkinnedVertices =
+        pose(skin.skeleton.palette(clip?.let { skin.skeleton.clip(it) }, seconds))
+
+    /** Put the bind pose back, bit for bit — the snapshot is written straight through. */
+    fun reset() {
+        val f = instance.buffers.vertexData.asFloatBuffer()
+        for (v in 0 until vertexCount) {
+            for (k in 0..2) {
+                f.put(v * 12 + k, bindPositions[v * 3 + k])
+                f.put(v * 12 + 3 + k, bindNormals[v * 3 + k])
+            }
+        }
+    }
+}
