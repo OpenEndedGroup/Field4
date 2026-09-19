@@ -51,7 +51,7 @@ time  — scrub to a frame (while paused); moving it freezes the clock there
 See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 
 ```edn [field-box id="recstl_playground" role="properties"]
-{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 96 "characters" 3039 "sha256" "49e58beb5031ff61739153575d31939dfd6c243f1b3a2de460691f3501342c68"}]}
+{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 96 "characters" 3025 "sha256" "e72933d9a86b040c96b6866e163bbf8eaea4e2d81a042dda487167c8b23447a4"}]}
 ```
 
 ```kotlin [field-property box="recstl_playground" name="code" path="recstl_playground_code_.kt"]
@@ -101,9 +101,9 @@ val shader  = rectMaterialShaderCode(program)
 // Seed this box's shader-source properties before `moduleHere {}` runs.
 // moduleHere builds its module from the box's `vertex`/`fragment` properties
 // (not from assignments in the lambda); `once.vertex`/`once.fragment` set them
-// once. The `//%-` fragment break is load-bearing: fragments run in order, each
-// expanded only after the previous ran, so this fragment executes first and the
-// moduleHere fragment then prepares its shaders from what was set here.
+// once. Fragments separated by `//%-` run one at a time, each expanded only after the
+// previous one ran, so this fragment executes first and the moduleHere fragment then
+// prepares its shaders from what was set here.
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { shader.exampleFragmentShader!! }
 

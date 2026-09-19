@@ -36,8 +36,9 @@ operations:
       properties:
         code: |
           // A square that relies on close() for its fourth side, and a two-contour outline whose
-          // counter also relies on close(). These are the shapes where a Close is load-bearing
-          // rather than a formality — an explicit lineTo back to the start would hide everything.
+          // counter also relies on close(). Write those closing sides as an explicit lineTo back to
+          // the start and the reversal below comes out right — the defect only shows on a shape
+          // where the Close is carrying a segment nothing else draws.
           val square = fline {
               moveTo(0, 0); lineTo(200, 0); lineTo(200, 200); lineTo(0, 200); close()
           }

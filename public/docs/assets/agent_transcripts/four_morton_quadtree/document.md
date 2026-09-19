@@ -76,7 +76,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="mq_tree" index="2" -->
 
 ```edn [field-box id="mq_tree" role="properties"]
-{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 146 "characters" 6446 "sha256" "83a55e328e7ed24b7ca2a17347b9c0ec409180d5cdc2202dee28f5fe593c7e4b"}]}
+{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 146 "characters" 6406 "sha256" "5814ccb10b3a7074281083dc36fea2e14122f91ee19ded499f57fdcdcebaceae"}]}
 ```
 
 ```kotlin [field-property box="mq_tree" name="code" path="mq_tree_code_.kt"]
@@ -170,9 +170,9 @@ tree = bundle.addPassChain(
             name = "points",
             fragment = pointsFragment,
             size = FabricatePassSize.Absolute(grid, grid),
-            // fp32 throughout, and here it is load-bearing twice over: a Morton code and a
-            // point index are exact integers rather than quantities, and a code that
-            // rounds is a point that changes cell at the *top* of the tree.
+            // fp32 throughout: a Morton code and a point index are exact integers rather
+            // than quantities, and a code that rounds is a point that changes cell at
+            // the *top* of the tree.
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = FabricatePassChain.CHAIN_INPUT,
             push = mapOf("time" to 0f)

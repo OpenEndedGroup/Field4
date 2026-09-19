@@ -88,9 +88,9 @@ tree = bundle.addPassChain(
             name = "points",
             fragment = pointsFragment,
             size = FabricatePassSize.Absolute(grid, grid),
-            // fp32 throughout, and here it is load-bearing twice over: a Morton code and a
-            // point index are exact integers rather than quantities, and a code that
-            // rounds is a point that changes cell at the *top* of the tree.
+            // fp32 throughout: a Morton code and a point index are exact integers rather
+            // than quantities, and a code that rounds is a point that changes cell at
+            // the *top* of the tree.
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = FabricatePassChain.CHAIN_INPUT,
             push = mapOf("time" to 0f)
