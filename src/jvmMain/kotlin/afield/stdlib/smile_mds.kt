@@ -12,6 +12,61 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * Classical multidimensional scaling and t-SNE, over equal-length vectors or over a distance matrix
+ * you computed yourself, wrapping Smile.
+ *
+ * Four entry points in two pairs. [smileMds] and [smileTsne] take an array of equal-length vectors
+ * and build the dissimilarities for you, cosine or Euclidean by [SmileMdsDistance].
+ * [smileMdsDistances] and [smileTsneDistances] take the symmetric matrix instead, which is the route
+ * for an edit distance, a transport distance or a hop count, and carry a `label` you supply through
+ * to the result. Each returns its own type, and in all four the *i*th row of `coordinates` is the
+ * *i*th thing you passed in. `public/docs/projection_examples.md` works both routes end to end.
+ *
+ * Which of the two methods to reach for is the familiar split, and that page measures it on one
+ * dataset: classical MDS reproduces the global distances and scrambles local neighbourhoods, t-SNE
+ * the reverse.
+ *
+ * #### What all four do before Smile sees anything
+ *
+ * Values have to be finite; a supplied matrix has to be square, non-negative, symmetric to 1e-9 and
+ * zero on the diagonal; `dimensions` has to be at least 2 and below the number of rows. The floor
+ * of 2 is Smile's own, and the wrapper refuses first so the message names the argument you passed
+ * rather than arriving from inside `MDS.Options`.
+ *
+ * Memory is quadratic in the number of points before any fitting starts, because the dissimilarity
+ * matrix is dense: 191 MiB of `double` at 5000 points, 3 GiB at 20 000. Sample a long trajectory
+ * rather than projecting all of it.
+ *
+ * #### The classical path has two eigensolvers
+ *
+ * `smile.manifold.MDS` takes its top-*d* eigenpairs from ARPACK, whose native library cannot be
+ * loaded on macOS/arm64 in this build. So [smileMds] and [smileMdsDistances] probe that binding once
+ * and, where it is missing, run a transcription of Smile's own algorithm over LAPACK's `dsyevd`:
+ * the same steps in the same order, at `O(n^3)` for all *n* eigenpairs against ARPACK's `O(n^2 d)`
+ * for the *d* largest. Signs are not canonicalised on either path, so a projection can come back
+ * reflected from a machine that takes the other one. Neither t-SNE entry point touches ARPACK.
+ *
+ * #### What Smile does with three of the t-SNE settings
+ *
+ * Read off Smile 5.0.1, at the defaults these wrappers pass it.
+ *
+ * `maxIterations` is a ceiling rather than a count: past iteration 250 Smile stops as soon as the
+ * best cost it has seen is more than 50 iterations old, or the gradient falls under 1e-7. That 250
+ * is also why the wrappers require a `maxIterations` above it, since Smile's momentum switch is
+ * fixed there and `TSNE.Options` refuses a `maxIter` that does not exceed it.
+ *
+ * Leave `earlyExaggeration` at 12.0. Smile symmetrises the affinity matrix with a hard-coded factor
+ * of 12 and then divides by *this* value when the early phase ends, so any other setting leaves the
+ * affinities scaled by `12 / earlyExaggeration` for the rest of the fit instead of changing only the
+ * early phase.
+ *
+ * `seed` is installed in `smile.math.MathEx`'s process-wide random source, which both t-SNE entry
+ * points do inside a lock. Two fits of the same input at one seed are therefore bit-identical, which
+ * is what makes a live-coded box redraw the same picture, and concurrent fits queue rather than
+ * overlap.
+ */
+
 /** Distance functions supplied by Field's general-purpose [smileMds] wrapper. */
 enum class SmileMdsDistance {
     /** Angular similarity: useful when vector direction matters and magnitude should not. */
@@ -37,37 +92,138 @@ enum class SmileMdsDistance {
  * The complete pairwise distance matrix is intentionally not retained.
  */
 data class SmileMdsProjection(
+    /**
+     * One row per input vector, in the order they were passed, `dimensions` columns wide. The
+     * configuration is centred on the origin and its axes are eigenvectors of the double-centred
+     * matrix, so read distances off it rather than coordinates: the axes have no names and their
+     * signs are not canonicalised.
+     */
     val coordinates: Array<DoubleArray>,
+    /**
+     * The retained eigenvalues, largest first, one per column of [coordinates]. A value at or near
+     * zero says that column carries nothing, which is how to find the rank of a configuration: ask
+     * for one more dimension than you think it has and look at the last score.
+     */
     val scores: DoubleArray,
+    /**
+     * [scores] normalised over themselves, so this sums to 1 whatever fraction of the structure was
+     * kept. It says how the retained components divide up between each other and nothing about how
+     * much was thrown away.
+     */
     val proportion: DoubleArray,
+    /** Which dissimilarity [smileMds] built the projection from, echoed back so a plot can be labelled from the result alone. */
     val distance: SmileMdsDistance,
+    /**
+     * Whether an additive constant was applied to the off-diagonal dissimilarities before fitting.
+     * Echoed back, because it changes which matrix was decomposed: two projections are only
+     * comparable when they agree on it.
+     */
     val positiveCorrection: Boolean,
 )
 
 /** A reproducible t-SNE result produced by Smile from Field-owned vectors. */
 data class SmileTsneProjection(
+    /**
+     * One row per input vector, in the order they were passed, `dimensions` columns wide, and
+     * zero-mean by column because Smile subtracts the column means as its last step. What survives
+     * here is which points are near which; the axes and the distance between two separated groups do
+     * not, and `public/docs/projection_examples.md` measures the gap between the true ratio of two
+     * cluster separations and the one a t-SNE plot of them shows.
+     */
     val coordinates: Array<DoubleArray>,
+    /**
+     * Smile's Kullback-Leibler divergence between the input affinities and the projected ones, in
+     * bits, as last measured rather than as minimised: the fit evaluates it every tenth iteration and
+     * returns the final evaluation, not the best one it saw. It compares iterations within one fit
+     * and does not rank two fits against each other.
+     *
+     * Two seeds can reach costs that agree to several decimals and pictures that share nothing, which
+     * `public/docs/projection_examples.md` measures both halves of.
+     */
     val cost: Double,
+    /**
+     * Which dissimilarity the vectors were reduced to before fitting. `EUCLIDEAN` hands Smile the
+     * vectors and lets it compute distances itself; `COSINE` hands it a cosine-distance matrix Field
+     * built first.
+     */
     val distance: SmileMdsDistance,
+    /**
+     * The perplexity this fit ran at. A t-SNE plot cannot be read without it, since it is the dial
+     * between keeping local neighbourhoods and keeping the distance between clusters, and it is
+     * carried here so a caption can be written from the result.
+     */
     val perplexity: Double,
+    /**
+     * The seed installed in Smile's process-wide random source for this fit. Two fits of the same
+     * input at the same seed are bit-identical; two at different seeds are two equally good answers
+     * that look nothing alike, so the seed belongs in the caption of a figure anyone else will read.
+     */
     val seed: Long,
 )
 
 /** Classical MDS over a caller-supplied symmetric dissimilarity matrix. */
 data class SmileMdsProximityProjection(
+    /**
+     * One row per row of the distance matrix, in its order, `dimensions` columns wide. These are
+     * invented coordinates whose pairwise distances approximate the ones you supplied: for a matrix
+     * that really is Euclidean and enough dimensions to hold it, they reproduce them exactly, and
+     * `SmileMdsTest` pins that to 1e-9 over a rank-3 configuration.
+     */
     val coordinates: Array<DoubleArray>,
+    /**
+     * The retained eigenvalues, largest first, one per column of [coordinates]. A value at or near
+     * zero says that column carries nothing, which is how to find the rank of whatever the matrix
+     * describes.
+     */
     val scores: DoubleArray,
+    /**
+     * [scores] normalised over themselves, so this sums to 1 whatever fraction of the structure was
+     * kept. For how much a two-dimensional picture actually lost, compare its distances against the
+     * matrix you supplied; `public/docs/projection_examples.md` does that with a stress figure.
+     */
     val proportion: DoubleArray,
+    /**
+     * Whatever you passed to [smileMdsDistances], carried through untouched. Nothing in the fit reads
+     * it: it is here so a box holding several projections can tell which matrix each came from.
+     */
     val label: String,
+    /**
+     * Whether an additive constant was applied to the off-diagonal dissimilarities before fitting.
+     * A distance that is a metric is not thereby Euclidean, and an edit distance or a hop count
+     * usually needs this on before classical MDS has more than a couple of usable dimensions.
+     */
     val positiveCorrection: Boolean,
 )
 
 /** Exact t-SNE over a caller-supplied symmetric dissimilarity matrix. */
 data class SmileTsneProximityProjection(
+    /**
+     * One row per row of the distance matrix, in its order, `dimensions` columns wide, and zero-mean
+     * by column because Smile subtracts the column means as its last step. Near stays near; the axes
+     * and the distance between two separated groups carry nothing.
+     */
     val coordinates: Array<DoubleArray>,
+    /**
+     * Smile's Kullback-Leibler divergence between the supplied affinities and the projected ones, in
+     * bits, as last measured rather than as minimised: the fit evaluates it every tenth iteration and
+     * returns the final evaluation, not the best one it saw. Useful within a fit, not between two.
+     */
     val cost: Double,
+    /**
+     * Whatever you passed to [smileTsneDistances], carried through untouched and read by nothing in
+     * the fit.
+     */
     val label: String,
+    /**
+     * The perplexity this fit ran at, which is the dial between keeping local neighbourhoods and
+     * keeping the distance between clusters. A t-SNE plot cannot be read without it.
+     */
     val perplexity: Double,
+    /**
+     * The seed installed in Smile's process-wide random source for this fit. Two fits of the same
+     * matrix at the same seed are bit-identical; two at different seeds are two equally good answers
+     * that look nothing alike.
+     */
     val seed: Long,
 )
 
