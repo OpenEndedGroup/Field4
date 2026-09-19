@@ -239,6 +239,10 @@ nav:
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
     - Agent Transcript Gallery: agent_transcripts.md
+    # The gallery lists every transcript in subsystem order. Nineteen of them are the saved demo
+    # documents promoted out of dev_docs/agents/demos on 18-19 September 2026, and arriving all at
+    # once they are a corpus you cannot browse — hence a map beside the list rather than inside it.
+    - The Nineteen Demo Documents: demo_documents.md
   # Generated from source rather than written: extracted KDoc and codegen output. As finished as
   # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:
