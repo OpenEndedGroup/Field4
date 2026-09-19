@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hold each demo's `build.yaml` to the document it claims to have built.
 
-Nine of the nineteen documents under `dev_docs/agents/demos/` ship an agent-authored
+Nine of the twenty documents under `dev_docs/agents/demos/` ship an agent-authored
 `build.yaml` beside the saved `metadata.edn`, and each one says, in its own description, some
 version of "this transcript is what built this document; re-running it rebuilds it". Nothing
 checked that. On 2026-09-18 the promotion sweep (`ad06001ac`) discovered by hand that two of the
@@ -17,6 +17,12 @@ byte-for-byte the box's committed `<box>_code_.kt` sidecar.
 Two known-stale demos are listed in `KNOWN_STALE` with the boxes that have drifted. The list is
 exact rather than per-demo — a *new* drift in `logging_layer` still fails — and the test also
 fails when a listed box has been repaired, so an exception cannot outlive its reason.
+
+The corpus count moved 19 -> 20 on 2026-09-19 when `skinned_characters` landed from a sibling
+branch on the same night. That is what this assertion is for and it did its job: the two branches
+touched no file in common, so `git merge-tree` and a file-set intersection were both clean, and
+this equality was the only thing that noticed. `skinned_characters` ships no `build.yaml`, so the
+count of nine is unchanged.
 
 What this does NOT check: that re-running the script produces the same frames, names, graph
 topology or property set. Only the Kotlin, which is where every drift found so far has been, and
@@ -76,7 +82,7 @@ class DemoBuildScriptTest(unittest.TestCase):
         self.assertTrue(DEMOS_ROOT.is_dir(), f"no demo corpus at {DEMOS_ROOT}")
         demos = sorted(p.name for p in DEMOS_ROOT.iterdir() if p.is_dir())
         self.assertEqual(
-            19,
+            20,
             len(demos),
             f"the demo corpus is now {len(demos)} documents ({', '.join(demos)}); "
             "re-measure how many ship a build.yaml and update this test's docstring",
