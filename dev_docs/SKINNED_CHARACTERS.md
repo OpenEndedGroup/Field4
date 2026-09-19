@@ -94,8 +94,15 @@ the cylinder is too well behaved to test three real things — see *What the sec
 ## The numbers, with their populations
 
 All from `./gradlew --no-daemon runSkinningEvidence` and
-`./gradlew --no-daemon jvmTest --tests 'afield.four.GltfSkinning*'` (15 tests, all passing), on
-macOS / aarch64, GraalVM 25.
+`./gradlew --no-daemon jvmTest --tests 'afield.four.CpuSkinnerTest' --tests 'afield.four.GltfSkinning*'`
+(22 tests, all passing), on macOS / aarch64, GraalVM 25.
+
+The whole suite was run once as well, because `PathTraceGltf.importGltf` is the only route into the
+path tracer and changing its walk is the sort of thing that breaks every path-tracing figure at
+once: `./gradlew --no-daemon jvmTest` — **3980 tests over 395 classes, 0 failures, 0 errors**. (The
+one red was `checkTestTreeWrites` reporting three files that were being edited *while* the suite
+ran, which its own message says it cannot distinguish from a test write.)
+`AgentTranscriptLayoutGuardTest` passes 4/4 over the demo's box frames.
 
 ### Bind pose — population: all 60 vertices of the cylinder
 
