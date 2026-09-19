@@ -142,6 +142,61 @@ object SkinningEvidence {
             println("${f.path}  ${png.size} bytes  x in [%.3f, %.3f]  y in [%.3f, %.3f]"
                 .format(b.min.x, b.max.x, b.min.y, b.max.y))
         }
+        // ---------------------------------------------------------------- the adversarial fixture
+        val stress = java.io.File(StressFixture.COMMITTED_PATH)
+        stress.parentFile?.mkdirs()
+        stress.writeText(StressFixture.shearAndCapGltf())
+        println()
+        println("=== stress fixture: ${stress.path} (${stress.length()} bytes) ===")
+        val sModel = GltfSupport.loadGltfBasic(StressFixture.COMMITTED_PATH, GltfSupport.GltfLoadConfig(loadTextures = false))
+        val sSkin = sModel.meshes.firstNotNullOf { it.skin }
+        println("nodes  ${sSkin.skeleton.nodes.map { it.name }}")
+        println("bones  ${sSkin.skeleton.bones.map { it.name }}")
+        val si = sSkin.influences
+        println("population: all ${si.vertexCount} vertices")
+        println("influences discarded by the 4-wide cap: ${si.discardedInfluences}, " +
+            "largest discarded weight ${si.largestDiscardedWeight}")
+        println("worst |sum(w) - 1| after the cap and renormalisation: ${si.worstWeightSumError()}")
+        for (v in 0 until si.vertexCount) {
+            println("  vertex $v joints ${(0..3).map { si.jointIndex[v * 4 + it] }} " +
+                "weights ${(0..3).map { si.weight[v * 4 + it] }}")
+        }
+
+        val sRest = posedGltfToTriMesh(StressFixture.COMMITTED_PATH) { it.palette(null, 0f) }
+        val sShear = skinnedGltfToTriMesh(StressFixture.COMMITTED_PATH, clip = "shear", seconds = 1f)
+        val sApprox = skinnedGltfToTriMesh(
+            StressFixture.COMMITTED_PATH, clip = "shear", seconds = 1f,
+            options = GltfSkinning.SkinningOptions(exactNormalMatrix = false),
+        )
+        val sRigid = assimpToTriMesh(StressFixture.COMMITTED_PATH)
+        println()
+        println("plate node is translated (0, 10, 0), which glTF says to IGNORE for a skinned mesh:")
+        println("  skinned at rest, plate y in [%.4f, %.4f]".format(
+            (0..3).minOf { sRest.position(it).y }, (0..3).maxOf { sRest.position(it).y }))
+        println("  assimpToTriMesh (rigid path, applies it) y in [%.4f, %.4f]".format(
+            (0 until sRigid.vertexCount).minOf { sRigid.position(it).y },
+            (0 until sRigid.vertexCount).maxOf { sRigid.position(it).y }))
+        println()
+        val face = sShear.faceNormal(0)
+        fun dot(a: Vec3, b: Vec3) = a.x * b.x + a.y * b.y + a.z * b.z
+        println("sheared plate face normal        ${face}  (predicted ${StressFixture.shearedNormal.toList()})")
+        println("exact inverse-transpose vertex normal dot face = %.6f".format(dot(sShear.normal(0)!!, face)))
+        println("plain blended-3x3 vertex normal  dot face = %.6f  (predicted 0.8)".format(dot(sApprox.normal(0)!!, face)))
+        println()
+        val dx = sShear.position(4).x - sRest.position(4).x
+        println("six-influence triangle x displacement = %.6f".format(dx))
+        println("  capped prediction   %.6f".format(StressFixture.CAPPED_DISPLACEMENT))
+        println("  uncapped prediction %.6f".format(StressFixture.UNCAPPED_DISPLACEMENT))
+
+        // Two more frames: the shear is a thing you can see, not only a dot product.
+        val stressAnchor = anchor(minX = -1.6f, minY = -0.4f, minZ = -1.4f, maxX = 6.6f, maxY = 3.4f, maxZ = 1.4f)
+        val stressView = MeshView(yawDegrees = 16.0, pitchDegrees = 14.0, distance = 2.1, width = 700, height = 420)
+        for ((name, mesh) in listOf("shear_rest.png" to sRest, "shear_t100.png" to sShear)) {
+            val f = File(out, name)
+            f.writeBytes((mesh + stressAnchor).renderPng(stressView))
+            println("${f.path}  ${f.length()} bytes")
+        }
+
         println()
         println("done")
     }

@@ -266,3 +266,205 @@ object RiggedFixture {
         println("wrote ${out.path} (${out.length()} bytes)")
     }
 }
+
+/**
+ * The second, adversarial rig: a shearing plate and a vertex with more influences than fit.
+ *
+ * [RiggedFixture]'s bending cylinder is a *well-behaved* rig — rigid joints, two influences per
+ * vertex, weights that are exact in binary — chosen so the bind-pose oracle can be bit-exact. Three
+ * things it therefore cannot test at all, each of which is a place a skinning implementation
+ * quietly differs from the one next to it:
+ *
+ *  - **A non-rigid joint.** Every joint in the cylinder is a rotation, and for a rotation the
+ *    inverse transpose *is* the matrix, so the cylinder cannot tell the exact normal transform from
+ *    the usual approximation anywhere except the blended band. Here `shearBone` animates its
+ *    **scale** from `(1,1,1)` to `(1,2,1)`, which shears a tilted plate: measured against the
+ *    plate's own face normal, the exact inverse transpose scores `1.0` and reusing the blended 3×3
+ *    scores `0.8`. That `0.8` is a closed form — see [StressFixture.shearedNormal].
+ *  - **More than four influences.** The cylinder has two per vertex, so the four-wide cap is idle
+ *    and its discard counters are untested. Here three vertices carry **six** influences,
+ *    `0.30 / 0.25 / 0.20 / 0.15 / 0.06 / 0.04`, spread over `JOINTS_0` **and** `JOINTS_1`. With the
+ *    cap the triangle moves `+2.2222` in x; without it, `+2.54`. The gap is what the cap costs, and
+ *    it is a number rather than a shrug.
+ *  - **A skinned mesh node with its own transform.** glTF 2.0 §3.7.3.2 says it is *ignored*. The
+ *    `plate` node here is translated `(0, 10, 0)`, so a skinning path that applies it lands the
+ *    plate ten units up. Note this makes the fixture deliberately **not** bind-pose-identical to
+ *    [assimpToTriMesh], which *does* apply it — that disagreement is the assertion, not a problem.
+ */
+object StressFixture {
+
+    /** Where the committed copy lives, relative to the repository root. */
+    const val COMMITTED_PATH: String = "dev_docs/agents/fixtures/skinning/shear_and_cap.gltf"
+
+    /** The plate's bind-pose normal: the plane is spanned by `+x` and `(0, 1, -1)/√2`. */
+    val BIND_NORMAL: FloatArray = floatArrayOf(0f, 0.70710678f, 0.70710678f)
+
+    /**
+     * The plate's normal after `shearBone` reaches scale `(1, 2, 1)`, by hand.
+     *
+     * The plate's tangents are `u = (1,0,0)` and `v = (0, √2/2, -√2/2)`. Scaling `y` by 2 leaves
+     * `u` alone and takes `v` to `(0, √2, -√2/2)`, so the true normal is
+     * `u × v' = (0, √2/2, √2)`, normalised `(0, 0.4472136, 0.8944272)`.
+     *
+     * The inverse transpose of `diag(1,2,1)` is `diag(1, 0.5, 1)`, which takes the bind normal to
+     * `(0, √2/4, √2/2)` — the same direction. The *plain* matrix takes it to `(0, √2, √2/2)`,
+     * normalised `(0, 0.8944272, 0.4472136)`, whose dot with the truth is exactly
+     * `0.4472136·0.8944272 × 2 = 0.8`.
+     */
+    val shearedNormal: FloatArray = floatArrayOf(0f, 0.4472136f, 0.8944272f)
+
+    /** What the six-influence triangle's x displacement is with the four-wide cap: `2.0 / 0.9`. */
+    const val CAPPED_DISPLACEMENT: Float = 2.2222222f
+
+    /** And without it: `0.30·1 + 0.25·2 + 0.20·3 + 0.15·4 + 0.06·5 + 0.04·6`. */
+    const val UNCAPPED_DISPLACEMENT: Float = 2.54f
+
+    /** The six weights, largest first, as the file writes them. */
+    val SIX_WEIGHTS: FloatArray = floatArrayOf(0.30f, 0.25f, 0.20f, 0.15f, 0.06f, 0.04f)
+
+    /** The generated glTF 2.0 document, as text. Deterministic: same bytes every call. */
+    fun shearAndCapGltf(): String {
+        val h = 0.70710678f
+        // Four corners of a plate centred at (0, 2, 0), spanned by u = (1,0,0) and v = (0, h, -h).
+        val quad = arrayOf(
+            floatArrayOf(-1f, 2f - h, h), floatArrayOf(1f, 2f - h, h),
+            floatArrayOf(1f, 2f + h, -h), floatArrayOf(-1f, 2f + h, -h),
+        )
+        // A separate triangle, far enough away to read independently, carrying six influences.
+        val tri = arrayOf(
+            floatArrayOf(3f, 0f, 0f), floatArrayOf(4f, 0f, 0f), floatArrayOf(3f, 1f, 0f),
+        )
+        val positions = FloatArray(21)
+        val normals = FloatArray(21)
+        for (i in 0..3) {
+            for (k in 0..2) { positions[i * 3 + k] = quad[i][k]; normals[i * 3 + k] = BIND_NORMAL[k] }
+        }
+        for (i in 0..2) {
+            for (k in 0..2) positions[(4 + i) * 3 + k] = tri[i][k]
+            normals[(4 + i) * 3 + 2] = 1f
+        }
+
+        val joints0 = ByteArray(28)
+        val joints1 = ByteArray(28)
+        val weights0 = FloatArray(28)
+        val weights1 = FloatArray(28)
+        for (i in 0..3) weights0[i * 4] = 1f            // the plate: all of it on bone 0, shearBone
+        for (i in 4..6) {
+            joints0[i * 4] = 1; joints0[i * 4 + 1] = 2; joints0[i * 4 + 2] = 3; joints0[i * 4 + 3] = 4
+            joints1[i * 4] = 5; joints1[i * 4 + 1] = 6
+            for (k in 0..3) weights0[i * 4 + k] = SIX_WEIGHTS[k]
+            weights1[i * 4] = SIX_WEIGHTS[4]; weights1[i * 4 + 1] = SIX_WEIGHTS[5]
+        }
+
+        val indices = shortArrayOf(0, 1, 2, 0, 2, 3, 4, 5, 6)
+
+        // shearBone binds at (0, 2, 0); the six cap bones bind at the origin, so their inverse binds
+        // are the identity and their animated translation IS their joint matrix.
+        val inverseBind = FloatArray(7 * 16)
+        for (b in 0 until 7) {
+            inverseBind[b * 16] = 1f; inverseBind[b * 16 + 5] = 1f
+            inverseBind[b * 16 + 10] = 1f; inverseBind[b * 16 + 15] = 1f
+        }
+        inverseBind[13] = -2f  // column 3, row 1 of bone 0
+
+        val times = floatArrayOf(0f, 1f)
+        val shearScale = floatArrayOf(1f, 1f, 1f, 1f, 2f, 1f)
+        val capTranslations = (1..6).map { floatArrayOf(0f, 0f, 0f, it.toFloat(), 0f, 0f) }
+
+        val views = ArrayList<IntArray>()
+        val bytes = java.io.ByteArrayOutputStream()
+        fun view(block: (java.nio.ByteBuffer) -> Unit, length: Int): Int {
+            while (bytes.size() % 4 != 0) bytes.write(0)
+            val offset = bytes.size()
+            val b = java.nio.ByteBuffer.allocate(length).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            block(b)
+            bytes.write(b.array())
+            views += intArrayOf(offset, length)
+            return views.size - 1
+        }
+        fun floats(v: FloatArray) = view({ b -> v.forEach(b::putFloat) }, v.size * 4)
+        fun shorts(v: ShortArray) = view({ b -> v.forEach(b::putShort) }, v.size * 2)
+        fun raw(v: ByteArray) = view({ b -> b.put(v) }, v.size)
+
+        val vPos = floats(positions); val vNrm = floats(normals)
+        val vJ0 = raw(joints0); val vW0 = floats(weights0)
+        val vJ1 = raw(joints1); val vW1 = floats(weights1)
+        val vIdx = shorts(indices); val vIbm = floats(inverseBind)
+        val vTime = floats(times); val vShear = floats(shearScale)
+        val vCap = capTranslations.map { floats(it) }
+
+        val base64 = java.util.Base64.getEncoder().encodeToString(bytes.toByteArray())
+        val bufferViews = views.joinToString(",\n   ") { (o, l) ->
+            """{"buffer": 0, "byteOffset": $o, "byteLength": $l}"""
+        }
+        val capNodes = (1..6).joinToString(", ") { """{"name": "capBone$it"}""" }
+        val capSamplers = vCap.mapIndexed { i, acc ->
+            """{"input": $vTime, "output": $acc, "interpolation": "LINEAR"}"""
+        }.joinToString(",\n                        ")
+        val capChannels = (1..6).joinToString(",\n                       ") {
+            """{"sampler": $it, "target": {"node": ${2 + it}, "path": "translation"}}"""
+        }
+
+        return """
+        {
+         "asset": {"version": "2.0", "generator": "afield.four.modules.StressFixture"},
+         "scene": 0,
+         "scenes": [{"nodes": [0, 1]}],
+         "nodes": [
+          {"name": "plate", "mesh": 0, "skin": 0, "translation": [0.0, 10.0, 0.0]},
+          {"name": "rig", "children": [2, 3, 4, 5, 6, 7, 8]},
+          {"name": "shearBone", "translation": [0.0, 2.0, 0.0]},
+          $capNodes
+         ],
+         "skins": [
+          {"name": "stress", "skeleton": 1, "joints": [2, 3, 4, 5, 6, 7, 8], "inverseBindMatrices": $vIbm}
+         ],
+         "meshes": [{"name": "plate", "primitives": [
+           {"attributes": {"POSITION": $vPos, "NORMAL": $vNrm,
+                           "JOINTS_0": $vJ0, "WEIGHTS_0": $vW0,
+                           "JOINTS_1": $vJ1, "WEIGHTS_1": $vW1},
+            "indices": $vIdx, "mode": 4}]}],
+         "animations": [
+          {"name": "shear",
+           "samplers": [{"input": $vTime, "output": $vShear, "interpolation": "LINEAR"},
+                        $capSamplers],
+           "channels": [{"sampler": 0, "target": {"node": 2, "path": "scale"}},
+                       $capChannels]}
+         ],
+         "accessors": [
+          {"bufferView": $vPos, "componentType": 5126, "count": 7, "type": "VEC3",
+           "min": [-1.0, ${2f - h}, ${-h}], "max": [4.0, ${2f + h}, $h]},
+          {"bufferView": $vNrm, "componentType": 5126, "count": 7, "type": "VEC3"},
+          {"bufferView": $vJ0, "componentType": 5121, "count": 7, "type": "VEC4"},
+          {"bufferView": $vW0, "componentType": 5126, "count": 7, "type": "VEC4"},
+          {"bufferView": $vJ1, "componentType": 5121, "count": 7, "type": "VEC4"},
+          {"bufferView": $vW1, "componentType": 5126, "count": 7, "type": "VEC4"},
+          {"bufferView": $vIdx, "componentType": 5123, "count": ${indices.size}, "type": "SCALAR"},
+          {"bufferView": $vIbm, "componentType": 5126, "count": 7, "type": "MAT4"},
+          {"bufferView": $vTime, "componentType": 5126, "count": 2, "type": "SCALAR",
+           "min": [0.0], "max": [1.0]},
+          {"bufferView": $vShear, "componentType": 5126, "count": 2, "type": "VEC3"},
+          ${vCap.joinToString(",\n          ") { """{"bufferView": $it, "componentType": 5126, "count": 2, "type": "VEC3"}""" }}
+         ],
+         "bufferViews": [
+          $bufferViews
+         ],
+         "buffers": [{"byteLength": ${bytes.size()},
+                      "uri": "data:application/octet-stream;base64,$base64"}]
+        }
+        """.trimIndent() + "\n"
+    }
+
+    /** An absolute path to the committed fixture; see [RiggedFixture.locate]. */
+    fun locate(): String {
+        var dir: java.io.File? = java.io.File(".").absoluteFile
+        repeat(8) {
+            val candidate = java.io.File(dir, COMMITTED_PATH)
+            if (candidate.isFile) return candidate.path
+            dir = dir?.parentFile ?: return@repeat
+        }
+        val fallback = java.io.File(System.getProperty("java.io.tmpdir"), "afield-shear_and_cap.gltf")
+        if (!fallback.isFile) fallback.writeText(shearAndCapGltf())
+        return fallback.path
+    }
+}
