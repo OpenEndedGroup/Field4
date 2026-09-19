@@ -24,7 +24,7 @@ and applies it twice, which means its type has to be inferred as genuinely polym
 the program says what `f` operates on. And `|>` is a pipe, which turns out to leave no trace at all
 in the tree; the section on the surface AST shows what that means concretely.
 
-## The four stages, and what survives a failure
+## The four stages
 
 `FieldMLCompiler.compile` runs four stages in order — lex, parse, infer, lower — and returns a
 `CompilationResult` with one field per stage: `tokens`, `surface`, `typed`, `core`. It stops at the
@@ -70,7 +70,7 @@ exact text it was read from.
 3:16  EOF
 ```
 
-Three things in that listing are worth pointing at.
+Three things in that listing need pointing out.
 
 **There is no token for whitespace.** `let` ends at column 4 and `twice` starts at column 5, and
 nothing sits between them. The lexer skips trivia rather than emitting it, which is why a token list
@@ -132,10 +132,8 @@ ECall
 ```
 
 The parser desugars `|>` into the application spine that juxtaposition would have built. There is no
-`EPipe`, nothing downstream knows a pipe was written, and the two programs are the same program.
-This is the sort of claim a walkthrough can settle and prose cannot: the listing above is one
-rendering, published for two source texts, and the test that generated it renders both and asserts
-they are equal.
+`EPipe`, nothing downstream knows a pipe was written, and the two programs are the same program —
+the listing above is one rendering, published for both source texts.
 
 It also tells you where a pipe can go. Since `|>` is application, `x |> f` is `f x` — so a helper
 meant to sit at the end of a pipe has to take its subject *last*, which is why the prelude is shaped
@@ -188,7 +186,7 @@ TExprLet twice f x : Int
       TExprInt 5 : Int
 ```
 
-This is the stage where the most surprising readouts on the page are.
+Four readouts here need explaining.
 
 **`TExprLet twice f x : Int`.** The `let` node's type is `Int`, not a function type. A `let` *is* an
 expression, and its type is the type of its body — and the body of the outermost `let` is the whole
@@ -250,7 +248,7 @@ rather than the subexpression that failed.
 **Types stayed.** Every core node still carries its type, so a later pass can still ask what a
 subexpression is. Lowering discards positions, not types.
 
-`CLet twice (recursive)` is worth a note: the `recursive` flag survives lowering and is set for the
+`CLet twice (recursive)`: the `recursive` flag survives lowering and is set for the
 `let f x = …` function form, whose own name is in scope inside its body — which is what lets a
 FieldML function call itself. Plain `let x = …` bindings stay non-recursive, so `let x = x + 1` still
 shadows an outer `x` rather than referring to itself.
@@ -272,17 +270,16 @@ FieldML box.
 
 ## Where this stops
 
-Two limits are worth knowing before you go looking for them, because both are places a reader
-reasonably expects the pipeline to keep going and it does not.
+Two places where a reader reasonably expects the pipeline to keep going, and it does not.
 
 **A FieldML body cannot call `Frames.frame()`.** FieldML closures can be handed to Kotlin functions
 that take a `suspend` block — `eachFrame`, `loop`, `forever`, `animate` and the rest — and they run;
 a FieldML box drives a triangle on a real device this way. The adapter is sound for a specific
 reason: a suspend function that *never suspends* returns its value directly, and a FieldML body never
 suspends. So the boundary falls exactly there. `Frames.frame()` is itself `suspend`, so calling it
-from a FieldML body is refused, and the refusal is correct rather than unfortunate — being able to
-call it is the thing that would make the adapter unsound. Functions where the enclosing Kotlin owns
-the suspension work; `frames { }`, whose contract is that the body drives `frame()` itself, does not.
+from a FieldML body is refused: being able to call it is what would make the adapter unsound.
+Functions where the enclosing Kotlin owns the suspension work; `frames { }`, whose contract is that
+the body drives `frame()` itself, does not.
 See the [FieldML JVM Bridge](fieldml_host_bridge.md) for the mechanism.
 
 **There is no stage after core.** No bytecode, no closure conversion, no optimiser. The evaluator
