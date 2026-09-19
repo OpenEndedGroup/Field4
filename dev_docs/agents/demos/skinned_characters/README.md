@@ -49,6 +49,20 @@ packed vertex buffer `applyToMesh` already uploads, so nothing in the pipeline k
 skinned. **Run box 0 first** — it is box 4's parent and supplies the renderer. Edit `poseTime` at
 the top and re-run — `0` is a straight tube, `1` is the 60-degree bend.
 
+**5 — The candy wrapper, side by side.** One tube, one pose, two ways of averaging the joints.
+Flip `useDualQuaternions` at the top and re-run: `false` pinches the waist shut to a point (the
+hourglass), `true` keeps it round and just twists. The printed number is the min radius at the
+`y = 2` ring — **0.0% of rest** for linear blending against **100.0%** for dual quaternions.
+Evidence: `dev_docs/agents/evidence/skinning/twist_linear_blend.png` and `twist_dual_quaternion.png`,
+both captured from this box.
+
+**A trap this box records rather than hides:** drawing both methods at once as two `Mesh` objects
+does **not** work. Both read the instance's vertex buffer at draw time rather than at
+`applyToMesh` time, so both tubes show whichever pose was written *last* — measured, with
+lbs-then-dqs rendering two round tubes and lbs-then-lbs rendering two pinched ones, while the
+printed numbers stayed correct throughout. That would have been a figure that lies, so the box draws
+one tube and toggles.
+
 ## The rig
 
 `dev_docs/agents/fixtures/skinning/bending_cylinder.gltf` — two bones, 60 vertices, 96 triangles,

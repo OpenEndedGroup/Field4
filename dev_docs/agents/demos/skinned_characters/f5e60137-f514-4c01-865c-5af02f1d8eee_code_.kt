@@ -1,4 +1,5 @@
 import afield.four.util.Options
+import afield.Rect
 
 // The window and renderer that box 4 needs.
 //
@@ -16,7 +17,7 @@ prop<Renderer>(renderer)
 
 Options.enableHDR = false
 once.renderer {
-    window = Window("Field · skinned characters")
+    window = Window("Field · skinned characters", initialDimensions = Rect(80.0, 80.0, 1100.0, 700.0))
     Renderer(window)
 }
 println("renderer ready — now run box 4")
