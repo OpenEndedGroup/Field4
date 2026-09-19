@@ -985,6 +985,65 @@ displayOpen("explorer")
 # under its own summary row so its height is not the content height either. Both used to fail
 # silently -- a 1040pt box got a 200px panel showing a 192x205 frame -- which is invisible unless
 # something asserts the geometry.
+VIEWER_PANEL_SIZING_SNIPPET = r"""// A viewer that declares a size. `three` writes a pixel width on the iframe AND passes
+// frameWidth/frameHeight into the payload, which threejs_viewer.html republishes as
+// `afield-iframe-size`. The panel should end up at that size; today it opens at DEFAULT_W.
+import afield.graphics.FLine
+val f = FLine().moveTo(vec(0.0, 0.0, 0.0)).lineTo(vec(1.0, 0.6, 0.3))
+f.color = vec(0.4, 0.8, 1.0, 0.9)
+f.pointed = true
+f.pointSize = 2.0
+three(channel = "viewerpanel", name = "viewerpanel", width = 900, height = 520) { lines(listOf(f)) }
+println("VIEWER_PANEL_READY")
+"""
+
+VIEWER_PANEL_SIZING_JS = r"""const delay = (ms) => new Promise(r => setTimeout(r, ms));
+const errors = [];
+const onError = (e) => errors.push(String(e.error && (e.error.stack || e.error.message) || e.message || e));
+window.addEventListener("error", onError);
+const waitFor = async (p, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) { const v = p(); if (v) return v; await delay(100); }
+  return p();
+};
+try {
+  const box = [...document.querySelectorAll(".box")]
+    .find(c => String(c.textContent || "").includes("ViewerPanelSizingRegression"))
+    || [...document.querySelectorAll(".box")].at(-1);
+  if (!box) return { ok: false, reason: "box not found", errors };
+  const outputArea = await waitFor(() => box.querySelector(".outputArea"), 8000);
+  if (outputArea) { outputArea.style.visibility = "visible"; outputArea.style.height = "auto"; }
+  const frame = await waitFor(() => box.querySelector("iframe[src*='/threejs?uid=']"), 12000);
+  if (!frame) return { ok: false, reason: "viewer iframe never appeared", errors };
+  const panel = frame.closest(".disclosure");
+  // The viewer reports its size over a socket, so wait for the dataset rather than a fixed delay.
+  await waitFor(() => parseFloat(frame.dataset.afieldIntrinsicWidth || "0") > 0, 12000);
+  await delay(1200);
+  const declaredW = parseFloat(frame.dataset.afieldIntrinsicWidth || "0") || 0;
+  const declaredH = parseFloat(frame.dataset.afieldIntrinsicHeight || "0") || 0;
+  const panelRect = panel.getBoundingClientRect();
+  const result = {
+    declaredW, declaredH,
+    panelWidth: Math.round(panelRect.width),
+    panelHeight: Math.round(panelRect.height),
+    errors,
+  };
+  // A viewer that states a size should get it. 480x174 is DEFAULT_W/DEFAULT_H plus the header --
+  // the size a panel has when nothing ever sized it. See dev_docs/OUTPUT_PANEL_SIZING.md.
+  result.panelHonoursDeclared = declaredW > 0 &&
+    result.panelWidth >= declaredW - 40 &&
+    result.panelHeight >= declaredH - 60;
+  result.notStuckAtDefault = !(result.panelWidth === 480 && result.panelHeight === 174);
+  result.ok = result.panelHonoursDeclared && result.notStuckAtDefault && result.errors.length === 0;
+  if (!result.ok) {
+    result.reason = !result.notStuckAtDefault
+      ? `panel is stuck at the ${result.panelWidth}x${result.panelHeight} default; the viewer declared ${declaredW}x${declaredH}`
+      : `panel ${result.panelWidth}x${result.panelHeight} does not honour the declared ${declaredW}x${declaredH}`;
+  }
+  return result;
+} finally { window.removeEventListener("error", onError); }
+"""
+
 H2_PANEL_SIZING_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -3536,6 +3595,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "output_area_basics_js": write_generated_file("output-area-basics.js", OUTPUT_AREA_BASICS_JS),
         "h2_panel_sizing_snippet": write_generated_file("h2-panel-sizing.kt", H2_PANEL_SIZING_SNIPPET),
         "h2_panel_sizing_js": write_generated_file("h2-panel-sizing.js", H2_PANEL_SIZING_JS),
+        "viewer_panel_sizing_snippet": write_generated_file("viewer-panel-sizing.kt", VIEWER_PANEL_SIZING_SNIPPET),
+        "viewer_panel_sizing_js": write_generated_file("viewer-panel-sizing.js", VIEWER_PANEL_SIZING_JS),
         "h2_domain_explorer_snippet": write_generated_file("h2-domain-explorer.kt", H2_DOMAIN_EXPLORER_SNIPPET),
         "h2_domain_explorer_js": write_generated_file("h2-domain-explorer.js", H2_DOMAIN_EXPLORER_JS),
         "keyframe_browser_discovery_snippet": write_generated_file(
@@ -3655,6 +3716,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["h2_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 1.5",
                 shell_join(["page-eval", "--body", "--file", str(files["h2_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="viewer-panel-sizing",
+            description="An embedded viewer panel reaches the size the viewer declares, instead of opening at the DEFAULT_W/DEFAULT_H constants. See dev_docs/OUTPUT_PANEL_SIZING.md.",
+            commands=[
+                "new-box --name ViewerPanelSizingRegression --w 620 --h 170",
+                shell_join(["run", "@last", "--file", str(files["viewer_panel_sizing_snippet"]), "--timeout", timeout_text]),
+                "sleep 2.0",
+                shell_join(["page-eval", "--body", "--file", str(files["viewer_panel_sizing_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
