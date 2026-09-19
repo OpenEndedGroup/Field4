@@ -23,13 +23,21 @@ So this guard extracts references from the **rendered HTML in the built site**, 
 one as a browser would from the page's own published URL, and requires that it land on a file
 that exists inside the prefix.
 
-Two checks, and the difference matters
---------------------------------------
+Three checks, and the differences matter
+----------------------------------------
 * **Escape** — the resolved URL falls outside the configured prefix. This is
   deployment-independent: it is a 404 under *any* non-empty prefix, and at the root it is a
   silently clamped near-miss that will break the day the site moves. Reported even when the
   target happens to exist at the clamped location.
 * **Missing** — the resolved URL is inside the prefix but names nothing in the built site.
+* **Missing fragment** — the resolved URL names a page that *does* exist, but its ``#fragment``
+  is not an ``id`` on that page. Added 2026-09-18, and it closed a hole that nothing in this
+  tree could see: ``"#"`` was in :data:`SKIP_PREFIXES`, so a bare ``](#anchor)`` was dropped
+  before resolution, and :func:`resolve` discards the fragment of every *other* ref too. Both
+  halves of the family were therefore unguarded — renaming or re-wording a published heading
+  changes the slug every ``](#…)`` into it was written against, and no guard noticed. The check
+  is deliberately narrow: it fires only where the target file already resolves, so a broken
+  path is still reported once, by the check that owns it.
 
 Relation to ``tools/check_doc_assets.py``
 -----------------------------------------
@@ -112,8 +120,45 @@ REF_ATTR = re.compile(r'\b(href|src|poster|srcset)\s*=\s*"([^"]*)"', re.IGNORECA
 CODE_REGION = re.compile(r"<(pre|code)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
 
 # Schemes and forms that do not name a file in this site. `//` is protocol-relative, so it is
-# off-site too. A bare `#fragment` is the same page.
-SKIP_PREFIXES = ("http://", "https://", "data:", "mailto:", "tel:", "javascript:", "#", "//")
+# off-site too.
+#
+# `"#"` used to be in this tuple, and that single entry was the whole reason `](#anchor)`
+# breakage had no guard anywhere in this tree: a bare in-page fragment was dropped before
+# anything looked at it, and `resolve()` throws the fragment away for every *other* ref too. So
+# renaming a published section — which changes the slug every `](#…)` into it was written
+# against — was a change nothing here could see. It is out of this tuple now and handled by
+# `fragment_of` below, which is a different statement: a bare `#fragment` names no *file*, but it
+# does name an `id` that has to exist.
+SKIP_PREFIXES = ("http://", "https://", "data:", "mailto:", "tel:", "javascript:", "//")
+
+# A bare in-page fragment. Not a file reference, so it is counted apart from `SKIP_PREFIXES`
+# (which is off-site) and apart from `total_refs` (which is local *paths*) — but it is still
+# fragment-checked, against the page carrying it.
+IN_PAGE_PREFIX = "#"
+
+
+def fragment_of(ref: str) -> str:
+    """The `#fragment` of `ref`, percent-decoded, or `""` when it carries none.
+
+    Query-then-fragment is the only legal order in a URL, so the fragment is everything after the
+    first `#`. An empty fragment (`href="foo.html#"`) is not a name and returns `""`.
+    """
+    _, _, fragment = ref.partition("#")
+    return unquote(fragment).strip()
+
+
+ELEMENT_ID = re.compile(r'\sid\s*=\s*"([^"]*)"')
+
+
+def element_ids(html: str) -> set[str]:
+    """Every `id="…"` in `html`.
+
+    Zensical/`toc` generates a heading's `id` by slugifying its text, so this is the only place a
+    section's anchor name actually exists — it is not in the markdown, and it changes when the
+    heading's *wording* changes, not just when the heading moves. Commit `e5c68e89f` is the
+    recorded case: a brace in a heading ate its own anchor.
+    """
+    return set(ELEMENT_ID.findall(html))
 
 
 def code_spans(html: str) -> list[tuple[int, int]]:
@@ -182,6 +227,27 @@ def read_config(config_yml: Path) -> tuple[str, str]:
 # and nothing is listed.
 KNOWN_UNRESOLVED: dict[str, str] = {}
 
+# Fragments that name no `id` in a target that does exist, grandfathered by name — never by
+# widening the predicate back out, which is how this family lost its guard in the first place.
+# Keyed `<page path in the built site>#<fragment>`.
+#
+# Measured on the `--no-source-pages` build of 2026-09-18 over 158 built pages: 20655 refs carry a
+# fragment (8740 bare `#frag`, 11915 `path#frag`), 10996 of them at a target file this build
+# wrote, and **exactly one** fragment is absent — the entry below. So this ledger starts with the
+# one real exception in the tree and a floor of zero for everything else.
+#
+# The owner note is the point of an entry, not decoration: a fragment can be legitimately absent
+# only for a reason someone can act on, and "the theme emitted it" is such a reason.
+KNOWN_MISSING_FRAGMENTS: dict[str, str] = {
+    "404.html#__skip": (
+        "Theme-emitted, not authored. `md-skip` is Material's skip-to-content link and it targets "
+        "`id=\"__skip\"` on the main content region; the 404 template renders no such region, so "
+        "the anchor has nothing to land on. One ref, on one page, from the theme — owner is the "
+        "theme override in public/overrides/, not any docs author. Harmless: the browser scrolls "
+        "nowhere on a page with nothing to scroll."
+    ),
+}
+
 # The source mirror (`reference/source/**`) is the one generated docs tree that is not committed:
 # `build_zensical_docs.py:generate_source_pages` renders it per build and needs a compiled Kotlin
 # tree, so `--no-source-pages` (or a machine without one) legitimately produces a site with none of
@@ -195,6 +261,16 @@ SOURCE_MIRROR_PREFIX = "reference/source/"
 def stale_known_unresolved(unresolved: set[str]) -> list[str]:
     """Entries in `KNOWN_UNRESOLVED` that no longer reproduce, and so should be deleted."""
     return sorted(entry for entry in KNOWN_UNRESOLVED if entry not in unresolved)
+
+
+def stale_known_missing_fragments(missing: set[str]) -> list[str]:
+    """Entries in `KNOWN_MISSING_FRAGMENTS` that no longer reproduce.
+
+    Read backwards for the same reason as `stale_known_unresolved`: a grandfathered anchor that
+    has since been given an `id` has to fail, or the ledger becomes a list of problems that used
+    to exist. Graded only against the real published site — see the caller.
+    """
+    return sorted(entry for entry in KNOWN_MISSING_FRAGMENTS if entry not in missing)
 
 
 def split_srcset(value: str) -> list[str]:
@@ -319,9 +395,21 @@ def main() -> int:
 
     # url_path -> the pages that reference it, and the raw ref text as written.
     wanted: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    # (target page, site-relative) x fragment -> the pages that reference it, and the raw ref.
+    # Only pairs whose *target file this build actually wrote* are collected: a fragment on a ref
+    # that does not resolve is already reported as a missing/escaping target, and reporting it
+    # twice would make the fragment census a function of the other check's failures.
+    fragment_refs: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
     total_refs = 0
     skipped_external = 0
+    in_page_refs = 0
     absolute_refs = 0
+    # Census of fragment-carrying refs, split by form because the two took different code paths
+    # before this change: a bare `#frag` was dropped by SKIP_PREFIXES and a `page.md#frag` had its
+    # fragment thrown away by `resolve`. Both were invisible; they are counted apart so that is
+    # legible from the output.
+    bare_fragment_refs = 0
+    path_fragment_refs = 0
     # Displayed code, masked out below. `masked_would_resolve` is the assertion that the mask is
     # not hiding real references: a `src=` inside a `<pre>` that lands on a real file in the site
     # is not displayed code, it is a reference in a place this guard did not expect, and the mask
@@ -331,6 +419,7 @@ def main() -> int:
     masked_would_resolve: list[tuple[str, str, str]] = []
     for page in pages:
         page_dir = page_url(site_dir, page, prefix)
+        page_rel_for_fragments = page.relative_to(site_dir).as_posix()
         html = page.read_text(encoding="utf-8", errors="ignore")
         spans = code_spans(html)
         for match in REF_ATTR.finditer(html):
@@ -346,6 +435,21 @@ def main() -> int:
                     else:
                         skipped_external += 1
                     continue
+                fragment = fragment_of(stripped)
+                if stripped.startswith(IN_PAGE_PREFIX):
+                    # A bare `#frag` names no file — so it is not a local *reference* and is not
+                    # counted in `total_refs` — but it does name an `id` that has to exist, on the
+                    # page carrying it. That is the half of this family that had no guard at all.
+                    if in_code:
+                        masked_skipped += 1
+                    else:
+                        in_page_refs += 1
+                        if fragment:
+                            bare_fragment_refs += 1
+                            fragment_refs[(page_rel_for_fragments, fragment)].append(
+                                (page_rel_for_fragments, stripped)
+                            )
+                    continue
                 url_path = resolve(page_dir, stripped)
                 if in_code:
                     masked_refs += 1
@@ -359,7 +463,18 @@ def main() -> int:
                 if stripped.startswith("/"):
                     absolute_refs += 1
                 if url_path:
-                    wanted[url_path].append((page.relative_to(site_dir).as_posix(), stripped))
+                    wanted[url_path].append((page_rel_for_fragments, stripped))
+                if fragment and url_path:
+                    path_fragment_refs += 1
+                    inside_prefix = (
+                        url_path == prefix.rstrip("/") or url_path.startswith(prefix)
+                    )
+                    if inside_prefix:
+                        target = site_path(site_dir, prefix, url_path or prefix)
+                        if target.is_file() and target.suffix.lower() == ".html":
+                            fragment_refs[
+                                (target.relative_to(site_dir).as_posix(), fragment)
+                            ].append((page_rel_for_fragments, stripped))
 
     # Absent as a whole subtree, or merely incomplete? Only the first is a build-configuration fact.
     source_mirror_built = (site_dir / SOURCE_MIRROR_PREFIX).is_dir()
@@ -395,10 +510,48 @@ def main() -> int:
         else:
             missing.append((url_path, page_rel, ref))
 
+    # Fragments, checked only against targets this build wrote. `element_ids` is memoised per
+    # target page because the hot pages here are the nav-linked ones and every page in the site
+    # links into them.
+    ids_by_page: dict[str, set[str]] = {}
+    # (ledger key, referrer page, ref as written, number of refs to this pair).
+    missing_fragments: list[tuple[str, str, str, int]] = []
+    known_fragments: list[tuple[str, str, str, int]] = []
+    missing_fragment_keys: set[str] = set()
+    for target_rel, fragment in sorted(fragment_refs):
+        ids = ids_by_page.get(target_rel)
+        if ids is None:
+            ids = element_ids(
+                (site_dir / target_rel).read_text(encoding="utf-8", errors="ignore")
+            )
+            ids_by_page[target_rel] = ids
+        if fragment in ids:
+            continue
+        key = f"{target_rel}#{fragment}"
+        missing_fragment_keys.add(key)
+        referrers = fragment_refs[(target_rel, fragment)]
+        referrer_rel, ref = referrers[0]
+        row = (key, referrer_rel, ref, len(referrers))
+        if key in KNOWN_MISSING_FRAGMENTS:
+            known_fragments.append(row)
+        else:
+            missing_fragments.append(row)
+
     print(
         f"checked {len(pages)} built page(s) under prefix {prefix!r} "
         f"({site_url.strip()}): {total_refs} local reference(s) extracted from rendered HTML, "
-        f"{len(wanted)} distinct target(s); {skipped_external} external/in-page ref(s) skipped"
+        f"{len(wanted)} distinct target(s); {skipped_external} external ref(s) skipped, "
+        f"{in_page_refs} in-page #fragment ref(s)"
+    )
+    # Stated as its own population, because it is a different one from `total_refs`: a bare
+    # `#frag` is not a local path reference and never enters `wanted`, and a `page/#frag` enters
+    # `wanted` under the path alone. Neither count tells you how many anchors are checked.
+    print(
+        f"  fragments: {bare_fragment_refs + path_fragment_refs} ref(s) carry a #fragment "
+        f"({bare_fragment_refs} bare, {path_fragment_refs} path#fragment); "
+        f"{sum(len(v) for v in fragment_refs.values())} of them at a target page this build "
+        f"wrote, {len(fragment_refs)} distinct (page, fragment) pair(s), "
+        f"{len(missing_fragments) + len(known_fragments)} naming no id"
     )
     # The population is meaningless without the build flag that produced it, because the source
     # mirror is by far the largest page family and is the only one generated per build. Measured
@@ -471,6 +624,25 @@ def main() -> int:
             "Fix: correct the ref, or generate/commit the target.",
         )
 
+    if missing_fragments:
+        print(f"\nFAIL — {len(missing_fragments)} #fragment(s) name no id on a page that does "
+              f"exist:\n")
+        for key, referrer_rel, ref, count in missing_fragments[: args.max_report]:
+            print(f"  {key}")
+            print(f"      written as: {ref}")
+            print(f"      on page:    {referrer_rel}"
+                  + (f" (and {count - 1} other ref(s))" if count > 1 else ""))
+        if len(missing_fragments) > args.max_report:
+            print(f"  … and {len(missing_fragments) - args.max_report} more")
+        print(
+            "\nCause: a heading was renamed or re-worded, so the slug every `](#…)` into it was\n"
+            "written against no longer exists. The target *file* resolves, which is why no guard\n"
+            "in this tree could see this until now — `resolve()` discarded the fragment and a\n"
+            "bare `#frag` was skipped outright. Fix: re-point the ref, or restore the heading.\n"
+            "Do not widen the predicate; add a KNOWN_MISSING_FRAGMENTS entry with an owner note\n"
+            "only when the anchor is emitted by something other than a docs author."
+        )
+
     if source_mirror_absent:
         print(
             f"\nNOTE — {len(source_mirror_absent)} target(s) under {prefix}{SOURCE_MIRROR_PREFIX} "
@@ -506,6 +678,15 @@ def main() -> int:
             print(f"      {KNOWN_UNRESOLVED[url_path]}")
         print("\nThese are listed in KNOWN_UNRESOLVED and do not fail. Each owes a fix.")
 
+    if known_fragments:
+        print(f"\nKNOWN GAP — {len(known_fragments)} #fragment(s) name no id and are "
+              f"grandfathered:\n")
+        for key, referrer_rel, ref, count in known_fragments:
+            print(f"  {key}  (as {ref} on {referrer_rel}"
+                  + (f" +{count - 1} more ref(s)" if count > 1 else "") + ")")
+            print(f"      {KNOWN_MISSING_FRAGMENTS[key]}")
+        print("\nThese are listed in KNOWN_MISSING_FRAGMENTS and do not fail.")
+
     # The ledger describes the real published site, so it can only be graded against the real
     # published site. Over a synthetic fixture, or at a different prefix (where the same debt has
     # different URLs), every entry would look "no longer reproducing" and the staleness check would
@@ -520,10 +701,22 @@ def main() -> int:
         print("\nThe reference now resolves (or is gone). Delete the entry — an exception that "
               "outlives\nits cause is how a grandfathered list becomes a policy.")
 
-    if escapes or missing or stale or masked_would_resolve:
+    stale_fragments = (
+        stale_known_missing_fragments(missing_fragment_keys) if grading_the_real_site else []
+    )
+    if stale_fragments:
+        print(f"\nFAIL — {len(stale_fragments)} KNOWN_MISSING_FRAGMENTS entr(y/ies) no longer "
+              f"reproduce:\n")
+        for entry in stale_fragments:
+            print(f"  {entry}")
+        print("\nThe anchor now exists, or nothing references it any more. Delete the entry.")
+
+    if escapes or missing or stale or masked_would_resolve or missing_fragments or stale_fragments:
         return 1
     resolved = len(wanted) - len(unresolved_paths)
-    print(f"OK — {resolved} of {len(wanted)} distinct local reference(s) across {len(pages)} built "
+    print(f"OK — {resolved} of {len(wanted)} distinct local reference(s) and "
+          f"{len(fragment_refs) - len(known_fragments)} of {len(fragment_refs)} distinct "
+          f"(page, #fragment) pair(s) across {len(pages)} built "
           f"page(s) resolve inside {prefix!r}, source mirror "
           + ("present" if source_mirror_built else "absent")
           + (f"; {len(known)} known gap(s) and "

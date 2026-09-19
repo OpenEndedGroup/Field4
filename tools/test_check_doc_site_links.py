@@ -41,10 +41,14 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 from tools.check_doc_site_links import (
+    KNOWN_MISSING_FRAGMENTS,
     KNOWN_UNRESOLVED,
     REF_ATTR,
+    SKIP_PREFIXES,
     SOURCE_MIRROR_PREFIX,
     code_spans,
+    element_ids,
+    fragment_of,
     inside_code,
     page_url,
     prefix_from_site_url,
@@ -52,6 +56,7 @@ from tools.check_doc_site_links import (
     resolve,
     site_path,
     split_srcset,
+    stale_known_missing_fragments,
     stale_known_unresolved,
 )
 
@@ -218,6 +223,51 @@ class DisplayedCodeIsNotMarkup(unittest.TestCase):
         self.assertEqual(len(re.findall(r"<pre", html)), 1)
 
 
+class FragmentTests(unittest.TestCase):
+    """The anchor half of a ref, which until 2026-09-18 no guard in this tree could see.
+
+    `"#"` sat in `SKIP_PREFIXES` and `resolve()` did `ref.split("#", 1)[0]`, so a renamed heading
+    broke every `](#…)` into it silently. Measured on the `--no-source-pages` build of that day,
+    158 built pages of 290 `*.html`: **20655** refs carry a fragment (8740 bare `#frag`, 11915
+    `path#frag`), 10996 of them at a target page the build wrote, giving **4418 distinct
+    (page, fragment) pairs** now checked where 0 were checked before. Exactly one names no `id`
+    and it is the theme's `404.html#__skip`.
+    """
+
+    def test_the_hash_prefix_is_no_longer_skipped_outright(self) -> None:
+        # Asserted on the constant, not inferred from behaviour: re-adding `"#"` here is the one
+        # edit that would make the whole family invisible again, and it would look harmless.
+        self.assertNotIn("#", SKIP_PREFIXES)
+
+    def test_a_fragment_is_everything_after_the_first_hash(self) -> None:
+        self.assertEqual(fragment_of("page/#a-heading"), "a-heading")
+        self.assertEqual(fragment_of("#a-heading"), "a-heading")
+        self.assertEqual(fragment_of("page/"), "")
+        # Query-then-fragment is the only legal order, so a `?` inside the fragment is part of it.
+        self.assertEqual(fragment_of("page/?q=1#frag"), "frag")
+        self.assertEqual(fragment_of("page/#frag?not-a-query"), "frag?not-a-query")
+        # Percent-encoded, because that is how a heading with punctuation is linked.
+        self.assertEqual(fragment_of("#a%20b"), "a b")
+        # `href="foo#"` names no anchor.
+        self.assertEqual(fragment_of("foo.html#"), "")
+
+    def test_element_ids_reads_the_rendered_anchor_names(self) -> None:
+        # The slug exists only in the built HTML: it is derived from the heading's *text*, so it
+        # changes when the wording changes, which is why the markdown cannot answer this.
+        html = '<h2 id="the-dispatcher">D</h2><p id=\'single\'>x</p><a id="x-y">a</a>'
+        ids = element_ids(html)
+        self.assertIn("the-dispatcher", ids)
+        self.assertIn("x-y", ids)
+        # Single-quoted attributes are not matched, and that is stated rather than assumed: the
+        # theme emits double quotes throughout (counted 0 single-quoted `id=` over 158 pages).
+        self.assertNotIn("single", ids)
+
+    def test_a_fragment_is_not_confused_with_a_path(self) -> None:
+        # `resolve` still drops the fragment, deliberately — the path check and the fragment
+        # check ask different questions about the same ref.
+        self.assertEqual(resolve("/Field4/page/", "../other/#frag"), "/Field4/other/")
+
+
 class EndToEnd(unittest.TestCase):
     """The checker over a synthetic site, which is where its teeth are demonstrated."""
 
@@ -265,13 +315,20 @@ class EndToEnd(unittest.TestCase):
         self.assertIn("name nothing in the built site", result.stdout)
 
     def test_external_and_in_page_refs_are_not_local_references(self) -> None:
+        # This used to assert "4 external/in-page ref(s) skipped", lumping the bare `#section`
+        # in with the three off-site refs. The two are now counted apart, because they are not
+        # the same statement: an off-site ref is never checked, an in-page one names no *file*
+        # but does name an `id` that has to exist. `#section` is a real heading here, so this
+        # still passes — with 3 skipped and 1 in-page.
         config, site = self.build_site(
             '<a href="https://example.com/a">x</a><img src="data:image/png;base64,AA">'
             '<a href="#section">y</a><a href="//cdn.example.com/a.js">z</a>'
+            '<h2 id="section">S</h2>'
         )
         result = self.run_checker(config, site)
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("4 external/in-page ref(s) skipped", result.stdout)
+        self.assertIn("3 external ref(s) skipped", result.stdout)
+        self.assertIn("1 in-page #fragment ref(s)", result.stdout)
 
     def test_poster_is_checked_as_rendered_not_as_a_convention(self) -> None:
         # The guard reads rendered HTML, so it needs no knowledge of which attributes zensical
@@ -349,6 +406,86 @@ class EndToEnd(unittest.TestCase):
         result = self.run_checker(config, site)
         self.assertIn("population:", result.stdout)
         self.assertIn("built page(s) under prefix", result.stdout)
+
+    def test_a_bare_fragment_whose_heading_was_renamed_fails(self) -> None:
+        # The half of the family that had no guard at all: `"#"` was in SKIP_PREFIXES, so this
+        # ref was discarded before anything looked at it.
+        config, site = self.build_site('<a href="#gone">y</a><h2 id="here">H</h2>')
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("name no id on a page that does exist", result.stdout)
+        self.assertIn("page/index.html#gone", result.stdout)
+
+    def test_a_cross_page_fragment_whose_heading_was_renamed_fails(self) -> None:
+        # The other half: the target file resolves, so `resolve()`'s `split("#", 1)[0]` made this
+        # indistinguishable from a correct ref. Planted on the real site by renaming
+        # `reference/imaging/index.html`'s `id="imaging-kt-img"`, which 43 refs on 5 pages point
+        # at; the guard at 4546d72b5 exited 0 on it and this one exits 1.
+        config, site = self.build_site('<a href="../#gone">y</a>')
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("index.html#gone", result.stdout)
+
+    def test_a_fragment_that_exists_passes_and_is_counted(self) -> None:
+        config, site = self.build_site(
+            '<a href="#here">y</a><a href="../#root">z</a><h2 id="here">H</h2>'
+        )
+        (site / "index.html").write_text('<h1 id="root">R</h1>', encoding="utf-8")
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        # The count is the point of the branch: a widened guard whose new population is unstated
+        # has reproduced the defect it fixes.
+        self.assertIn("2 ref(s) carry a #fragment (1 bare, 1 path#fragment)", result.stdout)
+        self.assertIn("2 distinct (page, fragment) pair(s), 0 naming no id", result.stdout)
+
+    def test_a_fragment_on_a_target_that_does_not_resolve_is_reported_once(self) -> None:
+        # A broken path is the path check's failure. Reporting the fragment too would make the
+        # fragment census a function of the other check's failures.
+        config, site = self.build_site('<a href="../gone/#anything">y</a>')
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("name nothing in the built site", result.stdout)
+        self.assertNotIn("name no id on a page that does exist", result.stdout)
+
+    def test_a_fragment_inside_displayed_code_is_not_a_reference(self) -> None:
+        config, site = self.build_site(
+            '<pre><code>&lt;a href="#not-a-real-anchor"&gt;</code></pre>'
+        )
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("name no id", result.stdout)
+
+    def test_an_empty_fragment_names_nothing_and_is_not_checked(self) -> None:
+        config, site = self.build_site('<a href="#">top</a>')
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("0 ref(s) carry a #fragment", result.stdout)
+
+    def test_the_fragment_ledger_is_graded_backwards_on_the_real_site_only(self) -> None:
+        # Same rule as KNOWN_UNRESOLVED: an entry that no longer reproduces must fail, but only
+        # when the site being checked is the one the ledger is about. Over a fixture (or at
+        # another prefix) every entry would look stale.
+        self.assertEqual(
+            stale_known_missing_fragments(set(KNOWN_MISSING_FRAGMENTS)),
+            [],
+            "an entry graded against its own keys can never be stale",
+        )
+        self.assertEqual(
+            stale_known_missing_fragments(set()), sorted(KNOWN_MISSING_FRAGMENTS)
+        )
+        config, site = self.build_site('<img src="../assets/x.png">')
+        result = self.run_checker(config, site)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("no longer reproduce", result.stdout)
+
+    def test_every_grandfathered_fragment_carries_an_owner_note(self) -> None:
+        # An exception without a named owner is a widening with extra steps.
+        self.assertTrue(KNOWN_MISSING_FRAGMENTS, "the ledger's one real entry went missing")
+        for key, note in KNOWN_MISSING_FRAGMENTS.items():
+            with self.subTest(key=key):
+                self.assertIn("#", key)
+                self.assertGreater(len(note), 80, f"{key} has no owner note")
+                self.assertIn("owner", note.lower())
 
     def test_an_absent_source_mirror_is_a_note_and_a_present_one_gates(self) -> None:
         ref = f'<a href="../{SOURCE_MIRROR_PREFIX}Foo/">x</a>'
