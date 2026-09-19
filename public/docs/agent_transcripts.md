@@ -44,8 +44,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 135 transcripts on every build, at three
-depths. 78 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 136 transcripts on every build, at three
+depths. 79 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -822,6 +822,30 @@ write-up, and `tools/run_field_tests.py --id stdlib.lambda-terms.smoke` asserts 
 headlessly.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/interaction_nets_lambda/metadata.edn)
+
+### confluence_grid
+
+The companion to the scene above, in 3D and all at once: **twenty λ-term reductions running together —
+five terms across, four schedulers down — and every row lands on the same shape.** One box, pure CPU;
+the 3D is a Three.js viewer in the box's own output panel, so there is no window and no GPU. Interaction
+nets are *strongly* confluent, which is more than Church-Rosser: the four cells of a row do not merely
+agree on the answer, they take the **same number of reactions** and finish on the same beat. What
+differs is *which* reaction fires at each beat, and there is real choice about that, so the four columns
+visit different intermediate graphs and different peak sizes on the way to one answer. The box prints
+its own verdict per row — `one answer: true` when the four de Bruijn keys agree with each other *and*
+with `referenceNormalOrder`, and `identical pose: true` when the four final layouts are point-for-point
+equal. That second claim is the hard one to make honestly, because `Net.relax` is 2D and path-dependent:
+four isomorphic graphs draw four different ways and the picture then claims the opposite of the theorem.
+The final pose is therefore a three-round Weisfeiler-Leman refinement — a node's label is its type folded
+with its neighbours' labels, in **port order** — so the ordering is a structural invariant and nothing
+reads an id or an insertion order. A BFS-depth-only pose was tried first and agreed on four rows before
+breaking on `3^3`, where ten `DUP`s leave sibling order ambiguous. The box also documents two traps in
+place: it does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
+*zero* ticks, so it drives its own clock with a sleep loop; and its output panel opens at 480 x 174 and
+ignores the size the viewer asks for, which is a real defect written up with its seven wrong hypotheses
+in `dev_docs/OUTPUT_PANEL_SIZING.md`. Drag the panel once and the size sticks.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/confluence_grid/metadata.edn)
 
 ### morpho_circuit_search
 

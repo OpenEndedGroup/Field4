@@ -260,6 +260,13 @@ object DemoTranscriptExecSmokeTest {
         // the whole 25-term corpus under four schedulers, which is the same work
         // `stdlib.lambda-terms.smoke` does and takes about three seconds.
         "interaction_nets_lambda",
+        // Its 3D companion: the same reductions, twenty at once, five terms by four schedulers.
+        // EXECUTE for the same reason — the 3D is a Three.js viewer in the box's own output panel
+        // (the `three(channel = …)` helper, which `polytope_canonical_gallery` and three other
+        // EXECUTE demos already use headlessly), not a Window and not a Renderer. The box's driver
+        // is its own sleep loop rather than `frames { }`, and it exits when all twenty cells have
+        // landed or after a 2600-frame cap, so it terminates without a render clock.
+        "confluence_grid",
         // Sixteen saved demo documents under `dev_docs/agents/demos/` were invisible to this
         // harness, to the welcome screen and to the gallery — openable with `./field.sh` and
         // nothing else. These are those, promoted: nine of them already shipped an agent-authored
