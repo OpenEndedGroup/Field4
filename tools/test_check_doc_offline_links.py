@@ -22,6 +22,7 @@ What is pinned here, because each was a way this guard could have passed for the
 Run with:  uv run --group backdoor python -m unittest tools.test_check_doc_offline_links
 """
 
+import re
 import subprocess
 import sys
 import unittest
@@ -144,7 +145,16 @@ class AgainstTheRealTree(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("are viewer-relative on both halves", result.stdout)
-        self.assertIn(f"{RECORDED_OCCURRENCES} `offline.html?file=` reference(s)", result.stdout)
+        # A FLOOR, not equality — which is what the checker itself enforces, and says so in the
+        # comment above RECORDED_OCCURRENCES: `agent_transcripts.md` gains one reference per new
+        # transcript, so the recorded number goes stale the next time anyone adds one. This line
+        # read `assertIn(f"{RECORDED_OCCURRENCES} …")` until 2026-09-19 and went red the moment
+        # the sixteen-demo promotion sweep took the tree from 137 references to 156 — a guard
+        # failing for the one reason its own subject says is fine, and red in `check` (via
+        # `checkPythonTools`) from that commit onwards.
+        found = re.search(r"(\d+) `offline\.html\?file=` reference\(s\)", result.stdout)
+        self.assertIsNotNone(found, result.stdout)
+        self.assertGreaterEqual(int(found.group(1)), RECORDED_OCCURRENCES, result.stdout)
         self.assertIn(f"on {len(CARRIER_PAGES)} page(s)", result.stdout)
 
     def test_the_carrier_ledger_is_exactly_the_measured_set(self) -> None:

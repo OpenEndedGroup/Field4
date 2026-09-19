@@ -91,6 +91,7 @@
   {"doc": "completion_rank_at_scale", "box": "classify", "codeSha256": "3671c180d4b8bcc1", "codeLines": 87, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "completion_rank_at_scale", "box": "corpus", "codeSha256": "c17ebeac06e5f271", "codeLines": 65, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "completion_rank_at_scale", "box": "sweep", "codeSha256": "e98a1bfbb9f1d924", "codeLines": 42, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "confluence_grid", "box": "confluence_grid", "codeSha256": "2f8be884dbb03cdc", "codeLines": 282, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_button", "codeSha256": "dde07b1d9de6e49d", "codeLines": 24, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_laws", "codeSha256": "610cabe982665ae3", "codeLines": 48, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_meter", "codeSha256": "930b28ea1fb9cfb2", "codeLines": 30, "receivers": ["afield.Box"], "preamble": ""},

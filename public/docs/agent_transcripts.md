@@ -41,11 +41,24 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
+### Two things to know before you edit one
+
+Some transcripts ship a `build.yaml` beside the saved document, and the script says, in its own
+words, that re-running it rebuilds that document. Most still do. Two do not: `logging_layer` and
+`frame_history_reprojection` were edited in Field afterwards and re-saved with the build script left
+behind — five boxes between them, and `logging_layer`'s older code has lost an import and no longer
+compiles. **Take the document as the truth for those two.** `tools/test_demo_build_scripts.py` holds
+the rest to it, and lists the known-stale boxes explicitly so an exception cannot outlive its reason.
+
+**Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
+Field's own EDN codec writes, so an edit that looks right comes back modified from the next
+regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
+
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 135 transcripts on every build, at three
-depths. 78 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 136 transcripts on every build, at three
+depths. 79 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -522,10 +535,14 @@ activity)` behaviour space with MAP-Elites and prints coverage beside quality pe
 random sampling spreads over a descriptor space for free, so coverage on its own claims nothing. Box
 4 is the one that pins the shared machinery: `FunctionEvolve.evolve` is a one-line call to
 `PopulationSearch.evolve(mu = 1)`, and the FIELD_TEST `functions.evolve.worked-example` holds it to
-`bestScore = -0.15676727177844857` over 961 evaluations, bit for bit. Every box carries a
-`PopulationSearch.random` control arm at the same budget under the same seed, because a generator
-good enough to stumble onto a decent rule occasionally looks exactly like a successful search. None
-of the four opens a `Window` or a `Renderer`. Change `LifeRuleGenome(radius = 2)` to
+`bestScore = -0.15676727177844857` over 961 evaluations, bit for bit — which it still does: run
+headless on 2026-09-19 box 4 printed exactly that, with `acceptedMutations=12  evaluations=961`.
+The first *three* boxes each carry a control arm at the same budget under the same seed — a
+`PopulationSearch.random` run in boxes 1 and 2, a random-sampled archive in box 3 — because a
+generator good enough to stumble onto a decent rule occasionally looks exactly like a successful
+search. Box 4 is the exception and has no control arm: at `mu = 1` it is a plain climb, and its
+counterfactual is its own `initialLoss`, measured in the same run. None of the four opens a
+`Window` or a `Renderer`. Change `LifeRuleGenome(radius = 2)` to
 `LifeRuleGenome()` in box 2 and watch the margin collapse.
 
 ![A contact sheet of twenty small greyscale automaton boards in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
@@ -808,7 +825,8 @@ pair is replaced, nothing else in the graph is consulted. β-reduction becomes o
 thing β normally hides — copying a term you are about to use twice — becomes explicit work done by
 `DUP` agents the reduction can see and count. The first box normalises eight terms and compares each
 answer to the oracle with `alphaEquivalent` rather than `==`, because a readback invents its own binder
-names. The second draws `(λx. x x) (λy. y)` as five panels, one per reaction, and the agent counts go
+names. The second draws `(λx. x x) (λy. y)` as five panels — the compiled net, then one per reaction,
+of which there are four (`beta-linear`, `dup-lam`, `beta-linear`, `fan-fan`) — and the agent counts go
 6, 4, 6, 4, 2 — *up* at `dup-lam`, which is the point: duplication is work done in the open rather than
 by copying a subtree behind your back. The third runs all 25 named closed terms under four schedulers:
 25 of 25 agree with the oracle and 25 of 25 give the same de Bruijn key whichever order fires, so the
@@ -822,6 +840,30 @@ write-up, and `tools/run_field_tests.py --id stdlib.lambda-terms.smoke` asserts 
 headlessly.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/interaction_nets_lambda/metadata.edn)
+
+### confluence_grid
+
+The companion to the scene above, in 3D and all at once: **twenty λ-term reductions running together —
+five terms across, four schedulers down — and every row lands on the same shape.** One box, pure CPU;
+the 3D is a Three.js viewer in the box's own output panel, so there is no window and no GPU. Interaction
+nets are *strongly* confluent, which is more than Church-Rosser: the four cells of a row do not merely
+agree on the answer, they take the **same number of reactions** and finish on the same beat. What
+differs is *which* reaction fires at each beat, and there is real choice about that, so the four columns
+visit different intermediate graphs and different peak sizes on the way to one answer. The box prints
+its own verdict per row — `one answer: true` when the four de Bruijn keys agree with each other *and*
+with `referenceNormalOrder`, and `identical pose: true` when the four final layouts are point-for-point
+equal. That second claim is the hard one to make honestly, because `Net.relax` is 2D and path-dependent:
+four isomorphic graphs draw four different ways and the picture then claims the opposite of the theorem.
+The final pose is therefore a three-round Weisfeiler-Leman refinement — a node's label is its type folded
+with its neighbours' labels, in **port order** — so the ordering is a structural invariant and nothing
+reads an id or an insertion order. A BFS-depth-only pose was tried first and agreed on four rows before
+breaking on `3^3`, where ten `DUP`s leave sibling order ambiguous. The box also documents two traps in
+place: it does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
+*zero* ticks, so it drives its own clock with a sleep loop; and its output panel opens at 480 x 174 and
+ignores the size the viewer asks for, which is a real defect written up with its seven wrong hypotheses
+in `dev_docs/OUTPUT_PANEL_SIZING.md`. Drag the panel once and the size sticks.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/confluence_grid/metadata.edn)
 
 ### morpho_circuit_search
 
@@ -1303,9 +1345,16 @@ three different sets of lines and box 3 makes a real subscriber prove it.
 mini-notation patterns rendered into a two-track `MidiClip` and written as a format-1 Standard MIDI
 File, that file read back with no knowledge of what wrote it and turned into a `PatPattern` — the PPQ,
 the tempo and the track split survive the round trip or the comparison says so — then the MIDI ports
-this machine can actually see, and an audition through them. Boxes 1 and 2 pass a file through the
-temp directory, so run 1 first; 3 and 4 are independent of both. On a machine with no ports, box 3
-prints none, which is the answer rather than an error.
+this machine can actually see, and an audition. Boxes 1 and 2 pass a file through the temp directory,
+so run 1 first; 3 and 4 are independent of both. Box 3 lists what the JVM reports and separates it
+from what is plugged in: the JDK always contributes Gervill and the Real Time Sequencer, so a
+non-empty list is not evidence of hardware, and on a machine with no ports the hardware row reads
+*none*, which is the answer rather than an error. Box 4's audition does **not** go out through those
+ports: it renders the clip offline through Gervill to a WAV and reports the peak amplitude, because a
+WAV of pure silence is exactly as large as a loud one — and if the JVM cannot reach
+`com.sun.media.sound.AudioSynthesizer.openStream` it renders nothing and tells you to use
+`clip.playTo("Gervill")` instead. Driven headless on 2026-09-19 it took the offline route: 2.00 s,
+peak 0.489, not silent.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/midi_clip/metadata.edn)
 
@@ -1318,8 +1367,11 @@ pairs rather than printing strings — the lower lane of a pair **is** the strin
 so a search that is wrong shows up as two lanes that do not coincide. Box 2 condenses 300 random masks
 and recomputes every figure the search named, from `bjorklund` and `kolakoskiMask` rather than off the
 label: noise compresses about three times worse than a real figure, and that separation is the claim.
-Box 3 closes the loop — a bar rendered to samples, transcribed, and condensed back into `60(3,8)`,
-with nothing between the render and the transcription looking at the pattern.
+Box 3 closes the loop — a bar rendered to samples, transcribed, and condensed back into `60(3,8,3)`,
+with nothing between the render and the transcription looking at the pattern. Opened on 2026-09-19 it
+recovered the grid at 0.2501 s/step over 8 steps with a worst residual of 0.001 step, and box 2's two
+medians were 0.613 for noise against 0.194 for `kolakoskiMask(16)` — the 3.2x separation the box
+claims, recomputed rather than quoted.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pattern_condense/metadata.edn)
 
@@ -1548,6 +1600,15 @@ rather than an accident: the toggle swaps the execution of a root's **children**
 its `mainLanguage` property is what makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
 started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
+
+It is also the one scene CI barely covers, and it is worth knowing which part is yours to check.
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells** — they are
+not Kotlin, and the harness now says so rather than reporting every word as an unresolved reference —
+so one box of five is verified by the build. Driven by hand against a real interpreter on 2026-09-19
+the other four do work: Python 3.12.13, the numpy array printed inline, the namespace surviving into
+the next cell (`a is still here: (3, 4) 66`), and `java.lang.System` reachable from Python in a JVM
+reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be worth watching: with
+`--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
 

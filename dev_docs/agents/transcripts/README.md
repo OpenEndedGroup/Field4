@@ -194,6 +194,15 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   explicit work rather than something β hides. No window, no GPU, no setup. The library is
   `afield/stdlib/lambdaterms.kt` and `afield/stdlib/interactionnets.kt`; the write-up is
   `dev_docs/INTERACTION_NETS_LAMBDA.md`.
+- `confluence_grid.yaml`: the same subject in **3D and twenty at once** — five terms by four
+  `ActivationOrder`s, all reducing on one beat, in a Three.js viewer in the box's own output panel. One
+  pure-CPU box. Strong confluence means a row's four cells take the same *number* of reactions and end
+  on an isomorphic graph, so the demo has to lay them out by a structural invariant or the picture
+  claims the opposite of the theorem: the final pose is a three-round Weisfeiler-Leman refinement and
+  nothing in it reads a node id. Worth copying for two mechanics as much as for the subject — a box
+  that animates with its own sleep loop rather than `frames { }` (which gets zero ticks without a
+  `Window`/`Renderer`), and repeated `three(channel = …)` calls that stream geometry over the socket
+  the first call opened instead of remounting the iframe.
 - `four_summary_pyramid.yaml`: a **summarised quadtree over a raster** as one pass chain — three
   moving blobs, a 2x2 reduction pyramid that carries mergeable statistics rather than colour, and an
   overlay that draws each cell's centroid and 1-sigma covariance ellipse. A 2x2 reduction already
