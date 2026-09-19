@@ -41,6 +41,19 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
+### Two things to know before you edit one
+
+Some transcripts ship a `build.yaml` beside the saved document, and the script says, in its own
+words, that re-running it rebuilds that document. Most still do. Two do not: `logging_layer` and
+`frame_history_reprojection` were edited in Field afterwards and re-saved with the build script left
+behind — five boxes between them, and `logging_layer`'s older code has lost an import and no longer
+compiles. **Take the document as the truth for those two.** `tools/test_demo_build_scripts.py` holds
+the rest to it, and lists the known-stale boxes explicitly so an exception cannot outlive its reason.
+
+**Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
+Field's own EDN codec writes, so an edit that looks right comes back modified from the next
+regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
+
 ## How CI checks them
 
 <!-- transcript-index: totals -->
