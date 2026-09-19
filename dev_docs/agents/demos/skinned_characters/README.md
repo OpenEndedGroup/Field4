@@ -20,7 +20,16 @@ this, the only mention of a bone in the whole of `src/jvmMain` + `src/commonMain
 `PathTraceGltf.kt` refusing to render one — the codebase naming a missing capability in its own
 error message.
 
-## The three boxes
+## The boxes
+
+**0 — A window and a renderer, which box 4 needs.** Added 2026-09-19 after opening this document
+the ordinary way (`./field.sh` on it, which is how everything else in this folder is opened) and
+finding box 4 failed with *"must pass in a value for context parameter afield.four.Renderer"*. It
+had only ever been run under `field_backdoor.py --graphics-context`, where the agent's own context
+box supplies a `Renderer` by type. Every other GPU demo in this folder —
+`frame_history_reprojection`, `path_tracer_instrument`, `path_tracing_emitters`,
+`path_tracing_medium` — ships exactly one box declaring `prop<Renderer>(renderer)`; this one did
+not. Box 4 is connected beneath it, so `renderer` now resolves by name.
 
 **1 — A rigged mesh, and what the loader now reads out of it.** The node tree, the bones, the
 clips, the weight sums, and the bind-pose bit-identity count, then four poses side by side. The
@@ -37,8 +46,8 @@ and builds a `TriMesh`.
 **4 — The same deformation on the GPU, no shader change.** Field's own glTF module, Field's own
 bundled shaders, a real Vulkan window. `CpuSkinner` rewrites the position and normal fields of the
 packed vertex buffer `applyToMesh` already uploads, so nothing in the pipeline knows the mesh is
-skinned. Needs a renderer: run it with `--graphics-context`, or under your own renderer box. Edit
-`poseTime` at the top and re-run — `0` is a straight tube, `1` is the 60-degree bend.
+skinned. **Run box 0 first** — it is box 4's parent and supplies the renderer. Edit `poseTime` at
+the top and re-run — `0` is a straight tube, `1` is the 60-degree bend.
 
 ## The rig
 
