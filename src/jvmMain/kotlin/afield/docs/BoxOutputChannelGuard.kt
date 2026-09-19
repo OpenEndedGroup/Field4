@@ -29,13 +29,23 @@ import kotlin.system.exitProcess
  * Only calls at brace depth 0 of the box's code are counted. Replacing a channel repeatedly is the
  * *correct* way to animate — `Box.showImg`'s KDoc calls one `display` per frame "the path an
  * animation wants" — so an `animate { }` body, a `for` loop or any other nested emitter is
- * deliberate refresh, not loss. Two emitters at depth 0 cannot be a refresh: they run once each,
- * in order, and the first one's pixels never reach a screen.
+ * deliberate refresh, not loss.
+ *
+ * Two emitters at depth 0 are a loss **only when that channel is not animated at all**. The
+ * establish-animate-settle shape writes the same channel three times on purpose: once before the
+ * loop to put the first state on screen, once per iteration inside it, and once after it so the
+ * settled state is not up to one iteration stale. Its two depth-0 writes are the ends of one
+ * animation, not two figures, and the first one's pixels very much do reach a screen — in
+ * `confluence_grid` there is a `Thread.sleep(300)` immediately after it for exactly that reason.
+ * So a channel that also receives a *nested* emission in the same box is treated as animated and
+ * its depth-0 writes are not reported. (This guard reported that demo as a loss until 2026-09-19;
+ * the rule above is what it was missing, not the depth-0 premise itself.)
  *
  * The cost of that narrowness is a known blind spot: `for (…) { showImg(…) }` followed by a
  * top-level `showMeshGrid(…)` on the same channel is a real collision this will not report, because
- * depth 0 sees only one emitter. Widening it means deciding which loops terminate, so the guard
- * stays quiet there instead of guessing.
+ * depth 0 sees only one emitter — and the animated-channel rule above deliberately widens that same
+ * quiet spot rather than guessing which loops terminate. Both are the same trade: this guard reports
+ * a channel only when nothing in the box could have been refreshing it.
  *
  * ## Populations
  *
@@ -63,6 +73,15 @@ object BoxOutputChannelGuard {
 
     /** A channel a call resolves to, or null when the call names one this guard cannot read. */
     private data class Emission(val helper: String, val channel: String, val line: Int)
+
+    /**
+     * One box's emitters, split by the only distinction that matters here.
+     *
+     * [refreshed] holds every channel written from inside a brace — a loop body, an `animate { }`,
+     * a lambda. A channel in it is being animated, so its [topLevel] writes bracket the animation
+     * rather than losing a figure to it.
+     */
+    private data class Scan(val topLevel: List<Emission>, val refreshed: Set<String>)
 
     data class AuditResult(val boxes: Int, val emissions: Int, val problems: List<String>)
 
@@ -99,9 +118,10 @@ object BoxOutputChannelGuard {
         fun check(source: String, code: String, forwardedChannelName: String? = null) {
             boxes++
             val found = topLevelEmissions(code, helpers, forwardedChannelName)
-            emissions += found.size
-            found.groupBy { it.channel }
+            emissions += found.topLevel.size
+            found.topLevel.groupBy { it.channel }
                 .filterValues { it.size > 1 }
+                .filterKeys { it !in found.refreshed }
                 .toSortedMap()
                 .forEach { (channel, clash) ->
                     val where = clash.joinToString(", ") { "${it.helper}() at line ${it.line}" }
@@ -157,9 +177,10 @@ object BoxOutputChannelGuard {
         code: String,
         helpers: Map<String, String?>,
         forwardedChannelName: String?,
-    ): List<Emission> {
+    ): Scan {
         val masked = maskCommentsAndStrings(code)
         val result = mutableListOf<Emission>()
+        val refreshed = mutableSetOf<String>()
         var depth = 0
         var i = 0
         while (i < masked.length) {
@@ -179,14 +200,18 @@ object BoxOutputChannelGuard {
             if (!qualified && (name == "display" || name in helpers)) {
                 val args = code.substring(openParen, (argsEnd + 1).coerceAtMost(code.length))
                 val channel = resolveChannel(name, args, helpers, forwardedChannelName)
-                if (channel != null && depth == 0) {
-                    result.add(Emission(name, channel, code.take(i).count { it == '\n' } + 1))
+                if (channel != null) {
+                    if (depth == 0) {
+                        result.add(Emission(name, channel, code.take(i).count { it == '\n' } + 1))
+                    } else {
+                        refreshed.add(channel)
+                    }
                 }
             }
             // Step just inside the parens so nested calls are still visited.
             i = openParen + 1
         }
-        return result
+        return Scan(result, refreshed)
     }
 
     private fun resolveChannel(
