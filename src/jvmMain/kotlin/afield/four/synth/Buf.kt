@@ -1,5 +1,31 @@
 @file:afield.CompletionCategory("Synthesis")
 @file:Suppress("DEPRECATION")
+/**
+ * Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API.
+ *
+ * A [Signal] renders into a `FloatArray` a block at a time, 512 frames by default, so the unit of
+ * work in this package is a few hundred samples rather than one. [Buf] is where that inner loop
+ * lives: fills and copies, buffer-by-buffer and buffer-by-scalar arithmetic, fused multiply-add,
+ * clamp and absolute value, the peak, RMS and sum reductions, a Hann window and a cross-fade.
+ * `Signal`, `Sampling`, `Filters`, `FM`, `Envelopes`, `Spectral`, `FaustDsp` and
+ * [FieldAudioEngine]'s mix loop all go through it.
+ *
+ * Each function takes its destination first and an `off`/`len` pair last, defaulting to the whole
+ * array from `off`. Every caller in the package passes `0` and the current block's frame count,
+ * because the buffers grow to the largest block asked for so far and never shrink: `len` is the
+ * live prefix, not the array's size. The vectorised functions step by `LANES` for as long as a full
+ * vector remains and finish the rest in a scalar tail loop, so no length is a special case. Nothing
+ * here allocates an array. Destinations are written in place, and the three reductions return a
+ * `Float`.
+ *
+ * Three of the functions are not vectorised: `copy` is `System.arraycopy`, and `hann` and
+ * `hannWindow` evaluate a cosine per sample in a plain loop.
+ *
+ * Two of them have a guard or a convention that the signature does not show. `div` returns 0 where
+ * the divisor's magnitude is at or below `epsilon`, 1e-15 by default, rather than an infinity or a
+ * NaN. `rms` divides the sum of squares by `len`, the window it was asked for, rather than by the
+ * length of the array.
+ */
 
 package afield.four.synth
 
@@ -8,17 +34,22 @@ import jdk.incubator.vector.VectorOperators
 import jdk.incubator.vector.VectorSpecies
 
 /**
- * SIMD-accelerated buffer operations using the Java Vector API.
+ * The operations themselves, as one object: `Buf.add(dst, src, 0, n)`, `Buf.peak(buf)`, and so on.
  *
- * Every public function processes data in bulk, falling back to a scalar
- * tail loop for the final elements that don't fill a full SIMD lane.
- * All operations are in-place on [FloatArray] buffers – zero allocation
- * on the hot path.
+ * `SPECIES` is `FloatVector.SPECIES_PREFERRED` and `LANES` is its lane count. Both are resolved
+ * when the object initialises, so the vector width is whatever the host CPU offers rather than a
+ * compile-time constant, and code that reads `LANES` gets the width the rest of the file is
+ * actually stepping by.
  */
 object Buf {
 
-    @JvmField val SPECIES: VectorSpecies<Float> = FloatVector.SPECIES_PREFERRED
-    @JvmField val LANES: Int = SPECIES.length()
+    /** `FloatVector.SPECIES_PREFERRED`: the shape this JVM prefers on the CPU it is running on. */
+    @JvmField
+    val SPECIES: VectorSpecies<Float> = FloatVector.SPECIES_PREFERRED
+
+    /** Floats per vector, `SPECIES.length()`. The stride of every vectorised loop below. */
+    @JvmField
+    val LANES: Int = SPECIES.length()
 
     // ── fill / clear / copy ──────────────────────────────────────────
 
