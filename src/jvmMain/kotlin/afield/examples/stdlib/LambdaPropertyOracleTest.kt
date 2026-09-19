@@ -32,13 +32,22 @@ expect:
  *
  * > A term that does could surface either way: as a `⋈`, or as a wrong normal form with no marker at all.
  *
- * So there are **two** assertions per disagreement, not one:
+ * **Both halves are false, and this test is the evidence.** Over 4_000 simply-typed terms and 300 untyped ones at
+ * the seeds below — 17_200 (term, scheduler) checks — the net disagrees with the oracle on closed terms that have
+ * normal forms, and **four of those disagreements carry no readback mark of any kind**. The smallest, shrunk, is
  *
- * 1. the net's normal form is α-equivalent to the oracle's, and
- * 2. **any** disagreement carries a readback marker.
+ * ```
+ * (\m n f x. f (f x)) (\f. f) (\x. x) ((\n f x. f (n f x)) (\n f x. n f x))
+ * ```
  *
- * (2) is the one worth running. A disagreement that carries `⋈` is a documented failure mode being observed; a
- * disagreement with no marker at all is the quiet wrong answer the page warns about and has no detector but this.
+ * which reduces in 26 reactions to `λa. λb. a (λc. a (λd. a (λe. a b e) d) e)` where the answer is
+ * `λa. λb. a (λc. a (λd. a (λe. a b e) d) c)` — one variable occurrence wrong, and out of scope. All of them are in
+ * [knownDisagreements], shrunk and pinned.
+ *
+ * The split that *did* survive is by family, and it is the most useful thing here: **every counterexample is
+ * untypable**. Not one of the 4_000 simply-typed terms disagrees, under any scheduler. The two shapes that break the
+ * fan bookkeeping — self-application and an abstraction that erases its own argument under duplication — are exactly
+ * the shapes simple types forbid.
  *
  * ### What keeps this from becoming a tautology
  *
@@ -70,8 +79,11 @@ object LambdaPropertyOracleTest {
     private const val TYPED_SEED = 20260919L
     private const val SOUP_SEED = 20260919_002L
 
-    private const val TYPED_N = 100
-    private const val SOUP_N = 50
+    private const val TYPED_N = 4_000
+    // 300 and not 400: soup draw #289 of this seed spends 94 seconds in the reducer on its own, and the findings
+    // are all at indices below 300. A seeded generator takes its first N terms, so shortening the family does not
+    // reshuffle it.
+    private const val SOUP_N = 300
 
     // Budgets, per family, because the two families cost wildly different amounts.
     //
@@ -85,7 +97,9 @@ object LambdaPropertyOracleTest {
     private const val TYPED_NET_BUDGET = 100_000
     private const val SOUP_ORACLE_BUDGET = 2_000
     private const val SOUP_ORACLE_WORK = 4_000_000
-    private const val SOUP_NET_BUDGET = 20_000
+    // 4_000 and not more: `Reducer` calls `Net.incrementAges` once per reaction, which is O(nodes), so a reaction
+    // budget on a net that grows is a quadratic time budget. One soup draw spent 15 seconds inside it at 20_000.
+    private const val SOUP_NET_BUDGET = 4_000
 
     fun runTests(): Boolean {
         return try {
@@ -114,7 +128,7 @@ object LambdaPropertyOracleTest {
             // counterexample the run was for.
             printAllFindings(results)
             assertFloors(typed, soup, results)
-            assertNoQuietDisagreement(results)
+            assertTheLedger(results)
             println("Lambda property oracle passed")
             true
         } catch (t: Throwable) {
@@ -126,7 +140,18 @@ object LambdaPropertyOracleTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        check(runTests()) { "Lambda property oracle failed" }
+        // On its own thread, with a 512 MB stack.
+        //
+        // `LambdaTerms.readback` documents a `…` mark for a walk that runs "past maxDepth frames", and its default
+        // maxDepth is 3000. A default JVM stack cannot hold 3000 frames of `walk`, so on a deep net the promised
+        // mark arrives as a StackOverflowError instead — measured 2026-09-19, four of fifty soup terms. With room
+        // to run, the documented budget is the thing that fires and the classification below means what it says.
+        // The trap is written up in dev_docs/INTERACTION_NETS_LAMBDA.md; it is not fixed here.
+        var ok = false
+        val worker = Thread(null, { ok = runTests() }, "lambda-property-oracle", 512L * 1024 * 1024)
+        worker.start()
+        worker.join()
+        check(ok) { "Lambda property oracle failed" }
     }
 
     // =========================
@@ -214,7 +239,15 @@ object LambdaPropertyOracleTest {
         val oracleKey: String,
         val marks: Set<String>,
         val steps: Int,
-        val detail: String = ""
+        val detail: String = "",
+        /**
+         * Names occurring free in the net's answer, marks excluded.
+         *
+         * A readback of a **closed** term must be closed. `readback` does not check this and has no mark for it, so
+         * it is the one cheap detector for a wrong answer that carries no mark at all — and it is how the quiet
+         * disagreements below were recognised as wrong rather than merely different.
+         */
+        val freeInNet: Set<String> = emptySet()
     )
 
     private class Sweep(
@@ -309,7 +342,10 @@ object LambdaPropertyOracleTest {
             marks.isNotEmpty() -> Verdict.DISAGREE_MARKED
             else -> Verdict.DISAGREE_QUIET
         }
-        return Check(index, order, verdict, netKey, oracleKey, marks, run.steps, run.printed)
+        return Check(
+            index, order, verdict, netKey, oracleKey, marks, run.steps, run.printed,
+            LambdaTerms.freeVariablesOf(run.result) - MARKS
+        )
     }
 
     // =========================
@@ -354,7 +390,8 @@ object LambdaPropertyOracleTest {
                     "  disagree-QUIET=${s.count(Verdict.DISAGREE_QUIET)}" +
                     "  oracle-over-budget=${s.count(Verdict.ORACLE_OVER_BUDGET)}" +
                     "  net-unfinished=${s.count(Verdict.NET_UNFINISHED)}" +
-                    "  threw=${s.count(Verdict.THREW)}"
+                    "  threw=${s.count(Verdict.THREW)}" +
+                    "  not-closed=${s.checks.count { it.freeInNet.isNotEmpty() }}"
             )
             if (s.netSteps.isNotEmpty()) {
                 println(
@@ -384,17 +421,31 @@ object LambdaPropertyOracleTest {
 
     // How many of those checks had a live oracle to compare against. Below the floor, "0 quiet disagreements" is a
     // statement about a population that mostly diverged.
-    private const val COMPARED_FLOOR = 3_800
+    private const val COMPARED_FLOOR = 16_000
 
     // Terms whose compilation builds a fan at all, and terms that build four or more — the nested duplication this
     // hunt is actually about. Measured, then floored about 20% under.
-    private const val TYPED_WITH_FANS_FLOOR = 700
-    private const val TYPED_DEEP_FANS_FLOOR = 250
-    private const val SOUP_DEEP_FANS_FLOOR = 300
+    private const val TYPED_WITH_FANS_FLOOR = 2_000
+    private const val TYPED_DEEP_FANS_FLOOR = 1_200
+    private const val SOUP_DEEP_FANS_FLOOR = 160
+
+    // The ledger, measured 2026-09-19 at the seeds and populations above. Pinned exactly, in both directions: see
+    // assertTheLedger for why a count that *falls* has to fail too.
+    // **The headline.** Four of the 17_200 checks are a disagreement carrying no readback mark of any kind — the
+    // "wrong normal form with no marker at all" that dev_docs/INTERACTION_NETS_LAMBDA.md said it could not rule
+    // out. Pinned at the measured value, not at zero, because it is a fact about this reducer and not a hope.
+    private const val QUIET_DISAGREEMENTS = 4
+    private const val MARKED_DISAGREEMENTS = 84
+    private const val THREW_CHECKS = 0
+    private const val UNFINISHED_CHECKS = 24
+    private const val CONFLUENCE_FAILURES = 9
+    // Readbacks of a *closed* term that are not closed. `readback` has no mark for this and does not check it, and
+    // it is the only cheap detector that catches the quiet class — all four quiet checks are in here.
+    private const val NOT_CLOSED_CHECKS = 28
 
     // Distinct de Bruijn keys, so a generator that emits the same term N times fails.
-    private const val TYPED_DISTINCT_FLOOR = 800
-    private const val SOUP_DISTINCT_FLOOR = 350
+    private const val TYPED_DISTINCT_FLOOR = 2_000
+    private const val SOUP_DISTINCT_FLOOR = 250
 
     private fun assertFloors(
         typed: LambdaTermGenerator.Population,
@@ -453,36 +504,74 @@ object LambdaPropertyOracleTest {
      * times.
      */
     private fun printAllFindings(sweeps: List<Sweep>) {
-        printFindings("QUIET DISAGREEMENT (no readback mark at all)", of(sweeps, Verdict.DISAGREE_QUIET))
-        printFindings("MARKED DISAGREEMENT", of(sweeps, Verdict.DISAGREE_MARKED))
-        printFindings("THREW", of(sweeps, Verdict.THREW))
+        // The quiet class shrinks against a *quiet-preserving* predicate. Shrinking it mark-agnostically walks
+        // straight out of the finding — measured: the first quiet counterexample shrank into a `…`-marked one,
+        // which is a different bug and not the headline.
+        printFindings("QUIET DISAGREEMENT (no readback mark at all)", of(sweeps, Verdict.DISAGREE_QUIET)) { t, o ->
+            quietlyDisagrees(t, o)
+        }
+        printFindings("MARKED DISAGREEMENT", of(sweeps, Verdict.DISAGREE_MARKED)) { t, o -> disagrees(t, o) }
+        printFindings("THREW", of(sweeps, Verdict.THREW)) { t, o -> disagrees(t, o) }
     }
 
-    private fun assertNoQuietDisagreement(sweeps: List<Sweep>) {
-        val threw = of(sweeps, Verdict.THREW)
-        val quiet = of(sweeps, Verdict.DISAGREE_QUIET)
-        val marked = of(sweeps, Verdict.DISAGREE_MARKED)
+    /**
+     * The ledger: the counts this hunt measured, pinned exactly and in **both** directions.
+     *
+     * Every number here is a characterization and not a correctness claim, because the correctness claim is false —
+     * the net disagrees with the oracle on closed terms that have normal forms, and four of those disagreements
+     * carry no readback mark at all. Pinning in both directions is deliberate: a count that *falls* is a fix nobody
+     * wrote down, and the page quoting these numbers would silently become wrong. A count that rises is a
+     * regression. Either way a person has to read this file and then the page.
+     */
+    private fun assertTheLedger(sweeps: List<Sweep>) {
+        val threw = of(sweeps, Verdict.THREW).size
+        val quiet = of(sweeps, Verdict.DISAGREE_QUIET).size
+        val marked = of(sweeps, Verdict.DISAGREE_MARKED).size
+        val unfinished = of(sweeps, Verdict.NET_UNFINISHED).size
         val confluence = sweeps.sumOf { it.confluenceFailures.size }
-        require(threw.isEmpty()) {
-            "Reduction threw on ${threw.size} checks, first: " +
-                threw.first().let { (s, c) -> "${s.population.label} #${c.index} ${c.order} ${c.detail}" }
+        val notClosed = sweeps.sumOf { s -> s.checks.count { it.freeInNet.isNotEmpty() } }
+        val quietAndNotClosed = sweeps.sumOf { s ->
+            s.checks.count { it.verdict == Verdict.DISAGREE_QUIET && it.freeInNet.isNotEmpty() }
         }
-        require(confluence == 0) {
-            "Schedulers disagree on $confluence terms: " +
-                sweeps.flatMap { s -> s.confluenceFailures.take(3).map { "${s.population.label} #$it" } }
+        println(
+            "  ledger: not-closed=$notClosed (pinned $NOT_CLOSED_CHECKS), of which quiet=$quietAndNotClosed"
+        )
+        println(
+            "  ledger: quiet=$quiet (pinned $QUIET_DISAGREEMENTS, THE HEADLINE)  marked=$marked (pinned $MARKED_DISAGREEMENTS)  " +
+                "threw=$threw (pinned $THREW_CHECKS)  net-unfinished=$unfinished (pinned $UNFINISHED_CHECKS)  " +
+                "confluence-failures=$confluence terms (pinned $CONFLUENCE_FAILURES)"
+        )
+
+        // The headline, first and on its own.
+        require(quiet == QUIET_DISAGREEMENTS) {
+            "Disagreements carrying NO readback marker moved from $QUIET_DISAGREEMENTS to $quiet. This is the " +
+                "count dev_docs/INTERACTION_NETS_LAMBDA.md's 'What to be careful of' section quotes. If it fell, " +
+                "something was fixed and the page has to say so; if it rose, something got worse. Either way a " +
+                "person reads this line. Counterexamples, shrunk, are printed above."
         }
-        require(marked.isEmpty()) {
-            "Net and oracle disagree with a readback marker on ${marked.size} checks — a documented failure mode, " +
-                "now observed: " + marked.take(3).joinToString { (s, c) -> "${s.population.label} #${c.index} ${c.marks}" }
+        require(marked == MARKED_DISAGREEMENTS) {
+            "Marked disagreements moved from $MARKED_DISAGREEMENTS to $marked over this population. If that is a " +
+                "fix, update the count here, the count in dev_docs/INTERACTION_NETS_LAMBDA.md and the claim in " +
+                "public/docs/interaction_nets_examples.md together."
         }
-        require(quiet.isEmpty()) {
-            "Net and oracle disagree with NO readback marker on ${quiet.size} checks — the quiet wrong answer " +
-                "dev_docs/INTERACTION_NETS_LAMBDA.md says it cannot rule out: " +
-                quiet.take(3).joinToString { (s, c) -> "${s.population.label} #${c.index} ${c.order}" }
+        require(threw == THREW_CHECKS) { "Checks that threw moved from $THREW_CHECKS to $threw" }
+        require(notClosed == NOT_CLOSED_CHECKS) {
+            "Readbacks of a closed term that are not closed moved from $NOT_CLOSED_CHECKS to $notClosed"
+        }
+        require(unfinished == UNFINISHED_CHECKS) {
+            "Checks where the net ran out of reactions moved from $UNFINISHED_CHECKS to $unfinished"
+        }
+        require(confluence == CONFLUENCE_FAILURES) {
+            "Terms on which the four schedulers disagree moved from $CONFLUENCE_FAILURES to $confluence. " +
+                "Confluence holds on the 25-term corpus; it does not hold in general, and this is the count."
         }
     }
 
-    private fun printFindings(headline: String, found: List<Pair<Sweep, Check>>) {
+    private fun printFindings(
+        headline: String,
+        found: List<Pair<Sweep, Check>>,
+        stillFails: (Term, ActivationOrder) -> Boolean
+    ) {
         val seen = HashSet<String>()
         for ((s, c) in found) {
             if (!seen.add("${s.population.label}#${c.index}")) continue
@@ -494,7 +583,7 @@ object LambdaPropertyOracleTest {
             println("  $headline, ${s.population.label} #${c.index} seed=${s.population.seed} ${c.order}")
             println("    as generated: ${clip(LambdaTerms.format(term))}")
             println("    marks:        ${c.marks}  ${clip(c.detail)}")
-            val small = shrink(term) { candidate -> disagrees(candidate, c.order) }
+            val small = shrink(term) { candidate -> stillFails(candidate, c.order) }
             println("    shrunk to:    ${LambdaTerms.format(small)}")
             describe(small, c.order)
         }
@@ -548,6 +637,31 @@ object LambdaPropertyOracleTest {
             !run.finished || LambdaTerms.deBruijnKey(run.result) != oracle
         } catch (t: Throwable) {
             true // the net threw where the oracle answered: still a disagreement, and still worth minimising
+        }
+    }
+
+    /**
+     * Quiet-preserving: still a disagreement, still with no readback mark.
+     *
+     * Note what is deliberately *not* here — closedness. A shrunk quiet counterexample is allowed to stop leaking a
+     * free variable, because the claim under test is about the readback's marks and not about this harness's own
+     * extra detector.
+     */
+    private fun quietlyDisagrees(term: Term, order: ActivationOrder): Boolean {
+        val oracle = try {
+            LambdaTerms.deBruijnKey(
+                LambdaTerms.referenceNormalOrder(term, maxSteps = SOUP_ORACLE_BUDGET, maxWorkNodes = SOUP_ORACLE_WORK)
+            )
+        } catch (t: Throwable) {
+            return false
+        }
+        return try {
+            val run = LambdaTerms.normalise(term, order = order, maxSteps = SOUP_NET_BUDGET)
+            run.finished &&
+                marksIn(run.result).isEmpty() &&
+                LambdaTerms.deBruijnKey(run.result) != oracle
+        } catch (t: Throwable) {
+            false
         }
     }
 
@@ -605,34 +719,117 @@ object LambdaPropertyOracleTest {
     // =========================
 
     /**
-     * Terms this hunt found and shrank, pinned by name so that a future change to the rule book or the readback has
-     * to keep answering them correctly.
+     * Terms this hunt found and shrank, pinned by name.
      *
-     * Empty is a legitimate state and says something: over the populations printed above, no generated closed term
-     * made the net and the oracle disagree. It is **not** a proof, and the sentence in
-     * `dev_docs/INTERACTION_NETS_LAMBDA.md` is written to match.
+     * Every one of these is a **closed term with a normal form on which the net is wrong**, so these are
+     * characterization tests and not correctness tests: they assert the answer the net gives *today*, dated
+     * 2026-09-19, so that a fix trips this test and forces `dev_docs/INTERACTION_NETS_LAMBDA.md` to be rewritten
+     * rather than quietly becoming out of date. Pinning the wrong answer is the only way to notice it changing.
+     *
+     * The oracle side of each is asserted too, and it is plain arithmetic: `(λx. λz. x z x) (λx. λy. y y)` really
+     * does reduce to `λz. λy. y y`, by hand, in four β-steps.
      */
-    private fun namedRegressions(): Map<String, String> = linkedMapOf(
-        // Not a counterexample — a shrink-target shape kept as a smoke check that the shrinker's neighbourhood and
-        // the whole per-term path (oracle, four schedulers, marker scan) run on a term from outside the corpus.
-        "nested-duplicator" to "(\\w. w (w (\\a b. a b b)) (\\c. c)) (\\x y. x y y)"
+    private class KnownDisagreement(
+        val name: String,
+        val source: String,
+        /** The right answer, as `format` prints it. */
+        val oracle: String,
+        /** The answer the net gives today, as `Run.printed` gives it — wrong, and pinned so that it cannot drift. */
+        val netToday: String,
+        /** The readback marks in that answer. Empty here would be the "quiet wrong answer" case. */
+        val marks: Set<String>,
+        val note: String
     )
 
+    private fun knownDisagreements(): List<KnownDisagreement> = listOf(
+        // ** The one the page said it could not rule out. ** Shrunk from soup #156 of seed 20260919002; 26
+        // reactions, both sides finished, and no mark anywhere in the answer.
+        //
+        // The net's answer differs from the right one in exactly ONE variable occurrence. Correct is
+        //   λa. λb. a (λc. a (λd. a (λe. a b e) d) c)
+        // and the net puts `e` in the last position where `c` belongs — one wrong choice of fan branch. The `e` it
+        // picked happens to be out of scope, which is why a closedness check catches this particular one. Nothing
+        // whatever guarantees that the next one will be out of scope.
+        KnownDisagreement(
+            name = "quiet-wrong-branch",
+            source = "(\\m n f x. f (f x)) (\\f. f) (\\x. x) ((\\n f x. f (n f x)) (\\n f x. n f x))",
+            oracle = "λx. λx'. x (λx'1. x (λx''. x (λx''. x x' x'') x'') x'1)",
+            netToday = "λa. λb. a (λc. a (λd. a (λe. a b e) d) e)",
+            marks = emptySet(),
+            note = "a wrong normal form with NO readback mark; one variable occurrence wrong, and out of scope"
+        ),
+        // Shrunk from soup #22 of seed 20260919002. Twelve nodes, four β-steps, no budget anywhere near it. An
+        // abstraction that *erases* its argument is duplicated by a fan; one of the two copies of the answer comes
+        // back as the ERASE itself. This is the erase side of the bookkeeping, not the fan-label side.
+        KnownDisagreement(
+            name = "dup-of-an-erasing-abstraction",
+            source = "(\\x z. x z x) (\\x y. y y)",
+            oracle = "λz. λy. y y",
+            netToday = "λa. λb. b ⊥",
+            marks = setOf("⊥"),
+            note = "a duplicated abstraction that erases its argument loses one copy to the ERASE"
+        ),
+        // Shrunk from soup #4 and #19. `two two` is Church four and the net reaches a normal form in 19 reactions,
+        // but the readback cannot walk it: the fan stack never closes, so the walk runs past its node budget.
+        KnownDisagreement(
+            name = "two-applied-to-two-unwalkable",
+            source = "(\\x y. y y) (\\x. x) (\\f x. f (f x))",
+            oracle = "λx. λx'. x (x (x (x x')))",
+            netToday = "λa. λb. …",
+            marks = setOf("…"),
+            note = "net reports finished in 19 reactions; readback exhausts its budget rather than closing the fans"
+        ),
+        // Shrunk from soup #48. The net's answer is not merely wrong, it is **not closed**: `v499` occurs free in a
+        // readback of a closed term, which no amount of α-renaming can excuse.
+        KnownDisagreement(
+            name = "compose-self-apply-scope-leak",
+            source = "(\\m n f. m (n f)) (\\f. f f) (\\n f. f (n f))",
+            oracle = "λf. f (λf'. f' (f f')) (f (f (λf'. f' (f f'))))",
+            netToday = "",
+            marks = emptySet(),
+            note = "readback of a closed term has a FREE variable in it; the printed form is thousands of characters " +
+                "so only the free-variable set is pinned"
+        )
+    )
+
+    /**
+     * The known disagreements, re-run under all four schedulers.
+     *
+     * Asserted as a *premise*, before anything is generated, for the same reason the marker detector is: if these
+     * silently started agreeing, every count below would be describing a different reducer.
+     */
     private fun assertTheNamedRegressionsStillHold() {
-        for ((name, source) in namedRegressions()) {
-            val term = LambdaTerms.parse(source)
-            require(LambdaTerms.freeVariablesOf(term).isEmpty()) { "Regression '$name' is not closed" }
-            val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(term))
+        for (k in knownDisagreements()) {
+            val term = LambdaTerms.parse(k.source)
+            require(LambdaTerms.freeVariablesOf(term).isEmpty()) { "Known disagreement '${k.name}' is not closed" }
+            val oracle = LambdaTerms.format(
+                LambdaTerms.referenceNormalOrder(term, maxSteps = SOUP_ORACLE_BUDGET, maxWorkNodes = SOUP_ORACLE_WORK)
+            )
+            require(oracle == k.oracle) { "Known disagreement '${k.name}': oracle moved to $oracle, pinned ${k.oracle}" }
             for (order in ORDERS) {
-                val run = LambdaTerms.normalise(term, order = order, maxSteps = TYPED_NET_BUDGET)
-                val marks = marksIn(run.result)
-                require(run.finished) { "Regression '$name' did not finish under $order" }
-                require(marks.isEmpty()) { "Regression '$name' read back with marks $marks under $order" }
-                require(LambdaTerms.deBruijnKey(run.result) == oracle) {
-                    "Regression '$name' under $order: net ${LambdaTerms.deBruijnKey(run.result)} vs oracle $oracle"
+                val run = LambdaTerms.normalise(term, order = order, maxSteps = SOUP_NET_BUDGET)
+                require(LambdaTerms.deBruijnKey(run.result) != LambdaTerms.deBruijnKey(LambdaTerms.parse(k.oracle))) {
+                    "Known disagreement '${k.name}' now AGREES with the oracle under $order. That is good news and " +
+                        "this test is the wrong place for it: move it to stdlib.lambda-terms.smoke and rewrite the " +
+                        "'What to be careful of' section of dev_docs/INTERACTION_NETS_LAMBDA.md."
+                }
+                if (k.netToday.isNotEmpty()) {
+                    require(run.printed == k.netToday) {
+                        "Known disagreement '${k.name}' under $order: net now prints ${clip(run.printed)}, " +
+                            "pinned ${k.netToday}"
+                    }
+                    require(marksIn(run.result) == k.marks) {
+                        "Known disagreement '${k.name}' under $order: marks ${marksIn(run.result)}, pinned ${k.marks}"
+                    }
+                } else {
+                    // The scope-leak case, whose printed form is thousands of characters: the finding is the free
+                    // variable, so that is what is pinned.
+                    require(LambdaTerms.freeVariablesOf(run.result).isNotEmpty()) {
+                        "Known disagreement '${k.name}' under $order no longer leaks a free variable"
+                    }
                 }
             }
+            println("  premise: '${k.name}' still disagrees under all ${ORDERS.size} orders — ${k.note}")
         }
-        println("  premise: ${namedRegressions().size} named regression term(s) x ${ORDERS.size} orders still agree")
     }
 }
