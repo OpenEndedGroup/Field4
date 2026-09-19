@@ -1,0 +1,249 @@
+name: midi_clip
+description: |
+  **MIDI files, written and read back.** Four boxes, pure CPU, no device required to run them.
+
+    - **Write a MIDI file.** Two mini-notation patterns rendered into a two-track `MidiClip` and
+      written as a format-1 Standard MIDI File.
+    - **Read it back.** The same file read with no knowledge of what wrote it, and turned back into a
+      `PatPattern` — the PPQ, the tempo and the track split all survive the round trip or the
+      comparison says so.
+    - **What can this machine see?** Enumerates the MIDI ports actually present. On a machine with
+      none it prints none, which is the honest answer rather than an error.
+    - **Hear it.** Auditions the clip, if there is something to audition it through.
+
+  Boxes 1 and 2 pass a file between them through the temp directory, so run 1 before 2; boxes 3 and 4
+  are independent of both. The write-up is `dev_docs/MIDI.md`, and the saved document at
+  `dev_docs/agents/demos/midi_clip/` is this same scene.
+operations:
+  - create:
+      box: midi_write
+      name: "Write a MIDI file"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import java.io.File
+
+          // 1 - Write a MIDI file a DAW will open.
+          //
+          // The pattern is ordinary mini-notation. `toMidiClip` renders it over two cycles, and
+          // one cycle is one bar of 4/4 by default, so this is eight bars-worth of quarter notes
+          // at 104 BPM. Tidal's octave convention applies: c5 is middle C, MIDI 60.
+          val melody = pat("c5 e5 g5 b5 c6 b5 g5 e5")
+              .with(gain(0.8))
+              .with(sustain(0.85))
+
+          val bass = pat("c3 c3 g3 g3")
+              .with(gain(0.95))
+
+          val clip = MidiClip(
+              tracks = listOf(
+                  MidiTrackData(
+                      notes = melody.toMidiClip(cycles = 2, beatsPerCycle = 8).notes,
+                      name = "lead",
+                      program = GeneralMidi.ELECTRIC_PIANO
+                  ),
+                  MidiTrackData(
+                      notes = bass.toMidiClip(cycles = 2, beatsPerCycle = 8, channel = 1).notes,
+                      name = "bass",
+                      program = GeneralMidi.ACOUSTIC_BASS
+                  )
+              ),
+              tempoMap = listOf(0.0 to 104.0),
+              name = "field-demo",
+              timeSignature = 4 to 4
+          )
+
+          val out = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.mid")
+          clip.writeTo(out)
+
+          // The roll is FLines - real geometry, not a picture of geometry. Notes are coloured by
+          // velocity, and there is a rule at every C so the eye can find an octave.
+          showMidiRoll(clip)
+
+          markdown(
+              "main",
+              """
+              ### Wrote ${clip.notes.size} notes to a Standard MIDI File
+
+              | | |
+              |---|---|
+              | file | `${out.absolutePath}` |
+              | bytes | ${out.length()} |
+              | tracks | ${clip.tracks.size} (${clip.tracks.joinToString { it.name ?: "?" }}) |
+              | tempo | ${clip.bpmAt(0.0)} BPM |
+              | length | ${"%.2f".format(clip.durationSeconds)}s / ${clip.durationBeats} beats |
+
+              Format 1, with a real conductor track. Open it in any DAW, or run box 2.
+              """.trimIndent()
+          )
+  - create:
+      box: midi_read
+      name: "Read it back"
+      frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import java.io.File
+
+          // 2 - Read it back, and check the round trip actually held.
+          //
+          // Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
+          // tempo map, track split and track names all come out of the file itself.
+          val file = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.mid")
+          require(file.isFile) { "run box 1 first - no file at ${file.absolutePath}" }
+
+          val clip = readMidiClip(file)
+
+          showMidiRoll(clip)
+
+          // And back into the pattern algebra, so an imported clip can be composed with.
+          val asPattern = readMidiPat(file, beatsPerCycle = 8)
+          val firstCycle = asPattern.events(PatArc(PatQ.ZERO, PatQ.ONE))
+
+          markdown(
+              "main",
+              """
+              ### Read ${clip.notes.size} notes back
+
+              | | |
+              |---|---|
+              | PPQ | ${clip.ppq} |
+              | tempo | ${"%.2f".format(clip.bpmAt(0.0))} BPM |
+              | tempo events | ${clip.tempoMap.size} |
+              | time signature | ${clip.timeSignature.first}/${clip.timeSignature.second} |
+              | tracks | ${clip.tracks.map { "${it.name} (${it.notes.size})" }.joinToString()} |
+              | pitch range | ${clip.notes.minOf { it.pitch }}..${clip.notes.maxOf { it.pitch }} |
+              | velocities | ${clip.notes.map { it.velocity }.distinct().sorted().joinToString()} |
+
+              As a pattern again: ${firstCycle.size} events in cycle 0, pitches
+              `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
+
+              The roll above is drawn from the *file*, not from the clip box 1 held in memory.
+              """.trimIndent()
+          )
+  - create:
+      box: midi_devices
+      name: "What can this machine see?"
+      frame: { x: 60.0, y: 2040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // 3 - What MIDI hardware can this machine see, and can Field drive it?
+          //
+          // `MidiDevices.list()` reports whatever the JVM sees. The JDK always contributes
+          // Gervill (a software synthesizer) and the Real Time Sequencer, so the list is never
+          // empty - which means "the list is non-empty" is not evidence of hardware. `hardware()`
+          // is the filter that answers that question.
+          //
+          // On macOS the IAC driver appears as two entries with the SAME name, one output and one
+          // input, so a name alone does not identify a device: check the direction.
+          val all = MidiDevices.list()
+          val hardware = MidiDevices.hardware()
+
+          val rows = all.joinToString("\n") { d ->
+              val direction = listOfNotNull(
+                  if (d.canReceive) "Field can send" else null,
+                  if (d.canTransmit) "Field can listen" else null
+              ).joinToString(" + ")
+              "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
+          }
+
+          markdown(
+              "main",
+              """
+              ### ${all.size} MIDI devices
+
+              | name | vendor | implementation | direction |
+              |---|---|---|---|
+              $rows
+
+              **Hardware ports:** ${if (hardware.isEmpty()) "none - nothing is plugged in, and only the JDK's software synth and sequencer are present." else hardware.joinToString { it.name } + "."}
+
+              To drive a device, `MidiDevices.openOutput(handle)` gives a `MidiOutput` with
+              `noteOn`/`noteOff`/`controlChange`/`programChange` and a blocking `play(clip)`.
+              `MidiDevices.openInput(handle)` gives a `MidiInput` whose `knob(cc)` reads a
+              controller normalised to 0..1 - that is the shape for driving a box property from a
+              knob on a controller.
+
+              One caveat worth knowing before you open an input: doing so starts a non-daemon
+              `Java Sound MidiInDevice Thread` that outlives `close()`, so a JVM that has opened a
+              MIDI input will not exit on its own.
+              """.trimIndent()
+          )
+  - create:
+      box: midi_audition
+      name: "Hear it"
+      frame: { x: 60.0, y: 3040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import java.io.File
+
+          // 4 - Hear it. Two routes, and this box tells you which one it took.
+          //
+          // Offline rendering pulls the JDK's Gervill synthesizer faster than real time, which
+          // needs `com.sun.media.sound.AudioSynthesizer.openStream`. `java.desktop` does not
+          // export that package, so it only works in a JVM launched with
+          // `--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED`. Field's own JVM is not,
+          // so this box will normally report the live route instead - and say so, rather than
+          // pretending to have rendered something.
+          val clip = MidiClip.of(
+              listOf(
+                  MidiNote(60, 0.0, 2.0, 100),
+                  MidiNote(64, 0.0, 2.0, 95),
+                  MidiNote(67, 0.0, 2.0, 105),
+                  MidiNote(72, 0.5, 1.5, 110)
+              ),
+              bpm = 120.0,
+              name = "chord"
+          )
+
+          val reason = midiRenderUnavailableReason()
+
+          val report = if (reason == null) {
+              val wav = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.wav")
+              val r = clip.renderWav(wav, tailSeconds = 1.0)
+              """
+              ### Rendered offline to a WAV
+
+              | | |
+              |---|---|
+              | file | `${r.file.absolutePath}` |
+              | length | ${"%.2f".format(r.seconds)}s |
+              | **peak amplitude** | **${"%.3f".format(r.peakAmplitude)}** |
+              | rms amplitude | ${"%.4f".format(r.rmsAmplitude)} |
+              | soundbank | ${r.soundbankName} |
+
+              Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
+              as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}
+              """.trimIndent()
+          } else {
+              """
+              ### Offline rendering is not available in this JVM
+
+              $reason
+
+              So nothing was rendered, and no claim is made about audio. Use the live route
+              instead - this sends real MIDI to Gervill, the JDK's built-in synthesizer, and you
+              should hear a chord:
+
+              ```kotlin
+              clip.playTo("Gervill")
+              ```
+
+              Or to any other port `MidiDevices.outputs()` lists in box 3.
+              """.trimIndent()
+          }
+
+          showMidiRoll(clip)
+          markdown("main", report)
+  - execute: { box: midi_write, property: code }
+  - await: {}
+  - execute: { box: midi_read, property: code }
+  - await: {}
+  - execute: { box: midi_devices, property: code }
+  - await: {}
+  - execute: { box: midi_audition, property: code }
+  - await: {}

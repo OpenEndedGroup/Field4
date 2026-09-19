@@ -1,0 +1,146 @@
+name: chart_clip
+description: >
+  A figure that does not fit inside itself. Four boxes: the corner plot as it looks now, the same
+  figure with `clip = false` — which is the behaviour that shipped `sharp_edge.png` on
+  `public/docs/tetgen.md` — a long note wrapping and not wrapping, and the numbers behind both,
+  read off the drawn geometry rather than described.
+
+  Open the document and run box 2. The plot becomes a stamp in one corner of an empty rectangle.
+  The switch is the single word `clip` on the line the box points at, and the box prints the
+  bounds that make the difference: a panel fits the geometry's OWN bounds, so anything outside the
+  declared frame does not get cropped, it shrinks everything else.
+
+  `dev_docs/chart_clip_and_note.md` is the write-up, and the saved document at
+  `dev_docs/agents/demos/chart_clip/` is this same scene.
+operations:
+  - create:
+      box: clip_on
+      name: 1 - The corner, clipped
+      frame: { x: 60.0, y: 60.0, w: 440.0, h: 136.0 }
+      properties:
+        code: |
+          // A magnified corner of a body far larger than the window — the shape of figure that
+          // finds this bug, because it is the one that needs an explicit domain. The outline is
+          // 2 x 3; the window is 0.24 x 0.24 around one of its corners.
+          val outline = listOf(
+              -1.0 to -1.5, 1.0 to -1.5, 1.0 to 1.5, -1.0 to 1.5, -1.0 to -1.5)
+
+          val c = Chart(title = "one corner of a 2 x 3 outline", xLabel = "x", yLabel = "y")
+              .line("outline", outline.map { it.first }, outline.map { it.second })
+          c.width = 780.0; c.height = 440.0
+          c.xDomain = 0.82 to 1.06
+          c.yDomain = 1.32 to 1.56
+
+          showChart(c)
+
+          // `plotRect` is the rectangle the axes bound, and the one mark geometry is clipped to.
+          // `toFLines()` is the whole figure in pixels, and its union bounds are exactly what
+          // `linesToHTML` publishes to the panel. Everything is inside the 780 x 440 asked for.
+          val ps = c.toFLines().flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
+          println("plotRect: " + c.plotRect())
+          println("drawn:    %.0f,%.0f %.0fx%.0f".format(
+              ps.minOf { it.x }, ps.minOf { it.y },
+              ps.maxOf { it.x } - ps.minOf { it.x }, ps.maxOf { it.y } - ps.minOf { it.y }))
+  - create:
+      box: clip_off
+      name: 2 - The same figure, unclipped
+      frame: { x: 900.0, y: 60.0, w: 440.0, h: 136.0 }
+      properties:
+        code: |
+          // One word different from box 1, and it is the behaviour that shipped sharp_edge.png.
+          val outline = listOf(
+              -1.0 to -1.5, 1.0 to -1.5, 1.0 to 1.5, -1.0 to 1.5, -1.0 to -1.5)
+
+          val c = Chart(title = "the same corner, unclipped", xLabel = "x", yLabel = "y")
+              .line("outline", outline.map { it.first }, outline.map { it.second })
+          c.width = 780.0; c.height = 440.0
+          c.xDomain = 0.82 to 1.06
+          c.yDomain = 1.32 to 1.56
+          c.clip = false                                  // <-- poke this one word
+
+          showChart(c)
+
+          // The panel does not crop what falls outside the frame. It fits the geometry's own
+          // bounds, so the axes are scaled down until the stray outline fits beside them.
+          val ps = c.toFLines().flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
+          val w = ps.maxOf { it.x } - ps.minOf { it.x }
+          val h = ps.maxOf { it.y } - ps.minOf { it.y }
+          println("drawn bounds: %.0fx%.0f for a %.0fx%.0f frame".format(w, h, c.width, c.height))
+          println("a panel therefore draws this figure at %.0f%% of its declared size"
+              .format(100.0 * minOf(c.width / w, c.height / h)))
+  - create:
+      box: note_wrap
+      name: 3 - A note, wrapped and not
+      frame: { x: 60.0, y: 640.0, w: 500.0, h: 136.0 }
+      properties:
+        code: |
+          // The other half of the same property. A note used to be one unwrapped line; this one
+          // is 142 characters, and it is verbatim the note the tetgen corner figure shipped with
+          // before someone shortened it by hand to work around exactly this.
+          val note = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
+              "(1.0, 1.5); every level set cuts it off, and halving h halves what is left."
+
+          fun figure(clip: Boolean) =
+              Chart(title = "a long note", xLabel = "x", yLabel = "y", note = note)
+                  .line("ramp", (0..10).toList(), (0..10).toList())
+                  .also { it.width = 780.0; it.height = 440.0; it.clip = clip }
+
+          showChart(figure(clip = true))
+
+          // Flip the argument to `false` and re-run: the note goes back to one line running off
+          // the right edge, and the whole figure shrinks to fit beside it.
+          listOf(true, false).forEach { on ->
+              val ps = figure(on).toFLines().flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
+              val w = ps.maxOf { it.x } - ps.minOf { it.x }
+              println("clip = %-5s  figure %4.0f px wide in a 780 px frame  ->  %3.0f%%"
+                  .format(on, w, 100.0 * minOf(1.0, 780.0 / w)))
+          }
+  - create:
+      box: clip_marks
+      name: 4 - Every mark kind, at the edge
+      frame: { x: 900.0, y: 640.0, w: 500.0, h: 136.0 }
+      properties:
+        code: |
+          // Clipping is not only about lines. Every mark kind is cut against plotRect, and the
+          // interesting cases are the ones that used to be cut WRONG rather than not at all:
+          // a bar was clamped in y but not in x, and `coerceIn` left a bar wholly off the axis
+          // as a one-pixel smear along the frame instead of nothing.
+          val c = Chart(title = "half of everything is outside", xLabel = "x", yLabel = "y")
+              .area("area", (0..40).toList(), (0..40).map { it * 0.6 - 6.0 })
+              .line("line", (0..40).toList(), (0..40).map { 22.0 - it * 0.9 })
+              .points("points", (0..40).toList(), (0..40).map { 4.0 + it * 0.4 })
+              .rule(11.0, "an in-window rule")
+              .rule(99.0, "a rule off the axis")
+          c.xDomain = 8.0 to 32.0
+          c.yDomain = 0.0 to 20.0
+
+          showChart(c)
+
+          // Nothing outside the plot rectangle, and the off-axis rule is not drawn at all --
+          // off the axis it has no honest position, so it gets none. Count only the MARK lines:
+          // the tick labels, the title and the footnote live outside plotRect on purpose, and
+          // counting those would be measuring the wrong thing.
+          val plot = c.plotRect()
+          println("plotRect: $plot")
+          listOf("area", "line", "points").forEach { name ->
+              val ns = c.toFLines().filter { it.label?.startsWith(name) == true }
+                  .flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
+              val over: Double = ns.maxOf { p ->
+                  val px = p.x.toDouble(); val py = p.y.toDouble()
+                  maxOf(plot.x - px, px - (plot.x + plot.w), plot.y - py, py - (plot.y + plot.h), 0.0)
+              }
+              println("  %-7s %3d nodes, worst %.2f px outside plotRect".format(name, ns.size, over))
+          }
+          // `points` is the one that is not zero, and it is not a clip failure. A dot is dropped
+          // when its CENTRE leaves the window, not cut in half, so a dot sitting on the edge puts
+          // its own radius -- 3 px by default -- outside. Half a disc hanging off the axis reads
+          // as a rendering artefact; a whole dot on the line does not.
+          println("lines labelled 'a rule off the axis': " +
+              c.toFLines().count { it.label == "a rule off the axis" })
+          println("lines labelled 'an in-window rule':  " +
+              c.toFLines().count { it.label == "an in-window rule" })
+  - launch: { box: clip_on, property: code }
+  - launch: { box: clip_off, property: code }
+  - launch: { box: note_wrap, property: code }
+  - launch: { box: clip_marks, property: code }
+  - await: { wait: pending }

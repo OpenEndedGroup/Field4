@@ -44,13 +44,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 119 transcripts on every build, at three
-depths. 67 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 135 transcripts on every build, at three
+depths. 78 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-45 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+50 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1211,6 +1211,146 @@ wants an audio device.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/faust_polyphony/metadata.edn)
 
+### alife_script
+
+**Giving one agent a program.** `afield.stdlib.alife_script` adds a per-agent behaviour layer to ALife:
+the nine `alife_*.kt` files already there advance a whole population with one `step(params)` call, and
+this lets an *individual* agent sequence behaviours, wait on simulation time, hold named phases, run
+bounded concurrent sub-behaviours, and compose steering drives from whichever of them are active right
+now. Three pure-CPU boxes: one agent whose entire program is "orbit that point", then six sites and
+twenty-four agents showing a division of labour that one global rule does not buy, then phases —
+flock, scatter, flock, scatter. The clock is a fixed step and the world is seeded, so the same document
+run twice is the same run, including across JVMs. `dev_docs/ALIFE.md` is the write-up.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/alife_script/metadata.edn)
+
+### alife_walls
+
+**A world with walls.** Before this, `ScriptWorld` was a bare rectangle: the only spatial thing an
+agent could say was `avoidEdges(margin)`, and the only thing it could steer around was another agent.
+Now there are obstacles, the collision that stops an agent crossing one is **swept** rather than
+discrete, and `route()` plans a way round rather than pressing into it. Three boxes: one barrier and
+three answers to hitting it (`SLIDE`, `BOUNCE` with restitution, `STOP`, with the contact counts and
+end positions printed so the three are compared rather than described), routed seek against direct
+seek on a maze, and following a wall while climbing a light. Swept collision is the part worth reading
+for — a discrete test lets a fast agent step straight through a thin wall between two frames, and that
+failure looks like an agent ignoring geometry rather than like a timestep problem.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/alife_walls/metadata.edn)
+
+### chart_clip
+
+**A figure that does not fit inside itself.** Four boxes: the corner plot as it looks now, the same
+figure with `clip = false` — the behaviour that shipped `sharp_edge.png` on the TetGen page — a long
+note wrapping and not wrapping, and the numbers behind both read off the drawn geometry rather than
+described. Run box 2 and the plot becomes a stamp in one corner of an empty rectangle. The switch is a
+single word, and the reason it is so destructive is worth knowing: a panel fits the geometry's *own*
+bounds, so anything outside the declared frame is not cropped — it shrinks everything else.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/chart_clip/metadata.edn)
+
+### chart_primitive
+
+**`Chart` — the FLine plot primitive**, in four boxes, one per thing the primitive is for: a chart in
+one call, a DataFrame charting its own columns, marks that hover and click because they set `onClick`
+and `hoverColor` rather than because anyone configured them, and `Chart.expect` — a claim drawn as a
+band with the data that breaks it recoloured and counted, which is the plot counterpart of
+`Table.expect`. Everything lowers to `List<FLine>` and goes out through `Box.lines`' own renderer, so
+the axes, the tick labels and the legend are glyph outlines and SVG rather than a raster or a
+third-party JS chart.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/chart_primitive/metadata.edn)
+
+### completion_rank_at_scale
+
+**Completion ranking at corpus scale**, over the checked-in recording of 578 carets — no GPU, no
+window, no sidecar. Three boxes: the corpus itself with its payload distribution, the *real*
+`KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn` rather
+than a fixture of what it used to answer, and the whole decision re-scored through the shipped
+weights. The third box shells out to `tools/rank_weight_lab.py` and wants a spec file
+`afield.FieldSuggestPresentationTest` drops; if it says so, run that test once.
+`dev_docs/completion_rank_at_scale.md` is the written-up version, with the sweep and the falsification
+behind it.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/completion_rank_at_scale/metadata.edn)
+
+### keyframe_key_discovery
+
+**Whether the keyframe browser can show you your own keys.** Three boxes, no GPU and no window — a
+`KeyframeScope` needs neither, and each box writes its key directory into a fresh temp dir so nothing
+lands in the document. Six keys named `a b c d d2 d3`, the shapes a real session actually produced,
+browsed twice in one box: the top panel uses the last pattern that session tried and finds two of the
+six, and now *says so*, with a button that widens it in one click. Then junk against damage — the two
+are not the same and the browser has to tell them apart — and a saved slot that applies to nowhere.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/keyframe_key_discovery/metadata.edn)
+
+### logging_layer
+
+**Channels, sinks, and the three different rules that select on a channel.** Six boxes, one per thing
+on the logging page, and every one reads the real objects a running Field is using rather than a
+description of them: `LogDispatcher`'s live sink list, `ConsoleMute`'s actual mute set, `LogStream`'s
+actual subscription filter. The reason to run these rather than read them is box 3 —
+`ConsoleMute.isMuted` compares the **whole** channel string, the pinned console splits on commas and
+compares a tag, and `LogStream`'s filter takes any case-insensitive substring, so one word selects
+three different sets of lines and box 3 makes a real subscriber prove it.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/logging_layer/metadata.edn)
+
+### midi_clip
+
+**MIDI files, written and read back.** Four pure-CPU boxes, no device required to run them: two
+mini-notation patterns rendered into a two-track `MidiClip` and written as a format-1 Standard MIDI
+File, that file read back with no knowledge of what wrote it and turned into a `PatPattern` — the PPQ,
+the tempo and the track split survive the round trip or the comparison says so — then the MIDI ports
+this machine can actually see, and an audition through them. Boxes 1 and 2 pass a file through the
+temp directory, so run 1 first; 3 and 4 are independent of both. On a machine with no ports, box 3
+prints none, which is the answer rather than an error.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/midi_clip/metadata.edn)
+
+### pattern_condense
+
+**The shortest way to write a rhythm down.** `patCondense` searches Field's own mini-notation for the
+shortest string that plays the rhythm it is given, and accepts a candidate only by *playing* it: every
+one goes back through `pat(...)` and its events are compared to the target's. That is why box 1 draws
+pairs rather than printing strings — the lower lane of a pair **is** the string in its label, rendered,
+so a search that is wrong shows up as two lanes that do not coincide. Box 2 condenses 300 random masks
+and recomputes every figure the search named, from `bjorklund` and `kolakoskiMask` rather than off the
+label: noise compresses about three times worse than a real figure, and that separation is the claim.
+Box 3 closes the loop — a bar rendered to samples, transcribed, and condensed back into `60(3,8)`,
+with nothing between the render and the transcription looking at the pattern.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/pattern_condense/metadata.edn)
+
+### read_only_session
+
+**Read-only mode, from the inside.** Two boxes, no GPU, no network, no setup — and a document whose
+point is to be opened **twice**. A `saved{}` counter that counts up in an ordinary session and cannot
+in a read-only one, and a box on what the flag is (`./field.sh --read-only`, `AFIELD_READ_ONLY=1`,
+`-Dafield.readOnly=true`), what a box can ask about it, and which writes are refused rather than
+silently dropped. Read-only is what lets a committed document be opened without Field writing a
+backup, a screenshot, history metrics and an operation transcript back into the folder it came from —
+which is why every demo under `dev_docs/agents/demos/` tells you to pass the flag.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
+
+### solidsl_inverse
+
+**A Solid you can differentiate — and therefore solve.** `afield.solidsl` writes a 3D solid down as a
+value and had two readings of it, a marchable distance field and Manifold's exact CSG; both are
+*evaluations*, and neither changes what you can ask the notation for. This is the third reading. Three
+boxes, no Manifold, no GPU, no window — marching cubes and the mesh rasteriser are both pure Kotlin.
+The exact gradient checked against central differences on the spot, with `segments` **absent** from
+the slot list because an integer facet count has no derivative; an inverse fit that recovers three
+parameters seeded 42%, 45% and 112% wrong, the loss falling twenty orders of magnitude in fourteen
+iterations with the seed and fitted renders in the same box so the counterfactual is not a remembered
+number; then the seven refusals, which carry *reasons* rather than nulls, and the one failure mode
+that matters — a swallowed child under a hard `Union` is dead, because a pointwise `min` gives the
+whole derivative to whichever child is nearest, and it presents as a *converged* optimisation.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/solidsl_inverse/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
@@ -1397,6 +1537,19 @@ encoders on first use. Needs a camera, which the build does not have, so it is c
 evaluated here.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/onnx_webcam_live/metadata.edn)
+
+### python_cells
+
+**Python cells, with a Kotlin box as their language root.** Five boxes: a root that stays Kotlin and
+four children that run as Python because the root says so — print appearing inline beside the line that
+made it, a namespace shared across the cells because they are one interpreter rather than four, the JVM
+importable from Python, and `fig.show()` landing in the box. That the root stays Kotlin is the design
+rather than an accident: the toggle swaps the execution of a root's **children**, never of the root, and
+its `mainLanguage` property is what makes the four boxes below Python. This one has a prerequisite the
+other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
+started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
 
 ## visionOS device scenes
 
@@ -2044,6 +2197,60 @@ into the sampling window, which `marchingCubes` leaves open with two boundary lo
 closes. See [the walkthrough](chain_rectsl_spacetime.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn)
+
+### frame_history_reprojection
+
+**Temporal reprojection you can see going wrong.** Four boxes — a renderer, a lit scene of twenty-five
+spheres with the camera slowly turning, a chain accumulating the frame into a reprojected history, and
+a fourth cycling the four debug views every 150 frames. Reprojection answers *where was this pixel last
+frame*, and it needs a debug view because a wrong answer still renders a plausible picture. Each mode
+fails differently: **beauty** ghosts behind the spheres if the reprojection never arrives; **backward
+motion** goes grey *while the camera turns* if it is stuck at the identity; **previous UV** is the only
+one that shows a constant offset, because an offset inside a *difference* is invisible; and
+**availability** is green with a thin red band on the edge the camera is turning away from — entirely
+green means the flag is hard-wired on, entirely red means the CPU validity rule rejects everything.
+That band is the argument for the whole view: when reprojection is right, beauty and availability
+disagree about nothing, and when it is wrong beauty still looks fine. The layer is
+`FabricatePassSpec.frameHistory` and `FabricatePassLibrary.temporalAccumulate`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/frame_history_reprojection/metadata.edn)
+
+### path_tracer_instrument
+
+**The path tracer, with an instrument.** Six boxes: a renderer, the tracer with a log, the instrument
+in one line, the convergence curve, an integrator swapped live, and the integrator put back. The
+subject is one line — `display("output", tracer)` — and what it used to produce: 376 bytes, roughly 330
+of them the wrapper `<div>`, because `PathTracingRenderer` is not a data class and had no
+`registerValuePrinter` entry, so `ValueVisualizer` fell all the way to `formatFallbackObject`. Every
+`afield.four` type the tracer is built out of was in the same position: the object with the most to say
+about itself in a running renderer was the one that said the least. Boxes 4 and 5 swap the integrator
+underneath the instrument and put it back, which is the part a printed line cannot do.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/path_tracer_instrument/metadata.edn)
+
+### path_tracing_emitters
+
+**Two lamps in the dark, with emitter sampling flipped on and off.** Two boxes: a renderer, and a grey
+floor, a red wall, a white sphere and two small lamps that are the only light in the scene — the
+environment is black. Box 2 flips exactly one flag every 256 samples and prints which way it is set.
+Off, the image is a blizzard of black and white speckle and the sphere is barely legible; on, the same
+scene at the same sample count is clean, with a soft shadow under the sphere and a cool tint on its
+right from the smaller lamp. Flipping the flag resets accumulation, so the two estimators are always
+compared at the same budget rather than at whatever each had happened to accumulate.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_emitters/metadata.edn)
+
+### path_tracing_medium
+
+**Shafts of light through haze.** Two boxes: a renderer, and a slatted strip light over a hazed room
+whose `mediumDensity` cycles through four values every 192 samples, so the same geometry is drawn
+clear, thin and thick, over and over. A participating medium is the case where "light travels in
+straight lines between surfaces" stops being true — the integrator has to sample a scattering event
+*along* the ray, and the visible result is the beam itself rather than only what it lands on. Cycling
+the density rather than picking one is what makes that legible: the geometry never moves, so everything
+that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is the write-up.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
 
 ## Graphics building blocks
 

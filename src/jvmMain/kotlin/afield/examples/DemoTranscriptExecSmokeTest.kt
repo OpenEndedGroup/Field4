@@ -260,6 +260,22 @@ object DemoTranscriptExecSmokeTest {
         // the whole 25-term corpus under four schedulers, which is the same work
         // `stdlib.lambda-terms.smoke` does and takes about three seconds.
         "interaction_nets_lambda",
+        // Sixteen saved demo documents under `dev_docs/agents/demos/` were invisible to this
+        // harness, to the welcome screen and to the gallery — openable with `./field.sh` and
+        // nothing else. These are those, promoted: nine of them already shipped an agent-authored
+        // `build.yaml` and went over nearly as they were, the rest were assembled from the saved
+        // document's own boxes. All pure CPU; the ones that open a window are in COMPILE_ONLY.
+        "alife_script",
+        "alife_walls",
+        "chart_clip",
+        "chart_primitive",
+        "completion_rank_at_scale",
+        "keyframe_key_discovery",
+        "logging_layer",
+        "midi_clip",
+        "pattern_condense",
+        "read_only_session",
+        "solidsl_inverse",
         // Four independent pure-CPU keyframer boxes. A KeyframeScope needs no GPU: a uniform
         // `Structure` is constructible bare and its bindings are plain maps, the camera box does
         // CameraPose arithmetic without ever touching a live `Camera`, and persistence writes to a
@@ -408,6 +424,14 @@ object DemoTranscriptExecSmokeTest {
         // above: the plan arithmetic is covered without a device by FabricatePassChainTest, every
         // shader by FabricateShaderCompileTest, and the numbers each cell of the tree holds — in
         // both producers, against closed forms — by the four.quadtree-chain.smoke jvm-main.
+        // The four demo documents that open their own Window and Renderer, and the one whose
+        // cells are Python and need an interpreter with JEP's native library found before Field
+        // started — all promoted out of `dev_docs/agents/demos/` with the rest.
+        "frame_history_reprojection",
+        "path_tracer_instrument",
+        "path_tracing_emitters",
+        "path_tracing_medium",
+        "python_cells",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
@@ -696,6 +720,16 @@ object DemoTranscriptExecSmokeTest {
             val code = target.code
             if (code.isBlank()) {
                 println("[compile]   $id: no Kotlin `code` (shader-only box) — skipped")
+                continue
+            }
+            // A box whose `code_language` is a guest language holds source this compiler does not
+            // read. Feeding a Python cell to K2 does not report "this is not Kotlin", it reports
+            // every word of it as an unresolved reference — 150 diagnostics for `python_cells`,
+            // none of them about anything. The guest runtimes have their own checks; what this
+            // harness owns is the Kotlin, including the Kotlin *root* that makes a box a guest one.
+            val codeLanguage = target.getPropertyRaw("code_language")?.toString()?.trim().orEmpty()
+            if (codeLanguage.isNotEmpty() && !codeLanguage.equals("kotlin", ignoreCase = true)) {
+                println("[compile]   $id: code_language=$codeLanguage, not Kotlin — skipped")
                 continue
             }
             val diags = compileBoxOnly(target)

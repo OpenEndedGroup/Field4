@@ -294,7 +294,49 @@ private val kotlinDefaultImportedTypeNames = setOf(
     "ShortArray",
     "String",
     "Throwable",
-    "Unit"
+    "Unit",
+    // The names from the default-imported *packages*, which the package check below cannot reach:
+    // it only fires on a qualified name, and a preamble writes `MutableList`, not
+    // `kotlin.collections.MutableList`. Their absence made a box publishing
+    // `prop<MutableList<T>>` look like a preamble that could not compile — which is the opposite
+    // of true, since these are the types Kotlin has in scope before anything is imported.
+    "AbstractList",
+    "AbstractMap",
+    "AbstractSet",
+    "ArrayList",
+    "Collection",
+    "Comparator",
+    "Error",
+    "Exception",
+    "Grouping",
+    "HashMap",
+    "HashSet",
+    "IndexedValue",
+    "Iterable",
+    "Iterator",
+    "Lazy",
+    "LinkedHashMap",
+    "LinkedHashSet",
+    "List",
+    "ListIterator",
+    "Map",
+    "MatchResult",
+    "MutableCollection",
+    "MutableIterable",
+    "MutableIterator",
+    "MutableList",
+    "MutableListIterator",
+    "MutableMap",
+    "MutableSet",
+    "Pair",
+    "RandomAccess",
+    "Regex",
+    "Result",
+    "RuntimeException",
+    "Sequence",
+    "Set",
+    "StringBuilder",
+    "Triple"
 )
 
 private val defaultImportedPackages = setOf(
