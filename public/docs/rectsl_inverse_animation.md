@@ -275,8 +275,8 @@ val before = x.describe()
 val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
 val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
 
-// The numbers are the point, but they are easier to believe as motion. Same renderer as the figure
-// at the top of this page, two bands instead of three: the scene as authored, and the scene solved.
+// The same fit as motion. Same renderer as the figure at the top of this page, two bands instead
+// of three: the scene as authored, and the scene solved.
 // `->x` is the only channel with unknowns in it, so y is the node's own track in both bands.
 fun missOf(track: Track<Double>): Double =
     targets.maxOf { kotlin.math.abs(track.sample(it.time) - it.value) }
@@ -338,8 +338,8 @@ arithmetic:
 import afield.stdlib.Functions
 
 // clamp01(floor(x) + 1) is claimed to be an EXACT step: 1 where x >= 0, 0 below it, for every x.
-// "Exact" is a strong word, so it is checked here rather than asserted — including at x = 0 and at
-// the negative integers, which are the only places a floor-based step can get the boundary wrong.
+// The check below includes x = 0 and the negative integers, which are the only places a
+// floor-based step can get the boundary wrong.
 val step = with(Functions) { identity(Functions.Domain.ALL).floor().offsetY(1.0).clamp(0.0, 1.0) }
 
 val grid = (-4000..4000).map { it / 1000.0 }
