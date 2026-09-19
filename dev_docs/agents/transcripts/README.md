@@ -173,6 +173,11 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   samples so the two estimators are always compared at the same budget. Needs a GPU.
 - `path_tracing_medium.yaml`: **shafts of light through haze**, with `mediumDensity` cycling through
   four values over fixed geometry. Needs a GPU.
+- `kolakoski_euclid.yaml`: **Kolakoski counts, Euclid places** — the word says how many hits a group
+  gets, `bjorklund` says where inside it they sit. A flat bar of twelve onsets rolled against
+  `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
+  sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
+  `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
 - `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
   candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
   strings. Includes the loop closed from audio: samples in, `60(3,8)` out.

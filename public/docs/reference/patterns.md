@@ -883,7 +883,7 @@ leaves a lone hit or a lone rest: the same self-description, in bigger blocks.
 
 `src/jvmMain/kotlin/afield/four/synth/PatKolakoski.kt` — [read the source](source/jvmMain/afield/four/synth/PatKolakoski/)
 
-**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md)
+**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #patkolakoski-kt-functions }
 

@@ -57,8 +57,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 136 transcripts on every build, at three
-depths. 79 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 137 transcripts on every build, at three
+depths. 80 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -288,6 +288,35 @@ this file.
 ![Piano roll showing the three structure-choice combinators producing four, two and three events](assets/pattern_language/structure-choice.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pattern_language_composition/metadata.edn)
+
+### kolakoski_euclid
+
+**Kolakoski counts, Euclid places.** A Euclidean rhythm spreads a density you chose in advance as
+evenly as it can; the Kolakoski word is the only sequence over `{1,2}` that is its own run-length
+encoding. Crossing them gives a rhythm that is locally maximally even and globally self-describing:
+the word says how many hits a group of slots gets, `bjorklund` says where inside the group they sit.
+Box 1 is the flat version in two lines — eight groups of three slots, twelve onsets — rolled against
+`euclid(12,24)` and `kolakoski(24)` at the *same* density, so what separates the three lanes is
+distribution and nothing else, and played at two of those distributions so it is a sound as well as
+a figure. Box 2 runs the same rule recursively: each pulse takes the next term as its child count,
+`bjorklund` places the children on the parent's own grid, and each child runs until the next one, so
+a level always tiles the bar and a count of 1 is a pulse that holds. The level sizes are then the
+word's own partial sums — 1, 1, 2, 3, 4, 7 — and the last four levels play one voice each, coarse
+loud and fine quiet, because every coarse onset is also a fine one and at equal gain the hierarchy
+collapses into a pile. Box 3 pins a player to the *canvas* rather than to an output, through the
+`customization` property, which is saved with the document.
+
+Three things the scene is careful about, each of which was wrong first. The bar is 24 slots, so at
+the docs-usual `cps = 2` it plays 24 hits a second and fuses into a growl; it runs at 0.35. The
+audio is `showDirtAudio`, which mixes the real Dirt-Samples offline, where `showPatAudio` renders
+`sd` and `hh` as filtered white noise; with no sample library on the machine every token falls back
+to that synth voice and the scene still runs. And every output has its own channel and every channel
+is opened, because an unopened channel is collapsed to zero height and a second write to one channel
+replaces the first.
+
+![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
 
 ### pitch_transcription_roundtrip
 

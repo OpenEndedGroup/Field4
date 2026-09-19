@@ -667,6 +667,50 @@ a lone hit. `kolakoskiInv` and `kolakoskiFull` complete the family the way `eucl
 `euclidFull` do, and `->kolakoski` is in [RectSL](rectsl_cheatsheet.md#rhythm-in-space) for laying
 the figure out in space rather than in time.
 
+### Counting with one, placing with the other
+
+The two figures answer different questions, which means they compose. Read the Kolakoski word as a
+sequence of *densities* rather than durations — each term saying how many hits go into the next
+group of slots — and let the Euclidean algorithm decide where inside the group those hits sit:
+
+```diffstatic {data-lang=kotlin}
+val counts = kolakoskiWord(8)                                  // 1 2 2 1 1 2 1 2 — sums to 12
+val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })   // [bd(1,3)] [bd(2,3)] …
+```
+
+Eight groups of three slots is a twenty-four slot bar carrying twelve onsets, which is exactly the
+density of `euclid(12,24)` — so the two lanes differ only in *distribution*. The Euclidean one is a
+flat alternation, because that is what maximal evenness over that density is. The hybrid bunches:
+the groups the word gives two hits to play them a slot apart, the ones it gives one sit alone, and
+the pattern of which is which is the word describing itself. Locally maximally even, globally
+self-describing.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/kolakoski-euclid.png" wait="2" capture="box" open-outputs="true" name="pat-doc-kolakoski-euclid"}
+:::static
+// Twelve onsets in twenty-four slots, three ways: the hybrid, the maximally even
+// figure of the same density, and the word read as run lengths instead.
+val counts = kolakoskiWord(8)
+val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })
+showPatRollOf(
+    "kolakoski x euclid" to hybrid,
+    "euclid(12,24)" to struct(euclid(12, 24), pat("bd")),
+    "kolakoski(24)" to struct(kolakoski(24), pat("bd")),
+    title = "12 onsets in 24 slots, three ways", cycles = 2
+)
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
+
+The same rule run recursively is a rhythmic hierarchy: let the word say how many children a pulse
+has, let `bjorklund` place them on the parent's own slot grid, and let each child run until the next
+one so a level always tiles the bar. A count of one is then a pulse that holds rather than splits,
+and the level sizes come out as the word's own partial sums — one, one, two, three, four, seven. The
+whole scene, both figures and the audio, is the `kolakoski_euclid`
+[transcript](agent_transcripts.md#kolakoski_euclid), openable from the welcome screen.
+
 ### The shortest way to write a rhythm down
 
 `patCondense` runs the parser backwards. Give it a rhythm and it hands back the shortest string that

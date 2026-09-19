@@ -283,6 +283,14 @@ object DemoTranscriptExecSmokeTest {
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",
+        // Kolakoski counts crossed with Euclidean placement. Pure CPU: the figures are
+        // `showPatRollOf` (SVG into an output channel) and the audio is `showDirtAudio` /
+        // `patRenderStereoDirt`, which mixes samples into a buffer offline — no audio device, and
+        // no sample library on a build machine just means every token falls back to `patVoice`.
+        // The third box writes a `.wav` into the *session's* document folder and a base64 player
+        // into its own `customization`, both of which land in the scratch document the harness
+        // opens, not in the tree.
+        "kolakoski_euclid",
         // Four independent pure-CPU keyframer boxes. A KeyframeScope needs no GPU: a uniform
         // `Structure` is constructible bare and its bindings are plain maps, the camera box does
         // CameraPose arithmetic without ever touching a live `Camera`, and persistence writes to a
