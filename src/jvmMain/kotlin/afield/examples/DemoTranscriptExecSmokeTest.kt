@@ -254,6 +254,12 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
         // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
         "autodiff_worked_example",
+        // λ-terms compiled to interaction nets, reduced and read back, against a substitution
+        // evaluator that shares nothing with them. Pure CPU: no Window, no Renderer, no service —
+        // the only drawing is `showInteractionOverview`, which is FLines into an output panel. Runs
+        // the whole 25-term corpus under four schedulers, which is the same work
+        // `stdlib.lambda-terms.smoke` does and takes about three seconds.
+        "interaction_nets_lambda",
         // Four independent pure-CPU keyframer boxes. A KeyframeScope needs no GPU: a uniform
         // `Structure` is constructible bare and its bindings are plain maps, the camera box does
         // CameraPose arithmetic without ever touching a live `Camera`, and persistence writes to a

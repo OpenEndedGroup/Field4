@@ -15,3 +15,6 @@ largeFrames:
   docs_capture/threejs_editable_fill_pixels.yaml#fill_editable_overlap: Large box is the visual subject of the editable-fill comparison capture.
   docs_capture/threejs_editable_fill_pixels.yaml#fill_static_planes: Large box is the visual subject of the editable-fill comparison capture.
   docs_capture/threejs_editable_fill_pixels.yaml#stroke_editable_curve: Large box is the visual subject of the editable-stroke comparison capture.
+  interaction_nets_lambda/metadata.edn#lambda-normalise: Saved demo document rather than a transcript; the box holds the eight-term table it prints, which is 80 columns wide.
+  interaction_nets_lambda/metadata.edn#lambda-reduction: Saved demo document; the box holds the five-panel reduction figure, which is ~1300px of graphic by design.
+  interaction_nets_lambda/metadata.edn#lambda-oracle: Saved demo document; the box holds the 25-row corpus table and its four-scheduler summary.

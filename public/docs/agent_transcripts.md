@@ -44,8 +44,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 118 transcripts on every build, at three
-depths. 66 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 119 transcripts on every build, at three
+depths. 67 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -798,6 +798,30 @@ packing settles instead of chattering across the contact.
 ![twelve discs before and after a differentiable packing](assets/autodiff/autodiff_pack.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/autodiff_worked_example/metadata.edn)
+
+### interaction_nets_lambda
+
+A λ-term **compiled to an interaction net**, reduced by local rules, and read back — checked against an
+ordinary capture-avoiding substitution evaluator that shares nothing with it. Three pure-CPU boxes, no
+window and no setup. Interaction nets reduce locally: two agents meet at their principal ports, that
+pair is replaced, nothing else in the graph is consulted. β-reduction becomes one such rule, and the
+thing β normally hides — copying a term you are about to use twice — becomes explicit work done by
+`DUP` agents the reduction can see and count. The first box normalises eight terms and compares each
+answer to the oracle with `alphaEquivalent` rather than `==`, because a readback invents its own binder
+names. The second draws `(λx. x x) (λy. y)` as five panels, one per reaction, and the agent counts go
+6, 4, 6, 4, 2 — *up* at `dup-lam`, which is the point: duplication is work done in the open rather than
+by copying a subtree behind your back. The third runs all 25 named closed terms under four schedulers:
+25 of 25 agree with the oracle and 25 of 25 give the same de Bruijn key whichever order fires, so the
+scheduler is a free choice and the answer is not. The surprise is in the first table — on the
+exponentiation row the net is left standing at ten agents for a term that needs eleven nodes to write
+down, because it never stopped being shared and the unfolding happens in the *readback*, which treats a
+fan as a bracket on the path through the term rather than as a node of it. The word *optimal* is
+deliberately never used: there are no brackets and no croissants here, so the sharing is correct but
+nothing bounds how many times a fan may be copied. `dev_docs/INTERACTION_NETS_LAMBDA.md` is the
+write-up, and `tools/run_field_tests.py --id stdlib.lambda-terms.smoke` asserts the same three claims
+headlessly.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/interaction_nets_lambda/metadata.edn)
 
 ### morpho_circuit_search
 

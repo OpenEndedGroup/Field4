@@ -140,6 +140,14 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Open **Live Metal** in Field4Vision to see it on a visionOS device or simulator.
 - `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
+- `interaction_nets_lambda.yaml`: **λ-calculus on interaction nets**, three pure-CPU boxes. A term is
+  compiled to a net, reduced by local rules, and read back, with every answer checked against a
+  capture-avoiding substitution evaluator that shares nothing with it — 25 of 25 named closed terms
+  agree, and agree under four different schedulers. One box draws a single reduction as five panels
+  whose agent counts go *up* at the duplication rule, which is the whole argument for nets: copying is
+  explicit work rather than something β hides. No window, no GPU, no setup. The library is
+  `afield/stdlib/lambdaterms.kt` and `afield/stdlib/interactionnets.kt`; the write-up is
+  `dev_docs/INTERACTION_NETS_LAMBDA.md`.
 - `four_summary_pyramid.yaml`: a **summarised quadtree over a raster** as one pass chain — three
   moving blobs, a 2x2 reduction pyramid that carries mergeable statistics rather than colour, and an
   overlay that draws each cell's centroid and 1-sigma covariance ellipse. A 2x2 reduction already
