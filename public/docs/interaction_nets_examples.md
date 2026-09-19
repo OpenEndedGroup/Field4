@@ -22,15 +22,17 @@ What is checked, and how: `readback(reduce(compile(t)))` is asserted α-equivale
 
 This page used to end that paragraph by saying the sharing was "correct over the 25-term corpus, checked against the oracle, rather than maximal". The corpus part is still true. The general part is false, and since 2026-09-19 there is a second test that says so with a population rather than an adjective.
 
-`stdlib.lambda-terms.property` generates closed terms from a seed instead of taking a hand-written list, and runs the same oracle identity over them: 4 000 simply-typed terms and 300 untyped ones, each under four schedulers, 17 200 checks. Four of those are a **wrong answer carrying no warning mark of any kind**. The smallest, twelve nodes and four β-steps:
+`stdlib.lambda-terms.property` generates closed terms from a seed instead of taking a hand-written list, and runs the same oracle identity over them: 4 000 simply-typed terms and 300 untyped ones, each under four schedulers, 17 200 checks. Four of those are a **wrong answer carrying no warning mark of any kind**, which is the case worth separating out — a marked answer at least tells you not to trust it. The smallest of the quiet four:
 
 | | |
 |---|---|
-| term | `(\x z. x z x) (\x y. y y)` |
-| correct | `λz. λy. y y` |
-| net | `λa. λb. b ⊥` |
+| term | `(\m n f x. f (f x)) (\f. f) (\x. x) ((\n f x. f (n f x)) (\n f x. n f x))` |
+| correct | `λx. λx'. x (λx'1. x (λx''. x (λx''. x x' x'') x'') x'1)` |
+| net | `λa. λb. a (λc. a (λd. a (λe. a b e) d) e)` |
 
-A duplicated abstraction that erases its own argument loses one copy of the answer to the eraser. Three more are pinned as named regressions, and the four schedulers disagree with *each other* on 9 of the 4 300 generated terms — so confluence is a property of the corpus too, and not of the rule book.
+One variable occurrence is wrong, and out of scope. Nothing in the answer says so.
+
+The smallest disagreement of *any* kind is smaller — twelve nodes and four β-steps, `(\x z. x z x) (\x y. y y)`, where a duplicated abstraction that erases its own argument loses one copy of the answer to the eraser. But that one reads back as `λa. λb. b ⊥`, so it announces itself, and it is the easy case. Four counterexamples are pinned as named regressions, two quiet and two marked, and the four schedulers disagree with *each other* on 9 of the 4 300 generated terms — so confluence is a property of the corpus too, and not of the rule book.
 
 The one clean line to draw is by type: **not one of the 4 000 simply-typed terms disagrees, under any scheduler.** Self-application, and an erasing abstraction under duplication, are exactly the shapes simple types forbid. This is not Lamping's optimal reduction — there are no brackets and no croissants — and without that bookkeeping a distinct label per fan is not enough once reduction starts copying the labels. `dev_docs/INTERACTION_NETS_LAMBDA.md` has the whole ledger, the shrunk counterexamples, and what it would take to fix.
 

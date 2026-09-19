@@ -44,8 +44,11 @@ expect:
  * `λa. λb. a (λc. a (λd. a (λe. a b e) d) c)` — one variable occurrence wrong, and out of scope. All of them are in
  * [knownDisagreements], shrunk and pinned.
  *
- * The split that *did* survive is by family, and it is the most useful thing here: **every counterexample is
- * untypable**. Not one of the 4_000 simply-typed terms disagrees, under any scheduler. The two shapes that break the
+ * The split that *did* survive is by family, and it is the most useful thing here: **no typed term disagrees**.
+ * Not one of the 4_000 simply-typed terms disagrees, under any scheduler. Note the direction: that is what was
+ * measured. The converse, "every counterexample is untypable", is an inference — there is no type checker here,
+ * the untyped soup family is not guaranteed untypable, and only the four pinned terms have been checked by
+ * inspection (all four self-apply). The two shapes that break the
  * fan bookkeeping — self-application and an abstraction that erases its own argument under duplication — are exactly
  * the shapes simple types forbid.
  *

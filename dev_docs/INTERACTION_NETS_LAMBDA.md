@@ -134,7 +134,7 @@ Three more are shrunk and pinned as named regressions:
 
 The first is twelve nodes and four β-steps, nowhere near any budget: a duplicated abstraction that *erases* its argument loses one copy of the answer to the `ERASE`. That is the erase side of the bookkeeping, not the fan-label side — the failure is wider than the bullet above guessed.
 
-**The most useful split is by family: every counterexample is untypable.** Not one of the 4 000 simply-typed terms disagrees, under any scheduler. Self-application and an erasing abstraction under duplication are precisely the shapes simple types forbid, which is a real, if narrow, statement of where the front end can be trusted: *on simply-typable closed terms, 16 000 checks found nothing.*
+**The most useful split is by family, and it is worth stating in the direction that was actually measured: no *typed* term disagrees.** Not one of the 4 000 simply-typed terms disagrees, under any scheduler. The converse — "every counterexample is untypable" — is an *inference* rather than a measurement: there is no type checker in this branch, the untyped soup family is not guaranteed untypable, and only the four pinned terms have been checked by inspection (all four self-apply). Every counterexample came from the untyped family, which is weaker than every counterexample being untypable. Self-application and an erasing abstraction under duplication are precisely the shapes simple types forbid, which is a real, if narrow, statement of where the front end can be trusted: *on simply-typable closed terms, 16 000 checks found nothing.*
 
 **Confluence does not hold in general.** It holds on the 25-term corpus. Over the generated population the four orders disagree on 9 terms.
 
