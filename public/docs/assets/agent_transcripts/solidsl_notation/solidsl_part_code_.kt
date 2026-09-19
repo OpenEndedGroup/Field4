@@ -55,8 +55,8 @@ println()
 val q = SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 80.0)
 
 if (!ManifoldLibrary.isAvailable) {
-    // The honest fallback: the field lowering alone. Everything above still ran, because
-    // none of it needed Manifold — the structural answers are free.
+    // The fallback when Manifold is missing: the field lowering alone. Everything above
+    // still ran, because none of it needed Manifold — the structural answers are free.
     println(ManifoldLibrary.describe())
     println("Showing the field lowering instead: one level set for the WHOLE part,")
     println("including the plate, whose six faces did not need approximating.")

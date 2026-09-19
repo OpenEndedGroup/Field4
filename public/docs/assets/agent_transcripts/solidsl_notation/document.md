@@ -83,7 +83,7 @@ println("  after simplifying:  ${noBlend.simplified().exactRefusal()?.why ?: "(n
 <!-- field-box id="solidsl_part" index="1" -->
 
 ```edn [field-box id="solidsl_part" role="properties"]
-{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 95 "characters" 4017 "sha256" "9efc204947cb1ca2729165eecba6421f180f4795aef029f19bfbb683464425a1"}]}
+{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 95 "characters" 4035 "sha256" "863ba45558be4fc26a70c6c8cab4f026bebba32d44291a7fc621de42b756cdfc"}]}
 ```
 
 ```kotlin [field-property box="solidsl_part" name="code" path="solidsl_part_code_.kt"]
@@ -144,8 +144,8 @@ println()
 val q = SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 80.0)
 
 if (!ManifoldLibrary.isAvailable) {
-    // The honest fallback: the field lowering alone. Everything above still ran, because
-    // none of it needed Manifold — the structural answers are free.
+    // The fallback when Manifold is missing: the field lowering alone. Everything above
+    // still ran, because none of it needed Manifold — the structural answers are free.
     println(ManifoldLibrary.describe())
     println("Showing the field lowering instead: one level set for the WHOLE part,")
     println("including the plate, whose six faces did not need approximating.")
