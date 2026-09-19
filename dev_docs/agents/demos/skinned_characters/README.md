@@ -34,6 +34,12 @@ and cross-checks its bounds against the CPU bridge's. Two independent readers of
 the tracer walks Assimp and stages world-space triangles, the bridge packs a 12-float vertex buffer
 and builds a `TriMesh`.
 
+**4 — The same deformation on the GPU, no shader change.** Field's own glTF module, Field's own
+bundled shaders, a real Vulkan window. `CpuSkinner` rewrites the position and normal fields of the
+packed vertex buffer `applyToMesh` already uploads, so nothing in the pipeline knows the mesh is
+skinned. Needs a renderer: run it with `--graphics-context`, or under your own renderer box. Edit
+`poseTime` at the top and re-run — `0` is a straight tube, `1` is the 60-degree bend.
+
 ## The rig
 
 `dev_docs/agents/fixtures/skinning/bending_cylinder.gltf` — two bones, 60 vertices, 96 triangles,
@@ -63,6 +69,11 @@ box 3  rest pose   96 triangles, x in [-0.5000, 0.5000]
        bend t=1    96 triangles, x in [-1.9821, 0.5000]
        warning: Skinned mesh 'cylinder' is traced deformed at 'bend' t=1.0s.
        max |difference| between the tracer and the CPU bridge = 0.0000000
+
+box 4  gpu skinned at t = 1.00 -> tip x -1.9821, top y 3.4330
+       (run with --graphics-context; the native window screenshot is
+        dev_docs/agents/evidence/skinning/gpu_t100.png, and gpu_t000 / gpu_t050 are the same
+        box at poseTime 0 and 0.5 — a straight tube, a 30-degree bend, a 60-degree bend)
 ```
 
 The method, the numbers with their populations and the traps are in

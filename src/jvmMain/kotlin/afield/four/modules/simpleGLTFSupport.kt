@@ -216,6 +216,16 @@ object GltfSupport {
         var skin: GltfSkinning.MeshSkin? = null
 
         /**
+         * The GPU buffers [applyToMesh] holds when it is called with `reuseBuffers = true`.
+         *
+         * Body properties rather than constructor parameters for the same reason as [bindMatrix]:
+         * a `FrameBufferGroup` has no business in a `data class`'s `equals`. `null` until the first
+         * reusing call, and never populated by the default path.
+         */
+        private var heldVertexBuffer: afield.four.buffers.BufferParameters? = null
+        private var heldIndexBuffer: afield.four.buffers.BufferParameters? = null
+
+        /**
          * Upload this instance's buffers and set the push constants the bundled shaders expect.
          *
          * @param model the model matrix, composed into `modelView` as `view * model`. The default is
@@ -227,11 +237,29 @@ object GltfSupport {
          *   `modelView` is a **push constant**, so a box that writes it again per frame (`loop {
          *   module.VertexData.modelView = camera.m() }`) overwrites this and gets the origin back.
          *   Compose the model matrix in there too if you drive the camera that way.
+         *
+         * @param reuseBuffers keep this instance's GPU buffers between calls instead of allocating a
+         *   fresh pair. **Required for a per-frame call**, and off by default so that no existing
+         *   caller changes behaviour.
+         *
+         *   Without it, every call builds a new `BufferParameters` through `defaultBuffer { … }` —
+         *   and `BufferParameters.result`, the cache that makes `toBuffer()` hand back the same
+         *   allocation twice, lives on *that object*. So a call allocates a fresh `FrameBufferGroup`
+         *   and a fresh `VulkanBuffer`. Once at setup, which is what the documentation shows, that
+         *   is invisible. Sixty times a second — which is what a CPU-skinned character needs, since
+         *   [afield.four.modules.CpuSkinner] rewrites [buffers] in place and the new contents have
+         *   to be re-uploaded — it is a leak at frame rate.
+         *
+         *   With it on, the two `BufferParameters` are held on this instance, so `toBuffer()`
+         *   returns the same allocation and the `write { }` below simply overwrites it. One
+         *   consequence worth knowing: the buffers are bound to the renderer in scope at the *first*
+         *   such call, so do not share one instance across two renderers with this on.
          */
         fun applyToMesh(
             m: Mesh,
             camera: Camera = fromContext(),
             model: Matrix4f = bindMatrix ?: bindPose.toMatrix(),
+            reuseBuffers: Boolean = false,
         ) {
 
             m.initializePushConstantsFromModule(m.inside)
@@ -244,13 +272,15 @@ object GltfSupport {
             m.push["materialBaseColor"] = material.baseColor
             m.push["useVertexColor"] = 1
 
-            val vertexData = defaultBuffer {
-                size = (buffers.vertexCount * 12).floats
-            }.buffer
+            fun freshVertexParameters() = defaultBuffer { size = (buffers.vertexCount * 12).floats }
+            fun freshIndexParameters() = defaultBuffer { size = buffers.indexCount.ints }
 
-            val indexData = defaultBuffer {
-                size = buffers.indexCount.ints
-            }.buffer
+            val vertexData = if (!reuseBuffers) freshVertexParameters().buffer else {
+                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).buffer
+            }
+            val indexData = if (!reuseBuffers) freshIndexParameters().buffer else {
+                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).buffer
+            }
 
             m.push["vertexBuffer"] = vertexData
             m.push["indexBuffer"] = indexData
