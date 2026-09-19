@@ -51,7 +51,7 @@ import kotlin.math.sqrt
  * block by block, the way [FieldAudioEngine] does, and returns what came out. No audio device is
  * involved and nothing is re-derived.
  *
- * # Block size does not change the output
+ * # The output is the same at any block size
  *
  * A scheduler that rounded each note to a block boundary would sound fine and be wrong, and the
  * symptom is that its output changes when the engine's buffer size does. [patSynthRenderStereo] takes
