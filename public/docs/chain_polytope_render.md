@@ -67,7 +67,7 @@ pale. Spreading the specular lobe averages the map and the gold tint comes back.
 
 ## The numbers each hop owes the next
 
-Run this and nothing below is taken on trust. It needs no renderer: everything up to the trace is
+Run this to read the counts off your own build. It needs no renderer: everything up to the trace is
 CPU work.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="240" padding="18" timeout="120" name="chain-polytope-readout" embed=true}
@@ -152,8 +152,8 @@ Four of those numbers are cross-checks rather than reports.
 * **120 welded vertices.** The truncated icosidodecahedron has 120 vertices, so the weld recovering
   exactly that number says the triangulator's duplicated corners were duplicates and not a shape.
 * **Two volumes that agree.** Manifold integrates the solid in double precision; Field sums signed
-  tetrahedra over float triangles in `signedVolume`. They share no code, so their agreeing to the
-  last few digits is evidence about the bridge rather than about either of them.
+  tetrahedra over float triangles in `signedVolume`. They share no code, so a disagreement here
+  points at the bridge rather than at either of them.
 * **Genus 0 twice.** Field's `genus()` reads indices and Manifold's `genus` reads its own
   half-edge structure.
 * **Area times thickness.** A wall of constant thickness over a convex body has volume `A·t` less a
@@ -190,13 +190,12 @@ a scene of half a million for the sake of three. `importTriMesh` counts and skip
 reports what it skipped. That is most of the reason the bridge exists rather than being a call to
 `PathTraceScene.mesh` with a list comprehension in front of it.
 
-## Two meshes, for two jobs
+## One mesh to measure, another to draw
 
 `normals = true` splits a vertex per face at every hard edge so each face can carry its own normal.
 That is what makes a render read as facets, and it is also why that mesh shares no edges and reports
-the wrong genus. The measuring above all runs on the plain mesh, and the render runs on the split
-one. Asking either to do the other's job produces a true statement about a different mesh, which is
-worse than an error.
+the wrong genus. Measure on the plain mesh and render the split one. Asking either to do the other's
+job gets you a true statement about a different mesh rather than an error.
 
 ## Where each piece is documented
 
