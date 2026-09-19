@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <svg  style='overflow:visible' xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1556" height="300">
-	<path fill="white" d="M0 0L1556 0L1556 300L0 300L0 0Z"/>
 	<path fill="none" stroke="#C7CCD6" stroke-width="1" stroke-miterlimit="4" d="M2 2L298 2L298 298L2 298L2 2Z"/>
 	<path fill="none" stroke="#BDEBEE" stroke-width="1.88" stroke-miterlimit="4" stroke-opacity="0.58039218" d="M135.83736 59.912884L128.39484 103.54624"/>
 	<path fill="none" stroke="#978CF8" stroke-width="3.5899999" stroke-miterlimit="4" stroke-opacity="0.90196079" d="M126.91039 129.94635L112.16122 170.90196"/>

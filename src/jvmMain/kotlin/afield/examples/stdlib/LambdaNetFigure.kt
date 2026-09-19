@@ -73,18 +73,14 @@ object LambdaNetFigure {
         }
 
         val width = stages.size * PANEL_WIDTH + (stages.size - 1) * GUTTER
-        val background = fline {
-            moveTo(0.0, 0.0)
-            lineTo(width, 0.0)
-            lineTo(width, PANEL_HEIGHT)
-            lineTo(0.0, PANEL_HEIGHT)
-            close()
-            filled = true
-            stroked = false
-            color = vec(1.0, 1.0, 1.0, 1.0)
-        }
 
-        val svg = drawToSVG(listOf(background) + panelLines, width, PANEL_HEIGHT)
+        // NO BACKGROUND PLATE. This used to prepend an opaque white rectangle over the whole figure,
+        // and it was the only one of the 30 committed SVGs under public/docs to paint a background at
+        // all -- so on the dark documentation site it showed up as a white slab with the page dark
+        // around it. Every sibling figure is transparent and inherits the page, and now so is this.
+        // The strokes and discs are pale (#BDEBEE, #C7C5E4, #FFF5E6 and friends), which is why they
+        // read fine either way; the plate was never doing any work.
+        val svg = drawToSVG(panelLines, width, PANEL_HEIGHT)
         File(target).writeText(svg)
 
         println("term        : $TERM")
