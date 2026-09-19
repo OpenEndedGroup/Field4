@@ -6,9 +6,46 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
- * Octree + Barnes-Hut utilities for SoA x/y/z particle data.
- * Designed to minimize per-step allocations.
- * Mutating operations (`build`, `clear`) are not thread-safe.
+ * Approximate inverse-square forces over a particle cloud, by summarising distant groups as a
+ * single mass each.
+ *
+ * Every particle acting on every other one is a quadratic sum. Barnes-Hut trades a bounded error
+ * for `n log n`: build an octree over the positions, give each node the total mass and centre of
+ * mass of everything beneath it, then walk the tree once per particle and stop at any node that
+ * subtends a small enough angle, using its summary instead of descending into it.
+ * [OctreeBarnesHut] is that, over separate `x`/`y`/`z` `FloatArray`s, which is the layout
+ * [SimdVerlet] holds its state in, though the solver itself never calls this.
+ * [OctreeBarnesHutPool] hands out reusable instances.
+ *
+ * A step is two calls, `build` then `applyForces`, and the masses the second one uses are the ones
+ * the first captured. `applyForces` accumulates into the acceleration arrays with `+=`, so what it
+ * computes adds to whatever the caller has already written there.
+ *
+ * The kernel is `g * m / r²` along the vector from the particle to a node's centre of mass, which
+ * makes the sign of `g` the choice of what the law is for. Positive attracts, and is gravity;
+ * negative repels, which is how a force-directed graph layout uses one of these to avoid comparing
+ * every pair of nodes. `theta` sets how rough the answer is: zero descends all the way to
+ * individual particles and is the exact pairwise sum, larger values accept more summarised nodes
+ * and do less work. `softening` is added in quadrature to the distance, bounding the force at
+ * short range so that a near-coincidence does not produce an arbitrarily large acceleration.
+ *
+ * The node arrays grow by half again when they must and are never handed back, and `clear` only
+ * resets the node count, so a tree rebuilt every frame allocates nothing on the serial build path.
+ * The parallel path allocates its eight octant index arrays per `build`. Mutation, meaning `build`
+ * and `clear`, is not thread-safe. A parallel `applyForces` is, because each worker takes its
+ * traversal stack from a `ThreadLocal`; the serial path instead uses the one stack it shares with
+ * `forEachCuboid`.
+ *
+ * Particles are separated by comparing a coordinate against a node's centre, so two at exactly the
+ * same position fall into the same child at every depth and subdivision has nothing to terminate
+ * on. Jitter coincident inputs before building.
+ */
+
+/**
+ * An octree with Barnes-Hut mass summaries over separate `x`/`y`/`z` arrays.
+ *
+ * Designed to minimize per-step allocations. Mutating operations (`build`, `clear`) are not
+ * thread-safe.
  */
 class OctreeBarnesHut(
     initialCapacity: Int = 1024,
@@ -35,13 +72,47 @@ class OctreeBarnesHut(
     private val forceStackTLS = ThreadLocal.withInitial { IntArray(max(1, capacity)) }
     private var parallelScratchTrees: Array<OctreeBarnesHut>? = null
 
+    /**
+     * How many octree nodes the last `build` left behind, and the number `applyForces` and
+     * `forEachCuboid` read as "is there a tree here".
+     *
+     * A subdivision creates all eight children at once, so this counts empty cells too, and it is
+     * a size rather than a capacity: the arrays behind it stay as large as the largest tree this
+     * instance has ever held.
+     */
     var nodeCount: Int = 0
         private set
 
+    /**
+     * Forgets the tree without releasing any memory, leaving the instance ready to `build` again.
+     *
+     * This is what [OctreeBarnesHutPool] calls on release, and it is a single assignment: the node
+     * arrays keep whatever they grew to.
+     */
     fun clear() {
         nodeCount = 0
     }
 
+    /**
+     * Builds the octree over the first [count] entries of [x], [y] and [z], and computes a mass and
+     * a centre of mass for every node.
+     *
+     * The root is the cube containing the whole cloud, centred on the midpoint of its bounding box
+     * with a half-width of the largest of the three extents, floored at `1e-3` so that a
+     * degenerate cloud still has a box. A `count` of zero or less leaves an empty tree.
+     *
+     * A leaf's mass is taken from [massIn] if that is given; failing that from [invMass] as
+     * `1 / invMass[i]`, which makes a particle pinned by a zero inverse mass weigh **nothing** and
+     * so exert no force on anything; and failing both, every particle weighs 1. Node masses are
+     * summed up the tree from there, and this is the only point at which mass enters, so changing a
+     * mass array without rebuilding changes nothing.
+     *
+     * [buildExecutor] enables a parallel build, which additionally needs `allowParallelBuild` and a
+     * [count] of at least [minParallelCount]. It sorts the particles into the root's eight octants,
+     * builds one subtree per octant on the executor, and copies the eight results into this
+     * instance's arrays with their child indices rebased. The subtrees are cached per instance, so
+     * the repeated cost is the eight index arrays.
+     */
     fun build(
         x: FloatArray,
         y: FloatArray,
@@ -276,6 +347,24 @@ class OctreeBarnesHut(
         return created
     }
 
+    /**
+     * Walks the tree once per particle and adds the resulting acceleration into [ax], [ay] and
+     * [az].
+     *
+     * The accumulation is `+=`, so this composes with gravity, springs and anything else the caller
+     * has already written into those arrays. A node is used as a single mass when its full width
+     * divided by its softened distance falls below [theta], and is descended into otherwise; a
+     * zero-mass node is skipped whole, and a particle does not attract itself. Each contribution is
+     * `g * m * d / (r² + softening²)^(3/2)`, with `d` the vector from the particle to the node's
+     * centre of mass, so a negative [g] makes the law repulsive.
+     *
+     * [massIn] and [invMass] are **not read**. The masses are the ones `build` captured, and these
+     * two parameters exist only to let a call site pass the same arrays to both functions.
+     *
+     * [forceExecutor] spreads the particles over threads in chunks of at least [minChunk], each
+     * with its own traversal stack; below that threshold, or with no executor, the walk is serial
+     * and uses the instance's shared stack.
+     */
     fun applyForces(
         x: FloatArray,
         y: FloatArray,
@@ -411,6 +500,15 @@ class OctreeBarnesHut(
         return local
     }
 
+    /**
+     * Hands every node's cube to [consumer] as a centre and a half-width, root first.
+     *
+     * This is how the subdivision is inspected: where the tree spent its depth is where the
+     * particles are crowded. The root is depth 0, so a [depthLimit] of 0 yields one cube and a
+     * limit of 1 yields the root and its occupied octants. Order below the root is otherwise
+     * unspecified, and an empty tree yields nothing. The traversal borrows the instance's shared
+     * stack, so it cannot run beside a serial `applyForces` on the same tree.
+     */
     fun forEachCuboid(depthLimit: Int = Int.MAX_VALUE, consumer: (cx: Float, cy: Float, cz: Float, half: Float) -> Unit) {
         if (nodeCount == 0) return
         ensureStackCapacity(nodeCount)
@@ -442,6 +540,13 @@ class OctreeBarnesHut(
         }
     }
 
+    /**
+     * `forEachCuboid`, drawn: appends each node's cube to [out] as a wireframe.
+     *
+     * Every cube arrives as six subpaths, the two z-faces as closed rectangles and the four
+     * connecting edges one at a time, so the whole tree is one `FLine` that a renderer can stroke
+     * in a single pass. [out] is appended to rather than cleared.
+     */
     fun appendCuboidsTo(out: FLine, depthLimit: Int = Int.MAX_VALUE) {
         forEachCuboid(depthLimit) { cxi, cyi, czi, hi ->
             appendCuboidTo(out, cxi, cyi, czi, hi)
@@ -672,6 +777,15 @@ private fun appendCuboidTo(out: FLine, cx: Float, cy: Float, cz: Float, half: Fl
     out.lineTo(vec(minX, maxY, maxZ))
 }
 
+/**
+ * Reusable [OctreeBarnesHut] instances, so that a per-frame rebuild reuses one tree's node arrays
+ * instead of growing fresh ones.
+ *
+ * [maxTrees] is both how many trees are constructed up front and the most the pool will hold, and
+ * it is floored at one. With [allowGrow] left true an `acquire` past that count allocates another
+ * tree rather than failing, and `release` then drops the surplus; with it false the pool throws
+ * when it is empty. Nothing here is synchronised, so one pool belongs to one thread.
+ */
 class OctreeBarnesHutPool(
     private val maxTrees: Int,
     private val initialCapacity: Int = 1024,
@@ -685,6 +799,13 @@ class OctreeBarnesHutPool(
         }
     }
 
+    /**
+     * Takes a tree out of the pool, allocating one at [initialCapacity] if the pool is empty and
+     * [allowGrow] permits it, and failing otherwise.
+     *
+     * The tree comes back with no nodes, since `release` clears it on the way in, but with its
+     * arrays still at whatever size its largest previous tree needed.
+     */
     fun acquire(): OctreeBarnesHut {
         if (pool.isNotEmpty()) {
             return pool.removeAt(pool.size - 1)
@@ -695,6 +816,13 @@ class OctreeBarnesHutPool(
         error("OctreeBarnesHutPool exhausted")
     }
 
+    /**
+     * Clears [tree] and returns it to the pool, dropping it instead if the pool is already at
+     * [maxTrees].
+     *
+     * Releasing a tree this pool never handed out is accepted, and releasing one twice leaves two
+     * entries pointing at it, so pair every `acquire` with exactly one `release`.
+     */
     fun release(tree: OctreeBarnesHut) {
         tree.clear()
         if (pool.size < max(1, maxTrees)) {
