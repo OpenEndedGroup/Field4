@@ -19,9 +19,9 @@ val chamfer = 0.8       // edge chamfer, mm, done as a Minkowski sum with a smal
 run {
 
 if (!ManifoldLibrary.isAvailable) {
-    // An honest fallback rather than a blank box: build the same shape with Field's own
-    // marching cubes so the thing Manifold adds is visible by its absence. This mesh is
-    // watertight but NOT a manifold you could subtract from — that is the whole point.
+    // A fallback rather than a blank box: build the same shape with Field's own marching
+    // cubes, so what Manifold adds shows by its absence. This mesh is watertight but NOT
+    // a manifold you could subtract from.
     println(ManifoldLibrary.describe())
     val approx = marchingCubes(
         sdfSmoothUnion(
@@ -69,8 +69,8 @@ val part = Solid.scope {
 
     val rough = Solid.union(listOf(plate) + bosses) - Solid.union(bores + slot)
 
-    // The chamfer. A Minkowski sum with a small octahedron rounds every edge at once —
-    // the operation there is no honest way to fake by displacing vertices.
+    // The chamfer. A Minkowski sum with a small octahedron rounds every edge at once,
+    // which displacing vertices cannot reproduce.
     if (chamfer > 0.0) {
         val tool = Solid.hullOfPoints(
             listOf(

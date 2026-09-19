@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="manifold_bracket" index="0" -->
 
 ```edn [field-box id="manifold_bracket" role="properties"]
-{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 144 "characters" 6721 "sha256" "a975196b878b030f20a0b7f8a7a61a706bfc308e293ee51d9974f2e87633bebd"}]}
+{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 144 "characters" 6652 "sha256" "ea9a2957b64b8e6f50cd37b8ce679d53a1bcb2dbfc12e31ed4bd86fc9a748706"}]}
 ```
 
 ```kotlin [field-property box="manifold_bracket" name="code" path="manifold_bracket_code_.kt"]
@@ -36,9 +36,9 @@ val chamfer = 0.8       // edge chamfer, mm, done as a Minkowski sum with a smal
 run {
 
 if (!ManifoldLibrary.isAvailable) {
-    // An honest fallback rather than a blank box: build the same shape with Field's own
-    // marching cubes so the thing Manifold adds is visible by its absence. This mesh is
-    // watertight but NOT a manifold you could subtract from — that is the whole point.
+    // A fallback rather than a blank box: build the same shape with Field's own marching
+    // cubes, so what Manifold adds shows by its absence. This mesh is watertight but NOT
+    // a manifold you could subtract from.
     println(ManifoldLibrary.describe())
     val approx = marchingCubes(
         sdfSmoothUnion(
@@ -86,8 +86,8 @@ val part = Solid.scope {
 
     val rough = Solid.union(listOf(plate) + bosses) - Solid.union(bores + slot)
 
-    // The chamfer. A Minkowski sum with a small octahedron rounds every edge at once —
-    // the operation there is no honest way to fake by displacing vertices.
+    // The chamfer. A Minkowski sum with a small octahedron rounds every edge at once,
+    // which displacing vertices cannot reproduce.
     if (chamfer > 0.0) {
         val tool = Solid.hullOfPoints(
             listOf(
@@ -166,7 +166,7 @@ part.close()
 <!-- field-box id="manifold_levelset_slices" index="1" -->
 
 ```edn [field-box id="manifold_levelset_slices" role="properties"]
-{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5491 "sha256" "0f5ddc2470804450ef178c11019a9ca524c723a8cf946cb8b33312d94a42dbf1"}]}
+{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5463 "sha256" "bc8efab2468e9a49edff74492094642fb15b3335904fe284299d9409dcce7191"}]}
 ```
 
 ```kotlin [field-property box="manifold_levelset_slices" name="code" path="manifold_levelset_slices_code_.kt"]
@@ -237,8 +237,8 @@ println("genus      ${solid.genus}")
 println("volume     ${"%.1f".format(solid.volume)} mm^3")
 println("mesh       ${solid.triangleCount} triangles")
 
-// The guarantee is the point: Field's own topology code, which shares nothing with
-// Manifold, agrees the surface is closed. Note the plain mesh — `normals = true` splits
+// Field's own topology code, which shares nothing with Manifold, agrees the surface is
+// closed. Note the plain mesh — `normals = true` splits
 // vertices at creases for shading, which is right for the picture and would make this
 // check read false for a reason that has nothing to do with the surface.
 val mesh = solid.toTriMesh()

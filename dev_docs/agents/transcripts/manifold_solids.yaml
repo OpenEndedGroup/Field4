@@ -38,9 +38,9 @@ operations:
           run {
 
           if (!ManifoldLibrary.isAvailable) {
-              // An honest fallback rather than a blank box: build the same shape with Field's own
-              // marching cubes so the thing Manifold adds is visible by its absence. This mesh is
-              // watertight but NOT a manifold you could subtract from — that is the whole point.
+              // A fallback rather than a blank box: build the same shape with Field's own marching
+              // cubes, so what Manifold adds shows by its absence. This mesh is watertight but NOT
+              // a manifold you could subtract from.
               println(ManifoldLibrary.describe())
               val approx = marchingCubes(
                   sdfSmoothUnion(
@@ -88,8 +88,8 @@ operations:
 
               val rough = Solid.union(listOf(plate) + bosses) - Solid.union(bores + slot)
 
-              // The chamfer. A Minkowski sum with a small octahedron rounds every edge at once —
-              // the operation there is no honest way to fake by displacing vertices.
+              // The chamfer. A Minkowski sum with a small octahedron rounds every edge at once,
+              // which displacing vertices cannot reproduce.
               if (chamfer > 0.0) {
                   val tool = Solid.hullOfPoints(
                       listOf(
@@ -234,8 +234,8 @@ operations:
           println("volume     ${"%.1f".format(solid.volume)} mm^3")
           println("mesh       ${solid.triangleCount} triangles")
 
-          // The guarantee is the point: Field's own topology code, which shares nothing with
-          // Manifold, agrees the surface is closed. Note the plain mesh — `normals = true` splits
+          // Field's own topology code, which shares nothing with Manifold, agrees the surface is
+          // closed. Note the plain mesh — `normals = true` splits
           // vertices at creases for shading, which is right for the picture and would make this
           // check read false for a reason that has nothing to do with the surface.
           val mesh = solid.toTriMesh()

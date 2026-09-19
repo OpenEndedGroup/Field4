@@ -65,8 +65,8 @@ println("genus      ${solid.genus}")
 println("volume     ${"%.1f".format(solid.volume)} mm^3")
 println("mesh       ${solid.triangleCount} triangles")
 
-// The guarantee is the point: Field's own topology code, which shares nothing with
-// Manifold, agrees the surface is closed. Note the plain mesh — `normals = true` splits
+// Field's own topology code, which shares nothing with Manifold, agrees the surface is
+// closed. Note the plain mesh — `normals = true` splits
 // vertices at creases for shading, which is right for the picture and would make this
 // check read false for a reason that has nothing to do with the surface.
 val mesh = solid.toTriMesh()
