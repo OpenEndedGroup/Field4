@@ -9,13 +9,12 @@ Open this directory as a Field document. Two boxes; press run on either.
 
 No GPU. No window. No graphics context. No AWT. `PngEncoder` → `display()`.
 
-## Why the backend cannot drift from the emitter
+## The backend only knows GLSL
 
 It interprets the emitted GLSL, and nothing else. The first box prints that GLSL beside the image
 it produced, and the text is not a description of what the CPU did: it **is** what the CPU did, byte
-for byte what a GPU is handed. The backend has no opinion about any StackSL word — it only knows
-GLSL. Before it existed, a claim about what a word does could only be checked by eye against a
-screenshot, or against a hand-written Kotlin twin of the same GLSL.
+for byte what a GPU is handed. The backend has no opinion about any StackSL word, so it cannot drift
+from the emitter.
 
 ## Agreement with a GPU
 
