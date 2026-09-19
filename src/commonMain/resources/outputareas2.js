@@ -509,12 +509,71 @@ function disclosureInterface(container) {
                 runPass(0);
         }
 
+        /**
+         * A `fixed` panel whose iframe states a size should be given that size, once.
+         *
+         * `autoSizeMode = "fixed"` turns auto-size off, which is right: a viewer keeps the size its
+         * author chose rather than being measured. But the iframe output view
+         * (`outputareas.kt:186-193`) sets that mode and applies the requested height to the IFRAME
+         * without ever sizing the PANEL, so the panel keeps the constants it was born with --
+         * `DEFAULT_W` x `DEFAULT_H` plus the header, i.e. 480 x 174 -- and no later pass corrects it
+         * because correcting it is exactly what `fixed` disabled. Dragging it was the only way out.
+         *
+         * So adopt the declared size here, under four deliberate limits:
+         *
+         *  - only for a `fixed` panel (a `content` panel already auto-sizes, and better);
+         *  - only from an IFRAME's own declared size, so the div-based Monaco editor disclosure at
+         *    `outputareas.kt:1039` -- also `fixed` -- is untouched;
+         *  - never against the user: `userSized` still wins;
+         *  - grow only, so this can never crop a panel that is already bigger.
+         *
+         * See `dev_docs/OUTPUT_PANEL_SIZING.md` for the trace, and
+         * `run_ui_regressions.py --id viewer-panel-sizing` for the pin.
+         */
+        function adoptDeclaredSizeForFixedPanel(id, d) {
+                if (!d || d.inline || !d.cw) return false;
+                const st = ensureState(id);
+                if (st.userSized) return false;
+
+                let best = { width: 0, height: 0 };
+                Array.from(d.cw.querySelectorAll("iframe")).forEach((iframe) => {
+                        if (!isElementVisible(iframe)) return;
+                        const size = iframeIntrinsicSize(iframe);
+                        if (size.width > best.width) best.width = size.width;
+                        if (size.height > best.height) best.height = size.height;
+                });
+                if (best.width <= 0 && best.height <= 0) return false;
+
+                const style = getComputedStyle(d.cw);
+                const paddingX = parsePixels(style.paddingLeft) + parsePixels(style.paddingRight);
+                const paddingY = parsePixels(style.paddingTop) + parsePixels(style.paddingBottom);
+                const clamped = clampSizeForId(
+                        id,
+                        Math.max(best.width + paddingX, headerWidth(d), Number(st.width) || DEFAULT_W),
+                        Math.max(best.height + paddingY, 20, Number(st.height) || DEFAULT_H)
+                );
+                if (Math.abs(clamped.width - (Number(st.width) || 0)) <= 1 &&
+                        Math.abs(clamped.height - (Number(st.height) || 0)) <= 1) {
+                        return false;
+                }
+
+                st.width = clamped.width;
+                st.height = clamped.height;
+                states.set(id, st);
+                applyOpen(id, d);
+                refreshConnectionLayoutForNested(id);
+                return true;
+        }
+
         function markContentChanged(id, reason = "content-change") {
                 const st = ensureState(id);
                 st.contentVersion = (st.contentVersion || 0) + 1;
                 states.set(id, st);
-                if (!st.userSized && usesContentAutoSize(disclosures.get(id))) {
+                const d = disclosures.get(id);
+                if (!st.userSized && usesContentAutoSize(d)) {
                         scheduleAutoSize(id, reason);
+                } else if (!st.userSized) {
+                        adoptDeclaredSizeForFixedPanel(id, d);
                 }
         }
 

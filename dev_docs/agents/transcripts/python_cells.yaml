@@ -1,0 +1,110 @@
+name: python_cells
+description: |
+  **Python cells, with a Kotlin box as their language root.** Five boxes: a root that stays Kotlin,
+  and four children that run as Python because the root says so.
+  
+    - **print, inline and in a block.** A single-line print appears beside the line that made it.
+    - **The namespace is shared with cell 1.** The cells are one interpreter, not four.
+    - **The JVM is importable.** Python reaching back into Field.
+    - **`fig.show()` lands in the box.** A plotly figure rendered into the output panel.
+  
+  The root is itself still Kotlin, and that is the design rather than an accident: the toggle swaps
+  the execution of a root's **children**, never of the root. Its `mainLanguage` property is what makes
+  the four boxes below Python.
+  
+  **This one has a prerequisite the other demos do not.** Field has to have found an interpreter with
+  JEP's native library in it *before it started*, or the four cells stay Kotlin and fail to compile —
+  `FIELD_PYTHON_VENV` pointing at a venv with `jep==4.3.1` matching `libs/jep-4.3.1.jar`, plus `numpy`
+  for cell 1, `plotly` for cell 4 and `jedi` for completion. `public/docs/python.md` has the recipe,
+  and the saved document at `dev_docs/agents/demos/python_cells/` is this same scene.
+operations:
+  - create:
+      box: python_root
+      name: "Python root -- children of this box run as Python"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        mainLanguage: python
+        isPythonRoot: true
+        code: |
+          // This box is the language ROOT, and is itself still Kotlin -- the toggle swaps the
+          // execution on a root's CHILDREN, never on the root (LanguageRuntimeSupport.kt:56-69).
+          // Its `mainLanguage` property is what makes the four boxes below Python.
+          println("the root stays Kotlin")
+  - create:
+      box: python_hello
+      name: "print, inline and in a block"
+      frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Python
+        code: |
+          # A single-line print appears inline, beside the line that made it.
+          import platform
+          import numpy as np
+
+          print("python", platform.python_version())
+
+          # A multi-line one gets a block of its own, and keeps its columns.
+          a = np.arange(12).reshape(3, 4)
+          print(a)
+  - create:
+      box: python_shared
+      name: "the namespace is shared with cell 1"
+      frame: { x: 60.0, y: 2040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Python
+        code: |
+          # There is one interpreter for the whole Field process, and one global namespace.
+          # `a` was never defined here -- it is still bound from cell 1. Run cell 1 first.
+          print("a is still here:", a.shape, a.sum())
+
+          # Which also means state survives between runs of this cell.
+          counter = globals().get("counter", 0) + 1
+          print("this cell has run", counter, "time(s)")
+  - create:
+      box: python_interop
+      name: "the JVM is importable"
+      frame: { x: 60.0, y: 3040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Python
+        code: |
+          # JEP embeds CPython *in-process*, so java.lang -- and anything else on Field's
+          # classpath -- is just another module, and this cell can reach its own Box.
+          from java.lang import System
+          from afield.python import PythonInterface
+
+          box = PythonInterface.thisBox
+
+          print("\n".join([
+              f"JVM       {System.getProperty('java.version')}",
+              f"this box  {box.getName()}",
+          ]))
+  - create:
+      box: python_plotly
+      name: "fig.show() lands in the box"
+      frame: { x: 60.0, y: 4040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Python
+        code: |
+          # plotly's default renderer starts a one-shot local server and asks the OS to open a
+          # browser. Field intercepts that and embeds the page in this box's "browser" channel.
+          import numpy as np
+          import plotly.graph_objects as go
+
+          t = np.linspace(0, 4 * np.pi, 400)
+          fig = go.Figure(go.Scatter(x=t, y=np.sin(t) * np.exp(-t / 10), mode="lines"))
+          fig.update_layout(template="plotly_dark", margin=dict(l=55, r=20, t=25, b=40))
+          fig.show()
+  - connect: { parent: python_root, child: python_hello }
+  - connect: { parent: python_root, child: python_shared }
+  - connect: { parent: python_root, child: python_interop }
+  - connect: { parent: python_root, child: python_plotly }
+  - execute: { box: python_root, property: code }
+  - await: {}
+  - execute: { box: python_hello, property: code }
+  - await: {}
+  - execute: { box: python_shared, property: code }
+  - await: {}
+  - execute: { box: python_interop, property: code }
+  - await: {}
+  - execute: { box: python_plotly, property: code }
+  - await: {}

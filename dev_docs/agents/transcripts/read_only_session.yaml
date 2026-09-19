@@ -1,0 +1,70 @@
+name: read_only_session
+description: |
+  **Read-only mode, from the inside.** Two boxes, no GPU, no network, no setup — and the point of this
+  document is to be opened **twice**.
+
+    - **A `saved{}` counter.** A value that persists into the document, incremented on each run. In an
+      ordinary session it counts up; in a read-only one it cannot, and what it does instead is the
+      subject.
+    - **How to see read-only mode.** What the flag is (`./field.sh --read-only`, `AFIELD_READ_ONLY=1`,
+      `-Dafield.readOnly=true`), what a box can ask about it, and which writes are refused rather than
+      silently dropped.
+
+  Read-only is what lets a committed document be opened without Field writing a backup, a screenshot,
+  history metrics and an operation transcript back into the folder it came from — which is why every
+  demo in `dev_docs/agents/demos/` tells you to pass the flag. The saved document at
+  `dev_docs/agents/demos/read_only_session/` is this same scene.
+operations:
+  - create:
+      box: a_saved_counter
+      name: "A saved{} counter"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // `saved {}` is per-box persistence: assign to it and it is on disk, read it next
+          // session and it is still there. The file is <document dir>/<box id>/runs.json.
+          //
+          // Run this box a few times in a NORMAL session and the count climbs across restarts.
+          // Run it in a READ-ONLY session and it climbs within the run and then forgets: the
+          // write is refused, and `~/.afield/logs/save_reload.log` says so with a
+          // `write-refused-read-only` line naming this property.
+          //
+          // Before 2026-09-07 the read-only case wrote the file anyway — including on the very
+          // first *read*, because with no file yet `saved {}` computes the default and writes it.
+          var runs by saved { 0 }
+
+          runs = runs + 1
+          println("this box has run $runs time(s)")
+  - create:
+      box: how_to_see_read_only_mode
+      name: "How to see read-only mode"
+      frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // Read-only mode, end to end.
+          //
+          // Open this document normally:      ./field.sh <workspace> -d read_only_session
+          // Open it read-only:                ./field.sh <workspace> -d read_only_session --read-only
+          //
+          // Read-only is also AFIELD_READ_ONLY=1, -Dafield.readOnly=true, or the agent
+          // backdoor's `open --read-only` for a single session.
+          //
+          // What to look for in a read-only session:
+          //
+          //   1. An amber pill at the top of the window: READ-ONLY, and in plain words that
+          //      nothing you change here will be saved.
+          //   2. Type in any box. The pill becomes a running count of the changes that are
+          //      going to be discarded. Cursor movement does NOT count -- Monaco's view state
+          //      is not part of the document.
+          //   3. Try to close or reload the window. The browser asks you to confirm, because
+          //      there is work to lose. Field has no explicit save, so this dialog is the only
+          //      moment a user would otherwise find out.
+          //   4. Drop a file onto the canvas. Refused, with a reason, instead of silently
+          //      copying it into a document that will not be written.
+          //
+          // Nothing in this document needs a GPU, a network, or any setup.
+          println("open me with --read-only and read the pill at the top of the window")
+  - execute: { box: a_saved_counter, property: code }
+  - await: {}
+  - execute: { box: how_to_see_read_only_mode, property: code }
+  - await: {}

@@ -1,0 +1,131 @@
+name: chart_primitive
+description: >
+  `Chart` — the FLine plot primitive. Four boxes, one per thing the primitive is for: a chart
+  in one call, a DataFrame charting its own columns, marks that hover and click because they
+  set `onClick`/`hoverColor` rather than because anyone configured them, and `Chart.expect` —
+  a claim drawn as a band with the data that breaks it recoloured and counted, which is the
+  plot counterpart of `Table.expect`.
+
+  Everything lowers to `List<FLine>` and goes out through `Box.lines`' own renderer, so the
+  axes, the tick labels and the legend are glyph outlines and SVG, not a raster and not a
+  third-party JS chart. The saved document at `dev_docs/agents/demos/chart_primitive/` is this same scene, and this
+  transcript is what built it.
+operations:
+  - create:
+      box: chart_one_call
+      name: 1 - A chart, in one call
+      frame: { x: 60.0, y: 60.0, w: 405.3, h: 136.0 }
+      properties:
+        code: |
+          import kotlin.math.exp
+          import kotlin.math.sin
+
+          // One call. `showChart` builds it, puts it on screen, and hands it back so you can
+          // keep asking it questions — the same shape as `showTable` and `showSignals`.
+          val t = (0..240).map { it / 240.0 * 6.2831853 }
+          val chart = showChart(
+              "damped sine" to t.map { exp(-it * 0.25) * sin(it * 2.0) },
+              "envelope" to t.map { exp(-it * 0.25) },
+              x = t,
+              title = "a chart, in one call",
+              xLabel = "t (radians)",
+              yLabel = "amplitude",
+          )
+
+          // The ticks are not this box's problem, and they are not the renderer's either:
+          // `niceTicks` is one public copy of Heckbert's algorithm that five files each had
+          // privately. The plot frame it landed on is readable too.
+          println(chart)
+          println("y ticks: " + niceTicks(-1.0, 1.0, 5))
+          println("plot frame: " + chart.plotRect())
+  - create:
+      box: chart_dataframe
+      name: 2 - A DataFrame charts itself
+      frame: { x: 634.2, y: 60.0, w: 463.9, h: 136.0 }
+      properties:
+        code: |
+          import org.jetbrains.kotlinx.dataframe.api.*
+
+          // A frame already renders as a table — that is the right compact form, because a frame
+          // is rows and columns first. This is the other question a reader has about a numeric
+          // column: what shape is it.
+          val runs = dataFrameOf("iteration", "residual", "step")(
+              0, 1.00, 0.50,
+              1, 0.62, 0.44,
+              2, 0.31, 0.39,
+              3, 0.18, 0.35,
+              4, 0.09, 0.31,
+              5, 0.05, 0.28,
+              6, 0.02, 0.25,
+          )
+
+          // No column named: the first numeric column becomes the x axis and the rest become
+          // series, each with a pickable points mark in the line's own colour.
+          showChart(runs, title = "a frame, charting its own columns")
+
+          // ...and the last expression is still the frame, so the table is right underneath it.
+          runs
+  - create:
+      box: chart_pick
+      name: 3 - Hover a bar, click a datum
+      frame: { x: 60.0, y: 226.0, w: 475.6, h: 136.0 }
+      properties:
+        code: |
+          // Bar and point marks set `onClick`, `hoverColor` and `label`, which is exactly what
+          // `Box.lines` looks for when it decides between the interactive SVG renderer and Skia's
+          // (someSkiko.kt:37). So hovering and clicking work on a chart nobody configured —
+          // by construction rather than by wiring.
+          //
+          // Hover a bar: it lights up. Click one: this handler runs, here, in this box.
+          val c = Chart(title = "hover a bar, then click one", yLabel = "gates")
+              .bars("cost", listOf("xor", "maj3", "adder", "mux", "parity"), listOf(6, 11, 27, 4, 19))
+
+          c.onPick = { pick ->
+              println("clicked ${pick.category} = ${pick.y} (index ${pick.index})")
+              println("  the hit itself: ${pick.hit.kind} at ${pick.hit.position}")
+          }
+
+          showChart(c)
+
+          // Set `pickable = false` for a figure whose points are scenery rather than data: it is
+          // one registered callback and one <g> per datum, which a ten-thousand-point scatter
+          // does not want.
+          println("marks: " + c.marks)
+  - create:
+      box: chart_expect
+      name: 4 - An assertion you can watch fail
+      frame: { x: 634.2, y: 226.0, w: 534.2, h: 136.0 }
+      properties:
+        code: |
+          import kotlin.math.exp
+
+          // `Chart.expect` is `Table.expect`'s counterpart, and it DRAWS the claim rather than
+          // only checking it: the accepted range becomes a band, the bound it names is ruled,
+          // the data outside recolours, and the footnote counts them. An unbounded side draws no
+          // edge — that is the visual difference between "at most 1e-6" and "0 to 1e-6".
+          val iterations = (0..40).toList()
+          val residual = iterations.map { i ->
+              val base = exp(-i * 0.22) * 1.5e-6
+              if (i == 11 || i == 23) base + 2.4e-6 else base   // two real overshoots
+          }
+
+          val c = Chart(
+              title = "residual per iteration",
+              xLabel = "iteration",
+              yLabel = "|r|",
+              note = "Adam, lr 0.05",
+          )
+              .line("residual", iterations, residual)
+              .points("residual", iterations, residual)
+              .expect(max = 1e-6, because = "converged below 1e-6")
+
+          showChart(c)
+
+          // And `deviations` hands the same list back, so a test asserts on the claim the figure
+          // makes rather than on its markup. This is the whole reason the primitive earns its keep.
+          facts(c.deviations.map { "iteration ${it.index}" to it.y })
+  - launch: { box: chart_one_call, property: code }
+  - launch: { box: chart_dataframe, property: code }
+  - launch: { box: chart_pick, property: code }
+  - launch: { box: chart_expect, property: code }
+  - await: { wait: pending }

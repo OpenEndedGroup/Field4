@@ -1,0 +1,196 @@
+name: path_tracer_instrument
+description: |
+  **The path tracer, with an instrument.** Six boxes: a renderer, the tracer with a log, the
+  instrument in one line, the convergence curve, an integrator swapped live, and the integrator put
+  back.
+
+  The subject is one line — `display("output", tracer)` — and what it used to produce:
+
+  ```
+  PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+  ```
+
+  376 bytes, roughly 330 of them the wrapper `<div>`. `PathTracingRenderer` is not a data class and
+  had no `registerValuePrinter` entry, so `ValueVisualizer` fell all the way to
+  `formatFallbackObject`. Every `afield.four` type the tracer is built out of was in the same
+  position: the object with the most to say about itself in a running renderer was the one that said
+  the least. What it shows now is the instrument — sample count, the integrator in use, the
+  convergence curve — and boxes 4 and 5 swap the integrator underneath it and put it back, which is
+  the part a printed line cannot do.
+
+  Needs a GPU and a window. `dev_docs/PATH_TRACING_MEASUREMENTS.md` is the write-up, and the saved
+  document at `dev_docs/agents/demos/path_tracer_instrument/` is this same scene.
+operations:
+  - create:
+      box: pt_renderer
+      name: "path tracing renderer"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // The window and the Vulkan renderer every other box in this document inherits.
+          // `once.renderer` means re-running this box does not build a second window.
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · Path tracer instrument")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: pt_tracer
+      name: "The tracer, with a log"
+      frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // The shipped materials scene at 640x360, plus the one new line: a convergence log.
+          //
+          // `recordConvergence()` attaches a log the tracer appends to from inside its own `render`, so
+          // it costs no frames. This replaces the shape four scratch boxes were written in last night --
+          // `frames { repeat(180) { frame() } }` with a `println` inside -- which spends 180 real frames
+          // to learn what the log already knows.
+          import afield.four.fabricated.*
+          import afield.four.modules.fromContext
+          import java.io.File
+
+          val renderer: Renderer = fromContext()
+          prop<PathTracingRenderer>(tracer)
+          prop<PathTraceConvergence>(log)
+
+          tracer = PathTraceDemo.install(renderer,
+              File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+          tracer.samplesPerFrame = 1
+          tracer.maxBounces = 5
+          tracer.indirectClamp = 10f
+          tracer.exposure = 1.5f
+          tracer.blitToScreen()
+
+          log = tracer.recordConvergence()
+          println("${tracer.backend}: ${tracer.triangleCount} triangles, ${tracer.width} x ${tracer.height}")
+  - create:
+      box: pt_instrument
+      name: "The instrument, in one line"
+      frame: { x: 60.0, y: 2040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // This is the whole instrument. One line.
+          //
+          // Until tonight it produced
+          //   PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+          // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
+          // data class and had no value printer registered, so `ValueVisualizer` fell all the way through
+          // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
+          // `afield.four` types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
+          // `RenderToTexture`, `VulkanBuffer` -- has had a printer since it was written.
+          //
+          // Re-run this box at any time; it reads the live tracer.
+          //
+          // The row to read is `up`. This scene's camera declares an up of (0, 1, 0), and the tracer
+          // builds its own as `right x forward`, which on this camera is 11.94 degrees away -- so the
+          // declared vector is not the one the image is made with. Two of last night's four scratch boxes
+          // were printing `camera.up` and its three components as `toRawBits()`, hunting exactly this, and
+          // no property tree could have shown it to them: the value is a local inside a private method.
+          // The row only appears when the two disagree.
+          import afield.four.fabricated.PathTracingRenderer
+
+          prop<PathTracingRenderer>(tracer)
+          display("output", tracer)
+  - create:
+      box: pt_plot
+      name: "The convergence curve"
+      frame: { x: 60.0, y: 3040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // Samples against wall seconds, with a labelled dashed rule wherever accumulation
+          // restarted and why. Run box 3 or 4 first and re-run this to see a mark appear.
+          //
+          // This is one call to `showSignals`, the house terse-plot helper. There is no new plotting
+          // code anywhere in this feature: `showSignals` already takes named series, a shared x, and
+          // `marks` drawn as full-height dashed rules carrying their label into the legend.
+          import afield.four.fabricated.*
+
+          prop<PathTracingRenderer>(tracer)
+          prop<PathTraceConvergence>(log)
+
+          println(log)
+          println("resets so far: " + log.resetMarks())
+          showConvergence(log)
+  - create:
+      box: pt_swap
+      name: "Swap the integrator, live"
+      frame: { x: 60.0, y: 4040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // Three calls, three different answers, and that is the whole point of the type.
+          import afield.four.fabricated.*
+
+          prop<PathTracingRenderer>(tracer)
+
+          // 1. No argument offers the packaged integrator -- which is exactly what is already
+          //    running. UNCHANGED. `ComputeModulePointer.reload` answers a bare `false` here, the
+          //    same `false` it answers for a compile failure, so a `check(...)` around it throws on
+          //    a no-op. That is why this returns three outcomes instead of a boolean.
+          println(tracer.reloadIntegrator())
+
+          // 2. A source that does not compile. FAILED, with the compiler's own messages, and the
+          //    last working pipeline keeps rendering -- watch the window: the image does not blink.
+          println(tracer.reloadIntegrator("#version 460\nvoid main() { this is not glsl }"))
+
+          // 3. A real swap, and a deliberately unphysical one: multiply the direct and indirect
+          //    terms where the integrator adds them, scale, and curve the result. One line changes,
+          //    but the whole ~30 KB integrator is recompiled and hot-swapped under a running camera.
+          //    `integratorSource()` hands you the packaged source with this device's HARDWARE_QUERY
+          //    define already applied -- the step that used to exist only at two private call sites,
+          //    in no document and no API.
+          //
+          //    This is the line to play with. `radiance` is what reached the camera directly and
+          //    `indirect` is what arrived by a bounce; both are vec3 and both are in scope at the end
+          //    of the integrator, so anything you can write over the two of them compiles and is in
+          //    the window about a second later.
+          val remix = tracer.integratorSource()
+              .replace("return vec4(radiance+indirect,1);",
+                  "return vec4(pow(radiance*indirect*2, vec3(0.76)),1);")
+          println(tracer.reloadIntegrator(remix))
+
+          // Anything the camera sees with no bounce behind it multiplies to zero, so the sunset
+          // environment drops to black and the three spheres become the only lit things in the frame,
+          // each keeping its own colour over a soft pool on the floor; the gold one holds just its sun
+          // glint. The camera has not moved by a single bit.
+          println("reset: '" + tracer.lastResetReason + "' generation=" + tracer.resetGeneration)
+  - create:
+      box: pt_restore
+      name: "Put the integrator back"
+      frame: { x: 60.0, y: 5040.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // The same no-argument call that answered UNCHANGED in box 3 now RELOADS, because the live
+          // pipeline is the patched one. Nothing about the tracer had to be rebuilt to get here: same
+          // scene, same environment, same accumulation buffers, same camera.
+          import afield.four.fabricated.*
+
+          prop<PathTracingRenderer>(tracer)
+
+          println(tracer.reloadIntegrator())
+          println("reset: '" + tracer.lastResetReason + "' generation=" + tracer.resetGeneration)
+
+          // And the instrument again, so you can read the generation count going up and the reason
+          // changing. Re-run box 2 to see the reset land on the convergence curve as a labelled rule.
+          display("output", tracer)
+  - connect: { parent: pt_renderer, child: pt_tracer }
+  - connect: { parent: pt_tracer, child: pt_instrument }
+  - connect: { parent: pt_tracer, child: pt_plot }
+  - connect: { parent: pt_tracer, child: pt_swap }
+  - connect: { parent: pt_tracer, child: pt_restore }
+  - launch: { box: pt_renderer, property: code, strand: renderer }
+  - await: {}
+  - execute: { box: pt_tracer, property: code }
+  - await: {}
+  - execute: { box: pt_instrument, property: code }
+  - await: {}
+  - execute: { box: pt_plot, property: code }
+  - await: {}
+  - execute: { box: pt_swap, property: code }
+  - await: {}
+  - execute: { box: pt_restore, property: code }
+  - await: {}

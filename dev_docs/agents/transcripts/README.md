@@ -140,6 +140,52 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Open **Live Metal** in Field4Vision to see it on a visionOS device or simulator.
 - `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
+- `alife_script.yaml`: **a per-agent behaviour layer for ALife** — sequencing, waiting on simulation
+  time, named phases, bounded concurrent sub-behaviours, and steering drives composed from whatever is
+  active. Three pure-CPU boxes, a fixed clock and a seeded world, so a run reproduces across JVMs.
+- `alife_walls.yaml`: **obstacles, swept collision and routing** for `alife_script`'s `ScriptWorld`.
+  One barrier under three `WallResponse`s with the contact counts printed, routed against direct seek
+  on a maze, and wall-following. Swept rather than discrete, because a discrete test lets a fast agent
+  step through a thin wall between frames.
+- `chart_clip.yaml`: **a figure that does not fit inside itself** — the same plot with `clip` on and
+  off, and the bounds behind the difference read off the drawn geometry. A panel fits the geometry's
+  own bounds, so anything outside the frame shrinks everything else rather than being cropped.
+- `chart_primitive.yaml`: **`Chart`, the FLine plot primitive**, one box per thing it is for: one call,
+  a DataFrame charting itself, marks that hover and click, and `Chart.expect` drawn as a band with the
+  breaking data recoloured. Everything lowers to `List<FLine>` — glyph outlines and SVG, not a raster.
+- `completion_rank_at_scale.yaml`: **ranking over the recorded 578-caret corpus**, calling the real
+  classifier in process. Box 3 shells out to `tools/rank_weight_lab.py` and wants a spec file a jvmTest
+  drops.
+- `frame_history_reprojection.yaml`: **temporal reprojection with a debug view that can catch it being
+  wrong** — four modes, of which "previous UV" is the only one that shows a constant offset and
+  "availability" is the one whose thin red band proves the rule is running. Needs a GPU and a window.
+- `keyframe_key_discovery.yaml`: **whether the keyframe browser can show you your own keys** — six
+  keys from a real session, browsed under the pattern that session used (which finds two of six, and
+  now says so) and under the default. No GPU; each box writes to a fresh temp dir.
+- `logging_layer.yaml`: **channels, sinks and the three different rules that select on a channel**,
+  read off the live `LogDispatcher`, `ConsoleMute` and `LogStream` rather than described. One word
+  selects three different sets of lines, and box 3 makes a real subscriber prove it.
+- `midi_clip.yaml`: **a Standard MIDI File written and read back**, plus what ports this machine can
+  see and an audition through them. Pure CPU; no device needed to run it.
+- `path_tracer_instrument.yaml`: **`display("output", tracer)`**, which until 2026-09-11 produced 376
+  bytes of wrapper `<div>`. Six boxes including an integrator swapped live and put back. Needs a GPU.
+- `path_tracing_emitters.yaml`: **two lamps in the dark**, with `emitterSampling` flipped every 256
+  samples so the two estimators are always compared at the same budget. Needs a GPU.
+- `path_tracing_medium.yaml`: **shafts of light through haze**, with `mediumDensity` cycling through
+  four values over fixed geometry. Needs a GPU.
+- `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
+  candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
+  strings. Includes the loop closed from audio: samples in, `60(3,8)` out.
+- `python_cells.yaml`: **Python cells under a Kotlin language root**. The root stays Kotlin — the
+  toggle swaps a root's *children*. Needs an interpreter with JEP's native library found before Field
+  started, which is why it is compile-only here.
+- `read_only_session.yaml`: **read-only mode from the inside** — a `saved{}` counter that cannot count,
+  and what the flag refuses rather than silently drops. The reason every demo folder says `--read-only`.
+- `solidsl_inverse.yaml`: **a Solid you can differentiate**, and therefore solve. The exact gradient
+  checked against central differences on the spot, an inverse fit recovering three badly-seeded
+  parameters, and the failure mode that presents as a converged optimisation: a child swallowed under a
+  hard `Union` is dead, because a pointwise `min` hands the whole derivative to whichever child is
+  nearest.
 - `interaction_nets_lambda.yaml`: **λ-calculus on interaction nets**, three pure-CPU boxes. A term is
   compiled to a net, reduced by local rules, and read back, with every answer checked against a
   capture-avoiding substitution evaluator that shares nothing with it — 25 of 25 named closed terms

@@ -165,6 +165,24 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // The five the path-tracer instrument teaches. They became visible to this guard when
+        // `path_tracer_instrument` was promoted out of `dev_docs/agents/demos/` into the corpus:
+        // the scene was always documented, and until then nothing in CI compiled it either.
+        "integratorSource" to
+            "path_tracing.md; path_tracer_instrument is COMPILE_ONLY. Handing back the packaged " +
+                "integrator with this device's HARDWARE_QUERY define applied needs the device.",
+        "reloadIntegrator" to
+            "path_tracing.md; path_tracer_instrument is COMPILE_ONLY. A hot-swap recompiles ~30 KB " +
+                "of GLSL against a live pipeline, and its three outcomes are outcomes of a GPU.",
+        "recordConvergence" to
+            "path_tracing.md; path_tracer_instrument is COMPILE_ONLY. There is no convergence to " +
+                "record without a tracer accumulating samples on a device.",
+        "showConvergence" to
+            "path_tracing.md; path_tracer_instrument is COMPILE_ONLY. It plots what " +
+                "recordConvergence collected, so it cannot be evaluated where that cannot.",
+        "getName" to
+            "path_tracing.md; path_tracer_instrument is COMPILE_ONLY. The name is the live " +
+                "integrator's, read off the pipeline currently installed on the device.",
         "blitToScreen" to
             "path_tracing.md; path-tracing transcripts are COMPILE_ONLY because presentation needs " +
                 "a native Vulkan window. Live GPU checks exercise the separate display pass.",
