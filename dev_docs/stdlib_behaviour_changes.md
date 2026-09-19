@@ -392,3 +392,24 @@ takes an explicit path from the caller rather than deriving one from the session
 rather than document persistence. Same for a box that calls `File.writeText` itself. See
 `dev_docs/document_write_back.md` for the boundary, and for what else was found writing into a
 document directory.
+
+---
+
+## 2026-09-09 / 2026-09-10 — a `Chart` clips its marks to its own axes (`9f7ffc4f2`, `077ba2788`)
+
+A `Chart` used not to clip anything to its plot rectangle. Handed a cross section 2 x 3 across for
+a 0.24 x 0.24 window, it drew the outline 5137 px outside a 780 x 440 frame; the output panel then
+fitted *those* bounds, and the axes ended up an illegible stamp in one corner at 9% of their
+declared size. `Chart` now clips every mark kind to `plotRect`.
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `Chart` marks | clipped to `plotRect` | no change for any chart whose data already lay inside its axes; a chart with data outside them used to resize the whole output panel and now does not | clip the data yourself before charting, which is what callers did before the fix |
+
+What was swept: `public/docs/tetgen.md`'s magnified-corner figure, which clips its cross section to
+the window with a hand-written Liang–Barsky routine (`9f7ffc4f2`). That clipping is now redundant.
+It is left in the fence because the committed capture was made with it and cuts against the same
+rectangle, so removing it would mean a re-capture for an identical picture.
+
+A box that relied on a chart overflowing its axes — there is no known caller — draws a clipped
+figure after this change.

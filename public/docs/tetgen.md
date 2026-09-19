@@ -374,8 +374,8 @@ for (h in sizes) {
     println("${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
         "${"%.4f".format(boxError.last() / h)} h    " +
         "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h")
-    // A real cross section through the marched body, at z = 0. This is the only honest way to see
-    // the rounding: it is 1.5% of the body at h = 0.4, invisible in a render of the whole box.
+    // A real cross section through the marched body, at z = 0. The rounding is 1.5% of the body at
+    // h = 0.4: plain in a cross section, invisible in a render of the whole box.
     if (h >= 0.1) corners += "marched, h = $h" to b.slice(0.0).toPolygons().first()
     b.close(); s.close()
 }
@@ -393,13 +393,8 @@ println("  worst node outside the true box: " +
 // One corner of the true cross section, magnified. The exact outline is what TetGen is given and
 // what its boundary reproduces; each level set is a different rounded approximation of it.
 //
-// Clipping to the window before charting was load-bearing here, and is now belt and braces. A
-// Chart used not to clip to its own axes: handed a cross section 2 x 3 across for a 0.24 x 0.24
-// window, it put the outline 5137 px outside a 780 x 440 frame, the output panel fitted THOSE
-// bounds, and the axes ended up an illegible stamp in one corner at 9% of their declared size.
-// `Chart.clip` does this in the library now, for every mark kind. This is left standing only
-// because taking it out would mean recapturing the two unrelated figures on this page as well; it
-// cuts against the same rectangle and draws the same picture.
+// A Chart clips its marks to its own axes, so a figure written today does not need the hand
+// clipping below. `dev_docs/stdlib_behaviour_changes.md` records when that changed.
 val xLo = 0.82; val xHi = 1.06; val yLo = 1.32; val yHi = 1.56
 fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
     val xs = mutableListOf<Double>()
