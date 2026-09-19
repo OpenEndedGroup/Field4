@@ -18,9 +18,17 @@ build and is the largest page family, so the same site measures two completely d
   1120 resolve — the shortfall is 360 mirror targets the build did not generate.
 * default build (mirror present), same tree, same night: **613 of 745**, 455 of the 613 being the
   mirror, 121655 local references, **1575 of 1575** distinct targets resolving.
+* both shapes, 2026-09-19 on this branch, measured by running the checker twice — once against
+  `public/field4` and once against a copy of it with `reference/source/` removed, which is the
+  same difference without a second build: mirror **present** 617 of 749, 123913 references, 1582
+  targets, 18155 distinct `(page, fragment)` pairs; mirror **absent** 160 of 292, 42570
+  references, 1538 targets, **4464** pairs. That last column is the one `AgainstTheRealBuiltSite`
+  had been printing and not asserting.
 
 So "607 of 739" and "155 of 287" were never in conflict; they are the two flags. The guard now
-prints a `build shape:` line so a quoted population can never again omit which one it was.
+prints a `build shape:` line so a quoted population can never again omit which one it was — and
+`AgainstTheRealBuiltSite` names the built site's mtime in both the skip and the failure, for the
+same reason one level up: its result depends on a file nobody quoted.
 
 Two properties get pinned hardest, because both were bugs in this guard's own first draft:
 
@@ -32,9 +40,11 @@ Two properties get pinned hardest, because both were bugs in this guard's own fi
 Run with:  uv run --group docs python -m unittest tools.test_check_doc_site_links
 """
 
+import datetime
 import re
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -501,25 +511,83 @@ class EndToEnd(unittest.TestCase):
 
 
 class AgainstTheRealBuiltSite(unittest.TestCase):
-    """Skipped unless the site has been built, so the suite stays fast and offline."""
+    """Skipped unless the site has been built, so the suite stays fast and offline.
+
+    **This case has three outcomes from one committed source, and until 2026-09-19 the input
+    that chose between them was invisible.** Skip when `public/field4/index.html` is absent,
+    pass when it is fresh, fail when it is stale — and the result said which *outcome* without
+    ever saying which *site*. On 2026-09-18 that produced a three-way disagreement on one
+    commit: the primary tree, built before the source fixes, reported 1 failure of 33; a branch
+    with no built site reported 32 passed and 1 skipped; a branch with a fresh build reported
+    33 of 33. All three were correct, and nothing in any of the three outputs said so.
+
+    So both the skip message and the failure message now carry
+    [builtSiteState] — the built site's own mtime and age. A measurement that does not name
+    its input is not reproducible, and a *disagreement* between two such measurements cannot
+    even be diagnosed.
+    """
+
+    @staticmethod
+    def built_site_state(index: Path) -> str:
+        """One line naming the built site this run was measured against, mtime and all."""
+        if not index.is_file():
+            return f"{index} does not exist"
+        stamp = index.stat().st_mtime
+        age = max(0.0, time.time() - stamp)
+        when = datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ", timespec="seconds")
+        if age < 90 * 60:
+            ago = f"{age / 60:.0f} min ago"
+        elif age < 48 * 3600:
+            ago = f"{age / 3600:.1f} h ago"
+        else:
+            ago = f"{age / 86400:.1f} days ago"
+        return f"{index} built {when} ({ago})"
 
     def test_the_real_site_has_no_unknown_unresolved_reference(self) -> None:
         site = REPO_ROOT / "public" / "field4"
-        if not (site / "index.html").is_file():
+        index = site / "index.html"
+        state = self.built_site_state(index)
+        if not index.is_file():
             self.skipTest(
-                "no built site at public/field4 — run "
-                "`uv run --group docs python tools/build_zensical_docs.py` first"
+                f"no built site — {state}; run "
+                "`uv run --group docs python tools/build_zensical_docs.py` first. "
+                "This SKIP and a FAILURE from the same source differ only in that file."
             )
         result = subprocess.run(
             [sys.executable, str(CHECKER), "--summary"],
             capture_output=True, text=True, check=False, cwd=REPO_ROOT,
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        # Assert a floor near the measured population, so a build that silently checks almost
-        # nothing cannot report success. Measured 2026-09-16: 155 pages, 39943 refs, 1462 targets.
+        # The built site is an undeclared input to every assertion below, so name it in the
+        # failure too: a stale site fails here for reasons that were fixed in the source hours
+        # ago, and without the mtime the only way to tell is to rebuild and see.
+        against = f"measured against {state}\n"
+        self.assertEqual(result.returncode, 0, against + result.stdout + result.stderr)
+        # Floors near the measured populations, so a build that silently checks almost nothing
+        # cannot report success. Both floors have to hold for BOTH build shapes, because this
+        # reads whatever is on disk and the source mirror is the largest page family.
+        # Re-measured 2026-09-19 on this tree with
+        #   python3 tools/check_doc_site_links.py --config public/zensical.yml \
+        #       --site-dir <site> --summary
+        # against `public/field4` and against a copy of it with `reference/source/` removed:
+        #   mirror PRESENT: 617 pages of 749, 123913 refs, 1582 targets, 18155 (page, fragment) pairs
+        #   mirror ABSENT:  160 pages of 292,  42570 refs, 1538 targets,  4464 (page, fragment) pairs
+        # So the floors are set off the smaller shape with roughly a tenth of headroom.
         self.assertIn("built page(s) under prefix", result.stdout)
         pages = int(result.stdout.split("checked ", 1)[1].split(" ", 1)[0])
-        self.assertGreater(pages, 140, f"only {pages} pages checked; expected ~155")
+        self.assertGreater(pages, 140, against + f"only {pages} pages checked; expected 160+")
+        # The fragment population was PRINTED and not asserted, which made its de facto floor 1:
+        # a collapse from four thousand pairs to one passed silently, on the same page-count
+        # assertion that would have caught the equivalent collapse in pages. Same file, same
+        # class, one line apart — an inconsistency rather than a blind spot.
+        pairs = re.search(r"([\d]+) distinct \(page, fragment\) pair\(s\)", result.stdout)
+        self.assertIsNotNone(pairs, against + result.stdout)
+        pair_count = int(pairs.group(1))
+        self.assertGreater(
+            pair_count,
+            4000,
+            against + f"only {pair_count} distinct (page, fragment) pair(s) checked; expected "
+            "4464+ without the source mirror and 18155+ with it",
+        )
 
 
 if __name__ == "__main__":
