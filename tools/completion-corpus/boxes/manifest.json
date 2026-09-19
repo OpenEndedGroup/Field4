@@ -134,7 +134,7 @@
   {"doc": "four_simulation_chain", "box": "sim_renderer", "codeSha256": "f8a975b31fe1ad71", "codeLines": 11, "receivers": ["afield.Box"], "preamble": "four_simulation_chain__sim_renderer.preamble.kt"},
   {"doc": "four_summary_pyramid", "box": "sp_bundle", "codeSha256": "9aa3b0ba9a004510", "codeLines": 33, "receivers": ["afield.Box"], "preamble": "four_summary_pyramid__sp_bundle.preamble.kt"},
   {"doc": "four_summary_pyramid", "box": "sp_renderer", "codeSha256": "375f51baa8c0ee8f", "codeLines": 11, "receivers": ["afield.Box"], "preamble": "four_summary_pyramid__sp_renderer.preamble.kt"},
-  {"doc": "four_summary_pyramid", "box": "sp_summary", "codeSha256": "ecc8e922732af01d", "codeLines": 139, "receivers": ["afield.Box"], "preamble": "four_summary_pyramid__sp_summary.preamble.kt"},
+  {"doc": "four_summary_pyramid", "box": "sp_summary", "codeSha256": "3b46bf9de5d94229", "codeLines": 139, "receivers": ["afield.Box"], "preamble": "four_summary_pyramid__sp_summary.preamble.kt"},
   {"doc": "frame_history_reprojection", "box": "rp_bundle", "codeSha256": "f458584af8aaf051", "codeLines": 52, "receivers": ["afield.Box"], "preamble": "frame_history_reprojection__rp_bundle.preamble.kt"},
   {"doc": "frame_history_reprojection", "box": "rp_chain", "codeSha256": "14b79a82a13d6076", "codeLines": 108, "receivers": ["afield.Box"], "preamble": "frame_history_reprojection__rp_chain.preamble.kt"},
   {"doc": "frame_history_reprojection", "box": "rp_modes", "codeSha256": "b1baea5fbc46ab66", "codeLines": 21, "receivers": ["afield.Box"], "preamble": "frame_history_reprojection__rp_modes.preamble.kt"},
