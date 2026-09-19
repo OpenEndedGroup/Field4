@@ -92,7 +92,7 @@ the rest is yours to run.
 
 Every one of the 14 executed demos runs **every box it creates**: there is no box in this corpus that
 is built by a transcript and then left unexecuted. A filtered replay of all 19 took 128 s of wall
-clock on an M-series laptop, the whole corpus of 136 transcripts rather more.
+clock on an Apple M1 Max, the whole corpus of 136 transcripts rather more.
 
 ## Two things to know before you edit one
 
