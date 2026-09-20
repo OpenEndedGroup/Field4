@@ -15,7 +15,7 @@ not a rule but a **wish** — a shape you want the cloud to become, a motion you
 behaviour you can recognise but not write down. Tuning coefficients until a picture looks right is
 the usual answer, and it is slow, unrepeatable, and gets harder with every parameter you add.
 
-Fitting the rule instead is worth doing when:
+Fit the rule instead when:
 
 - **You can state the destination but not the route.** "Become these letters" is easy to specify
   and hard to hand-write as a velocity field. Training takes a second and the answer runs live.
@@ -25,8 +25,8 @@ Fitting the rule instead is worth doing when:
   seconds and swaps a buffer; the shader is never recompiled. In the first scene below the target
   is a string you can edit while it runs.
 
-The catch, and this page is honest about it throughout: a trained rule that *looks* convincing is
-very cheap to obtain, and almost worthless as evidence. Almost any attraction-and-repulsion rule
+The catch: a trained rule that *looks* convincing is very cheap to obtain, and almost worthless as
+evidence. Almost any attraction-and-repulsion rule
 with a speed limit produces something an audience will accept as flocking. So everything here is
 graded against a rule we already have, and the numbers are in
 `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`.
@@ -95,8 +95,7 @@ val particles = ShaderNeuralParticles(export) {
 particles.installInto()     // defaults to renderer.renderList
 ```
 
-Each particle is a struct rather than a texel, which is worth knowing because it explains the two
-unusual fields:
+Each particle is a struct rather than a texel, because of the two unusual fields:
 
 ```diffstatic {data-lang=glsl}
 struct Particle { vec2 position; vec2 start; vec2 velocity; float t; float pad; };
@@ -202,9 +201,9 @@ Three choices inside that construction each earn their default:
 | `alignPhase = true` | identity pairing | a contour's arc-length origin has nothing to do with angle zero on its ellipse, so every component carries an arbitrary rotation the flow must unwind |
 | no jitter on the source | `jitter` above zero | the ellipse thickens to an annulus and the correspondence blurs |
 
-`alignPhase` is the least obvious and the most load-bearing of the three. The transcript's
-`neural_particles` scene has a deliberate failure to try: set it to `false`, retrain, and watch the
-letters arrive twisted.
+`alignPhase` is the least obvious of the three and the one that changes the result most. The
+transcript's `neural_particles` scene has a deliberate failure to try: set it to `false`, retrain,
+and watch the letters arrive twisted.
 
 Almost every setting in that scene is live, including the text. Retraining takes a couple of
 seconds.
@@ -290,8 +289,8 @@ written.installDrawInto()                           // defaults to renderer.rend
     by bringing the three *terms* to the same order, not by adjusting the weights until it looks
     right.
 
-`separationRadiusFraction` is the other one worth knowing. One radius for all three terms cannot
-clump: separation wants to be short-range while alignment and cohesion want the whole
+`separationRadiusFraction` is the other dial that decides the shape. One radius for all three terms
+cannot clump: separation wants to be short-range while alignment and cohesion want the whole
 neighbourhood. Shrinking separation's reach to a quarter is what turns one even disc into groups.
 
 It exists to be the thing the learned rule is graded against, but it stands alone perfectly well as
@@ -383,8 +382,8 @@ the two are never the same picture.
 !!! note "Editing the written rule does not move the learned flock"
 
     It learned the rule as it was when you trained it. Re-run the training box to catch it up —
-    which takes a few seconds, and is worth doing deliberately at least once to see how far the two
-    can be pulled apart.
+    a few seconds. Leaving the two out of step on purpose is how you see how far they can
+    be pulled apart.
 
 ### Cost
 
@@ -409,9 +408,9 @@ fits worse than either.
 ## 6. The driver
 
 With the symmetry built in and no external forcing, the flock settles into something that reads as
-static: an evenly spaced disc that barely changes. This is worth knowing before you conclude
-something is broken — the drift that the plain Deep Sets form produced had been supplying the
-apparent motion all along, and removing it revealed what the rule on its own actually does here.
+static: an evenly spaced disc that barely changes. That is the rule working, not a failure — the
+drift the plain Deep Sets form produced had been supplying the apparent motion all along, and
+removing it left what the rule on its own does here.
 
 So the motion comes from outside the interaction:
 
@@ -423,8 +422,8 @@ boids.driver = { wanderingPoint() }       // read once a frame
 
 `driverStrength` adds a pull toward, or a push away from, a point you supply each frame. It is
 applied after the rule exactly like `containment`, defaults to zero, and **the network knows nothing
-about it** — which keeps it forcing rather than a modelling error, and keeps an A/B of two rules
-honest. No retraining is needed to add or change it.
+about it** — which keeps it forcing rather than a modelling error, so an A/B of two rules still
+compares only the rules. No retraining is needed to add or change it.
 
 ---
 
