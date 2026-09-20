@@ -36,7 +36,7 @@ description: |
 
     - Put a term of your own in the first box's list. `(\x. x x) (\x. x x)` has no normal form and
       the net will not terminate either — `normalise` takes a `maxSteps` and `Run.finished` comes
-      back false, which is the only honest answer to a term that has none.
+      back false, which is all a reducer can report about a term that has none.
     - In the reduction box, change `source` to `(\f. \y. f (f y)) ((\x. x) (\x. x))`: a redex shared
       under a binder, reduced once for both of its uses.
     - Add a term to `LambdaTerms.corpus()`. `stdlib.lambda-terms.smoke` asserts the corpus **by the
@@ -106,8 +106,8 @@ operations:
           println("  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders")
 
           // Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
-          // too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is the only
-          // honest answer to a term that has no normal form.
+          // too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
+          // a reducer can report about a term that has no normal form.
   - create:
       box: lambda_reduction
       name: one reduction, panel per stage

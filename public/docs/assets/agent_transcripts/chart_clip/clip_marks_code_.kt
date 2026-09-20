@@ -14,7 +14,7 @@ c.yDomain = 0.0 to 20.0
 showChart(c)
 
 // Nothing outside the plot rectangle, and the off-axis rule is not drawn at all --
-// off the axis it has no honest position, so it gets none. Count only the MARK lines:
+// a rule at 99 has no position inside a 0..20 axis, so it gets none. Count only MARK lines:
 // the tick labels, the title and the footnote live outside plotRect on purpose, and
 // counting those would be measuring the wrong thing.
 val plot = c.plotRect()

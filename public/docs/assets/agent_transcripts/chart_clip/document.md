@@ -20,7 +20,7 @@ a bar was clamped in y but not in x, and `coerceIn` left a bar wholly off the ax
 as a one-pixel smear along the frame instead of nothing.
 
 ```edn [field-box id="clip_marks" role="properties"]
-{"id" "clip_marks" "index" 0 "name" "4 - Every mark kind, at the edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Every mark kind, at the edge" "_tombstone" false "frame" #afield/rect [900.0 640.0 500.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "clip_marks_code_.kt" "lines" 38 "characters" 2131 "sha256" "77c4f29a1a3862a600b216d9269152196b7a816fa3dbf42c293e4da6a87d954a"}]}
+{"id" "clip_marks" "index" 0 "name" "4 - Every mark kind, at the edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Every mark kind, at the edge" "_tombstone" false "frame" #afield/rect [900.0 640.0 500.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "clip_marks_code_.kt" "lines" 38 "characters" 2137 "sha256" "989910a4093f38183e11baa028957040ef00c27b366bed466e5a36b765395aec"}]}
 ```
 
 ```kotlin [field-property box="clip_marks" name="code" path="clip_marks_code_.kt"]
@@ -40,7 +40,7 @@ c.yDomain = 0.0 to 20.0
 showChart(c)
 
 // Nothing outside the plot rectangle, and the off-axis rule is not drawn at all --
-// off the axis it has no honest position, so it gets none. Count only the MARK lines:
+// a rule at 99 has no position inside a 0..20 axis, so it gets none. Count only MARK lines:
 // the tick labels, the title and the footnote live outside plotRect on purpose, and
 // counting those would be measuring the wrong thing.
 val plot = c.plotRect()
