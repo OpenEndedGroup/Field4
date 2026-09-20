@@ -153,6 +153,71 @@ class MlpWeights(
 }
 
 /**
+ * Two networks of the same shape, averaged weight by weight — `(1-t)·this + t·other`.
+ *
+ * Useful because the result is *not* a blend of the two behaviours in any simple sense: a network
+ * is nonlinear in its weights, so the midpoint of two trained networks is a third function that
+ * was never trained on anything, and which in general does something neither endpoint does. For
+ * two velocity fields that is the difference between morphing a shape and finding a shape between
+ * two shapes — see `public/docs/neural_particles.md`.
+ *
+ * **This only means something if the two networks share an initialisation.** Hidden units are
+ * exchangeable: two runs from different random starts represent similar functions through
+ * different permutations of the same machinery, and averaging those is averaging two unrelated
+ * parameter vectors. Train both with the same `seed`. (Measured, that argument is weaker than it
+ * sounds for two fields fitted to a shared source — see `WeightInterpolationTest` — but it is the
+ * assumption to design against rather than one to rely on being forgiving.)
+ */
+fun MlpWeights.blendWith(other: MlpWeights, t: Float): MlpWeights {
+    require(inputs == other.inputs && outputs == other.outputs && hidden.contentEquals(other.hidden)) {
+        "only networks of the same shape can be blended: $this against $other"
+    }
+    require(activation == other.activation) {
+        "these networks use different activations ($activation and ${other.activation}), so the " +
+            "blend is not a network of either kind"
+    }
+    return MlpWeights(
+        inputs, outputs, hidden, activation,
+        FloatArray(flat.size) { flat[it] * (1 - t) + other.flat[it] * t },
+    )
+}
+
+/**
+ * [MlpWeights.blendWith] for a whole field, carrying the training frame and source with it.
+ *
+ * The blended field is evaluated in **this** field's frame, so the two must agree about what
+ * their coordinates mean — otherwise `t = 1` would be the other network's weights read in this
+ * one's coordinate system, which is a different field from the other one and the difference would
+ * look exactly like an interesting result. That is checked rather than assumed.
+ *
+ * The practical consequence for a caller: train both fields from the *same* source cloud. That
+ * gives them the same normalisation, and it is also the only way a particle has one start point
+ * and two destinations, which is what makes a sweep over `t` a motion rather than a cut.
+ */
+fun FlowMatchExport.blendWith(other: FlowMatchExport, t: Float): FlowMatchExport {
+    require(dimension == other.dimension && timeFeatures == other.timeFeatures) {
+        "these fields are not the same kind: ${dimension}D/$timeFeatures against " +
+            "${other.dimension}D/${other.timeFeatures}"
+    }
+    val centreGap = (0 until dimension).sumOf {
+        val d = (center[it] - other.center[it]).toDouble(); d * d
+    }
+    require(kotlin.math.sqrt(centreGap) < 1e-3 * scale) {
+        "these fields were normalised about different centres (${center.toList()} against " +
+            "${other.center.toList()}), so blending their weights mixes two coordinate systems — " +
+            "train both from the same source cloud"
+    }
+    require(kotlin.math.abs(scale - other.scale) < 1e-3 * scale) {
+        "these fields were normalised at different scales ($scale against ${other.scale}), so " +
+            "blending their weights mixes two coordinate systems — train both from the same " +
+            "source cloud"
+    }
+    return FlowMatchExport(
+        network.blendWith(other.network, t), dimension, timeFeatures, center, scale, source,
+    )
+}
+
+/**
  * The hidden activations this file can evaluate on both sides of the CPU/GPU line.
  *
  * Smile names these with strings; [of] is the translation, and it is deliberately strict — an

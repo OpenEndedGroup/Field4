@@ -57,13 +57,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 139 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 141 transcripts on every build, at three
 depths. 80 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-52 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+54 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2385,6 +2385,42 @@ tenth of its neighbours yields a force a few percent out and a flock that still 
 `four.shader-boids.smoke` grades both rules against a CPU brute force per particle.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/learned_boids/metadata.edn)
+
+### letter_interpolation
+
+**A "C" becoming an "S" through shapes that are neither, by interpolating the weights of two
+trained velocity fields.** Three boxes: a renderer, one that trains both letters from a shared
+circular source, and one that sweeps `t` across forty seconds, writing a blended network into the
+weight buffer once a frame.
+
+The distinction that makes it interesting is between interpolating the *targets* and interpolating
+the *network*. The first sends each point along a straight line from its place on the C to its
+place on the S — a crossfade, no network required, no surprises. The second produces a field that
+was never trained on anything, and where it sends a particle is a nonlinear function of `t`.
+Measured, at `t = 0.5` the two disagree by 0.85 of the whole width of the morph.
+
+What it actually does is seal the C into a closed ring and re-open it the other way, so the middle
+is a rounder, *simpler* form than either letter rather than a blur of the two. Both letters must be
+a single closed contour in the typeface — C, S, E, F, L, T, V, Z — because one circle cannot be
+paired with two contours at once, and both must be trained from the same source and the same seed.
+`WeightInterpolationTest` holds the numbers, including a check that the hand-written integrator
+agrees with the library's.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/letter_interpolation/metadata.edn)
+
+### letter_interpolation_panels
+
+**The same interpolation, pinned at three values and rendered side by side.** Three
+`ShaderNeuralParticles` over one trained pair, each with its weights set once and its `viewCenter`
+offset so the panels sit apart.
+
+It exists because a sweeping scene cannot be photographed: a capture lands on whatever `t` the
+clock happened to reach, so a figure and its caption drift apart the next time the page is built.
+Pinning each panel makes the picture on `neural_particles.md` mean the same thing every time. It is
+also the cheapest demonstration that the weight buffer is per-system — one trained pair drives any
+number of panels with no extra training and no extra shaders.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/letter_interpolation_panels/metadata.edn)
 
 ## Graphics building blocks
 
