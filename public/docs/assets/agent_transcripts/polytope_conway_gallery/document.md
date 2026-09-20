@@ -214,7 +214,7 @@ displayOpen("parameter-field")
 <!-- field-box id="polytope_abstract_dual" index="3" -->
 
 ```edn [field-box id="polytope_abstract_dual" role="properties"]
-{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 36 "characters" 2293 "sha256" "0eff0a398106c19ff4d55174458a29093ca2fa42a08dc94a49d76213917407c5"}]}
+{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 36 "characters" 2289 "sha256" "5bf31509b244790b9bb502de7059f3b1785b48f4da14cb392bd8b65ce5c53ff4"}]}
 ```
 
 ```kotlin [field-property box="polytope_abstract_dual" name="code" path="polytope_abstract_dual_code_.kt"]
@@ -237,8 +237,8 @@ val triangleRefusal = runCatching { abstract.triangulate() }
 // perfectly legal thing for a polytope to be.
 val realized = cube().dual(DualCentroidRealization).polyhedron
 
-markdown("honesty", """
-    #### `cube()` &rarr; dual, with and without an embedding
+markdown("dual", """
+    #### The dual of `cube()` with and without an embedding
 
     | | abstract | after a realization policy |
     |---|---|---|

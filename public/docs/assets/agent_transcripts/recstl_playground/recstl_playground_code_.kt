@@ -44,9 +44,9 @@ val shader  = rectMaterialShaderCode(program)
 // Seed this box's shader-source properties before `moduleHere {}` runs.
 // moduleHere builds its module from the box's `vertex`/`fragment` properties
 // (not from assignments in the lambda); `once.vertex`/`once.fragment` set them
-// once. The `//%-` fragment break is load-bearing: fragments run in order, each
-// expanded only after the previous ran, so this fragment executes first and the
-// moduleHere fragment then prepares its shaders from what was set here.
+// once. Fragments separated by `//%-` run one at a time, each expanded only after the
+// previous one ran, so this fragment executes first and the moduleHere fragment then
+// prepares its shaders from what was set here.
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { shader.exampleFragmentShader!! }
 

@@ -91,17 +91,19 @@ val bad = results.count { it.contains("THREW") }
 From `code`
 
 A square that relies on close() for its fourth side, and a two-contour outline whose
-counter also relies on close(). These are the shapes where a Close is load-bearing
-rather than a formality — an explicit lineTo back to the start would hide everything.
+counter also relies on close(). Write those closing sides as an explicit lineTo back to
+the start and the reversal below comes out right — the defect only shows on a shape
+where the Close is carrying a segment nothing else draws.
 
 ```edn [field-box id="close_node_reversal" role="properties"]
-{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 81 "characters" 3599 "sha256" "8ab6814de85cc6dc065809f8096d70cbf6250d24071634f196530a66e9683a3a"}]}
+{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 82 "characters" 3663 "sha256" "d8bcc1e27af3cf462a4c85d10bbbe42312e0c632fcf4b5b2470ad057702f25c6"}]}
 ```
 
 ```kotlin [field-property box="close_node_reversal" name="code" path="close_node_reversal_code_.kt"]
 // A square that relies on close() for its fourth side, and a two-contour outline whose
-// counter also relies on close(). These are the shapes where a Close is load-bearing
-// rather than a formality — an explicit lineTo back to the start would hide everything.
+// counter also relies on close(). Write those closing sides as an explicit lineTo back to
+// the start and the reversal below comes out right — the defect only shows on a shape
+// where the Close is carrying a segment nothing else draws.
 val square = fline {
     moveTo(0, 0); lineTo(200, 0); lineTo(200, 200); lineTo(0, 200); close()
 }
