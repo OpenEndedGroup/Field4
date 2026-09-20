@@ -169,4 +169,90 @@ class EquivariantInteractionTest {
             "the symmetry should not cost fidelity: $equivariantError vs $plainError"
         )
     }
+
+    /**
+     * The reproducer for the "cannot predict the equilibrium residual" claim in
+     * `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`.
+     *
+     * On the neighbourhoods it was trained on — uniform discs — the rule fits well. Relax a flock
+     * under the true rule until it stops rearranging, and the regime changes completely:
+     * separation and cohesion become large and nearly cancelling, and what survives is a small
+     * difference of big terms. Scored *there*, the model is no better than predicting exactly
+     * zero, which is the honest reading of "it learned to be small rather than learning the
+     * residual".
+     *
+     * The assertion is deliberately loose in the direction of the claim, not against it. The ratio
+     * moves with the seed and with how the separation window is specified, so a tight bound here
+     * would be a flake dressed as a finding; what is stable, and what the claim rests on, is that
+     * the model does not *beat* the zero baseline by a meaningful margin in this regime.
+     */
+    @Test
+    fun inTheEquilibriumRegimeTheModelIsNoBetterThanPredictingZero() {
+        val learned = trainedEquivariant()
+
+        // A small flock, relaxed under the true rule until it stops rearranging. Positions only:
+        // the claim is about the spatial configuration a settled flock produces.
+        val r = Random(11)
+        val n = 220
+        val px = FloatArray(n) { (r.nextDouble() * 2 - 1).toFloat() * radius * 3 }
+        val py = FloatArray(n) { (r.nextDouble() * 2 - 1).toFloat() * radius * 3 }
+        val vx = FloatArray(n) { (r.nextDouble() * 2 - 1).toFloat() * vScale * 0.1f }
+        val vy = FloatArray(n) { (r.nextDouble() * 2 - 1).toFloat() * vScale * 0.1f }
+
+        fun neighboursOf(i: Int): List<FloatArray> = (0 until n).mapNotNull { j ->
+            if (j == i) return@mapNotNull null
+            val dx = px[j] - px[i]
+            val dy = py[j] - py[i]
+            if (hypot(dx.toDouble(), dy.toDouble()) > radius) null
+            else floatArrayOf(dx, dy, vx[j] - vx[i], vy[j] - vy[i])
+        }
+
+        val dt = 1f / 240f
+        repeat(600) {
+            val ax = FloatArray(n)
+            val ay = FloatArray(n)
+            for (i in 0 until n) {
+                val ns = neighboursOf(i)
+                if (ns.isEmpty()) continue
+                val a = rule(floatArrayOf(vx[i], vy[i]), ns)
+                ax[i] = a[0]; ay[i] = a[1]
+            }
+            for (i in 0 until n) {
+                vx[i] = (vx[i] + ax[i] * dt) * 0.98f
+                vy[i] = (vy[i] + ay[i] * dt) * 0.98f
+                px[i] += vx[i] * dt
+                py[i] += vy[i] * dt
+            }
+        }
+
+        // Score on the settled configuration: model error and zero-baseline error, same denominator.
+        var squaredTarget = 0.0
+        var squaredModel = 0.0
+        var sampled = 0
+        for (i in 0 until n) {
+            val ns = neighboursOf(i)
+            if (ns.size < 4) continue
+            sampled++
+            val v = floatArrayOf(vx[i], vy[i])
+            val t = rule(v, ns)
+            val (ax, ay) = learned.evaluate(v[0], v[1], ns)
+            squaredTarget += t[0].toDouble() * t[0] + t[1].toDouble() * t[1]
+            squaredModel += (ax - t[0]).toDouble().let { it * it } + (ay - t[1]).toDouble().let { it * it }
+        }
+
+        // Predicting zero scores exactly 1.0 by construction — the target's own magnitude.
+        val modelError = sqrt(squaredModel / squaredTarget)
+        println(
+            "equilibrium regime: $sampled neighbourhoods, model ${"%.3f".format(modelError)} " +
+                "relative, predicting zero 1.000"
+        )
+
+        assertTrue(sampled > 40, "the relaxed flock gave only $sampled usable neighbourhoods")
+        assertTrue(
+            modelError > 0.5,
+            "the page claims the model does not learn the equilibrium residual; if this is now " +
+                "well below the zero baseline of 1.0 (got $modelError) then it does, and " +
+                "dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md needs rewriting rather than this test relaxing"
+        )
+    }
 }

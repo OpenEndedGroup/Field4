@@ -33,15 +33,15 @@ start(renderer::run)
 <!-- field-box id="lb_train" index="1" -->
 
 ```edn [field-box id="lb_train" role="properties"]
-{"id" "lb_train" "index" 1 "name" "train the rule" "parents" ["root" "lb_renderer"] "children" ["lb_written" "lb_learned"] "properties" {"children" #{#afield/box "lb_written" #afield/box "lb_learned"} "parents" #{#afield/box "root" #afield/box "lb_renderer"} "name" "train the rule" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_train_code_.kt" "lines" 54 "characters" 2590 "sha256" "deb538f7652ee3a47b34c86d246004a1cc9e547dfabe5993c53e83454b84c8c9"}]}
+{"id" "lb_train" "index" 1 "name" "train the rule" "parents" ["root" "lb_renderer"] "children" ["lb_written" "lb_learned"] "properties" {"children" #{#afield/box "lb_written" #afield/box "lb_learned"} "parents" #{#afield/box "root" #afield/box "lb_renderer"} "name" "train the rule" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_train_code_.kt" "lines" 72 "characters" 3821 "sha256" "3b3c3423edd1791c620bee67ce4ceb94d986a9363270d83d2e951957f9fa528d"}]}
 ```
 
 ```kotlin [field-property box="lb_train" name="code" path="lb_train_code_.kt"]
 import afield.stdlib.DeepSetsOptions
 import afield.stdlib.InteractionExample
-import afield.stdlib.trainDeepSets
+import afield.stdlib.trainEquivariant
 
-prop<afield.stdlib.DeepSetsWeights>(learnedRule)
+prop<afield.stdlib.EquivariantWeights>(learnedRule)
 
 val radius = 2f / 64f
 val minSeparation = radius * 0.05f
@@ -84,10 +84,28 @@ fun sample(): InteractionExample {
         0.02f * sy + 3.0f * dvy / c + 200f * dy / c))
 }
 
-learnedRule = trainDeepSets(
+learnedRule = trainEquivariant(
     radius = radius, velocityScale = velocityScale,
     accelScale = 20f, sumScale = 8f, minSeparation = minSeparation,
-    options = DeepSetsOptions(steps = 4000, batch = 16, seed = 5)
+    // The *equivariant* form: psi emits scalars that multiply the neighbour's own
+    // direction and velocity difference, so rotating the flock rotates the force
+    // exactly and a symmetric neighbourhood gives identically zero. The plain form has
+    // neither property — it scores 0.50 on a forty-eight-neighbour ring where the true
+    // force is zero, a fixed-direction residual that grows with crowding — and that is
+    // what used to drift this flock out of its containment while the written one, under
+    // the same containment, stayed put. It also fits better: 0.262 against 0.302.
+    //
+    // 8x8 with a 4-wide message rather than the library default of 16x16 and 6. Swept
+    // against this exact rule: 160 multiply-adds a neighbour instead of 480, for a
+    // relative error of 0.302 against 0.287 — three times cheaper for five percent
+    // worse. The cost of this scene is *entirely* psi (the written flock runs at 116 fps
+    // on the identical grid, the learned one at 17.6), so this is the only dial that
+    // matters. Depth is what to keep: one hidden layer of 16 costs more than two of 8
+    // and scores 0.350.
+    options = DeepSetsOptions(
+        steps = 4000, batch = 16, seed = 5,
+        psiHidden = intArrayOf(8, 8), messageWidth = 4,
+    )
 ) { List(16) { sample() } }
 
 println("trained ${learnedRule.parameterCount} parameters: ${learnedRule}")
@@ -98,7 +116,7 @@ println("trained ${learnedRule.parameterCount} parameters: ${learnedRule}")
 <!-- field-box id="lb_written" index="2" -->
 
 ```edn [field-box id="lb_written" role="properties"]
-{"id" "lb_written" "index" 2 "name" "written rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "written rule" "_tombstone" false "frame" #afield/rect [740.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_written_code_.kt" "lines" 42 "characters" 1840 "sha256" "4422d87bb4257cddb065e276d516021f02079efb9c4609ed364c7a6be72bc1d0"}]}
+{"id" "lb_written" "index" 2 "name" "written rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "written rule" "_tombstone" false "frame" #afield/rect [740.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_written_code_.kt" "lines" 71 "characters" 3201 "sha256" "3eee413f10c85c6011e4ea9180ab507113a7556cba2b25025d1bc688a2d57598"}]}
 ```
 
 ```kotlin [field-property box="lb_written" name="code" path="lb_written_code_.kt"]
@@ -142,7 +160,36 @@ written.settings.containment = 1.5f
 written.settings.containmentRadius = 0.44f
 written.settings.containmentCenter = Vector2f(-0.45f, 0f)
 written.settings.dt = 1f / 60f
-written.settings.pointSize = 2f
+written.settings.pointSize = 3f
+written.settings.intensity = 1.5f
+
+// A wandering point the flock flees. Left alone at a settled density this scene reads as
+// static — near-cancelling forces, an evenly spaced disc that barely changes — so the
+// visible energy has to come from outside the rule. Whether "settled" is genuinely
+// *still* is not established and a still frame cannot tell: measured on a smaller CPU
+// flock at these weights the residual oscillates without trending, which is churn rather
+// than rest. The learned box drives its flock with the identical walk about its own
+// centre, so the A/B stays fair.
+//
+// The lambda is re-read every frame when the push buffer is written, which is the whole
+// animation. It holds no state and is derived from the frame counter, so calling it
+// twice in a frame cannot make it drift.
+written.driver = {
+    val t = renderer.frameCounter / 70.0
+    val i = Math.floor(t).toLong()
+    fun at(k: Long): Vector2f {
+        val r = java.util.Random(k * 0x9E3779B9L)
+        return Vector2f(-0.45f + (r.nextFloat() * 2 - 1) * 0.30f,
+                        0f + (r.nextFloat() * 2 - 1) * 0.30f)
+    }
+    val a = at(i); val b = at(i + 1)
+    val f = (t - i).toFloat()
+    val e = f * f * (3 - 2 * f)
+    Vector2f(a.x + (b.x - a.x) * e, a.y + (b.y - a.y) * e)
+}
+written.settings.driverStrength = -0.9f
+written.settings.driverRadius = 0.22f
+
 println("written rule: ${written.count} boids")
 ```
 
@@ -151,7 +198,7 @@ println("written rule: ${written.count} boids")
 <!-- field-box id="lb_learned" index="3" -->
 
 ```edn [field-box id="lb_learned" role="properties"]
-{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 33 "characters" 1241 "sha256" "0f223b011ed123abc6a956094e674496649c8a820f748bcd73f529af95e489d9"}]}
+{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 51 "characters" 1914 "sha256" "e6db184bd5494318de2bf41899fec9155f0ba3e18b68d6c21cf8d1207131edce"}]}
 ```
 
 ```kotlin [field-property box="lb_learned" name="code" path="lb_learned_code_.kt"]
@@ -168,7 +215,7 @@ once.learned {
         capacity = 12000, cellsPerSide = 64,
         domainMin = Vector2f(-1f, -1f), domainSize = 2f,
         renderer = renderer, name = "learnedGrid")
-    ShaderBoids(grid, 12000, renderer, learned = learnedRule) {
+    ShaderBoids(grid, 12000, renderer, equivariant = learnedRule) {
         name = "learned"
         radius = 2f / 64f
     }.also {
@@ -178,13 +225,31 @@ once.learned {
     }
 }
 
+// The identical walk about this flock's own centre, so the two see the same forcing.
+learned.driver = {
+    val t = renderer.frameCounter / 70.0
+    val i = Math.floor(t).toLong()
+    fun at(k: Long): Vector2f {
+        val r = java.util.Random(k * 0x9E3779B9L)
+        return Vector2f(0.45f + (r.nextFloat() * 2 - 1) * 0.30f,
+                        0f + (r.nextFloat() * 2 - 1) * 0.30f)
+    }
+    val a = at(i); val b = at(i + 1)
+    val f = (t - i).toFloat()
+    val e = f * f * (3 - 2 * f)
+    Vector2f(a.x + (b.x - a.x) * e, a.y + (b.y - a.y) * e)
+}
+learned.settings.driverStrength = -0.9f
+learned.settings.driverRadius = 0.22f
+
 learned.settings.separationRadiusFraction = 0.25f
 learned.settings.maxSpeed = 0.25f
 learned.settings.containment = 1.5f
 learned.settings.containmentRadius = 0.44f
 learned.settings.containmentCenter = Vector2f(0.45f, 0f)
 learned.settings.dt = 1f / 60f
-learned.settings.pointSize = 2f
+learned.settings.pointSize = 3f
+learned.settings.intensity = 1.5f
 learned.settings.slowColor = vec(0.95, 0.25, 0.45, 1.0)
 learned.settings.fastColor = vec(1.0, 0.85, 0.45, 1.0)
 println("learned rule: ${learned.count} boids on ${learned.learned}")

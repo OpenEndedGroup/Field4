@@ -201,12 +201,16 @@ operations:
           written.settings.containmentRadius = 0.44f
           written.settings.containmentCenter = Vector2f(-0.45f, 0f)
           written.settings.dt = 1f / 60f
-          written.settings.pointSize = 2f
+          written.settings.pointSize = 3f
+          written.settings.intensity = 1.5f
 
-          // A wandering point the flock flees. Reynolds boids at a settled density has a *static*
-          // attractor — every force cancels and a correct implementation stops moving — so the
-          // energy has to come from outside the rule. The learned box drives its flock with the
-          // identical walk about its own centre, so the A/B stays fair.
+          // A wandering point the flock flees. Left alone at a settled density this scene reads as
+          // static — near-cancelling forces, an evenly spaced disc that barely changes — so the
+          // visible energy has to come from outside the rule. Whether "settled" is genuinely
+          // *still* is not established and a still frame cannot tell: measured on a smaller CPU
+          // flock at these weights the residual oscillates without trending, which is churn rather
+          // than rest. The learned box drives its flock with the identical walk about its own
+          // centre, so the A/B stays fair.
           //
           // The lambda is re-read every frame when the push buffer is written, which is the whole
           // animation. It holds no state and is derived from the frame counter, so calling it
@@ -280,7 +284,8 @@ operations:
           learned.settings.containmentRadius = 0.44f
           learned.settings.containmentCenter = Vector2f(0.45f, 0f)
           learned.settings.dt = 1f / 60f
-          learned.settings.pointSize = 2f
+          learned.settings.pointSize = 3f
+          learned.settings.intensity = 1.5f
           learned.settings.slowColor = vec(0.95, 0.25, 0.45, 1.0)
           learned.settings.fastColor = vec(1.0, 0.85, 0.45, 1.0)
           println("learned rule: ${learned.count} boids on ${learned.learned}")

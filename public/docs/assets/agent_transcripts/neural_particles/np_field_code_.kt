@@ -11,7 +11,7 @@ prop<afield.stdlib.FlowMatchExport>(neuralExport)
 
 // A word, not a letter — and only because the source has the word's topology. A
 // standard Gaussian cannot become five disjoint outlines: it measures a chamfer of
-// 13.1 against a floor of 1.8, and no amount of training moves it, because a flow is a
+// 13.1 against a floor of 0.8, and no amount of training moves it, because a flow is a
 // continuous invertible map and one blob cannot tear into five.
 //
 // Three things get it to 5.2, and they were each worth a measurement:

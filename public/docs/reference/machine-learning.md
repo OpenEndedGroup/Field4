@@ -12,6 +12,8 @@ Models small enough to train inside a box, in plain Kotlin, while you watch. Flo
 
 `src/jvmMain/kotlin/afield/stdlib/deepsets.kt` — [read the source](source/jvmMain/afield/stdlib/deepsets/)
 
+**Used in:** [Neural particle systems](../neural_particles.md)
+
 ### Top-level functions { #deepsets-kt-functions }
 
 | Declaration | Summary |
@@ -163,7 +165,7 @@ the field then has to learn to collapse.
 
 `src/jvmMain/kotlin/afield/stdlib/flowmatching.kt` — [read the source](source/jvmMain/afield/stdlib/flowmatching/)
 
-**Used in:** [Flow Matching](../flow_matching.md), [Particle rules that were trained](../neural_particles.md)
+**Used in:** [Flow Matching](../flow_matching.md), [Neural particle systems](../neural_particles.md)
 
 ### Top-level functions { #flowmatching-kt-functions }
 
@@ -275,6 +277,8 @@ A trained velocity field, as returned by `flowMatch` — the thing you integrate
 
 `src/jvmMain/kotlin/afield/stdlib/neuralparticles.kt` — [read the source](source/jvmMain/afield/stdlib/neuralparticles/)
 
+**Used in:** [Neural particle systems](../neural_particles.md)
+
 ### Top-level functions { #neuralparticles-kt-functions }
 
 | Declaration | Summary |
@@ -351,6 +355,8 @@ The largest relative disagreement between two evaluations of the same network, a
 ## neuralparticles_system.kt { #neuralparticles-system-kt }
 
 `src/jvmMain/kotlin/afield/stdlib/neuralparticles_system.kt` — [read the source](source/jvmMain/afield/stdlib/neuralparticles_system/)
+
+**Used in:** [Neural particle systems](../neural_particles.md)
 
 ### NeuralParticleSettings { #neuralparticles-system-kt-neuralparticlesettings }
 

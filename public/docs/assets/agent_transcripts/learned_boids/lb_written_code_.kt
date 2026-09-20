@@ -38,5 +38,34 @@ written.settings.containment = 1.5f
 written.settings.containmentRadius = 0.44f
 written.settings.containmentCenter = Vector2f(-0.45f, 0f)
 written.settings.dt = 1f / 60f
-written.settings.pointSize = 2f
+written.settings.pointSize = 3f
+written.settings.intensity = 1.5f
+
+// A wandering point the flock flees. Left alone at a settled density this scene reads as
+// static — near-cancelling forces, an evenly spaced disc that barely changes — so the
+// visible energy has to come from outside the rule. Whether "settled" is genuinely
+// *still* is not established and a still frame cannot tell: measured on a smaller CPU
+// flock at these weights the residual oscillates without trending, which is churn rather
+// than rest. The learned box drives its flock with the identical walk about its own
+// centre, so the A/B stays fair.
+//
+// The lambda is re-read every frame when the push buffer is written, which is the whole
+// animation. It holds no state and is derived from the frame counter, so calling it
+// twice in a frame cannot make it drift.
+written.driver = {
+    val t = renderer.frameCounter / 70.0
+    val i = Math.floor(t).toLong()
+    fun at(k: Long): Vector2f {
+        val r = java.util.Random(k * 0x9E3779B9L)
+        return Vector2f(-0.45f + (r.nextFloat() * 2 - 1) * 0.30f,
+                        0f + (r.nextFloat() * 2 - 1) * 0.30f)
+    }
+    val a = at(i); val b = at(i + 1)
+    val f = (t - i).toFloat()
+    val e = f * f * (3 - 2 * f)
+    Vector2f(a.x + (b.x - a.x) * e, a.y + (b.y - a.y) * e)
+}
+written.settings.driverStrength = -0.9f
+written.settings.driverRadius = 0.22f
+
 println("written rule: ${written.count} boids")
