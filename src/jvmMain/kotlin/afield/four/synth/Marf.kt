@@ -14,10 +14,10 @@
  * On the hardware those are four patch points. Here they are four ordinary [PatPattern]s, which is
  * the whole point: `slow`, `rev`, `every`, `euclid`, `degradeBy`, `randcat` and everything else in
  * TidalPatterns.kt / PatComposition.kt already work on all four, so this file adds almost no
- * combinators of its own. A reader is built from patterns and *is* a pattern:
- * [MarfReader.signal] hands back a `PatPattern<Double>` in the sense of PatSignals.kt, and
- * [MarfReader.triggers] hands back a discrete `PatPattern<String>`. Both ends plug straight into
- * `with(gain(...))`, `struct`, `segment`, `respond` and the scheduler.
+ * combinators of its own. A reader is built from patterns and *is* a pattern: `signal()` hands back
+ * a `PatPattern<Double>` in the sense of PatSignals.kt, and [MarfReader.triggers] hands back a
+ * discrete `PatPattern<String>`. Both ends plug straight into `with(gain(...))`, `struct`,
+ * `segment`, `respond` and the scheduler.
  *
  * Read the surface from the outside in:
  *
@@ -134,28 +134,45 @@
  * four of them — the address cycles `2, 4, 2, 0, 2, 4, 2, 0, …` and the "glide" is a four-step
  * sequencer wearing a signal's clothes. `sine().slow(3)` is twelve, which is better and still a
  * sequence. What actually reads as a glide is a long count: `saw().slow(8)` against those stages is
- * thirty-two, and an aperiodic address (`perlin()`, `rand()`) never repeats at all. Nothing here
- * errors; the reader is simply less interesting than it looks, so it is worth knowing which case
- * you are in.
+ * thirty-two, and an aperiodic address (`perlin()`, `rand()`) never repeats at all. No exception is
+ * raised in any of these cases, so the symptom is what you hear rather than what you read.
  *
  * Count the distinct [MarfSample.address] values **rounded** when you check. An aliased address
  * repeats to a few parts in 10⁴ rather than bit-exactly, because the probe instant is an exact
  * rational and `PatQ.toDouble()` rounds it at twelve places — a raw `distinct()` reports seventeen
  * different addresses for the four-value cycle above. `MarfSmokeTest` prints both cases.
  *
- * #### What is deliberately not here yet
+ * #### Values other than numbers
  *
- * - **Vector-valued stages.** Everything is `Double`. The place a `T` would go is [MarfStage.target]
- *   plus the mix in [MarfResolvedStage.valueAt]; the curve is a `0..1` shaping function and stays
- *   scalar either way, so the generalisation is a type parameter and an interpolator argument, not
- *   a redesign.
- * - **A bank entry that is itself a pattern.** A stage's continuous behaviour is a [MarfCurve], and
- *   `MarfCurve.Shape` can close over anything, including another reader — but a nested pattern
- *   given its own local temporal scope inside the stage is not modelled, and would want
- *   `stagePhase` threaded into a real evaluation context rather than passed as a `Double`.
+ * A stage's value is a type parameter, and [MarfSpace] is the arithmetic a reader needs to move
+ * one value toward another: [MarfSpace.sub] for the direction, [MarfSpace.scale] to walk part of
+ * it, [MarfSpace.add] to arrive. The curve stays scalar, because a stage's shape is
+ * one-dimensional however many dimensions its value has.
  *
- * Neither is blocked by anything in this file, and both were left out on purpose: the prototype is
- * small so that whether the separation is the useful idea can be judged before it is generalised.
+ *        val path = marfBankIn(
+ *            MarfVector3f,
+ *            stageTo(Vector3f(0f, 0f, 0f), 1.0),
+ *            stageTo(Vector3f(1f, 0.5f, 0f), 0.5, MarfCurve.Smooth)
+ *        ).read(pat("<0 1>").nums(), fields = MarfFieldClock.STAGES)
+ *
+ *        path.at(1.5).value               // a Vector3f
+ *        path.signal { it.x.toDouble() }  // any component, as an ordinary signal
+ *
+ * `marf(...)` and `marfBank(...)` are the scalar spellings and give a `MarfReader<Double>`;
+ * [marfIn] and [marfBankIn] take a space. Instances for Field's generated linalg vectors are in
+ * MarfVectors.kt, and they copy before they write — the in-place `add`/`mul`/`normalize` members
+ * would rewrite the bank's own stage targets rather than produce one wrong frame.
+ *
+ * [MarfSpace] is a vector space, which rules out the types that are not one: a quaternion
+ * interpolates by `slerp` and a hue wraps, so neither is `add`/`scale` and neither has an instance.
+ * Those want a reader whose blend is its own function.
+ *
+ * #### Not here yet
+ *
+ * **A bank entry that is itself a pattern.** A stage's continuous behaviour is a [MarfCurve], and
+ * `MarfCurve.Shape` can close over anything, including another reader. A nested pattern given its
+ * own local temporal scope inside the stage is not modelled, and would want `stagePhase` threaded
+ * into a real evaluation context rather than passed as a `Double`. Nothing in this file blocks it.
  */
 
 package afield.four.synth
@@ -297,6 +314,58 @@ fun curves(source: String): PatPattern<MarfCurve> {
 
 // ── stages and banks: the stored material ─────────────────────────────────────────────────
 
+// ── what a stage can be made of ───────────────────────────────────────────────────────────
+
+/**
+ * The arithmetic a reader needs in order to move a value toward another one.
+ *
+ * A stage says *where to go*; the curve says *how far along the way we are*. Turning those two
+ * into an output needs exactly three operations, and nothing about time or patterns:
+ *
+ *     value = from + Σ wᵢ · (toᵢ − from) · shapeᵢ(phase)
+ *
+ * so [sub] to get the direction, [scale] to walk part of it, and [add] to arrive. [zero] is the
+ * accumulator's starting point and the default for a reader's initial value.
+ *
+ * Instances must be **non-mutating**. Field's generated linalg makes this a real hazard rather
+ * than a formality: `Vector3f.add(other)`, `mul(scalar)`, `normalize()` and the `/` operator all
+ * write into the receiver, so an instance that reached for the obvious spelling would corrupt the
+ * stage targets stored in the bank. [MarfVector3f] and its siblings go through the out-parameter
+ * forms (`a.add(b, Vector3f())`) for that reason, and `MarfSpaceTest` asserts that reading a bank
+ * twice gives the same answer.
+ *
+ * This is a vector space, which rules out the types that are not one. A quaternion interpolates by
+ * `slerp` rather than componentwise, and a hue wraps; neither is expressible as `add`/`scale`, so
+ * neither gets an instance here. They would want a reader whose blend is its own function rather
+ * than a wider [MarfSpace].
+ */
+interface MarfSpace<T> {
+    /** The additive identity, and the default departure value of a reader's first stage. */
+    val zero: T
+
+    fun add(a: T, b: T): T
+
+    fun sub(a: T, b: T): T
+
+    fun scale(a: T, k: Double): T
+
+    /** `from` moved a [fraction] of the way toward `to`. Exactly `from` at 0 and `to` at 1. */
+    fun lerp(from: T, to: T, fraction: Double): T = add(from, scale(sub(to, from), fraction))
+
+    /** How a stage of this type prints in a figure or a trigger event. */
+    fun label(value: T): String = value.toString()
+}
+
+/** The scalar space. The default everywhere, and what `marf(...)` and `marfBank(...)` produce. */
+object MarfDoubles : MarfSpace<Double> {
+    override val zero: Double get() = 0.0
+    override fun add(a: Double, b: Double): Double = a + b
+    override fun sub(a: Double, b: Double): Double = a - b
+    override fun scale(a: Double, k: Double): Double = a * k
+    override fun lerp(from: Double, to: Double, fraction: Double): Double = from + (to - from) * fraction
+    override fun label(value: Double): String = patFormatNumber(value)
+}
+
 /** Resolution at which a `Double` duration becomes an exact [PatQ]. See the file header. */
 const val MARF_DURATION_DENOM: Long = 1_000_000L
 
@@ -323,37 +392,52 @@ private const val MARF_WALK_BUDGET = 1 shl 20
  * disconnected ramps — and what makes the output continuous across a stage boundary even when the
  * address jumps.
  */
-data class MarfStage(
-    val target: Double,
+data class MarfStage<T>(
+    val target: T,
     val duration: PatQ = PatQ.ONE,
     val curve: MarfCurve = MarfCurve.Linear,
     val trigger: Boolean = true,
     val label: String? = null
 )
 
-/** The general stage constructor. [duration] is in cycles. */
+/**
+ * The general stage constructor, for any value type. [duration] is in cycles.
+ *
+ * `stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth)`. The scalar helpers below are this with a
+ * curve chosen and a `Number` target; a stage needs no [MarfSpace], because nothing is interpolated
+ * until a reader reads it.
+ */
+fun <T> stageTo(
+    target: T,
+    duration: Number = 1.0,
+    curve: MarfCurve = MarfCurve.Linear,
+    trigger: Boolean = true,
+    label: String? = null
+): MarfStage<T> = MarfStage(target, marfDuration(duration), curve, trigger, label)
+
+/** The general scalar stage constructor. [duration] is in cycles. */
 fun stage(
     target: Number,
     duration: Number = 1.0,
     curve: MarfCurve = MarfCurve.Linear,
     trigger: Boolean = true,
     label: String? = null
-): MarfStage = MarfStage(target.toDouble(), marfDuration(duration), curve, trigger, label)
+): MarfStage<Double> = MarfStage(target.toDouble(), marfDuration(duration), curve, trigger, label)
 
 /** Step to [target] and stay there for [duration] cycles. */
-fun holdAt(target: Number, duration: Number = 1.0, trigger: Boolean = true, label: String? = null): MarfStage =
+fun holdAt(target: Number, duration: Number = 1.0, trigger: Boolean = true, label: String? = null): MarfStage<Double> =
     stage(target, duration, MarfCurve.Hold, trigger, label)
 
 /** Slew linearly to [target] over [duration] cycles. */
-fun rampTo(target: Number, duration: Number = 1.0, trigger: Boolean = true, label: String? = null): MarfStage =
+fun rampTo(target: Number, duration: Number = 1.0, trigger: Boolean = true, label: String? = null): MarfStage<Double> =
     stage(target, duration, MarfCurve.Linear, trigger, label)
 
 /** Slew to [target] as `phase^amount` — a convex rise above 1, concave below. */
-fun curveTo(target: Number, duration: Number = 1.0, amount: Number = 3.0, trigger: Boolean = true, label: String? = null): MarfStage =
+fun curveTo(target: Number, duration: Number = 1.0, amount: Number = 3.0, trigger: Boolean = true, label: String? = null): MarfStage<Double> =
     stage(target, duration, MarfCurve.Exp(amount.toDouble()), trigger, label)
 
 /** Oscillate toward [target] and back, [cycles] times across the stage. See [MarfCurve.Osc]. */
-fun oscTo(target: Number, duration: Number = 1.0, cycles: Number = 1.0, trigger: Boolean = true, label: String? = null): MarfStage =
+fun oscTo(target: Number, duration: Number = 1.0, cycles: Number = 1.0, trigger: Boolean = true, label: String? = null): MarfStage<Double> =
     stage(target, duration, MarfCurve.Osc(cycles.toDouble()), trigger, label)
 
 /** A duration in cycles, exact and floored at [MARF_MIN_DURATION]. */
@@ -370,12 +454,12 @@ fun marfDuration(cycles: PatQ): PatQ = if (cycles < MARF_MIN_DURATION) MARF_MIN_
  * in the [MarfReader]s built by [read], which is exactly the property being borrowed from the
  * hardware. Two readers over one bank are two voices reading one score.
  */
-class MarfBank(val stages: List<MarfStage>) {
+class MarfBank<T>(val stages: List<MarfStage<T>>, val space: MarfSpace<T>) {
     init { require(stages.isNotEmpty()) { "a bank needs at least one stage" } }
 
     val size: Int get() = stages.size
 
-    operator fun get(index: Int): MarfStage = stages[wrapIndex(index)]
+    operator fun get(index: Int): MarfStage<T> = stages[wrapIndex(index)]
 
     /** Bank indices wrap, so an address pattern never has to know how long the bank is. */
     fun wrapIndex(index: Int): Int {
@@ -386,23 +470,30 @@ class MarfBank(val stages: List<MarfStage>) {
     override fun toString(): String = "MarfBank(${stages.size} stages)"
 }
 
-/** A bank from stages written out in order. */
-fun marfBank(vararg stages: MarfStage): MarfBank = MarfBank(stages.toList())
+/** A scalar bank from stages written out in order. */
+fun marfBank(vararg stages: MarfStage<Double>): MarfBank<Double> = MarfBank(stages.toList(), MarfDoubles)
 
-/** A bank from a list — the form to use when the stages are computed. */
-fun marfBank(stages: List<MarfStage>): MarfBank = MarfBank(stages)
+/** A scalar bank from a list — the form to use when the stages are computed. */
+fun marfBank(stages: List<MarfStage<Double>>): MarfBank<Double> = MarfBank(stages, MarfDoubles)
+
+/** A bank of any value type. `marfBankIn(MarfVector3f, stageTo(a), stageTo(b))`. */
+fun <T> marfBankIn(space: MarfSpace<T>, vararg stages: MarfStage<T>): MarfBank<T> =
+    MarfBank(stages.toList(), space)
+
+/** A bank of any value type, from a list. */
+fun <T> marfBankIn(space: MarfSpace<T>, stages: List<MarfStage<T>>): MarfBank<T> = MarfBank(stages, space)
 
 /**
  * A bank of plain held values, for when only the addressing is interesting.
  * `marfValues(0, .3, .9, .2, .8)` is the five-slot voltage source of the test in the design note.
  */
-fun marfValues(vararg targets: Number): MarfBank =
-    MarfBank(targets.map { holdAt(it) })
+fun marfValues(vararg targets: Number): MarfBank<Double> =
+    MarfBank(targets.map { holdAt(it) }, MarfDoubles)
 
 // ── what a reader knows at an instant ─────────────────────────────────────────────────────
 
 /** One bank stage and its weight in a blended (fractional-address) read. */
-data class MarfComponent(val index: Int, val stage: MarfStage, val weight: Double)
+data class MarfComponent<T>(val index: Int, val stage: MarfStage<T>, val weight: Double)
 
 /**
  * A stage as the reader actually entered it: resolved numbers, an exact span, and a departure value.
@@ -412,16 +503,17 @@ data class MarfComponent(val index: Int, val stage: MarfStage, val weight: Doubl
  * phase and a shared [from]. That sharing is what keeps a fractional address continuous rather
  * than crossfading between two functions that disagree about where they started.
  */
-data class MarfResolvedStage(
+data class MarfResolvedStage<T>(
     val index: Long,
     val start: PatQ,
     val duration: PatQ,
     val address: Double,
-    val target: Double,
+    val target: T,
     val trigger: Boolean,
     val label: String,
-    val from: Double,
-    val components: List<MarfComponent>
+    val from: T,
+    val components: List<MarfComponent<T>>,
+    val space: MarfSpace<T>
 ) {
     /** The exclusive end of this stage, in cycles. */
     val end: PatQ get() = start + duration
@@ -429,19 +521,31 @@ data class MarfResolvedStage(
     /** The half-open span this stage occupies. */
     val arc: PatArc get() = PatArc(start, end)
 
-    /** The blended output at local [phase]. */
-    fun valueAt(phase: Double): Double {
+    /**
+     * The blended output at local [phase].
+     *
+     * The blend is written as `from + Σ wᵢ·(toᵢ - from)·shapeᵢ(phase)` rather than as
+     * `Σ wᵢ·valueᵢ(phase)`. The two are the same arithmetic, because the weights partition 1, but
+     * only the first is *exactly* [from] at phase 0: in the second, `Σ wᵢ` for a fractional address
+     * is `1 ± 1e-16`, and a value scaled by that lands a few bits away from where the previous
+     * stage left off. The gallery's continuity check compares those two numbers with no tolerance,
+     * which is how the difference showed up.
+     */
+    fun valueAt(phase: Double): T {
         if (components.size == 1) {
             val only = components[0]
-            return marfCurveValue(only.stage.curve, from, only.stage.target, phase)
+            return space.lerp(from, only.stage.target, marfCurveShape(only.stage.curve, phase))
         }
-        var sum = 0.0
-        for (c in components) sum += c.weight * marfCurveValue(c.stage.curve, from, c.stage.target, phase)
-        return sum
+        var delta = space.zero
+        for (c in components) {
+            val weighted = c.weight * marfCurveShape(c.stage.curve, phase)
+            delta = space.add(delta, space.scale(space.sub(c.stage.target, from), weighted))
+        }
+        return space.add(from, delta)
     }
 
     /** The value this stage leaves behind, which is the next stage's [from]. */
-    val exitValue: Double get() = valueAt(1.0)
+    val exitValue: T get() = valueAt(1.0)
 }
 
 /**
@@ -453,17 +557,17 @@ data class MarfResolvedStage(
  * began, and [stagePhase] is that normalised. `noise(cycle)`, `value(stageIndex)` and
  * `sin(stagePhase · 4π)` are three different things and all three are reachable from here.
  */
-data class MarfSample(
+data class MarfSample<T>(
     val reader: String,
-    val value: Double,
+    val value: T,
     val cycle: Double,
     val stageIndex: Long,
     val stagePhase: Double,
     val stageTime: Double,
     val stageDuration: Double,
     val address: Double,
-    val target: Double,
-    val from: Double,
+    val target: T,
+    val from: T,
     val label: String
 )
 
@@ -481,20 +585,21 @@ data class MarfSample(
  *
  * The two ways out are [signal] and [triggers], and both are ordinary [PatPattern]s.
  */
-class MarfReader internal constructor(
+class MarfReader<T> internal constructor(
     val name: String,
     val origin: PatQ,
-    val initial: Double,
-    private val resolve: (index: Long, start: PatQ, previous: MarfResolvedStage?) -> MarfResolvedStage
+    val initial: T,
+    val space: MarfSpace<T>,
+    private val resolve: (index: Long, start: PatQ, previous: MarfResolvedStage<T>?) -> MarfResolvedStage<T>
 ) {
     private val lock = Any()
-    private val timeline = ArrayList<MarfResolvedStage>()
+    private val timeline = ArrayList<MarfResolvedStage<T>>()
 
     /** Drops the resolved timeline. Only matters for a reader whose fields read live box state. */
     fun reset() { synchronized(lock) { timeline.clear() } }
 
     /** The stage active at exact cycle [t]; before [origin], stage 0 at phase 0. */
-    fun stageAt(t: PatQ): MarfResolvedStage = synchronized(lock) {
+    fun stageAt(t: PatQ): MarfResolvedStage<T> = synchronized(lock) {
         if (timeline.isEmpty() || t < timeline[0].start) {
             timeline.clear()
             timeline += resolve(0L, origin, null)
@@ -522,7 +627,7 @@ class MarfReader internal constructor(
     }
 
     /** The full temporal context at exact cycle [t]. */
-    fun sample(t: PatQ): MarfSample {
+    fun sample(t: PatQ): MarfSample<T> {
         val s = stageAt(t)
         val dur = s.duration.toDouble()
         val elapsed = (t - s.start).toDouble()
@@ -543,23 +648,25 @@ class MarfReader internal constructor(
     }
 
     /** The temporal context at cycle [cycle]. The form to call from a draw loop. */
-    fun at(cycle: Number): MarfSample = sample(PatQ.fromDouble(cycle.toDouble(), MARF_DURATION_DENOM))
+    fun at(cycle: Number): MarfSample<T> = sample(PatQ.fromDouble(cycle.toDouble(), MARF_DURATION_DENOM))
 
     /** The temporal context [seconds] into a performance at [cps] cycles per second. */
-    fun atSeconds(seconds: Number, cps: Number = 1.0): MarfSample =
+    fun atSeconds(seconds: Number, cps: Number = 1.0): MarfSample<T> =
         at(seconds.toDouble() * cps.toDouble().coerceAtLeast(1e-6))
 
     /** Just the output, at cycle [cycle]. */
-    fun value(cycle: Number): Double = at(cycle).value
+    fun value(cycle: Number): T = at(cycle).value
 
     /**
-     * The continuous output, as a signal in the sense of PatSignals.kt.
+     * One scalar [component] of the output, as a signal in the sense of PatSignals.kt.
      *
-     * Being a `PatPattern<Double>` and not a new type is the integration: `.range(200, 4000)`,
-     * `.segment(16)`, `.quantise(.25)` and `gain(...)` all apply, and the reader can be the right
-     * operand of the parameter algebra without knowing it is one.
+     * This is the way a vector-valued reader reaches the rest of the language, which is scalar
+     * nearly everywhere: `path.signal { it.x.toDouble() }` is an ordinary `PatPattern<Double>`, so
+     * `.range(200, 4000)`, `.segment(16)` and `gain(...)` all apply to it. A scalar reader has
+     * [signal] with no argument for the same purpose.
      */
-    fun signal(): PatPattern<Double> = signalOf { exact, _ -> sample(exact).value }
+    fun signal(component: (T) -> Double): PatPattern<Double> =
+        signalOf { exact, _ -> component(sample(exact).value) }
 
     /** The local stage phase as a signal — a `0..1` sawtooth whose teeth are the stage durations. */
     fun phase(): PatPattern<Double> = signalOf { exact, _ -> sample(exact).stagePhase }
@@ -571,8 +678,8 @@ class MarfReader internal constructor(
     fun stageIndex(): PatPattern<Double> = signalOf { exact, _ -> sample(exact).stageIndex.toDouble() }
 
     /** Every stage overlapping [arc], in order — the drawing and testing surface. */
-    fun stagesIn(arc: PatArc): List<MarfResolvedStage> {
-        val out = mutableListOf<MarfResolvedStage>()
+    fun stagesIn(arc: PatArc): List<MarfResolvedStage<T>> {
+        val out = mutableListOf<MarfResolvedStage<T>>()
         var s = stageAt(arc.start)
         while (s.start < arc.end) {
             out += s
@@ -675,14 +782,53 @@ fun marf(
     initial: Number = 0.0,
     origin: Number = 0.0,
     name: String = "marf"
-): MarfReader = MarfReader(
+): MarfReader<Double> = marfIn(
+    space = MarfDoubles,
+    value = value,
+    duration = duration,
+    curve = curve,
+    trigger = trigger,
+    speed = speed,
+    fields = fields,
+    initial = initial.toDouble(),
+    origin = origin,
+    name = name
+)
+
+/**
+ * [marf] for any value type: a reader whose stages come from independently patterned fields, with
+ * the arithmetic supplied by [space].
+ *
+ *     marfIn(
+ *         MarfVector3f,
+ *         value = pat("<0 1 2>").nums().map { Vector3f(it.toFloat(), 0f, 0f) },
+ *         duration = pat("<1 .5>").nums(),
+ *         curve = curves("<smooth linear>")
+ *     )
+ *
+ * Only `value` changes type. The duration, curve, trigger and speed patterns stay scalar, because a
+ * stage's *timing* and *shape* are one-dimensional whatever its value is.
+ */
+fun <T> marfIn(
+    space: MarfSpace<T>,
+    value: PatPattern<T>,
+    duration: PatPattern<Double> = constant(1.0),
+    curve: PatPattern<MarfCurve> = marfCurvePattern(MarfCurve.Linear),
+    trigger: PatPattern<Boolean> = constantTrue(),
+    speed: PatPattern<Double> = constant(1.0),
+    fields: MarfFieldClock = MarfFieldClock.CYCLES,
+    initial: T = space.zero,
+    origin: Number = 0.0,
+    name: String = "marf"
+): MarfReader<T> = MarfReader(
     name = name,
     origin = PatQ.fromDouble(origin.toDouble(), MARF_DURATION_DENOM),
-    initial = initial.toDouble()
+    initial = initial,
+    space = space
 ) { index, start, previous ->
     val at = fields.instant(index, start)
     val was = previous?.components?.firstOrNull()?.stage
-    val target = marfLatch(value, at, previous?.target ?: 0.0)
+    val target = marfLatch(value, at, previous?.target ?: space.zero)
     val shape = marfLatch(curve, at, was?.curve ?: MarfCurve.Linear)
     val dur = marfStageDuration(
         marfLatch(duration, at, previous?.duration?.toDouble() ?: 1.0),
@@ -695,9 +841,10 @@ fun marf(
         address = index.toDouble(),
         target = target,
         trigger = marfLatch(trigger, at, previous?.trigger ?: true),
-        label = patFormatNumber(target),
-        from = previous?.exitValue ?: initial.toDouble(),
-        components = listOf(MarfComponent(0, MarfStage(target, dur, shape), 1.0))
+        label = space.label(target),
+        from = previous?.exitValue ?: initial,
+        components = listOf(MarfComponent(0, MarfStage(target, dur, shape), 1.0)),
+        space = space
     )
 }
 
@@ -717,21 +864,22 @@ fun marf(
  *   stage whatever the durations are, and `CYCLES` reads the address as a control voltage.
  * @param initial where the output starts, which is the first stage's departure value.
  */
-fun MarfBank.read(
+fun <T> MarfBank<T>.read(
     address: PatPattern<Double>,
     duration: PatPattern<Double>? = null,
     curve: PatPattern<MarfCurve>? = null,
     speed: PatPattern<Double> = constant(1.0),
     fields: MarfFieldClock = MarfFieldClock.CYCLES,
-    initial: Number = 0.0,
+    initial: T = space.zero,
     origin: Number = 0.0,
     name: String = "reader"
-): MarfReader {
+): MarfReader<T> {
     val bank = this
     return MarfReader(
         name = name,
         origin = PatQ.fromDouble(origin.toDouble(), MARF_DURATION_DENOM),
-        initial = initial.toDouble()
+        initial = initial,
+        space = bank.space
     ) { index, start, previous ->
         val at = fields.instant(index, start)
         val addr = marfLatch(address, at, previous?.address ?: 0.0)
@@ -746,8 +894,8 @@ fun MarfBank.read(
             for (c in components) blended += c.weight * c.stage.duration.toDouble()
             marfStageDuration(blended, marfLatch(speed, at, 1.0))
         }
-        var target = 0.0
-        for (c in components) target += c.weight * c.stage.target
+        var target = bank.space.zero
+        for (c in components) target = bank.space.add(target, bank.space.scale(c.stage.target, c.weight))
         MarfResolvedStage(
             index = index,
             start = start,
@@ -756,8 +904,9 @@ fun MarfBank.read(
             target = target,
             trigger = components.any { it.stage.trigger },
             label = components.maxByOrNull { it.weight }!!.let { it.stage.label ?: it.index.toString() },
-            from = previous?.exitValue ?: initial.toDouble(),
-            components = components
+            from = previous?.exitValue ?: initial,
+            components = components,
+            space = bank.space
         )
     }
 }
@@ -769,8 +918,8 @@ fun MarfBank.read(
  * weighted `1-α` and `α` — the scalar output interpolation of the design note. [curveOverride]
  * replaces each component's curve when given.
  */
-fun MarfBank.componentsAt(address: Double, curveOverride: MarfCurve? = null): List<MarfComponent> {
-    fun slot(i: Int, weight: Double): MarfComponent {
+fun <T> MarfBank<T>.componentsAt(address: Double, curveOverride: MarfCurve? = null): List<MarfComponent<T>> {
+    fun slot(i: Int, weight: Double): MarfComponent<T> {
         val wrapped = wrapIndex(i)
         val s = stages[wrapped]
         return MarfComponent(wrapped, if (curveOverride != null) s.copy(curve = curveOverride) else s, weight)
@@ -790,6 +939,19 @@ private fun marfStageDuration(duration: Double, speed: Double): PatQ {
     val d = if (duration.isFinite()) duration else 1.0
     return marfDuration(d / s)
 }
+
+/**
+ * The continuous output of a scalar reader, as a signal in the sense of PatSignals.kt.
+ *
+ * Being a `PatPattern<Double>` and not a new type is the integration: `.range(200, 4000)`,
+ * `.segment(16)`, `.quantise(.25)` and `gain(...)` all apply, and the reader can be the right
+ * operand of the parameter algebra without knowing it is one.
+ *
+ * An extension rather than a member because it only means anything for `T = Double`. A reader over
+ * some other type reaches the same place one component at a time, through
+ * [MarfReader.signal]`{ it.x }`.
+ */
+fun MarfReader<Double>.signal(): PatPattern<Double> = signal { it }
 
 /** A constant curve, as a pattern — the default `curve` argument of [marf]. */
 fun marfCurvePattern(curve: MarfCurve): PatPattern<MarfCurve> =

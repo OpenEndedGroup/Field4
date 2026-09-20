@@ -84,8 +84,8 @@ object MarfSmokeTest {
     private const val CYCLES = 8
     private val LEVELS = "▁▂▃▄▅▆▇█"
 
-    /** The shared material. Five stages, deliberately of unequal length and unequal shape. */
-    private fun bank(): MarfBank = marfBank(
+    /** The shared material. Five stages, of unequal length and unequal shape. */
+    private fun bank(): MarfBank<Double> = marfBank(
         rampTo(0.1, 1.0, label = "a"),
         rampTo(0.9, 0.5, label = "b"),
         holdAt(0.4, 2.0, label = "c"),
@@ -221,7 +221,7 @@ object MarfSmokeTest {
      * emitted one. Every column is a real [MarfReader.at] call, so the picture cannot flatter the
      * reader it illustrates.
      */
-    private fun render(reader: MarfReader): String {
+    private fun render(reader: MarfReader<Double>): String {
         val columns = COLUMNS_PER_CYCLE * CYCLES
         val samples = (0 until columns).map { reader.at((it + 0.5) / COLUMNS_PER_CYCLE) }
         val boundaries = BooleanArray(columns)

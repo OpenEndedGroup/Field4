@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
  */
 class MarfTest {
 
-    private fun spansOf(reader: MarfReader, count: Int): List<Pair<PatQ, PatQ>> {
+    private fun spansOf(reader: MarfReader<Double>, count: Int): List<Pair<PatQ, PatQ>> {
         val out = mutableListOf<Pair<PatQ, PatQ>>()
         var t = PatQ.ZERO
         repeat(count) {

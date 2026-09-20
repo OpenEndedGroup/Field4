@@ -123,6 +123,7 @@ nav:
     # the Tour has gained a stop twice now, and a comment that counts them goes stale silently.
     - Sound & Music:
       - Patterns & Rhythm: pattern_language.md
+      - A Pattern as a Function Generator: marf.md
       - Making a Sound, Every Path There Is: sound_paths.md
       - A Pattern in Space (HRTF): pat_spatial.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
