@@ -187,6 +187,15 @@ references and three uints. Vulkan only guarantees 128, so this is a desktop-cla
 the machine here reports 4096. If it ever has to shrink, the three uints fold into one packed word
 and the joint and weight buffers interleave into one.
 
+**Opening a demo document dirties it, and the diff is not a mistake you made.** Running
+`skinned_characters` through the backdoor without an explicit `save:` op leaves
+`document.md` and `metadata.edn` modified: Field's own save on exit writes the synthetic `root`
+box into `document.md` (`"boxes" 7` becomes `8`) and reshuffles the child ordering, where a
+transcript `save:` op excludes root by design. **Both forms pass `checkAgentDemos`** — verified
+both ways on 2026-09-20 — and the corpus already contains both (`alife_walls` has root in its
+`document.md`, `path_tracing_medium` does not). So after running a demo to check it, `git
+checkout --` the two files rather than committing the churn, and do not read the diff as damage.
+
 ## What this does not do
 
 - **No dual-quaternion skinning on the GPU.** `GltfSkinning.SkinningMethod.DUAL_QUATERNION` is CPU
