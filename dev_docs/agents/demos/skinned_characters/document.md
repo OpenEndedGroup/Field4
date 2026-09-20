@@ -6,25 +6,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 {"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
 ```
 
-## 1. root
+## 1. 0 - A window and a renderer, which box 4 needs
 
-<!-- field-box id="root" index="0" -->
-
-```edn [field-box id="root" role="properties"]
-{"id" "root" "index" 0 "name" "root" "parents" ["metaroot"] "children" ["rig_facts" "drag_time" "path_trace" "gpu_skin" "f5e60137-f514-4c01-865c-5af02f1d8eee" "c82c404d-a15d-4f51-a06f-66dfc2a00364"] "properties" {"children" #{#afield/box "rig_facts" #afield/box "drag_time" #afield/box "path_trace" #afield/box "gpu_skin" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee" #afield/box "c82c404d-a15d-4f51-a06f-66dfc2a00364"} "parents" #{#afield/box "metaroot"} "name" "root" "nested" #{} "preamble" ""} "blockProperties" []}
-```
-
-## 2. 0 - A window and a renderer, which box 4 needs
-
-<!-- field-box id="f5e60137-f514-4c01-865c-5af02f1d8eee" index="1" -->
+<!-- field-box id="f5e60137-f514-4c01-865c-5af02f1d8eee" index="0" -->
 
 ```edn [field-box id="f5e60137-f514-4c01-865c-5af02f1d8eee" role="properties"]
-{"id" "f5e60137-f514-4c01-865c-5af02f1d8eee" "index" 1 "name" "0 - A window and a renderer, which box 4 needs" "parents" ["root"] "children" ["gpu_skin" "c82c404d-a15d-4f51-a06f-66dfc2a00364"] "properties" {"children" #{#afield/box "gpu_skin" #afield/box "c82c404d-a15d-4f51-a06f-66dfc2a00364"} "parents" #{#afield/box "root"} "name" "0 - A window and a renderer, which box 4 needs" "frame" #afield/rect [0.0 0.0 100.0 100.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "89f6a77619abdeabad9f89f3e7257ad06dd1da86a31cca48e470573a8d07d803"} {"name" "code" "language" "kotlin" "path" "f5e60137-f514-4c01-865c-5af02f1d8eee_code_.kt" "lines" 24 "characters" 1123 "sha256" "1e06ad6ba8e1133419854e02d9044a74d3b7bfd6d62fddc77a22e0e6de432cb9"}]}
+{"id" "f5e60137-f514-4c01-865c-5af02f1d8eee" "index" 0 "name" "0 - A window and a renderer, which box 4 needs" "parents" ["root"] "children" ["gpu_skin" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "gpu_crowd"] "properties" {"children" #{#afield/box "gpu_skin" #afield/box "c82c404d-a15d-4f51-a06f-66dfc2a00364" #afield/box "gpu_crowd"} "parents" #{#afield/box "root"} "name" "0 - A window and a renderer, which box 4 needs" "frame" #afield/rect [0.0 0.0 100.0 100.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"} {"name" "code" "language" "kotlin" "path" "f5e60137-f514-4c01-865c-5af02f1d8eee_code_.kt" "lines" 24 "characters" 1123 "sha256" "1e06ad6ba8e1133419854e02d9044a74d3b7bfd6d62fddc77a22e0e6de432cb9"}]}
 ```
 
 ```text [field-property box="f5e60137-f514-4c01-865c-5af02f1d8eee" name="preamble"]
-import afield.four.util.Window
 import afield.four.Renderer
+import afield.four.util.Window
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -58,12 +50,108 @@ println("renderer ready — now run box 4")
 start(renderer::run)
 ```
 
+## 2. 6 - Skinning on the GPU, and a crowd of 64
+
+<!-- field-box id="gpu_crowd" index="1" -->
+
+```edn [field-box id="gpu_crowd" role="properties"]
+{"id" "gpu_crowd" "index" 1 "name" "6 - Skinning on the GPU, and a crowd of 64" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "6 - Skinning on the GPU, and a crowd of 64" "_tombstone" false "frame" #afield/rect [60.0 375.0 600.0 136.0] "autorun" false "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 76 "characters" 3217 "sha256" "3bc40d743b50628f76f9f7d3d4e5ee62b6dfd4c5b0330e68092da7c203b36ebd"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
+```
+
+```kotlin [field-property box="gpu_crowd" name="code" path="gpu_crowd_code_.kt"]
+import afield.four.modules.GltfSupport
+import afield.four.modules.GpuSkinner
+import afield.four.modules.GpuSkinning
+import afield.four.modules.RiggedFixture
+import afield.stdlib.linalg.Matrix4f
+
+// Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
+// re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
+// every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 64 times.
+//
+// EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
+val count = 64
+
+// `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
+// This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
+// has run there is no Renderer anywhere and this box fails with "must pass in a value for
+// context parameter afield.four.Renderer", which is the same footgun box 4 documents.
+val model = GltfSupport.loadGltfBasic(
+    RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
+)
+val inst = model.meshes.first { it.skin != null }
+
+// The shaders come straight from the library constants, so this box cannot drift from the code
+// `GpuSkinningSmoke` grades. `skinnedFragmentShader` rather than the bundled one because the
+// bundled glTF fragment shader never reads vColor -- it outputs the normal -- so the per-instance
+// tint would be invisible and "the crowd is varied" would be unfalsifiable.
+val module = Module(
+    Parameters(
+        renderer = renderer,
+        vertex = GpuSkinning.skinnedVertexShader,
+        fragment = GpuSkinning.skinnedFragmentShader,
+        name = "gpu skinned crowd"
+    )
+).pointer()
+
+val m = Mesh(renderer, module)
+module += "crowd" to m
+renderer += "gpu skinned crowd" to module
+
+val camera = Camera(renderer)
+camera.p.orthoness = 0.25
+camera.p.matchDepth = 2.0
+camera.target = vec(0, 2, 0)
+camera.at = vec(6.5, 8.5, -17)
+camera.p()
+
+val skinner = GpuSkinner(inst, instances = count, renderer = renderer, name = "crowd")
+skinner.bindTo(m, camera, instanceCount = count, tint = true)
+
+// Instance i on an 8x8 grid. The placement is multiplied into that instance's palette, so it
+// costs one mul per bone and nothing at all on the GPU -- there is no instance-matrix buffer.
+fun place(i: Int): Matrix4f {
+    val x = (i % 8 - 3.5f) * 2.2f
+    val z = (i / 8 - 3.5f) * 2.2f
+    return Matrix4f().translate(vec(x, 0, z))
+}
+
+var n = 0
+loop {
+    val t = n / 60f
+    // The whole per-frame CPU cost: `count` palettes of 2 matrices each. Every instance is at its
+    // own phase of its own blend of two clips, which is the per-instance clip blending -- it is
+    // evaluated here, on the CPU, because it is O(instances x bones) and bones are units.
+    skinner.uploadPalettes((0 until count).map { i ->
+        skinner.blendedPalette(
+            place(i),
+            "bend", (t + i * 0.09f) % 2f,
+            "curl", (t * 0.7f + i * 0.05f) % 2f,
+            mix = i / (count - 1f)
+        )
+    })
+    skinner.updateCamera(m, camera)
+    if (n % 120 == 0) println("frame $n: $count instances, ${count * skinner.boneCount} matrices uploaded, one draw call")
+    n++
+    frame()
+}
+```
+
+```text [field-property box="gpu_crowd" name="preamble"]
+import afield.four.Renderer
+import afield.four.util.Window
+var Box.window by Inheritance<Window>() /**/
+val Once.window by Onceing<Window>() /**/
+var Box.renderer by Inheritance<Renderer>() /**/
+val Once.renderer by Onceing<Renderer>() /**/
+```
+
 ## 3. 5 - The candy wrapper, side by side
 
 <!-- field-box id="c82c404d-a15d-4f51-a06f-66dfc2a00364" index="2" -->
 
 ```edn [field-box id="c82c404d-a15d-4f51-a06f-66dfc2a00364" role="properties"]
-{"id" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "index" 2 "name" "5 - The candy wrapper, side by side" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "5 - The candy wrapper, side by side" "frame" #afield/rect [697.33203125 375.296875 393.60546875 143.71875] "nested" #{} "attic" ""} "blockProperties" [{"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "c271e4c4e9836e4f77281b753c7a65126463289a6d57b23e4bc664576b7024e7"} {"name" "code" "language" "kotlin" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt" "lines" 56 "characters" 2695 "sha256" "f1aef7d2396b1ed9620addcbe6ad0496616ddcdcb63f67c4486486203760bfd8"} {"name" "fragment" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "index" 2 "name" "5 - The candy wrapper, side by side" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "5 - The candy wrapper, side by side" "frame" #afield/rect [697.33203125 375.296875 393.60546875 143.71875] "nested" #{} "attic" "" "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "c271e4c4e9836e4f77281b753c7a65126463289a6d57b23e4bc664576b7024e7"} {"name" "code" "language" "kotlin" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt" "lines" 62 "characters" 3270 "sha256" "c473ec9689990351bb2ed5c52f73fd903453a89a87980a81e10863ebb64873ab"} {"name" "fragment" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```text [field-property box="c82c404d-a15d-4f51-a06f-66dfc2a00364" name="preamble"]
@@ -157,11 +245,11 @@ import afield.four.modules.GltfSkinning
 import afield.four.modules.RiggedFixture
 import afield.stdlib.linalg.Matrix4f
 
-// The candy wrapper, side by side, on one rig at one pose.
+// The candy wrapper: one rig, one pose, two ways of averaging the joints.
 //
-// LEFT is linear blend skinning: average the joint MATRICES. RIGHT is dual quaternion skinning:
-// average the rigid MOTIONS. Everything else is identical -- same file, same palette, same clip,
-// same frame. The only difference is `method`.
+// `useDualQuaternions = false` is linear blend skinning -- average the joint MATRICES. `true` is
+// dual quaternion skinning -- average the rigid MOTIONS. Everything else is identical: same file,
+// same palette, same clip, same frame. The only difference is `method`. Flip it and re-run.
 //
 // Why it happens, exactly: at the joint ring the weights are 0.5/0.5 (the rig has only two distinct
 // weight tuples, [1,0,0,0] and [0.5,0.5,0,0]). Linear blending averages the joint MATRICES, so at
@@ -201,10 +289,16 @@ val rest = DualQuaternionSkinning.candyWrapperRadius(skinner.pose("twist", 0f).p
 val out = skinner.pose("twist", twistTime)
 inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true)
 
-println("twist t = %.2f, min radius at the y = %.1f ring (rest %.4f)".format(twistTime, jointY, rRest))
-println("  LEFT   linear blend      %.6f   (%5.1f%% of rest)".format(rL, 100f * rL / rRest))
-println("  RIGHT  dual quaternion   %.6f   (%5.1f%% of rest)".format(rR, 100f * rR / rRest))
-println("  dual quaternion non-rigid joints ${outR.nonRigidJoints}, antipodal flips ${outR.antipodalFlips}")
+// These four lines were left over from the two-mesh version this box replaced, and still named
+// its `rL` / `rR` / `outR` / `rRest` -- so the box failed to compile with "Unresolved reference
+// 'rRest'" from the moment the rewrite landed. Nothing caught it: box code is compiled by the K2
+// REPL, not by Gradle, so `check` is green on a demo that cannot run. Found 2026-09-20 by running
+// every box of this document one at a time, which is the only thing that does catch it.
+val radius = DualQuaternionSkinning.candyWrapperRadius(out.position, jointY)
+val label = if (useDualQuaternions) "dual quaternion" else "linear blend"
+println("twist t = %.2f, min radius at the y = %.1f ring (rest %.4f)".format(twistTime, jointY, rest))
+println("  %-16s %.6f   (%5.1f%% of rest)".format(label, radius, 100f * radius / rest))
+println("  non-rigid joints ${out.nonRigidJoints}, antipodal flips ${out.antipodalFlips}")
 
 loop { frame() }
 ```

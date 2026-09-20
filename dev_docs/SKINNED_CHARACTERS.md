@@ -321,12 +321,19 @@ an editable `poseTime` rather than animating.
 
 ## Not done
 
-- **No GPU *skinning*.** The deformation runs on the CPU and the result is uploaded;
-  `standardRenderer.kt` still has no skinned vertex path and no joint-matrix buffer, and the
-  bundled glTF vertex shader is untouched. That is the version that would license a CPU/GPU
-  per-vertex agreement assertion, which is the real cross-check and is not here.
-- **The animated GPU loop is unphotographed.** It runs — see the bisect — but nothing has looked at
-  it in motion, so this page does not claim it looks right.
+- ~~**No GPU *skinning*.**~~ **Done 2026-09-20** — see [`GPU_SKINNING.md`](GPU_SKINNING.md).
+  `GpuSkinning.skinnedVertexShader` deforms in the vertex shader from a joint-matrix palette, and
+  the per-vertex CPU/GPU agreement assertion this section called "the real cross-check" is
+  `four.gpu-skinning.smoke`: worst |Δposition| 9.5e-7 over both fixtures and a 64-instance crowd.
+  The CPU path described on this page is what made that gradeable in one night.
+  `standardRenderer.kt` is still untouched — the skinned shader is a `Module` you build yourself,
+  and `Mesh.instanceCount` turned out to be already wired to `vkCmdDraw`, so the crowd needed no
+  renderer change at all.
+- ~~**The animated GPU loop is unphotographed.**~~ **Done 2026-09-20.** Box 6 of the demo animates
+  64 instances at ~120 fps and was captured mid-animation:
+  `dev_docs/agents/evidence/gpu_skinning/demo_box6_live.png`. The capture timeout above is
+  narrower than this page implied — it is the per-frame *vertex re-upload*, not any per-frame
+  buffer write. Box 6 rewrites a 128-matrix palette every frame and photographs fine.
 - **No morph targets.** `require(mesh.mNumAnimMeshes()==0)` is still in the path tracer.
 - **No dual quaternion skinning.** Linear blend skinning collapses a limb at 90°; the clip blend in
   `Skeleton.blendedPalette` is componentwise for exactly the same reason, so the two are at least
