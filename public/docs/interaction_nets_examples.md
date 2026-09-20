@@ -18,13 +18,13 @@ Those are the five stages of `(λx. x x) (λy. y)`, the smallest term that shows
 
 Before you build on `normalise`: closed terms are the contract, because a free variable that gets duplicated reads back as an agent id rather than as its name. A term with no normal form does not terminate, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. And `Run.steps` counts betas, fan meetings and erasures alike, so it is not a β-step count and not comparable to one.
 
-That sentence used to end "and `Run.steps` is a property of this rule book and this schedule, not of the term". The rule-book half is right and the schedule half is not: the reaction count is the same under every scheduler, on every term measured, and so is the multiset of rules fired. [A λ-term you can hear](chain_lambda_sound.md) is the measurement — 100 reductions over the corpus, plus the four counterexamples below — and the reason, which is that interaction nets are strongly confluent.
+It does not depend on the scheduler, though. The reaction count is the same under every `ActivationOrder`, on every term measured, and so is the multiset of rules fired. [A λ-term you can hear](chain_lambda_sound.md) is the measurement — 100 reductions over the corpus, plus the four counterexamples below — and the reason, which is that interaction nets are strongly confluent.
 
 What is checked, and how: `readback(reduce(compile(t)))` is asserted α-equivalent to a plain capture-avoiding normal-order evaluator over a named corpus of 25 closed terms — Church numerals with `succ`, `add`, `mul` and `pred`, Church booleans with `if`, `S`/`K`/`I`, terms whose reduction copies a redex, and terms that erase an argument — and the same normal form is asserted across four `ActivationOrder`s, since the scheduler is a free choice and the answer must not be one. That is `stdlib.lambda-terms.smoke`. Over the corpus it takes 228 net reactions against the evaluator's 117 β-steps; those are two different units and neither is the word *optimal*.
 
-## It is right on the corpus and wrong in general
+## The sharing is right on the corpus and wrong in general
 
-This page used to end that paragraph by saying the sharing was "correct over the 25-term corpus, checked against the oracle, rather than maximal". The corpus part is still true. The general part is false, and since 2026-09-19 there is a second test that says so with a population rather than an adjective.
+The sharing is correct over that 25-term corpus. It is not correct in general, and since 2026-09-19 a second test says so with a population rather than an adjective.
 
 `stdlib.lambda-terms.property` generates closed terms from a seed instead of taking a hand-written list, and runs the same oracle identity over them: 4 000 simply-typed terms and 300 untyped ones, each under four schedulers, 17 200 checks. Four of those are a **wrong answer carrying no warning mark of any kind**, which is the case worth separating out — a marked answer at least tells you not to trust it. The smallest of the quiet four:
 

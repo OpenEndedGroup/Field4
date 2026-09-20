@@ -15,7 +15,7 @@ would print. It does — by up to 99.8% on a single layer, while moving no conto
 existence. **The layer stack is also a check on the first stage of the chain**, and it catches
 something the realizer's own diagnostics report as a success.
 
-## A cut that lands exactly on something
+## Cutting exactly on a face, a vertex, or the top
 
 Before any of that, the case a slicer hits on every part with a flat top. What does `slice` return
 when the cutting plane is exactly a face plane, exactly a vertex, exactly the top of the bounding
