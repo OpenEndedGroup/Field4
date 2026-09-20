@@ -350,7 +350,7 @@ void main() {
  *
  * ```kotlin
  * val skinner = GpuSkinner(models[0].meshes[0], instances = 64)
- * skinner.uploadBindPose(mesh, camera)                 // once
+ * skinner.bindTo(mesh, camera)                         // once
  * loop {
  *     skinner.uploadPalettes((0 until 64).map { i ->
  *         skinner.placedPalette(model(i), "bend", t + i * 0.05f)
@@ -362,15 +362,18 @@ void main() {
  * The three things easy to get wrong, all of which this handles and none of which announce
  * themselves if you do them by hand:
  *
- * - **The model matrix must not be pushed.** `applyToMesh` defaults `model` to the node's own
- *   transform, and glTF 2.0 §3.7.3.2 says a skinned mesh node's transform is ignored. This
- *   passes `Matrix4f()`; per-instance placement goes through [placedPalette].
+ * - **The model matrix must not be pushed.** `MeshInstance.applyToMesh` defaults `model` to the
+ *   node's own transform, and glTF 2.0 §3.7.3.2 says a skinned mesh node's transform is
+ *   ignored. [updateCamera] pushes the view alone; per-instance placement goes through
+ *   [placedPalette].
  * - **The bind pose must be uploaded, not a posed one.** Sharing a `MeshInstance` with a
  *   [CpuSkinner] is therefore a trap: `CpuSkinner.pose` rewrites `instance.buffers` in place and
- *   the GPU would then skin already-skinned vertices. [uploadBindPose] snapshots at construction
- *   and writes the snapshot, so the two can coexist — see `GpuSkinningSmoke`, which runs both.
- * - **`reuseBuffers` must be on.** Without it every call allocates a fresh `FrameBufferGroup`;
- *   here it is called once, but the palette upload is per frame and is a plain overwrite.
+ *   the GPU would then skin already-skinned vertices. This snapshots the packed vertex buffer at
+ *   construction and uploads the snapshot, so the two can coexist — `GpuSkinningEvidence` runs
+ *   both against the same instance and photographs each.
+ * - **The vertex upload happens once.** The GPU buffers belong to this object, not to the
+ *   `MeshInstance`, so nothing re-uploads geometry per frame. The only per-frame write is the
+ *   palette.
  */
 class GpuSkinner(
     val instance: GltfSupport.MeshInstance,
@@ -509,16 +512,50 @@ class GpuSkinner(
     fun uploadPalette(palette: List<Matrix4f>) = uploadPalettes(listOf(palette))
 
     /**
-     * Upload the **bind-pose** vertex buffer and set every push constant
+     * The bind-pose vertex data and the indices, held here rather than on the [GltfSupport.MeshInstance].
+     *
+     * `MeshInstance.applyToMesh` would do this, and deliberately is not used. Two reasons, and
+     * the second is the one that matters:
+     *
+     * - Its buffers come from `defaultBuffer { … }.buffer`, whose renderer defaults to
+     *   `fromContext()`. Inside a box that resolves; from a `main` — which is where the evidence
+     *   renderer and every smoke live — it throws `Cannot invoke "afield.Box.getProperties()"`.
+     *   Holding them here with an explicit renderer makes one class work in both.
+     * - `applyToMesh` re-uploads the whole vertex buffer on every call, because the CPU path has
+     *   to. This path uploads it **once**, which is the entire point, so the upload belongs to
+     *   the object whose lifetime matches it.
+     */
+    private val vertexBuffer: FrameBufferGroup = buffer(name = "${name}Vertices") {
+        size = vertexCount.toLong() * GpuSkinning.VERTEX_STRIDE_FLOATS * 4L
+        storage(); addressable(); hosted(); dest()
+    }.toBuffer(renderer)
+
+    private val indexBuffer: FrameBufferGroup = buffer(name = "${name}Indices") {
+        size = instance.buffers.indexCount * 4L
+        storage(); addressable(); hosted(); dest()
+    }.toBuffer(renderer)
+
+    init {
+        // The bind pose, from the snapshot rather than from `instance.buffers`: a CpuSkinner
+        // sharing this MeshInstance may already have posed it in place, and uploading a posed
+        // mesh would make the GPU skin it a second time.
+        vertexBuffer.get(write = true).mapAndWrite { put(bindVertexData) }
+        indexBuffer.get(write = true).mapAndWrite_ints {
+            for (n in 0 until instance.buffers.indexCount) put(instance.buffers.indexData.get(n))
+        }
+    }
+
+    /**
+     * Point [mesh] at this skinner and set every push constant
      * [GpuSkinning.skinnedVertexShader] needs. Call once; after this only [uploadPalettes] and, if
-     * the camera moves, `mesh.push["modelView"] = camera.m()` are per-frame.
+     * the camera moves, [updateCamera] are per-frame.
      *
      * @param instanceCount how many characters to draw. Sets `mesh.instanceCount`, which
      *   `Mesh.kt` already passes to `vkCmdDraw` — so a crowd is one draw call and needs no change
      *   to `standardRenderer.kt` or to any renderer code.
      * @param tint multiply in a per-instance hue, so a crowd reads as a crowd.
      */
-    fun uploadBindPose(
+    fun bindTo(
         mesh: Mesh,
         camera: Camera = fromContext(),
         instanceCount: Int = instances,
@@ -526,14 +563,14 @@ class GpuSkinner(
     ) {
         require(instanceCount in 1..instances) { "instanceCount $instanceCount is outside 1..$instances" }
 
-        // Put the bind pose back before uploading: a CpuSkinner sharing this MeshInstance may have
-        // posed it in place, and uploading a posed mesh would make the GPU skin it a second time.
-        val f = instance.buffers.vertexData.asFloatBuffer()
-        for (n in bindVertexData.indices) f.put(n, bindVertexData[n])
-
-        // Model = identity. The mesh node's transform is ignored for a skinned mesh, and each
-        // instance's placement lives in its palette.
-        instance.applyToMesh(mesh, camera, Matrix4f(), reuseBuffers = true)
+        mesh.initializePushConstantsFromModule(mesh.inside)
+        mesh.push["vertexOffset"] = 0
+        mesh.push["indexOffset"] = 0
+        mesh.push["vertexStride"] = GpuSkinning.VERTEX_STRIDE_FLOATS
+        mesh.push["materialBaseColor"] = instance.material.baseColor
+        mesh.push["useVertexColor"] = 1
+        mesh.push.bind("vertexBuffer") { vertexBuffer }
+        mesh.push.bind("indexBuffer") { indexBuffer }
 
         mesh.push.bind("jointBuffer") { jointBuffer }
         mesh.push.bind("weightBuffer") { weightBuffer }
@@ -542,11 +579,41 @@ class GpuSkinner(
         mesh.push["skinEnabled"] = 1
         mesh.push["instanceTint"] = if (tint) 1 else 0
 
+        updateCamera(mesh, camera)
+        mesh.resize(instance.buffers.indexCount)
         mesh.instanceCount = instanceCount
     }
 
-    /** Draw the bind pose through the stock path — the before picture, for a comparison shot. */
-    fun disableSkinning(mesh: Mesh) {
+    /**
+     * Push the camera. `modelView` is **view alone**, with no model matrix: glTF 2.0 §3.7.3.2
+     * says a skinned mesh node's own transform is ignored, and each instance's placement is
+     * already inside its palette. Composing a model matrix in here would apply it twice.
+     */
+    fun updateCamera(mesh: Mesh, camera: Camera = fromContext()) {
+        mesh.push["modelView"] = camera.m()
+        mesh.push["proj"] = camera.p()
+    }
+
+    /**
+     * Hand [mesh] back to the stock, un-skinned path: the bind pose as `instance.buffers` holds
+     * it *now*, drawn by the `skinEnabled == 0` branch.
+     *
+     * This is how the evidence renderer photographs the CPU path through the identical pipeline:
+     * pose with a [CpuSkinner], call this, and the shader passes the already-deformed vertices
+     * straight through.
+     */
+    fun uploadPosedVertices(mesh: Mesh) {
+        val f = instance.buffers.vertexData.asFloatBuffer()
+        vertexBuffer.get(write = true).mapAndWrite {
+            for (n in 0 until vertexCount * GpuSkinning.VERTEX_STRIDE_FLOATS) put(f.get(n))
+        }
         mesh.push["skinEnabled"] = 0
     }
+
+    /** Put the bind pose back in the GPU buffer and re-enable GPU skinning. */
+    fun restoreBindPose(mesh: Mesh) {
+        vertexBuffer.get(write = true).mapAndWrite { put(bindVertexData) }
+        mesh.push["skinEnabled"] = 1
+    }
+
 }
