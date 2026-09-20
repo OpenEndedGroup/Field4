@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14580 public symbols across 371 source files**, 8405 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14578 public symbols across 371 source files**, 8403 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -28,7 +28,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 78 | 2286 | 884 (38%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 4 | 167 | 143 (85%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 4 | 165 | 141 (85%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
 
@@ -215,7 +215,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
 | [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 | A `StudyLandscape` and a `StudyOptimisation`, as a picture. |  |
 | [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 | One parameter study over a heated part, in the three sizes a demo has to exist in. |  |
-| [LambdaSoundDocs.kt](patterns.md#lambdasounddocs-kt) | Patterns | 30 | 28 |  |  |
+| [LambdaSoundDocs.kt](patterns.md#lambdasounddocs-kt) | Patterns | 30 | 28 | A λ-term's *reduction* as a rhythm — the schedule, not the answer. |  |
 | [lambdaterms.kt](visualization.md#lambdaterms-kt) | Visualization | 28 | 28 |  |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 0 |  |  |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 0 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
@@ -224,8 +224,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [linalg.kt](math.md#linalg-kt) | Math | 86 | 77 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Datalog in a box](../datalog.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md) |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 0 |  |  |
 | [Marf.kt](patterns.md#marf-kt) | Patterns | 109 | 66 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
-| [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 |  |  |
-| [MarfSmokeTest.kt](patterns.md#marfsmoketest-kt) | Patterns | 2 | 1 |  |  |
+| [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
+| [MarfSmokeTest.kt](patterns.md#marfsmoketest-kt) | Patterns | 2 | 1 | The worked example for `Marf.kt`, and the check that it holds together: one bank, several readers, and what each reader is doing printed as text. |  |
 | [MarfVectors.kt](patterns.md#marfvectors-kt) | Patterns | 22 | 4 | `MarfSpace` instances for Field's generated linalg vectors, so a reader can emit a position, a colour or a set of material parameters instead of one number. |  |
 | [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
 | [megaTextures.kt](graphics.md#megatextures-kt) | Graphics | 12 | 12 | A directory of images as one texture, however many of them there are. |  |
@@ -264,7 +264,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 | Field4 language adapter for the Nano 8-bit assembly language. | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 21 | Runs a Nano program and hands back its final machine state, either as data or as a self-contained HTML panel for a box's output area. |  |
 | [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 | Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations: four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an instruction. |  |
-| [neuralparticles.kt](machine-learning.md#neuralparticles-kt) | Machine learning | 36 | 33 |  | [Neural particle systems](../neural_particles.md) |
+| [neuralparticles.kt](machine-learning.md#neuralparticles-kt) | Machine learning | 34 | 31 |  | [Neural particle systems](../neural_particles.md) |
 | [neuralparticles_system.kt](machine-learning.md#neuralparticles-system-kt) | Machine learning | 31 | 29 |  | [Neural particle systems](../neural_particles.md) |
 | [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
 | [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
