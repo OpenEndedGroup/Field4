@@ -174,6 +174,36 @@ class BufferParameters(
             this.result = initialDefaults.result!!
     }
 
+    /**
+     * A field-by-field account of why [checkCompatibility] said no, for the exception that
+     * reports it.
+     *
+     * Every line names the field, what this binding wants, and what the supplied buffer has,
+     * because the useful half of this failure is *which* field differs — `accessPattern` means
+     * someone reached for `streamReads()`, `usage` means a missing `storage()` or `dest()`, and
+     * `size` usually means a count that moved.
+     */
+    fun incompatibilityReport(other: BufferParameters?): String {
+        if (other == null) return "  the supplied buffer has no recorded parameters at all"
+        val lines = mutableListOf<String>()
+        fun compare(field: String, wanted: Any?, has: Any?) {
+            if (wanted != has) lines += "  $field: this binding wants $wanted, the buffer has $has"
+        }
+        compare("usage", "0x${usage.toString(16)}", "0x${other.usage.toString(16)}")
+        compare("memory", "0x${memory.toString(16)}", "0x${other.memory.toString(16)}")
+        compare("size", size, other.size)
+        compare("inlined", inlined, other.inlined)
+        compare("accessPattern", accessPattern, other.accessPattern)
+        compare("stagedUploads", stagedUploads, other.stagedUploads)
+        compare("readbackStaging", readbackStaging, other.readbackStaging)
+        return if (lines.isEmpty()) {
+            "  no field differs, which means compatibility was refused for a reason this report " +
+                "does not cover -- check checkCompatibility()"
+        } else {
+            lines.joinToString("\n")
+        }
+    }
+
     fun checkCompatibility(result: BufferParameters?): Boolean {
         if (result == null) return false
         result.customize.forEach { result.it() }
@@ -214,9 +244,28 @@ class BufferParameters(
         }
 
         if (result != null) {
-            if (checkCompatibility(result!!.get().source)) {
+            val existing = result!!.get().source
+            if (checkCompatibility(existing)) {
                 return result!!
             }
+            // A caller who set `result` handed us a *specific* allocation to bind. If we cannot
+            // bind it, the only honest thing is to say so.
+            //
+            // This used to fall through and allocate a fresh buffer instead. Everything then
+            // worked perfectly on memory the caller had never heard of: their buffer was never
+            // written, never read, and never mentioned. It took an afternoon to find once,
+            // because "my buffer is unchanged" is indistinguishable from "the dispatch never
+            // ran", and there is no third state to notice.
+            throw IllegalStateException(
+                "buffer '$name' was supplied as an existing allocation, but its parameters do not " +
+                    "match the ones requested here, so it cannot be bound:\n" +
+                    incompatibilityReport(existing) +
+                    "\nEither build the buffer with the parameters the consumer expects, or let the " +
+                    "consumer allocate its own by not setting `result`. Note that `streamReads()` " +
+                    "and `writeOnce()` and friends all change `accessPattern`, which is compared " +
+                    "exactly — a buffer tuned for host readback is not interchangeable with a plain " +
+                    "`hosted()` one even though both are host visible."
+            )
         }
 
         customize.forEach {

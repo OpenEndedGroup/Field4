@@ -10,7 +10,10 @@ import smile.base.mlp.MultilayerPerceptron
 import smile.base.mlp.OutputFunction
 import smile.util.function.TimeFunction
 import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.roundToInt
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -106,7 +109,8 @@ class VectorMLP(
     /** Width of the predicted vector. */
     val outputs: Int,
     hidden: IntArray = intArrayOf(96, 96),
-    activation: String = "tanh",
+    /** The hidden activation, kept because [exportWeights] has to name it and Smile does not. */
+    val activation: String = "tanh",
 ) : MultilayerPerceptron(*mlpLayers(inputs, hidden, outputs, activation)) {
 
     /** Runs the network forward, writing [outputs] values into [into], which is returned. */
@@ -184,6 +188,55 @@ class VectorMLP(
         // net[0] is the input layer, which holds no weights; the output layer lives outside net.
         val widths = IntArray(net.size) { net[it].getOutputSize() }
         return widths.copyOfRange(1, widths.size) + outputs
+    }
+
+    // -- taking the network somewhere else ------------------------------------------------------
+
+    /**
+     * A flat snapshot of every weight and bias, in the layout [MlpWeights] documents — which is
+     * what [afield.stdlib.glsl] turns into a shader.
+     *
+     * This lives here, rather than as an extension somewhere nearer the GPU, because it is the
+     * only code that needs to know how Smile lays a network out, and the two facts it depends on
+     * are both invisible from outside: `net[0]` is the input layer and carries no weights, and
+     * `Layer.propagate` computes `weight * input + bias` with no transpose, so `weight` is
+     * `(outputs x inputs)` and `weight.get(o, i)` is the weight from input `i` to output `o`.
+     *
+     * Read element by element through the public accessors rather than copied out of
+     * `DenseMatrix.memory()`. Slower, and irrelevantly so for a few thousand parameters, but a
+     * change of storage order upstream then cannot silently transpose every layer — which is a
+     * failure that leaves the network the right shape and the right size and entirely wrong.
+     */
+    fun exportWeights(): MlpWeights {
+        val widths = layerWidths()
+        val weightLayers = (1 until net.size).map { net[it] } + output
+        check(weightLayers.size == widths.size) {
+            "expected ${widths.size} weight-bearing layers, found ${weightLayers.size}"
+        }
+
+        val flat = FloatArray(MlpWeights.floatCount(inputs, widths))
+        var at = 0
+        var below = inputs
+        for ((index, layer) in weightLayers.withIndex()) {
+            val n = widths[index]
+            val weight = layer.weight()
+            val bias = layer.bias()
+            check(weight.nrow() == n && weight.ncol() == below) {
+                "layer $index should be ${n}x$below, Smile says ${weight.nrow()}x${weight.ncol()}"
+            }
+            for (o in 0 until n) for (i in 0 until below) flat[at++] = weight.get(o, i).toFloat()
+            for (o in 0 until n) flat[at++] = bias.get(o).toFloat()
+            below = n
+        }
+        check(at == flat.size) { "wrote $at of ${flat.size} weights" }
+
+        return MlpWeights(
+            inputs = inputs,
+            outputs = outputs,
+            hidden = widths.copyOfRange(0, widths.size - 1),
+            activation = MlpActivation.of(activation),
+            flat = flat,
+        )
     }
 }
 
@@ -538,6 +591,197 @@ private fun defaultJitter(line: FLine, samples: Int): Double =
 // ---------------------------------------------------------------------------------------------
 
 /**
+ * A source cloud and a target cloud of the same length, in correspondence — what
+ * [FlowCoupling.PAIRED] wants, and what [mixtureSource] builds.
+ */
+class FlowPairing(
+    /** Where the particles start. The `i`-th point travels to `to[i]`. */
+    val from: List<Vec3>,
+    /** Where they end up. */
+    val to: List<Vec3>,
+) {
+    init {
+        require(from.size == to.size) { "a pairing needs equal clouds, got ${from.size} and ${to.size}" }
+    }
+
+    /** How many pairs. */
+    val size: Int get() = from.size
+}
+
+/**
+ * Splits [lines] into their closed subpaths and samples each one in arc-length order, in
+ * proportion to its length — the components [mixtureSource] wants, prepared the way that matters.
+ *
+ * Two details it exists to get right, both measured on the word "FIELD":
+ *
+ * - **Subpaths, not glyphs.** `TextLayout.toFLines()` returns one FLine per *glyph*, so a "D" is
+ *   an outer contour and a counter in a single line — an annulus. Asking one ellipse to become an
+ *   annulus is the same topology error as asking one blob to become a word, just one level down.
+ *   Splitting at [FLine.pieces] boundaries takes the mean landing error from 12.4 to 5.0.
+ * - **Proportional sampling.** Giving every subpath the same count puts as many points on a
+ *   counter as on the letter around it, which both distorts the density the flow is fitted to and
+ *   makes the counter conspicuously brighter when particles are drawn on it.
+ *
+ * [total] is shared out across subpaths; each gets at least [minimum] so a small counter is not
+ * sampled into nothing.
+ */
+fun contourComponents(
+    lines: List<FLine>,
+    total: Int = 3500,
+    minimum: Int = 24,
+    jitter: Double = 0.0,
+    seed: Long? = null,
+): List<List<Vec3>> {
+    require(lines.isNotEmpty()) { "contourComponents needs at least one line" }
+    require(total > 0) { "total must be positive, got $total" }
+
+    val subpaths = lines.flatMap { it.pieces() }.filter { it.nodes.size >= 2 }
+    require(subpaths.isNotEmpty()) { "none of these lines has a drawable subpath" }
+
+    val lengths = subpaths.map { piece ->
+        val points = piece.sampleByNumber(64)
+        var length = 0.0
+        for (i in 1 until points.size) {
+            length += hypot((points[i].x - points[i - 1].x).toDouble(), (points[i].y - points[i - 1].y).toDouble())
+        }
+        max(length, 1e-9)
+    }
+    val totalLength = lengths.sum()
+
+    return subpaths.mapIndexed { index, piece ->
+        val count = max(minimum, (total * lengths[index] / totalLength).roundToInt())
+        flowSamples(piece, count, jitter, seed)
+    }
+}
+
+/**
+ * Builds a source cloud whose *topology matches the target's*: one closed curve per component,
+ * in point-for-point correspondence with the component it has to become.
+ *
+ * This exists because of the hardest limit in this file. A flow is a continuous invertible map,
+ * so it cannot tear one blob into several, and it cannot open a closed curve. Ask a standard
+ * Gaussian to become the five disjoint outlines of the word "FIELD" and it cannot: measured, that
+ * lands at a chamfer of 12.3 and forty thousand steps at 128x128 units does not improve it. The
+ * loss barely moves across all of that, so the loss will not tell you either.
+ *
+ * Give each component a source of its own *shape*, and the problem becomes several copies of the
+ * case that already works well — a circle becoming a closed curve, which lands within 0.3 units
+ * on the ring in `FlowMatchingTest`. Each component gets an ellipse fitted to its own mean and
+ * covariance, so a wide contour gets a wide ellipse at the right angle and nothing has far to
+ * travel.
+ *
+ * **Components must be ordered along the contour**, which is what [flowSamples] returns — it
+ * samples an FLine by arc length. The `i`-th source point is paired with the `i`-th contour
+ * point, and that ordering is the correspondence. Handing this a shuffled cloud gives a pairing
+ * with no structure at all, which is worse than not using it.
+ *
+ * ```kotlin
+ * val contours = layoutText("FIELD", typeface("Helvetica", 260.0)).toFLines()
+ * val pairing = mixtureSource(contours.map { flowSamples(it, 700) })
+ * val field = flowMatch(pairing.to, pairing.from, FlowMatchOptions(coupling = FlowCoupling.PAIRED))
+ * ```
+ *
+ * [shrink] scales each ellipse about its own centre; [jitter] thickens it from a curve into an
+ * annulus, in units of the ellipse's own axes. [alignPhase] is described on its own below and
+ * should be left on.
+ */
+fun mixtureSource(
+    components: List<List<Vec3>>,
+    shrink: Double = 1.0,
+    jitter: Double = 0.0,
+    alignPhase: Boolean = true,
+    seed: Long? = null,
+): FlowPairing {
+    require(components.isNotEmpty()) { "mixtureSource needs at least one component" }
+    require(components.all { it.size >= 3 }) { "every component needs at least three points" }
+    require(shrink > 0.0) { "shrink must be positive, got $shrink" }
+    require(jitter >= 0.0) { "jitter cannot be negative, got $jitter" }
+
+    val random = seed?.let { Random(it) } ?: Random(Random.nextLong())
+    val from = ArrayList<Vec3>()
+    val to = ArrayList<Vec3>()
+
+    for (component in components) {
+        val n = component.size
+        var cx = 0.0
+        var cy = 0.0
+        var cz = 0.0
+        for (p in component) { cx += p.x; cy += p.y; cz += p.z }
+        cx /= n; cy /= n; cz /= n
+
+        var sxx = 0.0
+        var sxy = 0.0
+        var syy = 0.0
+        for (p in component) {
+            val dx = p.x - cx
+            val dy = p.y - cy
+            sxx += dx * dx; sxy += dx * dy; syy += dy * dy
+        }
+        sxx /= n; sxy /= n; syy /= n
+
+        // Cholesky of the 2x2 covariance, floored so a component with no width — a straight
+        // stroke, which a sampled outline can be — stays samplable instead of yielding NaN.
+        val floor = 1e-6 * max(sxx + syy, 1e-12)
+        val l00 = sqrt(max(sxx, floor))
+        val l10 = sxy / l00
+        val l11 = sqrt(max(syy - l10 * l10, floor))
+        // sqrt(2) so a circular contour maps to a circle of its own radius: a circle of radius R
+        // has covariance R^2/2 per axis, so the Cholesky factor is R/sqrt(2).
+        val k = sqrt(2.0) * shrink
+
+        fun ellipse(index: Int): Pair<Double, Double> {
+            val a = 2.0 * PI * index / n
+            val u = cos(a)
+            val v = sin(a)
+            return Pair(cx + k * l00 * u, cy + k * (l10 * u + l11 * v))
+        }
+
+        // Which point of the ellipse should become point 0 of the contour, and which way round.
+        //
+        // This is the step that makes the whole construction work, and leaving it out is not a
+        // small loss. A contour's arc-length origin has nothing to do with angle zero on the
+        // fitted ellipse, and a contour may wind either way, so the identity correspondence
+        // carries an arbitrary rotation and possibly a reflection. Measured on the five contours
+        // of "FIELD": aligning takes the training loss from 0.047 to 0.0047 and the mean landing
+        // error from 58 units to 16.
+        var bestOffset = 0
+        var bestFlip = false
+        if (alignPhase) {
+            var best = Double.MAX_VALUE
+            val stride = max(1, n / 64)
+            for (flip in listOf(false, true)) {
+                var offset = 0
+                while (offset < n) {
+                    var total = 0.0
+                    var i = 0
+                    while (i < n) {
+                        val index = if (flip) (offset - i + 2 * n) % n else (offset + i) % n
+                        val (ex, ey) = ellipse(index)
+                        total += hypot(ex - component[i].x, ey - component[i].y)
+                        i += stride
+                    }
+                    if (total < best) { best = total; bestOffset = offset; bestFlip = flip }
+                    offset += stride
+                }
+            }
+        }
+
+        for (i in 0 until n) {
+            val index = if (bestFlip) (bestOffset - i + 2 * n) % n else (bestOffset + i) % n
+            val (ex, ey) = ellipse(index)
+            from += vec(
+                ex + jitter * k * l00 * random.nextGaussian(),
+                ey + jitter * k * l11 * random.nextGaussian(),
+                cz,
+            )
+            to += component[i]
+        }
+    }
+
+    return FlowPairing(from, to)
+}
+
+/**
  * A trained velocity field, as returned by [flowMatch] — the thing you integrate.
  *
  * [sample] is the generator: draw from the source and follow the field all the way to `t = 1`.
@@ -573,6 +817,38 @@ class FlowMatchField internal constructor(
 
     /** How many weights and biases the field is made of. */
     val parameterCount: Int get() = net.parameterCount()
+
+    /**
+     * The trained network itself, flattened for a shader — see [MlpWeights].
+     *
+     * Its inputs are the normalised position followed by the time encoding, in that order, which
+     * is `dimension + 1 + 2 * timeFeatures` wide; its outputs are a velocity in the *normalised*
+     * frame. This is the network and not the field: reproducing [velocity] also needs the time
+     * encoding and the frame, which is what [export] bundles. Reach for this only when you want
+     * the weights alone.
+     */
+    val network: MlpWeights get() = net.exportWeights()
+
+    /**
+     * Everything a shader needs to reproduce [velocity] — the network plus the three things around
+     * it: how wide the position is, how `t` is encoded, and the frame the training happened in.
+     *
+     * The frame is the part that is easy to forget and impossible to see. Training normalises the
+     * clouds to roughly unit variance, so the network's inputs and outputs are both in that
+     * normalised space; a shader handed only the weights will integrate a field that is right in
+     * shape and wrong in scale by whatever factor the data happened to need, which on FLine
+     * coordinates is a factor of hundreds.
+     */
+    fun export(): FlowMatchExport = FlowMatchExport(
+        network = net.exportWeights(),
+        dimension = dimension,
+        timeFeatures = timeFeatures,
+        center = FloatArray(dimension) { frame.center[it].toFloat() },
+        scale = frame.scale.toFloat(),
+        source = sourcePoints?.let { points ->
+            FloatArray(points.size * dimension) { points[it / dimension][it % dimension].toFloat() }
+        },
+    )
 
     /**
      * The velocity the field predicts at [at] and time [t], in input coordinates.

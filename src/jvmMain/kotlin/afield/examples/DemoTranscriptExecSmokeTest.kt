@@ -489,6 +489,13 @@ object DemoTranscriptExecSmokeTest {
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.
         "onnx_webcam_live",
+        // Both open a native Vulkan renderer and dispatch compute. Their numbers are checked
+        // elsewhere and far more sharply than a replay could: `four.neural-particles.smoke` grades
+        // the GPU's trajectories against the CPU integrator per particle, and
+        // `four.shader-boids.smoke` grades both the written and the learned rule against a CPU
+        // brute force. What is left here is the window.
+        "neural_particles",
+        "learned_boids",
     )
 
     /**
