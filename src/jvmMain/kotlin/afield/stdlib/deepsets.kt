@@ -7,64 +7,66 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * A learned *interaction* — the tier-2 half of the neural-particle pilot, and the thing a flat
- * velocity field cannot be.
+ * A learned two-body interaction: the acceleration on a particle as a function of the neighbours
+ * around it, fitted by autodiff from examples of any rule that can already be evaluated.
  *
  * `flowMatch` learns `v(x, t)`: where a particle should go given only where it is. That can carry
- * a cloud onto a shape, and it is completely blind to the other particles. An interaction is the
- * other kind of rule:
+ * a cloud onto a shape, and it is blind to the other particles. An interaction is the other kind
+ * of rule:
  *
- * ```
- * a_i = phi( v_i, SUM_j psi(x_j - x_i, v_j - v_i), MEAN_j psi(...) )
- * ```
+ *     a_i = phi( v_i, SUM_j psi(x_j - x_i, v_j - v_i), MEAN_j psi(...) )
  *
- * two small networks and a reduction over neighbours. This is the Deep Sets form, and it is the
- * right one here for a structural reason: the aggregation is permutation-invariant and takes any
- * number of neighbours, so one set of weights works for a particle with three neighbours and a
- * particle with three hundred. Classical boids is *one particular choice* of `psi` and `phi`, so
- * the family provably contains something worth finding.
+ * two small networks and a reduction over neighbours. This is the Deep Sets form, and its
+ * aggregation is permutation-invariant over any number of neighbours, so one set of weights works
+ * for a particle with three neighbours and a particle with three hundred. Classical boids is *one
+ * particular choice* of `psi` and `phi`, so the family contains it.
  *
- * ### Why both a sum and a mean
+ * #### Why both a sum and a mean
  *
- * Reaching for one reduction is the obvious move and it cannot work. Reynolds separation is a
- * **sum** — being crowded by twenty neighbours pushes harder than being crowded by two — while
- * alignment and cohesion are **means**, since they are averages of neighbour velocity and
- * position. A mean-only aggregator cannot represent separation at any width, and a sum-only one
- * makes alignment scale with crowding. Feeding `phi` both costs `messageWidth` extra inputs and
- * removes the ceiling. [DeepSetsWeights.sumScale] keeps the summed branch in a sane range.
+ * Reynolds separation is a **sum**: being crowded by twenty neighbours pushes harder than being
+ * crowded by two. Alignment and cohesion are **means**, since they are averages of neighbour
+ * velocity and position. A mean-only aggregator cannot represent separation at any width, and a
+ * sum-only one makes alignment scale with crowding, so `phi` is fed both, at a cost of
+ * `messageWidth` extra inputs. [DeepSetsWeights.sumScale] keeps the summed branch in a sane range.
  *
- * ### The feature map is where the physics goes
+ * #### The feature map is where the physics goes
  *
  * `psi` is not fed the raw offset. It is fed [interactionFeatures]: the offset and velocity
  * difference, plus the **unit direction scaled by a small radial basis**, `u*p` and `u*p^2`, where
  * `p` is a bounded proximity that rises as neighbours get close.
  *
- * This is the single thing that made tier 2 work, and it was found by ablation rather than
- * guessed. Fed raw Cartesian offsets, the model reproduces alignment and cohesion to a relative
- * error of **0.036** — both are plain means, and linear in the inputs — and reproduces separation
- * at **0.78**, which is barely better than predicting the average. Separation goes as `1/r` over
- * a four-hundred-fold range of `r`, and a `tanh` network cannot form the *product* of a direction
- * and a steep radial profile out of Cartesian components at any width worth paying for.
+ * Separation goes as `1/r` over a four-hundred-fold range of `r`, and a `tanh` network cannot
+ * form the *product* of a direction and a steep radial profile out of Cartesian components at any
+ * practical width. Alignment and cohesion are plain means, and linear in the inputs, so they
+ * survive the raw encoding. Measured by ablation against the flocking rule: fed raw Cartesian
+ * offsets the model reproduces those two to a relative error of **0.036** and separation only to
+ * **0.78**, which is barely better than predicting the average.
  *
- * A radial interaction is a direction times a profile — that is what "radial" means, for any such
- * law and not just this one — so giving the network `u` already multiplied by a couple of profile
- * terms is a statement about the *form* of two-body interactions rather than a transcription of
- * boids. What is left for it to learn is the profile's coefficients, the velocity dependence, and
- * how the summed and meaned branches combine, none of which is handed over.
+ * A radial interaction is a direction times a profile, so handing the network `u` already
+ * multiplied by a couple of profile terms states the *form* of a two-body law rather than
+ * transcribing boids. The profile's coefficients, the velocity dependence, and how the summed and
+ * meaned branches combine are all still learned.
  *
- * ### Trained by [afield.stdlib.ADTape], not by Smile
+ * #### Trained by [afield.stdlib.ADTape], not by Smile
  *
  * Smile's MLP cannot express this: the gradient has to flow back through a sum over a
  * *variable-length* neighbour set, and `psi` is applied once per neighbour with shared weights.
  * `autodiff.kt` is reverse-mode over a tape, which handles it without knowing anything about
- * networks — the tape simply records whatever the forward pass did. Cost is one forward and one
+ * networks, since the tape records whatever the forward pass did. Cost is one forward and one
  * backward sweep per batch whatever the neighbour counts are.
  *
- * ### The weights come out as [MlpWeights]
+ * #### The weights come out as [MlpWeights]
  *
  * Both halves are packaged in the same flat layout the flow-matching work already uses, so
  * `MlpWeights.glsl` emits them for the GPU unchanged and the parity machinery in
  * `four.neural-field-parity.smoke` applies to them without modification.
+ */
+
+/**
+ * A trained interaction in the plain Cartesian form: `psi` and `phi`, the width of the message
+ * between them, and the five scales that normalise a neighbourhood into the networks and the
+ * answer back out to world units. [EquivariantWeights] is the same model constrained so that
+ * rotating a neighbourhood rotates the answer with it.
  */
 class DeepSetsWeights(
     /** Applied per neighbour. Inputs `(dx, dy, dvx, dvy)` normalised; outputs [messageWidth]. */
@@ -124,6 +126,10 @@ class DeepSetsWeights(
         return a[0] * accelScale to a[1] * accelScale
     }
 
+    /**
+     * Both network shapes and the parameter total. The GLSL emitter writes this line into the
+     * shader as a comment, so a generated source names the weights it was generated from.
+     */
     override fun toString(): String =
         "DeepSetsWeights(psi ${psi}, phi ${phi}, $parameterCount parameters)"
 
@@ -183,16 +189,32 @@ class InteractionExample(
 
 /** The knobs [trainDeepSets] takes. */
 data class DeepSetsOptions(
+    /** Adam steps to take. Each one calls `examples` for a fresh batch. */
     val steps: Int = 4000,
+    /**
+     * How many examples a batch is expected to hold. [trainDeepSets] divides its loss by the size
+     * of the list `examples` actually returned and only checks this is positive; [trainEquivariant]
+     * divides by this number, so a batch of a different size there rescales the gradient.
+     */
     val batch: Int = 16,
+    /**
+     * How many numbers `psi` emits per neighbour, and so how wide the summed and the meaned branch
+     * `phi` reads each are. [trainEquivariant] reads it as a count of vector channels instead.
+     */
     val messageWidth: Int = 6,
+    /** Hidden layer widths of the per-neighbour network. `tanh` between them, linear out. */
     val psiHidden: IntArray = intArrayOf(16, 16),
+    /** Hidden layer widths of the combining network. */
     val phiHidden: IntArray = intArrayOf(16, 16),
+    /** Adam's rate at the first step. */
     val learningRate: Double = 3e-3,
     /** Decayed linearly to this by the last step. Same reasoning as `FlowMatchOptions`. */
     val finalLearningRate: Double = 2e-4,
+    /** Seeds the Xavier initialisation, and nothing else: `examples` draws its own randomness. */
     val seed: Long = 1L,
+    /** Called with the step number and that step's loss, or null to train silently. */
     val onProgress: ((Int, Double) -> Unit)? = null,
+    /** How often [onProgress] fires, in steps. The last step reports only if it lands on one. */
     val progressEvery: Int = 200,
 )
 
@@ -496,10 +518,15 @@ class EquivariantWeights(
     val phi: MlpWeights,
     /** How many vector channels are aggregated. */
     val channels: Int,
+    /** Interaction radius, in world units. Neighbour distances are divided by this. */
     val radius: Float,
+    /** Divides velocity differences, and the centre particle's own speed, into the invariants. */
     val velocityScale: Float,
+    /** The output is multiplied by this to get a world-units acceleration. */
     val accelScale: Float,
+    /** The summed channels are divided by this, so a typical crowd lands near 1. */
     val sumScale: Float,
+    /** Closest approach used by the proximity invariant, the same floor the rule itself uses. */
     val minSeparation: Float,
 ) {
     init {
@@ -509,6 +536,7 @@ class EquivariantWeights(
         require(phi.outputs == 2 * channels + 1) { "phi emits ${2 * channels + 1} scalars, not ${phi.outputs}" }
     }
 
+    /** How many weights and biases in total. */
     val parameterCount: Int get() = psi.parameterCount + phi.parameterCount
 
     /** The acceleration, in world units. Equivariant to fp32. */
@@ -553,6 +581,10 @@ class EquivariantWeights(
         return ax * accelScale to ay * accelScale
     }
 
+    /**
+     * Both network shapes, the channel count and the parameter total. The GLSL emitter writes
+     * this line into the shader as a comment.
+     */
     override fun toString(): String =
         "EquivariantWeights(psi $psi, phi $phi, $channels channels, $parameterCount parameters)"
 

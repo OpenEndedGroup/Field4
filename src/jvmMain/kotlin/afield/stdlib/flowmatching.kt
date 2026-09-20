@@ -421,10 +421,15 @@ data class FlowMatchOptions(
     /** How often [onProgress] fires. */
     val progressEvery: Int = 100,
 ) {
-    // IntArray has identity equals, so the generated data-class equals/hashCode would be wrong.
+    /**
+     * Two option sets are equal when they print the same. `hidden` is an `IntArray`, which
+     * compares by identity, so the equality a data class generates would call two identical
+     * settings different.
+     */
     override fun equals(other: Any?): Boolean =
         other is FlowMatchOptions && toString() == other.toString()
 
+    /** Hashes the same string [equals] compares, so equal option sets land in the same bucket. */
     override fun hashCode(): Int = toString().hashCode()
 }
 
