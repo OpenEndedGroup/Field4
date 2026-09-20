@@ -19,7 +19,7 @@ parse the text, compile it to an interaction net, reduce the net until nothing f
 back out. Nothing here needs a GPU, a network or any setup.
 
 ```edn [field-box id="lambda_normalise" role="properties"]
-{"id" "lambda_normalise" "index" 0 "name" "normalise a term" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "normalise a term" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_normalise_code_.kt" "lines" 52 "characters" 3198 "sha256" "3881a47812864668186349524a0ccb05bdf653931daf263797790864c50bd003"}]}
+{"id" "lambda_normalise" "index" 0 "name" "normalise a term" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "normalise a term" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_normalise_code_.kt" "lines" 52 "characters" 3203 "sha256" "fd541f2541f252b52edd740b7502ec8407cc1443cde9d6786904bf57c317c9f6"}]}
 ```
 
 ```kotlin [field-property box="lambda_normalise" name="code" path="lambda_normalise_code_.kt"]
@@ -73,8 +73,8 @@ println("  " + compiled.net.nodes.groupingBy { it.type.name }.eachCount().toSort
 println("  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders")
 
 // Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
-// too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is the only
-// honest answer to a term that has no normal form.
+// too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
+// a reducer can report about a term that has no normal form.
 ```
 
 ## 2. the corpus against the oracle

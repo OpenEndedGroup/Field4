@@ -112,7 +112,7 @@ which is the case worth finding, because that is the case a person authoring two
 for one patch keeps producing.
 
 ```edn [field-box id="kfb_breakdown" role="properties"]
-{"id" "kfb_breakdown" "index" 2 "name" "What the alignment finds, and what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What the alignment finds, and what it refuses" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_breakdown_code_.kt" "lines" 30 "characters" 1442 "sha256" "83e635123c35cbd11614550dbb5b217bf8c5c86a061a702389b823b0a1850d07"}]}
+{"id" "kfb_breakdown" "index" 2 "name" "What the alignment finds, and what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What the alignment finds, and what it refuses" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_breakdown_code_.kt" "lines" 31 "characters" 1517 "sha256" "6dac4b14374a556bef2bf87409a46a232de603ed4a1203d08cd22dae7d62836b"}]}
 ```
 
 ```kotlin [field-property box="kfb_breakdown" name="code" path="kfb_breakdown_code_.kt"]
@@ -139,8 +139,9 @@ println("the one program a runtime blend runs:")
 println(plan.runtimeSource)
 println()
 
-// And the refusal. One word different is a structural difference, and there is no honest
-// program between the two, so the blend steps whatever was asked for.
+// And the refusal. `elsewhere` swaps one token, `noise` for `fbm`: that is a different op,
+// not a moving literal, and a push constant can only mix values, so the blend steps
+// from one program to the other instead of interpolating.
 val elsewhere = "uv 3.0 * noise 0.15 + [1.0,0.55,0.2] *"
 val stepped = planStackSLCodeBlend(warm, elsewhere, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
 println(stepped.describe())

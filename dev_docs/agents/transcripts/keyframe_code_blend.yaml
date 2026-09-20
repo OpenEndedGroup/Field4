@@ -82,8 +82,9 @@ operations:
           println(plan.runtimeSource)
           println()
 
-          // And the refusal. One word different is a structural difference, and there is no honest
-          // program between the two, so the blend steps whatever was asked for.
+          // And the refusal. `elsewhere` swaps one token, `noise` for `fbm`: that is a different op,
+          // not a moving literal, and a push constant can only mix values, so the blend steps
+          // from one program to the other instead of interpolating.
           val elsewhere = "uv 3.0 * noise 0.15 + [1.0,0.55,0.2] *"
           val stepped = planStackSLCodeBlend(warm, elsewhere, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
           println(stepped.describe())
