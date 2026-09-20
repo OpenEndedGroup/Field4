@@ -203,7 +203,8 @@ And RIGHTMOST_BY_ID's, same term, same twenty-six reactions, same eight β-steps
 
 Those two clips are the same length, the same peak and the same RMS, necessarily — same strikes,
 same voice, same tempo. What separates them is where the strikes are, and the harness measures that
-rather than asserting it: the two waveforms correlate at 0.375, which is the number it fails under.
+rather than asserting it. The two waveforms correlate at 0.375, against a check that fails above
+0.5.
 
 ## The reduction as pitch
 
@@ -247,3 +248,9 @@ because an interaction net may not simply drop a wire.
 * [A cellular automaton you can hear](chain_ca_sound.md) is the neighbouring chain: the same
   `mask → patCondense → .wav` half of this route, fed by an elementary rule instead of by a
   rewrite schedule, and using the condensation to separate two rules rather than two schedulers.
+
+Every number on this page comes out of one run of the `synth.lambda.sound` FIELD_TEST, which is the
+same code the figures above call. Replay it with
+`python3 tools/run_field_tests.py --id synth.lambda.sound`; it takes about six seconds and writes
+nothing. The per-term tables, the confluence-probe counts and the three measurements this page
+deliberately leaves out are in `dev_docs/CHAIN_LAMBDA_SOUND_MEASUREMENTS.md`.
