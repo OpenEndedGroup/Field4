@@ -4,11 +4,11 @@ import afield.four.modules.GltfSkinning
 import afield.four.modules.RiggedFixture
 import afield.stdlib.linalg.Matrix4f
 
-// The candy wrapper, side by side, on one rig at one pose.
+// The candy wrapper: one rig, one pose, two ways of averaging the joints.
 //
-// LEFT is linear blend skinning: average the joint MATRICES. RIGHT is dual quaternion skinning:
-// average the rigid MOTIONS. Everything else is identical -- same file, same palette, same clip,
-// same frame. The only difference is `method`.
+// `useDualQuaternions = false` is linear blend skinning -- average the joint MATRICES. `true` is
+// dual quaternion skinning -- average the rigid MOTIONS. Everything else is identical: same file,
+// same palette, same clip, same frame. The only difference is `method`. Flip it and re-run.
 //
 // Why it happens, exactly: at the joint ring the weights are 0.5/0.5 (the rig has only two distinct
 // weight tuples, [1,0,0,0] and [0.5,0.5,0,0]). Linear blending averages the joint MATRICES, so at
@@ -48,9 +48,15 @@ val rest = DualQuaternionSkinning.candyWrapperRadius(skinner.pose("twist", 0f).p
 val out = skinner.pose("twist", twistTime)
 inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true)
 
-println("twist t = %.2f, min radius at the y = %.1f ring (rest %.4f)".format(twistTime, jointY, rRest))
-println("  LEFT   linear blend      %.6f   (%5.1f%% of rest)".format(rL, 100f * rL / rRest))
-println("  RIGHT  dual quaternion   %.6f   (%5.1f%% of rest)".format(rR, 100f * rR / rRest))
-println("  dual quaternion non-rigid joints ${outR.nonRigidJoints}, antipodal flips ${outR.antipodalFlips}")
+// These four lines were left over from the two-mesh version this box replaced, and still named
+// its `rL` / `rR` / `outR` / `rRest` -- so the box failed to compile with "Unresolved reference
+// 'rRest'" from the moment the rewrite landed. Nothing caught it: box code is compiled by the K2
+// REPL, not by Gradle, so `check` is green on a demo that cannot run. Found 2026-09-20 by running
+// every box of this document one at a time, which is the only thing that does catch it.
+val radius = DualQuaternionSkinning.candyWrapperRadius(out.position, jointY)
+val label = if (useDualQuaternions) "dual quaternion" else "linear blend"
+println("twist t = %.2f, min radius at the y = %.1f ring (rest %.4f)".format(twistTime, jointY, rest))
+println("  %-16s %.6f   (%5.1f%% of rest)".format(label, radius, 100f * radius / rest))
+println("  non-rigid joints ${out.nonRigidJoints}, antipodal flips ${out.antipodalFlips}")
 
 loop { frame() }

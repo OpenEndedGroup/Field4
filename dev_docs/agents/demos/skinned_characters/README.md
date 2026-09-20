@@ -1,4 +1,4 @@
-# skinned_characters — a rigged mesh you can bend
+# skinned_characters — a rigged mesh you can bend, and a crowd of them
 
 Open this document in a fresh Field and run the boxes top to bottom.
 
@@ -49,7 +49,7 @@ packed vertex buffer `applyToMesh` already uploads, so nothing in the pipeline k
 skinned. **Run box 0 first** — it is box 4's parent and supplies the renderer. Edit `poseTime` at
 the top and re-run — `0` is a straight tube, `1` is the 60-degree bend.
 
-**5 — The candy wrapper, side by side.** One tube, one pose, two ways of averaging the joints.
+**5 — The candy wrapper.** One tube, one pose, two ways of averaging the joints.
 Flip `useDualQuaternions` at the top and re-run: `false` pinches the waist shut to a point (the
 hourglass), `true` keeps it round and just twists. The printed number is the min radius at the
 `y = 2` ring — **0.0% of rest** for linear blending against **100.0%** for dual quaternions.
@@ -62,6 +62,23 @@ does **not** work. Both read the instance's vertex buffer at draw time rather th
 lbs-then-dqs rendering two round tubes and lbs-then-lbs rendering two pinched ones, while the
 printed numbers stayed correct throughout. That would have been a figure that lies, so the box draws
 one tube and toggles.
+
+**A second thing box 5 records:** from 2026-09-19 until 2026-09-20 this box **did not compile**.
+The rewrite from two meshes to one left four `println`s naming the two-mesh version's `rL`, `rR`,
+`outR` and `rRest`, so it failed with *"Unresolved reference 'rRest'"* — while `./gradlew check`
+stayed green, because box code is compiled by the K2 REPL and no Gradle task ever sees it. It was
+found by running every box of this document one at a time, which is the only thing that does find
+it. Both branches now reproduce the numbers quoted above: **0.0% of rest** for linear blending,
+**100.0%** for dual quaternions.
+
+**6 — Skinning on the GPU, and a crowd of 64.** The stretch box 4 did not take. Box 4 is the CPU
+skinner drawing through the GPU: `CpuSkinner` rewrites the packed vertex buffer and `applyToMesh`
+re-uploads all of it, every pose. That is 2.8 ms for a 50,000-vertex character, and it is why box
+4 shows *one* character. Box 6 puts the deformation in the **vertex shader** — a joint stream, a
+joint-matrix palette sliced by `gl_InstanceIndex`, and `Mesh.instanceCount` — so 64 characters,
+each at its own phase of its own blend of two clips, are one mesh, one draw call, and one upload
+of 128 matrices per frame. Nothing re-uploads a vertex after setup. **Run box 0 first**; box 6 is
+connected beneath it. **Edit `count` at the top and re-run.**
 
 ## The rig
 
@@ -100,6 +117,29 @@ box 4  gpu skinned at t = 1.00 -> tip x -1.9821, top y 3.4330
         box at poseTime 0 and 0.5 — a straight tube, a 30-degree bend, a 60-degree bend)
 ```
 
+Re-run in full on 2026-09-20 after box 6 was added — all seven boxes launched one at a time
+through `tools/field_backdoor.py --port 9101`, **0 errors**:
+
+```
+box 5  twist t = 1.00, min radius at the y = 2.0 ring (rest 0.5000)
+       linear blend     0.000000   (  0.0% of rest)
+       dual quaternion  0.500000   (100.0% of rest)    <- after flipping useDualQuaternions
+       non-rigid joints 0, antipodal flips 0
+
+box 6  frame 0 .. 960: 64 instances, 128 matrices uploaded, one draw call
+       (960 frames in 8 s, ~120 fps, while animating)
+```
+
+Box 6's native window capture is `dev_docs/agents/evidence/gpu_skinning/demo_box6_live.png`, and
+`demo_all_boxes_live.png` is the whole document running at once — box 6's tinted crowd with boxes
+4 and 5's normal-shaded tubes standing in the middle of it.
+
+**One trap this retires.** Backlog Z7 says the native window capture times out against a per-frame
+`applyToMesh`, which is why box 4 poses once instead of animating. Box 6 animates *and*
+photographs: it was captured mid-animation with no timeout. The trap is the per-frame **vertex
+re-upload** specifically, not any per-frame buffer write — box 6 rewrites its palette every frame
+and captures fine.
+
 The method, the numbers with their populations and the traps are in
-`dev_docs/SKINNED_CHARACTERS.md`. Rendered frames of the deformation are in
+`dev_docs/SKINNED_CHARACTERS.md` and `dev_docs/GPU_SKINNING.md`. Rendered frames of the deformation are in
 `dev_docs/agents/evidence/skinning/`.
