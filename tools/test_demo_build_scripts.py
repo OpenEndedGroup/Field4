@@ -22,7 +22,10 @@ The corpus count moved 19 -> 20 on 2026-09-19 when `skinned_characters` landed f
 branch on the same night. That is what this assertion is for and it did its job: the two branches
 touched no file in common, so `git merge-tree` and a file-set intersection were both clean, and
 this equality was the only thing that noticed. `skinned_characters` ships no `build.yaml`, so the
-count of nine is unchanged.
+count of nine is unchanged. Since 2026-09-20 the corpus is held as a *named set* (`CORPUS`) rather
+than a count, so the next time this fires it says which document arrived; and what it noticed about
+`skinned_characters` — that it exists — is now separate from whether anything verifies it, which is
+`AgentDemoRegistrationTest`'s job and was nobody's.
 
 What this does NOT check: that re-running the script produces the same frames, names, graph
 topology or property set. Only the Kotlin, which is where every drift found so far has been, and
@@ -42,6 +45,37 @@ import yaml
 TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 DEMOS_ROOT = REPO_ROOT / "dev_docs" / "agents" / "demos"
+
+# The demo corpus, by name. Measured 2026-09-20: `ls -1d dev_docs/agents/demos/*/`.
+#
+# This was a bare `assertEqual(20, len(demos))` until 2026-09-20. The count was not wrong — it is
+# the assertion that caught `skinned_characters` arriving from a sibling branch the night before,
+# and its docstring above says so. It failed with `20 != 19`, which is true and tells you nothing:
+# not which document, not whether it is verified, not what to do. Two branches adding a demo on one
+# night touch no file in common, so `git merge-tree` is clean by construction and this is the only
+# thing that speaks — which is exactly why it should speak in names.
+CORPUS = {
+    "alife_evolution",
+    "alife_script",
+    "alife_walls",
+    "chart_clip",
+    "chart_primitive",
+    "completion_rank_at_scale",
+    "confluence_grid",
+    "frame_history_reprojection",
+    "interaction_nets_lambda",
+    "keyframe_key_discovery",
+    "logging_layer",
+    "midi_clip",
+    "path_tracer_instrument",
+    "path_tracing_emitters",
+    "path_tracing_medium",
+    "pattern_condense",
+    "python_cells",
+    "read_only_session",
+    "skinned_characters",
+    "solidsl_inverse",
+}
 
 # demo -> {box: why this one is allowed to differ}. Measured 2026-09-19 on the tree at
 # 9d8bc0248; each of these is a document edited in Field after its build script was written.
@@ -80,12 +114,20 @@ class DemoBuildScriptTest(unittest.TestCase):
     def test_the_corpus_is_where_it_was_measured(self) -> None:
         """A demo that gains or loses a build script should make someone look at this file."""
         self.assertTrue(DEMOS_ROOT.is_dir(), f"no demo corpus at {DEMOS_ROOT}")
-        demos = sorted(p.name for p in DEMOS_ROOT.iterdir() if p.is_dir())
+        demos = {p.name for p in DEMOS_ROOT.iterdir() if p.is_dir()}
         self.assertEqual(
-            20,
-            len(demos),
-            f"the demo corpus is now {len(demos)} documents ({', '.join(demos)}); "
-            "re-measure how many ship a build.yaml and update this test's docstring",
+            set(),
+            demos - CORPUS,
+            f"new demo document(s) {sorted(demos - CORPUS)}. Add each name to CORPUS above, check "
+            "whether it ships a build.yaml (and move the count below if so), and register it for "
+            "verification — see AgentDemoRegistrationTest.",
+        )
+        self.assertEqual(
+            set(),
+            CORPUS - demos,
+            f"demo document(s) {sorted(CORPUS - demos)} are named in CORPUS but are not on disk; "
+            "if they were removed or renamed, update CORPUS, KNOWN_STALE and "
+            "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
             9,
