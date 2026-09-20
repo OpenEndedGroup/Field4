@@ -346,9 +346,9 @@ keeps the value the previous stage had. That is what a sample-and-hold does, and
 the thinning operators mean something on an address: `struct` and `degradeBy` become *how long an
 address is held for*, rather than "and now, silently, address zero".
 
-That recurrence is the interesting part, and it is why this is not a sequencer. The reader's own
-traversal generates its clock, so the duration pattern is consulted at instants the duration
-pattern chose. Give four values a `"<1 4 .25 2>"` duration and you get
+That recurrence is why this is not a sequencer: the reader's own traversal generates its clock,
+so the duration pattern is consulted at instants the duration pattern chose. Give four values a
+`"<1 4 .25 2>"` duration and you get
 
     |--0--|--------.7--------|-.2-|----1----|
 
@@ -442,12 +442,12 @@ would rewrite the bank's own stage targets rather than produce one wrong frame.
 interpolates by `slerp` and a hue wraps, so neither is `add`/`scale` and neither has an instance.
 Those want a reader whose blend is its own function.
 
-### Not here yet
+### Nesting a pattern inside a stage
 
-**A bank entry that is itself a pattern.** A stage's continuous behaviour is a [`MarfCurve`](patterns.md#marf-kt-marfcurve), and
-`MarfCurve.Shape` can close over anything, including another reader. A nested pattern given its
-own local temporal scope inside the stage is not modelled, and would want `stagePhase` threaded
-into a real evaluation context rather than passed as a `Double`. Nothing in this file blocks it.
+A stage's continuous behaviour is a [`MarfCurve`](patterns.md#marf-kt-marfcurve), and `MarfCurve.Shape` can close over anything,
+including another reader. What is not modelled is a nested pattern with a local temporal scope
+of its own: `stagePhase` reaches a `Shape` as a `Double`, so a pattern read in there has no
+evaluation context to be slowed, reversed or thinned in.
 
 `src/jvmMain/kotlin/afield/four/synth/Marf.kt` — [read the source](source/jvmMain/afield/four/synth/Marf/)
 
