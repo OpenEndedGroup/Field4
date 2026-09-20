@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="np_field" index="1" -->
 
 ```edn [field-box id="np_field" role="properties"]
-{"id" "np_field" "index" 1 "name" "train the field" "parents" ["root" "np_renderer"] "children" ["np_particles"] "properties" {"children" #{#afield/box "np_particles"} "parents" #{#afield/box "root" #afield/box "np_renderer"} "name" "train the field" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_field_code_.kt" "lines" 39 "characters" 1958 "sha256" "351616048f65f0818d350b876def5483c676ef2a82237dbc6f05d5cf8a7d5688"}]}
+{"id" "np_field" "index" 1 "name" "train the field" "parents" ["root" "np_renderer"] "children" ["np_particles"] "properties" {"children" #{#afield/box "np_particles"} "parents" #{#afield/box "root" #afield/box "np_renderer"} "name" "train the field" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_field_code_.kt" "lines" 39 "characters" 1958 "sha256" "a559bafb9581cbb5e751a0f5b78ef92d941205e59d130f44546c71e9389c52a0"}]}
 ```
 
 ```kotlin [field-property box="np_field" name="code" path="np_field_code_.kt"]
@@ -50,7 +50,7 @@ prop<afield.stdlib.FlowMatchExport>(neuralExport)
 
 // A word, not a letter — and only because the source has the word's topology. A
 // standard Gaussian cannot become five disjoint outlines: it measures a chamfer of
-// 13.1 against a floor of 1.8, and no amount of training moves it, because a flow is a
+// 13.1 against a floor of 0.8, and no amount of training moves it, because a flow is a
 // continuous invertible map and one blob cannot tear into five.
 //
 // Three things get it to 5.2, and they were each worth a measurement:

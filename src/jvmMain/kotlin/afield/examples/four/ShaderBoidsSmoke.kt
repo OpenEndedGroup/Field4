@@ -96,6 +96,7 @@ object ShaderBoidsSmoke {
             failures += checkQuiescent(renderer, window)
             failures += checkLearned(renderer, window)
             failures += checkEquivariant(renderer, window)
+            failures += checkDrawInstalls(renderer, window)
 
             if (failures > 0) {
                 println("shader boids tests FAILED ($failures)")
@@ -445,6 +446,43 @@ object ShaderBoidsSmoke {
         // plain form misses this by 18%, so there is no risk of it passing by accident.
         if (worstTurn >= 0.05) { println("  FAIL: equivariance $worstTurn exceeds 0.05"); failures++ }
         if (interacting < COUNT / 2) { println("  FAIL: only $interacting boids had neighbours"); failures++ }
+        if (failures == 0) println("  ok")
+        return if (failures > 0) 1 else 0
+    }
+
+    /**
+     * The draw half of the public recipe actually installs, and survives a frame.
+     *
+     * `installDrawInto` is what `neural_particles.md` tells a reader to call, and until this case
+     * existed nothing in CI ran it: every other case here installs the *rule* and reads the buffer
+     * back, which leaves the vertex and fragment shaders, the `Mesh` sizing and the eight push
+     * bindings compiled but never executed. A shader that fails to compile, or a binding naming a
+     * push constant the shader does not declare, would reach a reader before it reached a test.
+     *
+     * Deliberately not a picture: this asserts the module is registered and that a frame renders
+     * with it in the list. What the flock *looks* like is the docs capture's job.
+     */
+    private fun checkDrawInstalls(renderer: Renderer, window: Window): Int {
+        println("--- installDrawInto")
+        val boids = build(renderer, "Drw") {}
+        boids.reset(Vector2f(-0.5f, -0.5f), 1.0f, speed = 0.2f, seed = 25)
+        boids.install(renderer.renderList.others)
+        boids.installDrawInto(renderer.renderList)
+
+        val key = "${boids.settings.name}-draw"
+        val registered = renderer.renderList.modules.containsKey(key)
+        println("  '$key' in the render list: $registered")
+
+        // A frame with the draw in the list: this is what executes the shaders rather than merely
+        // building them. A compile failure surfaces here and nowhere earlier.
+        run(renderer, window, 4)
+
+        var failures = 0
+        if (!registered) { println("  FAIL: installDrawInto registered no draw under '$key'"); failures++ }
+
+        boids.removeFrom(renderer.renderList.others)
+        renderer.renderList.modules.remove(key)
+        boids.grid.cleanup()
         if (failures == 0) println("  ok")
         return if (failures > 0) 1 else 0
     }
