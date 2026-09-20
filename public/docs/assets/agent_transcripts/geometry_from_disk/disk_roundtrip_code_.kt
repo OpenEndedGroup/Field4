@@ -1,4 +1,4 @@
-// The round trip is worth doing once yourself, because what comes back is not what went out.
+// What comes back from a file is not what went out, and this is the round trip that shows it.
 // Nothing here writes into the repository: a temp directory, deleted at the end.
 val dir = java.nio.file.Files.createTempDirectory("mesh-round-trip").toFile()
 val source = icosphereMesh(3, 1.0).withColor(0.3, 0.7, 1.0)
