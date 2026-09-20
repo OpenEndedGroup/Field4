@@ -108,3 +108,23 @@ Five published sentences were corrected, all in `public/docs/agent_transcripts.m
 same kind: a claim that was true of the demo's *intent* and not of its behaviour. The full list is in
 the commit that made them. The pattern worth carrying forward is that four of the five were about the
 **last** box of a scene — the one a writer describes from the plan and a reader never reaches.
+
+## Postscript, 20 September 2026: the twentieth arrived unverified
+
+Every number above is as measured on the 19th and is left alone. What happened next is the reason
+the page exists.
+
+`skinned_characters` landed from a sibling branch on the same day this audit was written, taking the
+corpus from nineteen documents to twenty. It has no `dev_docs/agents/transcripts/skinned_characters.yaml`
+and no entry in any of `DemoTranscriptExecSmokeTest`'s three registries, so six Kotlin box bodies
+are compiled by nothing. The only thing in the tree that reacted was the corpus-count equality in
+`tools/test_demo_build_scripts.py`, which reports that a demo arrived and nothing about whether it
+is checked.
+
+`src/jvmTest/kotlin/afield/docs/AgentDemoRegistrationTest.kt` now asserts the missing half —
+every demo document maps to a registered transcript or sits in a named `UNVERIFIED` list with its
+reason and its fix — and `skinned_characters` is the one entry on that list. Writing the transcript
+is the fix; it belongs in `COMPILE_ONLY`, because its boxes open a Window and a Renderer.
+
+Both corpus assertions are now named sets rather than counts, so the next arrival is reported by
+name. See `dev_docs/GUARD_CORPORA.md` for why, and for what each guard in the tree actually looks at.

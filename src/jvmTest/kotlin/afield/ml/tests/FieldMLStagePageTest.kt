@@ -95,6 +95,21 @@ class FieldMLStagePageTest {
             expected.keys,
             "the renderer set and the marker set must not drift apart",
         )
+        // ...and the *page's* markers are read off the page rather than restated, because the
+        // literal above is only half the claim. Until 2026-09-20 an eighth `<!-- stage:… -->`
+        // fence could be added and nothing would recompute it: this test consumed seven markers
+        // and then checked that it had consumed seven, which is true of any subset of the page.
+        // That is the corpus-versus-message defect in one class — the sentence above the assertion
+        // says "every stage readout on the page".
+        assertEquals(
+            expected.keys + PIPE_MARKER,
+            markersOn(page),
+            "$PAGE carries a `<!-- stage:… -->` fence that nothing recomputes, or has lost one " +
+                "that something does. Every marker on the page must be either a renderer in " +
+                "stageReadouts() or `$PIPE_MARKER`, which pipeAndJuxtapositionShareOneSurfaceTree " +
+                "owns because it is one rendering of two programs — a claim about equality rather " +
+                "than about a stage. Add the renderer, or move the fence out of the stage series.",
+        )
 
         expected.forEach { (marker, rendered) ->
             assertEquals(
@@ -405,7 +420,23 @@ class FieldMLStagePageTest {
         return match.groupValues[1].trimEnd('\n')
     }
 
+    /**
+     * Every `<!-- stage:NAME -->` on the page — the population, rather than the seven names this
+     * file happens to ask for.
+     *
+     * A guard that enumerates what it wants and then counts what it got has measured itself. This
+     * enumerates what is *there*, which is the only version of the question that can report a
+     * marker nobody wrote a renderer for.
+     */
+    private fun markersOn(page: String): Set<String> =
+        Regex("""(?m)^<!--\s*stage:([A-Za-z0-9_-]+)\s*-->\s*$""").findAll(page)
+            .map { it.groupValues[1] }
+            .toSet()
+
     private companion object {
         const val PAGE = "public/docs/fieldml_stages.md"
+
+        /** The one marked fence that is not a stage: it is [pipeAndJuxtapositionShareOneSurfaceTree]'s. */
+        const val PIPE_MARKER = "surface-pipe"
     }
 }

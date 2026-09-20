@@ -12,6 +12,16 @@ import kotlin.system.exitProcess
  * `dev_docs/agents/OPERATION_TRANSCRIPT.md`. A larger visual or capture card is allowed only when its
  * `file#box` key has a concrete reason in `dev_docs/agents/transcript_layout_exceptions.yaml`.
  *
+ * ### The corpus this ceiling is stated over
+ *
+ * Both halves: every `create` op under `dev_docs/agents/transcripts`, *and* every box in every
+ * `metadata.edn` under `dev_docs/agents/demos`. The two are named here because the failure message names
+ * a ceiling and not a subset, and a message that says "the ordinary ceiling" while enforcing over
+ * half the boxes is the defect this guard shipped with: on 2026-09-18 a demo document went out at
+ * `700 x 900` and twice `1180 x 900` — 6.6x the demo corpus's median box height and 1.9x this
+ * width ceiling — and everything was green. [AuditResult] therefore reports the two populations
+ * separately and [main] prints both, so "no violations" can never be read off a corpus of zero.
+ *
  * The ceiling was `520 x 120` until 2026-09-13, when the whole corpus grew by `+100 w` / `+50 h`: the
  * compaction that brought these boxes down to `200 x 50` had overshot, leaving labels cramped. Growing
  * the boxes without growing the ceiling would have turned every name-widened box into a violation, so
@@ -24,7 +34,7 @@ object AgentTranscriptLayoutGuard {
     const val MAX_ORDINARY_HEIGHT = 170.0
 
     private const val CORPUS_REL = "dev_docs/agents/transcripts"
-private const val DEMOS_REL = "dev_docs/agents/demos"
+    private const val DEMOS_REL = "dev_docs/agents/demos"
     private const val EXCEPTIONS_REL = "dev_docs/agents/transcript_layout_exceptions.yaml"
     private val CREATE_VERBS = setOf("create", "new-box", "box")
 
@@ -54,13 +64,24 @@ private const val DEMOS_REL = "dev_docs/agents/demos"
             exitProcess(1)
         }
         println(
-            "AgentTranscriptLayoutGuard ok — ${result.transcripts} transcript(s), ${result.frames} create frame(s), " +
+            "AgentTranscriptLayoutGuard ok — population: ${result.transcripts} transcript(s) under $CORPUS_REL " +
+                "+ ${result.demos} demo document(s) under $DEMOS_REL, ${result.frames} create frame(s), " +
                 "${result.largeFrames} reviewed large frame(s)"
         )
     }
 
+    /**
+     * The population, stated as two numbers rather than one.
+     *
+     * [transcripts] and [demos] are separate fields because the ceiling in the failure message names
+     * *every* box in the corpus, and a single total cannot say that half of it went to zero. The
+     * demo half was outside this guard until 2026-09-05 and had drifted entirely over the ceiling
+     * while the guard reported success; a count that cannot distinguish "no demos" from "no demo
+     * violations" would let that happen again silently.
+     */
     data class AuditResult(
         val transcripts: Int,
+        val demos: Int,
         val frames: Int,
         val largeFrames: Int,
         val problems: List<String>,
@@ -68,16 +89,27 @@ private const val DEMOS_REL = "dev_docs/agents/demos"
 
     fun audit(repo: File): AuditResult {
         val corpus = File(repo, CORPUS_REL)
+        val demosDir = File(repo, DEMOS_REL)
         val problems = mutableListOf<String>()
         if (!corpus.isDirectory) {
-            return AuditResult(0, 0, 0, listOf("no transcript corpus at ${corpus.absolutePath}"))
+            return AuditResult(0, 0, 0, 0, listOf("no transcript corpus at ${corpus.absolutePath}"))
+        }
+        // Half a corpus is not a smaller corpus, it is a different guard. The ceiling this reports
+        // is stated over "every shipped box", so a demos directory that has moved or been renamed
+        // must stop the run rather than shrink it.
+        if (!demosDir.isDirectory) {
+            return AuditResult(0, 0, 0, 0, listOf("no demo corpus at ${demosDir.absolutePath}"))
         }
 
         val files = corpus.walkTopDown()
             .filter { it.isFile && it.extension.lowercase() in setOf("yaml", "yml") }
             .sortedBy { it.relativeTo(corpus).invariantSeparatorsPath }
             .toList()
-        val demoFrames = parseDemoFrames(File(repo, DEMOS_REL), problems)
+        val demoDocuments = demosDir.listFiles()
+            ?.filter { it.isDirectory && File(it, "metadata.edn").isFile }
+            ?.sortedBy { it.name }
+            .orEmpty()
+        val demoFrames = demoDocuments.flatMap { parseDemoFrames(it, problems) }
         val frames = files.flatMap { parseFrames(corpus, it, problems) } + demoFrames
         val byKey = frames.groupBy { it.key }
         byKey.filterValues { it.size > 1 }.forEach { (key, duplicates) ->
@@ -120,7 +152,7 @@ private const val DEMOS_REL = "dev_docs/agents/demos"
             }
         }
 
-        return AuditResult(files.size, frames.size, large.size, problems.sorted())
+        return AuditResult(files.size, demoDocuments.size, frames.size, large.size, problems.sorted())
     }
 
     private fun parseFrames(corpus: File, file: File, problems: MutableList<String>): List<Frame> {
@@ -201,38 +233,68 @@ private const val DEMOS_REL = "dev_docs/agents/demos"
     }
 
     /**
- * Frames from the loadable demo documents under `dev_docs/agents/demos`.
- *
- * These carry the *same boxes* as a transcript — often literally the same box, since a demo and its
- * transcript are generated from one set of `*_code_.kt` files — but they were outside this guard's
- * population until 2026-09-05, and every one of them had drifted over the ceiling as a result: 24 of
- * 26 boxes, up to 760 x 600. The ceiling was never the missing part; the population was. A `metadata.edn`
- * is EDN rather than YAML, so the frames are read with a regex over `"id" … #afield/rect [x y w h]`
- * rather than through a parser.
- */
-private fun parseDemoFrames(demosDir: File, problems: MutableList<String>): List<Frame> {
-    if (!demosDir.isDirectory) return emptyList()
-    val rectRe = Regex("""\"id\"\s+\"([^\"]+)\"(.*?)#afield/rect\s+\[([^\]]+)\]""", RegexOption.DOT_MATCHES_ALL)
-    val result = mutableListOf<Frame>()
-    demosDir.listFiles()?.sortedBy { it.name }?.forEach { dir ->
+     * Frames from one loadable demo document under `dev_docs/agents/demos`.
+     *
+     * These carry the *same boxes* as a transcript — often literally the same box, since a demo and
+     * its transcript are generated from one set of `*_code_.kt` files — but they were outside this
+     * guard's population until 2026-09-05, and every one of them had drifted over the ceiling as a
+     * result: 24 of 26 boxes, up to 760 x 600. The ceiling was never the missing part; the
+     * population was. A `metadata.edn` is EDN rather than YAML, so the frames are read with a regex
+     * rather than through a parser.
+     *
+     * **The scan is per box, not one spanning regex, and that is the whole point of this function.**
+     * The original form matched `"id" "…" (.*?) #afield/rect [x y w h]` across the document, so a
+     * box with no frame silently absorbed the *next* box's rectangle and hid that box from the
+     * guard entirely — one omission, two boxes unchecked, no message. `parseFrames` rejects exactly
+     * that omission on the YAML side ("an omitted frame is an invisible Rect(0,0,0,0)"); the EDN
+     * side swallowed it. So the document is cut into one segment per `"id"`, each segment must
+     * carry exactly one `"frame" #afield/rect`, and a segment that does not is a problem rather
+     * than a gap. Re-measured 2026-09-20: identical attribution to the spanning form over all 20
+     * demos, 72 frames, so the change adds a failure mode and removes none.
+     *
+     * `root` is the document's implicit container box and legitimately has no frame; it is the only
+     * id exempted, and it is exempted by name so that a *box* called anything else cannot slip
+     * through as one.
+     */
+    private fun parseDemoFrames(dir: File, problems: MutableList<String>): List<Frame> {
         val edn = File(dir, "metadata.edn")
-        if (!edn.isFile) return@forEach
+        if (!edn.isFile) return emptyList()
         val text = edn.readText()
         val relative = "${dir.name}/metadata.edn"
-        for (match in rectRe.findAll(text)) {
-            val box = match.groupValues[1]
-            val parts = match.groupValues[3].trim().split(Regex("\\s+")).mapNotNull { it.toDoubleOrNull() }
+        val idRe = Regex("""\"id\"\s+\"([^\"]+)\"""")
+        val frameRe = Regex("""\"frame\"\s+#afield/rect\s+\[([^\]]+)\]""")
+        val ids = idRe.findAll(text).toList()
+        val result = mutableListOf<Frame>()
+        for ((index, id) in ids.withIndex()) {
+            val box = id.groupValues[1]
+            val end = if (index + 1 < ids.size) ids[index + 1].range.first else text.length
+            val segment = text.substring(id.range.last + 1, end)
+            val rects = frameRe.findAll(segment).toList()
+            if (rects.isEmpty()) {
+                if (box != "root") {
+                    problems.add(
+                        "$relative: box '$box' has no `\"frame\" #afield/rect`; a frameless box is an " +
+                            "invisible Rect(0,0,0,0), and it used to make the next box invisible to this guard too"
+                    )
+                }
+                continue
+            }
+            if (rects.size > 1) {
+                problems.add("$relative: box '$box' declares ${rects.size} frames; exactly one is expected")
+                continue
+            }
+            val raw = rects.single().groupValues[1]
+            val parts = raw.trim().split(Regex("\\s+")).mapNotNull { it.toDoubleOrNull() }
             if (parts.size != 4) {
-                problems.add("$relative: box '$box' has an unreadable frame '${match.groupValues[3]}'")
+                problems.add("$relative: box '$box' has an unreadable frame '$raw'")
                 continue
             }
             result.add(Frame("$relative#$box", "$relative box '$box'", parts[0], parts[1], parts[2], parts[3]))
         }
+        return result
     }
-    return result
-}
 
-private fun repoRoot(): File {
+    private fun repoRoot(): File {
         var candidate: File? = File(System.getProperty("user.dir")).absoluteFile
         while (candidate != null) {
             if (File(candidate, "public/docs").isDirectory && File(candidate, "src/jvmMain/kotlin").isDirectory) {
