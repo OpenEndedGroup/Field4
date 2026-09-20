@@ -57,13 +57,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 137 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 139 transcripts on every build, at three
 depths. 80 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-50 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+52 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2341,6 +2341,50 @@ the density rather than picking one is what makes that legible: the geometry nev
 that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is the write-up.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
+
+### neural_particles
+
+**A cloud of noise assembling itself into a word, through a network trained a second earlier.** Three
+boxes: a renderer, an offline training step, and three hundred thousand particles. The middle box
+fits a flow-matching velocity field `v(x, t)` in about a second of pure Kotlin; `MlpWeights.glsl`
+writes those five thousand numbers out as an unrolled GLSL forward pass, and a compute shader
+evaluates one per particle per frame. The particle is a struct in a storage buffer rather than a
+texel, because it carries where it started and how far through its journey it is — a flow is a
+*map*, not a field of forces, and neither of those fits in four channels.
+
+Three things in it are measured rather than chosen. A word needs one source blob per *closed
+subpath*, phase-aligned with the contour it becomes: a single Gaussian cannot become five disjoint
+outlines at any training budget (chamfer 13.1 against a floor of 0.8) while the mixture reaches 5.3.
+Particles must *dwell* on the target rather than resetting the instant they arrive, or only one in a
+hundred and fifty is ever on the glyph and the picture is a featureless haze that looks exactly like
+an undertrained field. And the source jitter that seeds the particles is the opposite of the jitter
+used in training — train on the exact correspondence, seed near it.
+`tools/run_field_tests.py --id four.neural-particles.smoke` grades the GPU's trajectories against the
+CPU integrator per particle.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
+
+### learned_boids
+
+**Two flocks side by side: one running Reynolds boids, one running a network that learned it.** Four
+boxes: a renderer, a training step, and a flock each. `ShaderBoids` takes a `learned` argument and
+branches only where the force is computed, so the two are an A/B of the rule and of nothing else.
+
+The neighbour search is what makes it possible. A flocking rule is a sum over *nearby* particles, and
+finding those without looking at everybody needs a sort — hash each boid to a grid cell, sort the
+pairs with `GpuRadixSort` so a cell's members land in one contiguous run, then walk the 3x3 block
+around your own. The learned half is a Deep Sets interaction,
+`a = phi(v, SUM psi, MEAN psi)`, about a thousand parameters fitted by reverse-mode autodiff, which
+Smile cannot express because the gradient runs through a sum over a variable-length set.
+
+Worth knowing before you read anything into the picture: the right flock looking like the left one is
+not evidence. Almost any attraction-and-repulsion rule with a speed limit produces something an
+audience accepts. The numbers that mean something are in the smokes —
+`four.neighbour-grid.smoke` checks the search against brute force as *sets* (a query that misses a
+tenth of its neighbours yields a force a few percent out and a flock that still flocks), and
+`four.shader-boids.smoke` grades both rules against a CPU brute force per particle.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/learned_boids/metadata.edn)
 
 ## Graphics building blocks
 

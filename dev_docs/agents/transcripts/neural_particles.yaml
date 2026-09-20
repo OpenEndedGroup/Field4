@@ -1,0 +1,179 @@
+name: neural_particles
+description: |
+  A particle system whose velocity field is a **trained network**. Three boxes — a renderer, an
+  offline training step, and the live system — and the thing worth noticing is which of them is
+  slow. The middle box thinks for a couple of seconds, once. The right-hand box then runs three
+  hundred thousand particles through what it learned, every frame, forever.
+
+  That split is the whole proposition. Flow matching fits a velocity field `v(x, t)` by least
+  squares: pick a point from a Gaussian, pick a point from the shape you want, declare the straight
+  line between them to be the path, and regress. No adversary, no sampler in the loop, nothing to
+  diverge. Two seconds of CPU in `flowmatching.kt` and you have five thousand numbers that know how
+  to carry a cloud of noise onto a letterform. `MlpWeights.glsl` then writes those five thousand
+  numbers out as an unrolled GLSL forward pass, and a compute shader evaluates one per particle per
+  frame.
+
+  **The particle is a struct, not a texel.**
+
+  ```glsl
+  struct Particle { vec2 position; vec2 start; vec2 velocity; float t; float pad; };
+  ```
+
+  `start` and `t` are there because a flow is a *map* rather than a field of forces: a particle is
+  not wandering, it is travelling from one specific source point to wherever the field takes it by
+  `t = 1`, and when it arrives it goes back and does it again. Neither fits in a four-channel texel,
+  and the buffer-of-structs that does is the same one `alife_dla.kt` uses for a million walkers.
+
+  Things worth trying in the particles box — every one of these is live, because the settings are
+  read through lambdas that the push buffer re-reads every frame:
+
+    - `intensity` from `0.5f` up to `1.5f` and back. With additive blending this is an exposure
+      control, and it is the difference between seeing the *shape* and seeing the *density*.
+    - `stepsPerCycle` from `150` down to `50`. The morph gets three times faster and the letters
+      get visibly softer at the same moment, which is not a coincidence: this is the Euler step
+      count and the animation speed at the same time, so a fast morph is a coarse one.
+    - `phaseSpread` to `0f`, then `particles.reset()`. Every particle now travels together and the
+      cloud reads as one object morphing rather than as a standing stream. Both are worth having;
+      the stream is the default because it has no dead moment.
+    - `pointSize` to `3f` with `intensity` at `0.1f`. Softer, more like smoke than sand.
+    - `dwellCycles` to `0f`, then `particles.reset()`. This is the one that taught us something:
+      a particle that resets the instant it arrives is on the glyph for one frame in a hundred and
+      fifty, so the 299,000 still in transit drown the 2,000 that made it and the picture is a
+      featureless haze indistinguishable from an undertrained field. At `3f` three quarters of the
+      cloud is arrived at any moment. Turn it off and back on; nothing about the *flow* changed.
+    - `arrivalBias` from `0.5f` to `0f`. This is a display weight and changes no trajectory: at 0
+      every particle is equally bright and you see the whole flow, at 1 only the arrivals register
+      and you see the learned distribution. The glyph is legible in between.
+    - The **text** in the field box. Retrains in a couple of seconds whatever you put there.
+
+  And one that fails informatively, which is worth doing on purpose: replace the `mixtureSource`
+  call with a plain `flowMatch(pairing.to, options = ...)` — one Gaussian, no pairing. The loss
+  goes *up* by a factor of two hundred and seventy, from 0.005 to 1.361, and yet the more telling
+  number is the one the loss cannot see: chamfer against the target goes from 7.8 to 13.1, and the
+  picture collapses into a wide featureless haze in roughly the right region. More steps do not
+  fix it — 40,000 at 128x128 units still measures 12.6. A flow is a continuous invertible map, so
+  one blob cannot tear into five outlines, and what you are looking at is the field honestly
+  reporting the average over paths that have to cross.
+
+  The other half of that lesson is `alignPhase = false` in the `mixtureSource` call. Each contour
+  still gets its own ellipse, so the topology is right, but the ellipse is no longer rotated into
+  phase with the contour it has to become — and an arbitrary rotation per component takes the loss
+  from 0.008 to 0.055. The shape of the source is not enough; the *correspondence* has to be right
+  too.
+
+  `tools/run_field_tests.py --id four.neural-particles.smoke` is the same machinery driven
+  headlessly, grading the GPU's trajectories against the CPU integrator point by point, and
+  `--id four.neural-field-parity.smoke` is the single-forward-pass check underneath it.
+operations:
+  # 1. the renderer: owns the Window and pumps the loop. Run this one first.
+  - create:
+      box: np_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Neural particles")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  # 2. the offline half. Everything expensive happens here, and it happens once.
+  - create:
+      box: np_field
+      name: train the field
+      frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.FlowCoupling
+          import afield.stdlib.FlowMatchOptions
+          import afield.stdlib.flowMatch
+          import afield.stdlib.contourComponents
+          import afield.stdlib.mixtureSource
+
+          // Written out in full because `prop<>` rewrites the box's code and the rewrite does not
+          // carry the snippet's own imports — the same trap the `four_simulation_chain` bundle box
+          // documents.
+          prop<afield.stdlib.FlowMatchExport>(neuralExport)
+
+          // A word, not a letter — and only because the source has the word's topology. A
+          // standard Gaussian cannot become five disjoint outlines: it measures a chamfer of
+          // 13.1 against a floor of 1.8, and no amount of training moves it, because a flow is a
+          // continuous invertible map and one blob cannot tear into five.
+          //
+          // Three things get it to 5.2, and they were each worth a measurement:
+          //   one ellipse per *closed subpath* (a "D" is two — outer and counter, and treating
+          //   the glyph as one component costs a factor of two in landing error);
+          //   each ellipse rotated into phase with the contour it becomes (without that the
+          //   source is worse than a blob);
+          //   and no jitter on the source, which sounds like a detail and is a factor of four —
+          //   thickening the ellipse into an annulus destroys the correspondence that is doing
+          //   all the work.
+          //
+          // `contourComponents` does the first, `mixtureSource` the second, and the third is now
+          // just the default. Points come back in arc-length order and the pairing is by index,
+          // which is what makes PAIRED mean anything here.
+          val contours = layoutText("FIELD", typeface("Helvetica", 260.0)).toFLines()
+          val pairing = mixtureSource(contourComponents(contours, total = 12000), seed = 5)
+
+          val field = flowMatch(
+              pairing.to,
+              pairing.from,
+              FlowMatchOptions(steps = 20000, coupling = FlowCoupling.PAIRED, seed = 4)
+          )
+          neuralExport = field.export()
+
+          println("trained on ${pairing.size} pairs: loss ${"%.4g".format(field.loss(200))}, ${field.parameterCount} parameters")
+  # 3. the live half. One forward pass per particle per frame.
+  - create:
+      box: np_particles
+      name: neural particles
+      frame: { x: 740.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.ShaderNeuralParticles
+
+          prop<afield.stdlib.ShaderNeuralParticles>(particles)
+
+          // `renderer` and `neuralExport` are the parent boxes' props, visible through the
+          // preamble. The `once` is real rather than habit: the shader has the network's shape
+          // compiled into it, so rebuilding on every run would leak a module per keystroke.
+          once.particles {
+              ShaderNeuralParticles(neuralExport, renderer) {
+                  particleCount = 300_000
+                  stepsPerCycle = 150
+                  dwellCycles = 3f
+              }.also { it.installInto() }
+          }
+
+          // Everything below is live. The push buffer re-reads these lambdas every frame, so
+          // editing a number here and re-running changes the picture without touching the GPU
+          // allocation or recompiling a shader.
+          particles.settings.intensity = 1.1f
+          particles.settings.arrivalBias = 0.5f
+          // Seeded slightly off the trained source so 300,000 particles are not 12,000 threads.
+          particles.settings.sourceJitter = 0.02f
+          particles.settings.pointSize = 1.5f
+          particles.settings.viewScale = 2.6f
+          particles.settings.stepsPerCycle = 150
+          particles.settings.sourceColor = vec(0.15, 0.45, 1.0, 1.0)
+          particles.settings.targetColor = vec(1.0, 0.62, 0.22, 1.0)
+
+          // `particleCount` and `phaseSpread` are the two that are not live: they decide the
+          // buffer's size and its contents. Change one and call `particles.reset()`.
+
+          println("${particles.settings.particleCount} particles on ${particles.export.network}")
+  # the renderer owns the other two: `fromContext()` and the preamble both walk this chain.
+  - connect: { parent: np_renderer, child: np_field }
+  - connect: { parent: np_field, child: np_particles }
+  - launch: { box: np_renderer, property: code }
+  - await: { wait: pending }
+  - launch: { box: np_field, property: code }
+  - await: { wait: pending }
+  - launch: { box: np_particles, property: code }
+  - await: { wait: pending }
