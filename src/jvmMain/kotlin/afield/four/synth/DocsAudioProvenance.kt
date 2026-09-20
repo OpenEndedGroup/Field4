@@ -108,6 +108,10 @@ object DocsAudioProvenance {
         // through a PatSynthBank rendered block by block.
         "afield.four.synth.CaSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.PatSynthDocs" to Origin.STAND_IN_SYNTH,
+        // patRenderStereo again, on a step mask that came out of an interaction-net reduction
+        // rather than out of a cellular automaton: the same family as CaSoundDocs with a different
+        // thing upstream of it. See chain_lambda_sound.md.
+        "afield.four.synth.LambdaSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.

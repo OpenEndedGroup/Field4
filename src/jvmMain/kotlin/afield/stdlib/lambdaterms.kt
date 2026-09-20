@@ -653,8 +653,14 @@ object LambdaTerms {
      * One normalisation: what went in, what came out, how many reactions it took, and the net it took them in.
      *
      * [steps] is a *reaction* count over [Lambda.rules] — betas, duplications, erasures and fan meetings all counted
-     * alike — so it is a property of this rule book and this schedule and not a measure of the term. Compare two step
-     * counts only when both columns are stated.
+     * alike — so it is not a β-step count and is not comparable to one. Compare two step counts only when both rule
+     * books are stated.
+     *
+     * It is **not** a property of the schedule, which this KDoc said until 2026-09-20. `synth.lambda.sound` reduces
+     * all 25 terms of [corpus] under all four reproducible [ActivationOrder]s and gets the same reaction count every
+     * time, and the same multiset of rules with it. Interaction nets are strongly confluent — two available
+     * reactions are on disjoint pairs, so firing one can only move the other — and a strongly confluent system that
+     * terminates is the same length down every path. What the order chooses is which reaction goes first.
      */
     class Run internal constructor(
         /** The term that went in. */
