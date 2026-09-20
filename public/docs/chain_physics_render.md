@@ -68,12 +68,12 @@ triangles, and several hundred of those unioned is a mesh in the tens of thousan
 builds a BVH over without noticing. Twenty segments would be four times that for a rod whose radius
 is a thirtieth of the frame.
 
-## The count of holes is the check
+## Genus against the sheet's quad count
 
 For an *n* × *n* sheet the distance constraints run along the grid, so there are 2*n*(*n* − 1) of
 them, and the grid graph has (*n* − 1)² independent cycles. Every cycle is a hole through the welded
 solid. So the genus of the union has to equal the sheet's quad count, and the box compares the two
-itself rather than printing both and leaving you to:
+for you:
 
 ```diffstatic {data-lang=kotlin}
 println("genus $netGenus against $quads quads in the sheet; " +

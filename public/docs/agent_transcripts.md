@@ -1315,8 +1315,8 @@ failure looks like an agent ignoring geometry rather than like a timestep proble
 figure with `clip = false` — the behaviour that shipped `sharp_edge.png` on the TetGen page — a long
 note wrapping and not wrapping, and the numbers behind both read off the drawn geometry rather than
 described. Run box 2 and the plot becomes a stamp in one corner of an empty rectangle. The switch is a
-single word, and the reason it is so destructive is worth knowing: a panel fits the geometry's *own*
-bounds, so anything outside the declared frame is not cropped — it shrinks everything else.
+single word and it is that destructive because a panel fits the geometry's *own* bounds: anything
+outside the declared frame is not cropped, it shrinks everything else.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/chart_clip/metadata.edn)
 
@@ -2299,8 +2299,8 @@ motion** goes grey *while the camera turns* if it is stuck at the identity; **pr
 one that shows a constant offset, because an offset inside a *difference* is invisible; and
 **availability** is green with a thin red band on the edge the camera is turning away from — entirely
 green means the flag is hard-wired on, entirely red means the CPU validity rule rejects everything.
-That band is the argument for the whole view: when reprojection is right, beauty and availability
-disagree about nothing, and when it is wrong beauty still looks fine. The layer is
+That thin band is the signature of a working reprojection: beauty and availability disagree about
+nothing when it is right, and beauty still looks fine when it is wrong. The layer is
 `FabricatePassSpec.frameHistory` and `FabricatePassLibrary.temporalAccumulate`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/frame_history_reprojection/metadata.edn)
