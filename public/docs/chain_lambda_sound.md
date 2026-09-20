@@ -44,14 +44,14 @@ markdown("readout", """
 | compiled to | ${t.initialNodes} agents, ${t.fans} labelled fans |
 | reactions | ${t.steps} |
 | of those, β | ${t.betas} |
-| rules fired | ${t.ruleTally.entries.joinToString(", ") { "`${'$'}{it.key}` ×${'$'}{it.value}" }} |
+| rules fired | ${t.ruleTally.entries.joinToString(", ") { "`${it.key}` x${it.value}" }} |
 | read back as | `${t.printed}` |
 | left standing | ${t.remainingNodes} agents, ${t.trailingActivePairs} active pair |
 """, width = 1080)
 :::endfold
 ```
 
-![A two-trace plot over twenty-six reactions: an agent count that climbs from about twenty to a peak near forty before falling to ten, and a lower trace of covered pairs that stays between one and four the whole way, above a table giving the term, its compiled size, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term](assets/chain_lambda_sound/one_reduction.png)
+![A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term](assets/chain_lambda_sound/one_reduction.png)
 
 The lower trace is the part to read. It is how many reactions were *available* at each moment —
 how much choice the scheduler had — and it is never zero until the end and never large. A
@@ -60,7 +60,7 @@ and picking among them is the scheduler's entire job.
 
 !!! note "A normal form still has an active pair in it"
 
-    The last column above says one, and it says one for every term in the corpus under every
+    The last row above says one, and it says one for every term in the corpus under every
     scheduler. `ROOT`'s principal port faces the answer's principal port, and nothing in
     `Lambda.rules` covers `ROOT ⟂ LAM`. So a normal form in this substrate is **"no rule
     matches"**, not "nothing is touching", and a termination check written as
@@ -109,7 +109,7 @@ $rows
 :::endfold
 ```
 
-![A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: four terms at four spellings each, one at three, four at two, and the rest at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests](assets/chain_lambda_sound/sweep.png)
+![A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests](assets/chain_lambda_sound/sweep.png)
 
 That is a stronger statement than "the answer does not depend on the scheduler", which
 `stdlib.lambda-terms.property` already established over 17 200 checks. The *route* does not either,
@@ -178,7 +178,7 @@ $rows
 :::endfold
 ```
 
-![Four piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places — the first clustered four-at-the-end, the others spread — above a table giving each scheduler's identical reaction and beta counts against four different condensed notations and compressions from 0.43 to 0.65](assets/chain_lambda_sound/four_schedules.png)
+![Four coloured piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places: FIRST_FOUND ends with four strikes packed against the right edge, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs across the middle, and RIGHTMOST_BY_ID spreads its last four out singly. Below, a table giving all four schedulers the same twenty-six reactions and eight betas against four different condensed notations and compressions of 0.43, 0.61, 0.57 and 0.65, all four signed for by the search](assets/chain_lambda_sound/four_schedules.png)
 
 FIRST_FOUND lands its last four β-steps against the end of the bar and the notation says so: a long
 rest and then `x!4`. RIGHTMOST_BY_ID spreads the same eight out far enough that the condenser finds

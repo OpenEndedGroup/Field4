@@ -34,15 +34,16 @@ class DocsAudioProvenanceGuardTest {
     /**
      * The corpus as it stands, pinned by count and by family.
      *
-     * These numbers are the audit's headline and the reason this file exists. Eleven of the
-     * forty-nine never touch [patVoice] — seven a DoughDSP primitive, one real Dirt-Samples,
-     * three a Faust program — and that minority is what refuted the "every audio figure in the
-     * documentation is `patVoice`" claim this file was written to check.
+     * These numbers are the audit's headline and the reason this file exists. Fourteen of the
+     * fifty-four never touch [patVoice] — seven a DoughDSP primitive, one real Dirt-Samples, one
+     * mixed, three a Faust program, two the dough wasm engine — and that minority is what refuted
+     * the "every audio figure in the documentation is `patVoice`" claim this file was written to
+     * check.
      *
      * The *majority* moved, though, and the direction is worth recording rather than just
      * re-typing: it was 5 of 15 stand-in until `pattern_language.md` grew a mini-notation card per
      * form of the notation, twenty-six clips of `patVoice` in one commit. So the stand-in is now
-     * 37 of 49, and `sound.md`'s section on this had to stop arguing that the stand-in is *not*
+     * 40 of 54, and `sound.md`'s section on this had to stop arguing that the stand-in is *not*
      * what you hear on most of the site. A count pinned here and stated in prose there is exactly
      * the pair that drifts, which is why the assertion names the page.
      */
@@ -58,7 +59,7 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 37,
+            Origin.STAND_IN_SYNTH to 40,
             Origin.DIRT_SAMPLES to 1,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 7,
@@ -188,10 +189,11 @@ class DocsAudioProvenanceGuardTest {
         /**
          * How many `audio="…"` fences the docs publish.
          *
-         * Forty-nine, across seven pages: **twenty-nine** on `pattern_language.md` (three scene
+         * Fifty-four, across nine pages: **twenty-nine** on `pattern_language.md` (three scene
          * clips plus one per mini-notation card), six on `dough_dsp_sound.md`, three each on
-         * `sound.md`, `sound_paths.md`, `chain_ca_sound.md` and `chain_pattern_particles.md`, and
-         * two on `faust.md`. Pinned so a new clip cannot ship without a stated provenance.
+         * `sound.md`, `sound_paths.md`, `chain_ca_sound.md`, `chain_pattern_particles.md` and
+         * `chain_lambda_sound.md`, and two each on `faust.md` and `pat_spatial.md`. Pinned so a new
+         * clip cannot ship without a stated provenance.
          *
          * It was twelve until `sound_paths.md` published its one-buffer-three-paths comparison,
          * which is also where [Origin.FAUST] came from: a Faust program compiled at runtime is a
@@ -204,13 +206,21 @@ class DocsAudioProvenanceGuardTest {
          * family: both drive [patVoice], one through [patRenderStereo] and one through a
          * [PatSynthBank] rendered block by block.
          *
-         * The two newest are [PatSpatialSoundDocs]', and they brought [Origin.DOUGH_WASM] with them.
-         * They are also the only pair in the corpus that is deliberately **half a path**: they
-         * publish the mono source `pat-spatial` hands Steam Audio, because the spatialised half is
-         * realtime-only and needs a binary this repository does not carry, so this very audit could
-         * not re-render it. Worth stating next to the count: the corpus is now bounded by what can
-         * be re-derived, and one of Field's render paths falls outside that boundary by design.
+         * Two are [PatSpatialSoundDocs]', and they brought [Origin.DOUGH_WASM] with them. They are
+         * also the only pair in the corpus that is deliberately **half a path**: they publish the
+         * mono source `pat-spatial` hands Steam Audio, because the spatialised half is realtime-only
+         * and needs a binary this repository does not carry, so this very audit could not re-render
+         * it. Worth stating next to the count: the corpus is now bounded by what can be re-derived,
+         * and one of Field's render paths falls outside that boundary by design.
+         *
+         * The three newest are `chain_lambda_sound.md`'s, and they are [Origin.STAND_IN_SYNTH]
+         * again: [LambdaSoundDocs] drives [patRenderStereo] the way [CaSoundDocs] does, with an
+         * interaction-net reduction upstream of the step mask instead of a cellular automaton. Two
+         * of the three are the *same* term under two schedulers, which is the page's whole point,
+         * so they are necessarily the same length and the same level — [LambdaSoundDocs]'s own
+         * FIELD_TEST correlates them at 0.375 rather than leaving "they sound different" to a
+         * caption.
          */
-        const val EXPECTED_FENCE_COUNT = 51
+        const val EXPECTED_FENCE_COUNT = 54
     }
 }
