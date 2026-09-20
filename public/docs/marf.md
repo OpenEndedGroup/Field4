@@ -150,10 +150,10 @@ The bank stops being five slots and becomes a sampled one-dimensional family of 
     thirty-two of them and reads as a glide. An aperiodic address (`perlin()`, `rand()`) never
     repeats.
 
-    When you check this, count the distinct addresses **rounded**. An aliased address repeats to a
-    few parts in 10⁴ rather than bit-exactly, because the probe instant is an exact rational and
-    `PatQ.toDouble()` rounds it at twelve places, so a raw `distinct()` reports seventeen different
-    addresses for that four-value cycle.
+    The repeat is numerically approximate. A probe instant is an exact rational and
+    `PatQ.toDouble()` rounds it at twelve places, so an aliased address comes back to within a few
+    parts in 10⁴ rather than bit-exactly. Compare rounded addresses; a raw `distinct()` counts a
+    four-value cycle as many more than four.
 
 ---
 
@@ -304,16 +304,12 @@ is ever latched. In this mode `<…>` is the idiom.
 
 ---
 
-## Not here yet
+## Nesting a pattern inside a stage
 
-**A bank entry that is itself a pattern.** A stage's continuous behaviour is a `MarfCurve`, and
-`MarfCurve.Shape` can close over anything, including another reader. A nested pattern given its own
-local temporal scope inside the stage is not modelled, and would want the stage phase threaded into
-a real evaluation context rather than passed as a `Double`.
-
-**Audio on this page.** The figures here are geometry. A reader's output is a control signal rather
-than a note stream, so the clip worth having is a voice whose gain, pan and filter are three readers
-of one bank; that needs a registered offline renderer, which does not exist yet.
+A stage's continuous behaviour is a `MarfCurve`, and `MarfCurve.Shape` can close over anything,
+including another reader. What is not modelled is a nested pattern with a local temporal scope of
+its own inside the stage: the stage phase reaches a `Shape` as a `Double`, so a pattern read in
+there has no evaluation context to be slowed, reversed or thinned in.
 
 ---
 
