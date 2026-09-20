@@ -77,11 +77,11 @@ Same geometry, same query point, same drawing code; only the question changes.
 ![](assets/smile_neighbors_examples/query_edges.png)
 
 The exact set is the reference answer and the approximate set is the real-time
-compromise against it, so the interesting part of the picture is where they
-disagree. The radius query answers something else entirely: it returns however
-many points happen to be close, which is a reading of local density rather than
-of rank, and in a sparse part of the cloud it can come back with fewer than `k`
-or with none.
+compromise against it, so where a thin green edge leaves the thick blue ones and
+lands on a different point, that is what the speed cost. The radius query
+answers something else entirely: it returns however many points happen to be
+close, which is a reading of local density rather than of rank, and in a sparse
+part of the cloud it can come back with fewer than `k` or with none.
 
 ## Diff: tune LSH build options
 

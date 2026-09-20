@@ -70,8 +70,8 @@ fetch('https://localhost:9092/api/docs-annotations', {method: 'POST', body: …}
 
 the request that arrives at Field comes from your browser, from loopback, and a loopback
 check waves it through. The page cannot *read* the reply without Field's permission, which is
-what CORS is for, but for anything whose effect is the point rather than the answer, not
-reading the reply costs the attacker nothing.
+what CORS is for, but a request the attacker sends for its side effect, a write or a
+shutdown, does not need the reply at all.
 
 A Chromium page served from `http://127.0.0.1:9493` is a genuinely foreign origin, and from
 there:
