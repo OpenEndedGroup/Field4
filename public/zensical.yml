@@ -204,6 +204,12 @@ nav:
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md
+      # Directly after the hand-written particle systems, because it is the same compute-then-draw
+      # shape with the rule replaced by a trained network — a velocity field in tier one, a Deep
+      # Sets interaction over a GPU neighbour grid in tier two. Here rather than beside
+      # flow_matching.md under "Clouds & Deformations": the CPU page fits a field to a cloud, this
+      # one is about getting it onto the GPU and proving it is still the same network.
+      - Particle Rules That Were Trained: neural_particles.md
       - Field Probes: field_probes.md
     - Heads & Headsets:
       - RemoteJS & WebXR: ar_reference.md

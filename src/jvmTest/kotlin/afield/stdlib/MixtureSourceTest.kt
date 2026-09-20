@@ -21,6 +21,12 @@ import kotlin.test.assertTrue
  * Without those two a chamfer is an uninterpretable number, and the first version of this work
  * shipped a demo on exactly that mistake — a field whose loss looked fine and whose picture was a
  * featureless haze.
+ *
+ * **Every `sample()` here passes a seed.** `FlowMatchField.sample` draws from its source
+ * unseeded by default, which is right for a generator and wrong for a measurement: the chamfer
+ * then moves by a unit or so between runs, and a figure quoted from one run — as the first
+ * write-up of this work quoted 13.1 and 5.3 — is a point estimate of a random variable presented
+ * as a constant. Seeded, the numbers below are reproducible and the thresholds can be tight.
  */
 class MixtureSourceTest {
 
@@ -103,7 +109,7 @@ class MixtureSourceTest {
         // The old way: one Gaussian, independent coupling, and a generous budget. This is the
         // configuration that produced a haze on screen, and it is here as the thing to beat.
         val single = flowMatch(target, options = FlowMatchOptions(steps = 20000, seed = 4))
-        val singleChamfer = chamferDistance(single.sample(1200, steps = 32), target)
+        val singleChamfer = chamferDistance(single.sample(1200, steps = 32, seed = 31), target)
 
         // The new way: one blob per contour, paired, at a *smaller* budget.
         val pairing = mixtureSource(components, seed = 5)
@@ -112,7 +118,7 @@ class MixtureSourceTest {
             pairing.from,
             FlowMatchOptions(steps = 12000, coupling = FlowCoupling.PAIRED, seed = 4),
         )
-        val mixtureChamfer = chamferDistance(mixture.sample(1200, steps = 32), target)
+        val mixtureChamfer = chamferDistance(mixture.sample(1200, steps = 32, seed = 31), target)
 
         println(
             "FIELD: single-Gaussian ${"%.1f".format(singleChamfer)} (loss ${"%.3f".format(single.loss(200))}), " +
@@ -152,8 +158,8 @@ class MixtureSourceTest {
             FlowMatchOptions(steps = 6000, coupling = FlowCoupling.PAIRED, seed = 4),
         )
 
-        val singleChamfer = chamferDistance(single.sample(800, steps = 32), target)
-        val mixtureChamfer = chamferDistance(mixture.sample(800, steps = 32), target)
+        val singleChamfer = chamferDistance(single.sample(800, steps = 32, seed = 31), target)
+        val mixtureChamfer = chamferDistance(mixture.sample(800, steps = 32, seed = 31), target)
         println(
             "loss ${"%.3f".format(single.loss(200))} vs ${"%.3f".format(mixture.loss(200))}; " +
                 "chamfer ${"%.1f".format(singleChamfer)} vs ${"%.1f".format(mixtureChamfer)}"
@@ -219,7 +225,7 @@ class MixtureSourceTest {
             pairing.from,
             FlowMatchOptions(steps = 6000, coupling = FlowCoupling.PAIRED, seed = 4),
         )
-        val radii = field.sample(600, steps = 32).map { kotlin.math.hypot(it.x.toDouble(), it.y.toDouble()) }
+        val radii = field.sample(600, steps = 32, seed = 31).map { kotlin.math.hypot(it.x.toDouble(), it.y.toDouble()) }
         val mean = radii.average()
         println("ring via mixture: mean radius ${"%.1f".format(mean)} of 140")
         assertTrue(abs(mean - 140.0) < 14.0, "ring landed at $mean")

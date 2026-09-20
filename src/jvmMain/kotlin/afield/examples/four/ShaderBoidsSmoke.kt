@@ -53,6 +53,9 @@ expect:
  *   acceleration — the cheap check that nothing else is contributing.
  * - **A trained Deep Sets interaction agrees with its own CPU reference**, per particle, in the
  *   same scene — the tier-2 rule running on the GPU, graded the same way the hand-written one is.
+ * - **The equivariant form agrees too, and is equivariant on the GPU.** Parity as above, plus the
+ *   property it exists for, asserted against the shader rather than against the Kotlin: a flock
+ *   rotated bodily about the origin must produce a bodily rotated force field.
  *
  * ### Running it
  *
@@ -92,6 +95,7 @@ object ShaderBoidsSmoke {
             failures += checkIntegration(renderer, window)
             failures += checkQuiescent(renderer, window)
             failures += checkLearned(renderer, window)
+            failures += checkEquivariant(renderer, window)
 
             if (failures > 0) {
                 println("shader boids tests FAILED ($failures)")
@@ -338,6 +342,111 @@ object ShaderBoidsSmoke {
             v, neighbours,
             floatArrayOf(0.02f * sx + 1.2f * dvx / n + 0.8f * dx / n, 0.02f * sy + 1.2f * dvy / n + 0.8f * dy / n),
         )
+    }
+
+    /**
+     * The equivariant rule on the GPU: parity with its CPU reference, and the symmetry itself.
+     *
+     * The parity half is the same check the plain learned rule gets. The second half is the one
+     * worth having, because equivariance is the reason this form exists and a shader is perfectly
+     * capable of breaking it — one component read where a length was meant and the property is
+     * gone, while every parity number stays green. So: take the settled flock, rotate every
+     * position and velocity bodily by an arbitrary angle, run it again, and require the resulting
+     * accelerations to be the rotation of the originals.
+     */
+    private fun checkEquivariant(renderer: Renderer, window: Window): Int {
+        println("--- equivariant interaction")
+        val radius = DOMAIN / CELLS
+        val minSeparation = radius * 0.05f
+        val velocityScale = 0.4f
+        val random = kotlin.random.Random(5)
+
+        val weights = afield.stdlib.trainEquivariant(
+            radius = radius, velocityScale = velocityScale, accelScale = 20f,
+            sumScale = 8f, minSeparation = minSeparation,
+            options = afield.stdlib.DeepSetsOptions(
+                steps = 400, batch = 8, seed = 5, messageWidth = 4, psiHidden = intArrayOf(8, 8)),
+        ) { List(8) { syntheticExample(random, radius, velocityScale, minSeparation) } }
+        println("  trained ${weights.parameterCount} parameters, ${weights.channels} channels")
+
+        fun build(tag: String) = ShaderBoids(
+            grid = GpuNeighbourGrid(
+                capacity = COUNT, cellsPerSide = CELLS,
+                domainMin = Vector2f(ORIGIN, ORIGIN), domainSize = DOMAIN,
+                renderer = renderer, name = "boidGridEq$tag",
+            ),
+            count = COUNT, renderer = renderer, equivariant = weights,
+        ) { name = "boidsEq$tag"; this.radius = radius; dt = 0f }
+
+        val plain = build("A")
+        plain.reset(Vector2f(-0.5f, -0.5f), 1.0f, speed = 0.2f, seed = 26)
+        plain.install(renderer.renderList.others)
+        run(renderer, window, 4)
+        val state = read(plain)
+
+        // 1. Parity against the CPU reference.
+        var worst = 0.0
+        var interacting = 0
+        for (i in 0 until COUNT) {
+            val px = state[i * S]; val py = state[i * S + 1]
+            val vx = state[i * S + 2]; val vy = state[i * S + 3]
+            val neighbours = ArrayList<FloatArray>()
+            for (j in 0 until COUNT) {
+                if (j == i) continue
+                val dx = state[j * S] - px
+                val dy = state[j * S + 1] - py
+                val d = hypot(dx.toDouble(), dy.toDouble())
+                if (d > radius || d <= 0.0) continue
+                neighbours += floatArrayOf(dx, dy, state[j * S + 2] - vx, state[j * S + 3] - vy)
+            }
+            if (neighbours.isEmpty()) continue
+            interacting++
+            val (ax, ay) = weights.evaluate(vx, vy, neighbours)
+            val scale = maxOf(hypot(ax.toDouble(), ay.toDouble()), 1e-4)
+            worst = maxOf(worst, hypot((state[i * S + 4] - ax).toDouble(), (state[i * S + 5] - ay).toDouble()) / scale)
+        }
+        println("  GPU vs CPU: worst relative ${"%.3g".format(worst)} over $interacting boids")
+        plain.removeFrom(renderer.renderList.others)
+        plain.grid.cleanup()
+
+        // 2. The symmetry, on the GPU. Same flock, rotated bodily.
+        val turn = 0.7
+        val c = kotlin.math.cos(turn).toFloat()
+        val sn = kotlin.math.sin(turn).toFloat()
+        val rotated = build("B")
+        rotated.boids.get(write = true).mapAndWrite {
+            for (i in 0 until COUNT) {
+                put(c * state[i * S] - sn * state[i * S + 1]); put(sn * state[i * S] + c * state[i * S + 1])
+                put(c * state[i * S + 2] - sn * state[i * S + 3]); put(sn * state[i * S + 2] + c * state[i * S + 3])
+                put(0f); put(0f); put(0f); put(0f)
+            }
+        }
+        rotated.install(renderer.renderList.others)
+        run(renderer, window, 4)
+        val after = read(rotated)
+
+        var worstTurn = 0.0
+        var magnitude = 0.0
+        for (i in 0 until COUNT) {
+            val ex = c * state[i * S + 4] - sn * state[i * S + 5]
+            val ey = sn * state[i * S + 4] + c * state[i * S + 5]
+            val scale = maxOf(hypot(ex.toDouble(), ey.toDouble()), 1e-4)
+            worstTurn = maxOf(worstTurn, hypot((after[i * S + 4] - ex).toDouble(), (after[i * S + 5] - ey).toDouble()) / scale)
+            magnitude = maxOf(magnitude, hypot(ex.toDouble(), ey.toDouble()))
+        }
+        println("  rotated by ${"%.2f".format(turn)} rad: worst relative ${"%.3g".format(worstTurn)}, largest |a| ${"%.3f".format(magnitude)}")
+        rotated.removeFrom(renderer.renderList.others)
+        rotated.grid.cleanup()
+
+        var failures = 0
+        if (worst >= TOLERANCE) { println("  FAIL: parity $worst exceeds $TOLERANCE"); failures++ }
+        // Looser than parity: the grid re-hashes rotated positions, so a boid on a cell boundary
+        // can pick up a neighbour exactly at the radius that the unrotated run rounded out. The
+        // plain form misses this by 18%, so there is no risk of it passing by accident.
+        if (worstTurn >= 0.05) { println("  FAIL: equivariance $worstTurn exceeds 0.05"); failures++ }
+        if (interacting < COUNT / 2) { println("  FAIL: only $interacting boids had neighbours"); failures++ }
+        if (failures == 0) println("  ok")
+        return if (failures > 0) 1 else 0
     }
 
     /** All three weights off must give exactly zero, not merely something small. */

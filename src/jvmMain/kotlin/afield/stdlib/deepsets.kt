@@ -454,3 +454,326 @@ private fun glslFloat(v: Float): String {
     val s = v.toString()
     return if ('.' in s || 'e' in s || 'E' in s) s else "$s.0"
 }
+
+// ---------------------------------------------------------------------------------------------
+// The equivariant form
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A learned interaction that is **rotationally equivariant by construction** — `a(R x) = R a(x)`
+ * holds exactly, not approximately.
+ *
+ * [DeepSetsWeights] learns a map from Cartesian components to Cartesian components, and nothing in
+ * it forces that map to commute with rotation. Measured on the flocking rule: on a perfectly
+ * symmetric ring of neighbours, where the true force is *exactly* zero by symmetry, the plain form
+ * produces a force of 0.14 at twelve neighbours and 0.50 at forty-eight — growing with crowding,
+ * because it rides on the aggregated message — and rotating a configuration by ninety degrees
+ * changes its answer by 18% of a typical force. A fixed-direction residual that scales with
+ * neighbour count is a steady drift, and in the `learned_boids` scene it is what carried the
+ * learned flock out of its containment while the written flock stayed put.
+ *
+ * The construction that removes it is the standard one and costs nothing:
+ *
+ * - `psi` sees only **invariants** of a neighbour — `r`, the proximity `p`, `|dv|`, and `u . dv` —
+ *   and emits **scalars**: a pair `(a_k, b_k)` per channel.
+ * - the per-neighbour message is a **vector**, `a_k * u + b_k * dv`, built from the neighbour's own
+ *   direction and velocity difference.
+ * - those are summed and meaned into `channels` aggregated vectors.
+ * - `phi` sees only invariants of *those* — their lengths, and `|v|` — and emits scalars again,
+ *   which weight the aggregated vectors into the output.
+ *
+ * Rotate every input and the invariants are unchanged, so every scalar the two networks emit is
+ * unchanged, so the output rotates with the inputs. Exactly. And for a symmetric neighbourhood the
+ * direction vectors cancel before any network sees them, so the answer is identically zero.
+ *
+ * Boids is still inside the family: separation is `a_k ∝ p` against `u`, cohesion is `a_k ∝ r`
+ * against `u`, alignment is `b_k = 1` against `dv`. Nothing is given up.
+ */
+class EquivariantWeights(
+    /** Invariants to `2 * channels` scalars: `a_k` then `b_k`. */
+    val psi: MlpWeights,
+    /** Aggregate invariants to `2 * channels + 1` scalars: the sum weights, mean weights, and `v`. */
+    val phi: MlpWeights,
+    /** How many vector channels are aggregated. */
+    val channels: Int,
+    val radius: Float,
+    val velocityScale: Float,
+    val accelScale: Float,
+    val sumScale: Float,
+    val minSeparation: Float,
+) {
+    init {
+        require(psi.inputs == PSI_INVARIANTS) { "psi takes $PSI_INVARIANTS invariants, not ${psi.inputs}" }
+        require(psi.outputs == 2 * channels) { "psi emits 2 x $channels scalars, not ${psi.outputs}" }
+        require(phi.inputs == 2 * channels + 1) { "phi takes ${2 * channels + 1} invariants, not ${phi.inputs}" }
+        require(phi.outputs == 2 * channels + 1) { "phi emits ${2 * channels + 1} scalars, not ${phi.outputs}" }
+    }
+
+    val parameterCount: Int get() = psi.parameterCount + phi.parameterCount
+
+    /** The acceleration, in world units. Equivariant to fp32. */
+    fun evaluate(vx: Float, vy: Float, neighbours: List<FloatArray>): Pair<Float, Float> {
+        val sumX = FloatArray(channels)
+        val sumY = FloatArray(channels)
+        val features = FloatArray(PSI_INVARIANTS)
+        val coefficients = FloatArray(2 * channels)
+
+        for (n in neighbours) {
+            val distance = sqrt((n[0] * n[0] + n[1] * n[1]).toDouble()).toFloat()
+            val ux = if (distance > 0f) n[0] / distance else 0f
+            val uy = if (distance > 0f) n[1] / distance else 0f
+            invariantFeatures(n[0], n[1], n[2], n[3], radius, velocityScale, minSeparation, features)
+            psi.evaluate(features, coefficients)
+            for (k in 0 until channels) {
+                val a = coefficients[k]
+                val b = coefficients[channels + k]
+                sumX[k] += a * ux + b * n[2] / velocityScale
+                sumY[k] += a * uy + b * n[3] / velocityScale
+            }
+        }
+
+        val count = neighbours.size
+        val input = FloatArray(phi.inputs)
+        for (k in 0 until channels) {
+            input[k] = sqrt((sumX[k] * sumX[k] + sumY[k] * sumY[k]).toDouble()).toFloat() / sumScale
+            input[channels + k] = if (count > 0) input[k] * sumScale / count else 0f
+        }
+        input[2 * channels] = sqrt((vx * vx + vy * vy).toDouble()).toFloat() / velocityScale
+        val w = phi.evaluate(input)
+
+        var ax = 0f
+        var ay = 0f
+        for (k in 0 until channels) {
+            val mean = if (count > 0) 1f / count else 0f
+            ax += w[k] * sumX[k] / sumScale + w[channels + k] * sumX[k] * mean
+            ay += w[k] * sumY[k] / sumScale + w[channels + k] * sumY[k] * mean
+        }
+        ax += w[2 * channels] * vx / velocityScale
+        ay += w[2 * channels] * vy / velocityScale
+        return ax * accelScale to ay * accelScale
+    }
+
+    override fun toString(): String =
+        "EquivariantWeights(psi $psi, phi $phi, $channels channels, $parameterCount parameters)"
+
+    companion object {
+        /** `[r/R, p, p^2, |dv|/V, (u . dv)/V]` — see [invariantFeatures]. */
+        const val PSI_INVARIANTS = 5
+    }
+}
+
+/**
+ * The rotation-invariant description of one neighbour: `[r/R, p, p^2, |dv|/V, (u . dv)/V]`.
+ *
+ * Every entry is a length or a dot product, so a rotation of the configuration leaves all five
+ * unchanged — which is the whole mechanism. `p = minSeparation / max(r, minSeparation)` is the
+ * same bounded proximity [interactionFeatures] uses, and it is here for the same reason: a `1/r`
+ * law is linear in it.
+ */
+fun invariantFeatures(
+    dx: Float,
+    dy: Float,
+    dvx: Float,
+    dvy: Float,
+    radius: Float,
+    velocityScale: Float,
+    minSeparation: Float,
+    into: FloatArray = FloatArray(EquivariantWeights.PSI_INVARIANTS),
+): FloatArray {
+    val distance = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+    val soft = maxOf(distance, minSeparation)
+    val ux = if (distance > 0f) dx / distance else 0f
+    val uy = if (distance > 0f) dy / distance else 0f
+    val p = minSeparation / soft
+    into[0] = distance / radius
+    into[1] = p
+    into[2] = p * p
+    into[3] = sqrt((dvx * dvx + dvy * dvy).toDouble()).toFloat() / velocityScale
+    into[4] = (ux * dvx + uy * dvy) / velocityScale
+    return into
+}
+
+/**
+ * Fits an [EquivariantWeights] to whatever rule [examples] embodies.
+ *
+ * Same trainer as [trainDeepSets] — Adam over a reverse-mode tape — but the forward pass builds
+ * *vectors* out of scalar coefficients, so the gradient flows back through the aggregation into
+ * coefficients that never see an absolute direction.
+ *
+ * No rotation augmentation is needed or useful here. Augmentation is how you *ask* a
+ * non-equivariant model to be approximately equivariant; measured on the plain form it takes the
+ * symmetric-ring artefact from 0.50 to 0.13, which is a good return on one line and still not
+ * zero. This is zero.
+ */
+fun trainEquivariant(
+    radius: Float,
+    velocityScale: Float,
+    accelScale: Float,
+    sumScale: Float,
+    minSeparation: Float,
+    options: DeepSetsOptions = DeepSetsOptions(),
+    examples: (Int) -> List<InteractionExample>,
+): EquivariantWeights {
+    require(options.steps > 0) { "trainEquivariant needs at least one step" }
+    val channels = options.messageWidth
+    val random = Random(options.seed)
+    val psiShape = MlpShape(EquivariantWeights.PSI_INVARIANTS, options.psiHidden, 2 * channels)
+    val phiShape = MlpShape(2 * channels + 1, options.phiHidden, 2 * channels + 1)
+
+    val psiParams = psiShape.initialise(random)
+    val phiParams = phiShape.initialise(random)
+    val adam = Adam(psiParams.size + phiParams.size)
+
+    val features = FloatArray(EquivariantWeights.PSI_INVARIANTS)
+    for (step in 0 until options.steps) {
+        val tape = ADTape()
+        val psiVars = tape.variables(psiParams)
+        val phiVars = tape.variables(phiParams)
+        var loss = tape.constant(0.0)
+
+        for (example in examples(step)) {
+            val sumX = MutableList(channels) { tape.constant(0.0) }
+            val sumY = MutableList(channels) { tape.constant(0.0) }
+            for (n in example.neighbours) {
+                val distance = sqrt((n[0] * n[0] + n[1] * n[1]).toDouble())
+                val ux = if (distance > 0) n[0] / distance else 0.0
+                val uy = if (distance > 0) n[1] / distance else 0.0
+                invariantFeatures(n[0], n[1], n[2], n[3], radius, velocityScale, minSeparation, features)
+                val c = psiShape.forward(features.map { tape.constant(it.toDouble()) }, psiVars)
+                for (k in 0 until channels) {
+                    sumX[k] = sumX[k] + c[k] * ux + c[channels + k] * (n[2].toDouble() / velocityScale)
+                    sumY[k] = sumY[k] + c[k] * uy + c[channels + k] * (n[3].toDouble() / velocityScale)
+                }
+            }
+
+            val count = example.neighbours.size
+            val input = ArrayList<AD>(phiShape.inputs)
+            for (k in 0 until channels) {
+                // A length is invariant; a component is not. This is the only place the aggregate
+                // is allowed to reach the scalar network, and it has to be through a norm.
+                input += sqrt(sumX[k].sq() + sumY[k].sq() + 1e-12) / sumScale.toDouble()
+            }
+            for (k in 0 until channels) {
+                input += if (count > 0) {
+                    sqrt(sumX[k].sq() + sumY[k].sq() + 1e-12) / count.toDouble()
+                } else tape.constant(0.0)
+            }
+            input += tape.constant(
+                sqrt((example.velocity[0] * example.velocity[0] +
+                    example.velocity[1] * example.velocity[1]).toDouble()) / velocityScale
+            )
+            val w = phiShape.forward(input, phiVars)
+
+            var ax = tape.constant(0.0)
+            var ay = tape.constant(0.0)
+            val mean = if (count > 0) 1.0 / count else 0.0
+            for (k in 0 until channels) {
+                ax = ax + w[k] * sumX[k] / sumScale.toDouble() + w[channels + k] * sumX[k] * mean
+                ay = ay + w[k] * sumY[k] / sumScale.toDouble() + w[channels + k] * sumY[k] * mean
+            }
+            ax = ax + w[2 * channels] * (example.velocity[0].toDouble() / velocityScale)
+            ay = ay + w[2 * channels] * (example.velocity[1].toDouble() / velocityScale)
+
+            loss = loss + (ax - example.target[0].toDouble() / accelScale).sq() +
+                (ay - example.target[1].toDouble() / accelScale).sq()
+        }
+
+        loss = loss / (options.batch * 2).toDouble()
+        val gradients = tape.backward(loss)
+        val rate = options.learningRate +
+            (options.finalLearningRate - options.learningRate) * step / (options.steps - 1).coerceAtLeast(1)
+        val delta = adam.step(rate) { i ->
+            if (i < psiParams.size) gradients[psiVars[i].index] else gradients[phiVars[i - psiParams.size].index]
+        }
+        for (i in psiParams.indices) psiParams[i] -= delta[i]
+        for (i in phiParams.indices) phiParams[i] -= delta[psiParams.size + i]
+
+        val onProgress = options.onProgress
+        if (onProgress != null && (step + 1) % options.progressEvery == 0) onProgress(step + 1, loss.value)
+    }
+
+    return EquivariantWeights(
+        psi = psiShape.toMlpWeights(psiParams),
+        phi = phiShape.toMlpWeights(phiParams),
+        channels = channels,
+        radius = radius,
+        velocityScale = velocityScale,
+        accelScale = accelScale,
+        sumScale = sumScale,
+        minSeparation = minSeparation,
+    )
+}
+
+/**
+ * GLSL for the equivariant interaction: both networks, the invariant features, and the
+ * combination — the shader half of [EquivariantWeights].
+ *
+ * The aggregation loop is the caller's, as with [DeepSetsWeights.glsl], but here what it
+ * accumulates is `channels` **vec2s** rather than scalars:
+ *
+ * ```glsl
+ * float f[5];  learnedInvariants(d, dv, f);
+ * float c[2 * K]; learnedPsi(pc.psiWeights, f, c);
+ * for (int k = 0; k < K; ++k) messageSum[k] += c[k] * u + c[K + k] * dv / V;
+ * ```
+ *
+ * Place immediately after `#version`: this carries `#extension` directives.
+ */
+fun EquivariantWeights.glsl(prefix: String = "learned"): String = buildString {
+    // Captured before the builder: inside `buildString` the implicit receiver is the
+    // StringBuilder, so `$this` in the template below would paste everything appended so far.
+    val description = this@glsl.toString()
+    append(psi.glsl("${prefix}Psi"))
+    append("\n")
+    append(phi.glsl("${prefix}Phi"))
+    append("\n")
+    append(
+        """
+        // $description
+        const int ${prefix}Channels = $channels;
+        const float ${prefix}Radius = ${glslFloat(radius)};
+        const float ${prefix}VelocityScale = ${glslFloat(velocityScale)};
+        const float ${prefix}AccelScale = ${glslFloat(accelScale)};
+        const float ${prefix}SumScale = ${glslFloat(sumScale)};
+        const float ${prefix}MinSeparation = ${glslFloat(minSeparation)};
+
+        // Must agree with invariantFeatures() in deepsets.kt. Every entry is a length or a dot
+        // product, which is the whole mechanism: rotate the configuration and these do not move.
+        void ${prefix}Invariants(vec2 d, vec2 dv, out float f[${EquivariantWeights.PSI_INVARIANTS}]) {
+            float distance = length(d);
+            float soft = max(distance, ${prefix}MinSeparation);
+            vec2 u = distance > 0.0 ? d / distance : vec2(0.0);
+            float p = ${prefix}MinSeparation / soft;
+            f[0] = distance / ${prefix}Radius;
+            f[1] = p;
+            f[2] = p * p;
+            f[3] = length(dv) / ${prefix}VelocityScale;
+            f[4] = dot(u, dv) / ${prefix}VelocityScale;
+        }
+
+        vec2 ${prefix}Combine(
+            ${prefix}PhiWeights pw, vec2 velocity, vec2 messageSum[${prefix}Channels], float n
+        ) {
+            float x[${phi.inputs}];
+            for (int k = 0; k < ${prefix}Channels; ++k) {
+                x[k] = length(messageSum[k]) / ${prefix}SumScale;
+                x[${prefix}Channels + k] = n > 0.0 ? length(messageSum[k]) / n : 0.0;
+            }
+            x[2 * ${prefix}Channels] = length(velocity) / ${prefix}VelocityScale;
+
+            float w[${phi.outputs}];
+            ${prefix}Phi(pw, x, w);
+
+            vec2 a = vec2(0.0);
+            float mean = n > 0.0 ? 1.0 / n : 0.0;
+            for (int k = 0; k < ${prefix}Channels; ++k) {
+                a += w[k] * messageSum[k] / ${prefix}SumScale
+                   + w[${prefix}Channels + k] * messageSum[k] * mean;
+            }
+            a += w[2 * ${prefix}Channels] * velocity / ${prefix}VelocityScale;
+            return a * ${prefix}AccelScale;
+        }
+        """.trimIndent()
+    )
+    append("\n")
+}

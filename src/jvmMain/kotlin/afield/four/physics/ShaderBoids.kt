@@ -77,6 +77,27 @@ data class BoidSettings(
     var containmentRadius: Float = 0.8f,
     /** What the containment pulls toward — so two flocks can share a domain without merging. */
     var containmentCenter: Vector2f = Vector2f(0f, 0f),
+    /**
+     * Pull toward (positive) or push away from (negative) the moving point [ShaderBoids.driver]
+     * supplies. Zero — the default — adds exactly nothing.
+     *
+     * A flock needs a reason to keep looking alive. Left alone at these weights the scene settles
+     * into an evenly spaced disc that barely changes; the first learned rule hid that, because its
+     * broken rotational symmetry produced a constant residual that kept shoving the flock along —
+     * the drift was supplying the apparent motion. Fixing the symmetry removed the drift and the
+     * flock promptly sat down, which is the honest behaviour of the rule it was asked to learn.
+     *
+     * Whether "settled" means genuinely still is a separate question and not one a still frame can
+     * answer: measured on a smaller CPU flock at these weights the residual force oscillates
+     * without trending, which is steady churn rather than rest.
+     *
+     * So the motion has to come from outside the interaction, as forcing rather than as a
+     * modelling error. This is not part of the rule the network learned and needs no retraining:
+     * it is added after the interaction, like [containment].
+     */
+    var driverStrength: Float = 0f,
+    /** Distance over which [driverStrength] falls off. */
+    var driverRadius: Float = 0.25f,
     /** Point size for [installDrawInto]. */
     var pointSize: Float = 2f,
     /** Slow boids take this colour. */
@@ -140,6 +161,16 @@ class ShaderBoids(
      * is the whole point of having built the hand-written one first.
      */
     val learned: afield.stdlib.DeepSetsWeights? = null,
+    /**
+     * A trained **equivariant** interaction, used instead of either other rule.
+     *
+     * The one to reach for. The plain [learned] form has no rotational symmetry, so it carries a
+     * fixed-direction residual that grows with crowding — 0.50 on a forty-eight-neighbour ring
+     * where the true force is exactly zero — and in a flock that integrates into a steady drift
+     * out of containment. The equivariant form is zero there by construction and fits the rule
+     * slightly *better* (0.262 against 0.302).
+     */
+    val equivariant: afield.stdlib.EquivariantWeights? = null,
     configure: BoidSettings.() -> Unit = {},
 ) {
     val settings = BoidSettings().apply(configure)
@@ -159,11 +190,19 @@ class ShaderBoids(
     private var module: ComputeModulePointer? = null
     private var drawModule: afield.four.modules.ModulePointer? = null
 
-    /** `psi`'s weights, when [learned] is set. */
-    val psiBuffer: FrameBufferGroup? = learned?.let { weightBuffer("${settings.name}Psi", it.psi) }
+    /**
+     * Where the driver is, re-read **every frame** — the push buffer calls this when it writes, so
+     * this one lambda is the whole animation and a box can move the point without re-running.
+     */
+    var driver: () -> Vector2f = { Vector2f(0f, 0f) }
 
-    /** `phi`'s weights, when [learned] is set. */
-    val phiBuffer: FrameBufferGroup? = learned?.let { weightBuffer("${settings.name}Phi", it.phi) }
+    /** `psi`'s weights, when [learned] is set. */
+    val psiBuffer: FrameBufferGroup? =
+        (learned?.psi ?: equivariant?.psi)?.let { weightBuffer("${settings.name}Psi", it) }
+
+    /** `phi`'s weights, when a learned rule is set. */
+    val phiBuffer: FrameBufferGroup? =
+        (learned?.phi ?: equivariant?.phi)?.let { weightBuffer("${settings.name}Phi", it) }
 
     private fun weightBuffer(bufferName: String, weights: afield.stdlib.MlpWeights): FrameBufferGroup =
         buffer(name = bufferName) {
@@ -178,6 +217,9 @@ class ShaderBoids(
 
     init {
         require(count in 1..grid.capacity) { "count $count is outside the grid's 1..${grid.capacity}" }
+        require(learned == null || equivariant == null) {
+            "give ShaderBoids one learned rule or the other, not both"
+        }
     }
 
     /**
@@ -238,8 +280,11 @@ class ShaderBoids(
             push.bind("containment") { settings.containment }
             push.bind("containmentRadius") { settings.containmentRadius }
             push.bind("containmentCenter") { settings.containmentCenter }
+            push.bind("driverStrength") { settings.driverStrength }
+            push.bind("driverRadius") { settings.driverRadius }
+            push.bind("driverPosition") { driver() }
             push.bind("count") { count }
-            if (learned != null) {
+            if (learned != null || equivariant != null) {
                 push.bind("psiWeights") { psiBuffer!! }
                 push.bind("phiWeights") { phiBuffer!! }
             }
@@ -347,6 +392,7 @@ class ShaderBoids(
         append(grid.glsl("grid"))
         append("\n\n")
         if (learned != null) { append(learned.glsl("learned")); append("\n") }
+        if (equivariant != null) { append(equivariant.glsl("learned")); append("\n") }
         append(
             """
             struct Boid {
@@ -376,8 +422,11 @@ class ShaderBoids(
                 float containment;
                 float containmentRadius;
                 vec2 containmentCenter;
+                float driverStrength;
+                float driverRadius;
+                vec2 driverPosition;
                 uint count;
-                ${if (learned != null) "learnedPsiWeights psiWeights;\n                learnedPhiWeights phiWeights;" else ""}
+                ${if (learned != null || equivariant != null) "learnedPsiWeights psiWeights;\n                learnedPhiWeights phiWeights;" else ""}
             } pc;
 
             layout(local_size_x = $LOCAL_SIZE) in;
@@ -388,7 +437,7 @@ class ShaderBoids(
 
                 Boid me = pc.boids.b[i];
 
-                ${if (learned != null) "float messageSum[learnedMessageWidth];\n                for (int k = 0; k < learnedMessageWidth; ++k) messageSum[k] = 0.0;" else "vec2 push = vec2(0.0);\n                vec2 sumVelocity = vec2(0.0);\n                vec2 sumPosition = vec2(0.0);"}
+                ${declareAccumulators()}
                 float n = 0.0;
 
                 // The 3x3 walk, written out rather than hidden behind a macro -- this is the loop
@@ -405,12 +454,12 @@ class ShaderBoids(
                         vec2 d = pc.boids.b[j].position - me.position;
                         float distance = length(d);
                         if (distance > pc.radius || distance <= 0.0) continue;
-                        ${accumulate(learned)}
+                        ${accumulate()}
                         n += 1.0;
                     }
                 }
 
-                ${combine(learned)}
+                ${combine()}
 
                 // Both written before the integration, so together they describe exactly what
                 // this step saw and what it did with it -- see the class KDoc.
@@ -418,6 +467,18 @@ class ShaderBoids(
                 me.previousVelocity = me.velocity;
 
                 // Zero by default, and then exactly zero rather than nearly so.
+                // Forcing, not interaction: added after the rule, exactly like containment, and
+                // zero by default so the tests see the rule alone.
+                if (pc.driverStrength != 0.0) {
+                    vec2 toDriver = pc.driverPosition - me.position;
+                    float far = length(toDriver);
+                    if (far > 1e-6) {
+                        float falloff = (pc.driverRadius * pc.driverRadius)
+                                      / (far * far + pc.driverRadius * pc.driverRadius);
+                        accel += pc.driverStrength * falloff * toDriver / far;
+                    }
+                }
+
                 vec2 fromHome = me.position - pc.containmentCenter;
                 float excess = max(length(fromHome) - pc.containmentRadius, 0.0);
                 if (excess > 0.0) accel -= pc.containment * excess * normalize(fromHome);
@@ -435,8 +496,33 @@ class ShaderBoids(
         append("\n")
     }
 
-    private fun accumulate(learned: afield.stdlib.DeepSetsWeights?): String =
-        if (learned == null) {
+    private fun declareAccumulators(): String = when {
+        equivariant != null ->
+            """vec2 messageSum[learnedChannels];
+                for (int k = 0; k < learnedChannels; ++k) messageSum[k] = vec2(0.0);"""
+        learned != null ->
+            """float messageSum[learnedMessageWidth];
+                for (int k = 0; k < learnedMessageWidth; ++k) messageSum[k] = 0.0;"""
+        else ->
+            """vec2 push = vec2(0.0);
+                vec2 sumVelocity = vec2(0.0);
+                vec2 sumPosition = vec2(0.0);"""
+    }
+
+    private fun accumulate(): String =
+        if (equivariant != null) {
+            // psi emits SCALARS; the vector comes from the neighbour's own direction and velocity
+            // difference. That is the whole of the equivariance.
+            """float f[5];
+                        learnedInvariants(d, pc.boids.b[j].velocity - me.velocity, f);
+                        float c[${2 * equivariant.channels}];
+                        learnedPsi(pc.psiWeights, f, c);
+                        vec2 u = distance > 0.0 ? d / distance : vec2(0.0);
+                        vec2 dvn = (pc.boids.b[j].velocity - me.velocity) / learnedVelocityScale;
+                        for (int k = 0; k < learnedChannels; ++k) {
+                            messageSum[k] += c[k] * u + c[learnedChannels + k] * dvn;
+                        }"""
+        } else if (learned == null) {
             """if (distance <= pc.separationRadius) {
                             float soft = max(distance, pc.minSeparation);
                             push -= d / (soft * soft);
@@ -451,8 +537,10 @@ class ShaderBoids(
                         for (int k = 0; k < learnedMessageWidth; ++k) messageSum[k] += m[k];"""
         }
 
-    private fun combine(learned: afield.stdlib.DeepSetsWeights?): String =
-        if (learned == null) {
+    private fun combine(): String =
+        if (equivariant != null) {
+            """vec2 accel = n > 0.0 ? learnedCombine(pc.phiWeights, me.velocity, messageSum, n) : vec2(0.0);"""
+        } else if (learned == null) {
             """vec2 accel = vec2(0.0);
                 if (n > 0.0) {
                     accel = pc.separation * push

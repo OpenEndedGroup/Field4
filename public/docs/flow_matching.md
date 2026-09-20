@@ -508,3 +508,8 @@ suit an image.
 
 The API is in [Machine learning](reference/machine-learning.md); `VectorMLP` there is the
 multi-output regression head that `flowMatch` trains, which is usable on its own.
+
+`FlowMatchField.export()` takes a trained field to the GPU as an unrolled GLSL forward pass, and
+`mixtureSource` builds the matched-topology source a multi-component target needs. Both are on
+[Particle rules that were trained](neural_particles.md), along with what the loss on this page does
+and does not tell you.
