@@ -353,7 +353,7 @@ The rebinding guard works on the WebSocket path as well as the HTTP one — that
 second-to-last pair. And with the switch fully on, a foreign origin still read the absolute path
 of the checkout, which is the read gap the `GET` row records.
 
-## Where the guarantees actually live
+## What the tests pin
 
 Six test files. Three start a real Ktor application; three read source.
 
@@ -372,9 +372,8 @@ command with the file it lives in, and every raw channel. That page is asserted
 against the source in both directions, so a new door cannot appear without the build saying
 so.
 
-One caveat on how much that promise is worth: a census can only refuse a door it has a *shape*
-for. A census looking for a verb call with a quoted path misses the three other ways Field
-declares routes: verbless, pathless, and nested inside another `route(…)`. Floors and
-landmarks catch a census that shrank; they cannot catch a category never counted. Against that
-there are two independently written censuses in the build, and a disagreement between their
-totals is itself a failure.
+The limit of that promise: a census can only refuse a door it has a *shape* for. One looking for a
+verb call with a quoted path misses the three other ways Field declares routes: verbless,
+pathless, and nested inside another `route(…)`. Floors and landmarks catch a census that shrank;
+they cannot catch a category never counted. Two independently written censuses run in the build,
+and a disagreement between their totals fails it.
