@@ -166,8 +166,10 @@ demo box rewrites its 128-matrix palette every frame, animates at ~120 fps, and 
 without a timeout. The trap is the per-frame *vertex re-upload* specifically.
 
 **`MeshInstance.applyToMesh` cannot be called from a `main`.** Its buffers come from
-`defaultBuffer { … }.buffer`, whose renderer defaults to `fromContext()`. Inside a box that
-resolves; from a `main` — which is where every smoke and the evidence renderer live — it throws
+`defaultBuffer { … }.buffer` (`src/jvmMain/kotlin/afield/four/buffers/magic.kt:237#buffer`), which
+allocates through `src/jvmMain/kotlin/afield/four/buffers/VulkanBuffer.kt:102#renderer` — a
+constructor parameter defaulting to `fromContext()`. Inside a box that resolves; from a `main` —
+which is where every smoke and the evidence renderer live — it throws
 `Cannot invoke "afield.Box.getProperties()"`. `GpuSkinner` therefore owns its own vertex and index
 buffers with an explicit renderer, which it wants anyway: it uploads geometry **once**.
 
