@@ -215,7 +215,7 @@ In other words: treat this as a graph chemistry for live coding.
 
 `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt` — [read the source](source/jvmMain/afield/stdlib/interactionnets/)
 
-**Used in:** [Interaction Nets examples](../interaction_nets_examples.md)
+**Used in:** [Interaction Nets examples](../interaction_nets_examples.md), [A λ-term you can hear](../chain_lambda_sound.md)
 
 ### Top-level functions { #interactionnets-kt-functions }
 
