@@ -53,8 +53,8 @@ markdown("readout", """
 
 ![A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term](assets/chain_lambda_sound/one_reduction.png)
 
-The lower trace is the part to read. It is how many reactions were *available* at each moment —
-how much choice the scheduler had — and it is never zero until the end and never large. A
+The lower trace is how many reactions were *available* at each moment — how much choice the
+scheduler had — and it is never zero until the end and never large. A
 reduction here is not a wavefront sweeping a big net; it is a handful of live collisions at a time,
 and picking among them is the scheduler's entire job.
 
@@ -121,17 +121,8 @@ terminates reaches its normal form in the same number of steps down every path. 
 result and not a discovery of this page. What this page does is measure it in *this* implementation,
 where it is not a given, because the fan labelling is known to be wrong on some terms.
 
-!!! warning "A published page said the opposite, and this is the correction"
-
-    [Interaction Nets examples](interaction_nets_examples.md) said, until this page was written:
-    "`Run.steps` is a property of this rule book and this schedule, not of the term." The rule-book
-    half is right. The schedule half is false on every term measured, and it is the half a reader
-    would act on — it is the sentence that tells you a step count is not worth comparing.
-    `dev_docs/INTERACTION_NETS_LAMBDA.md` carried the same claim and the `Run` KDoc carried it a
-    third time. All three now say what was measured instead.
-
-The four terms where the reducer is known to be *wrong* are the interesting stress case, because a
-confluence failure is exactly what could break the count. `stdlib.lambda-terms.property` pinned four
+The four terms where the reducer is known to be *wrong* are the stress case: a confluence failure
+is exactly what could break the count. `stdlib.lambda-terms.property` pinned four
 of them on 2026-09-19 — a wrong normal form with no warning mark, a duplicated abstraction that
 loses a copy to its eraser, an answer the readback cannot walk, and a readback of a closed term with
 a free variable in it. `LambdaSoundDocs.CONFLUENCE_PROBES` re-runs those four under the four
