@@ -1794,6 +1794,17 @@ tasks.register<JavaExec>("runSkinningEvidence") {
     jvmArgs(vectorizationJvmArgs)
 }
 
+tasks.register<JavaExec>("runGpuSkinningSmoke") {
+    group = "verification"
+    description = "Runs the GPU-vertex-skinning parity smoke (afield.examples.four.GpuSkinningSmoke) directly: the same entrypoint as `tools/run_field_tests.py --id four.gpu-skinning.smoke`, but without needing a Field server. Opens a window, so it needs an awake display."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.four.GpuSkinningSmoke")
+    // requiredRunJvmArgs(), not vectorizationJvmArgs: this opens a GLFW window, and GLFW on macOS
+    // refuses to initialise without -XstartOnFirstThread, which only that list carries.
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     group = "application"
     description = "Analyzes a WAV file with TrackingResonatorBank and writes three additive-resynthesis WAV variants."
