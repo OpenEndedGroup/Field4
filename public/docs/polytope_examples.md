@@ -426,7 +426,7 @@ three(
     painted, channel = "gyro3d", name = "gyro",
     view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), facts = false,
 )
-// The claim, measured rather than asserted: 24 faces sharing only 6 distinct outward normals.
+// The count behind the flatness: 24 faces sharing only 6 distinct outward normals.
 val distinctNormals = gyro.topology.elements(2)
     .map { gyro.faceNormal(it.id) }
     .map { "%.3f,%.3f,%.3f".format(it.x, it.y, it.z) }

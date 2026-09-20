@@ -11,7 +11,8 @@ for (n in listOf(4, 8, 16)) {
     println("bd*%-2d -> %2d notes, cutoff %s".format(n, notes.size,
         notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) }))
 }
-// appBoth is the other choice, and it is not a bug — it fragments on purpose:
+// appBoth is the other choice: it intersects both sides, so a 16-step sweep cuts
+// each note where the curve steps:
 println("appBoth against a 16-step sweep -> " +
     pat("45*4").appBoth(curve.segment(16)) { a, _ -> a }
         .events(PatArc(PatQ.ZERO, PatQ.ONE)).size + " events")

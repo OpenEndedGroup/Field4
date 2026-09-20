@@ -8,10 +8,9 @@ description: |
   The structure is free. A 2×2 reduction has a parent for every four cells and one cell at the top,
   which *is* a complete quadtree — no nodes, no pointers, no subdivision criterion and no build step
   that can disagree with the data. `summary-value-0` is the root and `summary-value-8` is the leaf
-  level, and a node at depth d is a texel of the d-th pass. So the interesting question is not the
-  structure, it is what each cell carries, and that is where this differs from the downsample
-  pyramid in [four_pass_chain](#four_pass_chain): instead of an average colour, three planes of
-  **sufficient statistics**.
+  level, and a node at depth d is a texel of the d-th pass. What each cell carries is where this
+  differs from the downsample pyramid in [four_pass_chain](#four_pass_chain): instead of an average
+  colour, three planes of **sufficient statistics**.
 
     - `summary-value-d` — weight, value mean, value variance, occupancy.
     - `summary-moment-d` — Σwx, Σwy, Σwx², Σwy².
@@ -170,7 +169,7 @@ operations:
                   // A Gaussian is never actually zero, so without a floor every cell in the frame
                   // has a weight of about 1e-20 — which is over the overlay's own threshold, and
                   // draws an ellipse of the rounding error in an empty cell. The picture is then a
-                  // grid of ellipses everywhere and the interesting ones are lost in it.
+                  // grid of ellipses everywhere, with the blobs' own cells lost among them.
                   mass = mass < 0.01 ? 0.0 : clamp(mass, 0.0, 1.0);
                   // The value is deliberately NOT the mass: a summary carries a value *and* a
                   // weight, and keeping them different is what makes "the mean value where the mass
@@ -182,9 +181,9 @@ operations:
 
           // The field as a *picture*, which is not the same thing as the field. `field` carries a
           // value in red over the whole frame because that is what the pyramid weighs and averages;
-          // looking at it directly is looking at a red wash with the interesting part in the alpha
-          // channel. One pass turns it into something to draw on: the value's colour, where the
-          // mass is.
+          // looking at it directly is looking at a red wash, because the mass that says which part
+          // of the frame matters is in the alpha channel. One pass turns it into something to draw
+          // on: the value's colour, where the mass is.
           val viewFragment = """
               #version 450
               layout(location = 0) in vec2 vUv;

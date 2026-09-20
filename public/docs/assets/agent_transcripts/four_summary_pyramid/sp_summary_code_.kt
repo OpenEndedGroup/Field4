@@ -34,7 +34,7 @@ val fieldFragment = """
         // A Gaussian is never actually zero, so without a floor every cell in the frame
         // has a weight of about 1e-20 — which is over the overlay's own threshold, and
         // draws an ellipse of the rounding error in an empty cell. The picture is then a
-        // grid of ellipses everywhere and the interesting ones are lost in it.
+        // grid of ellipses everywhere, with the blobs' own cells lost among them.
         mass = mass < 0.01 ? 0.0 : clamp(mass, 0.0, 1.0);
         // The value is deliberately NOT the mass: a summary carries a value *and* a
         // weight, and keeping them different is what makes "the mean value where the mass
@@ -46,9 +46,9 @@ val fieldFragment = """
 
 // The field as a *picture*, which is not the same thing as the field. `field` carries a
 // value in red over the whole frame because that is what the pyramid weighs and averages;
-// looking at it directly is looking at a red wash with the interesting part in the alpha
-// channel. One pass turns it into something to draw on: the value's colour, where the
-// mass is.
+// looking at it directly is looking at a red wash, because the mass that says which part
+// of the frame matters is in the alpha channel. One pass turns it into something to draw
+// on: the value's colour, where the mass is.
 val viewFragment = """
     #version 450
     layout(location = 0) in vec2 vUv;

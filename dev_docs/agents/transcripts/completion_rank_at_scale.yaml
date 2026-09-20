@@ -150,8 +150,9 @@ operations:
               Triple(r, fromIndex, CommonMemberPrior.rankOf(RECEIVER, r[0]))
           }
 
-          // The rows with a prior first: the popup's only prior is the point, and it would be invisible in a
-          // slice of an alphabetical list (FLine's eight declared members all sort past the `by…` family).
+          // The rows with a prior first: a prior is the only thing that moves a member up the popup, and
+          // it would be invisible in a slice of an alphabetical list (FLine's eight declared members all
+          // sort past the `by…` family).
           val ordered = classified.sortedWith(compareBy({ if (it.third > 0) 0 else 1 }, { it.third }))
 
           // The last expression is what the box shows in its output panel.

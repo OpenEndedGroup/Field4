@@ -88,7 +88,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sp_summary" index="2" -->
 
 ```edn [field-box id="sp_summary" role="properties"]
-{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6683 "sha256" "04a36b50efe204c8272643c532a42d1b61ec4d2e8f2a3c31a223c218ba5d3b8c"}]}
+{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6723 "sha256" "54bf91fb82219207af0e3a5aa7c5bb310e68fcd81cdd0b68d07252679dfb3bb5"}]}
 ```
 
 ```kotlin [field-property box="sp_summary" name="code" path="sp_summary_code_.kt"]
@@ -128,7 +128,7 @@ val fieldFragment = """
         // A Gaussian is never actually zero, so without a floor every cell in the frame
         // has a weight of about 1e-20 — which is over the overlay's own threshold, and
         // draws an ellipse of the rounding error in an empty cell. The picture is then a
-        // grid of ellipses everywhere and the interesting ones are lost in it.
+        // grid of ellipses everywhere, with the blobs' own cells lost among them.
         mass = mass < 0.01 ? 0.0 : clamp(mass, 0.0, 1.0);
         // The value is deliberately NOT the mass: a summary carries a value *and* a
         // weight, and keeping them different is what makes "the mean value where the mass
@@ -140,9 +140,9 @@ val fieldFragment = """
 
 // The field as a *picture*, which is not the same thing as the field. `field` carries a
 // value in red over the whole frame because that is what the pyramid weighs and averages;
-// looking at it directly is looking at a red wash with the interesting part in the alpha
-// channel. One pass turns it into something to draw on: the value's colour, where the
-// mass is.
+// looking at it directly is looking at a red wash, because the mass that says which part
+// of the frame matters is in the alpha channel. One pass turns it into something to draw
+// on: the value's colour, where the mass is.
 val viewFragment = """
     #version 450
     layout(location = 0) in vec2 vUv;
