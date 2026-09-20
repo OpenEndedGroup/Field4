@@ -229,8 +229,8 @@ object PathTraceMediumGpuSmoke {
     /**
      * The demo's extinction. 0.16 rather than the 0.30 the first render used: at 0.30 the haze is
      * about two and a third optical depths along the view and obscures itself, so the wall, the
-     * floor and the slats' shadow wedges all wash into one grey. The shafts are the point, and they
-     * want a medium you can see through.
+     * floor and the slats' shadow wedges all wash into one grey. Shafts want a medium you can see
+     * through.
      */
     const val GOD_RAYS_DENSITY = 0.16f
 

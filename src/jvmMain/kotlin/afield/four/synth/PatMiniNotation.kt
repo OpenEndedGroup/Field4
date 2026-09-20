@@ -570,7 +570,7 @@ object PatMiniNotation {
     // ── the colour claim ───────────────────────────────────────────────────────────────────
 
     /**
-     * What [PatPianoRollGallery.ATOM_COLORS] asserts about [patDrumHz], checked rather than stated.
+     * Check [PatPianoRollGallery.ATOM_COLORS] against the voices [patDrumHz] gives the same tokens.
      *
      * Two directions, and both matter. **Distinct colour implies distinct sound:** two tokens drawn
      * in different colours must get different `(frequency, waveform)` pairs out of the drum map, or
