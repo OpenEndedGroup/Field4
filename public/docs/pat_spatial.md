@@ -140,28 +140,21 @@ rather than publish two clips that sound alike.
 
 ## Why there is no clip of the output
 
-**There is no published clip of this path's actual output, and there cannot be one.** The site's own
-audio contract rules it out, in three steps:
+**There is no published clip of this path's actual output, and there cannot be one.** Every
+`audio=` fence in these docs is rendered offline over the backdoor — no device, no clock, no
+browser — and `patSpatial` has no offline half to call.
 
-* **The docs build renders audio offline.** An `audio=` fence calls
-  `<renderer>.renderWav(scene, path)` over the backdoor — no device, no clock, no browser. There is
-  no offline half of `patSpatial` to call. `PatSpatialLaunch.advanceOffline` looks like one and is
-  not: the render thread is running regardless, so that call only *consumes* what has already been
-  produced, in real time. A caller asking for four seconds of audio waits four seconds, and no flag
-  makes it faster: what it is waiting for is a render thread that runs on its own clock, decoupled
-  from whoever consumes it.
-* **The HRTF needs a binary this repository does not carry.** `libphonon` is fetched, checksum
-  pinned, into `build/steamaudio` by `./gradlew fetchSteamAudioNatives`. On a clean clone, on CI,
-  and in `check`, a render of this path does not merely come out different — it cannot start.
-* **`DocsAudioProvenance` re-renders every fence on every build**, correlates the result against the
-  committed bytes, and fails when a render fails. So a clip of this path behind a fence would not be
-  a figure with a caveat; it would be a red build on every machine that has not run one optional
-  Gradle task. See
-  [how the captions on every clip are checked](sound.md#how-the-voice-captions-are-checked).
+That last point catches callers on its own. `PatSpatialLaunch.advanceOffline` looks
+like an offline render and is not: the render thread runs on its own clock regardless, so the call
+only *consumes* what has already been produced, in real time. Ask it for four seconds of audio and
+you wait four seconds, and no flag makes it faster. The HRTF needs `libphonon` besides, fetched
+checksum-pinned into `build/steamaudio` rather than carried in the repository, so on a clean clone
+a render of this path cannot start at all.
 
-The two clips above make the smaller claim instead: they are rendered by the code that really ships,
-which is what the provenance audit can check. Why an offline stand-in for the spatialised output was
-rejected rather than written is in `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
+The two clips above make the smaller claim instead: they are rendered by the code that really
+ships, which is [what their captions promise](sound.md#what-a-voice-caption-promises). Why an
+offline stand-in for the spatialised output was rejected rather than written is in
+`dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
 
 To hear the real thing takes two commands.
 
@@ -243,7 +236,7 @@ Two things follow, and both are in the code rather than in advice:
 * **The ring is sized for the scheduler's stalls, not for this code's**, which is why it defaults to
   341 ms rather than the ~40 ms the arithmetic alone would justify.
 
-### The numbers that tell you whether it held
+### The fields to read while it plays
 
 Everything below is a field on the launch or the room, readable from the box while it plays:
 
@@ -347,7 +340,7 @@ pose and in nothing else. Headphones.
 
 ---
 
-## How the claims on this page are checked
+## The smoke tests that exercise this path
 
 | smoke | what it establishes |
 | --- | --- |

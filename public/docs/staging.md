@@ -78,8 +78,6 @@ Two sections that are not worked examples, and are read for different reasons.
 
 ## How these pages are built
 
-Most of the examples here are captures. A page carries a runnable fence, the docs build launches Field through the backdoor, and the box output, editor region, browser window or native `afield.four` frame comes back into the page as an image or a short video.
-
-Graphics examples get their renderer the way a Field document would. The runner replays `dev_docs/agents/transcripts/graphics_renderer_launch.yaml` to build and launch a renderer box, creates the example box, and connects the renderer as its parent, so `fromContext<Renderer>()` resolves against a live renderer instead of a sleep long enough to find one. The capture then goes through Field's own renderer screenshot path, which means it exercises the box graph, context lookup, Kotlin execution, Vulkan startup and screenshot plumbing on every docs build.
+Most of the examples here are captures rather than mock-ups. A page carries a runnable fence, the docs build launches Field through the backdoor, and the box output, editor region, browser window or native `afield.four` frame comes back into the page as an image or a short video. Graphics examples get a live renderer the way a document would, so a picture on one of these pages came through the same box graph, the same context lookup and the same Vulkan startup your own code will.
 
 [Building the Docs & Running the Tests](building_and_testing.md) has the build command and its four capture modes. Read what it says about ports before you start a build: the runner insists on owning the port it is handed, and asks whatever Field is already answering there to shut down, including the one you are working in. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.

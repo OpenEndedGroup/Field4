@@ -59,7 +59,7 @@ val plaque = depth.toReliefMesh(scale = 0.35, baseThickness = 0.12)  // χ = 2, 
 plaque.toSolid()                                                     // legal
 ```
 
-The counts are a closed form rather than an emergent property, and that is what makes them testable.
+The counts are a closed form, so you can predict them before you build anything.
 With `P = 2·nx + 2·nz` rim vertices, a relief has `(nx+1)(nz+1) + P + 1` vertices — the grid, the rim
 at the base plane, and one centre vertex the floor fans from — and `2·nx·nz + 3·P` triangles. The
 Euler characteristic falls out and is `2` at every resolution, because the `−P/2` that the fan and the
@@ -91,10 +91,9 @@ aspect ratios, so a formula that only works on a square grid fails there.
 ```
 
 The caption on that box is the whole assertion: `watertight=true manifold=true chi=2`, and
-`boundary loops=0` where the heightfield it came from has one. The volume it prints and the volume
-Manifold computes for the same object agree to the last digit, which is worth more than either number
-alone — Field's `signedVolume` is a divergence-theorem sum over the triangles in Kotlin, and
-Manifold's is C++ over its own halfedge structure, and the two share no code.
+`boundary loops=0` where the heightfield it came from has one. Field's `signedVolume` and
+Manifold's own volume agree to the last digit on that object, which is the number to check first
+if you change `scale` or `baseThickness` and the plaque stops looking right.
 
 ## Mounted in a frame
 
@@ -141,44 +140,39 @@ mesh: 18389 vertices, 35578 triangles, chi=7, 11 component(s)
 
 `normals = true` splits a vertex wherever two faces disagree about the surface direction, and being a
 manifold is a property of the **indices**: two vertices at one position that share an edge nowhere
-read as a seam of holes. The rule is already written down on the [Manifold page](manifold.md) — *ask
-for `toTriMesh()` when you are measuring and `toTriMesh(normals = true)` when you are drawing* — and
-what is new here is only the confirmation that a real four-subsystem route walks into it on its first
-attempt, with the number of split vertices measured on this object rather than assumed. The fix is to
-ship the unsplit mesh and let each render bridge add normals itself, which `renderPng` already does.
+read as a seam of holes. The rule is on the [Manifold page](manifold.md) — *ask for `toTriMesh()`
+when you are measuring and `toTriMesh(normals = true)` when you are drawing* — and a route like
+this one walks into it on the first attempt. The fix is to ship the unsplit mesh and let each
+render bridge add normals itself, which `renderPng` already does.
 
-## Two constructions of the same solid, and a recorded claim re-measured
+## Two constructions of the same solid
 
-`Img.asHeightSdf`'s KDoc claims that marching an image as a field gives *"the same surface
-`Img.toHeightfieldMesh` builds directly, which is a useful cross-check"*. This page takes that
-seriously and turns it into one: the grid triangulation and a marched level set of the same depth
-field are compared **against each other**, not against a constant. They share no code — one walks a
-`(nx+1)(nz+1)` lattice in Kotlin, the other is Manifold's own marcher calling back into a Kotlin
-lambda over FFM — and they agree to about one marching cell.
+Marching an image as a field gives the same surface `Img.toHeightfieldMesh` builds directly, to
+about one marching cell. One walks a `(nx+1)(nz+1)` lattice in Kotlin; the other is Manifold's own
+marcher calling back into a Kotlin lambda over FFM. Either is a legitimate way to get a plaque out
+of a depth map, and `Img.asHeightSdf` is the entry point to the second.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/levelset.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="display" wait-output-contains="eroded to islands" embed=true force=true timeout="900" w="1100" h="420" padding="18" name="chain-photo-levelset" alt="A four-column table headed regime, components, parallel = false and parallel = true. Each of three rows names a regime and its component count, and the parallel = false column reads 1/8 distinct on every row while the parallel = true column varies" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_levelset"}
 // Built and launched from dev_docs/agents/transcripts/photo_to_solid_chain.yaml.
 ```
 
-The second half of that box is a recorded claim put back on the bench. `Solid.levelSet`'s KDoc says
-flatly that `parallel = true` is not reproducible — it was first seen on a field that marched to 46,
-47 or 48 components on different runs, against a sequential path that was identical every time.
+### `Solid.levelSet(parallel = true)` is not reproducible
 
-That is **confirmed**, and the table above is the measurement. Within the table, `floor` is the only
-thing that varies: the field, the bounds and the edge length are identical, and raising `floor` erodes
-the plaque so that only the nearer parts of the photograph survive, as islands. Two answers count as
-the same only if the triangle count, the component count *and* the volume to twelve places all agree.
-The run population, and the scan that located the regimes, are in
+The second half of that box is the table above. Within it, `floor` is the only thing that varies:
+the field, the bounds and the edge length are identical, and raising `floor` erodes the plaque so
+that only the nearer parts of the photograph survive, as islands. Two answers count as the same
+only if the triangle count, the component count *and* the volume to twelve places all agree. The
+run population, and the scan that located the regimes, are in
 `dev_docs/CHAIN_PHOTO_TO_SOLID_MEASUREMENTS.md`.
 
 - `parallel = false` returns **one distinct answer in eight, on every row, in every regime** — volume
   equal to twelve decimal places, triangle and component counts equal as integers. That column is the
   invariant, and it has held on every run of this figure.
-- `parallel = true` does not, and it is worst in the most fragmented regime. **This page does not
-  quote that column's ratios**: the figure is recaptured on every docs build and they come out
-  different each time, which is the claim itself. Read the numbers off the figure above. What has
-  been stable across the runs so far is the shape rather than the values: the middle column reads
-  `1/8` on every row, the last column does not, and the bottom row is the worst one.
+- `parallel = true` does not, and it is worst in the most fragmented regime. Read its ratios off
+  the figure above rather than from here: the figure is recaptured on every docs build and they
+  come out different each time, which is the claim itself. The shape holds where the values do
+  not — the middle column reads `1/8` on every row, the last column does not, and the bottom row
+  is the worst one.
 - Note the first row in particular. That regime is a single solid block, the easy case, and the
   parallel path still disagrees with itself there. On a more heavily blurred version of the same
   photograph the single-block regime *did* come back `1/8`. So *"parallel is fine on simple shapes"*
@@ -187,21 +181,19 @@ The run population, and the scan that located the regimes, are in
 - Worse than the KDoc says, in one respect, and this one is not in the table. At an intermediate
   floor the parallel path returned **one component on all eight runs** where the sequential path
   returned **two**. It does not only wobble around the right answer — it can agree with itself on a
-  *wrong* component count. A census taken off a parallel level set can therefore be confidently wrong
-  rather than visibly noisy, which is the failure mode that survives review.
+  *wrong* component count, so a census taken off a parallel level set can be consistently wrong
+  rather than visibly noisy.
 
 The practical reading: a level set whose numbers a person is going to read wants `parallel = false`.
 `Solid.levelSetOf` already defaults that way, for an unrelated reason — a `ScalarField3D` takes a
 mutable `Vec3` — and this is a second reason to keep it.
 
-## The census that equals something independently known
+## Why Manifold reports a negative genus
 
-Manifold's genus can be negative, which reads as an error and is not one. It is computed from the
-Euler characteristic of the whole surface, `g = (2 − χ)/2`, and χ adds across disjoint components, so
-`k` separate pieces report `1 − k`. The chain re-measures that on plaques rather than on the cubes the
-claim was first made about: composing `k` translated copies for `k = 1..4` gives genus `0, −1, −2, −3`
-and `decompose()` gives `1, 2, 3, 4` parts. The two sequences are the same statement twice, and they
-agree.
+Genus is computed from the Euler characteristic of the whole surface, `g = (2 − χ)/2`, and χ adds
+across disjoint components, so `k` separate pieces report `1 − k`. A negative genus is a
+component count in disguise, not an error: composing `k` translated plaques for `k = 1..4` gives
+genus `0, −1, −2, −3` while `decompose()` gives `1, 2, 3, 4` parts.
 
 ## The limits of this route
 
