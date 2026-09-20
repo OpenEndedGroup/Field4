@@ -4,7 +4,7 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it, so it is queried rather than stored, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-29 source file(s), 1002 public symbol(s), 523 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+31 source file(s), 1092 public symbol(s), 580 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -272,6 +272,339 @@ Proves that a head pose of the shape OpenXR reports aims Steam Audio's HRTF, on 
 | Declaration | Summary |
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/HeadTrackedSpatialSmokeTest/#L146) |  |
+
+## Marf.kt { #marf-kt }
+
+Function generation over the pattern language: stored material, a trajectory that reads it, and
+the timing of that traversal, kept as three separate patterns.
+
+The idea is borrowed from the Buchla 248 Multiple Arbitrary Function Generator, and the part worth
+borrowing is not its step sequencer. It is the separation the 248 makes between
+
+- the **material** stored in a bank of stages,
+- the **address** that says which stage to read next,
+- the **time** each stage is allowed to take,
+- and the **continuous function** the generator draws while a stage is active.
+
+On the hardware those are four patch points. Here they are four ordinary [`PatPattern`](patterns.md#tidalpatterns-kt-patpattern)s, which is
+the whole point: `slow`, `rev`, `every`, `euclid`, `degradeBy`, `randcat` and everything else in
+TidalPatterns.kt / PatComposition.kt already work on all four, so this file adds almost no
+combinators of its own. A reader is built from patterns and *is* a pattern:
+`MarfReader.signal` hands back a `PatPattern<Double>` in the sense of PatSignals.kt, and
+`MarfReader.triggers` hands back a discrete `PatPattern<String>`. Both ends plug straight into
+`with(gain(...))`, `struct`, `segment`, `respond` and the scheduler.
+
+Read the surface from the outside in:
+
+1. The four fields, patterned independently. Nothing here is a grid; the durations are real:
+
+       val env = marf(
+           value    = pat("<0 .7 .2 1>").nums(),
+           duration = pat("<1 4 .25 2>").nums(),
+           curve    = curves("<linear exp hold osc>"),
+           fields   = MarfFieldClock.STAGES
+       )
+
+       env.at(3.5).value        // the continuous output, 3.5 cycles in
+       env.at(3.5).stagePhase   // where inside its own stage that was
+
+2. Stored material, read by a trajectory. Two readers, one bank, different journeys:
+
+       val b = marfBank(
+           rampTo(0.0), rampTo(0.3), holdAt(0.2), oscTo(0.9, cycles = 3), rampTo(0.8)
+       )
+
+       val a = b.read(pat("0 1 2 1 3 4").nums())
+       val c = b.read(pat("0 2 4 1 3").nums().slow(3))
+       val d = b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()))
+
+   The address is a pattern, so the trajectory is compositional material rather than a mode
+   flag. `"<0 1 2 3 2 1>"` is ping-pong. `.every(4) { it.rev() }` is periodic reversal. There is
+   no `direction = PINGPONG` in this file and there should never be one.
+
+3. Out, as a signal or as pulses — the same temporal structure, both ways:
+
+       pat("bd*8") with gain(a.signal().range(0.2, 1.0))   // continuous, into the algebra
+       a.triggers().respond(cps = 1.0) { spawnParticles() } // discrete, one per stage
+
+4. And the missing conversion, which is useful with or without a bank — an event stream read as
+   a continuous function:
+
+       pat("0 .5 1 .25").nums().hold()             // sample and hold
+       pat("0 .5 1 .25").nums().ramp()             // linear between onsets
+       pat("0 .5 1 .25").nums().interp(MarfCurve.Smooth)
+
+### Where a stage's numbers come from
+
+Stage `k` begins at an exact cycle instant `Tₖ`, and **every field is sampled at `Tₖ`** — value,
+duration, curve, trigger, address, speed — through `patSampleOver`, the same latch the parameter
+algebra uses for `gain(...)` at a note onset. Then `Tₖ₊₁ = Tₖ + durationₖ`.
+
+A field pattern with **rests** holds rather than resets. If nothing is sounding at `Tₖ` — a
+`struct(euclid(5, 8), …)` address on an off step, a `degradeBy` that dropped this one — the field
+keeps the value the previous stage had. That is what a sample-and-hold does, and it is what makes
+the thinning operators mean something on an address: `struct` and `degradeBy` become *how long an
+address is held for*, rather than "and now, silently, address zero".
+
+That recurrence is the interesting part, and it is why this is not a sequencer. The reader's own
+traversal generates its clock, so the duration pattern is consulted at instants the duration
+pattern chose. Give four values a `"<1 4 .25 2>"` duration and you get
+
+    |--0--|--------.7--------|-.2-|----1----|
+
+rather than four equal steps. Give the address a period of 6 and the duration a period of 4 and
+the two drift against each other with a period of 12 — which is the whole reason to keep them
+apart.
+
+There is one real choice buried in "sampled at `Tₖ`", and [`MarfFieldClock`](patterns.md#marf-kt-marffieldclock) is where it lives.
+Reading the fields at the wall-clock instant `Tₖ` (`CYCLES`, the default) is the hardware answer
+and never fails silently: every pattern says something at every instant. Reading them at cycle
+`k` instead (`STAGES`) makes the fields a per-stage *sequence*, so `duration = "<1 4 .25 2>"`
+gives stages of exactly those four lengths and `address = "<0 1 2 1 3 4>"` walks the bank one
+slot per stage no matter how long a stage takes. The trade is that in `STAGES` one cycle of a
+field pattern is one stage, so a bare `"0 .7 .2 1"` collapses to its first step. Both are useful;
+neither is a default that can be left unexplained.
+
+Accumulation is exact. Durations arriving as `Double` are taken to [`PatQ`](patterns.md#tidalpatterns-kt-patq) at
+`MARF_DURATION_DENOM` resolution, so a reader is still phase-locked to the bar after ten
+thousand stages; a `Double` accumulator would not be. A duration is floored at
+`MARF_MIN_DURATION` so that a zero or negative sample cannot stall the walk.
+
+Sampling a *continuous* field pattern needs an arc rather than an instant, and the probe used is
+`[Tₖ, Tₖ + 1/65536)`, so `duration = sine().range(0.25, 2.0)` reads the sine essentially at the
+stage boundary. A discrete field pattern is unaffected by the probe width: the latch picks the
+event containing `Tₖ` however finely the source is subdivided.
+
+### Local time
+
+[`MarfSample`](patterns.md#marf-kt-marfsample) is the temporal context, and the reason it exists is that several notions of time
+are live at once. `cycle` is the global coordinate, `stageIndex` counts stages, `stageTime` is
+cycles since this stage began and `stagePhase` is that normalised to `0..1`. A curve is written
+against `stagePhase` and never has to reconstruct it:
+
+       MarfCurve.Shape("chirp") { p -> 0.5 + 0.5 * kotlin.math.sin(p * p * 40.0) }
+
+The analogy worth keeping is a shader. A fragment shader computes over `uv`; a stage computes
+over `stagePhase`, inside a structure the pattern algebra laid out.
+
+### Continuous address
+
+The address is a `PatPattern<Double>`, not a `PatPattern<Int>`, and a fractional address blends.
+At address `1.35` the reader evaluates stages 1 and 2 over the same local phase and mixes the
+outputs `(1-α)·f₁(p) + α·f₂(p)` with `α = 0.35`, blending their durations the same way. So
+
+       b.read(sine().range(0.0, 4.0))
+
+glides through the bank instead of stepping through it, and the bank stops being five slots and
+starts being a sampled one-dimensional family of functions. The entry value is shared between
+the blended components, so the output stays continuous across a stage boundary exactly as it
+does for an integer address.
+
+There is a catch, and it is arithmetic rather than a bug. A periodic address is **latched once
+per stage**, so a reader with periodic durations visits exactly
+
+    lcm(address period, stage period) / stage period
+
+distinct addresses and then repeats forever. `sine().range(0, 4)` against quarter-cycle stages is
+four of them — the address cycles `2, 4, 2, 0, 2, 4, 2, 0, …` and the "glide" is a four-step
+sequencer wearing a signal's clothes. `sine().slow(3)` is twelve, which is better and still a
+sequence. What actually reads as a glide is a long count: `saw().slow(8)` against those stages is
+thirty-two, and an aperiodic address (`perlin()`, `rand()`) never repeats at all. Nothing here
+errors; the reader is simply less interesting than it looks, so it is worth knowing which case
+you are in.
+
+Count the distinct `MarfSample.address` values **rounded** when you check. An aliased address
+repeats to a few parts in 10⁴ rather than bit-exactly, because the probe instant is an exact
+rational and `PatQ.toDouble()` rounds it at twelve places — a raw `distinct()` reports seventeen
+different addresses for the four-value cycle above. `MarfSmokeTest` prints both cases.
+
+### What is deliberately not here yet
+
+- **Vector-valued stages.** Everything is `Double`. The place a `T` would go is `MarfStage.target`
+  plus the mix in `MarfResolvedStage.valueAt`; the curve is a `0..1` shaping function and stays
+  scalar either way, so the generalisation is a type parameter and an interpolator argument, not
+  a redesign.
+- **A bank entry that is itself a pattern.** A stage's continuous behaviour is a [`MarfCurve`](patterns.md#marf-kt-marfcurve), and
+  `MarfCurve.Shape` can close over anything, including another reader — but a nested pattern
+  given its own local temporal scope inside the stage is not modelled, and would want
+  `stagePhase` threaded into a real evaluation context rather than passed as a `Double`.
+
+Neither is blocked by anything in this file, and both were left out on purpose: the prototype is
+small so that whether the separation is the useful idea can be judged before it is generalised.
+
+`src/jvmMain/kotlin/afield/four/synth/Marf.kt` — [read the source](source/jvmMain/afield/four/synth/Marf/)
+
+### Top-level functions { #marf-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfCurveShape</span><span class="p">(</span><span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/Marf/#L226) | The shaping function of `curve` at local stage `phase`. Not clamped to `0..1`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfCurveValue</span><span class="p">(</span><span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/Marf/#L247) | The output of a stage moving from `from` toward `to`, at local stage `phase`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfCurve</span><span class="p">(</span><span class="n">atom</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L262) | One curve from a mini-notation atom. `exp`, `exp:1.5`, `osc:3`, `step:6`, `hold`, `smooth`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">curves</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">MarfCurve</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L288) | A pattern of curves from mini-notation. `curves("<linear exp hold osc:3>")`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stage</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span> <span class="o">=</span> <span class="nc">MarfCurve</span><span class="p">.</span><span class="nc">Linear</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L335) | The general stage constructor. `duration` is in cycles. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">holdAt</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L344) | Step to `target` and stay there for `duration` cycles. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rampTo</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L348) | Slew linearly to `target` over `duration` cycles. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">curveTo</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L352) | Slew to `target` as `phase^amount` — a convex rise above 1, concave below. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">oscTo</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L356) | Oscillate toward `target` and back, `cycles` times across the stage. See `MarfCurve.Osc`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfDuration</span><span class="p">(</span><span class="n">cycles</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatQ</span></code>](source/jvmMain/afield/four/synth/Marf/#L360) | A duration in cycles, exact and floored at `MARF_MIN_DURATION`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfDuration</span><span class="p">(</span><span class="n">cycles</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatQ</span></code>](source/jvmMain/afield/four/synth/Marf/#L364) | An already-exact duration, floored at `MARF_MIN_DURATION`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfBank</span><span class="p">(</span><span class="k">vararg</span> <span class="n">stages</span><span class="p">:</span> <span class="nc">MarfStage</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfBank</span></code>](source/jvmMain/afield/four/synth/Marf/#L390) | A bank from stages written out in order. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfBank</span><span class="p">(</span><span class="n">stages</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfStage</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfBank</span></code>](source/jvmMain/afield/four/synth/Marf/#L393) | A bank from a list — the form to use when the stages are computed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfValues</span><span class="p">(</span><span class="k">vararg</span> <span class="n">targets</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfBank</span></code>](source/jvmMain/afield/four/synth/Marf/#L399) | A bank of plain held values, for when only the addressing is interesting. `marfValues(0, .3, .9, .2, .8)` is the five-slot voltage source of the test in the design note. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marf</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">curve</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">MarfCurve</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">marfCurvePattern</span><span class="p">(</span><span class="nc">MarfCurve</span><span class="p">.</span><span class="nc">Linear</span><span class="p">)</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Boolean</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">constantTrue</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">speed</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">MarfFieldClock</span> <span class="o">=</span> <span class="nc">MarfFieldClock</span><span class="p">.</span><span class="nc">CYCLES</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;marf&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfReader</span></code>](source/jvmMain/afield/four/synth/Marf/#L668) | A reader whose stages come from independently patterned fields. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">MarfBank</span><span class="p">.</span><span class="nf">read</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">curve</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">MarfCurve</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">speed</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">MarfFieldClock</span> <span class="o">=</span> <span class="nc">MarfFieldClock</span><span class="p">.</span><span class="nc">CYCLES</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;reader&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfReader</span></code>](source/jvmMain/afield/four/synth/Marf/#L720) | A reader that traverses `this` bank along `address`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">MarfBank</span><span class="p">.</span><span class="nf">componentsAt</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">curveOverride</span><span class="p">:</span> <span class="nc">MarfCurve</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfComponent</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L772) | The bank slots contributing at `address`, with weights summing to 1. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marfCurvePattern</span><span class="p">(</span><span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">MarfCurve</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L795) | A constant curve, as a pattern — the default `curve` argument of `marf`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">constantTrue</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Boolean</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L799) | A pattern that is `true` everywhere — the default `trigger` argument of `marf`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">hold</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L833) | Sample and hold: the value of the event active at each instant, as a continuous signal. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">interp</span><span class="p">(</span><span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span> <span class="o">=</span> <span class="nc">MarfCurve</span><span class="p">.</span><span class="nc">Linear</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L853) | Interpolates between successive event onsets with `curve`, as a continuous signal. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">ramp</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L866) | Linear interpolation between successive event onsets. `interp(MarfCurve.Linear)`. |
+
+### Top-level values { #marf-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MARF&#95;DURATION&#95;DENOM</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/four/synth/Marf/#L301) | Resolution at which a `Double` duration becomes an exact [`PatQ`](patterns.md#tidalpatterns-kt-patq). See the file header. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">MARF&#95;MIN&#95;DURATION</span><span class="p">:</span> <span class="nc">PatQ</span></code>](source/jvmMain/afield/four/synth/Marf/#L304) | The floor on a stage duration, in cycles, so that a bad sample cannot stall the walk. |
+
+### MarfCurve { #marf-kt-marfcurve }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L183)
+
+The shape of one stage's traversal, as data rather than as a lambda.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">Hold</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L185) | Step to the target on entry and stay there — the sample-and-hold stage. `shape ≡ 1`. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">Linear</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L188) | `shape(p) = p`. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">Smooth</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L191) | Smoothstep, `p²(3-2p)` — zero slope at both ends, so stages join without a corner. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Exp</span><span class="p">(</span><span class="k">val</span> <span class="n">amount</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L197) | `shape(p) = p^amount`. Above 1 is a slow start and a fast arrival, below 1 the reverse; `exp` in `marfCurve` is `Exp(3.0)` and `log` is `Exp(1/3)`. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Osc</span><span class="p">(</span><span class="k">val</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L206) | A raised cosine, `0.5 - 0.5·cos(2π·cycles·p)`. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Step</span><span class="p">(</span><span class="k">val</span> <span class="n">treads</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L209) | A staircase in `treads` equal treads, reaching the target on the last one. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Shape</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">f</span><span class="p">:</span> <span class="p">(</span><span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">MarfCurve</span></code>](source/jvmMain/afield/four/synth/Marf/#L218) | An arbitrary shaping function of local stage phase. |
+
+### MarfStage { #marf-kt-marfstage }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MarfStage</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">PatQ</span> <span class="o">=</span> <span class="nc">PatQ</span><span class="p">.</span><span class="nc">ONE</span><span class="p">,</span> <span class="k">val</span> <span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span> <span class="o">=</span> <span class="nc">MarfCurve</span><span class="p">.</span><span class="nc">Linear</span><span class="p">,</span> <span class="k">val</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L326)
+
+One timed function segment: where to go, how long to take, and the shape of the going.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">PatQ</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">curve</span><span class="p">:</span> <span class="nc">MarfCurve</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+
+### MarfBank { #marf-kt-marfbank }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">MarfBank</span><span class="p">(</span><span class="k">val</span> <span class="n">stages</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfStage</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L373)
+
+Stored temporal material: a list of stages that several readers can traverse independently.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/Marf/#L376) |  |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L378) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">wrapIndex</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/Marf/#L381) | Bank indices wrap, so an address pattern never has to know how long the bank is. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/Marf/#L386) |  |
+
+### MarfComponent { #marf-kt-marfcomponent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MarfComponent</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">stage</span><span class="p">:</span> <span class="nc">MarfStage</span><span class="p">,</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L405)
+
+One bank stage and its weight in a blended (fractional-address) read.
+
+### MarfResolvedStage { #marf-kt-marfresolvedstage }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MarfResolvedStage</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">,</span> <span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">,</span> <span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">components</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfComponent</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L415)
+
+A stage as the reader actually entered it: resolved numbers, an exact span, and a departure value.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">PatQ</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">PatQ</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">trigger</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">components</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfComponent</span><span class="p">&gt;</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">PatQ</span></code>](source/jvmMain/afield/four/synth/Marf/#L427) | The exclusive end of this stage, in cycles. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">arc</span><span class="p">:</span> <span class="nc">PatArc</span></code>](source/jvmMain/afield/four/synth/Marf/#L430) | The half-open span this stage occupies. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueAt</span><span class="p">(</span><span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/Marf/#L433) | The blended output at local `phase`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">exitValue</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/Marf/#L444) | The value this stage leaves behind, which is the next stage's `from`. |
+
+### MarfSample { #marf-kt-marfsample }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MarfSample</span><span class="p">(</span><span class="k">val</span> <span class="n">reader</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycle</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">stageIndex</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">stagePhase</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">stageTime</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">stageDuration</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L456)
+
+Everything a reader knows at one instant — the temporal context a curve or a box is written against.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">reader</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cycle</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stageIndex</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stagePhase</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stageTime</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stageDuration</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### MarfReader { #marf-kt-marfreader }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">MarfReader</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">,</span> <span class="k">val</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">resolve</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">,</span> <span class="n">previous</span><span class="p">:</span> <span class="nc">MarfResolvedStage</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">MarfResolvedStage</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L484)
+
+A traversal of stored material: its own address, its own timing, its own phase, its own state.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">PatQ</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/Marf/#L494) | Drops the resolved timeline. Only matters for a reader whose fields read live box state. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stageAt</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfResolvedStage</span></code>](source/jvmMain/afield/four/synth/Marf/#L497) | The stage active at exact cycle `t`; before `origin`, stage 0 at phase 0. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfSample</span></code>](source/jvmMain/afield/four/synth/Marf/#L525) | The full temporal context at exact cycle `t`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">cycle</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfSample</span></code>](source/jvmMain/afield/four/synth/Marf/#L546) | The temporal context at cycle `cycle`. The form to call from a draw loop. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">atSeconds</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfSample</span></code>](source/jvmMain/afield/four/synth/Marf/#L549) | The temporal context `seconds` into a performance at `cps` cycles per second. |
+| [<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">cycle</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/Marf/#L553) | Just the output, at cycle `cycle`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">signal</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L562) | The continuous output, as a signal in the sense of PatSignals.kt. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">phase</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L565) | The local stage phase as a signal — a `0..1` sawtooth whose teeth are the stage durations. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">address</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L568) | The current address as a signal. Useful mostly for drawing what a reader is doing. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stageIndex</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L571) | The current stage index as a signal. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stagesIn</span><span class="p">(</span><span class="n">arc</span><span class="p">:</span> <span class="nc">PatArc</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfResolvedStage</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L574) | Every stage overlapping `arc`, in order — the drawing and testing surface. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">triggers</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/Marf/#L593) | Stage boundaries as a discrete pattern: one event per stage, spanning that stage, valued with its label. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/synth/Marf/#L601) |  |
+
+### MarfFieldClock { #marf-kt-marffieldclock }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MarfFieldClock</span></code>](source/jvmMain/afield/four/synth/Marf/#L630)
+
+Which time coordinate a reader's field patterns are read in.
+
+Constants: `CYCLES`, `STAGES`.
+
+## MarfSmokeTest.kt { #marfsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/MarfSmokeTest.kt` — [read the source](source/jvmMain/afield/four/synth/MarfSmokeTest/)
+
+### MarfSmokeTest { #marfsmoketest-kt-marfsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">MarfSmokeTest</span></code>](source/jvmMain/afield/four/synth/MarfSmokeTest/#L81)
+
+The worked example for `Marf.kt`, and the check that it holds together: one bank, several readers, and the five things worth looking at printed as text.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/MarfSmokeTest/#L97) |  |
 
 ## PatAlgebra.kt { #patalgebra-kt }
 
