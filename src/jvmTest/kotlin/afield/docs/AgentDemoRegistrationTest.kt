@@ -24,8 +24,8 @@ import kotlin.test.assertTrue
  * that noticed anything at all was `tools/test_demo_build_scripts.py`'s corpus count moving
  * `19 -> 20`, which says a demo arrived and nothing about whether it is checked.
  *
- * `dev_docs/DEMO_CORPUS_AUDIT.md` was written to warn about precisely this, four days before it
- * happened again.
+ * `dev_docs/DEMO_CORPUS_AUDIT.md` is dated 19 September and was written to warn about precisely
+ * this. `skinned_characters` landed the same day.
  *
  * ## The shape of the assertions
  *
