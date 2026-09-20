@@ -12,49 +12,64 @@ import kotlin.math.tanh
  * multilayer perceptron's weights, and [MlpWeights.glsl] emits a GLSL function that evaluates the
  * same network out of a storage buffer.
  *
- * The point of the exercise is a particle whose update rule was *trained* rather than written.
- * `flowMatch` (see `flowmatching.kt`) already fits a velocity field `v(x, t)` in a couple of
- * seconds of pure Kotlin; a compute shader stepping a buffer of particles can evaluate that field
- * per particle per frame, provided the two sides agree about what the network *is*. This file is
- * the agreement, and `afield.examples.four.NeuralFieldParitySmoke` is the measurement that the
- * agreement holds on real hardware.
+ * What that buys is a particle whose update rule was *trained* rather than written. `flowMatch`
+ * (see `flowmatching.kt`) already fits a velocity field `v(x, t)` in a couple of seconds of pure
+ * Kotlin; a compute shader stepping a buffer of particles can evaluate that field per particle per
+ * frame, provided the two sides agree about what the network *is*. This file is that agreement,
+ * and `afield.examples.four.NeuralFieldParitySmoke` measures that it holds on real hardware.
  *
  * Nothing here is particle-specific: a net that takes a position and returns a velocity, a net
  * that takes a neighbour offset and returns an interaction term, and a net that takes anything and
  * returns anything are all the same object. The particle system is what consumes it.
  *
- * ### Two comparisons, not one
+ * #### Two comparisons, not one
  *
  * There are two distinct errors between "the network Smile trained" and "the network the GPU
- * runs", they have very different sizes, and conflating them makes the honest one look like a bug.
+ * runs", they have very different sizes, and conflating them makes the unavoidable one look like
+ * a bug.
  *
  * - **Precision.** Smile evaluates in `Double`; a shader evaluates in `float`. Agreement is
  *   therefore limited to fp32 by construction — a few parts in a million, relative, and rather
- *   more for an output that is a cancelling sum. [evaluate] is the fp32 reference *in Kotlin*, so
- *   this error can be measured on its own with no GPU present at all.
+ *   more for an output that is a cancelling sum. `MlpWeights.evaluate` is the fp32 reference *in
+ *   Kotlin*, so this error can be measured on its own with no GPU present at all.
  * - **Transcription.** The order of the layers, the orientation of each weight matrix, the slope
  *   of the leaky ReLU, whether the output layer has an activation. Every one of these is either
  *   exactly right or grossly wrong, and a grossly wrong one still produces smooth, plausible,
  *   entirely fictional output.
  *
- * So the GPU is compared against [evaluate] — fp32 against fp32, where the only remaining freedom
- * is the order the hardware chooses to accumulate a dot product in — and [evaluate] is compared
- * against Smile separately. A single comparison against `Double` would have to be loose enough to
- * absorb the precision gap, which is a tolerance wide enough to hide a transposed matrix in a
- * small network.
+ * So the GPU is compared against `MlpWeights.evaluate`, fp32 against fp32, where the only
+ * remaining freedom is the order the hardware chooses to accumulate a dot product in; and
+ * `evaluate` is compared against Smile separately. A single comparison against `Double` would
+ * have to be loose enough to absorb the precision gap, which is a tolerance wide enough to hide a
+ * transposed matrix in a small network.
  *
- * ### The weight layout
+ * #### The weight layout
  *
- * [flat] runs layer by layer from the first hidden layer to the output layer. Each layer
- * contributes its weight matrix, row-major with one row per *output* neuron, followed by its bias
+ * `MlpWeights.flat` runs layer by layer from the first hidden layer to the output layer. Each
+ * layer contributes its weight matrix, row-major with one row per *output* neuron, then its bias
  * vector. So for a layer with `n` outputs over `p` inputs, the weight from input `i` to output `o`
  * is at `weightOffset(layer) + o * p + i`, and its bias is at `biasOffset(layer) + o`. The input
  * layer contributes nothing — it holds no weights.
  *
- * This is the layout a shader wants to read and the layout Smile happens to store, which is a
- * coincidence worth not relying on: [exportWeights] reads through `DenseMatrix.get(row, column)`
- * rather than copying memory, so a change of storage order upstream cannot silently transpose the
- * network.
+ * This is the layout a shader wants to read, and it is also the layout Smile happens to store.
+ * The two are not relied on to coincide: `VectorMLP.exportWeights` in `flowmatching.kt` reads
+ * element by element through `DenseMatrix.get(row, column)` rather than copying memory, so a
+ * change of storage order upstream cannot silently transpose the network.
+ */
+
+/**
+ * A flat, layer-major snapshot of a trained multilayer perceptron: the layer widths, the hidden
+ * activation, and one `FloatArray` holding every weight and bias.
+ *
+ * `VectorMLP.exportWeights` in `flowmatching.kt` builds one from a Smile network.
+ * `MlpWeights.glsl` turns one into a GLSL function that reads the same array out of a storage
+ * buffer, and [evaluate] is the fp32 Kotlin reference that GLSL is held to. The layout of [flat]
+ * is described in this file's overview above, and it is addressable rather than opaque:
+ * [weightOffset] and [biasOffset] give the start of any layer's matrix and bias vector.
+ *
+ * The constructor checks the widths against `flat.size`, so an export that is truncated or built
+ * for a different shape fails here rather than on the GPU, where the symptom is smooth, plausible
+ * output from the wrong network.
  */
 class MlpWeights(
     /** Width of the input vector. */

@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14385 public symbols across 366 source files**, 8284 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14385 public symbols across 366 source files**, 8286 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -28,7 +28,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 20 | 570 | 368 (64%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 78 | 2286 | 884 (38%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 4 | 150 | 133 (88%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 4 | 150 | 135 (90%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
 
@@ -259,8 +259,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 | Field4 language adapter for the Nano 8-bit assembly language. | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 21 | Runs a Nano program and hands back its final machine state, either as data or as a self-contained HTML panel for a box's output area. |  |
 | [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 | Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations: four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an instruction. |  |
-| [neuralparticles.kt](machine-learning.md#neuralparticles-kt) | Machine learning | 34 | 31 |  |  |
-| [neuralparticles_system.kt](machine-learning.md#neuralparticles-system-kt) | Machine learning | 31 | 29 |  |  |
+| [neuralparticles.kt](machine-learning.md#neuralparticles-kt) | Machine learning | 34 | 31 | Taking a small trained network to the GPU: `MlpWeights` is a flat, layer-major snapshot of a multilayer perceptron's weights, and `MlpWeights.glsl` emits a GLSL function that evaluates the same network out of a storage buffer. |  |
+| [neuralparticles_system.kt](machine-learning.md#neuralparticles-system-kt) | Machine learning | 31 | 31 | A particle system driven by a trained velocity field: `ShaderNeuralParticles` integrates a buffer of particles along the field in a compute pass and draws the same allocation as points, with no copy between the two. |  |
 | [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
 | [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
 | [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 1 |  |  |

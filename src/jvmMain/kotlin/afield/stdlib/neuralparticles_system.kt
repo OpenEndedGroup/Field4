@@ -24,6 +24,39 @@ import java.nio.ByteOrder
 import kotlin.math.ceil
 import kotlin.random.Random
 
+/**
+ * A particle system driven by a trained velocity field: [ShaderNeuralParticles] integrates a
+ * buffer of particles along the field in a compute pass and draws the same allocation as points,
+ * with no copy between the two.
+ *
+ * `neuralparticles.kt` settles what a network *is* on both sides of the CPU/GPU line and emits
+ * the GLSL that evaluates one; this file is what consumes that GLSL. The chain from a target
+ * shape to a moving cloud is `flowMatch`, then `FlowMatchField.export()`, then
+ * [ShaderNeuralParticles] and `installInto`. `afield.examples.four.NeuralParticlesSmoke` is the
+ * GPU smoke over that whole path, and the `neural_particles` agent transcript is that chain as
+ * three boxes.
+ *
+ * Two of the design decisions reach the caller, so they are stated here rather than only on the
+ * declarations that implement them:
+ *
+ * - **Positions are stored in the training frame**, not in the coordinates the field was
+ *   authored in, because integrating in input coordinates would convert into the frame and back
+ *   out again on every step to reach the same answer. So [NeuralParticleSettings]'s `viewScale`
+ *   and `viewCenter` are in normalised units, where a scale of about 2.6 frames a cloud of
+ *   roughly unit variance.
+ * - **A particle is travelling a journey, not wandering a force field.** A flow is a map: each
+ *   particle goes from one specific source point to wherever the field takes it by `t = 1`, then
+ *   starts again. That is why it carries a `start` and a `t`, and why `reset` has to seed from
+ *   the field's own source cloud whenever the field has one.
+ *
+ * Which settings are live follows from where each one is read. `particleCount` sizes the particle
+ * buffer, the compute dispatch and the point mesh at construction, so it cannot be raised
+ * afterwards, and `name` is written into the module and buffer names there. `phaseSpread`,
+ * `sourceJitter` and `randomSeed` are read by `reset`, which fills the buffer, so changing one
+ * takes a `reset` call. Everything else is read through a push-constant lambda every frame and
+ * takes effect on the next one, including `stepsPerCycle` and `dwellCycles`.
+ */
+
 /** The knobs [ShaderNeuralParticles] takes. */
 data class NeuralParticleSettings(
     /** Names the modules and buffers, so two systems in one renderer do not collide. */
@@ -118,8 +151,7 @@ data class NeuralParticleSettings(
 )
 
 /**
- * A particle system whose velocity field is a trained network: the step-2 deliverable of the
- * neural-particle pilot.
+ * A particle system whose velocity field is a trained network rather than a written rule.
  *
  * Each particle is a struct in a storage buffer, a compute pass integrates it one Euler step along
  * `neuralFieldVelocity`, and a point-list draw reads the same allocation with no copy. That is the
@@ -175,9 +207,16 @@ data class NeuralParticleSettings(
 class ShaderNeuralParticles(
     /** The trained field, from `FlowMatchField.export()`. */
     val export: FlowMatchExport,
+    /** The renderer both passes are built against; the box's own by default. */
     val renderer: Renderer = fromContext(),
     configure: NeuralParticleSettings.() -> Unit = {},
 ) {
+    /**
+     * The settings `configure` produced, kept live.
+     *
+     * Most of these are re-read every frame, so assigning one changes the picture without
+     * rebuilding anything; see the file overview for which are not.
+     */
     val settings = NeuralParticleSettings().apply(configure)
 
     /** The particle state. Read by both passes, owned by neither. */
