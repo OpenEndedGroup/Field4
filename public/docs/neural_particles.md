@@ -256,7 +256,7 @@ particle is a particle that silently stops interacting.
 
 The whole thing installs as **one** entry rather than four, because `ComputeTarget.render` runs every
 module before any other consumer, so four separate installs would interleave. If you build
-something like it, that ordering is the trap.
+something like it, install once rather than once per module.
 
 ---
 
