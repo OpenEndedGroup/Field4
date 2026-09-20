@@ -1,9 +1,9 @@
-# You're in a Field workspace — here's how to drive it
+# You're in a Field workspace
 
 Hello, agent. This folder is a **Field document**: a live-coding canvas of *boxes*
 (Kotlin, GLSL shaders, and other small languages) that Field runs on the fly. Field is
 an art-oriented live-coding IDE — graphics, sound, data, motion. Working here should be
-*fun and dependable*. This guide gets you productive fast.
+*fun and dependable*.
 
 ## What you're looking at
 
@@ -14,12 +14,12 @@ an art-oriented live-coding IDE — graphics, sound, data, motion. Working here 
   fine for quick manual changes; Field's file watcher syncs them within a few seconds.
 - **`README.md`** — the human-facing tour of this folder.
 
-## The golden path: drive Field, don't poke files
+## Drive Field, don't hand-edit its files
 
 To *run* code, see its output and errors, capture a screenshot, or build and save a new
 document, talk to the running Field through its **backdoor** and the **OperationTranscript**
-format. This is the dependable path — it gives you real output, real errors, and real
-pictures, not guesses.
+format. What comes back is what happened: the box's own output, its compile errors and
+exceptions, and the pixels it drew.
 
 The tooling lives in the Field repository (`tools/field_backdoor.py`); run these from the
 repo root. They attach to the running Field and operate on **this document** (its name is
@@ -42,7 +42,7 @@ array is your proof the code ran (and where compile errors and exceptions surfac
 ```yaml
 # scene.yaml
 operations:
-  - create: { box: hello, name: Hello, frame: {x: 40.0, y: 40.0, w: 200.0, h: 120.0},
+  - create: { box: hello, name: Hello, frame: {x: 40.0, y: 40.0, w: 300.0, h: 170.0},
               properties: { code: 'println("built by an agent")' } }
   - launch: { box: hello, property: code }
   - await:  { wait: pending }
@@ -87,14 +87,14 @@ macro run <name>      # apply it
 
 Read a user's saved macro, adapt the YAML for your ends, write it under a new name, run it.
 
-## Dependability notes (things that bite)
+## Things that bite
 
 - **`--document` is relative to the workspace root.** An absolute path loads an *empty*
   document. To reopen something you saved, save it *into* a workspace dir and open it by
   its relative name.
-- **CLI `run`/`launch <uid>` overrides stored code** with whatever `--value` you pass
-  (empty if omitted). To run a box's stored code, use a transcript `launch`/`execute` op
-  with no inline `code:`.
+- **CLI `run`/`launch <uid>` runs the box's stored code unless you replace it.** Passing
+  `--value` or `--file` replaces the stored property first; passing neither runs what the
+  box already holds, the same as a transcript `launch`/`execute` op with no inline `code:`.
 - **Always read `output`/`events`** from the JSON result rather than assuming success.
 - Every run logs to `.field-backdoor/logs/` in the repo; `--command status` prints the paths.
 

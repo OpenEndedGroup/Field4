@@ -8,7 +8,7 @@ while Field is running.
   `--workspace` at the folder that contains it.
 - **`metadata.edn`** is the document: it lists the boxes and their properties. Field
   manages it for you — you rarely need to edit it by hand.
-- **`<box>_<property>_.{kt,glsl,yaml,js}`** are *sidecar* files: the larger text
+- **`<box>_<property>_.{kt,glsl,yaml,js,…}`** are *sidecar* files: the larger text
   properties of each box (code, shaders, metadata) kept as editable files on disk.
 
 ## Two ways to work here
@@ -22,9 +22,12 @@ echo 'println("hello from a new box")' > hello_code_.kt
 ```
 
 Field detects `hello_code_.kt`, creates a box `hello`, positions it, loads the code, and
-saves to `metadata.edn`. The underscore before the dot (`_.`) is required. Supported
-properties: `code` (`.kt`), `fragment`/`vertex`/`compute` (`.glsl`), `metadata`
-(`.yaml`), `customization` (`.js`).
+saves to `metadata.edn`. The underscore before the dot (`_.`) is required. The extension
+follows the property: `code` is `.kt`, `metadata` is `.yaml`, `customization` is `.js`,
+`notes` is `.md`. A shader stage takes the extension of its own language: `.glsl` for
+`fragment`, `vertex`, `compute` and the ray-tracing stages, `.slang` for their Slang
+twins, `.metal` for `msl`, `.stacksl` for `stackSL`. `Box.ioSeparateProperties` in the
+Field source is the whole list.
 
 **2. Drive Field programmatically.** To *run* code, capture output and errors, take
 screenshots, build documents, and save them — use the agent automation path. If you are
