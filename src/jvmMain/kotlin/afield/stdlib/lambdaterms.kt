@@ -4,6 +4,28 @@
 package afield.stdlib
 
 /**
+ * λ-terms as a front end to the interaction nets in `interactionnets.kt`: text in, a reduced net out, a term back.
+ *
+ * The shortest useful thing is `LambdaTerms.normalise`, which runs parse, compile, reduce and readback in one call:
+ *
+ *     val run = LambdaTerms.normalise("(\\m n f x. m f (n f x)) (\\f x. f x) (\\f x. f (f x))")
+ *     run.printed   // "λa. λb. a (a (a b))", Church three, from add one two
+ *     run.steps     // how many reactions it took
+ *
+ * Two public names sit behind that. [Term] is the syntax tree, with `Var`, `Lam` and `App` nested inside it so that
+ * `Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names leaks into `afield.stdlib`.
+ * [LambdaTerms] is everything done to one: parsing, printing, compilation to the [Lambda] agent vocabulary, readback,
+ * and the reference evaluator the net's answer is checked against.
+ *
+ * Every answer here is computed twice. The net is one route; `LambdaTerms.referenceNormalOrder` is the other, and
+ * reduces by capture-avoiding substitution with no nets and no sharing anywhere in it, so the two routes share no
+ * machinery beyond the term type. `LambdaTerms.corpus` is the set of closed terms both are run over.
+ *
+ * The file lands on the Visualization page because a finished run keeps the [Net] it reduced, and `Net.toFLines`
+ * draws that net with its active pairs emphasised.
+ */
+
+/**
  * A λ-term: a variable, an abstraction, or an application.
  *
  * Three nested classes, so `Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names
