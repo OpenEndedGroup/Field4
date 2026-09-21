@@ -52,11 +52,19 @@ class AgentDemoRegistrationTest {
         const val TRANSCRIPTS = "dev_docs/agents/transcripts"
 
         /**
-         * The twenty demo documents this file was measured against, 2026-09-20 at `068055b54`.
+         * The twenty-one demo documents this file was measured against, 2026-09-21 at `bc71ed216`.
          *
          * Recount with `ls -1 dev_docs/agents/demos`. Adding a demo means adding its name here and
          * registering it in [DemoTranscriptExecSmokeTest] — two lines, and the failure below tells
          * you both.
+         *
+         * It went 20 -> 21 the morning after this class landed, and the class did the job it was
+         * written for: `bc71ed216` added `marf_demo` from a direction its author could not see, and
+         * both assertions below named it and said what to do about it. What an assertion cannot do
+         * is get itself run. Nothing runs `check` on commit, `bc71ed216`'s author ran the sibling
+         * guard they *had* noticed (`checkAgentTranscriptLayouts`) and not this one, and `main` was
+         * red for hours. That gap is argued about in `dev_docs/GUARD_CORPORA.md`; it is not fixed by
+         * a longer list here.
          */
         val DEMO_CORPUS = setOf(
             "alife_evolution",
@@ -70,6 +78,7 @@ class AgentDemoRegistrationTest {
             "interaction_nets_lambda",
             "keyframe_key_discovery",
             "logging_layer",
+            "marf_demo",
             "midi_clip",
             "path_tracer_instrument",
             "path_tracing_emitters",
@@ -84,8 +93,9 @@ class AgentDemoRegistrationTest {
         /**
          * Demo documents that no harness compiles or replays, with why, and what would fix it.
          *
-         * One entry, and it is a debt rather than a decision. Writing the transcript is the fix;
-         * until someone does, this line is the difference between a known gap and an invisible one.
+         * Two entries, and both are debts rather than decisions. Writing the transcript is the fix;
+         * until someone does, these lines are the difference between a known gap and an invisible
+         * one. Eleven Kotlin box bodies are named here and compiled by nothing.
          */
         val UNVERIFIED = mapOf(
             "skinned_characters" to
@@ -93,6 +103,13 @@ class AgentDemoRegistrationTest {
                 "open a Window and a Renderer, so the transcript that fixes this belongs in " +
                 "COMPILE_ONLY, not EXECUTE. Until it exists, seven Kotlin box bodies are compiled by " +
                 "nothing -- including gpu_crowd, the newest and most complex, which the same night added.",
+            "marf_demo" to
+                "Landed 2026-09-20 in bc71ed216 with no transcript, taking the corpus to 21. Three of " +
+                "its four boxes are pure CPU (pattern algebra into FLines), but the fourth -- " +
+                "b38c3ac4, `marf_sound` -- ends on patSpatial(), which opens a realtime audio device " +
+                "through Dough and Steam Audio, so the transcript that fixes this belongs in " +
+                "COMPILE_ONLY, not EXECUTE. Until it exists, four Kotlin box bodies are compiled by " +
+                "nothing.",
         )
     }
 
@@ -132,7 +149,7 @@ class AgentDemoRegistrationTest {
             "demo document(s) $gone are in DEMO_CORPUS but not on disk; if they were removed or " +
                 "renamed, update DEMO_CORPUS, UNVERIFIED and the counts in dev_docs/DEMO_CORPUS_AUDIT.md",
         )
-        assertTrue(found.size >= 20, "the demo corpus has shrunk to ${found.size}; it was 20 on 2026-09-20")
+        assertTrue(found.size >= 21, "the demo corpus has shrunk to ${found.size}; it was 21 on 2026-09-21")
     }
 
     /**
@@ -187,7 +204,7 @@ class AgentDemoRegistrationTest {
      * only, while its file says it is run. A weaker verification than the registry advertises is
      * exactly the failure mode this branch is about, in miniature.
      *
-     * Population measured 2026-09-20: 139 transcripts, 139 registry entries, no overlaps.
+     * Population measured 2026-09-21: 141 transcripts, 141 registry entries, no overlaps.
      */
     @Test
     fun theThreeVerificationLevelsAreDisjoint() {
@@ -197,13 +214,13 @@ class AgentDemoRegistrationTest {
             .filter { it.isFile && it.extension == "yaml" }
             .map { it.nameWithoutExtension }
             .toSet()
-        assertTrue(onDisk.size >= 139, "the transcript corpus has shrunk to ${onDisk.size}; it was 139 on 2026-09-20")
+        assertTrue(onDisk.size >= 141, "the transcript corpus has shrunk to ${onDisk.size}; it was 141 on 2026-09-21")
         val entries = DemoTranscriptExecSmokeTest.EXECUTE.size +
             DemoTranscriptExecSmokeTest.COMPILE_ONLY.size +
             DemoTranscriptExecSmokeTest.KOTLINJS.size
         assertTrue(
-            entries >= 139,
-            "the verification registries have shrunk to $entries entries; they held 139 on 2026-09-20",
+            entries >= 141,
+            "the verification registries have shrunk to $entries entries; they held 141 on 2026-09-21",
         )
 
         val classifiedTwice = DemoTranscriptExecSmokeTest.EXECUTE
