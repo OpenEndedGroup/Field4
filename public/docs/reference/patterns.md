@@ -320,17 +320,32 @@ Follows a [`HeadPoseSource`](patterns.md#headtrackedspatial-kt-headposesource) a
 
 ## HeadTrackedSpatialSmokeTest.kt { #headtrackedspatialsmoketest-kt }
 
+The listener half of `patSpatial`'s audio check: the pattern holds still and the head moves.
+
+[`PatSpatialSmokeTest`](patterns.md#patspatialsmoketest-kt-patspatialsmoketest) varies the tag and leaves the listener at the origin. Here the tag is fixed
+and a head pose of the shape OpenXR reports drives the HRTF, over six cases: an identity pose
+against no pose at all, a yaw, a step sideways, a walk towards the source, a tracking dropout,
+and a [`VirtualHead`](patterns.md#headtrackedspatial-kt-virtualhead) on its own thread writing poses while the render thread reads them.
+
+Nothing here is asserted against the wall clock. [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom)'s render loop has no pacing
+beyond sleeping when its ring is at target fill, so a capture that drains the ring as fast as
+blocks appear lets the whole chain free-run at whatever rate the machine allows. Every case
+prints the factor it reached and none of them depends on it; [`PatSpatialBudgetProbe`](patterns.md#patspatialbudgetprobe-kt-patspatialbudgetprobe) owns the
+timing questions.
+
+Run it with `tools/run_field_tests.py --id synth.head-tracked-spatial.smoke`.
+
 `src/jvmMain/kotlin/afield/four/synth/HeadTrackedSpatialSmokeTest.kt` — [read the source](source/jvmMain/afield/four/synth/HeadTrackedSpatialSmokeTest/)
 
 ### HeadTrackedSpatialSmokeTest { #headtrackedspatialsmoketest-kt-headtrackedspatialsmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">HeadTrackedSpatialSmokeTest</span></code>](source/jvmMain/afield/four/synth/HeadTrackedSpatialSmokeTest/#L48)
+[<code class="highlight"><span class="k">object</span> <span class="nc">HeadTrackedSpatialSmokeTest</span></code>](source/jvmMain/afield/four/synth/HeadTrackedSpatialSmokeTest/#L66)
 
 Proves that a head pose of the shape OpenXR reports aims Steam Audio's HRTF, on real audio.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/HeadTrackedSpatialSmokeTest/#L146) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/HeadTrackedSpatialSmokeTest/#L164) |  |
 
 ## LambdaSoundDocs.kt { #lambdasounddocs-kt }
 
@@ -2343,45 +2358,97 @@ A spatialised pattern, as one thing a box can return.
 
 ## PatSpatialBudgetProbe.kt { #patspatialbudgetprobe-kt }
 
+The `patSpatial` test that measures rather than asserts: Dough engines and Steam Audio effects in
+a tight loop, with no room, no ring and no audio thread.
+
+[`PatSpatialSmokeTest`](patterns.md#patspatialsmoketest-kt-patspatialsmoketest), [`HeadTrackedSpatialSmokeTest`](patterns.md#headtrackedspatialsmoketest-kt-headtrackedspatialsmoketest) and [`PatSpatialEngineSmoke`](patterns.md#patspatialenginesmoke-kt-patspatialenginesmoke) all render
+through [`PatSpatialRoom`](patterns.md#patspatial-kt-patspatialroom) and check the samples that came out. This one takes the arithmetic out
+of that design and times it alone: [`DoughEngine`](synthesis.md#dough-kt-doughengine)s driven straight, for one, two and four
+sources, against the milliseconds of audio a single block holds.
+
+It asserts nothing: the test entry that runs it checks the exit code and one marker line, so
+every figure it prints is one observation on one machine rather than a contract.
+`dev_docs/PAT_SPATIAL_MEASUREMENTS.md` keeps the last set alongside the method that produced it.
+
+The run drops the first tenth of its blocks as warmup, splits the per-block cost into its Dough
+and Steam Audio halves, and reports the median, p99, p99.9 and the worst block, because those
+move differently under load.
+
+Run it with `tools/run_field_tests.py --id synth.pat-spatial.budget`.
+
 `src/jvmMain/kotlin/afield/four/synth/PatSpatialBudgetProbe.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/)
 
 ### PatSpatialBudgetProbe { #patspatialbudgetprobe-kt-patspatialbudgetprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialBudgetProbe</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L40)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialBudgetProbe</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L61)
 
 Measures the cost of one [`DoughEngine`](synthesis.md#dough-kt-doughengine) per spatial source, against one audio block's deadline.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L47) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialBudgetProbe/#L68) |  |
 
 ## PatSpatialEngineSmoke.kt { #patspatialenginesmoke-kt }
+
+The delivery check on `patSpatial`: the only one of its tests that opens an audio device.
+
+[`PatSpatialSmokeTest`](patterns.md#patspatialsmoketest-kt-patspatialsmoketest) and [`HeadTrackedSpatialSmokeTest`](patterns.md#headtrackedspatialsmoketest-kt-headtrackedspatialsmoketest) pull [`PatSpatialBank`](patterns.md#patspatial-kt-patspatialbank) themselves, which
+proves the audio is right and says nothing about whether it reaches an output. This registers the
+launch with [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine) and lets that engine's own thread drain [`PatSpatialRing`](patterns.md#patspatial-kt-patspatialring) for four
+seconds.
+
+Two outcomes end the run green having proved nothing, and telling them apart is why a silent
+control patch is registered alongside the launch. `outputActive` false means no device opened.
+`outputActive` true with the control patch never rendered means a device opened and is not
+advancing: the engine refills its buffers only as OpenAL reports them processed, so a contended
+device leaves it rendering no patch at all while still reporting an active output. Each case
+names itself on stdout.
+
+An underrun is not read as a failure on its own either. The run records the render thread's own
+busy time and the machine's load average, and accepts an underrun only when that thread was well
+short of saturating a core on a machine carrying far more load than it has cores.
+
+Run it with `tools/run_field_tests.py --id synth.pat-spatial.engine`.
 
 `src/jvmMain/kotlin/afield/four/synth/PatSpatialEngineSmoke.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/)
 
 ### PatSpatialEngineSmoke { #patspatialenginesmoke-kt-patspatialenginesmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialEngineSmoke</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L29)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialEngineSmoke</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L52)
 
 Plays a spatialised pattern through the real [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine), and checks its thread pulled it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L32) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialEngineSmoke/#L55) |  |
 
 ## PatSpatialSmokeTest.kt { #patspatialsmoketest-kt }
+
+The audio check on `patSpatial`, run without an audio device: patterns that differ only in a
+spatial tag, and the samples that came out of each.
+
+This file and [`HeadTrackedSpatialSmokeTest`](patterns.md#headtrackedspatialsmoketest-kt-headtrackedspatialsmoketest) both pull [`PatSpatialBank`](patterns.md#patspatial-kt-patspatialbank) themselves and compare
+captures against each other rather than against remembered levels, which is what lets them run on
+a machine with no sound card. [`PatSpatialEngineSmoke`](patterns.md#patspatialenginesmoke-kt-patspatialenginesmoke) covers the half they cannot reach, and
+[`PatSpatialBudgetProbe`](patterns.md#patspatialbudgetprobe-kt-patspatialbudgetprobe) measures what a block costs.
+
+Of the six spatial tags `patSpatial` reads, `az`, `dist`, `occl` and `spat` each get a case here;
+`elev` and `air` get none. The remaining cases cover polyphony inside one source, `turnListener`,
+and whether the ring absorbed the render thread's worst block.
+
+Run it with `tools/run_field_tests.py --id synth.pat-spatial.smoke`.
 
 `src/jvmMain/kotlin/afield/four/synth/PatSpatialSmokeTest.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/)
 
 ### PatSpatialSmokeTest { #patspatialsmoketest-kt-patspatialsmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialSmokeTest</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L29)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PatSpatialSmokeTest</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L47)
 
 Proves the whole route -- pattern language, Dough, Steam Audio HRTF -- on real audio, in realtime.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L132) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/PatSpatialSmokeTest/#L150) |  |
 
 ## PatSynth.kt { #patsynth-kt }
 

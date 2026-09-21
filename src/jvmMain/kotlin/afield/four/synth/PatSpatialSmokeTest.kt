@@ -15,6 +15,23 @@ expect:
   stdoutContains:
     - "PAT_SPATIAL_SMOKE_PASSED"
 */
+
+/**
+ * The audio check on `patSpatial`, run without an audio device: patterns that differ only in a
+ * spatial tag, and the samples that came out of each.
+ *
+ * This file and [HeadTrackedSpatialSmokeTest] both pull [PatSpatialBank] themselves and compare
+ * captures against each other rather than against remembered levels, which is what lets them run on
+ * a machine with no sound card. [PatSpatialEngineSmoke] covers the half they cannot reach, and
+ * [PatSpatialBudgetProbe] measures what a block costs.
+ *
+ * Of the six spatial tags `patSpatial` reads, `az`, `dist`, `occl` and `spat` each get a case here;
+ * `elev` and `air` get none. The remaining cases cover polyphony inside one source, `turnListener`,
+ * and whether the ring absorbed the render thread's worst block.
+ *
+ * Run it with `tools/run_field_tests.py --id synth.pat-spatial.smoke`.
+ */
+
 /**
  * Proves the whole route -- pattern language, Dough, Steam Audio HRTF -- on real audio, in realtime.
  *
@@ -23,8 +40,9 @@ expect:
  * that a *tag in the pattern* becomes a spatial parameter. So the test writes patterns that differ
  * only in their `az` or `dist` annotation and requires the audio to differ in the matching way.
  *
- * It runs in realtime by construction -- there is no faster mode, because the render thread is the
- * point -- so it captures short windows and keeps the case list short.
+ * Each case boots a fresh room and closes it. The captures are not paced by the wall clock: the
+ * loop drains the ring as fast as blocks appear, so the chain free-runs, and nothing here asserts
+ * a rate.
  */
 object PatSpatialSmokeTest {
 

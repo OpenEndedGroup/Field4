@@ -13,6 +13,29 @@ expect:
   stdoutContains:
     - "PAT_SPATIAL_ENGINE_SMOKE_PASSED"
 */
+
+/**
+ * The delivery check on `patSpatial`: the only one of its tests that opens an audio device.
+ *
+ * [PatSpatialSmokeTest] and [HeadTrackedSpatialSmokeTest] pull [PatSpatialBank] themselves, which
+ * proves the audio is right and says nothing about whether it reaches an output. This registers the
+ * launch with [FieldAudioEngine] and lets that engine's own thread drain [PatSpatialRing] for four
+ * seconds.
+ *
+ * Two outcomes end the run green having proved nothing, and telling them apart is why a silent
+ * control patch is registered alongside the launch. `outputActive` false means no device opened.
+ * `outputActive` true with the control patch never rendered means a device opened and is not
+ * advancing: the engine refills its buffers only as OpenAL reports them processed, so a contended
+ * device leaves it rendering no patch at all while still reporting an active output. Each case
+ * names itself on stdout.
+ *
+ * An underrun is not read as a failure on its own either. The run records the render thread's own
+ * busy time and the machine's load average, and accepts an underrun only when that thread was well
+ * short of saturating a core on a machine carrying far more load than it has cores.
+ *
+ * Run it with `tools/run_field_tests.py --id synth.pat-spatial.engine`.
+ */
+
 /**
  * Plays a spatialised pattern through the real [FieldAudioEngine], and checks its thread pulled it.
  *
