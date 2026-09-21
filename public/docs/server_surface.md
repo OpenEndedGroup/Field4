@@ -353,18 +353,7 @@ The rebinding guard works on the WebSocket path as well as the HTTP one — that
 second-to-last pair. And with the switch fully on, a foreign origin still read the absolute path
 of the checkout, which is the read gap the `GET` row records.
 
-## What the tests pin
-
-Six test files. Three start a real Ktor application; three read source.
-
-| file | what it pins |
-| --- | --- |
-| `FieldApiCorsExposureTest` | the CORS block literally; the write-route → guard table; that the token header is not allow-listed |
-| `FieldApiWriteGuardTest` | `AFIELD_API_REQUIRE_SAME_SITE`, including its limitation |
-| `FieldWebSocketWriteGuardTest` | the upgrade guard, on the default and on the switch |
-| `DocsAnnotationRouteSecurityTest` | the four guarded routes, through the real CORS configuration |
-| `DocsAnnotationSecurityTest` | the guard predicates as pure functions |
-| `ServerSurfaceLedgerTest` | the read routes, the all-method routes, the static mounts, and every `/ws` command and raw channel, against the ledger page |
+## The route inventory
 
 For the full route-by-route inventory, see `dev_docs/server_surface_inventory.md`: every read
 route with its guard, every all-method route, every static directory mount, every `/ws`
