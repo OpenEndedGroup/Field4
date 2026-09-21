@@ -749,7 +749,7 @@ Hz; these two clips are the part of it a reader can listen to. The path renders 
 device, so `DocsAudioProvenance` re-renders both on every build and holds them against the
 numbers this file asserts.
 
-### Why two clips of one notation, rather than one good one
+### Why the two clips differ only in `voices`
 
 Polyphony cannot be demonstrated by a single clip. A recording of a chord and a recording of an
 arpeggio sound different for reasons that have nothing to do with voices, so a reader has no way
@@ -763,7 +763,7 @@ This is the same demonstration the `faust_polyphony` starting point makes in its
 once* box, which is where the shape of it came from. That box displays its two renders as players
 in its own output; these two fences are how the same comparison reaches the page.
 
-### The voice is one oscillator, and that is a measurement decision
+### Why the voice is a single sawtooth
 
 The program here is **not** the detuned pair the rest of `faust.md` uses. The starting point's
 chord box records why: two sawtooths 0.5% apart put a *beating pair* into the band the count is
@@ -771,7 +771,7 @@ taken in, so four voices reported four peaks and one voice reported two — whic
 thing the figure is for. A clip whose stated measurement is a peak count has to be a signal with
 one partial per note.
 
-### The band, and why a peak in it is a note
+### Why a peak in this band can only be a note
 
 The smoke test counts spectral peaks between `BAND_LO_HZ` and `BAND_HI_HZ` during the first chord,
 `[c4,ef4,g4]`. Its fundamentals are 130.81, 155.56 and 196.00 Hz and the lowest second harmonic in
@@ -1217,11 +1217,11 @@ which `patSpatialEventsForArc` forwards to Dough untouched. So everything audibl
 is the forwarding rule, which is the reason to reach for this path over `patSynth`, whose voice
 has no `lpf` to forward to.
 
-### The claims the audit asserts, which the clips cannot show on their own
+### The spatial parameters are not in the mono source
 
 Both published clips are peak-normalised, exactly as every other figure in these docs is, so
-neither of them can carry a claim about *level*. Three claims about this path are therefore
-measured on the pre-normalisation buffers and printed rather than left to the reader's ears:
+neither of them can carry a claim about *level*. Three things about this path are measured on
+the pre-normalisation buffers instead:
 
  1. **`pan/0` is a lossless mono tap, not a downmix.** Every event leaves
     `patSpatialEventsForArc` carrying `pan/0`, which puts all of an engine's energy in its left
@@ -1235,12 +1235,10 @@ measured on the pre-normalisation buffers and printed rather than left to the re
     there is no figure of the spatialisation: the direction lives entirely in the effect, and the
     effect is the part that needs the uncommitted binary.
 
-Claim 3 does a second job, and it is the one that makes these two clips publishable at all: it is
-a **determinism check on [`DoughEngine`](synthesis.md#dough-kt-doughengine)**. Two engines, separately booted and separately
-fed, agreeing to the bit is exactly what `DocsAudioProvenance` requires of a producer, and
-GraalWasm is not obviously the kind of thing that delivers it. If dough ever acquires an unseeded
-voice, claim 3 fails here — with a message about placement leaking into the signal — rather than
-showing up as an unexplained correlation drop in the corpus audit.
+The third says something about [`DoughEngine`](synthesis.md#dough-kt-doughengine) as well, and it is what makes these two clips
+publishable at all: two engines, separately booted and separately fed, agree to the bit. That is
+what `DocsAudioProvenance` requires of any producer, and a wasm runtime does not give it to you
+for free — so treat it as a property of this engine rather than of the platform.
 
 `src/jvmMain/kotlin/afield/four/synth/PatSpatialSoundDocs.kt` — [read the source](source/jvmMain/afield/four/synth/PatSpatialSoundDocs/)
 

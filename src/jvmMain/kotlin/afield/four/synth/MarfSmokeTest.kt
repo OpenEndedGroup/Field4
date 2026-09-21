@@ -22,10 +22,11 @@ expect:
  *
  * `main` prints five rows per reader — current address, current stage, stage phase, generated
  * value and stage-boundary pulses — for two readers over shared material, then swaps
- * `every(4) { rev() }` into one reader's address and prints them again. If content, timing,
- * addressing and interpolation really are separate, transforming one reader's address cannot
- * disturb the other and cannot alter the bank, and both of those are asserted rather than left to
- * the eye. The transform itself only bites on an address with steps inside the cycle: on a `<…>`
+ * `every(4) { rev() }` into one reader's address and prints them again. Content, timing, addressing
+ * and interpolation are separate, so transforming one reader's address cannot disturb the other and
+ * cannot alter the bank; the run checks both.
+ *
+ * The transform itself only bites on an address with steps inside the cycle: on a `<…>`
  * address, which holds one event per cycle, `rev()` has nothing to reverse, so the run repeats the
  * comparison over four stages a cycle and asserts that cycle 0 comes out reversed and cycle 1 does
  * not.

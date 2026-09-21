@@ -818,8 +818,8 @@ changed polyline in the file rather than a changed PNG blob. No AWT, no browser,
 window.
 
 A MARF figure is not a piano roll, which is why it has its own renderer. A roll draws events; a
-reader has a *continuous output* and a *stage structure*, and the interesting thing is how the two
-relate. So a reader's lane draws four things at one shared time scale:
+reader has a *continuous output* and a *stage structure*, and what a figure has to show is how the
+two relate. So a reader's lane draws four things at one shared time scale:
 
 - the **output**, as a polyline densely sampled through `MarfReader.at`;
 - the **stage boundaries**, as dashed verticals, one per stage the reader actually entered;
@@ -832,14 +832,14 @@ three lanes over one bank is the architecture's whole claim in one picture. A la
 plain signal rather than a reader — that is how the `hold` / `ramp` / `interp` figure is drawn,
 since those conversions produce signals and have no stages to show.
 
-### What each figure is checked against
+### What every figure guarantees
 
-As a FIELD_TEST (`synth.marf.gallery`) every figure renders to a temp dir and is asserted against
-the readers that produced it: one boundary vertical per stage, one polyline point per sample, one
-pulse tick per triggering stage, no stage starting past the plotted window, and no non-finite
-output. So a figure can neither invent a stage nor lose one.
+Every figure is drawn from the readers it claims to draw and held to them: one boundary vertical
+per stage, one polyline point per sample, one pulse tick per triggering stage, no stage starting
+past the plotted window, and no non-finite output. So a figure can neither invent a stage nor
+lose one.
 
-Two checks are about the layer rather than the drawing:
+Two of those properties are about the layer rather than the drawing:
 
 - **the output is continuous across every interior stage boundary whose arriving stage does not
   step** — exactly, comparing the departing stage's value at phase 1 against the arriving stage's
@@ -855,7 +855,8 @@ lives — that the patterned durations really are 1, 4, ¼ and 2 cycles exactly;
 `every(4) { rev() }` reverses the first cycle's addresses and leaves the next three; that a rest
 in a euclidean address holds the previous slot rather than snapping to zero.
 
-It writes no committed assets during the test. Pass an output dir as `args[0]` (or set
+Run the lot with `tools/run_field_tests.py --id synth.marf.gallery`; every figure renders to a
+temp dir and nothing committed is written. Pass an output dir as `args[0]` (or set
 `MARF_FIGURE_DIR`) to regenerate the committed figures under `public/docs/assets/marf/`.
 
 Add a figure by appending one `Figure` to `FIGURES`; `MarfDocsGuardTest` then requires
@@ -889,10 +890,11 @@ readers, and what each reader is doing printed as text.
 
 `main` prints five rows per reader — current address, current stage, stage phase, generated
 value and stage-boundary pulses — for two readers over shared material, then swaps
-`every(4) { rev() }` into one reader's address and prints them again. If content, timing,
-addressing and interpolation really are separate, transforming one reader's address cannot
-disturb the other and cannot alter the bank, and both of those are asserted rather than left to
-the eye. The transform itself only bites on an address with steps inside the cycle: on a `<…>`
+`every(4) { rev() }` into one reader's address and prints them again. Content, timing, addressing
+and interpolation are separate, so transforming one reader's address cannot disturb the other and
+cannot alter the bank; the run checks both.
+
+The transform itself only bites on an address with steps inside the cycle: on a `<…>`
 address, which holds one event per cycle, `rev()` has nothing to reverse, so the run repeats the
 comparison over four stages a cycle and asserts that cycle 0 comes out reversed and cycle 1 does
 not.
@@ -2754,15 +2756,15 @@ Every `.wav` here comes out of `patSynthRenderStereo`, which drives a real [`Pat
 [`SynthContext`](synthesis.md#signal-kt-synthcontext) block by block exactly as [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine) would. So these files are a record of
 the realtime path with no audio device attached, rather than a second implementation of it.
 
-### The three checks that are about the scheduler rather than the sound
+### Three properties of the scheduler
 
 **Block size does not change the output.** The same bar rendered at 64, 128, 512 and 1024 frames
 per block comes back bit-identical. A scheduler that started each note at the top of the block it
 fell in would pass every level and onset check here, and fail this one.
 
-**The seam voice is the offline voice.** `patRenderStereo` and `patSynthRenderStereo` are asked for
-the same bar, and their onset counts and levels are compared. The two are not bit-identical: the
-offline renderer works in seconds and truncates, this one works in frames and rounds, so a note can
+**The seam voice is the offline voice.** `patRenderStereo` and `patSynthRenderStereo` render the
+same bar to the same onset counts and the same levels, but not to the same bytes: the offline
+renderer works in seconds and truncates, this one works in frames and rounds, so a note can
 differ by a frame at each end and a dense passage by a few merged onsets.
 
 **The band analysis separates a kick from a hat.** [`BandSplit`](audio.md#bandanalysis-kt-bandsplit) over a kick-only render and a
