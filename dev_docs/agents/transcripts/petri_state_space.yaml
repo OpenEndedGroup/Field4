@@ -269,9 +269,8 @@ operations:
           }
 
           // An exhaustive search is exponential in how much is happening at once, so the useful
-          // question is not "does this work" but "how far does it get". Measure it rather than
-          // guess: the answer is a fact about your net and your machine, and it is worth knowing
-          // before you trust a green tick.
+          // question is not "does this work" but "how far does it get". The answer is a fact
+          // about your net and your machine, so measure it rather than guess.
           println(" n   full         reduced   speed-up   verdict     ms(full) ms(red)")
           for (n in 2..12) {
               val net = philosophers(n)

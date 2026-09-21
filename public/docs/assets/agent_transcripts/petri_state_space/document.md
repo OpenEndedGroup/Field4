@@ -200,7 +200,7 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_reduction" index="4" -->
 
 ```edn [field-box id="petri_ss_reduction" role="properties"]
-{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 59 "characters" 2774 "sha256" "54a1334b2f37c7aaccc27f010940ced8620351f07c2788221f8ced1803d33f87"}]}
+{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 58 "characters" 2719 "sha256" "427d174c1fac2411433bfa4d02b50211143acc141720856aad7095d7b984e3d6"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_reduction" name="code" path="petri_ss_reduction_code_.kt"]
@@ -220,9 +220,8 @@ fun philosophers(n: Int) = petri {
 }
 
 // An exhaustive search is exponential in how much is happening at once, so the useful
-// question is not "does this work" but "how far does it get". Measure it rather than
-// guess: the answer is a fact about your net and your machine, and it is worth knowing
-// before you trust a green tick.
+// question is not "does this work" but "how far does it get". The answer is a fact
+// about your net and your machine, so measure it rather than guess.
 println(" n   full         reduced   speed-up   verdict     ms(full) ms(red)")
 for (n in 2..12) {
     val net = philosophers(n)
