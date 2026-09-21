@@ -5,10 +5,10 @@ displayOpen("legend")
 
 val b = marfBank(
     rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
-    oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+    oscTo(0.7, 1.0, cycles = 3.4), curveTo(0.2, 0.25, amount = 4.0)
 )
-val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES, name = "A")
-val c = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "B")
+val a = b.read(pat("<0 3>").nums(), fields = MarfFieldClock.STAGES, name = "A")
+val c = b.read(pat("<0 1 2 3 4>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "B")
 val g = b.read(saw().slow(8).range(0.0, 4.0), duration = constant(0.25), name = "glide")
 
 // Three lanes at one shared time scale, so reading down a column compares the same instant.
@@ -53,8 +53,8 @@ markdown(
     """
     **One bank, three readers** — eight cycles, top to bottom:
 
-    - <span style="color:#73d1ff">blue</span> — `read "<0 1 2 1 3 4>"`
-    - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 2 4 1 3>"`, each address held three stages
+    - <span style="color:#73d1ff">blue</span> — `read "<0 3>"`, one address per stage
+    - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 1 2 3 4>"`, each address held three stages
     - <span style="color:#85e585">green</span> — `read saw slow 8`, a fractional address blending two slots
 
     Same five stages in all three. Only the trajectory differs.
