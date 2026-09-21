@@ -26,6 +26,16 @@ description: |
   purpose: `marfBank`, `Vector3f`, `FLine`, `PatArc` and `PatQ` all arrive through the default box
   preamble (`intro` in `Boxes.kt`), and a transcript that added imports would be compiling a
   different program from the one that ships.
+
+  **What this file claims, and what it does not.** It claims these four bodies still *compile*
+  against today's stdlib. It does not claim they still *behave* as their prose says: CI compiles
+  them with the terminal evaluation skipped, so a change that leaves every signature alone and
+  changes what a call does is invisible here by construction. The Marf surface these bodies depend
+  on is `marfBank`, `marfBankIn`, `MarfVector3f`, `rampTo`, `oscTo`, `holdAt`, `curveTo`,
+  `stageTo`, `MarfCurve.Smooth` / `.Exp` / `.Osc`, `MarfBank.read(value, duration, fields, name)`
+  with `MarfFieldClock.STAGES`, and the reader's `.value(t)`, `.stagesIn(PatArc(...))` and
+  `.signal()`. Two of the four boxes pass a multi-step alternation as a `STAGES` field pattern,
+  which is the idiom to check first if this file ever stops compiling.
 operations:
   - create:
       box: marf_readers

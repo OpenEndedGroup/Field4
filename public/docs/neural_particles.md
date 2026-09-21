@@ -151,7 +151,7 @@ length; `mixtureSource` fits an ellipse to each and pairs it, point for point, w
 Here is that construction on its own, on the CPU, with no GPU involved — the source it builds
 against the target it has to reach:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/mixture.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="470" padding="16"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/mixture.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="470" padding="16" embed=true alt="The letters Fi in grey outline on black, with a green ellipse fitted over each of the three closed subpaths — a large one across the F, a small circle on the dot of the i, a narrow one down its stem — and thin orange threads running from ellipse to outline showing the point-for-point pairing; below, a table reading closed subpaths found 3, points per component 1583, 623, 193, paired points 2399"}
 :::static
 val contours = layoutText("Fi", typeface("Helvetica", 300.0)).toFLines()
 val components = contourComponents(contours, total = 2400, seed = 7)

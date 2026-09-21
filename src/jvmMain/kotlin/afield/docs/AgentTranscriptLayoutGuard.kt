@@ -252,6 +252,24 @@ object AgentTranscriptLayoutGuard {
      * than a gap. Re-measured 2026-09-20: identical attribution to the spanning form over all 20
      * demos, 72 frames, so the change adds a failure mode and removes none.
      *
+     * That corpus is **21 demos and 77 demo frames** as of 2026-09-21, when `marf_demo` landed. The
+     * sentence above is deliberately not edited to match: what it claims is that the two parsers
+     * agreed *over the corpus they were compared on*, and retyping the numbers would assert a
+     * comparison nobody re-ran. [main] prints the live population on every run, which is the
+     * number to believe. To recount the demo half on its own:
+     *
+     * ```
+     * grep -roh '"frame" #afield.rect' dev_docs/agents/demos --include=metadata.edn | wc -l
+     * ```
+     *
+     * Two traps in that one line, both hit while writing it. `--include=metadata.edn` is
+     * load-bearing: without it the `document.md` mirrors are counted too and the answer is 120.
+     * And it is `grep -oh … | wc -l`, not `grep -c`, because `-c` counts matching *lines* and a
+     * `metadata.edn` is one enormous line — that spelling answers 64. The glob you would reach for
+     * first cannot be written in this KDoc at all: an adjacent `*` and `/` close the comment and
+     * swallow the rest of the file. `dev_docs/GUARD_CORPORA.md` is the argument for why a dated
+     * measurement in prose has to say that it is one.
+     *
      * `root` is the document's implicit container box and legitimately has no frame; it is the only
      * id exempted, and it is exempted by name so that a *box* called anything else cannot slip
      * through as one.
