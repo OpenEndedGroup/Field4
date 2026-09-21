@@ -818,8 +818,8 @@ changed polyline in the file rather than a changed PNG blob. No AWT, no browser,
 window.
 
 A MARF figure is not a piano roll, which is why it has its own renderer. A roll draws events; a
-reader has a *continuous output* and a *stage structure*, and the interesting thing is how the two
-relate. So a reader's lane draws four things at one shared time scale:
+reader has a *continuous output* and a *stage structure*, and what a figure has to show is how the
+two relate. So a reader's lane draws four things at one shared time scale:
 
 - the **output**, as a polyline densely sampled through `MarfReader.at`;
 - the **stage boundaries**, as dashed verticals, one per stage the reader actually entered;
@@ -832,14 +832,14 @@ three lanes over one bank is the architecture's whole claim in one picture. A la
 plain signal rather than a reader — that is how the `hold` / `ramp` / `interp` figure is drawn,
 since those conversions produce signals and have no stages to show.
 
-### What each figure is checked against
+### What every figure guarantees
 
-As a FIELD_TEST (`synth.marf.gallery`) every figure renders to a temp dir and is asserted against
-the readers that produced it: one boundary vertical per stage, one polyline point per sample, one
-pulse tick per triggering stage, no stage starting past the plotted window, and no non-finite
-output. So a figure can neither invent a stage nor lose one.
+Every figure is drawn from the readers it claims to draw and held to them: one boundary vertical
+per stage, one polyline point per sample, one pulse tick per triggering stage, no stage starting
+past the plotted window, and no non-finite output. So a figure can neither invent a stage nor
+lose one.
 
-Two checks are about the layer rather than the drawing:
+Two of those properties are about the layer rather than the drawing:
 
 - **the output is continuous across every interior stage boundary whose arriving stage does not
   step** — exactly, comparing the departing stage's value at phase 1 against the arriving stage's
@@ -855,7 +855,8 @@ lives — that the patterned durations really are 1, 4, ¼ and 2 cycles exactly;
 `every(4) { rev() }` reverses the first cycle's addresses and leaves the next three; that a rest
 in a euclidean address holds the previous slot rather than snapping to zero.
 
-It writes no committed assets during the test. Pass an output dir as `args[0]` (or set
+Run the lot with `tools/run_field_tests.py --id synth.marf.gallery`; every figure renders to a
+temp dir and nothing committed is written. Pass an output dir as `args[0]` (or set
 `MARF_FIGURE_DIR`) to regenerate the committed figures under `public/docs/assets/marf/`.
 
 Add a figure by appending one `Figure` to `FIGURES`; `MarfDocsGuardTest` then requires
