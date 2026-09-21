@@ -206,8 +206,12 @@ class MarfDocsGuardTest {
         for (figure in MarfGallery.FIGURES) {
             val snippet = figure.snippet ?: continue
             val named = clocksNamedIn(snippet)
-            // CYCLES is the default and is spelled by omission, so it is not required in the text.
-            val used = figure.pageClocks - MarfFieldClock.CYCLES
+            // No clock is "spelled by omission" any more. Until 2026-09-21 CYCLES was the default,
+            // so this subtracted it before comparing; the default is now AUTO, which resolves to
+            // STEPS or CYCLES depending on the pattern's shape. There is therefore no single clock
+            // an omission stands for, and a snippet that leaves one out is not self-describing —
+            // so a figure's snippet must name every clock its lanes were built with, exactly.
+            val used = figure.pageClocks
             assertEquals(
                 used,
                 named,
@@ -219,18 +223,42 @@ class MarfDocsGuardTest {
         }
     }
 
+    /**
+     * Replaces `no listing on the page builds a reader on an alternation without naming a clock`,
+     * struck 2026-09-21 because its premise inverted.
+     *
+     * That test flagged any listing whose address was a `<…>` alternation and which named no
+     * `fields`, on the grounds that it would then be read under the default `CYCLES` and latched at
+     * whatever wall-clock instant a stage began, rather than stepping one entry per stage. True
+     * while `CYCLES` was the default. The default is now `AUTO`, which sends an alternation to
+     * `STEPS` — one entry per stage, which is the behaviour the old test was protecting. It had
+     * become a test that fails the page for being right, so it is gone rather than adjusted.
+     *
+     * What survives is the reason the page needs a clock section at all: the default is decided
+     * from the pattern's shape, so a reader cannot work out what they will get without being told
+     * the rule. This pins that the page still tells them, and names both outcomes.
+     */
     @Test
-    fun `no listing on the page builds a reader on an alternation without naming a clock`() {
-        val calls = kotlinFences(page.readText()).flatMap { readerCalls(it) }
+    fun `the page explains what the default resolves to, and names both answers`() {
+        val text = page.readText()
+        val calls = kotlinFences(text).flatMap { readerCalls(it) }
         assertTrue(calls.size >= 8, "the call scanner found only ${calls.size} reader calls; it is broken")
 
-        val silent = calls.filter { usesAlternation(it) && "fields" !in it }
+        for (required in listOf("MarfFieldClock.STEPS", "MarfFieldClock.CYCLES", "AUTO", "fieldClock")) {
+            assertTrue(
+                required in text,
+                "the page must name $required: the default resolves by pattern shape, so a reader " +
+                    "who is not told the rule cannot predict which clock a listing without a " +
+                    "`fields` argument will get."
+            )
+        }
+
+        // And at least one listing must show the omission, because that is the common case and a
+        // page where every example names a clock never demonstrates the default at all.
         assertTrue(
-            silent.isEmpty(),
-            "these listings read an alternation address under the default CYCLES clock, where it is " +
-                "latched at whatever wall-clock instant a stage happens to begin rather than " +
-                "stepping one entry per stage — name a fields argument or use a bare step list:\n" +
-                silent.joinToString("\n\n")
+            calls.any { usesAlternation(it) && "fields" !in it },
+            "no listing shows an alternation without a `fields` argument, so the page never shows " +
+                "what AUTO actually does with the idiom it was written for."
         )
     }
 

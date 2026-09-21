@@ -642,8 +642,59 @@ class MarfTest {
     }
 
     @Test
-    fun `every reader knows which clock it was built with`() {
-        assertEquals(MarfFieldClock.CYCLES, marfValues(0, 1).read(pat("0 1").nums()).fieldClock)
+    fun `STEPS and STAGES agree exactly when a field's events fill their cycle, and not otherwise`() {
+        // The page states this boundary, so it is pinned here. Both clocks read one field value per
+        // stage; they differ only in WHICH instant each stage reads at, so they agree whenever the
+        // step grid has one entry per cycle -- which is exactly when the events fill the cycle.
+        fun addresses(p: PatPattern<Double>, clock: MarfFieldClock) =
+            marfValues(0, 1, 2, 3).read(p, duration = constant(1.0), fields = clock, name = "x")
+                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(4))).take(4).map { it.address }
+
+        // `<...>` is one event filling each cycle, so there is one step and the clocks agree.
+        val altSteps = addresses(pat("<0 3>").nums(), MarfFieldClock.STEPS)
+        val altStages = addresses(pat("<0 3>").nums(), MarfFieldClock.STAGES)
+        assertEquals(altStages, altSteps, "an alternation fills its cycle, so both clocks agree")
+
+        // `slow(3)` holds one event across three cycles -- still one step per cycle.
+        val slowSteps = addresses(pat("<0 1 2>").nums().slow(3), MarfFieldClock.STEPS)
+        val slowStages = addresses(pat("<0 1 2>").nums().slow(3), MarfFieldClock.STAGES)
+        assertEquals(slowStages, slowSteps, "slow(3) holds, so both clocks agree")
+
+        // A TRAILING REST does not fill the cycle, and that is where they part: the rest is a step
+        // under STEPS, so each address gets two stages, while STAGES still reads one per cycle.
+        val restSteps = addresses(pat("<0 3> ~").nums(), MarfFieldClock.STEPS)
+        val restStages = addresses(pat("<0 3> ~").nums(), MarfFieldClock.STAGES)
+        assertEquals(listOf(0.0, 0.0, 3.0, 3.0), restSteps, "the rest is a step, and it holds")
+        assertEquals(listOf(0.0, 3.0, 0.0, 3.0), restStages, "STAGES reads one instant per cycle")
+        assertNotEquals(restStages, restSteps, "so a rest is exactly where the two clocks diverge")
+    }
+
+    @Test
+    fun `every reader knows which clock it was built with, and AUTO is resolved before it is asked`() {
+        // AUTO is the default and never survives construction: a reader reports the reading it got.
+        // A stepped address is a sequence, so it gets STEPS — this is the case that used to answer
+        // CYCLES and read "<0 3> 1" as "<0 3>" without saying anything.
+        assertEquals(MarfFieldClock.STEPS, marfValues(0, 1).read(pat("0 1").nums()).fieldClock)
+
+        // A signal has no discrete event to step through, so it stays a voltage. Walking it would
+        // sample once per cycle, and a cycle-periodic signal sampled once per cycle is a constant.
+        assertEquals(
+            MarfFieldClock.CYCLES,
+            marfValues(0, 1).read(saw().range(0.0, 1.0)).fieldClock
+        )
+
+        // AUTO is decided from the LEADING field, so a stepped address with a continuous duration is
+        // a sequence: one reader carries one clock.
+        assertEquals(
+            MarfFieldClock.STEPS,
+            marfValues(0, 1).read(pat("0 1").nums(), duration = saw().range(0.5, 1.0)).fieldClock
+        )
+
+        // And an explicit clock is always carried through untouched.
+        assertEquals(
+            MarfFieldClock.CYCLES,
+            marfValues(0, 1).read(pat("0 1").nums(), fields = MarfFieldClock.CYCLES).fieldClock
+        )
         assertEquals(
             MarfFieldClock.STAGES,
             marfValues(0, 1).read(pat("<0 1>").nums(), fields = MarfFieldClock.STAGES).fieldClock
