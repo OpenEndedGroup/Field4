@@ -4,8 +4,36 @@ import afield.four.Renderer
 import afield.four.util.Camera
 import afield.stdlib.linalg.Vector3f
 
+/**
+ * All four of the path tracer's glass materials in one scene: clear, absorbing, frosted, and a
+ * thin pane.
+ *
+ * `public/docs/path_tracing.md` prints this scene as its glass figure and
+ * `dev_docs/agents/transcripts/path_tracing_glass.yaml` launches it, so what the file builds is
+ * what those two are written about. Left to right: a sphere of `PathTraceMaterial.glass()`, one
+ * given an `attenuationColor`, one given a `roughness` of 0.32, and a quad of `thinGlass`.
+ *
+ * Most of the geometry here is background, since what a transparent material shows is mostly
+ * whatever is behind it. The floor is a checkerboard of 0.55-unit tiles and the wall behind the
+ * spheres is eighteen horizontal stripes, both built from the same two diffuse greys, one ten times
+ * the reflectance of the other. Each material moves that pattern its own way: refraction displaces
+ * the stripes, absorption tints them by how far the ray travelled inside the solid, roughness
+ * scatters them, and the thin pane leaves their positions where they are, because `thinGlass`
+ * transmits per crossing and has no thickness to refract across.
+ *
+ * The returned renderer is set to ten bounces rather than the default five, because a ray that
+ * enters and leaves a sphere has spent two of them before reaching anything else, and to an
+ * exposure of 1.5 for a floor this dark. With no `environmentPath` the light is a constant white
+ * environment of radiance one; a path is read by `PathTraceEnvironment.fromFile`, which takes EXR,
+ * Radiance and ordinary image files.
+ */
+
 /** Clear glass, absorbing green glass, frosted glass and a thin blue pane, from left to right. */
 object PathTraceGlassDemo {
+    /**
+     * Builds the scene, points a camera at it and installs a [PathTracingRenderer] under
+     * `renderer`, returning it so a box can `blitToScreen` or reconfigure it.
+     */
     fun install(renderer: Renderer, environmentPath: String? = null, width: Int = 640, height: Int = 360): PathTracingRenderer {
         val scene=PathTraceScene()
         val dark=scene.material(PathTraceMaterial.diffuse(0.055f,0.055f,0.055f))

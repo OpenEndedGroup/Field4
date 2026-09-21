@@ -13,42 +13,54 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
- * Real GPU checks for [PathTracingRenderer.emitterSampling], in the order that matters.
+ * Real GPU checks for `PathTracingRenderer.emitterSampling`, the path tracer's direct sampling of
+ * emissive triangles: four scenes, each measured against a number that exists outside this file.
  *
- * **Unbiasedness first.** A variance win from a biased estimator is a regression dressed as a win,
- * and a wrong area-to-solid-angle Jacobian, a missing cosine or a double-counted emission arm all
- * *look* like a win: they change the image and they reduce noise.
+ * Unbiasedness is checked before variance. A variance win from a biased estimator reduces noise
+ * and changes the image, which is what a wrong area-to-solid-angle Jacobian, a missing cosine and
+ * a double-counted emission arm all do as well, so the noise reduction on its own says nothing
+ * about which of the two happened.
  *
- * The trap in testing that is picking one scene. The obvious scene — a small bright lamp in the
- * dark — is the one where BSDF sampling barely works, so its own converged image is still noisy,
- * and a reference that noisy cannot resolve a two-percent bias no matter how tight the tolerance
- * reads. So there are three scenes, and the sharp ones are not the dramatic one:
+ * Which scene a check uses decides what it can resolve. A small bright lamp in the dark is where
+ * BSDF sampling barely works, so its own converged image stays noisy, and a reference that noisy
+ * cannot resolve a two-percent bias at any tolerance. Three of the four arms below are therefore
+ * uniform-radiance scenes, where both sides converge and the comparison is sharp:
  *
- *  - [enclosureAgainstEnvironment] — a sphere inside a uniformly emissive cube, one bounce. Every
- *    direction carries radiance one, so this is the identical integral as the same sphere under a
- *    constant unit *environment* map, which the tracer already solves through a completely separate
- *    and independently checked next-event path. One bounce means neither run applies an MIS weight
- *    at all, so what is under test is exactly the new pdf: its normalisation and its Jacobian. It is
- *    an absolute, cross-mechanism check, not a self-comparison, and both sides converge fast.
- *  - [enclosureComposition] — the same enclosure with six differently coloured faces and two
- *    bounces, emitter sampling on against off. Now both arms fire and both MIS weights matter, and
- *    the selection table's probability has to stay attached to the right triangle or the answer
- *    tints. Uniform near-field radiance again means the off run converges, so the comparison is
- *    sharp rather than noise-limited.
- *  - [lampBox] — the dramatic scene, two small lamps in the dark, which is where the *variance*
- *    claim lives. Its bias check is reported at two reference budgets: if the residual difference
- *    falls like one over the square root of the budget, it is the reference's own noise, and if it
- *    does not, it is bias. That decay is asserted, because a fixed tolerance here would be a
- *    tolerance on noise.
+ *  - `inertWithoutEmitters` — a scene with nothing emissive in it, where on and off must agree bit
+ *    for bit. Which means the two runs have to stop on the same sample, and a polled sample count
+ *    cannot be made to land there, so the second run targets whatever the first reached and the
+ *    pair is retried until they match.
+ *  - `enclosureAgainstEnvironment` — a sphere inside a uniformly emissive cube, one bounce. Every
+ *    direction carries radiance one, so this is the same integral as the same sphere under a
+ *    constant unit *environment* map, which the tracer solves through a separate, independently
+ *    checked next-event path. One bounce means neither run applies an MIS weight at all, so what is
+ *    under test is the new pdf alone: its normalisation and its Jacobian. Both furnace means are
+ *    also asserted against 1.0, so the arm is absolute and not a self-comparison.
+ *  - `enclosureComposition` — the same enclosure with six differently coloured faces and two
+ *    bounces, emitter sampling on against off. Both arms fire and both MIS weights matter, and a
+ *    selection probability that has come off its triangle tints the answer. Uniform near-field
+ *    radiance again means the off run converges, so this resolves a fraction of a percent.
+ *  - the lamp box, driven from [run] — two small lamps in the dark, which is the scene the variance
+ *    claim is measured in. Its bias residual is reported at two reference budgets: a residual that
+ *    falls like one over the square root of the budget is the reference's own noise, and one that
+ *    holds is bias. That decay is asserted, because a fixed tolerance there would be a tolerance on
+ *    noise.
  *
- * The lamp box is also built so the things most likely to be wrong are measured. Two lamps of
- * different size, colour and power: a table whose probability and triangle index have come apart
- * shows as a colour shift, not as noise. One of them one-sided and facing down: its back face is
- * culled on a BSDF hit, so it has to be dark to the direct sampler too. A sphere on the floor,
- * whose shadow *is* the shadow ray — had the occlusion query not been shortened to stop before the
- * light, every shadow ray would hit the lamp itself, every direct contribution would be discarded,
- * and the result would be a correct image with no improvement at all. Nothing but the variance
- * floor catches that, so it is asserted here alongside the bias checks.
+ * The lamp box is built around the three failures the uniform scenes cannot show. Its two lamps
+ * differ in size, colour and power, so a table whose probability and triangle index have come apart
+ * shows as a colour shift rather than as noise. One of them is one-sided and faces down, because a
+ * back face culled on a BSDF hit has to be dark to the direct sampler too. And a sphere sits on the
+ * floor, where its shadow is a shadow ray: the integrator's occlusion query stops a thousandth
+ * short of the sampled point, so that a lamp cannot occlude its own connection, and a query that
+ * ran the whole way would discard every direct contribution and leave a correct image with no
+ * variance improvement in it. The RMSE ratio asserted here is what would notice.
+ */
+
+/**
+ * Four arms measured at 96x72 on the software BVH backend, then three figures at 480x360. Each arm
+ * prints a `PASS` line naming the population it measured. A live renderer is required throughout,
+ * so this carries no `FIELD_TEST` annotation and is driven from a box instead:
+ * `dev_docs/agents/demos/path_tracing_emitters/verify.yaml` is the transcript that does it.
  */
 object PathTraceEmitterGpuSmoke {
     private const val WIDTH = 96

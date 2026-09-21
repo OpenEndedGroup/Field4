@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14580 public symbols across 371 source files**, 8432 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14580 public symbols across 371 source files**, 8437 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -13,7 +13,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 334 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 31 | 1444 | 1209 (83%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 27 | 638 | 294 (46%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 27 | 638 | 299 (46%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 28 | 858 | 449 (52%) | Making a shape behave. |
@@ -135,7 +135,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FaustEngine.kt](synthesis.md#faustengine-kt) | Synthesis | 51 | 23 | The Faust compiler, running inside Field. | [Faust](../faust.md) |
 | [FaustPattern.kt](synthesis.md#faustpattern-kt) | Synthesis | 62 | 35 | A pattern plays a Faust program. | [Faust](../faust.md) |
 | [FaustPoly.kt](synthesis.md#faustpoly-kt) | Synthesis | 48 | 34 | A Faust program played polyphonically, by a pattern. | [Making a sound in Field: every path there is](../sound_paths.md) |
-| [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 18 |  |  |
+| [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 18 | The two published clips that make polyphony audible: one chord progression, eight voices and one. |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 53 | 53 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. | [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 15 | The file that opens an audio device: the OpenAL output stream Field plays through, the optional capture stream `audioInput()` reads from, and the mixer that sums every registered patch into it. |  |
@@ -241,7 +241,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Midi.kt](audio.md#midi-kt) | Audio | 81 | 35 | A Standard MIDI File surface for Field. |  |
 | [MidiDevices.kt](audio.md#mididevices-kt) | Audio | 51 | 33 | Live MIDI device I/O, and offline rendering of a `MidiClip` to a WAV through the JDK's own software synthesizer. |  |
 | [MidiPat.kt](audio.md#midipat-kt) | Audio | 18 | 12 | The bridge between the pattern algebra and `MidiClip`, plus a piano roll drawn as FLines. |  |
-| [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 |  |  |
+| [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 | Smoke cover for the Standard MIDI File surface: writes a clip, reads it back, exports a pattern, imports one, draws a roll, enumerates devices and opens a real output port. |  |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
 | [MorphoCircuit.kt](languages.md#morphocircuit-kt) | Languages | 15 | 11 | The grow-and-draw handle: a compiled MorphoHDL circuit that expands a few cells per frame while its layout relaxes between expansions. |  |
 | [MorphoFLines.kt](languages.md#morphoflines-kt) | Languages | 12 | 11 | Drawing a MorphoHDL circuit with Field's FLines. | [Somebody else's language, running in Field](../morpho_examples.md) |
@@ -280,14 +280,14 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 | Compositional structure: the transforms that build a piece out of a pattern, and the pitch vocabulary — scales, named chords, and voice leading. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How completions are ranked](../completion_ranking.md), [Faust](../faust.md) |
 | [PatCondense.kt](patterns.md#patcondense-kt) | Patterns | 26 | 15 | The shortest mini-notation expression that plays a given rhythm. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 | Bridge from `pat(...)` into scalar functions (`Functions.Fn`). |  |
-| [PathTraceEmitterGpuSmoke.kt](renderers.md#pathtraceemittergpusmoke-kt) | Renderers | 2 | 2 |  |  |
-| [PathTraceGlassDemo.kt](renderers.md#pathtraceglassdemo-kt) | Renderers | 2 | 1 |  |  |
+| [PathTraceEmitterGpuSmoke.kt](renderers.md#pathtraceemittergpusmoke-kt) | Renderers | 2 | 2 | Real GPU checks for `PathTracingRenderer.emitterSampling`, the path tracer's direct sampling of emissive triangles: four scenes, each measured against a number that exists outside this file. |  |
+| [PathTraceGlassDemo.kt](renderers.md#pathtraceglassdemo-kt) | Renderers | 2 | 2 | All four of the path tracer's glass materials in one scene: clear, absorbing, frosted, and a thin pane. |  |
 | [PathTraceGltf.kt](renderers.md#pathtracegltf-kt) | Renderers | 4 | 3 | glTF and GLB into a `PathTraceScene`: hierarchy baked to world space, PBR parameters mapped onto `PathTraceMaterial`, and an extension check that refuses rather than renders the wrong thing. |  |
 | [PathTraceGpuSmoke.kt](renderers.md#pathtracegpusmoke-kt) | Renderers | 6 | 3 | GPU smoke tests and a demo entry point for `PathTracingRenderer`. | [Progressive path tracing](../path_tracing.md) |
 | [PathTraceInstrument.kt](renderers.md#pathtraceinstrument-kt) | Renderers | 53 | 23 | The path tracer's instrument: what it is doing, why it restarted, and how fast it is converging. | [Progressive path tracing](../path_tracing.md) |
-| [PathTraceMediumGpuSmoke.kt](renderers.md#pathtracemediumgpusmoke-kt) | Renderers | 6 | 4 |  |  |
+| [PathTraceMediumGpuSmoke.kt](renderers.md#pathtracemediumgpusmoke-kt) | Renderers | 6 | 6 | Real GPU checks for the path tracer's participating medium: `PathTracingRenderer.mediumDensity` and everything that is sampled along a ray rather than at a surface. |  |
 | [PathTraceScene.kt](renderers.md#pathtracescene-kt) | Renderers | 23 | 6 | What the path tracer traces: triangles, materials, textures and an environment map, all as plain Kotlin with no device attached. | [Progressive path tracing](../path_tracing.md), [A polytope, cut open, and traced](../chain_polytope_render.md) |
-| [PathTraceShaderBoxes.kt](renderers.md#pathtraceshaderboxes-kt) | Renderers | 3 | 1 |  |  |
+| [PathTraceShaderBoxes.kt](renderers.md#pathtraceshaderboxes-kt) | Renderers | 3 | 3 | `pathTracingHere`: a path tracer whose material function is the box's own editable compute shader, authored and hot-reloaded exactly like any other Field shader. |  |
 | [PathTraceTriMesh.kt](renderers.md#pathtracetrimesh-kt) | Renderers | 9 | 9 | `TriMesh` into `PathTraceScene`, so that anything in Field which produces a mesh can be traced. |  |
 | [PathTracingRenderer.kt](renderers.md#pathtracingrenderer-kt) | Renderers | 54 | 37 | The path tracer itself: BVH upload, the two traversal backends, accumulation, and the history reprojection that keeps an image usable while a camera moves. |  |
 | [PatKolakoski.kt](patterns.md#patkolakoski-kt) | Patterns | 7 | 7 | Kolakoski rhythms: a bar whose own run lengths are written into it. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Agent transcript gallery](../agent_transcripts.md) |
@@ -302,7 +302,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatSpatialBudgetProbe.kt](patterns.md#patspatialbudgetprobe-kt) | Patterns | 2 | 1 |  |  |
 | [PatSpatialEngineSmoke.kt](patterns.md#patspatialenginesmoke-kt) | Patterns | 2 | 1 |  |  |
 | [PatSpatialSmokeTest.kt](patterns.md#patspatialsmoketest-kt) | Patterns | 2 | 1 |  |  |
-| [PatSpatialSoundDocs.kt](audio.md#patspatialsounddocs-kt) | Audio | 23 | 23 |  |  |
+| [PatSpatialSoundDocs.kt](audio.md#patspatialsounddocs-kt) | Audio | 23 | 23 | The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches. |  |
 | [PatSynth.kt](patterns.md#patsynth-kt) | Patterns | 47 | 24 | A pattern on the audio seam: `pat(...)` driving Field's own voices in realtime. | [A pattern that moves particles](../chain_pattern_particles.md) |
 | [PatSynthDocs.kt](patterns.md#patsynthdocs-kt) | Patterns | 8 | 5 |  |  |
 | [PatTranscription.kt](patterns.md#pattranscription-kt) | Patterns | 74 | 25 | Recovered audio, written back out as notation Field can re-render. |  |
@@ -360,7 +360,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 driven from a Field box, in owned mode. | [Sonic Pi](../sonic_pi.md) |
-| [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 |  |  |
+| [SonicPiEditorExtension.kt](audio.md#sonicpieditorextension-kt) | Audio | 5 | 1 | The `#sonicpi` editor extension and the vocabulary it completes against. |  |
 | [SonicPiLaunch.kt](audio.md#sonicpilaunch-kt) | Audio | 12 | 7 | The handle Field holds while Sonic Pi is playing, and the registration that ties it to a box's lifecycle. |  |
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |

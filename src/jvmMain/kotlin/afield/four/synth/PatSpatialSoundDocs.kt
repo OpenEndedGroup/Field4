@@ -22,32 +22,31 @@ expect:
 /**
  * The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches.
  *
- * [patSpatial]'s output cannot be published, and the reason is structural rather than a matter of
- * somebody getting round to it. Three separate things have to be true for a clip to appear behind
- * an `audio=` fence, and this path fails two of them:
+ * [patSpatial]'s output cannot be published, and the reason is structural. Three separate things
+ * have to be true for a clip to appear behind an `audio=` fence, and this path fails two of them:
  *
  *  * **The docs runner renders offline**, through `renderWav(name, path)` over the backdoor. There
  *    is no offline half of [patSpatial] to call: [PatSpatialLaunch.advanceOffline] consumes what
  *    [PatSpatialRoom]'s render thread has already produced, in real time, so asking it for four
  *    seconds of audio takes four seconds and no flag makes it faster.
  *  * **[DocsAudioProvenance] re-renders every fence on every build** and fails when a render
- *    fails. The HRTF needs Steam Audio's `libphonon`, which is *not committed* —
- *    `./gradlew fetchSteamAudioNatives` downloads it — so on a clean clone, on CI, and in `check`
+ *    fails. The HRTF needs Steam Audio's `libphonon`, which is *not committed*;
+ *    `./gradlew fetchSteamAudioNatives` downloads it. So on a clean clone, on CI, and in `check`
  *    that render does not merely differ, it cannot start.
  *
  * So what is published here is the half of the chain that *is* offline and *is* committed: the
  * pattern through one [DoughEngine], taken as mono. That is not a stand-in for the spatialised
- * output and is not labelled as one. It is the exact buffer
- * [PatSpatialRoom.spatialiseSource] copies into `source.mono` and hands to
- * [afield.four.audio.steamaudio.BinauralEffect] — the input to the part that has no figure.
+ * output and is not labelled as one. It is the exact buffer [PatSpatialRoom] copies into
+ * `source.mono` and hands to [afield.four.audio.steamaudio.BinauralEffect]: the input to the part
+ * that has no figure.
  *
  * ## What the two clips are for
  *
  * A single clip of a synth voice makes no claim. These two are the same notation, the same engine
- * and the same gain, differing only in a **tag that is not a spatial tag**:
- * [FIGURES]`[1]` adds `lpf`, which [patSpatialEventsForArc] forwards to Dough untouched. So
- * everything audible between them is the forwarding rule — which is the reason to reach for this
- * path over [patSynth], whose voice has no `lpf` to forward to.
+ * and the same gain, differing only in a **tag that is not a spatial tag**: the second adds `lpf`,
+ * which [patSpatialEventsForArc] forwards to Dough untouched. So everything audible between them
+ * is the forwarding rule, which is the reason to reach for this path over [patSynth], whose voice
+ * has no `lpf` to forward to.
  *
  * ## The claims the audit asserts, which the clips cannot show on their own
  *
@@ -57,9 +56,9 @@ expect:
  *
  *  1. **`pan/0` is a lossless mono tap, not a downmix.** Every event leaves
  *     [patSpatialEventsForArc] carrying `pan/0`, which puts all of an engine's energy in its left
- *     channel. [audit] requires the right channel to be silent — that is what lets
- *     [PatSpatialRoom.spatialiseSource] `arraycopy` the left channel rather than compute
- *     `0.5*(L+R)`, and it is why the source signal has full amplitude rather than half of it.
+ *     channel. The smoke test requires the right channel to peak below [RIGHT_CHANNEL_CEILING],
+ *     which is what lets [PatSpatialRoom] `arraycopy` the left channel rather than compute
+ *     `0.5*(L+R)`, and why the source signal has full amplitude rather than half of it.
  *  2. **The six spatial tags never reach Dough.** Asserted on the event maps, not on the audio:
  *     `spat`, `az`, `elev`, `dist`, `occl` and `air` are consumed by this path and `lpf` is not.
  *  3. **`az` is not in the signal.** The same pattern rendered with `az = 0` and with
@@ -67,12 +66,17 @@ expect:
  *     there is no figure of the spatialisation: the direction lives entirely in the effect, and the
  *     effect is the part that needs the uncommitted binary.
  *
- * Claim 3 does a second job worth naming, because it is what makes these two clips publishable at
- * all: it is a **determinism check on [DoughEngine]**. Two engines, separately booted and separately
+ * Claim 3 does a second job, and it is the one that makes these two clips publishable at all: it is
+ * a **determinism check on [DoughEngine]**. Two engines, separately booted and separately
  * fed, agreeing to the bit is exactly what [DocsAudioProvenance] requires of a producer, and
  * GraalWasm is not obviously the kind of thing that delivers it. If dough ever acquires an unseeded
  * voice, claim 3 fails here — with a message about placement leaking into the signal — rather than
  * showing up as an unexplained correlation drop in the corpus audit.
+ */
+
+/**
+ * Renders the two `pat_spatial.md` source clips, asserts the three claims about them and writes the
+ * WAVs; `main` is the `synth.pat-spatial.sound` entrypoint.
  */
 object PatSpatialSoundDocs {
 

@@ -21,11 +21,10 @@ expect:
 /**
  * The two published clips that make polyphony audible: one chord progression, eight voices and one.
  *
- * `public/docs/faust.md` had no `audio=` fence anywhere on it. It described a polyphonic instrument
- * across ten subsections, printed onset tables in samples and peak counts in Hz, and never once let
- * the reader hear the thing — while [DocsAudioProvenance] existed the whole time to keep exactly
- * this kind of clip honest, and the path renders offline with no device. That is the gap these two
- * figures close.
+ * `faust.md` describes a polyphonic instrument in prose, onset tables in samples and peak counts in
+ * Hz; these two clips are the part of it a reader can listen to. The path renders offline with no
+ * device, so [DocsAudioProvenance] re-renders both on every build and holds them against the
+ * numbers this file asserts.
  *
  * ## Why two clips of one notation, rather than one good one
  *
@@ -34,16 +33,16 @@ expect:
  * to tell a voice bank from a well-chosen pattern. What cannot be explained away is **the same
  * notation, the same program and the same gain, rendered at `voices = 8` and at `voices = 1`**: the
  * notes are identical, so everything you can hear between them is voice allocation. At one voice
- * every note after the first steals the only voice there is, and [FaustVoiceBank]'s steal is audible
- * by design — see [FaustVoiceBank.stealReleaseFrames], which measures the click it costs.
+ * every note after the first steals the only voice there is, and that steal is audible:
+ * [FaustVoiceBank.stealReleaseFrames] measures the click it costs.
  *
  * This is the same demonstration the `faust_polyphony` starting point makes in its *three notes at
  * once* box, which is where the shape of it came from. That box displays its two renders as players
- * in its own output and has done since 2026-08-13; nothing of it reached the page.
+ * in its own output; these two fences are how the same comparison reaches the page.
  *
  * ## The voice is one oscillator, and that is a measurement decision
  *
- * [SOURCE] is deliberately **not** the detuned pair the rest of `faust.md` uses. The starting point's
+ * The program here is **not** the detuned pair the rest of `faust.md` uses. The starting point's
  * chord box records why: two sawtooths 0.5% apart put a *beating pair* into the band the count is
  * taken in, so four voices reported four peaks and one voice reported two — which muddies the only
  * thing the figure is for. A clip whose stated measurement is a peak count has to be a signal with
@@ -51,12 +50,17 @@ expect:
  *
  * ## The band, and why a peak in it is a note
  *
- * [audit] counts spectral peaks between [BAND_LO_HZ] and [BAND_HI_HZ] during the first chord,
+ * The smoke test counts spectral peaks between [BAND_LO_HZ] and [BAND_HI_HZ] during the first chord,
  * `[c4,ef4,g4]`. Its fundamentals are 130.81, 155.56 and 196.00 Hz and the lowest second harmonic in
  * the chord is 261.6 Hz, so nothing but a fundamental can appear in that band: counting peaks there
  * counts notes sounding. Eight voices must show three and one voice must show one, and the one-voice
- * render must report steals. Those are the assertions, and they are the page's claims rather than a
- * proxy for them.
+ * render must report steals. Those are the assertions, and `faust.md` is required to carry both
+ * captions verbatim, so its prose cannot drift off the audio it publishes.
+ */
+
+/**
+ * Renders the two `faust.md` polyphony clips, counts the fundamentals in each and writes the WAVs;
+ * `main` is the `synth.faust.poly.sound` entrypoint.
  */
 object FaustPolySoundDocs {
 
