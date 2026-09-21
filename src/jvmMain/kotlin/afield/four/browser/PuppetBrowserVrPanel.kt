@@ -60,11 +60,7 @@ class PuppetBrowserVrPanel(
             stereo.stereoCamera.base.p.setAspect(eyeAspect)
         }
         stereo.stereoCamera.base.setAspect(eyeAspect)
-        panel.place(
-            Vector3f(0f, 0f, distanceMeters),
-            Vector3f(1f, 0f, 0f),
-            Vector3f(0f, 1f, 0f),
-        )
+        placeInitialPanel(panel, stereo.stereoCamera.base.at, distanceMeters)
 
         val halfWidth = panel.halfWidth
         val halfHeight = panel.halfHeight
@@ -150,6 +146,13 @@ class PuppetBrowserVrPanel(
     }
 
     companion object {
+        internal fun placeInitialPanel(panel: PuppetBrowserPanel, eye: Vector3f, distanceMeters: Float) {
+            // The initial camera looks along +Z, so its screen-right is -X. A +X panel basis
+            // faces away from the viewer and mirrors browser text. Orient the model, not the UVs,
+            // so texture sampling and raycast input continue to share the same coordinates.
+            panel.faceToward(Vector3f(eye).add(0f, 0f, distanceMeters), eye)
+        }
+
         private val vertexShader = """
             #version 460
             layout(location = 0) in vec3 inPosition;

@@ -649,8 +649,43 @@ private val RETURN_TAIL = Regex("""(?:^|[^A-Za-z0-9_.])return$""")
  * receiver is that the list is already bounded by the type — but not unbounded: `Any`'s extensions are
  * every `also`/`let`/`takeIf` in scope plus anything a box declares on `Any?`, and a pathological receiver
  * should slow a keystroke down, not stall it. Truncation is reported in the result note.
+ *
+ * SIZED AGAINST FIELD'S REAL CLASSPATH, not the stdlib. At 800 this cut the commonest receivers in the
+ * language: measured over Field's 445-entry classpath, `String.` yields 973 receiver-keyed hits, `Vec3.`
+ * 983 (its generated swizzles), `List<Int>.` 818 — so a String lost `zip`/`zipWithNext`/`windowed`/
+ * `withIndex` (275 distinct names truncated to 142) and a Vec3 lost 37 swizzles. The tell was maddening:
+ * analysing the same snippet against the stdlib jar ALONE stayed under the cap and answered correctly, so
+ * ADDING classpath roots appeared to REMOVE stdlib extensions. Worse, [AaSymbolIndex.extensionsByReceiver]
+ * holds each receiver's names in hash order, so which names died was arbitrary and differed per index —
+ * `uppercase` survived while `zip` did not, for no reason a reader could see.
+ *
+ * 4000 leaves ~4x headroom over the largest receiver measured while still bounding a pathological one.
+ * It is not free, but it is cheap: warm, `String.` measured 201-232ms returning all 434 rows against 124ms
+ * returning the truncated 253, and `Vec3.` was no slower (96-169ms either way). Cold, the first request to
+ * a fresh session costs ~2.6s whatever the receiver — that is session warmup, not this cap (measured by
+ * asking for the SMALLEST receiver first: `Any.`, 25 rows, also took 2.6s).
+ *
+ * Truncation, when it does bite, drops the most GENERIC keys first: [internalNamesOf] returns the
+ * receiver's own classifier before its supertypes and `Any`/`Object` last, and this cap keeps a prefix of
+ * that order.
  */
-private const val RECEIVER_INDEX_CAP = 800
+private const val RECEIVER_INDEX_CAP = 4000
+
+/**
+ * How many of a PACKAGE's top-level names one request will resolve — `kotlin.math.‸`.
+ *
+ * Deliberately NOT [RECEIVER_INDEX_CAP], though it used to be. The two caps guard opposite things: the
+ * receiver cap bounds a list a TYPE has already narrowed, so it should be as high as the classpath needs,
+ * while this one bounds an UNNARROWED walk of a package. `afield.stdlib` alone has 3947 top-level names,
+ * so raising the shared constant to 4000 would have brought it under the cap and started enumerating it at
+ * a bare dot. Measured, with this cap temporarily at 4000: `afield.stdlib.` answers, but with 1200 rows
+ * (the transport limit) in 196ms warm / 933ms cold — the cost is real but modest, and the LATENCY is not
+ * the reason to refuse. The reason is the answer: 3947 names cut to 1200 by the transport and then to the
+ * client's 80 visible rows, all in alphabetical order, is the "truncate the alphabet" non-answer this file
+ * fights everywhere else. Saying "type a character" is the better answer, and one character brings any
+ * package back under the cap.
+ */
+private const val PACKAGE_ENUMERATION_CAP = 800
 
 /**
  * Named-argument completion needs declaration names, not a call-site-substituted signature. Keeping
@@ -1373,22 +1408,22 @@ class AaCompleter(
                 // keystroke — but the consequence was that a fully-qualified call answered with
                 // sub-packages only: `kotlin.math.‸sin` came back with 1 candidate and no `sin`, and a bare
                 // path was 7 of the caret sweep's misses per mode. Writing a package path out by hand is a
-                // deliberate act, and the same cap the receiver index uses (800 resolutions, well inside
-                // the measured p50) bounds it. Truncation is reported in the note, as there.
+                // deliberate act, and [PACKAGE_ENUMERATION_CAP] (800 resolutions, well inside the measured
+                // p50) bounds it. Truncation is reported in the note, as for the receiver index.
                 val callableNames = index.callables[pkg].orEmpty()
                     .filter { prefix.isEmpty() || it.startsWith(prefix) }
-                // …but only a package that FITS. Resolving 800 of `afield.stdlib`'s 3877 top-level names in
+                // …but only a package that FITS. Resolving 800 of `afield.stdlib`'s 3947 top-level names in
                 // alphabetical order is the same "truncate the alphabet" mistake the transport used to
                 // make, and it costs 233ms of a keystroke to make it. So enumerate a package that fits the
                 // cap (`kotlin.math` — 100 rows, and `sin` among them), and otherwise say so in the note:
                 // one typed character brings any package back under the cap.
-                if (callableNames.size > RECEIVER_INDEX_CAP && prefix.isEmpty()) {
+                if (callableNames.size > PACKAGE_ENUMERATION_CAP && prefix.isEmpty()) {
                     packageTruncated = "$pkg has ${callableNames.size} top-level names — " +
                         "not enumerated at an empty prefix; type a character"
                 } else {
                     callableNames.asSequence()
                         .flatMap { nm -> findTopLevelCallables(FqName(pkg), Name.identifier(nm)) }
-                        .take(RECEIVER_INDEX_CAP)
+                        .take(PACKAGE_ENUMERATION_CAP)
                         .forEach { sym -> asCandidate(sym, AaCandidate.Kind.TOP_LEVEL, pkg)?.let(out::add) }
                 }
                 return out

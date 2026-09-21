@@ -220,7 +220,12 @@ object AaCompletionClient {
                     text = snippet,
                     cursor = cursor,
                 ),
-                "${metadata.size} candidates",
+                // The note travels on a SUCCESSFUL response too, and dropping it here is how a silent
+                // truncation stayed invisible: the sidecar reported "receiver-index truncated at 800 of
+                // 973 candidates for kotlin/String" on every `String.` completion and nobody ever saw it,
+                // because only the failure paths above read `resp.message`. KI2 logs this detail on the
+                // `completion backend=AA …` line, so a capped answer now says so where it is being served.
+                "${metadata.size} candidates" + (resp.message.takeIf { it.isNotBlank() }?.let { "; $it" } ?: ""),
             )
         }.getOrElse {
             Outcome(null, "error ${it.javaClass.simpleName}: ${it.message}")

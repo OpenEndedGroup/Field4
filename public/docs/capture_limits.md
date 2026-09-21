@@ -23,9 +23,11 @@ announce themselves. The silent ones are the subject of this page.
 
 ---
 
-## The silent one: a capture that reports success
+## A former silent failure: a capture that reports success
 
-`screenshot-box` can return a picture of nothing, with `ok: true`, and nothing anywhere says so.
+`screenshot-box` used to return a picture of nothing with `ok: true`. Captures requesting open
+outputs now reject missing content and unsettled layout. These two historical captures show the
+failure that motivated that check.
 
 Here are two runs of the **same box** with the **same command**. One variable changes: whether a
 browser client was attached at the moment the box ran.
@@ -58,8 +60,8 @@ Run the same box with the client already attached and everything else identical:
   "viewport": { "x": 0.0,  "y": 0.0,   "w": 2200.0, "h": 2800.0 } }
 ```
 
-Both say `ok: true`. The only thing that distinguishes them is the **clip**, and the clip is in the
-reply of every capture already.
+Both historical replies say `ok: true`. The **clip** distinguishes them, and remains worth checking
+even with readiness checks: automation cannot know which picture you intended.
 
 ### Why it happens
 
@@ -78,21 +80,21 @@ not disagree. **The clip is the box's own rectangle**, so its size is whatever t
 collapsed to, times the device pixel ratio. The signature to watch for is not a number — it is a
 clip much smaller than the output you were expecting.
 
-### Why the existing guard does not catch it
+### How it is now rejected
 
 `screenshot-box` already opens outputs by default (`--open-outputs` is the default in
 `tools/field_backdoor.py`; `--no-open-outputs` turns it off), and the prep script does hold a
 readiness precondition before shooting — deliberately so, after a figure published with a "loading
 waveform" badge in the corner.
 
-But that precondition asks whether anything is **declaring itself busy**: an unnavigated iframe, an
-`aria-busy` element, a "connecting…" status. An output area that was never populated declares
-nothing. It reads as finished.
+Checking only whether anything **declares itself busy** misses an output area that was never
+populated. Box and targeted window captures now open the disclosures first, then require visible,
+populated content, loaded images and iframes, and stable geometry within the preparation deadline.
+An expired layout wait is a failure, not permission to photograph a box handle. Animation inside
+a fixed-size output is still allowed: this checks geometry, not whether the pixels stop moving.
 
-There is a second loop that waits for the content to be **laid out** and to stop changing. That one
-would notice — but its expiry is not an error. It breaks out of the wait and the capture proceeds.
-So the failure mode is eight seconds of waiting for content that will never arrive, followed by a
-successful photograph of a box handle.
+There is no minimum image size; tiny valid outputs are allowed. For an intentional box-handle
+capture use `--no-open-outputs`. For an editor-only window capture, omit `--open-outputs`.
 
 ### What to do instead
 

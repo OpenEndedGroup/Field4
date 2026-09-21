@@ -27,6 +27,12 @@ expect:
   # stays green where no sidecar is running.
   stdoutNotContains:
     - "✗"
+    # The sidecar reports a truncated candidate list in its note, which now reaches this log line via
+    # `AaCompletionClient`'s outcome detail. It used to be dropped on the success path, and that is
+    # exactly how `RECEIVER_INDEX_CAP = 800` silently deleted `zip` (and 37 of Vec3's swizzles) from
+    # every completion on Field's real classpath while the stdlib-only measurements stayed green. A
+    # truncation here is a cap that has stopped fitting the classpath, not a passing run.
+    - "receiver-index truncated"
 */
 /**
  * STAGE D live end-to-end: exercises the REAL KI2 → AA-sidecar completion chain in a running Field JVM.
