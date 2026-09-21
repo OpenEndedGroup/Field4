@@ -14,11 +14,31 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-28 source file(s), 858 public symbol(s), 449 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+28 source file(s), 858 public symbol(s), 462 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## CSVReader.kt { #csvreader-kt }
+
+A reader for motion-capture CSV, and a clip that samples it at an arbitrary time.
+
+The format is one row per captured frame: a time in the first column, then three columns per
+joint. Joint names come out of the header, which is expected to read
+`time,Hip.x,Hip.y,Hip.z,Knee.x,…`: every third cell, cut at its first `.`. `MotionClip.load` does
+that parsing and is the only way to build a clip from a file. It sits on the companion object, so
+it has no row of its own on this page.
+
+[`MotionClip`](simulation.md#csvreader-kt-motionclip) sorts its frames by time on construction, and `sample(t)` clamps `t` into the clip's
+range, binary-searches for the bracketing pair of frames and interpolates every joint linearly
+between them. The vectors that come back are fresh copies, so a caller can move them around
+without disturbing the clip.
+
+A clip holds no reference to a solver and nothing else in `afield.four.physics` reads one, so
+which particle a joint drives is a decision for the calling code. Two kinds of malformed input
+load without an exception. A data row with fewer fields than the header promises is skipped, so a
+truncated file becomes a shorter clip; and a file whose every data row is short becomes a clip of
+no frames, which answers `sample` with an empty map and throws from `start`, `end` and
+`duration`.
 
 `src/jvmMain/kotlin/afield/four/physics/CSVReader.kt` — [read the source](source/jvmMain/afield/four/physics/CSVReader/)
 
@@ -26,11 +46,13 @@ The prose, with pictures: [Physics: particles, constraints and cloth](../physics
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L130) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L181) | Example usage: load `motion.csv`, sample it at 0.05 and print the pose a joint at a time. |
 
 ### Frame { #csvreader-kt-frame }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Frame</span><span class="p">(</span><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">joints</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L11)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Frame</span><span class="p">(</span><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">joints</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L40)
+
+One captured frame: a timestamp, and a position per joint name.
 
 | Declaration | Summary |
 | --- | --- |
@@ -39,15 +61,17 @@ The prose, with pictures: [Physics: particles, constraints and cloth](../physics
 
 ### MotionClip { #csvreader-kt-motionclip }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">MotionClip</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Frame</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L16)
+[<code class="highlight"><span class="k">class</span> <span class="nf">MotionClip</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Frame</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L51)
+
+A sequence of [`Frame`](simulation.md#csvreader-kt-frame)s, sampled by time.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">start</span> <span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L21) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">end</span> <span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L24) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">duration</span> <span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L27) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">bounds</span> <span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">,</span> <span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L30) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L46) | Interpolates all joints at arbitrary time. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">start</span> <span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L56) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">end</span> <span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L59) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">duration</span> <span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L62) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">bounds</span> <span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">,</span> <span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L72) | The axis-aligned extent of every joint of every frame, as `(minimum, maximum)`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/CSVReader/#L92) | Every joint's position at `time`, interpolated linearly between the two frames bracketing it. |
 
 ## Cloth.kt { #cloth-kt }
 
@@ -618,31 +642,67 @@ Rigid-body physics world backed by the Jolt physics engine via the stephengold j
 
 ## OctreeBarnesHut.kt { #octreebarneshut-kt }
 
+Approximate inverse-square forces over a particle cloud, by summarising distant groups as a
+single mass each.
+
+Every particle acting on every other one is a quadratic sum. Barnes-Hut trades a bounded error
+for `n log n`: build an octree over the positions, give each node the total mass and centre of
+mass of everything beneath it, then walk the tree once per particle and stop at any node that
+subtends a small enough angle, using its summary instead of descending into it.
+[`OctreeBarnesHut`](simulation.md#octreebarneshut-kt-octreebarneshut) is that, over separate `x`/`y`/`z` `FloatArray`s, which is the layout
+[`SimdVerlet`](simulation.md#simdverlet-kt-simdverlet) holds its state in, though the solver itself never calls this.
+[`OctreeBarnesHutPool`](simulation.md#octreebarneshut-kt-octreebarneshutpool) hands out reusable instances.
+
+A step is two calls, `build` then `applyForces`, and the masses the second one uses are the ones
+the first captured. `applyForces` accumulates into the acceleration arrays with `+=`, so what it
+computes adds to whatever the caller has already written there.
+
+The kernel is `g * m / r²` along the vector from the particle to a node's centre of mass, which
+makes the sign of `g` the choice of what the law is for. Positive attracts, and is gravity;
+negative repels, which is how a force-directed graph layout uses one of these to avoid comparing
+every pair of nodes. `theta` sets how rough the answer is: zero descends all the way to
+individual particles and is the exact pairwise sum, larger values accept more summarised nodes
+and do less work. `softening` is added in quadrature to the distance, bounding the force at
+short range so that a near-coincidence does not produce an arbitrarily large acceleration.
+
+The node arrays grow by half again when they must and are never handed back, and `clear` only
+resets the node count, so a tree rebuilt every frame allocates nothing on the serial build path.
+The parallel path allocates its eight octant index arrays per `build`. Mutation, meaning `build`
+and `clear`, is not thread-safe. A parallel `applyForces` is, because each worker takes its
+traversal stack from a `ThreadLocal`; the serial path instead uses the one stack it shares with
+`forEachCuboid`.
+
+Particles are separated by comparing a coordinate against a node's centre, so two at exactly the
+same position fall into the same child at every depth and subdivision has nothing to terminate
+on. Jitter coincident inputs before building.
+
 `src/jvmMain/kotlin/afield/four/physics/OctreeBarnesHut.kt` — [read the source](source/jvmMain/afield/four/physics/OctreeBarnesHut/)
 
 ### OctreeBarnesHut { #octreebarneshut-kt-octreebarneshut }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">OctreeBarnesHut</span><span class="p">(</span><span class="n">initialCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">allowParallelBuild</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L13)
+[<code class="highlight"><span class="k">class</span> <span class="nf">OctreeBarnesHut</span><span class="p">(</span><span class="n">initialCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">allowParallelBuild</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L50)
 
-Octree + Barnes-Hut utilities for SoA x/y/z particle data. Designed to minimize per-step allocations. Mutating operations (`build`, `clear`) are not thread-safe.
+An octree with Barnes-Hut mass summaries over separate `x`/`y`/`z` arrays.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">var</span> <span class="n">nodeCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L38) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">clear</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L41) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">massIn</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">invMass</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">buildExecutor</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nc">ForceExecutor</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">minParallelCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8192</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L45) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyForces</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">ay</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">az</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">massIn</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">invMass</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">softening</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">forceExecutor</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nc">ForceExecutor</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">minChunk</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L279) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">forEachCuboid</span><span class="p">(</span><span class="n">depthLimit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">consumer</span><span class="p">:</span> <span class="p">(</span><span class="n">cx</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">cy</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">cz</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">half</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L414) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">appendCuboidsTo</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">depthLimit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L445) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">nodeCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L83) | How many octree nodes the last `build` left behind, and the number `applyForces` and `forEachCuboid` read as "is there a tree here". |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">clear</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L92) | Forgets the tree without releasing any memory, leaving the instance ready to `build` again. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">massIn</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">invMass</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">buildExecutor</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nc">ForceExecutor</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">minParallelCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8192</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L116) | Builds the octree over the first `count` entries of `x`, `y` and `z`, and computes a mass and a centre of mass for every node. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">applyForces</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">ay</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">az</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">massIn</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">invMass</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">softening</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">forceExecutor</span><span class="p">:</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nc">ForceExecutor</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">minChunk</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L368) | Walks the tree once per particle and adds the resulting acceleration into `ax`, `ay` and `az`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">forEachCuboid</span><span class="p">(</span><span class="n">depthLimit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">consumer</span><span class="p">:</span> <span class="p">(</span><span class="n">cx</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">cy</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">cz</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">half</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L512) | Hands every node's cube to `consumer` as a centre and a half-width, root first. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">appendCuboidsTo</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">depthLimit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L550) | `forEachCuboid`, drawn: appends each node's cube to `out` as a wireframe. |
 
 ### OctreeBarnesHutPool { #octreebarneshut-kt-octreebarneshutpool }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">OctreeBarnesHutPool</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">maxTrees</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">initialCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">allowGrow</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L675)
+[<code class="highlight"><span class="k">class</span> <span class="nf">OctreeBarnesHutPool</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">maxTrees</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">initialCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">allowGrow</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L789)
+
+Reusable [`OctreeBarnesHut`](simulation.md#octreebarneshut-kt-octreebarneshut) instances, so that a per-frame rebuild reuses one tree's node arrays instead of growing fresh ones.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">acquire</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">OctreeBarnesHut</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L688) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">release</span><span class="p">(</span><span class="n">tree</span><span class="p">:</span> <span class="nc">OctreeBarnesHut</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L698) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">acquire</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">OctreeBarnesHut</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L809) | Takes a tree out of the pool, allocating one at `initialCapacity` if the pool is empty and `allowGrow` permits it, and failing otherwise. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">release</span><span class="p">(</span><span class="n">tree</span><span class="p">:</span> <span class="nc">OctreeBarnesHut</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/OctreeBarnesHut/#L826) | Clears `tree` and returns it to the pool, dropping it instead if the pool is already at `maxTrees`. |
 
 ## PointController.kt { #pointcontroller-kt }
 
@@ -1082,13 +1142,23 @@ Several [`Collider`](simulation.md#simdverletcolliders-kt-collider)s applied as 
 
 ## SimdVerletDebugLines.kt { #simdverletdebuglines-kt }
 
+A [`SimdVerlet`](simulation.md#simdverlet-kt-simdverlet)'s particles and constraints as `FLine`s, for seeing what the solver holds rather
+than what the scene means.
+
+The file is one extension function, `debugLines`, and the list it returns is grouped by
+appearance rather than by particle: at most four lines, in the order constraint edges, velocity
+whiskers, unpinned particles, pinned particles, each already carrying its own colour and
+thickness, and each left out when it would have been empty. So a caller restyles a whole
+category by editing one element of that list, and the list's own length says only which
+categories drew something.
+
 `src/jvmMain/kotlin/afield/four/physics/SimdVerletDebugLines.kt` — [read the source](source/jvmMain/afield/four/physics/SimdVerletDebugLines/)
 
 ### Top-level functions { #simdverletdebuglines-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nf">debugLines</span><span class="p">(</span><span class="n">particles</span><span class="p">:</span> <span class="nc">IntRange</span> <span class="o">=</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">size</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">velocityScale</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="n">edgeColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.36</span><span class="p">,</span> <span class="mf">0.78</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">)</span><span class="p">,</span> <span class="n">pointColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.74</span><span class="p">,</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.94</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">,</span> <span class="n">pinnedColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.42</span><span class="p">,</span> <span class="mf">0.32</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">velocityColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/SimdVerletDebugLines/#L44) | The solver's own state as `FLine`s: one segment per distance constraint, a dot per particle, pinned particles in their own colour, and — when asked — a velocity whisker per particle. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">SimdVerlet</span><span class="p">.</span><span class="nf">debugLines</span><span class="p">(</span><span class="n">particles</span><span class="p">:</span> <span class="nc">IntRange</span> <span class="o">=</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">size</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">velocityScale</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="n">edgeColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.36</span><span class="p">,</span> <span class="mf">0.78</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">)</span><span class="p">,</span> <span class="n">pointColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.74</span><span class="p">,</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.94</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">,</span> <span class="n">pinnedColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.42</span><span class="p">,</span> <span class="mf">0.32</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">velocityColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/SimdVerletDebugLines/#L56) | The solver's own state as `FLine`s: one segment per distance constraint, a dot per particle, pinned particles in their own colour, and — when asked — a velocity whisker per particle. |
 
 ## SimdVerletDyn4jBridge.kt { #simdverletdyn4jbridge-kt }
 

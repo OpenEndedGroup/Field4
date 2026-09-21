@@ -10,6 +10,18 @@ import afield.stdlib.thickness
 import afield.stdlib.vec
 
 /**
+ * A [SimdVerlet]'s particles and constraints as `FLine`s, for seeing what the solver holds rather
+ * than what the scene means.
+ *
+ * The file is one extension function, `debugLines`, and the list it returns is grouped by
+ * appearance rather than by particle: at most four lines, in the order constraint edges, velocity
+ * whiskers, unpinned particles, pinned particles, each already carrying its own colour and
+ * thickness, and each left out when it would have been empty. So a caller restyles a whole
+ * category by editing one element of that list, and the list's own length says only which
+ * categories drew something.
+ */
+
+/**
  * The solver's own state as `FLine`s: one segment per distance constraint, a dot per particle,
  * pinned particles in their own colour, and — when asked — a velocity whisker per particle.
  *
