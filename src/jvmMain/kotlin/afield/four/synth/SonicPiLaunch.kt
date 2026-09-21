@@ -53,7 +53,20 @@ private const val SONIC_PI_JOB_START_TIMEOUT_MILLIS = 15_000L
  * in the UI admitting responsibility for it.
  */
 class SonicPiLaunch internal constructor(
+    /**
+     * The Sonic Pi this run was sent to, and the route back for everything asked of it afterwards.
+     *
+     * Both entry points that build a launch pass `SonicPi.shared()`, so boxes playing at the same
+     * time hold the same instance and it is the workspace and the job id that tell their runs apart.
+     */
     val sonicPi: SonicPi,
+    /**
+     * The Sonic Pi buffer name this run is attributed to, and the name Sonic Pi uses when it says
+     * where an error happened.
+     *
+     * [Box.sonicPi] defaults it to the box's name, falling back to the box's id; the top-level
+     * `sonicPi(code)` defaults it to `field4`.
+     */
     val workspace: String,
     private val priorJobId: Int?,
     /** Box line on which the Sonic Pi source starts; see [inferSonicPiLineOffset]. */
@@ -77,9 +90,22 @@ class SonicPiLaunch internal constructor(
         return sonicPi.jobIdFor(workspace)?.takeIf { it != priorJobId }
     }
 
+    /**
+     * This run's Sonic Pi job id, or null until `/run/started` names one.
+     *
+     * Read as [workspace]'s current job rather than as an id pinned at launch, so it is null while
+     * that is still the job which was running when the code was sent, and it moves to the newer job
+     * if something else runs code in the same workspace afterwards.
+     */
     val jobId: Int?
         get() = sonicPi.jobIdFor(workspace)?.takeIf { it != priorJobId }
 
+    /**
+     * Whether Sonic Pi still has this run's job alive.
+     *
+     * False before [jobId] is known and false once Sonic Pi has reported the job ended. Both facts
+     * come from the OSC messages Sonic Pi sends as it goes, so reading this costs no round trip.
+     */
     val isPlaying: Boolean
         get() = jobId?.let { sonicPi.isJobAlive(it) } ?: false
 
@@ -91,6 +117,10 @@ class SonicPiLaunch internal constructor(
         jobId?.let { sonicPi.stop(it) }
     }
 
+    /**
+     * One line naming the workspace, the job id, whether it is playing and the lines that have
+     * sounded so far. Read live, so printing one twice during a run gives two different answers.
+     */
     override fun toString(): String = synthPrettyObject(
         this,
         "workspace" to workspace,

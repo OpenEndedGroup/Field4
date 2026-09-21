@@ -64,6 +64,7 @@ expect:
  */
 object FaustPolySoundDocs {
 
+    /** Sample rate both clips are rendered and written at, in Hz. */
     const val SR = 48_000
 
     /** Cycles per second, matching the example on [PAGE] exactly — see [progression]. */
@@ -91,6 +92,13 @@ object FaustPolySoundDocs {
      * which resolves 5.9 Hz and so separates 130.81, 155.56 and 196.00 Hz comfortably.
      */
     const val MEASURE_AT_SECONDS = 0.15
+
+    /**
+     * How many samples the peak count is taken over: 0.17s at [SR], which resolves 5.9 Hz.
+     *
+     * [MEASURE_AT_SECONDS] is where the window starts and says why it has to end before the second
+     * chord starts.
+     */
     const val MEASURE_WINDOW = 8192
 
     /**
