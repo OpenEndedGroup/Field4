@@ -138,25 +138,9 @@ A saw at note 72 has harmonics well past 700 Hz, and dough's own filter takes th
 requires that ratio to stay under 0.6×, so a `lpf` that stopped reaching dough would fail the build
 rather than publish two clips that sound alike.
 
-## Why there is no clip of the output
+## Hearing it
 
-**There is no published clip of this path's actual output, and there cannot be one.** Every
-`audio=` fence in these docs is rendered offline over the backdoor — no device, no clock, no
-browser — and `patSpatial` has no offline half to call.
-
-That last point catches callers on its own. `PatSpatialLaunch.advanceOffline` looks
-like an offline render and is not: the render thread runs on its own clock regardless, so the call
-only *consumes* what has already been produced, in real time. Ask it for four seconds of audio and
-you wait four seconds, and no flag makes it faster. The HRTF needs `libphonon` besides, fetched
-checksum-pinned into `build/steamaudio` rather than carried in the repository, so on a clean clone
-a render of this path cannot start at all.
-
-The two clips above make the smaller claim instead: they are rendered by the code that really
-ships, which is [what their captions promise](sound.md#what-a-voice-caption-promises). Why an
-offline stand-in for the spatialised output was rejected rather than written is in
-`dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
-
-To hear the real thing takes two commands.
+Two commands, and an audio device.
 
 ```diffstatic {data-lang=bash}
 ./gradlew fetchSteamAudioNatives
@@ -166,8 +150,22 @@ To hear the real thing takes two commands.
 tools/run_field_tests.py --id synth.pat-spatial.engine
 ```
 
-That opens an audio device and plays two sources at opposite azimuths, circling. On a machine with no
-device it says so and stops rather than passing for the wrong reason.
+That plays two sources at opposite azimuths, circling. On a machine with no device it says so and
+stops rather than passing for the wrong reason.
+
+## Why there is no clip of the output
+
+There is no published clip of this path's output and there cannot be one: every `audio=` fence in
+these docs is rendered offline over the backdoor — no device, no clock, no browser — and
+`patSpatial` has no offline half to call. **`PatSpatialLaunch.advanceOffline` looks like that half
+and is not.** The render thread runs on its own clock regardless, so the call only *consumes* what
+has already been produced, in real time: ask it for four seconds of audio and you wait four
+seconds, and no flag makes it faster. The HRTF needs `libphonon` besides, fetched checksum-pinned
+into `build/steamaudio` rather than carried in the repository, so on a clean clone a render of this
+path cannot start at all.
+
+The two clips above make the smaller claim instead: they are rendered by the code that really
+ships, which is [what their captions promise](sound.md#what-a-voice-caption-promises).
 
 ---
 
@@ -340,20 +338,11 @@ pose and in nothing else. Headphones.
 
 ---
 
-## The smoke tests that exercise this path
+## Where to look next
 
-| smoke | what it establishes |
-| --- | --- |
-| `synth.pat-spatial.smoke` | that a **tag** becomes a spatial parameter, on real audio. Patterns differing only in `az` or `dist` must produce audio differing in the matching way |
-| `synth.pat-spatial.engine` | that it reaches a real output: the engine's own thread pulled the ring, the frame counter moved, the tap saw signal, nothing underran |
-| `synth.pat-spatial.budget` | the per-block cost, idle and under load. Machine- and load-dependent; what reproduces is the *shape*, a median far inside budget and a tail far outside it |
-| `synth.pat-spatial.sound` | the two published clips, plus the three claims they cannot carry themselves |
-| `synth.head-tracked-spatial.smoke` | that a head pose of the shape OpenXR reports aims the HRTF: an identity pose is the old image to the sample, a head turned right moves a source ahead into the left ear, a head that only *steps* sideways moves it too, and losing tracking holds the last pose |
-| `synth.sound.path.map` | that this path is declared, on the seam, and named on [sound_paths.md](sound_paths.md) — the guard that caught it arriving |
-
-Every one of these boots Steam Audio and so needs `./gradlew fetchSteamAudioNatives` — except
-`synth.sound.path.map`, which checks a declaration rather than a sound, and which is exactly the
-line this page's missing figure falls on.
+Every smoke on this path except the declaration check boots Steam Audio, so running any of them
+needs `./gradlew fetchSteamAudioNatives` first. Which one establishes what is in
+`dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
 
 The full API — every field, every default, every parameter — is in
 [`afield.four.synth` in the generated reference](reference/patterns.md#patspatial-kt).

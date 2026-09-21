@@ -13,29 +13,36 @@ import kotlin.math.sin
 /**
  * The seam between a tracked head and [patSpatial]'s listener.
  *
- * Field already had both halves of head-tracked binaural audio and no join between them:
+ * The two halves of head-tracked binaural audio meet here and nowhere else:
  * [OpenXRHmdTarget.headPose] reports where the wearer's head is, and [PatSpatialRoom] renders a
- * pattern through Steam Audio's HRTF from wherever it is told the listener is. What was missing is
- * one interface narrow enough that the audio side cannot tell an HMD from a script.
+ * pattern through Steam Audio's HRTF from wherever it is told the listener is. Between them sits
+ * [HeadPoseSource], an interface narrow enough that the audio side cannot tell an HMD from a
+ * script.
  *
  * # The conversion is a copy
  *
  * OpenXR and Steam Audio use the **same** frame: right-handed, +X right, +Y up, -Z ahead, metres.
- * So [HeadPose.ofOpenXR] copies seven numbers and converts nothing, and that is worth saying out
- * loud because the alternative is invisible. A handedness error between these two frames leaves
- * level, distance, occlusion and reverb all correct and silently swaps the listener's ears -- the
- * failure [afield.four.audio.steamaudio.World2D] exists to prevent on the geometry side, and the one
- * `World2DHandednessTest` caught during the bindings' development. `HeadTrackedSpatialSmokeTest`
- * holds this side of it on rendered audio rather than on the claim above.
+ * So [HeadPose.ofOpenXR] copies seven numbers and converts nothing. A handedness error between
+ * these two frames leaves level, distance, occlusion and reverb all correct and silently swaps the
+ * listener's ears. That is the failure [afield.four.audio.steamaudio.World2D] and
+ * `World2DHandednessTest` guard against on the geometry side; `HeadTrackedSpatialSmokeTest` guards
+ * this side of it, on rendered audio rather than on the paragraph above.
  *
  * # Where to pump from
  *
  * [OpenXRHmdTarget]'s pose comes from `xrLocateViews` on the renderer's queue thread and is stored
- * as loose floats, so a reader on another thread can in principle see a position from one frame
- * with an orientation from the next. That is why [HeadTrackedListener] can be driven two ways, and
- * why the OpenXR one is the manual one: construct it with `hz = 0.0` and call
+ * as plain non-volatile floats, so a reader on another thread can in principle see a position from
+ * one frame with an orientation from the next. That is why [HeadTrackedListener] can be driven two
+ * ways, and why the OpenXR one is the manual one: construct it with `hz = 0.0` and call
  * [HeadTrackedListener.pump] once per frame from inside the frame callback, where the pose is whole.
  * A [StereoPoseSource] has no such problem -- it latches by contract -- and is fine on the timer.
+ */
+
+/**
+ * Where a head is, in the room's frame, asked once per poll.
+ *
+ * The narrow end of the join. [HeadTrackedListener] drives one of these, and the audio side never
+ * learns whether it was a headset, a remote pose or a script.
  *
  * @see HeadTrackedListener
  * @see VirtualHead

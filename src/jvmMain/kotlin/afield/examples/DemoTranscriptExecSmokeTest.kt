@@ -502,6 +502,26 @@ object DemoTranscriptExecSmokeTest {
         // fidelity and all, on the CPU and with no window in the room.
         "letter_interpolation",
         "letter_interpolation_panels",
+        // The two demo documents that were compiled by nothing until 2026-09-21. Both are here
+        // because their transcripts exist to close the hole [afield.docs.AgentDemoRegistrationTest]
+        // names, and neither can be EXECUTE.
+        //
+        // `skinned_characters` opens a GLFW window and a Vulkan renderer in `skin_renderer` and
+        // draws into it from three boxes. It is also the case that proves the hole is not
+        // hypothetical: from 2026-09-19 to 2026-09-20 its `twist_compare` box did not compile at
+        // all -- four `println`s left behind by a two-mesh-to-one-mesh rewrite named `rL`, `rR`,
+        // `outR` and `rRest`, so the box failed with "Unresolved reference 'rRest'" from the
+        // moment it landed, while `check` stayed green because box code is compiled by the K2
+        // REPL against a different import set from jvmMain and no Gradle task sees it. It was
+        // found by a human launching every box by hand. This entry is that sweep, as CI.
+        "skinned_characters",
+        // `marf_demo`'s fourth box ends on `patSpatial()`, which opens a realtime audio device
+        // through Dough and Steam Audio's HRTF path -- and a patSynth launch outlives the box that
+        // made it, so this is not something to start on a build machine at 2am. Its other three
+        // boxes are pure CPU and would run; they stay here rather than being split into a second
+        // EXECUTE transcript, because the one point the document makes is that the bank does not
+        // know whether it is being drawn or heard, and that argument does not survive the split.
+        "marf_demo",
     )
 
     /**

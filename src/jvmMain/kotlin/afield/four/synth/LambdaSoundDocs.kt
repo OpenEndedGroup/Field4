@@ -30,22 +30,22 @@ expect:
  * The route is four steps in four parts of Field that do not know about each other.
  * `afield.stdlib.lambdaterms` parses and compiles a term to an interaction net,
  * `afield.stdlib.interactionnets` reduces that net one reaction at a time, this file records each
- * reaction as a [Beat], and [patCondense] — the mini-notation parser run backwards — finds the
+ * reaction as a [Beat], and [patCondense], the mini-notation parser run backwards, finds the
  * shortest notation that plays the resulting step mask. [patRenderStereo] plays it.
  *
- * # What is worth measuring here
+ * # What this measures
  *
  * `stdlib.lambda-terms.property` established on 2026-09-19 that the **answer** does not depend on
- * the scheduler, over 17 200 (term, scheduler) checks. Nothing establishes anything about the
- * **route** to it, because until this file nothing recorded one. So the measurement is the pair:
+ * the scheduler, over 17 200 (term, scheduler) checks. It says nothing about the **route** taken to
+ * reach it, which is what a trace records. So the measurement is the pair:
  *
  *  * the normal form, which is the same under every [ActivationOrder] the harness runs, and
  *  * the step count, the rule sequence, the β mask and its condensation, which are not.
  *
  * [patCondense] earns its place for the same reason it does in [CaSoundDocs]: it is a
  * **measurement**. A schedule whose β-steps fall into a figure gets a short spelling; one that
- * scatters them gets a long one. [Trace.betaCompression] is therefore a number about a *scheduler*,
- * which nothing in this repository previously had.
+ * scatters them gets a long one. [Trace.betaCompression] is therefore a number about a *scheduler*
+ * rather than about a term.
  *
  * # The oracles
  *
@@ -61,12 +61,20 @@ expect:
  *
  * # What it does not do
  *
- * No realtime engine, no audio device, no GPU, no Field window, and no layout —
+ * No realtime engine, no audio device, no GPU, no Field window, and no layout:
  * `relaxIterations = 0` throughout, because the force-directed layout is `O(n²)` per iteration and
  * a reduction nobody is watching should not pay for a picture. The renders are deterministic, so a
  * committed `.wav` regenerates byte-stably. As the `synth.lambda.sound` FIELD_TEST every scene
  * renders to a temp dir and nothing committed is written; pass an output directory as `args[0]` to
  * regenerate the page's `.wav`s.
+ */
+
+/**
+ * Reduces each term in [TERMS] under every order in [ORDERS], checks the traces against the
+ * oracles, and renders them as `.wav`.
+ *
+ * [trace] and [traceAllOrders] are the entry points for a single term; [corpusSweep] runs all of
+ * `LambdaTerms.corpus()`.
  */
 object LambdaSoundDocs {
 

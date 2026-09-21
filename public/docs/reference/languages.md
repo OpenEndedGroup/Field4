@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-78 source file(s), 2286 public symbol(s), 884 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+78 source file(s), 2286 public symbol(s), 891 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2125,15 +2125,35 @@ The reflective half of FieldML's JVM bridge: given a name, a receiver and some a
 
 ## Lowerer.kt { #lowerer-kt }
 
+The last stage of the FieldML front end: the typed tree becomes the [`CoreExpr`](languages.md#core-kt-coreexpr) tree the evaluator
+walks.
+
+Almost all of it is a rename. Each case of the typed tree has one case in the core tree, the
+inferred type is copied across, and the source range is dropped. Two things inference needed go
+no further: a `let`'s parameter list, which by this point is the lambda sitting in its value,
+and a constructor's type scheme, which reduces to the name and arity [`CoreConstructor`](languages.md#core-kt-coreconstructor) keeps.
+
+The one real transformation is currying. A lambda written `fun x y -> ...` becomes two nested
+one-parameter [`CLam`](languages.md#core-kt-clam) nodes, so the evaluator only ever binds one parameter at a time. Each of
+those nodes carries its own type and they are different types: the outer node's is the whole
+arrow, the inner node's is the arrow that starts at the second parameter. So the lowering walks
+the arrow outside in, one step per parameter, keeping the type each parameter starts from, and
+then builds the nodes from the innermost parameter back out.
+
+Nothing here reports anything. A tree that reaches this stage has already been typed, so there is
+no result to check: [`FieldMLCompiler`](languages.md#fieldmlcompiler-kt-fieldmlcompiler) runs the lowerer and returns what comes back.
+
 `src/jvmMain/kotlin/afield/ml/core/Lowerer.kt` — [read the source](source/jvmMain/afield/ml/core/Lowerer/)
 
 ### Lowerer { #lowerer-kt-lowerer }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">Lowerer</span></code>](source/jvmMain/afield/ml/core/Lowerer/#L33)
+[<code class="highlight"><span class="k">class</span> <span class="nc">Lowerer</span></code>](source/jvmMain/afield/ml/core/Lowerer/#L58)
+
+Turns a typed tree into the core tree the evaluator runs.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">expr</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/ml/core/Lowerer/#L34) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">expr</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/ml/core/Lowerer/#L60) | The [`CoreExpr`](languages.md#core-kt-coreexpr) equivalent of `expr`, with its lambdas curried and its ranges dropped. |
 
 ## Diagnostics.kt { #diagnostics-kt }
 
@@ -2440,24 +2460,62 @@ Reflection over a host type: the JVM class a [`THost`](languages.md#types-kt-tho
 
 ## Inferencer.kt { #inferencer-kt }
 
+FieldML's type checker: a Hindley-Milner inference pass over the surface tree, producing the
+typed tree the lowerer consumes.
+
+The core of it is the textbook algorithm. Every unknown is a numbered type variable; unification
+makes two types equal by binding variables in one substitution the whole run shares; pruning
+follows a bound variable to what it stands for and shortens the chain behind it; an occurs check
+refuses a type that would contain itself. A `let` generalizes over the variables its value has
+and its environment does not, so each use of a bound name instantiates that scheme with fresh
+variables.
+
+Three things here are not the textbook's:
+
+- **A host type carries a JVM class.** Two of them unify when either class is assignable from the
+  other, because Field's own signatures mix a writable class with its read-only interface. The
+  bare `Host` is the dynamic escape, and a bounded one: it stands for a value whose class is
+  unknown rather than one whose shape is unknown, so it unifies with a number, a string, a
+  boolean or another object, and refuses a function, a list, a tuple or a record.
+- **A saturated `host…` call is typed by reflection rather than by a scheme.** What `hostGet`
+  returns depends on the text of a string and the class of a receiver, which no one scheme can
+  state, so the member is looked up and the call is either typed or refused where it was written
+  instead of at the first run. A program that shadows the intrinsic is left alone. Curried
+  application is left-nested, so the ordinary walk would reach a lambda argument before the
+  receiver that says what its parameters are; a host call's spine is inferred ahead of that walk
+  to put the order right, which is how a callback written as a positional argument gets its
+  parameter types from the receiver's class.
+- **Numeric and vector type variables are constrained**, which is as much of a class system as
+  FieldML has. A variable that has been through a numeric or vector requirement is recorded as
+  such, the requirement is rechecked at the moment the variable is bound, and one that is still
+  a variable when the tree is finalized is defaulted: `Float` for numeric, `Vec2` for vector.
+
+Every failure leaves through the same abort, which throws rather than returning, so an
+[`InferResult`](languages.md#inferencer-kt-inferresult) either carries a typed tree and no diagnostics at all, or no tree and exactly one
+error.
+
 `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt` — [read the source](source/jvmMain/afield/ml/type/Inferencer/)
 
 ### InferResult { #inferencer-kt-inferresult }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InferResult</span><span class="p">(</span><span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">TExpr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/Inferencer/#L40)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InferResult</span><span class="p">(</span><span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">TExpr</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ml/type/Inferencer/#L77)
+
+What inference made of a program: a typed tree, or nothing and the error that stopped it.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">TExpr</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">TExpr</span><span class="o">?</span></code> | The surface tree with a type on every node and every pattern, or null if inference gave up. |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Diagnostic</span><span class="p">&gt;</span></code> | Empty when `typed` is non-null, and otherwise the single error that ended the run. |
 
 ### Inferencer { #inferencer-kt-inferencer }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">Inferencer</span></code>](source/jvmMain/afield/ml/type/Inferencer/#L45)
+[<code class="highlight"><span class="k">class</span> <span class="nc">Inferencer</span></code>](source/jvmMain/afield/ml/type/Inferencer/#L90)
+
+Infers the types of one FieldML program.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">infer</span><span class="p">(</span><span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">)</span><span class="p">:</span> <span class="nc">InferResult</span></code>](source/jvmMain/afield/ml/type/Inferencer/#L52) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">infer</span><span class="p">(</span><span class="n">expr</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">)</span><span class="p">:</span> <span class="nc">InferResult</span></code>](source/jvmMain/afield/ml/type/Inferencer/#L103) | Types `expr`, returning the typed tree, or null and the error that stopped inference. |
 
 ## TypedAst.kt { #typedast-kt }
 
@@ -6377,7 +6435,7 @@ per-pixel cost drops to about twenty tape nodes per rect, and because an image l
 over pixels its gradient is additive — so `softRasterLossAndGradient` walks the image in row
 chunks, one tape per chunk, and accumulates. Memory becomes a choice rather than a limit.
 
-### Fidelity, and the honesty check that is not optional
+### Fidelity between the two interpreters
 
 A second interpreter of the same graph is exactly the situation where a *slightly different
 function* gets differentiated confidently. `autodiff_fn.kt` has a name for the guard against that

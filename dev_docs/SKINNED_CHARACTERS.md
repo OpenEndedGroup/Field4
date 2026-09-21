@@ -319,6 +319,11 @@ renderer's direct window capture cannot get past. Recorded as a finding rather t
 diagnosing the capture path is a different job from skinning, and box 4 therefore poses once from
 an editable `poseTime` rather than animating.
 
+This table is the sharpest measurement anyone here has of that boundary, and
+`public/docs/capture_limits.md` publishes it for readers as one of eleven stated capture limits.
+That page carries these five rows as **not re-measured** — they are the expensive ones, and the next
+person with a working GPU capture path should re-run them before anyone leans on them.
+
 ## Not done
 
 - ~~**No GPU *skinning*.**~~ **Done 2026-09-20** — see [`GPU_SKINNING.md`](GPU_SKINNING.md).

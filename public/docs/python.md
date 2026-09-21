@@ -270,3 +270,4 @@ is illustration only — running it during a docs build would compile a C extens
 Two claims here have no picture under them. A still taken after a `tqdm` loop finishes shows an
 empty bar, and the shared global namespace needs two co-operating boxes where a runner fence builds
 only one; both are things to run yourself rather than read.
+`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the capture mechanics behind all of it.

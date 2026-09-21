@@ -11,6 +11,30 @@ import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * The audition surface for a corpus nearest-neighbour query: the query window and every window
+ * the search returned, as players on one shared relative timeline.
+ *
+ * [corpusMicroscopeHtml] turns the [CorpusPreview] an `analysis.find_neighbours` job leaves behind
+ * into a single self-contained section of HTML, and it refuses a preview from any other operation.
+ * Nothing in it reads audio: each [AssetRepresentation] in the preview becomes a media URL and a
+ * waveform URL handed to [AudioVisualizer], which does the fetching, the drawing and the
+ * shared-cursor arithmetic.
+ *
+ * A card's header prints two readings of the same number. One is the raw [CorpusNeighbour]
+ * distance; the other is a percentage that maps distance 0 to 100% and saturates at 2, so a
+ * neighbour further away than that reads as no similarity at all. The per-group bars apply the
+ * same mapping to each entry of `groupDistances` and keep the raw distance in the tooltip, so a
+ * bar and the header can be read against each other. The weights above the grid are taken from
+ * the preview, which means they arrive with the result rather than from the
+ * [CorpusDistanceWeights] the query was written with.
+ *
+ * The footer carries what the players cannot. A retrieved window is a stretch of some other
+ * recording, so the card keeps its absolute start and end, its scale in seconds, and whether
+ * [CorpusSegment] records a previous and a next window. A neighbour that sits at the very
+ * beginning or the very end of its recording shows up there.
+ */
+
 private fun String.corpusHtml(): String = replace("&", "&amp;")
     .replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 

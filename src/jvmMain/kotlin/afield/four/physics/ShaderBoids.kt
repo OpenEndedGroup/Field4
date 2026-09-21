@@ -24,8 +24,56 @@ import afield.stdlib.linalg.Vector2f
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
+/**
+ * Reynolds boids as a Vulkan compute shader, over a GPU neighbour grid, with the interaction rule
+ * swappable for a trained network.
+ *
+ * Two declarations. [BoidSettings] carries the three classical weights, the speed limit, and two
+ * forcing terms that contribute nothing until they are turned on. [ShaderBoids] owns one storage
+ * buffer of particles, generates the GLSL that steps them, and installs the grid rebuild and the
+ * rule into one ordered target map, in the order those two have to run.
+ *
+ * #### One system, three rules
+ *
+ * With neither `learned` nor `equivariant` set it computes the classical three-term force in
+ * hand-written GLSL. Given [DeepSetsWeights] it evaluates a trained sum-then-combine network at
+ * the same place in the same neighbour loop, and given [EquivariantWeights] it evaluates the
+ * rotation-equivariant form. The buffer, the neighbour walk, the speed limit and the integration
+ * are the same code in all three cases, so changing that one argument compares rules rather than
+ * implementations. Passing both fails at construction.
+ *
+ * #### Sized to the grid
+ *
+ * The neighbour query is the 3x3 block of cells around a particle's own, which reaches one cell
+ * width in each direction, so `BoidSettings.radius` cannot exceed the grid's `cellSize`. A radius
+ * that does not fit still produces something that looks like a flock, computed from a subset of
+ * each particle's neighbours, so `install` checks it. The particle count has to fit the grid's
+ * capacity, and the constructor checks that.
+ *
+ * #### Graded against a CPU oracle
+ *
+ * `referenceAcceleration` is the same law in Kotlin over every other particle, and
+ * `four.shader-boids.smoke` compares the two per particle, for a uniform flock and for a
+ * clustered one. It runs them with `dt = 0`, where nothing moves and the accelerations are a
+ * fixed function of a fixed configuration; boids is chaotic, so two trajectories compared after a
+ * few hundred steps would measure how fast they separate and not whether the two implement the
+ * same law. The force each particle
+ * stores is the interaction alone, written before the containment and driver terms are added and
+ * before the velocity is integrated.
+ *
+ * #### Drawing it
+ *
+ * `installDrawInto` adds a point-list pass that reads the same allocation the compute pass wrote,
+ * with no copy, tinting from slow colour to fast colour by speed. The point the driver term pulls
+ * toward comes from a lambda the push bindings call every frame, so a box can move it without
+ * re-running anything.
+ *
+ * The prose, with pictures: [Neural particle systems](../neural_particles.md).
+ */
+
 /** The three classical weights, plus the speed limit that keeps a flock finite. */
 data class BoidSettings(
+    /** Prefix for the buffer, module and target names this system creates, so two flocks can share a renderer. */
     var name: String = "boids",
     /** Interaction radius. Must be at most the grid's cell size or the 3x3 query misses people. */
     var radius: Float = 0.06f,
@@ -149,8 +197,14 @@ data class BoidSettings(
  * neighbours, and the flock still looks like a flock. [install] checks it.
  */
 class ShaderBoids(
+    /**
+     * The neighbour structure the rule reads. [install] rebuilds it from the current positions
+     * before the rule runs, and its `cellSize` is the ceiling on [BoidSettings.radius].
+     */
     val grid: GpuNeighbourGrid,
+    /** How many particles. Must be in `1..grid.capacity`, which the constructor requires. */
     val count: Int,
+    /** Where the buffers and the two modules are allocated. */
     val renderer: Renderer = fromContext(),
     /**
      * A trained Deep Sets interaction to use *instead of* the hand-written rule, or null for
@@ -173,6 +227,13 @@ class ShaderBoids(
     val equivariant: afield.stdlib.EquivariantWeights? = null,
     configure: BoidSettings.() -> Unit = {},
 ) {
+    /**
+     * The weights this system is running, after `configure`.
+     *
+     * Every field is read through the push bindings as the frame is submitted, so changing one
+     * takes effect on the next frame with nothing reinstalled. [BoidSettings.name] is the
+     * exception: the buffers and modules took their names from it at construction.
+     */
     val settings = BoidSettings().apply(configure)
 
     /** 8 floats: position, velocity, accel, and the velocity this step integrated from. */
@@ -295,6 +356,12 @@ class ShaderBoids(
         into["${settings.name}-rule"] = Target { command, _ -> rule.render(command, bounds) }
     }
 
+    /**
+     * Takes the grid rebuild and the rule back out of [into], undoing [install].
+     *
+     * A draw pass added by [installDrawInto] went into a render target rather than into this map,
+     * and is not removed here.
+     */
     fun removeFrom(into: MutableMap<String, Target>) {
         grid.removeFrom(into)
         into.remove("${settings.name}-rule")

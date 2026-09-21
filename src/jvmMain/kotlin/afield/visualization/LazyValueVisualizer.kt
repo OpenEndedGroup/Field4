@@ -47,15 +47,55 @@ private const val H2_TOKEN_TTL_MS = 10 * 60 * 1000L
 private const val H2_MAP_SNAPSHOT_THRESHOLD = 20_000
 private const val H2_OUTPUT_VIEW_THRESHOLD = 32
 
+/**
+ * What a `.h2` adapter returns: the value to explore in place of the one it was handed, and the wording to show for
+ * it.
+ *
+ * All three fields are advisory. An adapter that only wants to rename something passes the original value straight
+ * back and fills in [title]; one that only wants to redirect the explorer fills in [value] and leaves the wording to
+ * be generated.
+ */
 data class H2ValueSnapshot(
+    /**
+     * What the explorer pages through in place of the value the adapter was given.
+     *
+     * An adapter that only wants to supply a label hands the original object back here. The substitution is applied
+     * only when this is a *different* instance, and the adapter's substitute is never passed back through the
+     * registry, so two adapters that substituted for each other could not spin.
+     */
     val value: Any?,
+    /**
+     * The one-line description shown above the explorer, used verbatim in place of the generated
+     * `Type (size=N)` line.
+     */
     val summary: String? = null,
+    /**
+     * The label the explored value carries in the browsers.
+     *
+     * Taken unchanged at the top level. A value reached from inside another structure keeps the caller's label too
+     * and reads as `[0] — Box neighbour`, because the position alone does not say what is there and the adapter's
+     * own title does not say where it sits. Falls back to [summary] when null.
+     */
     val title: String? = null
 )
 
+/**
+ * The table of per-type `.h2` adapters, and the rule that decides which one serves a given value.
+ *
+ * Adapters go in by exact class through [register], but come out by a walk up the superclass chain that checks each
+ * class's whole interface closure on the way, so registering against an interface covers everything that implements
+ * it. This is one of the two registries a type outside Field reaches the value display through; `ValuePrinterRegistry`
+ * is the other, and resolves identically.
+ */
 object H2ValueRegistry {
     private val adapters = mutableMapOf<Class<*>, (Any) -> H2ValueSnapshot>()
 
+    /**
+     * Records [adapter] against [clazz] itself, replacing any adapter already registered for that exact class.
+     *
+     * The erased form, for a `Class` only known at runtime. From Kotlin, call [registerH2Value] instead and let the
+     * reified type parameter name the class.
+     */
     fun <T : Any> register(clazz: Class<T>, adapter: (T) -> H2ValueSnapshot) {
         @Suppress("UNCHECKED_CAST")
         adapters[clazz] = adapter as (Any) -> H2ValueSnapshot
@@ -138,7 +178,23 @@ private object H2TokenRetention {
     }
 }
 
+/**
+ * The renderer behind `.h2`, and the only public entry point into it.
+ *
+ * Everything else in this file either feeds [visualize] (the registry, the adapters) or serves the routes the panel
+ * it emits links to.
+ */
 object LazyValueVisualizer {
+    /**
+     * Renders [value] as the `.h2` panel: a summary line, `outliner` and `columns` links into the server-side
+     * browsers, and an embedded explorer iframe.
+     *
+     * A value with no registered adapter that is also not a collection, array, buffer or explorable object is handed
+     * to `ValueVisualizer` instead, so `.h2` is never worse than `.h` for something small. The value itself is
+     * retained under a fresh token for the links to resolve against, which is why they stop working once the server
+     * restarts or the retention window passes. [appendable] adds the `afield-appendable-output` marker class, which
+     * the browser reads to let a second panel join the first rather than replace it.
+     */
     fun visualize(value: Any?, appendable: Boolean = false): String {
         val adapted = value?.let { H2ValueRegistry.adapt(it) }
         if (adapted == null && !isExplorable(value)) return ValueVisualizer.visualize(value, appendable = appendable)
@@ -924,9 +980,22 @@ private fun escapeHtml(text: String): String {
 
 private fun escapeHtmlAttr(text: String): String = escapeHtml(text)
 
+/**
+ * The box-facing entry point: `someBigThing.h2` is the explorable rendering, where `.h` is the inline one.
+ *
+ * Returns the panel as an HTML string, so it is a value a box can return or hand to `display()` like any other.
+ */
 val Any?.h2: String
     get() = LazyValueVisualizer.visualize(this)
 
+/**
+ * Registers a `.h2` adapter for [T], so that a value of that type is summarised or unwrapped the way [adapter] says
+ * rather than by the reflective default.
+ *
+ * Registration is by exact class, but lookup walks the superclass chain and each class's whole interface closure, so
+ * an adapter registered against an interface serves every implementation of it. `H2DomainAdapters.kt` holds the ones
+ * Field registers for its own types.
+ */
 inline fun <reified T : Any> registerH2Value(noinline adapter: (T) -> H2ValueSnapshot) {
     H2ValueRegistry.register(T::class.java, adapter)
 }

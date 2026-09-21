@@ -14,7 +14,7 @@ Underneath all three sits `FabricateScene`, a Three.js-shaped scene graph that o
 
 Two constraints apply to the renderers themselves. A renderer is constructed, installed and closed on Field's render thread, like any other `afield.four` module — installing under a name already in use retires the previous occupant, so there is no coroutine lifetime bookkeeping to do. And a device is required: nothing here that draws does so into an `FLine`, or in a headless test, the way the `Math` page's contents do. For the same ground with pictures, see [The Fabricate renderer](../fabricate_renderer.md), [Path tracing](../path_tracing.md) and [afield.four graphics](../afield_four_graphics.md).
 
-27 source file(s), 638 public symbol(s), 294 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 638 public symbol(s), 305 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -66,24 +66,36 @@ Ordered, inspectable pass contract for [`StandardRenderer`](renderers.md#standar
 
 ## FabricateGltfBridge.kt { #fabricategltfbridge-kt }
 
+The glTF side of the fabricated scene model: one call that turns a loaded `GltfSupport.GltfModel`
+into a [`FabricateScene`](renderers.md#fabricatescene-kt-fabricatescene), and two conversions beside it.
+
+There are two routes from a loaded model into the PBR renderer and they differ in what they
+touch. `FabricateGltfBridge.fromModel` builds a scene graph and stops, so a caller can read or
+rewrite the imported nodes before any GPU resource exists. `StandardRenderer.Bundle.registerGltf`
+does that same import and then registers a pulling mesh per node, which is what the renderer
+draws from and what a tool inspecting node names does not need.
+
+Nothing here loads a file. `GltfSupport.loadGltfBasic` is the loader and `MeshFromDisk.kt`
+describes the route in; this is the conversion at the end of it.
+
 `src/jvmMain/kotlin/afield/four/fabricated/FabricateGltfBridge.kt` — [read the source](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/)
 
 ### Top-level functions { #fabricategltfbridge-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">MaterialTextured</span><span class="p">.</span><span class="nf">toFabricateMaterial</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateMaterial</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L16) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">toFabricateTextureSemantic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L19) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">MaterialTextured</span><span class="p">.</span><span class="nf">toFabricateMaterial</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateMaterial</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L44) | `FabricateMaterial.fromGltf` as an extension, for a glTF material already in hand. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">toFabricateTextureSemantic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L57) | An Assimp texture-type constant as the glTF name for that slot: `baseColor`, `normal`, `metallicRoughness` and so on, with an unrecognised type rendered as `texture-` and its number rather than dropped. |
 
 ### FabricateGltfBridge { #fabricategltfbridge-kt-fabricategltfbridge }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FabricateGltfBridge</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L7)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FabricateGltfBridge</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L21)
 
 Converts the existing Assimp/GLTF loader model into the fabricated scene/material data model.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fromModel</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">GltfModel</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;gltf&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateScene</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L8) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fromModel</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">GltfModel</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;gltf&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateScene</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L30) | A [`FabricateScene`](renderers.md#fabricatescene-kt-fabricatescene) holding `model`'s meshes, with no renderer and no GPU resources attached. |
 
 ## FabricateMaterialLibrary.kt { #fabricatemateriallibrary-kt }
 
@@ -1019,31 +1031,95 @@ copy of the shaders.
 
 ## PathTraceEmitterGpuSmoke.kt { #pathtraceemittergpusmoke-kt }
 
+Real GPU checks for `PathTracingRenderer.emitterSampling`, the path tracer's direct sampling of
+emissive triangles: four scenes, each measured against a number that exists outside this file.
+
+Unbiasedness is checked before variance. A variance win from a biased estimator reduces noise
+and changes the image, which is what a wrong area-to-solid-angle Jacobian, a missing cosine and
+a double-counted emission arm all do as well, so the noise reduction on its own says nothing
+about which of the two happened.
+
+Which scene a check uses decides what it can resolve. A small bright lamp in the dark is where
+BSDF sampling barely works, so its own converged image stays noisy, and a reference that noisy
+cannot resolve a two-percent bias at any tolerance. Three of the four arms below are therefore
+uniform-radiance scenes, where both sides converge and the comparison is sharp:
+
+ - `inertWithoutEmitters` — a scene with nothing emissive in it, where on and off must agree bit
+   for bit. Which means the two runs have to stop on the same sample, and a polled sample count
+   cannot be made to land there, so the second run targets whatever the first reached and the
+   pair is retried until they match.
+ - `enclosureAgainstEnvironment` — a sphere inside a uniformly emissive cube, one bounce. Every
+   direction carries radiance one, so this is the same integral as the same sphere under a
+   constant unit *environment* map, which the tracer solves through a separate, independently
+   checked next-event path. One bounce means neither run applies an MIS weight at all, so what is
+   under test is the new pdf alone: its normalisation and its Jacobian. Both furnace means are
+   also asserted against 1.0, so the arm is absolute and not a self-comparison.
+ - `enclosureComposition` — the same enclosure with six differently coloured faces and two
+   bounces, emitter sampling on against off. Both arms fire and both MIS weights matter, and a
+   selection probability that has come off its triangle tints the answer. Uniform near-field
+   radiance again means the off run converges, so this resolves a fraction of a percent.
+ - the lamp box, driven from `run` — two small lamps in the dark, which is the scene the variance
+   claim is measured in. Its bias residual is reported at two reference budgets: a residual that
+   falls like one over the square root of the budget is the reference's own noise, and one that
+   holds is bias. That decay is asserted, because a fixed tolerance there would be a tolerance on
+   noise.
+
+The lamp box is built around the three failures the uniform scenes cannot show. Its two lamps
+differ in size, colour and power, so a table whose probability and triangle index have come apart
+shows as a colour shift rather than as noise. One of them is one-sided and faces down, because a
+back face culled on a BSDF hit has to be dark to the direct sampler too. And a sphere sits on the
+floor, where its shadow is a shadow ray: the integrator's occlusion query stops a thousandth
+short of the sampled point, so that a lamp cannot occlude its own connection, and a query that
+ran the whole way would discard every direct contribution and leave a correct image with no
+variance improvement in it. The RMSE ratio asserted here is what would notice.
+
 `src/jvmMain/kotlin/afield/four/fabricated/PathTraceEmitterGpuSmoke.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/)
 
 ### PathTraceEmitterGpuSmoke { #pathtraceemittergpusmoke-kt-pathtraceemittergpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceEmitterGpuSmoke</span></code>](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/#L53)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceEmitterGpuSmoke</span></code>](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/#L65)
 
-Real GPU checks for `PathTracingRenderer.emitterSampling`, in the order that matters.
+Four arms measured at 96x72 on the software BVH backend, then three figures at 480x360. Each arm prints a `PASS` line naming the population it measured. A live renderer is required throughout, so this carries no `FIELD_TEST` annotation and is driven from a box instead: `dev_docs/agents/demos/path_tracing_emitters/verify.yaml` is the transcript that does it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/#L347) | Drives every check and writes the before/after captures under `outputDirectory`. Call from a suspend body in a box below a live renderer, as with the other path-trace smokes. |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceEmitterGpuSmoke/#L359) | Drives every check and writes the before/after captures under `outputDirectory`. Call from a suspend body in a box below a live renderer, as with the other path-trace smokes. |
 
 ## PathTraceGlassDemo.kt { #pathtraceglassdemo-kt }
+
+All four of the path tracer's glass materials in one scene: clear, absorbing, frosted, and a
+thin pane.
+
+`public/docs/path_tracing.md` prints this scene as its glass figure and
+`dev_docs/agents/transcripts/path_tracing_glass.yaml` launches it, so what the file builds is
+what those two are written about. Left to right: a sphere of `PathTraceMaterial.glass()`, one
+given an `attenuationColor`, one given a `roughness` of 0.32, and a quad of `thinGlass`.
+
+Most of the geometry here is background, since what a transparent material shows is mostly
+whatever is behind it. The floor is a checkerboard of 0.55-unit tiles and the wall behind the
+spheres is eighteen horizontal stripes, both built from the same two diffuse greys, one ten times
+the reflectance of the other. Each material moves that pattern its own way: refraction displaces
+the stripes, absorption tints them by how far the ray travelled inside the solid, roughness
+scatters them, and the thin pane leaves their positions where they are, because `thinGlass`
+transmits per crossing and has no thickness to refract across.
+
+The returned renderer is set to ten bounces rather than the default five, because a ray that
+enters and leaves a sphere has spent two of them before reaching anything else, and to an
+exposure of 1.5 for a floor this dark. With no `environmentPath` the light is a constant white
+environment of radiance one; a path is read by `PathTraceEnvironment.fromFile`, which takes EXR,
+Radiance and ordinary image files.
 
 `src/jvmMain/kotlin/afield/four/fabricated/PathTraceGlassDemo.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceGlassDemo/)
 
 ### PathTraceGlassDemo { #pathtraceglassdemo-kt-pathtraceglassdemo }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceGlassDemo</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGlassDemo/#L8)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceGlassDemo</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGlassDemo/#L32)
 
 Clear glass, absorbing green glass, frosted glass and a thin blue pane, from left to right.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">environmentPath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGlassDemo/#L9) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">environmentPath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceGlassDemo/#L37) | Builds the scene, points a camera at it and installs a [`PathTracingRenderer`](renderers.md#pathtracingrenderer-kt-pathtracingrenderer) under `renderer`, returning it so a box can `blitToScreen` or reconfigure it. |
 
 ## PathTraceGltf.kt { #pathtracegltf-kt }
 
@@ -1281,21 +1357,87 @@ What `PathTracingRenderer.reloadIntegrator` did: three outcomes, not a boolean.
 
 ## PathTraceMediumGpuSmoke.kt { #pathtracemediumgpusmoke-kt }
 
+Real GPU checks for the path tracer's participating medium: `PathTracingRenderer.mediumDensity`
+and everything that is sampled along a ray rather than at a surface.
+
+A medium adds three probability densities to an integrator: a distance density, a phase
+function, and the transmittance that multiplies a light connection. Each has a failure that
+darkens or brightens the image without otherwise distorting it, so a render cannot be told from
+a correct one by looking at it — a distance pdf missing its extinction factor, a phase function
+normalised to 1 instead of 1/4π, a transmittance applied twice, once analytically on the
+connection and once through the collision event that already estimated it. So each arm is
+checked against a number that exists independently of this code:
+
+ - `inertWithoutExtinction` — extinction zero, with albedo, anisotropy and bounds all set to
+   something conspicuous, must reach the previous integrator bit for bit. The distance sample has
+   no Sobol dimension of its own, it shares the BSDF lobe selector's and the escape branch remaps
+   it back to uniform, so "the medium is off" and "the sample stream is untouched" are two
+   different claims and this is the second one.
+ - `absorptionAgainstClosedForm` — the absolute anchor. A purely absorbing medium (albedo zero)
+   in front of an emissive plane must attenuate by exactly `exp(-σt·d)`, per pixel, with `d` the
+   camera-to-plane distance. That is a closed form, not a converged reference, so no common-mode
+   error can hide in it. Run at two densities an order of magnitude apart in transmittance, and
+   in a *bounded* configuration too, where the exponent is the slab-crossing length and what is
+   under test is the shader's ray-to-bounds clip rather than the exponential.
+ - `absorptionAgainstDepthFog` — the same scene and the same closed form, reached through
+   `fogDensity`, which computes its own `exp(-σ·primaryDepth)` and shares nothing with the medium
+   but the scene. It is also the arm that tests the closed form itself: the analytic `d` is a
+   Kotlin reconstruction of the ray the shader builds, and a wrong reconstruction fails here
+   instead of agreeing with itself.
+ - `scatteringFurnace` — energy conservation, asserted at 1.0. An albedo-one medium embedded in a
+   uniform unit radiance field is in exact equilibrium, since `L = 1` everywhere solves the
+   transport equation. The scene has no geometry in it, so no BSDF, no area pdf and no surface
+   reflectance can contribute to the answer or account for it. Repeated across six anisotropies,
+   which extends it from a normalisation check to a check that
+   `PathTracingRenderer.mediumAnisotropy`'s density and its sampling routine describe the same
+   distribution: were they to disagree, the phase arm's implicit weight of one would be wrong and
+   the furnace would not close.
+ - `furnaceBounceSweep` — the same furnace at four times the density, where the truncation
+   deficit is large enough to characterise. The mean rises monotonically with the bounce budget
+   and never passes 1.0, which is the signature of truncation; a normalisation error would sit at
+   a fixed offset and a double-counted arm would overshoot.
+ - `singleScatteringAgainstQuadrature` — the arm that shares no code and no scene with anything
+   else. A slab of medium under a constant environment, one bounce, is a one-dimensional integral
+   of the radiative transfer equation that a Kotlin quadrature can evaluate to eight figures. It
+   pins the distance pdf, the albedo weight, the phase normalisation and the transmittance on the
+   environment connection *simultaneously and absolutely*, against numerics written from the
+   equation rather than from the shader.
+ - `emitterConnectionIsInvisible` — the cross-mechanism arm for the one mechanism the furnace and
+   the quadrature cannot reach: the connection from a scattering point to *emissive geometry*,
+   with its area-to-solid-angle Jacobian and its own transmittance. A uniformly emissive
+   enclosure is a radiance field in which an albedo-one medium is invisible, so the reference is
+   the same scene rendered with the medium off, and the medium's emitter pdf appears in one of
+   the two arms only. That premise is exact only for a non-reflecting emitter, and every
+   dielectric this BSDF can express returns a few percent of what it is lit by, so the arm runs
+   three configurations — a black metal, a dielectric, and the dielectric pair with the
+   connection under test switched off in both — and ends in a bound on that connection's error
+   rather than in an identity.
+ - `lampInFog` — two small lamps in fog, which is the scene the variance claim is measured in.
+   Its bias residual is reported at two reference budgets, because a fixed tolerance on a
+   residual is a tolerance on noise; and its variance ratio is asserted at a floor, not printed.
+
+Every arm then runs again on each traversal backend the device exposes. The medium touches no
+traversal code and the analytic anchors are backend-independent, so a backend that misses them
+when the other does not has put the disagreement in traversal rather than in the estimator, which
+is a distinction no single pass can draw. Two further arms render the figures, and the
+numbers are written to a `report.txt` per backend after every arm as well as printed, because a
+box's `println` reaches the server log through a buffer a backdoor teardown does not wait for.
+
 `src/jvmMain/kotlin/afield/four/fabricated/PathTraceMediumGpuSmoke.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/)
 
 ### PathTraceMediumGpuSmoke { #pathtracemediumgpusmoke-kt-pathtracemediumgpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceMediumGpuSmoke</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L68)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PathTraceMediumGpuSmoke</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L91)
 
-Real GPU checks for `PathTracingRenderer.mediumDensity` and the rest of the participating medium, arranged so that the things most likely to be wrong are the things measured.
+Eight arms measured at 96x72 and two that render figures, all repeated on each backend. A live renderer is required throughout, so this carries no `FIELD_TEST` annotation and is driven from a box instead: `dev_docs/agents/demos/path_tracing_medium/verify.yaml` is the transcript that does it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">godRays</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTraceScene</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L203) | The demo scene, kept here so its picture is rendered by the same code that measures everything else: a bright strip light with four slats under it, the whole room hazed, viewed down the axis everything is extruded along so the shafts are seen in cross-section. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">godRaysCamera</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L223) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">GOD&#95;RAYS&#95;BOUNDS</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L227) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GOD&#95;RAYS&#95;DENSITY</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L235) | The demo's extinction. 0.16 rather than the 0.30 the first render used: at 0.30 the haze is about two and a third optical depths along the view and obscures itself, so the wall, the floor and the slats' shadow wedges all wash into one grey. The shafts are the point, and they want a medium you can see through. |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L1196) | Every arm, on every backend this device exposes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">godRays</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTraceScene</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L226) | The demo scene, kept here so its picture is rendered by the same code that measures everything else: a bright strip light with four slats under it, the whole room hazed, viewed down the axis everything is extruded along so the shafts are seen in cross-section. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">godRaysCamera</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L250) | Level, and square on to the x-y plane the shafts fan out in, so the slats are seen nearly edge-on and the shafts across rather than down their length. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">GOD&#95;RAYS&#95;BOUNDS</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L259) | Bounds for `godRays`, in the form `mediumBounds` takes: the floor's full width, the z extent inset a tenth of a unit from the ends the room is extruded to, and a ceiling at 5.2, above the strip light and below the top of the back wall. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GOD&#95;RAYS&#95;DENSITY</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L267) | The demo's extinction, and a figure that wants a medium you can see through rather than the densest one the integrator handles. At 0.30 the haze is about two and a third optical depths along the view and obscures itself, so the wall, the floor and the slats' shadow wedges wash into one grey. |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceMediumGpuSmoke/#L1228) | Every arm, on every backend this device exposes. |
 
 ## PathTraceScene.kt { #pathtracescene-kt }
 
@@ -1382,15 +1524,44 @@ CPU-owned linear RGBA texture. Wrap modes: 0 repeat, 1 clamp, 2 mirrored repeat.
 
 ## PathTraceShaderBoxes.kt { #pathtraceshaderboxes-kt }
 
+`pathTracingHere`: a path tracer whose material function is the box's own editable compute
+shader, authored and hot-reloaded exactly like any other Field shader.
+
+The integrator, `trace.comp`, calls one GLSL function at every surface hit,
+`shadeMaterial(Material, PathTraceSurface)`, and the packaged copy of it returns its argument
+unchanged. This file puts an editable copy of that function in the box, so a material is written
+where shader code is normally written and reloads through the ordinary Reload Compute Shader
+action. Replacing the *whole* integrator instead is the other direction, and that is
+`PathTracingRenderer.reloadIntegrator`.
+
+Two comment markers in the packaged source are what make that possible. `pathTraceTemplates`
+cuts it at `// MATERIAL_BEGIN` and `// MATERIAL_END` and puts the halves into the box's
+`shaderTemplate` map as `pathTracing.preamble` and `pathTracing.integrator`, so the shader the
+macro seeds is those two template slots with an identity `shadeMaterial` between them to edit.
+Everything such a function needs is already in the preamble: the `Material` and
+`PathTraceSurface` structs, the frame uniform, and the buffer references the scene is read
+through.
+
+The material shader is compiled twice, once at expansion and once on the first frame, and which
+source each of those sees is the thing to understand before reading `_pathTracingHere`. A macro
+compiles at expansion time, because the reflected interface is what the generated Kotlin
+accessors are built from, and at that moment no renderer has been resolved and no device asked
+whether it supports ray queries. So the templates are seeded from the portable integrator, whose
+reflection differs from the ray-query one only by an optional acceleration-structure binding;
+then `_pathTracingHere` re-seeds them for the device it actually found and edits the
+`HARDWARE_QUERY` define in the already-seeded `_compute` source, rather than recompiling through
+the macro. Every later reload goes through the normal Field path and gets the device-specific
+template.
+
 `src/jvmMain/kotlin/afield/four/fabricated/PathTraceShaderBoxes.kt` — [read the source](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/)
 
 ### Top-level functions { #pathtraceshaderboxes-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">pathTracingHere</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PathTraceScene</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">PathTraceEnvironment</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;path-tracer&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span> <span class="o">=</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L18) | A named tracer whose material function lives in this box's normal compute shader property. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;pathTracingHere</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PathTraceScene</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">PathTraceEnvironment</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;path-tracer&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span> <span class="o">=</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L32) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPathTraceShaderBoxes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L54) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">pathTracingHere</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PathTraceScene</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">PathTraceEnvironment</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;path-tracer&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span> <span class="o">=</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L49) | A named tracer whose material function lives in this box's normal compute shader property. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;pathTracingHere</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PathTraceScene</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">PathTraceEnvironment</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;path-tracer&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span> <span class="o">=</span> <span class="nc">PathTracingRenderer</span><span class="p">.</span><span class="nc">Backend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L74) | What `pathTracingHere` rewrites to, and where the device is finally consulted: the `Renderer` comes from the ambient context, hardware traversal is taken whenever the device advertises ray queries and `backend` has not pinned the software BVH, and the tracer is built with this box's compute module as its material module. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerPathTraceShaderBoxes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/PathTraceShaderBoxes/#L101) | Registers the `pathTracingHere` rewrite, once per new root. The default shader it plants is the preamble slot, a `shadeMaterial` that returns its material unchanged, and the integrator slot, with a comment saying where push constants and includes go. |
 
 ## PathTraceTriMesh.kt { #pathtracetrimesh-kt }
 
@@ -1623,17 +1794,36 @@ A play head over `frameCount` frames: play, pause, scrub, loop, and run backward
 
 ## simpleGaussianSplatSupport.kt { #simplegaussiansplatsupport-kt }
 
+A Gaussian-splat shader pair seeded into a box as editable starter source, so the splat shader is
+live Field code rather than source hidden inside `GaussianSplatRenderer`.
+
+The two entry points are call-shaped macros, so their Kotlin bodies only throw and the work is in
+the expansion: it writes the renderer's starter vertex and fragment source into the box's
+`vertex` and `fragment` properties, compiles them, reflects their interface into generated
+bindings, and rewrites the call to `_moduleHere`. What comes back is an ordinary graphics
+module, with the reload actions and shader-error reporting every other shader box has, and
+`GaussianSplatRenderer.Cloud` takes it as `suppliedRenderModule`.
+
+There are two of them because multiview is a different vertex shader and not a flag.
+`gaussianSplatMultiviewModuleHere` seeds the variant that requires `GL_EXT_multiview` and selects
+a model-view and projection matrix per eye from `gl_ViewIndex`; use it when the cloud draws into
+a `RenderToTexture` whose `multiviewViewMask` is non-zero, and the mono one otherwise. The
+fragment shader is the same in both cases.
+
+The seeding happens once. `macro_moduleHereWithDefaultShaders` writes the starter source only
+where the box has no shader source of its own, so an edited shader survives re-running the macro.
+
 `src/jvmMain/kotlin/afield/four/fabricated/simpleGaussianSplatSupport.kt` — [read the source](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/)
 
 ### Top-level functions { #simplegaussiansplatsupport-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L23) | A box-owned Gaussian-splat graphics module, initially seeded with Field's built-in mono shader. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L34) | The multiview counterpart to `gaussianSplatModuleHere`. Use this for a `RenderToTexture` whose `multiviewViewMask` is non-zero; the seeded vertex shader exposes left/right model-view and projection matrices and selects them with `gl_ViewIndex`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L41) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L49) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerGaussianSplatModuleMacros</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L57) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L44) | A box-owned Gaussian-splat graphics module, initially seeded with Field's built-in mono shader. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L55) | The multiview counterpart to `gaussianSplatModuleHere`. Use this for a `RenderToTexture` whose `multiviewViewMask` is non-zero; the seeded vertex shader exposes left/right model-view and projection matrices and selects them with `gl_ViewIndex`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L70) | The macro expansion behind `gaussianSplatModuleHere`: the ordinary graphics-module expansion, with `GaussianSplatRenderer`'s mono splat shader pair as the source to seed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L85) | `macro_gaussianSplatModuleHere` with the multiview vertex shader, behind `gaussianSplatMultiviewModuleHere`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerGaussianSplatModuleMacros</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L99) | Puts both splat macros into `MacroRegistry.callRewrite`, under the names box code writes. |
 
 ## standardRenderer.kt { #standardrenderer-kt }
 

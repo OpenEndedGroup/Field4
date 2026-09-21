@@ -37,11 +37,56 @@ import afield.ml.diag.Diagnostic
 import afield.ml.diag.Severity
 import afield.ml.diag.SourceRange
 
+/**
+ * FieldML's type checker: a Hindley-Milner inference pass over the surface tree, producing the
+ * typed tree the lowerer consumes.
+ *
+ * The core of it is the textbook algorithm. Every unknown is a numbered type variable; unification
+ * makes two types equal by binding variables in one substitution the whole run shares; pruning
+ * follows a bound variable to what it stands for and shortens the chain behind it; an occurs check
+ * refuses a type that would contain itself. A `let` generalizes over the variables its value has
+ * and its environment does not, so each use of a bound name instantiates that scheme with fresh
+ * variables.
+ *
+ * Three things here are not the textbook's:
+ *
+ * - **A host type carries a JVM class.** Two of them unify when either class is assignable from the
+ *   other, because Field's own signatures mix a writable class with its read-only interface. The
+ *   bare `Host` is the dynamic escape, and a bounded one: it stands for a value whose class is
+ *   unknown rather than one whose shape is unknown, so it unifies with a number, a string, a
+ *   boolean or another object, and refuses a function, a list, a tuple or a record.
+ * - **A saturated `host…` call is typed by reflection rather than by a scheme.** What `hostGet`
+ *   returns depends on the text of a string and the class of a receiver, which no one scheme can
+ *   state, so the member is looked up and the call is either typed or refused where it was written
+ *   instead of at the first run. A program that shadows the intrinsic is left alone. Curried
+ *   application is left-nested, so the ordinary walk would reach a lambda argument before the
+ *   receiver that says what its parameters are; a host call's spine is inferred ahead of that walk
+ *   to put the order right, which is how a callback written as a positional argument gets its
+ *   parameter types from the receiver's class.
+ * - **Numeric and vector type variables are constrained**, which is as much of a class system as
+ *   FieldML has. A variable that has been through a numeric or vector requirement is recorded as
+ *   such, the requirement is rechecked at the moment the variable is bound, and one that is still
+ *   a variable when the tree is finalized is defaulted: `Float` for numeric, `Vec2` for vector.
+ *
+ * Every failure leaves through the same abort, which throws rather than returning, so an
+ * [InferResult] either carries a typed tree and no diagnostics at all, or no tree and exactly one
+ * error.
+ */
+
+/** What inference made of a program: a typed tree, or nothing and the error that stopped it. */
 data class InferResult(
+    /** The surface tree with a type on every node and every pattern, or null if inference gave up. */
     val typed: TExpr?,
+    /** Empty when [typed] is non-null, and otherwise the single error that ended the run. */
     val diagnostics: List<Diagnostic>,
 )
 
+/**
+ * Infers the types of one FieldML program.
+ *
+ * An instance holds the substitution, the type-variable counter and the diagnostics for a single
+ * program, so [FieldMLCompiler] builds a new one for every compile.
+ */
 class Inferencer {
     private var nextTypeVar = 1
     private val substitution = mutableMapOf<Int, Type>()
@@ -49,6 +94,12 @@ class Inferencer {
     private val numericVariables = mutableSetOf<Int>()
     private val vectorVariables = mutableSetOf<Int>()
 
+    /**
+     * Types [expr], returning the typed tree, or null and the error that stopped inference.
+     *
+     * A type error is reported rather than thrown: the abort the pass raises internally to give up
+     * on a tree it cannot finish is caught here and becomes the result's one diagnostic.
+     */
     fun infer(expr: Expr): InferResult =
         try {
             val inferred = inferExpr(expr, TypeEnv(FieldMLTypePrelude.schemes))

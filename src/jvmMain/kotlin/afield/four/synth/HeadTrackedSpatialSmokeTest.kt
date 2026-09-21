@@ -17,6 +17,24 @@ expect:
   stdoutContains:
     - "HEAD_TRACKED_SPATIAL_SMOKE_PASSED"
 */
+
+/**
+ * The listener half of `patSpatial`'s audio check: the pattern holds still and the head moves.
+ *
+ * [PatSpatialSmokeTest] varies the tag and leaves the listener at the origin. Here the tag is fixed
+ * and a head pose of the shape OpenXR reports drives the HRTF, over six cases: an identity pose
+ * against no pose at all, a yaw, a step sideways, a walk towards the source, a tracking dropout,
+ * and a [VirtualHead] on its own thread writing poses while the render thread reads them.
+ *
+ * Nothing here is asserted against the wall clock. [PatSpatialRoom]'s render loop has no pacing
+ * beyond sleeping when its ring is at target fill, so a capture that drains the ring as fast as
+ * blocks appear lets the whole chain free-run at whatever rate the machine allows. Every case
+ * prints the factor it reached and none of them depends on it; [PatSpatialBudgetProbe] owns the
+ * timing questions.
+ *
+ * Run it with `tools/run_field_tests.py --id synth.head-tracked-spatial.smoke`.
+ */
+
 /**
  * Proves that a head pose of the shape OpenXR reports aims Steam Audio's HRTF, on real audio.
  *

@@ -178,25 +178,26 @@ preamble re-entry point, not just a text split.**
 
 `DataFrame` is a third-party interface and cannot implement `ToHTML` the way `Table` and `Img` do,
 which is what `ValuePrinterRegistry` (compact `.h`) and `H2ValueRegistry` (`.h2`) exist for:
-`DataFrameVisualizer.kt:55#ValuePrinterRegistry.register(DataFrame::class.java)` and
-`DataFrameVisualizer.kt:62#H2ValueRegistry.register(DataFrame::class.java)`.
+`DataFrameVisualizer.kt:62#ValuePrinterRegistry.register(DataFrame::class.java)` and
+`DataFrameVisualizer.kt:69#H2ValueRegistry.register(DataFrame::class.java)`.
 
 - **`.h`** renders frame / column / row / `GroupBy` through the **existing** `table()` and `facts()`
   primitives, so DataFrame output matches every other table rather than introducing a second style.
-- **The head is read by index**, 10 rows (`DataFrameVisualizer.kt:44#HEAD_ROWS: Int = 10`), one cell at
+- **The head is read by index**, 10 rows (`DataFrameVisualizer.kt:51#HEAD_ROWS: Int = 10`), one cell at
   a time — never `toList()` on the frame and never `take` on a column, which is also ambiguous between
-  DataFrame's own `take` and `Iterable.take`: `DataFrameVisualizer.kt:101#private fun headCells`. A
+  DataFrame's own `take` and `Iterable.take`: `DataFrameVisualizer.kt:119#private fun headCells`. A
   million-row frame therefore costs what ten rows cost, which matters because `.h` is what a box output
   shows on **every** execution.
 - **`.h2`** adapts the frame into a lazily-indexed `AbstractList<Map<String, Any?>>` row view
-  (`DataFrameVisualizer.kt:136#private class LazyRows`) and hands that to the existing
-  `renderListContinuation` offset paging (`DataFrameVisualizer.kt:28#renderListContinuation`). The
-  server holds the frame behind an `.h2` token, not a rendering of it. Side benefit: a frame nested
-  inside another value expands with the same machinery.
+  (`DataFrameVisualizer.kt:154#private class LazyRows`) and hands that to the h2 explorer, which
+  reads a window at a time by index (`h2explorer.kt:104#interface H2Source`, whose `rows(start,
+  count, stride)` is how the explorer asks for one). The server holds the frame behind an `.h2`
+  token, not a rendering of it. Side benefit: a frame nested inside another value expands with the
+  same machinery.
 - **`GroupBy` has its own registration** because the registry's lookup was the design risk here, and
   the regression that named it is kept: `DataFrameVisualizerSmokeTest.kt:152#the whole interface closure`.
 - `install()` is idempotent and called from `Server.main`; a bare `jvm-main` harness does not run that,
-  so tests call it explicitly (`DataFrameVisualizer.kt:51#fun install()`).
+  so tests call it explicitly (`DataFrameVisualizer.kt:58#fun install()`).
 
 ### The dispatch bug this page's captures found
 

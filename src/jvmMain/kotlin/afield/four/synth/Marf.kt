@@ -71,9 +71,9 @@
  * the thinning operators mean something on an address: `struct` and `degradeBy` become *how long an
  * address is held for*, rather than "and now, silently, address zero".
  *
- * That recurrence is the interesting part, and it is why this is not a sequencer. The reader's own
- * traversal generates its clock, so the duration pattern is consulted at instants the duration
- * pattern chose. Give four values a `"<1 4 .25 2>"` duration and you get
+ * That recurrence is why this is not a sequencer: the reader's own traversal generates its clock,
+ * so the duration pattern is consulted at instants the duration pattern chose. Give four values a
+ * `"<1 4 .25 2>"` duration and you get
  *
  *     |--0--|--------.7--------|-.2-|----1----|
  *
@@ -86,9 +86,19 @@
  * and never fails silently: every pattern says something at every instant. Reading them at cycle
  * `k` instead (`STAGES`) makes the fields a per-stage *sequence*, so `duration = "<1 4 .25 2>"`
  * gives stages of exactly those four lengths and `address = "<0 1 2 1 3 4>"` walks the bank one
- * slot per stage no matter how long a stage takes. The trade is that in `STAGES` one cycle of a
- * field pattern is one stage, so a bare `"0 .7 .2 1"` collapses to its first step. Both are useful;
- * neither is a default that can be left unexplained.
+ * slot per stage no matter how long a stage takes. In `STAGES` one cycle of a field pattern is one
+ * stage, so a bare `"0 .7 .2 1"` has three steps the clock cannot see — and rather than collapse to
+ * `0`, that is now **refused at construction, by field name**. See [marfCheckFieldClock].
+ *
+ * `STEPS` is the third reading and the one that means what a sub-cycle field looks like it means:
+ * it subdivides each cycle of `STAGES`, so a field contributes one stage per onset and at least one
+ * per cycle. `address = "<0 3> 1"` is then the three-entry sequence `0, 1, 3, 1` rather than an
+ * error. `STEPS` and `STAGES` agree exactly on every pattern with at most one onset per cycle, so
+ * `<…>`, `slow(3)` and a signal read identically in both.
+ *
+ * Only a stack is beyond all three. `"<0 3>, 1"` puts two layers on one instant, a field latches to
+ * one value, and no choice of clock recovers the other — so that too is refused in the sequence
+ * readings rather than half-read.
  *
  * Accumulation is exact. Durations arriving as `Double` are taken to [PatQ] at
  * [MARF_DURATION_DENOM] resolution, so a reader is still phase-locked to the bar after ten
@@ -167,12 +177,12 @@
  * interpolates by `slerp` and a hue wraps, so neither is `add`/`scale` and neither has an instance.
  * Those want a reader whose blend is its own function.
  *
- * #### Not here yet
+ * #### Nesting a pattern inside a stage
  *
- * **A bank entry that is itself a pattern.** A stage's continuous behaviour is a [MarfCurve], and
- * `MarfCurve.Shape` can close over anything, including another reader. A nested pattern given its
- * own local temporal scope inside the stage is not modelled, and would want `stagePhase` threaded
- * into a real evaluation context rather than passed as a `Double`. Nothing in this file blocks it.
+ * A stage's continuous behaviour is a [MarfCurve], and `MarfCurve.Shape` can close over anything,
+ * including another reader. What is not modelled is a nested pattern with a local temporal scope
+ * of its own: `stagePhase` reaches a `Shape` as a `Double`, so a pattern read in there has no
+ * evaluation context to be slowed, reversed or thinned in.
  */
 
 package afield.four.synth
@@ -331,7 +341,7 @@ fun curves(source: String): PatPattern<MarfCurve> {
  * than a formality: `Vector3f.add(other)`, `mul(scalar)`, `normalize()` and the `/` operator all
  * write into the receiver, so an instance that reached for the obvious spelling would corrupt the
  * stage targets stored in the bank. [MarfVector3f] and its siblings go through the out-parameter
- * forms (`a.add(b, Vector3f())`) for that reason, and `MarfSpaceTest` asserts that reading a bank
+ * forms (`a.add(b, Vector3f())`) for that reason, and `MarfVectorSpaceTest` asserts that reading a bank
  * twice gives the same answer.
  *
  * This is a vector space, which rules out the types that are not one. A quaternion interpolates by
@@ -590,6 +600,15 @@ class MarfReader<T> internal constructor(
     val origin: PatQ,
     val initial: T,
     val space: MarfSpace<T>,
+    /**
+     * The clock this reader's fields were built against.
+     *
+     * Carried rather than inferred so that a figure can be *asked* which reading it is of, which is
+     * what `MarfDocsGuardTest` does: a published snippet that drops `fields = MarfFieldClock.STAGES`
+     * while the code that drew the figure kept it is a page describing a picture it cannot produce,
+     * and that had already happened twice on `marf.md` before this property existed.
+     */
+    val fieldClock: MarfFieldClock = MarfFieldClock.CYCLES,
     private val resolve: (index: Long, start: PatQ, previous: MarfResolvedStage<T>?) -> MarfResolvedStage<T>
 ) {
     private val lock = Any()
@@ -728,9 +747,15 @@ private val MARF_PROBE: PatQ = PatQ.of(1, 65536)
  * [STAGES] asks *what is this pattern's k-th entry*, by reading it at cycle `k` — so one cycle of a
  * field pattern is one stage. That makes the fields a sequence: `"<1 4 .25 2>"` gives stages of
  * exactly those four lengths, `slow(3)` holds an entry for three stages, `every(4) { it.rev() }`
- * reverses every fourth group of four. The cost is that a bare `"0 .7 .2 1"` collapses to `0` —
- * four steps inside a cycle, and only the one at the cycle boundary is ever latched. In this mode
- * `<…>` is the idiom and a bare step list is a mistake.
+ * reverses every fourth group of four. The cost used to be that a bare `"0 .7 .2 1"` collapsed to
+ * `0` — four steps inside a cycle, and only the one at the cycle boundary is ever latched. That is
+ * now a construction-time refusal rather than a silence; see [marfCheckFieldClock].
+ *
+ * [STEPS] asks the same question one level finer: **it subdivides each cycle of [STAGES]**. Cycle
+ * `c` of a field contributes as many stages as it has onsets, and at least one, so `"<0 3> 1"` is
+ * the three-entry sequence `0, 1, 3, 1` rather than the two-entry `0, 3`. For every pattern with at
+ * most one onset per cycle — which is every `<…>`, every `slow(n)` of one, and every signal —
+ * [STEPS] and [STAGES] are the same reading, exactly. It is a refinement, not a rival.
  *
  * [CYCLES] is the default because it has no silent failure: every pattern means something in it.
  */
@@ -739,10 +764,156 @@ enum class MarfFieldClock {
     CYCLES,
 
     /** Field patterns are read at cycle `k` for stage `k` — one cycle per stage. */
-    STAGES;
+    STAGES,
 
-    internal fun instant(index: Long, start: PatQ): PatQ =
-        if (this == CYCLES) start else PatQ.of(index)
+    /** Field patterns are read one *step* per stage — [STAGES] with each cycle subdivided. */
+    STEPS;
+
+    /** True when this clock reads the fields as a per-stage sequence rather than as a voltage. */
+    internal val isSequence: Boolean get() = this != CYCLES
+}
+
+// ── the step grid, which is what makes a field a sequence ─────────────────────────────────
+
+/**
+ * How many cycles of a field pattern [marfCheckFieldClock] inspects before it accepts one.
+ *
+ * A finite probe, and it is worth being exact about what that buys: a pattern whose first
+ * misbehaving cycle is the seventeenth passes. Sixteen covers every period this file's own idioms
+ * produce — `every(4)`, `slow(3)`, `<…>` of six — and the check is run once per reader at
+ * construction, so widening it is cheap if a counter-example turns up.
+ */
+private const val MARF_FIELD_CHECK_CYCLES = 16
+
+/**
+ * The instants at which cycle [cycle] of [pattern] has something new to say.
+ *
+ * The **step grid**: the sorted distinct onsets inside `[cycle, cycle + 1)`, or the cycle's own
+ * start when there are none. That fallback is forced rather than chosen. A field written
+ * `pat("<0 2 4 1 3>").nums().slow(3)` has onsets only at cycles 0, 3, 6 …; its intervening cycles
+ * are a held event with no onset of their own, and the whole point of `slow` on a field is that
+ * those cycles are stages too. One step per empty cycle is what keeps `slow(3)` meaning "hold this
+ * entry for three stages", which is what [MarfFieldClock.STAGES] has always meant.
+ *
+ * A continuous field has no onsets at all — `signalOf` answers any query with a single analog event
+ * spanning it — so it lands on the fallback and contributes exactly one step per cycle, which is
+ * again the [MarfFieldClock.STAGES] reading.
+ */
+internal fun <A> marfFieldSteps(pattern: PatPattern<A>, cycle: Long): List<PatQ> {
+    val c = PatQ.of(cycle)
+    val onsets = pattern.events(PatArc(c, PatQ.of(cycle + 1)))
+        .filter { it.hasOnset }
+        .map { it.arc.start }
+        .distinct()
+        .sorted()
+    return if (onsets.isEmpty()) listOf(c) else onsets
+}
+
+/** How many events cycle [cycle] of [pattern] carries, onset or not. Used to spot a stack. */
+private fun <A> marfFieldEventCount(pattern: PatPattern<A>, cycle: Long): Int =
+    pattern.events(PatArc(PatQ.of(cycle), PatQ.of(cycle + 1))).size
+
+/**
+ * The instant at which stage [index] reads [pattern], under [clock].
+ *
+ * Stateful for [MarfFieldClock.STEPS] only, because the `k`-th step of a pattern cannot be computed
+ * without walking the grid to it. A reader asks for indices `0, 1, 2, …` and restarts at `0`
+ * whenever its timeline is dropped, so a cursor that rewinds on a backwards ask is exact and
+ * usually O(1). Confined by [MarfReader.stageAt]'s lock: one probe belongs to one reader.
+ */
+internal class MarfFieldProbe<A>(private val pattern: PatPattern<A>, private val clock: MarfFieldClock) {
+    private var nextIndex = 0L
+    private var cycle = 0L
+    private var within = 0
+    private var grid: List<PatQ> = emptyList()
+
+    fun instant(index: Long, start: PatQ): PatQ = when (clock) {
+        MarfFieldClock.CYCLES -> start
+        MarfFieldClock.STAGES -> PatQ.of(index)
+        MarfFieldClock.STEPS -> stepInstant(index)
+    }
+
+    private fun stepInstant(index: Long): PatQ {
+        if (index < nextIndex) rewind()
+        while (nextIndex < index) advance()
+        if (grid.isEmpty()) grid = marfFieldSteps(pattern, cycle)
+        return grid[within]
+    }
+
+    private fun rewind() {
+        nextIndex = 0L
+        cycle = 0L
+        within = 0
+        grid = emptyList()
+    }
+
+    private fun advance() {
+        if (grid.isEmpty()) grid = marfFieldSteps(pattern, cycle)
+        within++
+        if (within >= grid.size) {
+            cycle++
+            within = 0
+            grid = marfFieldSteps(pattern, cycle)
+        }
+        nextIndex++
+    }
+}
+
+/**
+ * Refuses a field pattern whose structure a per-stage clock cannot see, at construction.
+ *
+ * This exists because the failure it replaces was measured rather than imagined. On the night
+ * `Marf.kt` landed, one person spent four minutes and thirty-eight edit-and-run cycles on a single
+ * box, moving an address between `"<0 3> 1"`, `"<0 3> 1*8"`, `"<0 3>*2"`, `"<0 3>, 1"`,
+ * `"1 <0 3>"`, `"3 <0 3>"` and `"<0 3> 1 2"`. Eight of those ten spellings produce a sequence
+ * byte-identical to something strictly simpler than what was typed, and the layer said nothing
+ * about any of them. `marfCurve` already takes the other side of this argument for the same reason
+ * — "a typo in a curve pattern is silent otherwise" — and this is the larger instance of it.
+ *
+ * Two different mistakes, so two different messages:
+ *
+ * - **more than one step in a cycle** under [MarfFieldClock.STAGES]. Only the step at the cycle
+ *   boundary is ever latched. This one has a remedy, and the message names it:
+ *   [MarfFieldClock.STEPS] reads exactly the sequence that was written.
+ * - **more than one event on a step**, which is a stack (`","`). `patSampleOver` takes the first
+ *   layer and the rest are unreachable. No clock fixes that, because a stack is simultaneity and a
+ *   field is a sequence, so the message says so rather than suggesting a mode that would not help.
+ *
+ * [MarfFieldClock.CYCLES] is exempt: a field is a control voltage there, every pattern means
+ * something, and a stack read at a wall-clock instant is the language's ordinary behaviour
+ * everywhere else in the parameter algebra.
+ */
+internal fun <A> marfCheckFieldClock(
+    field: String,
+    reader: String,
+    pattern: PatPattern<A>,
+    clock: MarfFieldClock
+) {
+    if (!clock.isSequence) return
+    for (cycle in 0L until MARF_FIELD_CHECK_CYCLES.toLong()) {
+        val steps = marfFieldSteps(pattern, cycle)
+        if (clock == MarfFieldClock.STAGES && steps.size > 1) {
+            throw IllegalArgumentException(
+                "reader '$reader': the $field pattern puts ${steps.size} steps inside cycle $cycle " +
+                    "(at ${steps.joinToString(", ") { it.toString() }}), and MarfFieldClock.STAGES " +
+                    "reads one instant per cycle — so only the step at $cycle is ever latched and " +
+                    "the other ${steps.size - 1} " +
+                    (if (steps.size == 2) "is" else "are") + " discarded in silence. Either write " +
+                    "the $field as an alternation, `<…>`, which is one step a cycle, or ask for " +
+                    "the sequence you wrote with fields = MarfFieldClock.STEPS."
+            )
+        }
+        val events = marfFieldEventCount(pattern, cycle)
+        if (events > steps.size) {
+            throw IllegalArgumentException(
+                "reader '$reader': the $field pattern stacks $events layers across ${steps.size} " +
+                    "step(s) in cycle $cycle, and a field is latched to a single value per stage — " +
+                    "the first layer wins and the rest are unreachable. A stack (`,`) is " +
+                    "simultaneity and a field is a sequence, so no MarfFieldClock reads this; " +
+                    "pick one layer, or combine them into one pattern before handing it over."
+            )
+        }
+    }
 }
 
 /** Latches [pattern] at the exact instant [t], sampling a continuous pattern essentially at [t]. */
@@ -820,19 +991,30 @@ fun <T> marfIn(
     initial: T = space.zero,
     origin: Number = 0.0,
     name: String = "marf"
-): MarfReader<T> = MarfReader(
-    name = name,
-    origin = PatQ.fromDouble(origin.toDouble(), MARF_DURATION_DENOM),
-    initial = initial,
-    space = space
-) { index, start, previous ->
-    val at = fields.instant(index, start)
+): MarfReader<T> {
+    marfCheckFieldClock("value", name, value, fields)
+    marfCheckFieldClock("duration", name, duration, fields)
+    marfCheckFieldClock("curve", name, curve, fields)
+    marfCheckFieldClock("trigger", name, trigger, fields)
+    marfCheckFieldClock("speed", name, speed, fields)
+    val atValue = MarfFieldProbe(value, fields)
+    val atDuration = MarfFieldProbe(duration, fields)
+    val atCurve = MarfFieldProbe(curve, fields)
+    val atTrigger = MarfFieldProbe(trigger, fields)
+    val atSpeed = MarfFieldProbe(speed, fields)
+    return MarfReader(
+        name = name,
+        origin = PatQ.fromDouble(origin.toDouble(), MARF_DURATION_DENOM),
+        initial = initial,
+        space = space,
+        fieldClock = fields
+    ) { index, start, previous ->
     val was = previous?.components?.firstOrNull()?.stage
-    val target = marfLatch(value, at, previous?.target ?: space.zero)
-    val shape = marfLatch(curve, at, was?.curve ?: MarfCurve.Linear)
+    val target = marfLatch(value, atValue.instant(index, start), previous?.target ?: space.zero)
+    val shape = marfLatch(curve, atCurve.instant(index, start), was?.curve ?: MarfCurve.Linear)
     val dur = marfStageDuration(
-        marfLatch(duration, at, previous?.duration?.toDouble() ?: 1.0),
-        marfLatch(speed, at, 1.0)
+        marfLatch(duration, atDuration.instant(index, start), previous?.duration?.toDouble() ?: 1.0),
+        marfLatch(speed, atSpeed.instant(index, start), 1.0)
     )
     MarfResolvedStage(
         index = index,
@@ -840,12 +1022,13 @@ fun <T> marfIn(
         duration = dur,
         address = index.toDouble(),
         target = target,
-        trigger = marfLatch(trigger, at, previous?.trigger ?: true),
+        trigger = marfLatch(trigger, atTrigger.instant(index, start), previous?.trigger ?: true),
         label = space.label(target),
         from = previous?.exitValue ?: initial,
         components = listOf(MarfComponent(0, MarfStage(target, dur, shape), 1.0)),
         space = space
     )
+    }
 }
 
 /**
@@ -861,7 +1044,9 @@ fun <T> marfIn(
  * @param speed divides the duration in force, whichever that is.
  * @param fields which time coordinate the address, duration and curve patterns are read in.
  *   See [MarfFieldClock] — `STAGES` is what makes `"<0 1 2 1 3 4>"` step the bank one slot per
- *   stage whatever the durations are, and `CYCLES` reads the address as a control voltage.
+ *   stage whatever the durations are, `STEPS` does the same for an address with several steps in a
+ *   cycle (`"<0 3> 1"`), and `CYCLES` reads the address as a control voltage. The two sequence
+ *   readings refuse, at construction, an address whose structure they cannot see.
  * @param initial where the output starts, which is the first stage's departure value.
  */
 fun <T> MarfBank<T>.read(
@@ -875,24 +1060,37 @@ fun <T> MarfBank<T>.read(
     name: String = "reader"
 ): MarfReader<T> {
     val bank = this
+    marfCheckFieldClock("address", name, address, fields)
+    duration?.let { marfCheckFieldClock("duration", name, it, fields) }
+    curve?.let { marfCheckFieldClock("curve", name, it, fields) }
+    marfCheckFieldClock("speed", name, speed, fields)
+    val atAddress = MarfFieldProbe(address, fields)
+    val atDuration = duration?.let { MarfFieldProbe(it, fields) }
+    val atCurve = curve?.let { MarfFieldProbe(it, fields) }
+    val atSpeed = MarfFieldProbe(speed, fields)
     return MarfReader(
         name = name,
         origin = PatQ.fromDouble(origin.toDouble(), MARF_DURATION_DENOM),
         initial = initial,
-        space = bank.space
+        space = bank.space,
+        fieldClock = fields
     ) { index, start, previous ->
-        val at = fields.instant(index, start)
-        val addr = marfLatch(address, at, previous?.address ?: 0.0)
-        val components = bank.componentsAt(addr, curve?.let { marfLatch(it, at, MarfCurve.Linear) })
-        val baseDuration = duration?.let { marfLatch(it, at, previous?.duration?.toDouble() ?: 1.0) }
+        val addr = marfLatch(address, atAddress.instant(index, start), previous?.address ?: 0.0)
+        val components = bank.componentsAt(
+            addr,
+            curve?.let { marfLatch(it, atCurve!!.instant(index, start), MarfCurve.Linear) }
+        )
+        val baseDuration = duration?.let {
+            marfLatch(it, atDuration!!.instant(index, start), previous?.duration?.toDouble() ?: 1.0)
+        }
         val dur = if (baseDuration != null) {
-            marfStageDuration(baseDuration, marfLatch(speed, at, 1.0))
+            marfStageDuration(baseDuration, marfLatch(speed, atSpeed.instant(index, start), 1.0))
         } else {
             // Blend the stages' own durations, then apply speed — so a fractional address glides in
             // time as well as in value.
             var blended = 0.0
             for (c in components) blended += c.weight * c.stage.duration.toDouble()
-            marfStageDuration(blended, marfLatch(speed, at, 1.0))
+            marfStageDuration(blended, marfLatch(speed, atSpeed.instant(index, start), 1.0))
         }
         var target = bank.space.zero
         for (c in components) target = bank.space.add(target, bank.space.scale(c.stage.target, c.weight))

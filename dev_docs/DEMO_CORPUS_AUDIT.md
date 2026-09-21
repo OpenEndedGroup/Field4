@@ -12,7 +12,14 @@ This page is the method and the numbers, so the next person can recompute rather
 
 Every number below has a command. None of them is copied from prose.
 
-| what | number | how |
+**Every number below is also as measured on 19 September 2026 and is now out of date** — the corpus
+was 19 documents and 136 transcripts that day and is larger now. The rows are deliberately not
+refreshed: this is a dated audit, the command beside each row is what makes it recomputable, and
+`dev_docs/GUARD_CORPORA.md` carries a generated block that runs commands like these on every build
+so that somebody's reading of a stale table is never the only thing standing between the tree and a
+wrong number. Run the command; do not quote the cell.
+
+| what | number, 2026-09-19 | how |
 | --- | --- | --- |
 | demo documents | 19 | `ls -1d dev_docs/agents/demos/*/ \| wc -l` |
 | boxes across them | 65 | count `create` ops in the 19 transcripts |
@@ -128,3 +135,33 @@ is the fix; it belongs in `COMPILE_ONLY`, because its boxes open a Window and a 
 
 Both corpus assertions are now named sets rather than counts, so the next arrival is reported by
 name. See `dev_docs/GUARD_CORPORA.md` for why, and for what each guard in the tree actually looks at.
+
+## Postscript, 21 September 2026: the twenty-first, fourteen hours later — and then neither
+
+**The table at the top of this page says 19 demo documents. There are 21.** The row is left as it
+was measured, because every number on this page is dated and the command beside it is the point; if
+you want today's figure, run the command, or read the generated block in
+`dev_docs/GUARD_CORPORA.md`, which does it for you on every build. Nothing on this page was ever
+guarded, and the twenty-fourth hour of its life is when that started to matter.
+
+`bc71ed216` added `marf_demo` at 22:33 on the 20th, fourteen hours after the postscript above was
+written. The named sets did exactly what the paragraph above promised — `test_demo_build_scripts`
+and both `AgentDemoRegistrationTest` corpus assertions named `marf_demo` and listed the three
+remedies — and `main` went red in three assertions, from its own HEAD commit, and stayed red for
+hours. **Nothing runs `check` on commit.** The author of `bc71ed216` had in fact been thinking about
+this exact family that evening, ran `checkAgentTranscriptLayouts` by hand, and did not run the
+sibling wired into `check`. Named sets fix the *diagnosis*; they do not fix *when the guard runs*,
+and the second half is a different problem with a measured answer in `GUARD_CORPORA.md`.
+
+Both debts are now paid rather than described. `dev_docs/agents/transcripts/skinned_characters.yaml`
+and `marf_demo.yaml` are both `COMPILE_ONLY`, and `AgentDemoRegistrationTest.UNVERIFIED` is empty
+for the first time: **all 21 demo documents have their box Kotlin compiled on every build.** That is
+eleven box bodies — seven and four — that no Gradle task had ever compiled.
+
+And the sweep found what the method section of this page predicted it would. `skinned_characters`'
+candy-wrapper box had not compiled since the day it landed: a two-mesh-to-one-mesh rewrite left four
+`println`s naming `rL`, `rR`, `outR` and `rRest`, and the box failed with *"Unresolved reference
+'rRest'"* for two days while every gate was green. A person found it by launching every box one at a
+time — the same act this audit is a record of — and it is now found by CI. That is the argument for
+a COMPILE_ONLY transcript in one sentence: **opening an artifact finds what reading it does not, and
+a transcript is the only way to make CI open one.**

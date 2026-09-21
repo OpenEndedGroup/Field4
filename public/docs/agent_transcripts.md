@@ -57,13 +57,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 141 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 143 transcripts on every build, at three
 depths. 80 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-54 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+56 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -75,6 +75,14 @@ FIELD_TESTs are for. What all three prove is that the code in these files still 
 against today's stdlib. A second guard, `checkAgentTranscripts`, materializes every transcript into
 a document and compares it byte-for-byte against the committed starting points, so the copy the
 welcome screen opens is the one the yaml produces today.
+
+There is a second corpus beside this one — the 21 saved documents under `dev_docs/agents/demos/` —
+and as of 21 September every one of them has a transcript here, so its box Kotlin is compiled on
+every build. That was not true until then, and the reason it is worth a sentence is what the last
+two arrivals cost: `skinned_characters`' `twist_compare` box had not compiled since the day it
+landed, for two days, with every gate green, because box code goes through the K2 REPL against a
+different import set from `jvmMain` and no Gradle task ever sees it. `AgentDemoRegistrationTest`
+holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 
 ## Pure-compute scenes
 
@@ -881,7 +889,7 @@ differs is *which* reaction fires at each beat, and there is real choice about t
 visit different intermediate graphs and different peak sizes on the way to one answer. The box prints
 its own verdict per row — `one answer: true` when the four de Bruijn keys agree with each other *and*
 with `referenceNormalOrder`, and `identical pose: true` when the four final layouts are point-for-point
-equal. That second claim is the hard one to make honestly, because `Net.relax` is 2D and path-dependent:
+equal. That second claim is the hard one, because `Net.relax` is 2D and path-dependent:
 four isomorphic graphs draw four different ways and the picture then claims the opposite of the theorem.
 The final pose is therefore a three-round Weisfeiler-Leman refinement — a node's label is its type folded
 with its neighbours' labels, in **port order** — so the ordering is a structural invariant and nothing
@@ -1630,7 +1638,7 @@ its `mainLanguage` property is what makes the four boxes below Python. This one 
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
 started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
 
-It is also the one scene CI barely covers, and it is worth knowing which part is yours to check.
+It is also the one scene CI barely covers.
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells** — they are
 not Kotlin, and the harness now says so rather than reporting every word as an unresolved reference —
 so one box of five is verified by the build. Driven by hand against a real interpreter on 2026-09-19
@@ -1640,6 +1648,27 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### marf_demo
+
+**One bank of stages, read four different ways — three drawn, one heard.** A MARF *bank* is a list
+of stages (a ramp, a step, a hold, an oscillation, a curve) and it has no position of its own; a
+*reader* supplies the position, as a pattern of slot addresses read on a clock. The first box draws
+three readers of one bank as three lanes on one shared time scale, so reading down a column compares
+the same instant. The second uses two readers as the `x` and `y` of a single FLine — the path stays
+coherent without the coordinates being synchronised, because both read the same material on their
+own clocks. The third shows that a stage's value need not be a number: one `Vector3f` reader drawn
+as its three components, the stage boundaries falling in the same places in all three lanes because
+there is one stage structure carrying three values.
+
+The fourth box is why this scene is compiled rather than replayed. It sends three readers of the
+same bank into `patSpatial` as azimuth, filter cutoff and distance — pat → Dough → Steam Audio HRTF,
+in realtime — so running it opens an audio device, and a `patSynth` launch outlives the box that
+started it. The other three boxes would run happily. They stay here with the fourth rather than
+being split into a second transcript, because the point the document makes is that the bank does not
+know whether it is being drawn or heard, and that argument does not survive the split.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/marf_demo/metadata.edn)
 
 ## visionOS device scenes
 
@@ -2377,9 +2406,9 @@ around your own. The learned half is a Deep Sets interaction,
 `a = phi(v, SUM psi, MEAN psi)`, about a thousand parameters fitted by reverse-mode autodiff, which
 Smile cannot express because the gradient runs through a sum over a variable-length set.
 
-Worth knowing before you read anything into the picture: the right flock looking like the left one is
-not evidence. Almost any attraction-and-repulsion rule with a speed limit produces something an
-audience accepts. The numbers that mean something are in the smokes —
+The right flock looking like the left one is not evidence. Almost any attraction-and-repulsion rule
+with a speed limit produces something an audience accepts. The numbers that mean something are in
+the smokes —
 `four.neighbour-grid.smoke` checks the search against brute force as *sets* (a query that misses a
 tenth of its neighbours yields a force a few percent out and a flock that still flocks), and
 `four.shader-boids.smoke` grades both rules against a CPU brute force per particle.
@@ -2421,6 +2450,36 @@ also the cheapest demonstration that the weight buffer is per-system — one tra
 number of panels with no extra training and no extra shaders.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/letter_interpolation_panels/metadata.edn)
+
+### skinned_characters
+
+**A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for
+`afield.four`: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated at
+a time, and linear blend skinning into a deformed surface. Before it landed, the only mention of a
+bone anywhere in `src/jvmMain` + `src/commonMain` was `PathTraceGltf.kt` *refusing* to render one —
+the codebase naming a missing capability in its own error message.
+
+Seven boxes. A window and renderer the three GPU boxes hang beneath; a box that prints what the
+loader now reads out of the rig (nodes, bones, clips, the worst weight-sum error over all 60
+vertices, and 60 of 60 vertices bit-identical to the unskinned mesh at the bind pose) and draws four
+poses side by side; two sliders driving a live re-skin, printing the tip's `x` so the pose is a
+number and not only a picture; the path tracer on the *deformed* mesh, cross-checked against the CPU
+bridge to 0.0000000; the same deformation on the GPU with no shader change; the candy wrapper, where
+linear blending pinches the waist to **0.0%** of rest and dual quaternions hold it at **100.0%**;
+and the vertex-shader version, where 64 characters at their own phases are one mesh, one draw call
+and one upload of 128 matrices per frame.
+
+This transcript exists for a reason separate from the scene. From 19 to 20 September the candy
+wrapper box **did not compile**: a two-mesh-to-one-mesh rewrite left four `println`s naming the old
+version's `rL`, `rR`, `outR` and `rRest`, so the box failed with *"Unresolved reference 'rRest'"*
+from the day it landed, while `./gradlew check` stayed green throughout — box code is compiled by
+Field's K2 REPL against a different import set from `jvmMain`, and no Gradle task sees it. It was
+found by a person launching every box of the document one at a time. This file is that sweep, as
+CI. The numbers above are held far more sharply elsewhere: `GltfSkinningTest` asserts bind-pose
+bit-identity rather than a tolerance, and the captured frames are under
+`dev_docs/agents/evidence/skinning/` and `dev_docs/agents/evidence/gpu_skinning/`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/skinned_characters/metadata.edn)
 
 ## Graphics building blocks
 

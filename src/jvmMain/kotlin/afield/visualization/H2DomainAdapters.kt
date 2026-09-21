@@ -34,6 +34,13 @@ private const val H2_FN_SAMPLES = 512
 /** How many stack frames a [Throwable] shows before the tail is dropped. */
 private const val H2_STACK_FRAMES = 64
 
+/**
+ * Registers the four adapters above, for [Box], [Functions.Fn], [FLine] and [Throwable].
+ *
+ * `@RunsAt(newRoot)`, so the annotation scan calls it once for each root as that root is made, and nothing in a box
+ * has to. Registration is by exact class and the last write wins, so a box that registers its own adapter for one of
+ * these four after startup replaces the one installed here.
+ */
 @RunsAt(newRoot)
 fun registerH2DomainAdapters() {
 

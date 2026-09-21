@@ -41,8 +41,8 @@ import kotlin.random.Random
  * val threads = field.paths(80)                         // the trajectories, as FLines
  * ```
  *
- * With a `from` cloud supplied it becomes a morph instead of a generator, and then [FlowMatchField.transport]
- * is the interesting call: it runs the ODE only part-way, so `transport(a, to = 0.5)` is a genuine
+ * With a `from` cloud supplied it becomes a morph instead of a generator, and
+ * [FlowMatchField.transport] runs the ODE only part-way: `transport(a, to = 0.5)` is a genuine
  * half-way shape rather than a vertex-wise average of two point lists.
  *
  * ```kotlin
@@ -421,10 +421,15 @@ data class FlowMatchOptions(
     /** How often [onProgress] fires. */
     val progressEvery: Int = 100,
 ) {
-    // IntArray has identity equals, so the generated data-class equals/hashCode would be wrong.
+    /**
+     * Two option sets are equal when they print the same. `hidden` is an `IntArray`, which
+     * compares by identity, so the equality a data class generates would call two identical
+     * settings different.
+     */
     override fun equals(other: Any?): Boolean =
         other is FlowMatchOptions && toString() == other.toString()
 
+    /** Hashes the same string [equals] compares, so equal option sets land in the same bucket. */
     override fun hashCode(): Int = toString().hashCode()
 }
 

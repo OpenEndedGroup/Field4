@@ -26,6 +26,27 @@ expect:
   stdoutContains:
     - "PAT_SPATIAL_BUDGET_MEASURED"
 */
+
+/**
+ * The `patSpatial` test that measures rather than asserts: Dough engines and Steam Audio effects in
+ * a tight loop, with no room, no ring and no audio thread.
+ *
+ * [PatSpatialSmokeTest], [HeadTrackedSpatialSmokeTest] and [PatSpatialEngineSmoke] all render
+ * through [PatSpatialRoom] and check the samples that came out. This one takes the arithmetic out
+ * of that design and times it alone: [DoughEngine]s driven straight, for one, two and four
+ * sources, against the milliseconds of audio a single block holds.
+ *
+ * It asserts nothing: the test entry that runs it checks the exit code and one marker line, so
+ * every figure it prints is one observation on one machine rather than a contract.
+ * `dev_docs/PAT_SPATIAL_MEASUREMENTS.md` keeps the last set alongside the method that produced it.
+ *
+ * The run drops the first tenth of its blocks as warmup, splits the per-block cost into its Dough
+ * and Steam Audio halves, and reports the median, p99, p99.9 and the worst block, because those
+ * move differently under load.
+ *
+ * Run it with `tools/run_field_tests.py --id synth.pat-spatial.budget`.
+ */
+
 /**
  * Measures the cost of one [DoughEngine] per spatial source, against one audio block's deadline.
  *

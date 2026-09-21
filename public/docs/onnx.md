@@ -192,8 +192,8 @@ if (depth.consume()) tex.recordUpload(commandBuffer)
 ```
 
 !!! info "Needs a Vulkan device and a webcam"
-    [Which code on this page runs](#which-code-on-this-page-runs) names the tests that stand behind
-    its ONNX half.
+    [Which code on this page runs](#which-code-on-this-page-runs) says which blocks on the page are
+    illustration and which you can paste.
 
 Two design choices, both the opposite of the obvious one:
 
@@ -444,23 +444,15 @@ all-black buffer would produce a ranking just as plausible-looking.
 ## Which code on this page runs { #which-code-on-this-page-runs }
 
 The depth figure and the CLIP figure are executed by the docs build every time, imports and all, and
-the image under each is that box's own output. The other three Kotlin blocks are illustration, and are
-marked as such where they appear:
+the image under each is that box's own output.
 
-<div class="field-data-table" markdown>
-
-| block | why it is not executed | what stands behind it |
-|---|---|---|
-| the orientation snippet | `rgbaBytes` is left undefined | every call in it, via both smokes |
-| the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
-| the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
-
-</div>
-
-So **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this page that nothing in
-this repository checks.** Read that third column narrowly: it says the calls are exercised somewhere,
-not that these snippets still compile. A snippet nobody executes drifts from the API it describes and
-looks exactly like one that works, which is why only the two capture fences count as run.
+The other three Kotlin blocks are illustration, and are marked as such where they appear: the
+orientation snippet leaves `rgbaBytes` undefined, half of the session-cache do/don't is an
+anti-example that *must* not run, and the worker plus `StreamingTexture` needs a Vulkan device and a
+webcam. A snippet nobody executes drifts from the API it describes and looks exactly like one that
+works, so expect to finish them rather than to paste them. **`StreamingTexture(...)` and
+`recordUpload(...)` are the only calls on this page that nothing in this repository exercises at
+all.** `dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the block-by-block census.
 
 ## Encode prompts once, into a `val`
 

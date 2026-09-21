@@ -15,55 +15,78 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
- * Real GPU checks for [PathTracingRenderer.mediumDensity] and the rest of the participating
- * medium, arranged so that the things most likely to be wrong are the things measured.
+ * Real GPU checks for the path tracer's participating medium: `PathTracingRenderer.mediumDensity`
+ * and everything that is sampled along a ray rather than at a surface.
  *
- * **What could be wrong, and what pins it.** A medium adds three new probability densities to an
- * integrator — a distance density, a phase function, and the transmittance that multiplies a light
- * connection — and each of them is individually plausible-looking when wrong. A distance pdf
- * missing its extinction factor, a phase function normalised to 1 instead of 1/4π, a transmittance
- * applied twice (once analytically on the connection and once through the collision event that
- * already estimated it): all three produce an image that is darker or brighter but otherwise
- * entirely convincing. None of them is detectable by looking. So every check here is against a
- * number that exists independently of this code:
+ * A medium adds three probability densities to an integrator: a distance density, a phase
+ * function, and the transmittance that multiplies a light connection. Each has a failure that
+ * darkens or brightens the image without otherwise distorting it, so a render cannot be told from
+ * a correct one by looking at it — a distance pdf missing its extinction factor, a phase function
+ * normalised to 1 instead of 1/4π, a transmittance applied twice, once analytically on the
+ * connection and once through the collision event that already estimated it. So each arm is
+ * checked against a number that exists independently of this code:
  *
- *  - [absorptionAgainstClosedForm] — the absolute anchor. A purely absorbing medium (albedo zero)
+ *  - `inertWithoutExtinction` — extinction zero, with albedo, anisotropy and bounds all set to
+ *    something conspicuous, must reach the previous integrator bit for bit. The distance sample has
+ *    no Sobol dimension of its own, it shares the BSDF lobe selector's and the escape branch remaps
+ *    it back to uniform, so "the medium is off" and "the sample stream is untouched" are two
+ *    different claims and this is the second one.
+ *  - `absorptionAgainstClosedForm` — the absolute anchor. A purely absorbing medium (albedo zero)
  *    in front of an emissive plane must attenuate by exactly `exp(-σt·d)`, per pixel, with `d` the
  *    camera-to-plane distance. That is a closed form, not a converged reference, so no common-mode
  *    error can hide in it. Run at two densities an order of magnitude apart in transmittance, and
- *    in a *bounded* configuration too, where the exponent is the slab-crossing length and the
- *    thing under test is `mediumSpan` rather than the exponential.
- *  - [absorptionAgainstDepthFog] — the same scene, the same closed form, reached through
- *    `fogDensity`: code this change does not touch, which computes its own `exp(-σ·primaryDepth)`.
- *    It shares nothing with the medium but the scene. It is also what keeps the closed form above
- *    honest: the analytic `d` is a Kotlin reconstruction of the ray the shader builds, and if that
- *    reconstruction were wrong this arm would fail rather than quietly agreeing with itself.
- *  - [scatteringFurnace] — energy conservation, asserted at 1.0. An albedo-one medium embedded in
- *    a uniform unit radiance field is in exact equilibrium: `L = 1` everywhere solves the transport
- *    equation. There is no geometry in this scene at all, so no BSDF, no area pdf and no surface
- *    reflectance can contribute to or excuse the answer — it is the medium alone against a whole
- *    number. Repeated across six anisotropies, which is what turns it from a normalisation check
- *    into a check that [PathTracingRenderer.mediumAnisotropy]'s density and its sampling routine
- *    describe the same distribution: if they disagreed, the phase arm's implicit weight of one
- *    would be wrong and the furnace would not close.
- *  - [singleScatteringAgainstQuadrature] — the deepest arm, and the one that shares no code and no
- *    scene with anything else. A slab of medium under a constant environment, one bounce, is a
- *    one-dimensional integral of the radiative transfer equation that a Kotlin quadrature can
- *    evaluate to eight figures. It pins the distance pdf, the albedo weight, the phase
- *    normalisation and the transmittance on the environment connection *simultaneously and
- *    absolutely*, against numerics written from the equation rather than from the shader.
- *  - [emitterConnectionIsInvisible] — the cross-mechanism arm for the one mechanism the furnace
- *    and the quadrature cannot reach: the connection from a scattering point to *emissive geometry*,
+ *    in a *bounded* configuration too, where the exponent is the slab-crossing length and what is
+ *    under test is the shader's ray-to-bounds clip rather than the exponential.
+ *  - `absorptionAgainstDepthFog` — the same scene and the same closed form, reached through
+ *    `fogDensity`, which computes its own `exp(-σ·primaryDepth)` and shares nothing with the medium
+ *    but the scene. It is also the arm that tests the closed form itself: the analytic `d` is a
+ *    Kotlin reconstruction of the ray the shader builds, and a wrong reconstruction fails here
+ *    instead of agreeing with itself.
+ *  - `scatteringFurnace` — energy conservation, asserted at 1.0. An albedo-one medium embedded in a
+ *    uniform unit radiance field is in exact equilibrium, since `L = 1` everywhere solves the
+ *    transport equation. The scene has no geometry in it, so no BSDF, no area pdf and no surface
+ *    reflectance can contribute to the answer or account for it. Repeated across six anisotropies,
+ *    which extends it from a normalisation check to a check that
+ *    `PathTracingRenderer.mediumAnisotropy`'s density and its sampling routine describe the same
+ *    distribution: were they to disagree, the phase arm's implicit weight of one would be wrong and
+ *    the furnace would not close.
+ *  - `furnaceBounceSweep` — the same furnace at four times the density, where the truncation
+ *    deficit is large enough to characterise. The mean rises monotonically with the bounce budget
+ *    and never passes 1.0, which is the signature of truncation; a normalisation error would sit at
+ *    a fixed offset and a double-counted arm would overshoot.
+ *  - `singleScatteringAgainstQuadrature` — the arm that shares no code and no scene with anything
+ *    else. A slab of medium under a constant environment, one bounce, is a one-dimensional integral
+ *    of the radiative transfer equation that a Kotlin quadrature can evaluate to eight figures. It
+ *    pins the distance pdf, the albedo weight, the phase normalisation and the transmittance on the
+ *    environment connection *simultaneously and absolutely*, against numerics written from the
+ *    equation rather than from the shader.
+ *  - `emitterConnectionIsInvisible` — the cross-mechanism arm for the one mechanism the furnace and
+ *    the quadrature cannot reach: the connection from a scattering point to *emissive geometry*,
  *    with its area-to-solid-angle Jacobian and its own transmittance. A uniformly emissive
- *    enclosure is a radiance field in which an albedo-one medium is exactly invisible, so the same
- *    scene rendered with the medium off — last night's estimator, independently checked — is the
- *    reference. The new emitter-in-medium pdf appears in exactly one of the two arms.
- *  - [lampInFog] — the dramatic scene, and where the *variance* claim lives. Its bias residual is
- *    reported at two reference budgets, because a fixed tolerance on a residual is a tolerance on
- *    noise; and its variance ratio is asserted at a floor, not printed.
+ *    enclosure is a radiance field in which an albedo-one medium is invisible, so the reference is
+ *    the same scene rendered with the medium off, and the medium's emitter pdf appears in one of
+ *    the two arms only. That premise is exact only for a non-reflecting emitter, and every
+ *    dielectric this BSDF can express returns a few percent of what it is lit by, so the arm runs
+ *    three configurations — a black metal, a dielectric, and the dielectric pair with the
+ *    connection under test switched off in both — and ends in a bound on that connection's error
+ *    rather than in an identity.
+ *  - `lampInFog` — two small lamps in fog, which is the scene the variance claim is measured in.
+ *    Its bias residual is reported at two reference budgets, because a fixed tolerance on a
+ *    residual is a tolerance on noise; and its variance ratio is asserted at a floor, not printed.
  *
- * Every assertion states the population it was measured over. Every number that appears in a
- * `println` has a `check` near it.
+ * Every arm then runs again on each traversal backend the device exposes. The medium touches no
+ * traversal code and the analytic anchors are backend-independent, so a backend that misses them
+ * when the other does not has put the disagreement in traversal rather than in the estimator, which
+ * is a distinction no single pass can draw. Two further arms render the figures, and the
+ * numbers are written to a `report.txt` per backend after every arm as well as printed, because a
+ * box's `println` reaches the server log through a buffer a backdoor teardown does not wait for.
+ */
+
+/**
+ * Eight arms measured at 96x72 and two that render figures, all repeated on each backend. A live
+ * renderer is required throughout, so this carries no `FIELD_TEST` annotation and is driven from a
+ * box instead:
+ * `dev_docs/agents/demos/path_tracing_medium/verify.yaml` is the transcript that does it.
  */
 object PathTraceMediumGpuSmoke {
     private const val WIDTH = 96
@@ -220,17 +243,26 @@ object PathTraceMediumGpuSmoke {
         sphere(Vector3f(1.5f, 0.85f, 0.6f), 0.85f, ball, 40, 20)
     }
 
+    /**
+     * Level, and square on to the x-y plane the shafts fan out in, so the slats are seen nearly
+     * edge-on and the shafts across rather than down their length.
+     */
     fun godRaysCamera(renderer: Renderer) = Camera(renderer).also {
         it.at.set(0.15f, 2.35f, 9.2f); it.target.set(0.15f, 2.25f, 0f); it.p.fov = 0.82
     }
 
+    /**
+     * Bounds for [godRays], in the form `mediumBounds` takes: the floor's full width, the z extent
+     * inset a tenth of a unit from the ends the room is extruded to, and a ceiling at 5.2, above
+     * the strip light and below the top of the back wall.
+     */
     val GOD_RAYS_BOUNDS = Vector3f(-6f, 0f, -3.9f) to Vector3f(6f, 5.2f, 3.9f)
 
     /**
-     * The demo's extinction. 0.16 rather than the 0.30 the first render used: at 0.30 the haze is
-     * about two and a third optical depths along the view and obscures itself, so the wall, the
-     * floor and the slats' shadow wedges all wash into one grey. The shafts are the point, and they
-     * want a medium you can see through.
+     * The demo's extinction, and a figure that wants a medium you can see through rather than the
+     * densest one the integrator handles. At 0.30 the haze is about two and a third optical
+     * depths along the view and obscures itself, so the wall, the floor and the slats' shadow
+     * wedges wash into one grey.
      */
     const val GOD_RAYS_DENSITY = 0.16f
 

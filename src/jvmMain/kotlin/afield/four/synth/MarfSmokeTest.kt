@@ -18,14 +18,18 @@ expect:
 */
 /**
  * The worked example for `Marf.kt`, and the check that it holds together: one bank, several
- * readers, and the five things worth looking at printed as text.
+ * readers, and what each reader is doing printed as text.
  *
- * `main` renders what the design note asks to be rendered — current address, current stage, stage
- * phase, generated value, stage-boundary pulses — for two readers over shared material, then swaps
- * `every(4) { rev() }` into one reader's address and renders it again. If content, timing,
- * addressing and interpolation are properly separated, the second picture differs from the first in
- * exactly one row's worth of consequences and the other reader is untouched. That is asserted here
- * rather than left to the eye.
+ * `main` prints five rows per reader — current address, current stage, stage phase, generated
+ * value and stage-boundary pulses — for two readers over shared material, then swaps
+ * `every(4) { rev() }` into one reader's address and prints them again. Content, timing, addressing
+ * and interpolation are separate, so transforming one reader's address cannot disturb the other and
+ * cannot alter the bank; the run checks both.
+ *
+ * The transform itself only bites on an address with steps inside the cycle: on a `<…>`
+ * address, which holds one event per cycle, `rev()` has nothing to reverse, so the run repeats the
+ * comparison over four stages a cycle and asserts that cycle 0 comes out reversed and cycle 1 does
+ * not.
  *
  * #### The livecoding version
  *
@@ -60,9 +64,9 @@ expect:
  *
  * #### The graphics version
  *
- * Section 17 of the design note is right that this shows the architecture better than notes do.
- * Three readers share one bank and become three coordinates, so the shapes are related without
- * being synchronised:
+ * Driving geometry shows the architecture more directly than driving notes does. Three readers
+ * share one bank and become three coordinates, so the shapes are related without being
+ * synchronised:
  *
  *     val x = b.read(pat("<0 1 2 3 4>").nums(), name = "x")
  *     val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), name = "y")
@@ -74,9 +78,16 @@ expect:
  *         ln.clear().circle(p, 10.0 + 60.0 * r.atSeconds(t).value)
  *     }
  *
- * Remember that a `frames { }` block needs a renderer to tick at all — see
- * `no-runloop-in-jvm-main` territory — so that one belongs in a box with a graphics parent, not
- * here. This file stays headless on purpose.
+ * A `frames { }` block needs a renderer to tick at all, so that last one belongs in a box with a
+ * graphics parent rather than here, which stays headless.
+ */
+
+/**
+ * Prints two readers of one shared bank as text, then asserts what transforming one reader's
+ * address may and may not change.
+ *
+ * `main` is the `synth.marf.readers` FIELD_TEST: it writes nothing, and reports every failed
+ * assertion before exiting non-zero.
  */
 object MarfSmokeTest {
 

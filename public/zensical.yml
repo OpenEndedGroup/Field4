@@ -303,9 +303,15 @@ nav:
     # Internals on this section's own test: mechanism, hand-written, and read when you are working
     # out why Field did something rather than when you are writing a box. It is a sibling of
     # server_surface.md — that page says what Field exposes to a client, this one says where the
-    # process's own output goes. Last of the runtime-surface three and before the build page,
+    # process's own output goes. Third of the runtime-surface four and before the build page,
     # because the terminal it describes is the one `building_and_testing.md` tells you to read.
     - Where Field's Output Goes: logging.md
+    # Last of the runtime-surface four. It sits here rather than in "AI & Agents" on this section's
+    # own test: mechanism, hand-written, and read when you are working out why Field did something
+    # rather than when you are writing a box. Its sibling is logging.md — that page says where the
+    # process's output goes, this one says how much of it a picture can hold, and both are things
+    # you look up after something has already surprised you rather than while composing.
+    - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
 
 markdown_extensions:
