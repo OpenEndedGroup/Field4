@@ -259,10 +259,9 @@ Three of the pictures are the box's *editor*, because that is where `print` outp
 expression land — beside the line that produced them. The plotly one is the box's output pane,
 because an embedded page is a display channel rather than an inline annotation.
 
-All four need JEP, so each carries `requires="jep"`, and a full recapture without a resolvable JEP
-stops in a second rather than failing at the capture. The one shell block is the install recipe and
-is illustration only — running it during a docs build would compile a C extension.
+All four need JEP. The one shell block is the install recipe, and is illustration only.
 
 Two claims here have no picture under them. A still taken after a `tqdm` loop finishes shows an
 empty bar, and the shared global namespace needs two co-operating boxes where a runner fence builds
 only one; both are things to run yourself rather than read.
+`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the capture mechanics behind all of it.
