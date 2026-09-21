@@ -6,8 +6,9 @@ done here without a human in the chair.
 
 So the useful question is not whether captures work. It is **which pictures cannot be taken at
 all**, because that is the boundary of what anyone — a person or an agent — can honestly claim
-about a running document. Forty native-window capture fences across fifteen published pages sit
-close to that boundary, and until now the boundary was scattered across a dozen pages as asides.
+about a running document. Thirty-nine native-window capture fences across fourteen published pages
+sit close to that boundary, and until now the boundary was scattered across a dozen pages as
+asides.
 
 The limits sort into three kinds, and the ordering matters more than the list:
 
@@ -224,7 +225,7 @@ it is what stopped an hour going into the wrong thing.
 Three things make this cheap enough to be a habit:
 
 1. **A control is already sitting in the tree.** Any page with a committed native-window capture is
-   one; there are fifteen of them.
+   one; there are fourteen of them.
 2. **For box captures, the `clip` is the control.** You do not need a second run — compare the clip
    in the reply against the size you expected, as the two figures at the top of this page do.
 3. **Run the control in the same invocation.** A separate run is a different session, a different
