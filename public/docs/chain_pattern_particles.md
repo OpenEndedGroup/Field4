@@ -111,8 +111,8 @@ val series = PatSynthDocs.bandSeries(audio, split, windowFrames = 2048, hopFrame
 val seconds = series.indices.map { it * 256.0 / PatSynthDocs.SR }
 showSignals(
     "70 Hz" to series.map { it[0] },
-    "420 Hz" to series.map { it[1] },
-    "2.4 kHz" to series.map { it[2] },
+    "340 Hz" to series.map { it[1] },
+    "1.6 kHz" to series.map { it[2] },
     "8 kHz" to series.map { it[3] },
     x = seconds,
     title = "four bands of one bar, the numbers the shader reads",
@@ -122,9 +122,9 @@ showSignals(
 :::endfold
 ```
 
-![Four traces over two seconds: a 70 Hz trace spiking sixteen times, a 420 Hz trace spiking with it at about two thirds the height, and 2.4 kHz and 8 kHz traces that stay busier and flatter](assets/chain_pattern_particles/bands.png)
+![Four traces over two seconds: a 70 Hz trace spiking sixteen times, a 340 Hz trace spiking with it at about two thirds the height, and 1.6 kHz and 8 kHz traces that stay busier and flatter](assets/chain_pattern_particles/bands.png)
 
-Sixteen kicks in two seconds in the lowest band, which is `bd*4` at two cycles per second. The 420 Hz
+Sixteen kicks in two seconds in the lowest band, which is `bd*4` at two cycles per second. The 340 Hz
 band spikes with them rather than with the offbeat stabs, because a kick's attack is broadband and
 sixteen kicks are louder in that band than four stabs. The top two bands stay busy and comparatively
 flat, because sixteen hats a cycle never leave a gap. That difference is the whole reason the rings
@@ -150,8 +150,8 @@ layout(push_constant) uniform dat {
     Out   outData;    // this frame's positions, read by the draw box
     float time;
     float band0;      // 70 Hz    — the kick
-    float band1;      // 420 Hz
-    float band2;      // 2.4 kHz  — the square stab's harmonics
+    float band1;      // 340 Hz
+    float band2;      // 1.6 kHz  — the square stab's harmonics
     float band3;      // 8 kHz    — the hats
     uint  count;
 } pc;

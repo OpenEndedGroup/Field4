@@ -60,12 +60,12 @@ fun BufferParameters.asOut(): Out =
 /*compute-pc-structure:band0*/ var Structure.band0 by Structure.FromStructure<Any>() // 70 Hz — the kick
 /*compute-pc-binding:band0*/ var ComputeMesh.band0 by ComputeMesh.BoundFromStructure<Float>() // 70 Hz — the kick
 /*compute-pc-binding-group:band0*/ var ComputeMeshGroup.band0 by ComputeMeshGroup.BoundFromStructure<Float>() // 70 Hz — the kick
-/*compute-pc-structure:band1*/ var Structure.band1 by Structure.FromStructure<Any>() // 420 Hz
-/*compute-pc-binding:band1*/ var ComputeMesh.band1 by ComputeMesh.BoundFromStructure<Float>() // 420 Hz
-/*compute-pc-binding-group:band1*/ var ComputeMeshGroup.band1 by ComputeMeshGroup.BoundFromStructure<Float>() // 420 Hz
-/*compute-pc-structure:band2*/ var Structure.band2 by Structure.FromStructure<Any>() // 2.4 kHz — the square stab's harmonics
-/*compute-pc-binding:band2*/ var ComputeMesh.band2 by ComputeMesh.BoundFromStructure<Float>() // 2.4 kHz — the square stab's harmonics
-/*compute-pc-binding-group:band2*/ var ComputeMeshGroup.band2 by ComputeMeshGroup.BoundFromStructure<Float>() // 2.4 kHz — the square stab's harmonics
+/*compute-pc-structure:band1*/ var Structure.band1 by Structure.FromStructure<Any>() // 340 Hz
+/*compute-pc-binding:band1*/ var ComputeMesh.band1 by ComputeMesh.BoundFromStructure<Float>() // 340 Hz
+/*compute-pc-binding-group:band1*/ var ComputeMeshGroup.band1 by ComputeMeshGroup.BoundFromStructure<Float>() // 340 Hz
+/*compute-pc-structure:band2*/ var Structure.band2 by Structure.FromStructure<Any>() // 1.6 kHz — the square stab's harmonics
+/*compute-pc-binding:band2*/ var ComputeMesh.band2 by ComputeMesh.BoundFromStructure<Float>() // 1.6 kHz — the square stab's harmonics
+/*compute-pc-binding-group:band2*/ var ComputeMeshGroup.band2 by ComputeMeshGroup.BoundFromStructure<Float>() // 1.6 kHz — the square stab's harmonics
 /*compute-pc-structure:band3*/ var Structure.band3 by Structure.FromStructure<Any>() // 8 kHz — the hats
 /*compute-pc-binding:band3*/ var ComputeMesh.band3 by ComputeMesh.BoundFromStructure<Float>() // 8 kHz — the hats
 /*compute-pc-binding-group:band3*/ var ComputeMeshGroup.band3 by ComputeMeshGroup.BoundFromStructure<Float>() // 8 kHz — the hats
