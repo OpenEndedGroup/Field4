@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14580 public symbols across 371 source files**, 8529 of them (58%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14580 public symbols across 371 source files**, 8587 of them (58%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -16,7 +16,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 27 | 638 | 305 (47%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 28 | 858 | 462 (53%) | Making a shape behave. |
+| [Simulation](simulation.md) | 28 | 858 | 501 (58%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 432 (68%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -28,7 +28,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 78 | 2286 | 891 (38%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 4 | 167 | 145 (86%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
 
@@ -101,7 +101,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [DatalogObjects.kt](languages.md#datalogobjects-kt) | Languages | 4 | 4 | Any live object graph as Datalog base relations, by way of `afield.graphquery`. | [Datalog in a box](../datalog.md) |
 | [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 6 | 4 | Source text to abstract syntax: the lexer and recursive-descent parser every Datalog program in Field goes through, and the two word lists that decide what the notation reserves. |  |
 | [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 | The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the one that took the answer count to zero. |  |
-| [deepsets.kt](machine-learning.md#deepsets-kt) | Machine learning | 45 | 28 |  | [Neural particle systems](../neural_particles.md) |
+| [deepsets.kt](machine-learning.md#deepsets-kt) | Machine learning | 45 | 45 | A learned two-body interaction: the acceleration on a particle as a function of the neighbours around it, fitted by autodiff from examples of any rule that can already be evaluated. | [Neural particle systems](../neural_particles.md) |
 | [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 13 | Where a FieldML compile says something is wrong, and how badly. |  |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 | Offline rendering of a pattern through the **real** Dirt sample library. | [Sound: from a pattern to something you can hear](../sound.md) |
@@ -149,7 +149,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FileManager.kt](data.md#filemanager-kt) | Data | 28 | 28 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. | [Where Field looks for a file](../files_and_paths.md) |
 | [Filters.kt](synthesis.md#filters-kt) | Synthesis | 44 | 5 | The filters, and the one saturator that keeps them company. |  |
 | [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
-| [flowmatching.kt](machine-learning.md#flowmatching-kt) | Machine learning | 55 | 53 | Flow matching over 2D and 3D point clouds — `flowMatch` trains a velocity field that carries one distribution onto another, and the field it returns can be sampled, integrated part-way, or drawn. | [Flow Matching](../flow_matching.md), [Neural particle systems](../neural_particles.md) |
+| [flowmatching.kt](machine-learning.md#flowmatching-kt) | Machine learning | 55 | 55 | Flow matching over 2D and 3D point clouds — `flowMatch` trains a velocity field that carries one distribution onto another, and the field it returns can be sampled, integrated part-way, or drawn. | [Flow Matching](../flow_matching.md), [Neural particle systems](../neural_particles.md) |
 | [FM.kt](synthesis.md#fm-kt) | Synthesis | 10 | 9 | Frequency-modulation synthesis in two pieces: `FMOperator` is one modulated sine, and `FMPatch` wires several of them into the classic algorithms. |  |
 | [FnMetric.kt](function.md#fnmetric-kt) | Function | 3 | 3 | The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface` scoring a candidate signal against a target on one even sample grid (lower is better), plus a companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`, `correlation` — and the `fromResidual` / `window` builders behind them. |  |
 | [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 13 | 13 | Makes ForthField a language a box can be written in. |  |
@@ -343,7 +343,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 4 | Notes with times on them, and a lazy player for a stream of them. | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [ShaderBoids.kt](simulation.md#shaderboids-kt) | Simulation | 37 | 31 |  | [Neural particle systems](../neural_particles.md) |
+| [ShaderBoids.kt](simulation.md#shaderboids-kt) | Simulation | 37 | 37 | Reynolds boids as a Vulkan compute shader, over a GPU neighbour grid, with the interaction rule swappable for a trained network. | [Neural particle systems](../neural_particles.md) |
 | [shaders.kt](graphics.md#shaders-kt) | Graphics | 180 | 180 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 28 | The value types the rest of the synthesis category is written in, and the per-block contract they render under. | [Making a sound in Field: every path there is](../sound_paths.md), [A pattern that moves particles](../chain_pattern_particles.md), [Faust](../faust.md) |
 | [SimdVerlet.kt](simulation.md#simdverlet-kt) | Simulation | 31 | 18 | The particle solver: structure-of-arrays Verlet integration, directed distance constraints, and the vector kernels that run both. |  |
@@ -353,7 +353,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SimdVerletTearing.kt](simulation.md#simdverlettearing-kt) | Simulation | 18 | 11 | Tearing for `SimdVerlet`: retiring over-stretched distance constraints, and the two measurements that say where to set the threshold. |  |
 | [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 | Wind for `SimdVerlet`: per-particle drag, per-quad cloth aerodynamics, and the reproducible gust field both of them sample. |  |
 | [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 5 | A Gaussian-splat shader pair seeded into a box as editable starter source, so the splat shader is live Field code rather than source hidden inside `GaussianSplatRenderer`. |  |
-| [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 12 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
+| [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 45 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
 | [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 | One solved revision: the raw fields exactly as Kratos produced them, and the views Field draws. |  |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 29 | Classical multidimensional scaling and t-SNE, over equal-length vectors or over a distance matrix you computed yourself, wrapping Smile. | [Projecting a distance matrix](../projection_examples.md) |
