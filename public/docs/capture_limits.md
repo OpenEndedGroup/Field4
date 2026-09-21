@@ -5,12 +5,10 @@ it to pixels and look at them, and [Letting an Agent Drive](automating_field.md)
 done here without a human in the chair.
 
 So the useful question is not whether captures work. It is **which pictures cannot be taken at
-all**, because that is the boundary of what anyone — a person or an agent — can honestly claim
-about a running document. Thirty-nine native-window capture fences across fourteen published pages
-sit close to that boundary, and until now the boundary was scattered across a dozen pages as
-asides.
+all**, because that is the boundary of what a person or an agent can claim about a running
+document.
 
-The limits sort into three kinds, and the ordering matters more than the list:
+The limits sort into three kinds:
 
 | kind | what you get | what it costs you |
 |---|---|---|
@@ -18,8 +16,8 @@ The limits sort into three kinds, and the ordering matters more than the list:
 | **Quiet** | the capture times out | an hour, guessing why |
 | **Silent** | the capture succeeds and shows the wrong thing | a published figure that is wrong |
 
-Almost all the attention in this repo has gone to the loud ones, because they are the ones that
-announce themselves. The silent ones are the subject of this page.
+The loud ones announce themselves, so they are the ones already handled. The silent ones are the
+subject of this page.
 
 ---
 
@@ -78,7 +76,7 @@ not disagree. **The clip is the box's own rectangle**, so its size is whatever t
 collapsed to, times the device pixel ratio. The signature to watch for is not a number — it is a
 clip much smaller than the output you were expecting.
 
-### Why the existing guard does not catch it
+### Why opening the outputs is not enough
 
 `screenshot-box` already opens outputs by default (`--open-outputs` is the default in
 `tools/field_backdoor.py`; `--no-open-outputs` turns it off), and the prep script does hold a
@@ -148,16 +146,14 @@ and `dev_docs/GPU_SKINNING.md`, one variable at a time on the same scene:
 | reads a box property with `getPropertyRaw` | times out |
 | re-uploads vertices with `applyToMesh` | times out |
 
-The shape of that table is the finding. **Deformation is innocent and buffer writes are innocent.**
-The trap is the per-frame *vertex re-upload* specifically, and separately a per-frame box-property
-read. A page that says "per-frame GPU work cannot be photographed" is claiming something much
-larger than what was measured.
+**Deformation is innocent and buffer writes are innocent.** The trap is the per-frame *vertex
+re-upload* specifically, and separately a per-frame box-property read, not per-frame GPU work in
+general.
 
-!!! warning "Measured elsewhere, not re-measured here"
+??? aside "Where those five rows come from"
 
-    The five rows above are carried over from the skinning work and were **not** re-run for this
-    page. They are the most expensive claims here to check and the ones most worth checking again
-    before anyone relies on them.
+    They are carried over from the skinning work, in `dev_docs/SKINNED_CHARACTERS.md` and
+    `dev_docs/GPU_SKINNING.md`, and were **not** re-run for this page.
 
 A related limit is not a timeout at all and is easy to mistake for one: **`MeshInstance.applyToMesh`
 cannot run from a `main` in the first place.** Its buffers come from `defaultBuffer { … }.buffer`,
@@ -177,17 +173,15 @@ to the browser recorder, and silently records the wrong window
 (`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page currently does this, so the trap is real
 and unsprung.
 
-The narrower truth is more interesting than "there is no recorder", which is what this was previously
-written down as. A native-window recorder **does** exist: `Window.raiseAndRecord`, in
-`afield/docs/doc.kt`, raises the GLFW window and records its rectangle with macOS `screencapture`.
-Its only caller is the `render_clip` comment command in the same file, which neither the backdoor nor
-the docs fence harness reaches.
+A native-window recorder **does** exist, which is the narrower and more useful truth:
+`Window.raiseAndRecord`, in `afield/docs/doc.kt`, raises the GLFW window and records its rectangle
+with macOS `screencapture`. Its only caller is the `render_clip` comment command in the same file,
+which neither the backdoor nor the docs fence harness reaches.
 
 It is also on the *old* mechanism. The still path was moved to the renderer's own swapchain copy and
 the recording path was not, so the recorder that exists needs Screen-Recording permission and fails
 headless — the same contrast `dev_docs/imgui_vr_panel.md` draws between its `capture` and
-`capture-gpu` modes. So the honest statement is: a moving GPU figure is a still plus a plot of the
-signal it follows, and pages have been caught implying a clip they do not have.
+`capture-gpu` modes. So a moving GPU figure is a still plus a plot of the signal it follows.
 
 Two more pictures cannot be taken, for reasons that have nothing to do with the capture code:
 
@@ -207,9 +201,8 @@ This is the hard one, and today the two look identical: "Timed out waiting for n
 with no hint whether the scene failed to draw or the capture path failed to fetch it. A theory
 about a timeout is self-confirming — you will always find something slow to blame.
 
-There is a technique in the repo that settles it, and it deserves a name. Call it a **trusted
-control**. Alongside the thing you are trying to photograph, capture something whose committed
-figures prove it worked before. Then:
+One technique settles it. Call it a **trusted control**: alongside the thing you are trying to
+photograph, capture something whose committed figures prove it worked before. Then:
 
 | your subject | the control | verdict |
 |---|---|---|
@@ -217,15 +210,14 @@ figures prove it worked before. Then:
 | times out | times out too | the **capture path** is broken in this environment; debug nothing else |
 | works | — | you have your picture |
 
-`dev_docs/FIELDML_HOST_BRIDGE.md` records this being used exactly once and being worth it: a scene
-would not photograph, and the existing `fieldml_frames_demo` — whose committed captures prove it
-worked — failed identically. That is what said the fault was the environment and not the scene, and
-it is what stopped an hour going into the wrong thing.
+`dev_docs/FIELDML_HOST_BRIDGE.md` has a worked case: a scene would not photograph, and the existing
+`fieldml_frames_demo` — whose committed captures prove it worked — failed identically. That is what
+said the fault was the environment and not the scene.
 
 Three things make this cheap enough to be a habit:
 
 1. **A control is already sitting in the tree.** Any page with a committed native-window capture is
-   one; there are fourteen of them.
+   one.
 2. **For box captures, the `clip` is the control.** You do not need a second run — compare the clip
    in the reply against the size you expected, as the two figures at the top of this page do.
 3. **Run the control in the same invocation.** A separate run is a different session, a different
@@ -248,4 +240,4 @@ Three things make this cheap enough to be a habit:
 | `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
 | a static capture cannot click | `dev_docs/three_inspector.md` |
 | captures with a build prerequisite, and host-gated captures | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, `dev_docs/NVFLOW_BINDINGS.md` |
-| a capture that cannot honestly be recreated | `dev_docs/docs_capture_staleness.md` |
+| a capture that can no longer be recreated, and must not be faked | `dev_docs/docs_capture_staleness.md` |
