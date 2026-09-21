@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="li_fields" index="1" -->
 
 ```edn [field-box id="li_fields" role="properties"]
-{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_panels"] "properties" {"children" #{#afield/box "li_panels"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3005 "sha256" "56c48e0b9a47d12d56ec9b580c5f22a0da1a696107f458aae85b117b2a1995b5"}]}
+{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_panels"] "properties" {"children" #{#afield/box "li_panels"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3021 "sha256" "245b178fa4d7a7fa9efe3344c7d19c52862298403533be43bd0c4a3083f7214c"}]}
 ```
 
 ```kotlin [field-property box="li_fields" name="code" path="li_fields_code_.kt"]
@@ -50,8 +50,8 @@ val N = 512
 
 // Both fields must start from the *same* cloud. That is what gives a particle one start
 // point and two destinations, and it is also what makes the two normalisation frames
-// agree -- `blendWith` refuses to mix two coordinate systems, so this is load-bearing
-// rather than tidy.
+// agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
+// requirement and not a tidiness.
 val source = (0 until N).map {
     val a = 2 * Math.PI * it / N
     vec(Math.cos(a), Math.sin(a), 0.0)

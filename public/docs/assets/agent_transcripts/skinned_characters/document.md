@@ -343,7 +343,7 @@ loop { frame() }
 <!-- field-box id="twist_compare" index="5" -->
 
 ```edn [field-box id="twist_compare" role="properties"]
-{"id" "twist_compare" "index" 5 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 62 "characters" 3270 "sha256" "c473ec9689990351bb2ed5c52f73fd903453a89a87980a81e10863ebb64873ab"}]}
+{"id" "twist_compare" "index" 5 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 62 "characters" 3230 "sha256" "15bb056e5b5fb0b1c4c3916999d3247e820ec57ee5a979b3593f99be952b2df0"}]}
 ```
 
 ```kotlin [field-property box="twist_compare" name="code" path="twist_compare_code_.kt"]
@@ -367,7 +367,7 @@ import afield.stdlib.linalg.Matrix4f
 val useDualQuaternions = false
 val twistTime = 1.0f
 
-// ONE mesh, deliberately, and this is a trap worth knowing about. Drawing LBS and DQS side by side
+// ONE mesh, deliberately. Drawing LBS and DQS side by side
 // as two Mesh objects DOES NOT WORK: both read `inst`'s vertex buffer at draw time rather than at
 // applyToMesh time, so both tubes show whichever pose was written LAST. Measured 2026-09-19 -- with
 // lbs-then-dqs both rendered round, and with lbs-then-lbs both rendered pinched, while the printed
