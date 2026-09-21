@@ -413,3 +413,33 @@ rectangle, so removing it would mean a re-capture for an identical picture.
 
 A box that relied on a chart overflowing its axes — there is no known caller — draws a clipped
 figure after this change.
+
+## 2026-09-21 — `marf`'s field clock default became `AUTO` (`192d93a4f`, `cc62a6b4e`)
+
+`marf(...)`, `marfIn(...)` and `MarfBank.read(...)` defaulted `fields` to `MarfFieldClock.CYCLES`,
+which reads each field once at the stage's wall-clock instant. The reasoning was that every pattern
+means *something* under that reading — true, but the something is often not what was written: a
+stepped address with more than one step in the cycle had exactly one of them latched and the rest
+discarded in silence. The default is now `AUTO`, which resolves at construction from the leading
+field and reports the answer in `fieldClock`: discrete events → `STEPS`, none → `CYCLES`.
+
+`STEPS` as a blanket default was measured and rejected instead, because it freezes every continuous
+field — a cycle-periodic signal sampled once per cycle is a constant. `dev_docs/MARF_FIELD_CLOCKS.md`
+has the ten spellings against all three clocks, and the three tested guarantees a blanket `STEPS`
+default broke.
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `marf`, `marfIn`, `MarfBank.read` | `fields` defaults to `AUTO` rather than `CYCLES` | no change for a field built from `signalOf` — `saw()`, `sine()` — which `AUTO` resolves to `CYCLES`; a stepped field now walks its steps instead of being sampled once per cycle, so `"<0 3> 1"` as an address reads `0 1 3 1` where it used to read `0 3 0 3` | `fields = MarfFieldClock.CYCLES`, stated explicitly |
+| `marfFieldSteps` | the step grid takes each event's start **and** its end, not its onsets | a rest is now a step and holds the field it interrupts, so `"0 ~ .8 ~"` reads `0 0 .8 .8` under `STEPS` as it always did under `CYCLES` | nothing; the onset-only grid compressed rests out of the sequence and was the reason `STEPS` could not be the default |
+
+Also new, and it changes a working call into a thrown one: a field pattern whose structure a
+sequence clock cannot see is now rejected by field name at construction rather than half-read.
+`STAGES` refuses a field with more than one step inside a cycle, and both sequence readings refuse a
+stack (`"<0 3>, 1"`), whose second layer no clock can reach. `CYCLES` is exempt from both — a field
+is a control voltage there.
+
+What was swept: `public/docs/marf.md` and the `marf_demo` document under `dev_docs/agents/demos/`.
+`MarfDocsGuardTest` now requires the page to name every constant including `AUTO`, and requires at
+least one published listing to omit `fields` — because a page where every example states a clock
+never demonstrates the default at all.
