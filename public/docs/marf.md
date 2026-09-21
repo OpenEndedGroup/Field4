@@ -91,9 +91,9 @@ val b = marfBank(
     oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
 )
 
-val a = b.read(pat("<0 1 2 1 3 4>").nums())
-val c = b.read(pat("<0 2 4 1 3>").nums().slow(3))
-val d = b.read(pat("<0 4>").nums(), speed = constant(4.0))
+val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES)
+val c = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
+val d = b.read(pat("<0 4>").nums(), speed = constant(4.0), fields = MarfFieldClock.STAGES)
 ```
 
 ![three readers over one bank, following three different trajectories](assets/marf/marf-two-readers.svg)
@@ -102,6 +102,13 @@ Three voices reading one score. `slow(3)` holds each address for three stages; `
 divides every duration, so the third lane's stages are a quarter as long as the bank wrote them.
 The bank is the same object in all three lanes, and the gallery requires the three curves to
 differ, so this figure cannot become three copies of one journey.
+
+`fields = MarfFieldClock.STAGES` is load-bearing here, and it is what makes "holds each address for
+three **stages**" true rather than approximately true. The bank's own durations are uneven, so under
+the default `CYCLES` reading each address would be latched at whatever wall-clock instant a stage
+happened to start at, and the readers would not walk the bank one slot at a time at all. This
+snippet is the code that drew the figure above it; `MarfDocsGuardTest` compares the two, and it
+compares this argument in particular, because the page carried the snippet without it for a day.
 
 ---
 
@@ -186,8 +193,8 @@ which carries the several notions of time that are live at once: the global cycl
 the time since this stage began, and that time normalised to `0..1`.
 
 ```diffstatic {data-lang=kotlin}
-val x = b.read(pat("<0 1 2 3 4>").nums())
-val y = b.read(pat("<0 2 4 1 3>").nums().slow(3))
+val x = b.read(pat("<0 1 2 3 4>").nums(), fields = MarfFieldClock.STAGES)
+val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
 
 // The path those two readers trace together over eight cycles.
 val path = fline {
@@ -288,8 +295,8 @@ ordinary sample-and-hold.
 
 ## Which clock the fields are read in
 
-`MarfFieldClock` chooses the time coordinate the four patterns are read in, and the two answers suit
-different intentions.
+`MarfFieldClock` chooses the time coordinate the four patterns are read in, and the three answers
+suit different intentions.
 
 `CYCLES`, the default, reads each field at the stage's wall-clock instant. This is the control-voltage
 reading and the hardware's one. Every pattern means something in it: `"0 .7 .2 1"` is four values
@@ -298,9 +305,45 @@ reader locks to the bar and the fields line up with their own steps.
 
 `STAGES` reads field `k` at cycle `k`, so one cycle of a field pattern is one stage and the fields
 become a sequence. `duration = "<1 4 .25 2>"` then gives stages of exactly those four lengths, and
-`address = "<0 1 2 1 3 4>"` walks the bank one slot per stage however long a stage takes. The cost
-is that a bare `"0 .7 .2 1"` collapses to its first step, since only the value at the cycle boundary
-is ever latched. In this mode `<…>` is the idiom.
+`address = "<0 1 2 1 3 4>"` walks the bank one slot per stage however long a stage takes. In this
+mode `<…>` is the idiom, because one instant is read per cycle.
+
+`STEPS` is `STAGES` with each cycle subdivided: a field contributes one stage per onset, and at
+least one per cycle. `address = "<0 3> 1"` is then the three-entry sequence `0 1 3 1` rather than
+the two-entry `0 3`. Each field walks its own grid, so an address with two steps a cycle and a
+duration with one still advance a single entry each per stage.
+
+`STEPS` and `STAGES` agree **exactly** on every pattern with at most one onset per cycle — every
+`<…>`, every `slow(n)` of one, every signal — so it is a refinement rather than a rival, and
+nothing that reads correctly under `STAGES` reads differently under `STEPS`. That "at least one per
+cycle" is what preserves the `slow(3)` idiom: a field slowed by three has an onset only every third
+cycle, and the two cycles in between are held stages, not absences.
+
+### What the sequence readings refuse
+
+A field pattern whose structure a sequence clock cannot see is now **rejected where you typed it**,
+by field name, rather than half-read:
+
+```diffstatic {data-lang=text}
+reader 'addr': the address pattern puts 2 steps inside cycle 0 (at 0, 1/2), and
+MarfFieldClock.STAGES reads one instant per cycle — so only the step at 0 is ever
+latched and the other 1 is discarded in silence. Either write the address as an
+alternation, `<…>`, which is one step a cycle, or ask for the sequence you wrote
+with fields = MarfFieldClock.STEPS.
+```
+
+This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale. It is
+here because the silence was measured rather than imagined: the person who built the demo document
+spent four minutes and thirty-eight edit-and-run cycles moving one reader's address between
+`"<0 3> 1"`, `"<0 3> 1*8"`, `"<0 3>*2"`, `"<0 3>, 1"`, `"1 <0 3>"` and `"3 <0 3>"`, and under
+`STAGES` eight of those ten spellings produced a sequence byte-identical to something strictly
+simpler than what was written. `"1 <0 3>"` was the constant `1`. `"<0 3>*2"` was the constant `0`.
+
+A **stack** is the one case no clock reads. `"<0 3>, 1"` puts two layers on a single instant, a
+field latches to one value per stage, and the second layer is unreachable — so the sequence
+readings refuse that too, and say so rather than naming a mode that would not help. `CYCLES` is
+exempt from both refusals: a field is a control voltage there, and reading one layer of a stack at
+an instant is what the parameter algebra does everywhere else.
 
 ---
 

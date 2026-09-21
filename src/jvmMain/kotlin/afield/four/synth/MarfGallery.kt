@@ -133,6 +133,8 @@ object MarfGallery {
      * @param distinctLanes when true, no two lanes may draw the same curve — for the figures whose
      *   entire point is that two readings of one bank differ.
      * @param verify a claim about the stages this figure actually drew, beyond the generic checks.
+     * @param snippet the code `marf.md` publishes beside this figure, as one string, or null where
+     *   the page shows no code for it. See [Figure.pageClocks] for why this lives here.
      */
     class Figure(
         val id: String,
@@ -141,8 +143,24 @@ object MarfGallery {
         val cycles: Int,
         val lanes: List<Lane>,
         val distinctLanes: Boolean = false,
-        val verify: (Map<String, List<MarfResolvedStage<*>>>) -> Unit = {}
-    )
+        val verify: (Map<String, List<MarfResolvedStage<*>>>) -> Unit = {},
+        val snippet: String? = null
+    ) {
+        /**
+         * The field clocks this figure's lanes were actually built with.
+         *
+         * The reason a figure carries its published [snippet] rather than the page carrying it
+         * alone: `MarfDocsGuardTest` already re-renders every SVG and pins figure-to-page
+         * correspondence, but it could not see a *snippet*, and that is the gap two false claims
+         * went through. The "Banks, and the readers over them" listing dropped
+         * `fields = MarfFieldClock.STAGES` from all three of its reads while [MarfReader.fieldClock]
+         * on all three lanes stayed `STAGES` — so the page printed code that cannot produce the
+         * picture above it, and the prose under it went on describing the behaviour of the argument
+         * it had just deleted. With both halves here, the guard can compare them.
+         */
+        val pageClocks: Set<MarfFieldClock>
+            get() = lanes.mapNotNull { it.structure?.fieldClock }.toSet()
+    }
 
     // ── the shared material ───────────────────────────────────────────────────────────────
 
@@ -207,7 +225,15 @@ object MarfGallery {
                     }
                     val targets = stages.getValue("uneven").take(4).map { it.target as Double }
                     check(targets == listOf(0.0, 0.5, 0.2, 1.0)) { "the four values drifted: $targets" }
-                }
+                },
+                snippet = """
+                    val env = marf(
+                        value    = pat("<0 .5 .2 1>").nums(),
+                        duration = pat("<1 4 .25 2>").nums(),
+                        curve    = curves("<linear exp hold osc>"),
+                        fields   = MarfFieldClock.STAGES
+                    )
+                """.trimIndent()
             ),
 
             // 2 ── the curve vocabulary, one stage each.
@@ -276,7 +302,17 @@ object MarfGallery {
                     }
                     val c = stages.getValue("C").take(4).map { it.address }
                     check(c == listOf(0.0, 4.0, 0.0, 4.0)) { "reader C should alternate two slots: $c" }
-                }
+                },
+                snippet = """
+                    val b = marfBank(
+                        rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
+                        oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+                    )
+
+                    val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES)
+                    val c = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
+                    val d = b.read(pat("<0 4>").nums(), speed = constant(4.0), fields = MarfFieldClock.STAGES)
+                """.trimIndent()
             ),
 
             // 4 ── the trajectory is compositional material.
@@ -321,7 +357,17 @@ object MarfGallery {
                     check(euclid == listOf(0.0, 0.0, 4.0, 4.0, 4.0, 2.0, 3.0, 3.0)) {
                         "a rest in the address should hold the previous slot: $euclid"
                     }
-                }
+                },
+                // No `fields` argument anywhere, and that is the point of this figure rather than
+                // an omission: these are CYCLES readers, so the address is a control voltage and a
+                // four-step-per-cycle address is exactly what the mode is for. The guard checks
+                // that absence as hard as it checks the presences above.
+                snippet = """
+                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25))                    // forward
+                    b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25)) // periodic reversal
+                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0))           // ping-pong
+                    b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125))
+                """.trimIndent()
             ),
 
             // 5 ── a fractional address, and the aliasing that comes with latching one.
@@ -372,7 +418,19 @@ object MarfGallery {
                         Lane.ofSignal("signal { it.z }", "z", path.signal { it.z.toDouble() }, path)
                     )
                 },
-                distinctLanes = true
+                distinctLanes = true,
+                snippet = """
+                    val path = marfBankIn(
+                        MarfVector3f,
+                        stageTo(Vector3f(0f, 0f, 0f), 1.0),
+                        stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
+                        stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
+                        stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0))
+                    ).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
+
+                    path.at(3.5).value               // a Vector3f
+                    path.signal { it.x.toDouble() }  // any component, as an ordinary signal
+                """.trimIndent()
             ),
 
             // 7 ── the conversion that needs no bank at all.
