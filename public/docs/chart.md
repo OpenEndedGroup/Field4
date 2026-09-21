@@ -212,9 +212,7 @@ CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests
 ```
 
 They are committed rather than built by the docs runner, so that command has to be re-run to reflect
-a change. Being a FIELD_TEST rather than a script is what keeps them from rotting silently: it
-asserts as well as draws, so a figure the code has stopped producing fails a build instead of
-sitting on the page. What it asserts, at what thresholds, and the one thing it cannot cover are in
+a change. What the gallery asserts, at what thresholds, and the one thing it cannot cover are in
 `dev_docs/chart_primitive.md`.
 
 The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log

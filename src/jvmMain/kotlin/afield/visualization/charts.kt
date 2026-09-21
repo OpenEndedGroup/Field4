@@ -939,7 +939,7 @@ class Chart(
     /** The same HTML `Box.lines` would display for [toFLines] — how `.h` and `display` work. */
     override fun toHTML(): String = linesToHTML(toFLines(), width, height)
 
-    /** A plain-text summary; the picture is the point, so this is for a log or a failure message. */
+    /** Title, both domains with their kinds, and one line per mark, for a log or a failure message. */
     fun toText(): String = buildString {
         title?.let { appendLine(it) }
         val (x0, x1) = resolvedXDomain()

@@ -976,7 +976,5 @@ values of the push constant, and compares both ends against the keyframe they ar
   extrapolated past the hull they span, each one rendered into its own directory beside the key that
   produced it and a manifest of what went into it.
 
-Every number on this page is asserted by `KeyframerTest`, and `KeyframerCoverageTest` holds the
-public surface of `keyframer.kt` to a ledger, so adding a method fails the build until it is
-accounted for. `dev_docs/KEYFRAMER_COVERAGE.md` has the census and the four calls a headless test
-cannot reach.
+`dev_docs/KEYFRAMER_COVERAGE.md` has the public surface of `keyframer.kt` against its ledger, and
+the four calls a headless test cannot reach.

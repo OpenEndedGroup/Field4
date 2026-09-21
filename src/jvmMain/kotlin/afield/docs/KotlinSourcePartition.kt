@@ -546,8 +546,11 @@ object KotlinSourcePartition {
                 if (isHeaderLine(index)) {
                     var scan = index
                     var last = index
-                    while (scan < hi && (isHeaderLine(scan) || masked.lines[scan].isBlank())) {
-                        if (isHeaderLine(scan)) last = scan
+                    var headerDepth = 0
+                    while (scan < hi && (headerDepth > 0 || isHeaderLine(scan) || masked.lines[scan].isBlank())) {
+                        val code = masked.code[scan]
+                        if (headerDepth > 0 || isHeaderLine(scan)) last = scan
+                        headerDepth += code.count { it == '(' || it == '[' } - code.count { it == ')' || it == ']' }
                         scan++
                     }
                     out += Span(Kind.HEADER, index + 1, last + 1)
@@ -759,11 +762,20 @@ object KotlinSourcePartition {
             var bodyOpen = -1
             var bodyClose = -1
             var sawEquals = false
+            val conditionDepths = mutableSetOf<Int>()
             var line = head.keywordLine
             while (line < hi) {
                 val text = masked.code[line]
+                // A continuation already promised by `=`/an operator must survive comments.
+                if (text.isBlank()) {
+                    line++
+                    continue
+                }
+                val conditionOpens = IF_CONDITION.findAll(text).map { it.range.last }.toSet()
+                var needsBranch = false
                 var at = 0
                 while (at < text.length) {
+                    if (!text[at].isWhitespace()) needsBranch = false
                     when (text[at]) {
                         '{' -> {
                             // Only a brace reached *without* an `=` at depth zero is the declaration's
@@ -775,14 +787,20 @@ object KotlinSourcePartition {
                             depth++
                         }
 
-                        '(', '[' -> depth++
+                        '(', '[' -> {
+                            depth++
+                            if (at in conditionOpens) conditionDepths.add(depth)
+                        }
 
                         '}' -> {
                             depth--
                             if (depth == 0 && bodyOpen >= 0 && bodyClose < 0) bodyClose = line
                         }
 
-                        ')', ']' -> depth--
+                        ')', ']' -> {
+                            if (conditionDepths.remove(depth)) needsBranch = true
+                            depth--
+                        }
 
                         '=' -> {
                             val previous = text.getOrNull(at - 1)
@@ -796,7 +814,7 @@ object KotlinSourcePartition {
                 }
                 if (depth <= 0) {
                     if (bodyOpen >= 0 && bodyClose >= 0) return Extent(line, bodyOpen, bodyClose)
-                    if (!continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
+                    if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
                 }
                 line++
             }
@@ -1083,7 +1101,9 @@ object KotlinSourcePartition {
      * into their neighbours.
      */
     private val CONTINUES_AFTER =
-        Regex("""(?:[=+*/%&|^,.:\-]|->|\b(?:by|is|as|in|and|or|where)\b)\s*${'$'}""")
+        Regex("""(?:[=+*/%&|^,.:\-]|->|\b(?:by|is|as|in|and|or|where|else)\b)\s*${'$'}""")
+
+    private val IF_CONDITION = Regex("""(?<![\w`])if\s*\(""")
 
     /**
      * A line whose code starts like this continues the line above. `}`, `)` and `]` are absent: bracket

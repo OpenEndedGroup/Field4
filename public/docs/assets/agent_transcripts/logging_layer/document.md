@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="log_blocks" index="0" -->
 
 ```edn [field-box id="log_blocks" role="properties"]
-{"id" "log_blocks" "index" 0 "name" "Blocks, and what the indent holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Blocks, and what the indent holds" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_blocks_code_.kt" "lines" 48 "characters" 1960 "sha256" "96b11b71929a89be78063e7dc7bb857b65394a4293f0ef986091229ffe5e3284"}]}
+{"id" "log_blocks" "index" 0 "name" "Blocks, and what the indent holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Blocks, and what the indent holds" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_blocks_code_.kt" "lines" 48 "characters" 1997 "sha256" "62c42ae130244fc73b4e87d25c5f73da17858920eeafe1d351e94380eedebabd"}]}
 ```
 
 ```kotlin [field-property box="log_blocks" name="code" path="log_blocks_code_.kt"]
@@ -42,11 +42,11 @@ val mineIds = all.filter { "«logdemo»" in it.message }.mapNotNull { it.blockId
 val mine = all.filter { "«logdemo»" in it.message || it.blockId in mineIds }
 val deepest = mine.filter { it.boundary == null }.maxByOrNull { it.indent.length }
 
-// Look at the footnote. The nesting lives in a thread-local `indent` string, and what
-// it holds is not spaces: it is one block UUID and a tab per level. PinnedConsole
-// parses those tokens back out to find the open block. StdoutLog does not — it
-// concatenates the indent into the line, so on a plain terminal a line inside an
-// lblock is prefixed by a raw 36-character UUID.
+// The table's footnote prints the deepest line's raw indent. The nesting lives in a
+// thread-local `indent` string, and what it holds is not spaces: it is one block UUID
+// and a tab per level. PinnedConsole parses those tokens back out to find the open
+// block. StdoutLog does not — it concatenates the indent into the line, so on a plain
+// terminal a line inside an lblock is prefixed by a raw 36-character UUID.
 display("main", Table(
     listOf("depth", "boundary", "block", "message"),
     title = "two nested lblocks, as the dispatcher saw them",

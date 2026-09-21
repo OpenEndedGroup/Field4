@@ -508,6 +508,48 @@ class KotlinSourcePartitionTest {
         )
     }
 
+    @Test
+    fun `multiline conditionals and intervening comments stay with their declaration`() {
+        val source = """
+            @file:OptIn(
+                First::class,
+                Second::class
+            )
+            package fixture
+            fun choose(flag: Boolean) =
+                if (
+                    flag && check("parentheses ) ( in a string")
+                )
+                    first()
+                else
+                    second()
+            fun commented() =
+                // a comment between the equals and the value
+                /* another comment */
+                make(
+                    1
+                ) // end make
+            val value: Int
+                get() = if (flag)
+                    1
+                else
+                    2
+            fun inlineElse() = if (flag) 0 else
+                (3 + 4)
+            /** A sibling must keep its own annotation. */
+            @SomeAnnotation
+            fun sibling() = 9
+        """.trimIndent()
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition))
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition))
+        assertEquals(emptyList(), strandedCode(partition))
+        assertEquals(lineOf(source, "second()"), declaration(partition, "choose").endLine)
+        assertEquals(lineOf(source, "// end make"), declaration(partition, "commented").endLine)
+        assertEquals(lineOf(source, "    (3 + 4)"), declaration(partition, "inlineElse").endLine)
+        assertEquals(lineOf(source, "@SomeAnnotation"), declaration(partition, "sibling").startLine)
+    }
+
     /**
      * The non-blank lines that landed in a [KotlinSourcePartition.Kind.FILLER] span.
      *

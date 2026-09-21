@@ -158,3 +158,73 @@ So the framing that makes `STEPS` easy to hold in the head: **`STEPS` subdivides
 | The snippet ↔ figure guard, and its negative control | `src/jvmTest/kotlin/afield/four/synth/MarfDocsGuardTest.kt` |
 | The published account | `public/docs/marf.md` |
 | A replayable scene where the refusal fires | `dev_docs/agents/artifacts/marf_field_clocks/` |
+
+---
+
+## `AUTO`, and why the default is not one of the three readings
+
+Added 2026-09-21, hours after the three clocks landed, on Marc's call: *"STEPS should clearly be the
+default — it's what, honestly, I thought I was getting yesterday."* The instinct was right and the
+blanket flip was not, and the gap between those two is the useful part of this section.
+
+### Flipping the default to `STEPS` breaks three tested guarantees
+
+Measured by doing it. `fields: MarfFieldClock = MarfFieldClock.STEPS` on the three entry points
+failed **7 of 56** tests in the package, and three of the failures are semantics rather than pinned
+expectations:
+
+| guarantee | `CYCLES` | `STEPS`, before this change |
+| --- | --- | --- |
+| `MarfTest:276` a continuous address glides | rises stage by stage | **frozen** — all eight samples `2.2888185e-5` |
+| `MarfTest:236` a rest holds the field it interrupts | `[0.0, 0.0, 0.8, 0.8]` | `[0.0, 0.8, 0.0, 0.8]` |
+| `MarfTest:200` a thinned address holds, not snaps | `[0,0,4,4,4,2,3,3]` | `[0,4,4,2,3,0,4,4]` |
+
+The second and third are one cause: the step grid was **onsets**, and a rest has no onset, so the
+rests vanished and the sequence compressed. `marfFieldSteps` now takes each event's **start and its
+end**, because the end is where a rest begins and a rest is a step. With that, `"0 ~ .8 ~"` reads
+`[0, 0, .8, .8]` under `STEPS` as it always did under `CYCLES` — the two clocks agreeing about how
+many stages a pattern *has* is not a nicety, it is the difference between a refinement and a rival.
+`struct(euclid(5, 8), …)` on an address is only meaningful because its three rests hold.
+
+### The first one has no fix inside `STEPS`, and that is why `AUTO` exists
+
+A signal has no steps to walk. `signalOf` answers *any* query with a single analog event spanning it
+(`src/jvmMain/kotlin/afield/four/synth/PatSignals.kt:73#signalOf`), so there is no structure in it
+for a step grid to find, whatever the grid is built from — which is why widening the grid to event
+boundaries fixed the rests and did nothing for this. Walking it therefore samples once per cycle,
+and a cycle-periodic signal sampled once per cycle is a constant: `saw()` as an address stops
+moving, measured as eight identical samples in
+`src/jvmTest/kotlin/afield/four/synth/MarfTest.kt:276#a continuous address glides through the bank instead of stepping`.
+
+So the clock has to be *chosen* rather than repaired, and `marfResolveClock` chooses it from the
+leading field: discrete events → `STEPS`, none → `CYCLES`.
+
+### The trap that cost the most: `hasOnset` is true for analog events
+
+The first `AUTO` predicate asked `events.any { it.hasOnset }` and sent **every** signal to `STEPS`,
+i.e. it implemented exactly the freeze it existed to prevent. `PatEvent.hasOnset` is
+`whole == null || whole.start == arc.start` (`TidalPatterns.kt:404`), and its own KDoc says why:
+*"Analog events (`whole == null`) are always onsets: there is no earlier fragment they could be the
+tail of."* The field that separates a step from a voltage is **`whole`**, not `hasOnset` —
+`signalOf` builds its event with `whole = null` (`PatSignals.kt:75`) and mini-notation gives every
+step a whole. `marfFieldIsStepped` tests `whole != null`.
+
+A predicate that reads correctly in English and inverts the thing you wanted is worth the extra
+minute of reading the field it is built on.
+
+### What moved, and what did not
+
+One figure of seven re-rendered: `address-transforms`, and the diff is a single polyline. Its blue
+`"0 1 2 3"` lane had a 16-sample plateau at the head under `CYCLES` — the initial latch — and under
+`STEPS` it advances immediately. Its `verify` block is unchanged and still passes, pinning the
+reversal at `[3,2,1,0]` then `[0,1,2,3]` and the euclidean rests at `[0,0,4,4,4,2,3,3]`. The lanes
+and the published snippet now both name `fields = MarfFieldClock.STEPS`, because that figure's
+comment used to argue that the *absence* of a `fields` argument was its point, and the absence
+stopped meaning anything the moment `AUTO` became the default.
+
+`continuous-address` and `discrete-to-continuous` did not change, which is the design working:
+their lanes are `saw()` and `sine()`, and `AUTO` sends them to `CYCLES`.
+
+Nor did the `marf_demo` document, checked reader by reader: every reader that matters names its
+clock explicitly, and the only two that omit it — `g` in box 1 and `azR` in box 4 — are both
+`saw().slow(8)`, so they resolve to `CYCLES` and read as they did.

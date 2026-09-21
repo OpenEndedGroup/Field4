@@ -62,6 +62,38 @@ class FnRewriteSelfBoxReentry(box: Box, source: String) : IllegalStateException(
         "See dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md."
 )
 
+/** A rejected source compile, as distinct from a missing box or a runtime evaluation failure. */
+internal class FnRewriteCompilationFailure(message: String) : IllegalStateException(message)
+
+/** Memoize only compiler rejection; transient hydration/runtime failures remain retryable. */
+internal class FnRewriteCompilationMemo<T : Any> {
+    @Volatile
+    private var value: T? = null
+    @Volatile
+    private var failure: FnRewriteCompilationFailure? = null
+
+    fun get(compile: () -> T): T {
+        value?.let { return it }
+        failure?.let { throw it }
+        return synchronized(this) {
+            value?.let { return it }
+            failure?.let { throw it }
+            try {
+                compile().also { value = it }
+            } catch (rejected: FnRewriteCompilationFailure) {
+                failure = rejected
+                throw rejected
+            }
+        }
+    }
+
+    @Synchronized
+    fun clear() {
+        value = null
+        failure = null
+    }
+}
+
 /**
  * Source-backed Kotlin evaluator for `@{...}` fragments inside the Fn rewrite DSL.
  *
@@ -89,14 +121,18 @@ class SourceBackedFnRewriteNumberExpression(
     val source: String,
     private val block: ((FnRewriteNumberContext) -> Any?)? = null
 ) : (FnRewriteNumberContext) -> Double? {
-    @Volatile
-    private var hydratedBlock: ((FnRewriteNumberContext) -> Any?)? = null
+    private val compilation = FnRewriteCompilationMemo<(FnRewriteNumberContext) -> Any?>()
+
+    /** Forget a compiled lambda or rejected compile after changing the originating box's context. */
+    fun invalidate() = compilation.clear()
 
     /**
      * Evaluates the expression for one matched node, returning the new number or null to leave the value
      * alone.
      *
-     * The first call compiles, under a lock, and later calls reuse the compiled lambda. A result that is
+     * The first call compiles, under a lock, and later calls reuse the compiled lambda. Compiler rejection
+     * is also remembered until [invalidate]; missing boxes, cancellation and runtime errors are not.
+     * A result that is
      * neither null nor a `Number` is a hard error naming the offending source — a snippet ending in a
      * `println` or an assignment throws rather than being ignored in silence. A live block is called directly
      * and its null is returned as-is, so returning null from one really does mean "leave this value alone";
@@ -107,9 +143,7 @@ class SourceBackedFnRewriteNumberExpression(
         // block sends us to the source; an elvis here would hydrate an empty `source` instead.
         block?.let { return coerceResult(it.invoke(context)) }
 
-        val delegate = hydratedBlock ?: synchronized(this) {
-            hydratedBlock ?: hydrate().also { hydratedBlock = it }
-        }
+        val delegate = compilation.get { hydrate() }
         return coerceResult(delegate(context))
     }
 
@@ -174,13 +208,19 @@ class SourceBackedFnRewriteNumberExpression(
                 lambdaSource
             }
 
+        val diagnosticsText = mutableListOf<String>()
         return box.ki.compileSnippetAndWait(
             expanded,
             implicits = listOf(box),
             onCompileError = { diagnostics ->
+                diagnosticsText += diagnostics.map { "${it.message} ${it.location}" }
                 diagnostics.forEach { lprintln("error,fn-rewrite", "compile: ${it.message} ${it.location}") }
             }
-        ) ?: throw IllegalStateException("Could not compile Fn rewrite Kotlin in box '${box.name}' (${box.id}).")
+        ) ?: throw FnRewriteCompilationFailure(
+            "Could not compile Fn rewrite Kotlin in box '${box.name}' (${box.id}). " +
+                "Call invalidate() on the expression or clearCache() on the evaluator after repairing its context.\n" +
+                diagnosticsText.joinToString("\n")
+        )
     }
 
     private fun coerceResult(result: Any?): Double? =
@@ -208,12 +248,17 @@ class SourceBackedFnRewriteNumberExpression(
  * recompiles its expressions every time. That compile is a real snippet compile in the box's engine, not a
  * cheap parse; hoist the rewrite out of the loop, or keep one evaluator of your own and pass it through
  * [FnRewriteOptions].
+ * Rejected compiles are remembered as well; call [clearCache] after repairing imports/dependencies in
+ * that box. Runtime errors and temporarily missing boxes are not negatively cached.
  */
 class SourceBackedFnRewriteNumberEvaluator(
     /** The box every expression will be compiled in. */
     val boxId: String
 ) : (FnRewriteNumberContext) -> Double? {
     private val expressions = ConcurrentHashMap<String, SourceBackedFnRewriteNumberExpression>()
+
+    /** Forget cached successes and compiler rejections; the next rewrite hydrates against the current box. */
+    fun clearCache() = expressions.clear()
 
     /** Compiles [FnRewriteNumberContext.expression] if this is the first sighting of it, then evaluates it. */
     override fun invoke(context: FnRewriteNumberContext): Double? =

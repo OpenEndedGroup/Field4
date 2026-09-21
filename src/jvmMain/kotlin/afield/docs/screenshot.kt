@@ -28,7 +28,6 @@ import javax.imageio.ImageIO
 
 private const val SCREENSHOT_PREP_TIMEOUT_MS = 12_000
 private const val SCREENSHOT_POLL_INTERVAL_MS = 60
-private const val SCREENSHOT_OUTPUT_GRACE_MS = 2_500
 
 /**
  * How long to wait for a box's output layout to STOP MOVING before measuring and shooting.
@@ -477,7 +476,7 @@ private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf
     "includeNotifications" to includeNotifications
 )
 
-private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScreenshotResponse {
+internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTimeoutMs: Int = SCREENSHOT_PREP_TIMEOUT_MS): BoxScreenshotResponse {
     val raw = page.evaluate(
         """
         async (request) => {
@@ -646,9 +645,18 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
           const contentLaidOut = (root) => {
             const outputArea = root.querySelector(".outputArea");
             if (!outputArea) return false;
-            if (outputArea.style.visibility === "hidden") return true;
-            const r = outputArea.getBoundingClientRect();
-            if (r.width < 1 || r.height < 1) return false;
+            const areaStyle = getComputedStyle(outputArea);
+            if (areaStyle.display === "none" || areaStyle.visibility === "hidden" || areaStyle.opacity === "0") return false;
+            // Field deliberately sets the output-area shell's width to zero and lets disclosures
+            // overflow it. Measure their content, not that shell (which is not the capture rect).
+            // An empty output-area shell is not rendered output. Do not use a minimum clip size:
+            // a tiny, populated disclosure is valid; a large empty shell is not.
+            const contents = Array.from(outputArea.querySelectorAll(".disclosure-content, .inline-value"));
+            if (!contents.some((content) => {
+              const rect = content.getBoundingClientRect();
+              return isVisibleNode(content) && rect.width > 0 && rect.height > 0 &&
+                (content.childElementCount > 0 || String(content.textContent || "").trim().length > 0);
+            })) return false;
             const imgs = Array.from(outputArea.querySelectorAll("img"));
             if (imgs.some((img) => !img.complete || img.naturalWidth === 0)) return false;
             return true;
@@ -675,7 +683,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
             }
             return !visibleStatusTexts(outputArea).some(blockedStatusText);
           };
-          const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
+          const deadline = Date.now() + ${prepTimeoutMs};
           let lastMessage = "Timed out waiting for box screenshot prep";
           while (Date.now() < deadline) {
             if (!pageReady()) {
@@ -690,6 +698,9 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               continue;
             }
             if (request.openOutputs) {
+              // Reveal before testing geometry: opening disclosures is part of preparation, and
+              // waiting on their still-collapsed layout first can never establish readiness.
+              await Promise.resolve(window.fieldBackdoorPrepareBoxScreenshot(request));
               // READINESS IS A PRECONDITION, NOT A GRACE PERIOD. This used to wait
               // SCREENSHOT_OUTPUT_GRACE_MS and then shoot regardless, so a correct "still loading"
               // signal could not stop a capture -- which is how the recorded-audio figure published
@@ -710,7 +721,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               // Ready is not the same as settled. Wait for the GEOMETRY to stop changing before
               // anything is measured or shot, so the clip is computed from finished layout rather
               // than from a container still growing under it.
-              const stableDeadline = Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS};
+              const stableDeadline = Math.min(deadline, Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS});
               let previousSignature = null;
               let stableSamples = 0;
               while (Date.now() < stableDeadline) {
@@ -722,7 +733,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
                   break;
                 }
                 const signature = contentSignature(currentBox);
-                if (contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
+                if (outputsReady(currentBox) && contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
                   stableSamples += 1;
                   if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
                     break;
@@ -732,6 +743,10 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
                 }
                 previousSignature = signature;
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              }
+              if (stableSamples < ${SCREENSHOT_STABLE_SAMPLES}) {
+                lastMessage = "output has no visible content or its layout did not settle; attach the browser before running the box, or use --no-open-outputs for an intentional handle-only capture";
+                continue;
               }
             }
             await settle(request.openOutputs ? 3 : 1);
@@ -782,7 +797,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
     return Json.decodeFromString(raw)
 }
 
-private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): WindowScreenshotResponse {
+internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, prepTimeoutMs: Int = SCREENSHOT_PREP_TIMEOUT_MS): WindowScreenshotResponse {
     val raw = page.evaluate(
         """
         async (request) => {
@@ -951,9 +966,15 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
           const contentLaidOut = (root) => {
             const outputArea = root.querySelector(".outputArea");
             if (!outputArea) return false;
-            if (outputArea.style.visibility === "hidden") return true;
-            const r = outputArea.getBoundingClientRect();
-            if (r.width < 1 || r.height < 1) return false;
+            const areaStyle = getComputedStyle(outputArea);
+            if (areaStyle.display === "none" || areaStyle.visibility === "hidden" || areaStyle.opacity === "0") return false;
+            // The zero-width output shell intentionally overflows; disclosure content owns geometry.
+            const contents = Array.from(outputArea.querySelectorAll(".disclosure-content, .inline-value"));
+            if (!contents.some((content) => {
+              const rect = content.getBoundingClientRect();
+              return isVisibleNode(content) && rect.width > 0 && rect.height > 0 &&
+                (content.childElementCount > 0 || String(content.textContent || "").trim().length > 0);
+            })) return false;
             const imgs = Array.from(outputArea.querySelectorAll("img"));
             if (imgs.some((img) => !img.complete || img.naturalWidth === 0)) return false;
             return true;
@@ -987,7 +1008,7 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
               message: "showEditor requires a target box"
             });
           }
-          const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
+          const deadline = Date.now() + ${prepTimeoutMs};
           let lastMessage = "Timed out waiting for window screenshot prep";
           while (Date.now() < deadline) {
             if (!pageReady()) {
@@ -1003,19 +1024,15 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
                 continue;
               }
               if (request.openOutputs) {
-                const outputDeadline = Date.now() + ${SCREENSHOT_OUTPUT_GRACE_MS};
-                while (Date.now() < outputDeadline) {
-                  if (!pageReady()) {
-                    break;
-                  }
-                  const currentBox = findBox(request.uid);
-                  if (currentBox && outputsReady(currentBox)) {
-                    break;
-                  }
+                await Promise.resolve(window.fieldBackdoorPrepareWindowScreenshot(request));
+                const currentBox = findBox(request.uid);
+                if (!currentBox || !outputsReady(currentBox)) {
+                  lastMessage = "output not ready (missing, busy, or an iframe has not finished loading)";
                   await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                  continue;
                 }
                 // Ready is not settled -- see the box path. Wait for geometry to stop moving.
-                const stableDeadline = Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS};
+                const stableDeadline = Math.min(deadline, Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS});
                 let previousSignature = null;
                 let stableSamples = 0;
                 while (Date.now() < stableDeadline) {
@@ -1027,7 +1044,7 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
                     break;
                   }
                   const signature = contentSignature(currentBox);
-                  if (contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
+                  if (outputsReady(currentBox) && contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
                     stableSamples += 1;
                     if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
                       break;
@@ -1037,6 +1054,10 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
                   }
                   previousSignature = signature;
                   await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                }
+                if (stableSamples < ${SCREENSHOT_STABLE_SAMPLES}) {
+                  lastMessage = "output has no visible content or its layout did not settle; attach the browser before running the box, or omit --open-outputs for an editor-only capture";
+                  continue;
                 }
               }
             }

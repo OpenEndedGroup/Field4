@@ -167,7 +167,7 @@ class MidiOutput internal constructor(
         receiver.send(ShortMessage(ShortMessage.PROGRAM_CHANGE, channel.coerceIn(0, 15), program.coerceIn(0, 127), 0), -1)
     }
 
-    /** Send an all-notes-off on every channel. Worth doing before closing, or a note hangs. */
+    /** Send an all-notes-off on every channel. Call this before closing, or a note hangs. */
     fun allNotesOff() {
         for (channel in 0..15) {
             receiver.send(ShortMessage(ShortMessage.CONTROL_CHANGE, channel, 123, 0), -1)

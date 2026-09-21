@@ -108,7 +108,7 @@ class GrayScottState(val u: Img, val v: Img) : afield.ToHTML {
 
     /**
      * Inline view: both reagent fields on **fixed** `0..1` scales plus the morphology reading. Body in
-     * `alife_field.kt` ([alifeGrayScottHtml]); the fixed scale is the point, because `Img`'s own
+     * `alife_field.kt` ([alifeGrayScottHtml]). The scales are fixed because `Img`'s own
      * auto-normalising thumbnail turns an unseeded `v = 0` control arm into a rich texture.
      */
     override fun toHTML(): String = alifeGrayScottHtml(this)

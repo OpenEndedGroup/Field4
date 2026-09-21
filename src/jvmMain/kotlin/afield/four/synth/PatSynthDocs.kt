@@ -27,15 +27,15 @@ expect:
  * [SynthContext] block by block exactly as [FieldAudioEngine] would. So these files are a record of
  * the realtime path with no audio device attached, rather than a second implementation of it.
  *
- * # The three checks that are about the scheduler rather than the sound
+ * # Three properties of the scheduler
  *
  * **Block size does not change the output.** The same bar rendered at 64, 128, 512 and 1024 frames
  * per block comes back bit-identical. A scheduler that started each note at the top of the block it
  * fell in would pass every level and onset check here, and fail this one.
  *
- * **The seam voice is the offline voice.** [patRenderStereo] and [patSynthRenderStereo] are asked for
- * the same bar, and their onset counts and levels are compared. The two are not bit-identical: the
- * offline renderer works in seconds and truncates, this one works in frames and rounds, so a note can
+ * **The seam voice is the offline voice.** [patRenderStereo] and [patSynthRenderStereo] render the
+ * same bar to the same onset counts and the same levels, but not to the same bytes: the offline
+ * renderer works in seconds and truncates, this one works in frames and rounds, so a note can
  * differ by a frame at each end and a dense passage by a few merged onsets.
  *
  * **The band analysis separates a kick from a hat.** [BandSplit] over a kick-only render and a

@@ -154,34 +154,26 @@ scheduler, a voice allocator and N WebAssembly instances in one GraalVM context 
 seam has to know about. Being on it is what gets both of them the speakers, the engine's visualisers,
 the Link output and the box lifecycle, with no adapter written for any of them.
 
-The two paths off the seam are off it for two different reasons:
+Of the eight paths that make samples, `sonic-pi` is the only one off the seam, and no wrapper
+reaches it: it is a different process, and no sample ever enters this one.
 
-`sonic-pi` is the one path off the seam, and no wrapper reaches it: it is a different process, and
-no sample ever enters this one.
+`dough-engine` reaches the seam through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
+same file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine. It renders in
+whole 128-frame blocks and copies out only what was asked for, so it drops samples at any engine
+buffer size that is not a multiple of 128. The default is 512.
 
-Two of the seventeen used to be off it. `dough-engine` was described here as something that "could be
-wrapped, and has not been", and it is wrapped: `class DoughAudioSink` is a `StereoNode` in the same
-file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine. Nothing noticed for a
-month, because the guard's markers were all device calls and WAV encodes and a node on the seam
-contains neither; the marker that now catches this, `override fun generateStereo(`, reported it and
-`faust-poly` together on its first run. (`DoughAudioSink` renders in whole 128-frame blocks and
-copies out only what was asked for, so it drops samples at any engine buffer size that is not a
-multiple of 128. The default is 512.)
-
-`pat-stand-in` was the other, and getting a pattern onto the seam is worth reading as the general
-case, because a pattern has to be *queried* over an arc and there is no "next 128 frames" to ask one
-for. The answer is a scheduler in two halves: a thread that queries a cycle at a time and turns
-events into notes stamped with the absolute frame they start on, and an audio-thread voice bank whose
-only remaining job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` divide the
+Getting a pattern onto the seam is the general case, because a pattern has to be *queried* over an
+arc and there is no "next 128 frames" to ask one for. The answer is a scheduler in two halves: a
+thread that queries a cycle at a time and turns events into notes stamped with the absolute frame
+they start on, and an audio-thread voice bank whose only remaining job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` divide the
 work the same way, and being early costs nothing because what crosses between the halves is frames.
 See [A pattern that moves particles](chain_pattern_particles.md).
 
 `pat-spatial` is the newest arrival on the seam, and it settles a question the column leaves open:
 being on the seam and being able to render offline are **independent**. It is the first path that can
 fill a block when asked and cannot do it faster than wall clock — the seam asks for a block, not for
-a buffer, and a render thread feeding a ring satisfies that with an `arraycopy`. It also arrived the
-way `faust-poly` did, opening no device and encoding no WAV, and was reported by the same
-`override fun generateStereo(` marker rather than by anyone reading the diff.
+a buffer, and a render thread feeding a ring satisfies that with an `arraycopy`. Like `faust-poly`,
+it opens no device and encodes no WAV.
 
 `AudioPatchSpec` is what every box that makes a noise returns. Five of the seventeen paths above have
 no page of their own — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`,
@@ -257,9 +249,8 @@ so a rename fails the build rather than leaving a dead citation.
 Off the seam the derivation is blind, and both of the shapes it cannot find are listed above
 anyway, because somebody declared them: a player in another process, like `sonic-pi`, and a
 whole-buffer free function, like `patRenderStereo`. A third of either kind could be added to Field
-tomorrow and this page would not notice — though the seam marker has now caught an undeclared
-source twice, `FaustPoly.kt` and then `pat-spatial`, so the blind spot is narrower than it was. The
-marker literals, the assertions and the tolerances are in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
+tomorrow and this page would not notice. The marker literals, the assertions and the tolerances are
+in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
 
 ---
 

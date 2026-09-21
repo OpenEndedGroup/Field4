@@ -48,11 +48,11 @@ expect:
  * is the forwarding rule, which is the reason to reach for this path over [patSynth], whose voice
  * has no `lpf` to forward to.
  *
- * ## The claims the audit asserts, which the clips cannot show on their own
+ * ## The spatial parameters are not in the mono source
  *
  * Both published clips are peak-normalised, exactly as every other figure in these docs is, so
- * neither of them can carry a claim about *level*. Three claims about this path are therefore
- * measured on the pre-normalisation buffers and printed rather than left to the reader's ears:
+ * neither of them can carry a claim about *level*. Three things about this path are measured on
+ * the pre-normalisation buffers instead:
  *
  *  1. **`pan/0` is a lossless mono tap, not a downmix.** Every event leaves
  *     [patSpatialEventsForArc] carrying `pan/0`, which puts all of an engine's energy in its left
@@ -66,12 +66,10 @@ expect:
  *     there is no figure of the spatialisation: the direction lives entirely in the effect, and the
  *     effect is the part that needs the uncommitted binary.
  *
- * Claim 3 does a second job, and it is the one that makes these two clips publishable at all: it is
- * a **determinism check on [DoughEngine]**. Two engines, separately booted and separately
- * fed, agreeing to the bit is exactly what [DocsAudioProvenance] requires of a producer, and
- * GraalWasm is not obviously the kind of thing that delivers it. If dough ever acquires an unseeded
- * voice, claim 3 fails here — with a message about placement leaking into the signal — rather than
- * showing up as an unexplained correlation drop in the corpus audit.
+ * The third says something about [DoughEngine] as well, and it is what makes these two clips
+ * publishable at all: two engines, separately booted and separately fed, agree to the bit. That is
+ * what [DocsAudioProvenance] requires of any producer, and a wasm runtime does not give it to you
+ * for free — so treat it as a property of this engine rather than of the platform.
  */
 
 /**

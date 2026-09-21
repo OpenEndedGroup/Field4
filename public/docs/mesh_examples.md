@@ -558,10 +558,10 @@ The figures come by two routes, which cost different amounts to produce:
 | `assets/mesh_gallery/*.png` (six figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they show the **CPU rasterizer** rather than the viewer. The gallery renders eleven figures; the five not shown here are the ones the `diffstatic_runner` fences above already cover live, and they stay in `dev_docs/assets/mesh_gallery/` |
 
 Both routes show the output as of when it was taken, so regenerate them after changing the family.
-The gallery is also what guards the family continuously: it is a FIELD_TEST rather than a script, so
-it **fails** if the invariants break: if a generator stops being watertight, if a marched sphere's
-volume error stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops
-matching 2πχ, or if the Voronoi cells stop tiling their clip box.
+The gallery is also what guards the family continuously. It **fails** if the invariants break: if a
+generator stops being watertight, if a marched sphere's volume error stops falling with resolution,
+if a decimation misses its budget, if Gauss–Bonnet stops matching 2πχ, or if the Voronoi cells stop
+tiling their clip box.
 
 ??? aside "Neither route notices on its own when the code moves underneath it"
     A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of date, and

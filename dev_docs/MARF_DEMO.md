@@ -31,10 +31,10 @@ val b = marfBank(
 Eight cycles, three lanes at one shared time scale, so reading down a column compares the same
 instant. The verticals are stage boundaries.
 
-- **blue** `read "<0 1 2 1 3 4>"` walks the bank a slot per stage
-- **orange** `read slow 3 "<0 2 4 1 3>"` holds each address for three stages, hence the long flats
+- **blue** `read "<0 3>"` alternates between the first slot and the fourth, one address per stage
+- **orange** `read slow 3 "<0 1 2 3 4>"` holds each address for three stages, hence the long flats
 - **green** `read saw slow 8` is a *fractional* address, which you can watch turn from a ramp into
-  the `osc:3` wiggle as it glides from slot 0 toward slot 3
+  the `osc:3.4` wiggle as it glides from slot 0 toward slot 3
 
 Same five stages in all three. Only the trajectory differs, and that is the whole claim of the
 layer in one picture.
@@ -82,9 +82,9 @@ patSpatial(voice, cps = 2.0)
 
 - `az` comes from the fractional-address reader, so the source **glides** around the listener rather
   than stepping between positions
-- `lpf` comes from the blue reader above, so its ramp, its step onto the hold and its `osc:3` wiggle
-  are all audible as filter movement
-- `dist` comes from the orange one, so distance moves in steps and then sits still
+- `lpf` comes from a `read "<0 1 2 1 3 4>"`, walking the bank a slot per stage, so its ramp, its
+  step onto the hold and its `osc:3` wiggle are all audible as filter movement
+- `dist` comes from a `read slow 3 "<0 2 4 1 3>"`, so distance moves in steps and then sits still
 
 Three of `patSpatial`'s six spatial tags take *continuous* patterns, which is why a MARF reader
 fits it without any adaptation: a reader **is** a signal.

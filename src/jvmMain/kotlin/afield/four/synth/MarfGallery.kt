@@ -29,8 +29,8 @@ expect:
  * window.
  *
  * A MARF figure is not a piano roll, which is why it has its own renderer. A roll draws events; a
- * reader has a *continuous output* and a *stage structure*, and the interesting thing is how the two
- * relate. So a reader's lane draws four things at one shared time scale:
+ * reader has a *continuous output* and a *stage structure*, and what a figure has to show is how the
+ * two relate. So a reader's lane draws four things at one shared time scale:
  *
  * - the **output**, as a polyline densely sampled through [MarfReader.at];
  * - the **stage boundaries**, as dashed verticals, one per stage the reader actually entered;
@@ -43,14 +43,14 @@ expect:
  * plain signal rather than a reader — that is how the `hold` / `ramp` / `interp` figure is drawn,
  * since those conversions produce signals and have no stages to show.
  *
- * #### What each figure is checked against
+ * #### What every figure guarantees
  *
- * As a FIELD_TEST (`synth.marf.gallery`) every figure renders to a temp dir and is asserted against
- * the readers that produced it: one boundary vertical per stage, one polyline point per sample, one
- * pulse tick per triggering stage, no stage starting past the plotted window, and no non-finite
- * output. So a figure can neither invent a stage nor lose one.
+ * Every figure is drawn from the readers it claims to draw and held to them: one boundary vertical
+ * per stage, one polyline point per sample, one pulse tick per triggering stage, no stage starting
+ * past the plotted window, and no non-finite output. So a figure can neither invent a stage nor
+ * lose one.
  *
- * Two checks are about the layer rather than the drawing:
+ * Two of those properties are about the layer rather than the drawing:
  *
  * - **the output is continuous across every interior stage boundary whose arriving stage does not
  *   step** — exactly, comparing the departing stage's value at phase 1 against the arriving stage's
@@ -66,7 +66,8 @@ expect:
  * `every(4) { rev() }` reverses the first cycle's addresses and leaves the next three; that a rest
  * in a euclidean address holds the previous slot rather than snapping to zero.
  *
- * It writes no committed assets during the test. Pass an output dir as `args[0]` (or set
+ * Run the lot with `tools/run_field_tests.py --id synth.marf.gallery`; every figure renders to a
+ * temp dir and nothing committed is written. Pass an output dir as `args[0]` (or set
  * `MARF_FIGURE_DIR`) to regenerate the committed figures under `public/docs/assets/marf/`.
  *
  * Add a figure by appending one [Figure] to [FIGURES]; `MarfDocsGuardTest` then requires
@@ -330,24 +331,39 @@ object MarfGallery {
                 cycles = 8,
                 lanes = bank().let { shared ->
                     listOf(
-                        Lane.of("\"0 1 2 3\"", shared.read(pat("0 1 2 3").nums(), duration = quarters, name = "run")),
+                        Lane.of(
+                            "\"0 1 2 3\"",
+                            shared.read(
+                                pat("0 1 2 3").nums(),
+                                duration = quarters,
+                                fields = MarfFieldClock.STEPS,
+                                name = "run"
+                            )
+                        ),
                         Lane.of(
                             "every 4 rev",
                             shared.read(
                                 pat("0 1 2 3").nums().every(4) { it.rev() },
                                 duration = quarters,
+                                fields = MarfFieldClock.STEPS,
                                 name = "reversed"
                             )
                         ),
                         Lane.of(
                             "\"0 1 2 3 2 1\"",
-                            shared.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), name = "pingpong")
+                            shared.read(
+                                pat("0 1 2 3 2 1").nums(),
+                                duration = constant(1.0 / 6.0),
+                                fields = MarfFieldClock.STEPS,
+                                name = "pingpong"
+                            )
                         ),
                         Lane.of(
                             "struct euclid 5 8",
                             shared.read(
                                 struct(euclid(5, 8), pat("0 4 2 3").nums()),
                                 duration = constant(0.125),
+                                fields = MarfFieldClock.STEPS,
                                 name = "euclid"
                             )
                         )
@@ -365,15 +381,120 @@ object MarfGallery {
                         "a rest in the address should hold the previous slot: $euclid"
                     }
                 },
-                // No `fields` argument anywhere, and that is the point of this figure rather than
-                // an omission: these are CYCLES readers, so the address is a control voltage and a
-                // four-step-per-cycle address is exactly what the mode is for. The guard checks
-                // that absence as hard as it checks the presences above.
+                // `fields = MarfFieldClock.STEPS` on every lane, and stated rather than left to the
+                // default even though the default would now give it. Until 2026-09-21 these were
+                // CYCLES readers and this figure's comment said the *absence* of a `fields` argument
+                // was its point — the address as a control voltage, four steps a cycle being exactly
+                // what that mode is for. `AUTO` became the default that day and sends a stepped
+                // address to STEPS, so the absence stopped meaning anything and the figure would have
+                // gone on claiming a reading it no longer used. Naming it keeps the snippet and the
+                // lanes one string, which is what the clock guard below actually checks.
+                //
+                // The lanes read the same as they did: `verify` still pins the reversal at
+                // `[3,2,1,0]` then `[0,1,2,3]`, and the euclidean rests still hold at
+                // `[0,0,4,4,4,2,3,3]` rather than snapping to slot 0. That equality is the argument
+                // that STEPS was made a superset rather than a different reading — see
+                // `marfFieldSteps`, whose grid counts a rest as a step precisely so this holds.
                 snippet = """
-                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25))                    // forward
-                    b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25)) // periodic reversal
-                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0))           // ping-pong
-                    b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125))
+                    val steps = MarfFieldClock.STEPS
+                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25), fields = steps)                    // forward
+                    b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25), fields = steps) // periodic reversal
+                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), fields = steps)           // ping-pong
+                    b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125), fields = steps)
+                """.trimIndent()
+            ),
+
+            // 4b ── the two cases AUTO decides between, and why neither default was right.
+            Figure(
+                id = "field-clocks",
+                title = "What AUTO is choosing between",
+                subtitle = "Top pair: one-cycle stages. Bottom pair: quarter-cycle. Neither suits both.",
+                // The two pairs use different stage lengths on purpose, and that is itself the
+                // point of the top pair: what CYCLES gives you is a function of how long a stage is
+                // relative to the pattern's own steps, so the collapse needs cycle-length stages to
+                // show. The bottom pair needs sub-cycle stages for the opposite reason — a saw
+                // sampled at integer instants is a constant under EVERY clock.
+                cycles = 8,
+                lanes = bank().let { shared ->
+                    listOf(
+                        Lane.of(
+                            "\"<0 3> 1\" · CYCLES",
+                            shared.read(
+                                pat("<0 3> 1").nums(),
+                                duration = constant(1.0),
+                                fields = MarfFieldClock.CYCLES,
+                                name = "stepsUnderCycles"
+                            )
+                        ),
+                        Lane.of(
+                            "\"<0 3> 1\" · STEPS ← AUTO",
+                            shared.read(
+                                pat("<0 3> 1").nums(),
+                                duration = constant(1.0),
+                                fields = MarfFieldClock.STEPS,
+                                name = "stepsUnderSteps"
+                            )
+                        ),
+                        Lane.of(
+                            "saw() · CYCLES ← AUTO",
+                            shared.read(
+                                saw().range(0.0, 4.0),
+                                duration = quarters,
+                                fields = MarfFieldClock.CYCLES,
+                                name = "sawUnderCycles"
+                            )
+                        ),
+                        Lane.of(
+                            "saw() · STEPS",
+                            shared.read(
+                                saw().range(0.0, 4.0),
+                                duration = quarters,
+                                fields = MarfFieldClock.STEPS,
+                                name = "sawUnderSteps"
+                            )
+                        )
+                    )
+                },
+                verify = { stages ->
+                    // Lane 1: the `1` is unreachable. CYCLES latches the address at the stage's own
+                    // instant, and with four stages a cycle that instant lands on the alternation
+                    // every time, so the middle entry of "<0 3> 1" is never read.
+                    val cyc = stages.getValue("stepsUnderCycles").take(8).map { it.address }.toSet()
+                    check(cyc == setOf(0.0, 3.0)) {
+                        "CYCLES should never reach the 1 in \"<0 3> 1\": $cyc"
+                    }
+                    // Lane 2: it is reachable, and the sequence is the one that was written.
+                    val stp = stages.getValue("stepsUnderSteps").take(8).map { it.address }
+                    check(stp.contains(1.0) && stp.contains(0.0) && stp.contains(3.0)) {
+                        "STEPS should reach all three entries of \"<0 3> 1\": $stp"
+                    }
+                    // Lane 3: a signal read as a voltage rises inside every cycle.
+                    val rising = stages.getValue("sawUnderCycles").take(4).map { it.address }
+                    check(rising.zipWithNext().all { (a, b) -> b > a }) {
+                        "saw under CYCLES must rise within the cycle: $rising"
+                    }
+                    // Lane 4: and read as a sequence it is a constant, which is the whole argument
+                    // against making STEPS the blanket default. One sample per cycle of something
+                    // that repeats every cycle is one number.
+                    // Not bit-equality: the eight samples differ in the twentieth decimal place,
+                    // because each is the saw evaluated at a different integer instant and the
+                    // arithmetic getting there is not identical. The claim is that it does not
+                    // MOVE — it was handed the range 0..4 and covers about 1e-20 of it.
+                    val frozen = stages.getValue("sawUnderSteps").take(8).map { it.address }
+                    val span = frozen.max() - frozen.min()
+                    check(span < 1e-9) { "saw under STEPS should not move; it spans $span: $frozen" }
+                    check(frozen.first() < 1e-3) {
+                        "and it should be stuck near the bottom of its 0..4 range: ${frozen.first()}"
+                    }
+                },
+                snippet = """
+                    // A stepped field. CYCLES cannot reach the `1`; STEPS walks 0 1 3 1.
+                    b.read(pat("<0 3> 1").nums(), duration = constant(0.25), fields = MarfFieldClock.CYCLES)
+                    b.read(pat("<0 3> 1").nums(), duration = constant(0.25), fields = MarfFieldClock.STEPS)
+
+                    // A continuous field. CYCLES glides; STEPS samples it once per cycle, so it sticks.
+                    b.read(saw().range(0.0, 4.0), duration = constant(0.25), fields = MarfFieldClock.CYCLES)
+                    b.read(saw().range(0.0, 4.0), duration = constant(0.25), fields = MarfFieldClock.STEPS)
                 """.trimIndent()
             ),
 

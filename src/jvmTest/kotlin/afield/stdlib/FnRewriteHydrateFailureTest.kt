@@ -3,22 +3,22 @@ package afield.stdlib
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 
 /**
  * What a failing `@{...}` right-hand side actually costs: **one** hydration attempt, not one per
  * matched node.
  *
- * `SourceBackedFnRewriteNumberExpression.hydratedBlock` is assigned only when `hydrate()` returns
- * normally, so the memo caches successes and not failures — true since the file was written
- * (`f91613648`, 2026-07-09). It is tempting to read that as an amplifier: a spec matching *n* nodes
+ * It is tempting to read a failed hydration as an amplifier: a spec matching *n* nodes
  * would then attempt *n* compiles, each one making the next worse. It is not, and this test is the
  * fence. `hydrate()` throws, and nothing between it and the caller catches — not
  * [applyNumberAction], not [Functions.Fn.previewRewrite], not `deepCopy`'s recursion — so the first
  * failure ends the whole rewrite with the other matched nodes unvisited.
  *
  * The consequence worth remembering is the narrower one: an evaluator **reused across rewrites** (the
- * form [SourceBackedFnRewriteNumberEvaluator]'s KDoc recommends for a loop) re-attempts the compile
- * once per rewrite, because the failure was never remembered. Once per call, never once per node.
+ * form [SourceBackedFnRewriteNumberEvaluator]'s KDoc recommends for a loop) used to re-attempt a rejected
+ * compile once per rewrite. The compiler memo now remembers that rejection, until explicitly cleared.
  */
 class FnRewriteHydrateFailureTest {
 
@@ -73,7 +73,7 @@ class FnRewriteHydrateFailureTest {
     }
 
     @Test
-    fun aReusedEvaluatorRetriesOncePerRewriteBecauseFailuresAreNotMemoized() {
+    fun aMissingBoxRemainsRetryableRatherThanBeingPermanentlyCached() {
         val expression = failingExpression()
         var attempts = 0
         val counted: (FnRewriteNumberContext) -> Double? = { context ->
@@ -86,8 +86,68 @@ class FnRewriteHydrateFailureTest {
             runCatching { source().previewRewrite(spec, options) }
         }
 
-        // This is the whole of the missing negative cache: three rewrites, three attempts. Were
-        // failures memoized this would be 1, and the later rewrites would fail without compiling.
-        assertEquals(3, attempts, "each rewrite re-attempts the known-bad hydration exactly once")
+        assertEquals(3, attempts, "missing boxes are transient, not compiler rejections")
+    }
+
+    @Test
+    fun reusedCompilerMemoAttemptsRejectedCompilationOnceAcrossRewrites() {
+        val memo = FnRewriteCompilationMemo<(FnRewriteNumberContext) -> Double?>()
+        var compiles = 0
+        val rejection = FnRewriteCompilationFailure("original source diagnostic")
+        val options = FnRewriteOptions(kotlinNumberContext = { context ->
+            memo.get { compiles++; throw rejection }(context)
+        })
+        repeat(3) {
+            assertSame(rejection, assertFailsWith<FnRewriteCompilationFailure> {
+                source().previewRewrite(spec, options)
+            })
+        }
+        assertEquals(1, compiles, "count the compiler callback, not evaluator invocations")
+        memo.clear()
+        val recovered = memo.get { compiles++; { _: FnRewriteNumberContext -> null } }
+        source().previewRewrite(spec, FnRewriteOptions(kotlinNumberContext = recovered))
+        assertEquals(2, compiles, "explicit invalidation permits repair")
+    }
+
+    @Test
+    fun transientFailuresAndRuntimeErrorsDoNotPoisonTheMemo() {
+        val memo = FnRewriteCompilationMemo<() -> Unit>()
+        var compiles = 0
+        repeat(2) {
+            assertFailsWith<java.util.concurrent.CancellationException> {
+                memo.get { compiles++; throw java.util.concurrent.CancellationException() }
+            }
+        }
+        var calls = 0
+        repeat(3) {
+            val block = memo.get { compiles++; { calls++; error("runtime") } }
+            assertFailsWith<IllegalStateException> { block() }
+        }
+        assertEquals(3, compiles)
+        assertEquals(3, calls)
+        memo.clear()
+        memo.get { compiles++; {} }()
+        assertEquals(4, compiles)
+    }
+
+    @Test
+    fun concurrentRejectionsCompileOnlyOnce() {
+        val memo = FnRewriteCompilationMemo<String>()
+        val compiles = java.util.concurrent.atomic.AtomicInteger()
+        val rejection = FnRewriteCompilationFailure("bad source")
+        val workers = java.util.concurrent.Executors.newFixedThreadPool(4)
+        try {
+            val results = (1..12).map {
+                workers.submit<Throwable> {
+                    assertFailsWith<FnRewriteCompilationFailure> {
+                        memo.get { compiles.incrementAndGet(); throw rejection }
+                    }
+                }
+            }
+            results.forEach { assertSame(rejection, it.get(10, java.util.concurrent.TimeUnit.SECONDS)) }
+            assertEquals(1, compiles.get())
+        } finally {
+            workers.shutdownNow()
+        }
     }
 }

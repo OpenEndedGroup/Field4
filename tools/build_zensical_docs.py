@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import logging
 import os
 import re
@@ -109,65 +110,76 @@ def tetgen_library_path(repo_root: Path) -> Path:
 # on its fence. Each key maps to where the artifact lives and the one command that builds
 # it. Nothing else reads the attribute -- docs_hooks ignores unknown fence attributes, so
 # adding one does not change a fence's capture digest.
+def jep_python_candidates() -> Iterator[Path]:
+    """Environment/settings candidates in PythonInterface.pythonConfigChoices order.
+
+    Docs launches Field itself; JVM-only system-property overrides are not part of
+    this shell preflight. Use FIELD_PYTHON_VENV/EXECUTABLE for docs builds.
+    """
+    def venv_python(raw):
+        root = Path(raw).expanduser() / ("Scripts" if os.name == "nt" else "bin")
+        names = ("python.exe", "python3.exe") if os.name == "nt" else ("python3", "python")
+        return next((root / name for name in names if (root / name).is_file()
+                     and os.access(root / name, os.X_OK)), root / names[0])
+
+    if raw := os.environ.get("FIELD_PYTHON_VENV", "").strip():
+        yield venv_python(raw)
+    if raw := os.environ.get("FIELD_PYTHON_EXECUTABLE", "").strip():
+        yield Path(shutil.which(raw) or raw).expanduser()
+    settings = Path.home() / ".afield" / "python.properties"
+    if settings.exists():
+        values = dict(line.split("=", 1) for line in settings.read_text(encoding="utf-8").splitlines()
+                      if "=" in line and not line.startswith("#"))
+        if raw := values.get("path", "").strip():
+            yield venv_python(raw) if values.get("kind", "venv").strip() == "venv" else Path(raw).expanduser()
+    for var in ("VIRTUAL_ENV", "CONDA_PREFIX"):
+        if raw := os.environ.get(var, "").strip():
+            yield venv_python(raw)
+    for name in ("python3", "python"):
+        if found := shutil.which(name):
+            yield Path(found)
+
+
+def resolve_jep_python() -> tuple[Path, Path] | None:
+    """Find JEP without importing it (standalone CPython cannot import JEP).
+
+    Inspect the same site directories and library globs as PythonInterface;
+    return the executable too so module checks cannot silently use another venv.
+    """
+    script = """
+import glob, json, os, site, sys
+paths = list(site.getsitepackages()) + [site.getusersitepackages()]
+paths += [p for p in sys.path if p and ('site-packages' in p or 'dist-packages' in p)]
+libs = [p for sp in paths for pattern in ('libjep*', 'jep*.dll')
+        for p in glob.glob(os.path.join(sp, 'jep', pattern)) if os.path.isfile(p)]
+print(json.dumps([sys.executable, libs[0] if libs else None]))
+"""
+    for candidate in dict.fromkeys(jep_python_candidates()):
+        try:
+            result = subprocess.run([str(candidate), "-c", script], capture_output=True,
+                                    text=True, timeout=6, check=False)
+            if result.returncode == 0:
+                executable, library = json.loads(result.stdout)
+                if library:
+                    return Path(executable), Path(library)
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError):
+            continue
+    return None
+
+
 def jep_library_path(repo_root: Path) -> Path:
     """Where `PythonInterface` will find JEP's native library, or a plausible miss.
 
-    Walks the same candidates as `PythonInterface.pythonConfigChoices`
-    (src/jvmMain/kotlin/afield/python/PythonInterface.kt:1685-1701) in the same order, and
-    applies the same acceptance test as `inspectPython` (:1720-1791): a candidate counts only
+    Walks the candidates in `resolve_jep_python`: a candidate counts only
     if a `libjep` actually sits in its site-packages. Testing importability instead would be
     wrong — a correctly installed JEP raises `ImportError: Jep is not supported in standalone
     Python`, because it is only ever loaded from inside a JVM.
 
-    `repo_root` is unused, and kept so every NATIVE_PREREQUISITES entry has one signature.
+    `repo_root` supplies the diagnostic path when no candidate has JEP installed.
     """
-    if sys.platform.startswith("win"):
-        lib_names, bin_dir = ("jep.dll",), "Scripts"
-    elif sys.platform == "darwin":
-        lib_names, bin_dir = ("libjep.jnilib", "libjep.dylib"), "bin"
-    else:
-        lib_names, bin_dir = ("libjep.so",), "bin"
-
-    def libjep_under(python_executable: Path) -> Path | None:
-        if not python_executable.exists():
-            return None
-        try:
-            site_packages = subprocess.run(
-                [str(python_executable), "-c", "import sysconfig;print(sysconfig.get_paths()['purelib'])"],
-                capture_output=True, text=True, timeout=30, check=False,
-            ).stdout.strip()
-        except (OSError, subprocess.SubprocessError):
-            return None
-        if not site_packages:
-            return None
-        return next((c for c in (Path(site_packages, "jep", n) for n in lib_names) if c.exists()), None)
-
-    def executables() -> Iterator[Path]:
-        for var in ("FIELD_PYTHON_EXECUTABLE",):
-            if (raw := os.environ.get(var, "").strip()):
-                yield Path(raw).expanduser()
-        for var in ("FIELD_PYTHON_VENV", "VIRTUAL_ENV", "CONDA_PREFIX"):
-            if (raw := os.environ.get(var, "").strip()):
-                yield Path(raw).expanduser() / bin_dir / "python3"
-        settings = Path.home() / ".afield" / "python.properties"
-        if settings.exists():
-            values = dict(
-                line.split("=", 1)
-                for line in settings.read_text(encoding="utf-8").splitlines()
-                if "=" in line and not line.startswith("#")
-            )
-            if (raw := values.get("path", "").strip()):
-                configured = Path(raw).expanduser()
-                yield configured / bin_dir / "python3" if values.get("kind", "venv").strip() == "venv" else configured
-        if (found := shutil.which("python3") or shutil.which("python")):
-            yield Path(found)
-
-    candidates = list(executables())
-    for candidate in candidates:
-        if (hit := libjep_under(candidate)) is not None:
-            return hit
-    named = candidates[0] if candidates else Path("python3")
-    return named.parent.parent / "lib" / "pythonX.Y" / "site-packages" / "jep" / lib_names[0]
+    if resolved := resolve_jep_python():
+        return resolved[1]
+    return repo_root / ".venv" / "missing-jep-native-library"
 
 
 def default_python_venv_to_this_tree(repo_root: Path) -> None:
@@ -251,20 +263,40 @@ def check_native_prerequisites(
             continue
         for match in REQUIRES_ATTR_RE.finditer(path.read_text(encoding="utf-8")):
             for raw_key in match.group(1).split(","):
-                key = raw_key.strip().lower()
+                key = raw_key.strip()
+                key = "python:" + key.split(":", 1)[1] if key.lower().startswith("python:") else key.lower()
                 if not key:
                     continue
-                if key not in NATIVE_PREREQUISITES:
+                if key not in NATIVE_PREREQUISITES and not re.fullmatch(r"python:[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", key):
                     raise RuntimeError(
                         f"{relative} declares requires=\"{key}\", which is not a known native "
-                        f"prerequisite. Known: {', '.join(sorted(NATIVE_PREREQUISITES))}."
+                        f"prerequisite. Known: {', '.join(sorted(NATIVE_PREREQUISITES))}, python:<module>."
                     )
                 needed.setdefault(key, [])
                 if relative.as_posix() not in needed[key]:
                     needed[key].append(relative.as_posix())
 
     missing: list[str] = []
+    python = resolve_jep_python() if any(key.startswith("python:") for key in needed) else None
     for key, pages in sorted(needed.items()):
+        if key.startswith("python:"):
+            module = key.removeprefix("python:")
+            detail = "No JEP-capable interpreter resolved"
+            if python:
+                try:
+                    result = subprocess.run([str(python[0]), "-c",
+                        "import importlib, sys; importlib.import_module(sys.argv[1])", module],
+                        capture_output=True, text=True, timeout=30, check=False)
+                    if result.returncode == 0:
+                        continue
+                    detail = (result.stderr or result.stdout).strip()[-2000:]
+                except (OSError, subprocess.SubprocessError) as exc:
+                    detail = str(exc)
+            missing.append(f"  {key}: import failed in {python[0] if python else 'unresolved Python'}: {detail}\n"
+                           f"    needed by: {', '.join(pages)}\n"
+                           "    install the docs dependencies into that interpreter; for the repo venv: "
+                           "uv sync --group docs --group backdoor")
+            continue
         resolve, how_to_build = NATIVE_PREREQUISITES[key]
         artifact = resolve(repo_root)
         if artifact.exists():

@@ -104,7 +104,7 @@ From `code`
 One bank, three readers. The bank has no position of its own; the readers do.
 
 ```edn [field-box id="2034cfde-3714-4224-8ceb-cba9ae68a0da" role="properties"]
-{"id" "2034cfde-3714-4224-8ceb-cba9ae68a0da" "index" 2 "name" "marf_readers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf_readers" "frame" #afield/rect [60.0 60.0 340.0 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "2034cfde-3714-4224-8ceb-cba9ae68a0da_code_.kt" "lines" 62 "characters" 2436 "sha256" "2b4ec121d6c8c902784b72d48e3ffa3e68fc83006b1b8b867d8e42ea0b6c4ef0"}]}
+{"id" "2034cfde-3714-4224-8ceb-cba9ae68a0da" "index" 2 "name" "marf_readers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf_readers" "frame" #afield/rect [1276.63671875 69.22265625 340.0 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "2034cfde-3714-4224-8ceb-cba9ae68a0da_code_.kt" "lines" 62 "characters" 2443 "sha256" "2c09d6a47fdd8ca94d59137375cf93f6eef15709345d249ab585f24a2b61c20f"}]}
 ```
 
 ```kotlin [field-property box="2034cfde-3714-4224-8ceb-cba9ae68a0da" name="code" path="2034cfde-3714-4224-8ceb-cba9ae68a0da_code_.kt"]
@@ -115,10 +115,10 @@ displayOpen("legend")
 
 val b = marfBank(
     rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
-    oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+    oscTo(0.7, 1.0, cycles = 3.4), curveTo(0.2, 0.25, amount = 4.0)
 )
-val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES, name = "A")
-val c = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "B")
+val a = b.read(pat("<0 3>").nums(), fields = MarfFieldClock.STAGES, name = "A")
+val c = b.read(pat("<0 1 2 3 4>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "B")
 val g = b.read(saw().slow(8).range(0.0, 4.0), duration = constant(0.25), name = "glide")
 
 // Three lanes at one shared time scale, so reading down a column compares the same instant.
@@ -163,8 +163,8 @@ markdown(
     """
     **One bank, three readers** — eight cycles, top to bottom:
 
-    - <span style="color:#73d1ff">blue</span> — `read "<0 1 2 1 3 4>"`
-    - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 2 4 1 3>"`, each address held three stages
+    - <span style="color:#73d1ff">blue</span> — `read "<0 3>"`, one address per stage
+    - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 1 2 3 4>"`, each address held three stages
     - <span style="color:#85e585">green</span> — `read saw slow 8`, a fractional address blending two slots
 
     Same five stages in all three. Only the trajectory differs.

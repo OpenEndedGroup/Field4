@@ -39,7 +39,7 @@ The block below is a Python box's `code`, and the picture under it is that box's
 where the output lands: a single line is a chip beside the line that printed it, and anything
 multi-line gets a block of its own underneath.
 
-```diffstatic_runner {data-lang=python screenshot="assets/python/first_cell.png" capture="editor" wait="4" padding="10" w="900" h="400" timeout="240" requires="jep" embed=true name="python-first-cell" alt="A Python box printing its interpreter version and a three-by-four numpy array, the array rendered as an aligned monospace block."}
+```diffstatic_runner {data-lang=python screenshot="assets/python/first_cell.png" capture="editor" wait="4" padding="10" w="900" h="400" timeout="240" requires="jep,python:numpy" embed=true name="python-first-cell" alt="A Python box printing its interpreter version and a three-by-four numpy array, the array rendered as an aligned monospace block."}
 :::static
 # A single-line print appears inline, beside the line that made it.
 import platform
@@ -129,7 +129,7 @@ itself on a daemon thread: the GET satisfies the waiting server so the cell neve
 document that comes back is what gets embedded. No front end has to be present for any of that to
 happen.
 
-```diffstatic_runner {data-lang=python screenshot="assets/python/plotly_embed.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="browser" wait="6" padding="20" w="1280" h="420" timeout="300" requires="jep" embed=true name="python-plotly-embed" alt="A Python box whose plotly figure is rendered inside the box's own output pane as an embedded dark-themed line chart of a decaying sine wave."}
+```diffstatic_runner {data-lang=python screenshot="assets/python/plotly_embed.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="browser" wait="6" padding="20" w="1280" h="420" timeout="300" requires="jep,python:numpy,python:plotly.graph_objects" embed=true name="python-plotly-embed" alt="A Python box whose plotly figure is rendered inside the box's own output pane as an embedded dark-themed line chart of a decaying sine wave."}
 :::static
 import numpy as np
 import plotly.graph_objects as go
@@ -259,10 +259,15 @@ Three of the pictures are the box's *editor*, because that is where `print` outp
 expression land — beside the line that produced them. The plotly one is the box's output pane,
 because an embedded page is a display channel rather than an inline annotation.
 
-All four need JEP, so each carries `requires="jep"`, and a full recapture without a resolvable JEP
-stops in a second rather than failing at the capture. The one shell block is the install recipe and
+All four need JEP, so each declares `jep` in `requires`. The numpy and Plotly examples also
+declare `python:numpy` and `python:plotly.graph_objects` where used. Preflight imports those
+modules in the JEP-capable interpreter Field resolves, not the docs builder's Python. A full
+recapture fails before starting Field if these prerequisites are missing; cached builds warn.
+Use `FIELD_PYTHON_VENV` or `FIELD_PYTHON_EXECUTABLE` for docs interpreter overrides (not JVM-only properties).
+The one shell block is the install recipe and
 is illustration only — running it during a docs build would compile a C extension.
 
 Two claims here have no picture under them. A still taken after a `tqdm` loop finishes shows an
 empty bar, and the shared global namespace needs two co-operating boxes where a runner fence builds
 only one; both are things to run yourself rather than read.
+`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the capture mechanics behind all of it.

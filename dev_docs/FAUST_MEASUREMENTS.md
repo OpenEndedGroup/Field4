@@ -211,3 +211,21 @@ compiler (`tools/generate_faust_vocabulary.py`), so **a compiler bump silently f
 The cheap fix is a derived-count check over the generated JSON, in the shape `DerivedCountGuard`
 already uses. That needs a test change and a build, which the firing that found this did not have
 disk for.
+
+## Which smoke covers what
+
+Moved off `faust.md` on 2026-09-21: the page's `## Reference` section carried this as a table, and
+a reader who came to make a sound cannot run any of it without the repository. The page now names
+the four areas and points here.
+
+| id | what it covers |
+|---|---|
+| `synth.faust.smoke` | compile, UI metadata, diagnostics, render, parameter writes, meters, mono fan-out, effects (the input path), block diagram, render speed |
+| `faust.editor-extension.workout` | the shipped `faust.js` under node against the shipped vocabulary — regions, tokenizer, lexical diagnostics, qualified completion, the line arithmetic from both ends |
+| `faust.box.controls` | the compiler reached from inside a real box, generated controls, offline render into an output area |
+| `faust.box.compile-error` | a bad program's line survives the trip, and the compiler recovers afterwards |
+| `synth.faust.poly` | the polyphonic path — control discovery and its refusal, onset timing, pitch, the spectral polyphony check, patterned parameters, voice allocation and stealing, audio-thread allocation, real-time budgets |
+
+What none of them covers is the launch itself — a box staying lit while sound comes out of a
+speaker. That is the generic audio return-value path and it needs an audio device, so the
+limitation stays on the page, where a reader meets it.

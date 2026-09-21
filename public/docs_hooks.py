@@ -18,6 +18,8 @@ import sys
 import time
 import zlib
 from dataclasses import dataclass, replace
+from contextlib import contextmanager
+from functools import wraps
 from types import SimpleNamespace
 from pathlib import Path
 from typing import Any
@@ -39,6 +41,7 @@ from verification_runtime import (
 )
 from field_languages import MAIN_LANGUAGE_ROOT_LANGUAGES
 from verification_environment import VerificationEnvironment, VerificationEnvironmentError
+from capture_transaction import CaptureTransaction
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
 # public/ is already on sys.path when the Zensical build imports this module, so
@@ -51,6 +54,15 @@ from fabricate_docs_scenes import (
 
 
 LOG = logging.getLogger("zensical.field_runner")
+
+
+def transactional_capture(method):
+    @wraps(method)
+    def capture(self, **kwargs):
+        with self._capture_transaction():
+            return method(self, **kwargs)
+    return capture
+
 
 RUNNER_TARGETS = {
     "diffstatic_runner": "diffstatic",
@@ -353,6 +365,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
     "tools/field_backdoor.py",
+    "tools/capture_transaction.py",
     "tools/run_field_tests.py",
 )
 # Successful capture bytes cannot depend on these helpers: they only count, explain, persist, or
@@ -548,6 +561,8 @@ class RunnerState:
         self.summary_logged = False
         self.screenshots_run = 0
         self.videos_run = 0
+        self.audio_run = 0
+        self.ui_drives_run = 0
         self.captures_started = 0
         self.cache_hits = 0
         self.assets_reused = 0
@@ -1677,6 +1692,8 @@ class RunnerState:
         return cache, metadata
 
     def save(self) -> None:
+        if getattr(self, "_active_capture_transaction", None) is not None:
+            return  # Cache certification follows publication, never precedes it.
         if not self.dirty:
             return
         entries: dict[str, Any] = {}
@@ -1717,6 +1734,32 @@ class RunnerState:
                     if self.environment is not None:
                         self.environment.write_report(self.repo_root / "build/docs-environment.json", self.environment_outcomes)
 
+    @contextmanager
+    def _capture_transaction(self):
+        if getattr(self, "_active_capture_transaction", None) is not None:
+            yield
+            return
+        transaction = CaptureTransaction()
+        fields = ("cache", "cache_metadata", "dirty", "screenshots_run", "videos_run",
+                  "audio_run", "ui_drives_run", "cache_hits", "assets_reused")
+        previous = {name: value.copy() if isinstance(value, dict) else value
+                    for name in fields if (value := getattr(self, name, None)) is not None}
+        self._active_capture_transaction = transaction
+        try:
+            yield
+            transaction.publish()
+        except BaseException:
+            for name, value in previous.items():
+                setattr(self, name, value)
+            raise
+        finally:
+            self._active_capture_transaction = None
+            transaction.close()
+        self.save()
+
+    def _stage_capture_output(self, destination: Path) -> Path:
+        return self._active_capture_transaction.stage(destination)
+
     def capture_with_environment(self, method, **kwargs):
         if self.environment is None:
             self.environment = VerificationEnvironment().start()
@@ -1727,13 +1770,14 @@ class RunnerState:
             token = self.environment.checkpoint(require_display=needs_display)
             self._capture_environment_check = lambda: self.environment.check(token, require_display=needs_display)
             started = True
-            try:
-                self._ensure_runner_owned_field_server(reason="environment-checked docs capture")
-                method(**kwargs)
-            except Exception:
+            with self._capture_transaction():
+                try:
+                    self._ensure_runner_owned_field_server(reason="environment-checked docs capture")
+                    method(**kwargs)
+                except Exception:
+                    self.environment.check(token, require_display=needs_display, force=True)
+                    raise
                 self.environment.check(token, require_display=needs_display, force=True)
-                raise
-            self.environment.check(token, require_display=needs_display, force=True)
         except VerificationEnvironmentError as exc:
             self.environment_outcomes.append({"page": str(kwargs["page_path"]),
                 "block": kwargs["block_index"], "status": "interrupted" if started else "not-run",
@@ -1758,15 +1802,17 @@ class RunnerState:
             return
         self.summary_logged = True
         elapsed = time.monotonic() - self.started_at
-        regenerated = self.screenshots_run + self.videos_run
+        regenerated = self.screenshots_run + self.videos_run + self.audio_run + self.ui_drives_run
         skipped = self.cache_hits + self.assets_reused + self.missing_assets
         LOG.info(
-            "Field docs runner summary: regenerated=%s (screenshots=%s videos=%s), "
+            "Field docs runner summary: regenerated=%s (screenshots=%s videos=%s audio=%s ui_drives=%s), "
             "skipped=%s (cache_hits=%s reused_existing=%s missing=%s), failures=%s, "
             "warm_session_captures=%s server_starts=%s server_restarts=%s elapsed=%.1fs",
             regenerated,
             self.screenshots_run,
             self.videos_run,
+            self.audio_run,
+            self.ui_drives_run,
             skipped,
             self.cache_hits,
             self.assets_reused,
@@ -1839,6 +1885,7 @@ class RunnerState:
             )
         return completed
 
+    @transactional_capture
     def ensure_video(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """Record a short video clip instead of taking a screenshot."""
         assert options.video is not None
@@ -1917,6 +1964,7 @@ class RunnerState:
                 runner_mode=self.runner_mode,
             ),
         )
+        video_path = self._stage_capture_output(video_path)
         if video_options.graphics_context:
             self._ensure_runner_owned_field_server(
                 reason=f"graphics-context video for {page_path.name} -> {video_path}"
@@ -1995,6 +2043,7 @@ class RunnerState:
         self.videos_run += 1
         self.save()
 
+    @transactional_capture
     def ensure_audio(self, *, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """audio="…": OFFLINE-render a registered synth scene to a real 16-bit PCM WAV.
 
@@ -2080,6 +2129,13 @@ class RunnerState:
             ),
         )
 
+        audio_path = self._stage_capture_output(audio_path)
+        # Keep the cache keyed on the authored path, but make the actual renderer
+        # write only the staged file that wait-file and WAV validation inspect.
+        generated_code = (
+            f"{options.audio_renderer}.renderWav("
+            f"{json.dumps(options.audio_spec)}, {json.dumps(str(audio_path))})"
+        )
         command = build_audio_backdoor_command(
             repo_root=self.repo_root,
             audio_path=audio_path,
@@ -2126,9 +2182,10 @@ class RunnerState:
         self.cache[cache_key] = digest
         self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
-        self.videos_run += 1
+        self.audio_run += 1
         self.save()
 
+    @transactional_capture
     def ensure_ui_drive(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """capture="ui": drive the live editor with the fence's Kotlin script and
         capture a video and/or a still in one run. The `drive` transcript op does the
@@ -2170,6 +2227,12 @@ class RunnerState:
             cache_status_label(cache_allowed=cache_allowed, force=options.force),
             primary,
         )
+        staged = {out: self._stage_capture_output(out) for out in outputs}
+        options = replace(options,
+            video=str(staged[resolve_output_path(page_path, options.video)]) if options.video else None,
+            screenshot=str(staged[resolve_output_path(page_path, options.screenshot)]) if options.screenshot else None)
+        outputs = list(staged.values())
+        primary = outputs[0]
         command = build_backdoor_command(
             repo_root=self.repo_root,
             page_path=page_path,
@@ -2239,9 +2302,10 @@ class RunnerState:
         self.cache[cache_key] = digest
         self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
-        self.videos_run += 1
+        self.ui_drives_run += 1
         self.save()
 
+    @transactional_capture
     def ensure_screenshot(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         screenshot_path = resolve_output_path(page_path, options.screenshot)
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2311,6 +2375,7 @@ class RunnerState:
                 runner_mode=self.runner_mode,
             ),
         )
+        screenshot_path = self._stage_capture_output(screenshot_path)
         source_image_path = (
             resolve_auxiliary_output_path(page_path, options.source_image)
             if options.source_image

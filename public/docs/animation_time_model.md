@@ -836,9 +836,8 @@ never yielded a value anyone read.
 
 ## Every name in `Phased.kt`
 
-The whole vocabulary, in one place. This table is checked against the source by
-`afield.PhasedPageCoverageTest`: adding a public declaration to `Phased.kt` fails the build until it
-has a row here, and removing one fails the build until the row goes.
+The whole vocabulary, in one place, and complete: the table is checked against `Phased.kt` in both
+directions, so a name on one side and not the other is a build failure.
 
 <!-- phased-surface -->
 

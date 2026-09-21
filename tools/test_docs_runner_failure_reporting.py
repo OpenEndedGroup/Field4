@@ -100,6 +100,8 @@ class _SummaryRecorder:
         self.started_at = time.monotonic()
         self.screenshots_run = 2
         self.videos_run = 3
+        self.audio_run = 4
+        self.ui_drives_run = 6
         self.cache_hits = 5
         self.assets_reused = 7
         self.missing_assets = 11
@@ -123,7 +125,7 @@ class RunnerSummaryAccountingTests(unittest.TestCase):
             state.log_summary()
 
         summary = next(line for line in captured.output if "runner summary" in line)
-        self.assertIn("regenerated=5", summary)
+        self.assertIn("regenerated=15 (screenshots=2 videos=3 audio=4 ui_drives=6)", summary)
         self.assertIn("skipped=23 (cache_hits=5 reused_existing=7 missing=11)", summary)
         self.assertIn("failures=2", summary)
         self.assertIn("warm_session_captures=0", summary)

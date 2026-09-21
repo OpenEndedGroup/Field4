@@ -59,7 +59,7 @@ expect:
  * spell every marker literal, so a literal that has drifted out of the tree cannot sit here
  * matching nothing.
  *
- * #### What four markers missed, and the fifth that was added because of it
+ * #### Why the fifth marker is the seam itself
  *
  * The first four markers are all device calls or file writes, and a sample source need be neither.
  * [FaustVoiceBank] — a Faust program played as an instrument by a pattern — carried none of them, so
@@ -72,8 +72,7 @@ expect:
  *
  * What it still cannot see is a source that is off the seam entirely: another [SonicPi] in another
  * process, or another whole-buffer free function like [patRenderStereo]. A mono [Signal] is far too
- * common a literal to mean anything. Named, because a derivation whose blind spots are not written
- * down is a derivation nobody can trust.
+ * common a literal to mean anything.
  */
 
 /**
