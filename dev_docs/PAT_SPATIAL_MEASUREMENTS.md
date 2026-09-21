@@ -91,6 +91,22 @@ Two consequences, both now in the code:
   same reason — without it the first 0.37 s carries the previous movement's pose, which showed up as
   a full turn finishing at 350 degrees instead of 360.
 
+## Which smoke establishes what
+
+Moved off `pat_spatial.md` on 2026-09-21 (fortieth firing), where it was the page's closing
+section: a six-row table of FIELD_TEST ids on a page a reader opens to put a pattern in space.
+The page keeps the one fact a reader acts on -- that running any of these needs
+`./gradlew fetchSteamAudioNatives` -- and points here.
+
+| id | what it establishes |
+|---|---|
+| `synth.pat-spatial.smoke` | that a **tag** becomes a spatial parameter, on real audio. Patterns differing only in `az` or `dist` must produce audio differing in the matching way |
+| `synth.pat-spatial.engine` | that it reaches a real output: the engine's own thread pulled the ring, the frame counter moved, the tap saw signal, nothing underran |
+| `synth.pat-spatial.budget` | the per-block cost, idle and under load. Machine- and load-dependent; what reproduces is the *shape*, a median far inside budget and a tail far outside it |
+| `synth.pat-spatial.sound` | the two published clips, plus the three claims they cannot carry themselves |
+| `synth.head-tracked-spatial.smoke` | that a head pose of the shape OpenXR reports aims the HRTF: an identity pose is the old image to the sample, a head turned right moves a source ahead into the left ear, a head that only *steps* sideways moves it too, and losing tracking holds the last pose |
+| `synth.sound.path.map` | that this path is declared, on the seam, and named on `public/docs/sound_paths.md`. A declaration check rather than a sound, so it is the one that does not need Steam Audio |
+
 ## Open
 
 - ~~The same measurement mass is published twice.~~ **Done, 2026-09-16 (seventeenth firing).**

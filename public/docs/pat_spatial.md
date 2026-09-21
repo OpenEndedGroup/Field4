@@ -338,20 +338,11 @@ pose and in nothing else. Headphones.
 
 ---
 
-## The smoke tests that exercise this path
+## Where to look next
 
-| smoke | what it establishes |
-| --- | --- |
-| `synth.pat-spatial.smoke` | that a **tag** becomes a spatial parameter, on real audio. Patterns differing only in `az` or `dist` must produce audio differing in the matching way |
-| `synth.pat-spatial.engine` | that it reaches a real output: the engine's own thread pulled the ring, the frame counter moved, the tap saw signal, nothing underran |
-| `synth.pat-spatial.budget` | the per-block cost, idle and under load. Machine- and load-dependent; what reproduces is the *shape*, a median far inside budget and a tail far outside it |
-| `synth.pat-spatial.sound` | the two published clips, plus the three claims they cannot carry themselves |
-| `synth.head-tracked-spatial.smoke` | that a head pose of the shape OpenXR reports aims the HRTF: an identity pose is the old image to the sample, a head turned right moves a source ahead into the left ear, a head that only *steps* sideways moves it too, and losing tracking holds the last pose |
-| `synth.sound.path.map` | that this path is declared, on the seam, and named on [sound_paths.md](sound_paths.md) — the guard that caught it arriving |
-
-Every one of these boots Steam Audio and so needs `./gradlew fetchSteamAudioNatives` — except
-`synth.sound.path.map`, which checks a declaration rather than a sound, and which is exactly the
-line this page's missing figure falls on.
+Every smoke on this path except the declaration check boots Steam Audio, so running any of them
+needs `./gradlew fetchSteamAudioNatives` first. Which one establishes what is in
+`dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
 
 The full API — every field, every default, every parameter — is in
 [`afield.four.synth` in the generated reference](reference/patterns.md#patspatial-kt).
