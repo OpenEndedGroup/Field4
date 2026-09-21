@@ -1504,9 +1504,5 @@ grid that every adjacent pair is an allowed pair, that the adjacency relation is
 the output is not degenerate. On the terrain figures it also asserts that the set of terrain edges in
 the output is a subset of the set in the source.
 
-Three of its checks are there to hold prose on this page to account. §2's twelve coastlines must all
-solve, must use only pairs the source contained (`observedAllows`, not merely `allows`), and must come
-out more coherent than both the one-colour model and the source itself; the all-deep window must still
-have exactly one southward successor, or the paragraph explaining why that figure is unpinned is
-wrong; and the widening audit pins 1 × 1 at zero invented pairs and 2 × 2 at more invented than
-observed, so §2's note about widening cannot rot without the build saying so.
+Three further checks hold particular claims in §2 to account; they are listed in
+`dev_docs/WFC_GALLERY.md`.

@@ -96,3 +96,8 @@ prose — which makes the page a second copy with no assertion behind it.
   third number in the same paragraph with nothing behind it. The assertion is against
   `REPRODUCIBILITY_FLOOR`; the tally of how many currently sit at 1.0000 is output. The sentence is
   gone from the page rather than corrected again.
+- **`marf.md` has no clip, and the figures on it are geometry.** A `MarfReader`'s output is a
+  control signal rather than a note stream, so the clip worth having is one voice whose gain, pan
+  and filter are three readers over one bank. That needs a registered offline renderer for the
+  control-signal path, which does not exist. Moved here from the page on 2026-09-20: which
+  renderers the docs build happens to have is not something a reader of `marf.md` acts on.

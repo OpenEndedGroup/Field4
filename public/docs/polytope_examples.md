@@ -1579,9 +1579,6 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   --command 'macro run polytope_conway_gallery'
 ```
 
-All four are exercised by the transcript execution smoke, so their box bodies cannot rot
-silently.
-
 ## Limitations
 
 - A face carries an outer cycle and any number of disjoint inner rings. A hole ring that touches its

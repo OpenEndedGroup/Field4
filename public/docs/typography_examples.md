@@ -494,7 +494,7 @@ so you only meet this in a JVM you launched yourself.
 |---|---|
 | every figure on this page | it *is* the docs build: `uv run --group docs python tools/build_zensical_docs.py --page typography_examples.md`. Each fence's code runs in a live Field and the image is what came out |
 | the eight boxes as a document you can edit | replay `dev_docs/agents/transcripts/typography_worked_example.yaml` with the agent backdoor (`field_run_transcript`), or open the materialised document at `public/docs/assets/agent_transcripts/typography_worked_example/` |
-| the structural assertions | `./gradlew jvmTest --tests afield.stdlib.TypographyTest` (38 tests) |
+| the structural assertions | `./gradlew jvmTest --tests afield.stdlib.TypographyTest` |
 | the demo, replayed through the real engine | `python3 tools/run_field_tests.py --id examples.demo-transcript.exec --port 9700` |
 
 </div>
