@@ -496,6 +496,12 @@ object DemoTranscriptExecSmokeTest {
         // brute force. What is left here is the window.
         "neural_particles",
         "learned_boids",
+        // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
+        // field, and both are graded far more sharply than a replay could manage — the
+        // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint
+        // fidelity and all, on the CPU and with no window in the room.
+        "letter_interpolation",
+        "letter_interpolation_panels",
     )
 
     /**

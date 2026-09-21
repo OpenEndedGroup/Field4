@@ -5,6 +5,7 @@ import afield.four.util.Options
 import afield.four.util.Window
 import afield.stdlib.FlowIntegrator
 import afield.stdlib.FlowMatchOptions
+import afield.stdlib.MlpWeights
 import afield.stdlib.ShaderNeuralParticles
 import afield.stdlib.Vec3
 import afield.stdlib.flowMatch
@@ -189,6 +190,55 @@ object NeuralParticlesSmoke {
             // integrated, not to hold flow matching to an accuracy `FlowMatchingTest` already owns.
             if (abs(meanRadius - RING_RADIUS) > RING_RADIUS * 0.15) {
                 println("  FAIL: the cloud did not land on the ring")
+                failures++
+            }
+
+            // 4. Swapping the weights really does change the field, without recompiling anything.
+            //
+            // `neural_particles.md` makes a specific claim about this — "retraining swaps a buffer
+            // between frames and never recompiles a shader" — and `updateWeights` is the call it
+            // tells a reader to make. Nothing ran it until now. The failure it guards against is
+            // not subtle but it is silent: a weight upload that never reaches the GPU leaves a
+            // system that still draws a perfectly good ring, just the ring it had before.
+            //
+            // Scaled by 0.5 rather than replaced by a second trained field, so the expected
+            // outcome is arithmetic rather than another training run: halving every weight of a
+            // leaky-ReLU network halves nothing predictably layer to layer, so this asserts only
+            // that the landings *moved*, and by more than the integrator's own noise.
+            val before = readParticles(particles).map { toWorld(export.center, export.scale, it.x, it.y) }
+            val halved = MlpWeights(
+                export.network.inputs, export.network.outputs, export.network.hidden,
+                export.network.activation, FloatArray(export.network.flat.size) { export.network.flat[it] * 0.5f },
+            )
+            particles.updateWeights(halved)
+            particles.reset()
+            repeat(STEPS) { window.pollEvents(); renderer.render() }
+            renderer.windowContext().computeFences.forEach { it.fenceWait() }
+            val after = readParticles(particles).map { toWorld(export.center, export.scale, it.x, it.y) }
+
+            val shifted = before.indices.sumOf {
+                hypot((after[it].x - before[it].x).toDouble(), (after[it].y - before[it].y).toDouble())
+            } / before.size
+            println("  after halving the weights, landings moved by a mean of ${"%.3g".format(shifted)} (ring radius $RING_RADIUS)")
+            if (shifted < RING_RADIUS * 0.05) {
+                println("  FAIL: updateWeights did not reach the GPU — the field is unchanged")
+                failures++
+            }
+
+            // And putting them back restores the original landings, which is the half of the
+            // claim that says the buffer is the only state: if the swap had disturbed anything
+            // else -- the module, the particle buffer, the source cloud -- this would not close.
+            particles.updateWeights(export.network)
+            particles.reset()
+            repeat(STEPS) { window.pollEvents(); renderer.render() }
+            renderer.windowContext().computeFences.forEach { it.fenceWait() }
+            val restored = readParticles(particles).map { toWorld(export.center, export.scale, it.x, it.y) }
+            val drift = before.indices.maxOf {
+                hypot((restored[it].x - before[it].x).toDouble(), (restored[it].y - before[it].y).toDouble())
+            }
+            println("  restoring them returns the landings to within ${"%.3g".format(drift)}")
+            if (drift > RING_RADIUS * 1e-3) {
+                println("  FAIL: swapping the weights back did not restore the field")
                 failures++
             }
 

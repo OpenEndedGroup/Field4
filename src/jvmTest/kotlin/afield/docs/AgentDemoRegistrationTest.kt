@@ -18,7 +18,10 @@ import kotlin.test.assertTrue
  * classified by nothing, and every gate in the tree stays green.
  *
  * That is not hypothetical. Measured on this branch's base (`068055b54`, 2026-09-20):
- * `dev_docs/agents/demos/skinned_characters/` has **seven boxes, six of them Kotlin**, no
+ * `dev_docs/agents/demos/skinned_characters/` had **seven boxes, six of them Kotlin** — and by the
+ * time this merged it was **eight boxes, seven of them Kotlin**, because the sibling branch added
+ * `gpu_crowd` in the same night. The debt grew while the exemption describing it stood still, which
+ * is the failure mode this class exists to name. No
  * `dev_docs/agents/transcripts/skinned_characters.yaml`, and no entry in `EXECUTE`,
  * `COMPILE_ONLY` or `KOTLINJS`. It landed from a sibling branch on 2026-09-19. The only assertion
  * that noticed anything at all was `tools/test_demo_build_scripts.py`'s corpus count moving
@@ -88,7 +91,8 @@ class AgentDemoRegistrationTest {
             "skinned_characters" to
                 "Landed 2026-09-19 from the gpu-vertex-skinning branch with no transcript. Its boxes " +
                 "open a Window and a Renderer, so the transcript that fixes this belongs in " +
-                "COMPILE_ONLY, not EXECUTE. Until it exists, six Kotlin box bodies are compiled by nothing.",
+                "COMPILE_ONLY, not EXECUTE. Until it exists, seven Kotlin box bodies are compiled by " +
+                "nothing -- including gpu_crowd, the newest and most complex, which the same night added.",
         )
     }
 

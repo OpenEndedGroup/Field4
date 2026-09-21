@@ -1,0 +1,197 @@
+name: letter_interpolation
+description: |
+  Two letters, and the shapes that live *between* two trained velocity fields — which are not the
+  shapes between two letters.
+
+  There are two ways to morph a "C" into an "S". Interpolate the **targets** and you get a
+  crossfade: point `i` slides along a straight line from its place on the C to its place on the S,
+  and the halfway frame is the average of two letters. That needs no network and it has no
+  surprises in it.
+
+  This scene does the other thing. It trains one field to carry a circle onto the C, a second —
+  from the *same* initialisation and the *same* source — onto the S, and then interpolates the
+  **weights**. The field at `t = 0.5` was never trained on anything. It is a third function, and
+  where it sends a particle is a nonlinear function of `t`.
+
+  Measured, in `WeightInterpolationTest`, the middle is a long way from the crossfade: at
+  `t = 0.5` the two disagree by **0.85** of the whole width of the morph — nearly as far apart as
+  the letters are from each other. It is not a smear, either: the landing cloud's path length,
+  walked in source order, stays at about **0.6** of a letter's perimeter, so it is a *tidier*
+  curve than either endpoint rather than a scribble. Between two letters there is a simpler,
+  rounder form that is neither.
+
+  What the sweep actually does, captured frame by frame, is more specific than "C becomes S": it
+  **seals the C into a closed ring and then re-opens it the other way**. It does not slide the C's
+  mouth shut. At `t = 0.5` the form is a clean O — the tidiest thing in the whole sweep, which is
+  what the 0.6 path length is measuring — and the shapes worth watching are the buckling ones
+  either side of it, where the S's spine is pressing into a ring that has not finished being a
+  ring.
+
+  The sweep is therefore linear and slow rather than eased toward the middle. An earlier version
+  lingered at `t = 0.5` on the assumption that the centre was the interesting part, which parked
+  it on the one frame that is not.
+
+  Things worth trying:
+
+    - `LETTERS` at the top of the training box. Both must be **single closed contours** in this
+      typeface: C, S, E, F, L, T, V, Z, M, N and so on. An O or a D has two (outer and counter),
+      and a circle cannot be paired with two contours at once — the box says so rather than
+      producing something wrong.
+    - `PERIOD`, for how long a full there-and-back takes. The default is forty seconds.
+    - `seed` in the training box — but change it in **both** calls. Two fields from different
+      initialisations represent similar functions through different permutations of the same
+      hidden units, and averaging those is averaging two unrelated parameter vectors. (Measured,
+      this matters less than the argument predicts for a shared source — the midpoint stays tidy
+      either way — but it is still the assumption to design against.)
+
+  One honest limit. A circle mapped onto a letter *outline* has to squeeze into a thin ribbon
+  whose two sides arrive from opposite sides of the circle, and the flow does not fully manage it:
+  the endpoints land about 0.2 of the morph width from the true letters, which is roughly one
+  stroke width. That is the map's own difficulty rather than a shortage of training — the
+  purpose-built `mixtureSource` scores 0.187 against this shared circle's 0.195 on the same
+  letter. The letters read, but they are soft.
+operations:
+  - create:
+      box: li_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Letter interpolation")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: li_fields
+      name: train both letters
+      frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.FlowCoupling
+          import afield.stdlib.FlowMatchOptions
+          import afield.stdlib.contourComponents
+          import afield.stdlib.flowMatch
+
+          prop<afield.stdlib.FlowMatchExport>(fieldA)
+          prop<afield.stdlib.FlowMatchExport>(fieldB)
+
+          val LETTERS = "C" to "S"
+          val N = 512
+
+          // Both fields must start from the *same* cloud. That is what gives a particle one start
+          // point and two destinations, and it is also what makes the two normalisation frames
+          // agree -- `blendWith` refuses to mix two coordinate systems, so this is load-bearing
+          // rather than tidy.
+          val source = (0 until N).map {
+              val a = 2 * Math.PI * it / N
+              vec(Math.cos(a), Math.sin(a), 0.0)
+          }
+
+          // A letter as N points in arc-length order, centred and scaled to unit RMS radius so
+          // that both letters live in the same frame as the circle.
+          fun glyph(ch: String): List<Vec3> {
+              val parts = contourComponents(layoutText(ch, typeface("Helvetica", 300.0)).toFLines(), total = N, seed = 3)
+              if (parts.size != 1) error("'$ch' has ${parts.size} closed contours; this scene pairs one circle with one contour, so pick a letter like C, S, E, F, L, T, V or Z")
+              val p = parts[0]
+              val cx = p.map { it.x.toDouble() }.average()
+              val cy = p.map { it.y.toDouble() }.average()
+              val rms = Math.sqrt(p.sumOf { (it.x - cx) * (it.x - cx) + (it.y - cy) * (it.y - cy) } / p.size)
+              return p.map { vec((it.x - cx) / rms, (it.y - cy) / rms, 0.0) }
+          }
+
+          // Rotate and if necessary reverse the contour so index i starts near circle index i.
+          // Without this each letter carries an arbitrary rotation relative to the circle, and --
+          // worse for this scene -- a *different* one, so the two fields would disagree about
+          // which part of the circle becomes which part of the glyph and the interpolation would
+          // be comparing nothing.
+          fun align(contour: List<Vec3>): List<Vec3> {
+              var best = contour
+              var bestCost = Double.MAX_VALUE
+              for (reversed in listOf(false, true)) {
+                  val base = if (reversed) contour.reversed() else contour
+                  for (shift in 0 until N) {
+                      var cost = 0.0
+                      for (i in 0 until N) {
+                          val q = base[(i + shift) % N]; val s = source[i]
+                          cost += (q.x - s.x) * (q.x - s.x) + (q.y - s.y) * (q.y - s.y)
+                          if (cost > bestCost) break
+                      }
+                      if (cost < bestCost) { bestCost = cost; best = List(N) { base[(it + shift) % N] } }
+                  }
+              }
+              return best
+          }
+
+          // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
+          // that `flowMatch` reseeds, so this really is the same starting point twice.
+          fun train(target: List<Vec3>) = flowMatch(
+              target, source,
+              FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+          ).export()
+
+          fieldA = train(align(glyph(LETTERS.first)))
+          fieldB = train(align(glyph(LETTERS.second)))
+          println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points")
+  - create:
+      box: li_sweep
+      name: the middle
+      frame: { x: 740.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.ShaderNeuralParticles
+          import afield.stdlib.blendWith
+
+          prop<afield.stdlib.ShaderNeuralParticles>(particles)
+
+          once.particles {
+              ShaderNeuralParticles(fieldA, renderer) {
+                  particleCount = 200_000
+                  stepsPerCycle = 150
+                  // Low, on purpose. A high dwell shows the *distribution* a field settles on,
+                  // which is the right choice for reading a word and the wrong one here: the
+                  // interesting thing is a shape that is continuously becoming another, so the
+                  // stream between the shapes has to stay visible.
+                  dwellCycles = 1.2f
+              }.also { it.installInto() }
+          }
+
+          particles.settings.intensity = 1.1f
+          particles.settings.arrivalBias = 0.55f
+          particles.settings.pointSize = 1.5f
+          particles.settings.viewScale = 3.4f
+          particles.settings.sourceColor = vec(0.15, 0.45, 1.0, 1.0)
+          particles.settings.targetColor = vec(1.0, 0.62, 0.22, 1.0)
+
+          val PERIOD = 2400.0    // frames for a full there-and-back: forty seconds at sixty
+
+          frames {
+              while (true) {
+                  // A plain triangle wave -- constant speed, every value of t given the same
+                  // time. An earlier version cubed this about the centre to linger at t = 0.5,
+                  // on the assumption that the middle was the interesting part. Captured frame
+                  // by frame it is not: t = 0.5 is a clean closed ring, the tidiest and least
+                  // ambiguous form in the whole sweep, and the shapes worth watching are the
+                  // buckling ones either side of it at roughly 0.2-0.3 and 0.7-0.9. Easing
+                  // towards the centre parks on the dullest frame. Slow everywhere beats clever.
+                  val cycle = (renderer.frameCounter % PERIOD.toLong()) / PERIOD
+                  val t = (if (cycle < 0.5) cycle * 2 else 2 - cycle * 2).toFloat()
+                  // The whole idea, once a frame: a field that was never trained on anything.
+                  particles.updateWeights(fieldA.blendWith(fieldB, t).network)
+                  frame()
+              }
+          }
+  - connect: { parent: li_renderer, child: li_fields }
+  - connect: { parent: li_fields, child: li_sweep }
+  - launch: { box: li_renderer, property: code }
+  - await: { wait: pending }
+  - launch: { box: li_fields, property: code }
+  - await: { wait: pending }
+  - launch: { box: li_sweep, property: code }
+  - await: { wait: pending }

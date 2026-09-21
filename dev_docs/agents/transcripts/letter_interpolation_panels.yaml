@@ -1,0 +1,162 @@
+name: letter_interpolation_panels
+description: |
+  Three weight-space interpolations between a trained "C" field and a trained "S" field, pinned
+  and rendered side by side: `t = 0.25`, `t = 0.5` and `t = 0.78`.
+
+  This is the still-figure companion to `letter_interpolation`, which sweeps the same pair live.
+  It exists because a sweeping scene cannot be *photographed*: a capture lands on whatever `t` the
+  clock happened to reach, so the picture and its caption drift apart the next time anything is
+  re-rendered. Here each panel is a separate `ShaderNeuralParticles` with its weights set once, so
+  the figure means the same thing every time it is built.
+
+  It is also the clearest way to see the finding. The interpolation does not slide the C's mouth
+  shut into an S — it **seals the C into a closed ring and re-opens it the other way**. The middle
+  panel is that ring, and it is the tidiest form in the whole family: walked in source order its
+  landing cloud measures about 0.6 of a letter's perimeter, *shorter* than either endpoint,
+  because a circle is the shortest closed curve there is. The two outer panels are where the
+  S's spine is pressing into a ring that has not finished being a ring, and those are the ones
+  that read as letters from an alphabet nobody wrote.
+
+  Three fields at once is also just a reasonable thing to want: the weight buffer is per-system,
+  so one trained pair can drive any number of panels with no extra training and no extra shaders.
+operations:
+  - create:
+      box: li_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Letter interpolation")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: li_fields
+      name: train both letters
+      frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.FlowCoupling
+          import afield.stdlib.FlowMatchOptions
+          import afield.stdlib.contourComponents
+          import afield.stdlib.flowMatch
+
+          prop<afield.stdlib.FlowMatchExport>(fieldA)
+          prop<afield.stdlib.FlowMatchExport>(fieldB)
+
+          val LETTERS = "C" to "S"
+          val N = 512
+
+          // Both fields must start from the *same* cloud. That is what gives a particle one start
+          // point and two destinations, and it is also what makes the two normalisation frames
+          // agree -- `blendWith` refuses to mix two coordinate systems, so this is load-bearing
+          // rather than tidy.
+          val source = (0 until N).map {
+              val a = 2 * Math.PI * it / N
+              vec(Math.cos(a), Math.sin(a), 0.0)
+          }
+
+          // A letter as N points in arc-length order, centred and scaled to unit RMS radius so
+          // that both letters live in the same frame as the circle.
+          fun glyph(ch: String): List<Vec3> {
+              val parts = contourComponents(layoutText(ch, typeface("Helvetica", 300.0)).toFLines(), total = N, seed = 3)
+              if (parts.size != 1) error("'$ch' has ${parts.size} closed contours; this scene pairs one circle with one contour, so pick a letter like C, S, E, F, L, T, V or Z")
+              val p = parts[0]
+              val cx = p.map { it.x.toDouble() }.average()
+              val cy = p.map { it.y.toDouble() }.average()
+              val rms = Math.sqrt(p.sumOf { (it.x - cx) * (it.x - cx) + (it.y - cy) * (it.y - cy) } / p.size)
+              return p.map { vec((it.x - cx) / rms, (it.y - cy) / rms, 0.0) }
+          }
+
+          // Rotate and if necessary reverse the contour so index i starts near circle index i.
+          // Without this each letter carries an arbitrary rotation relative to the circle, and --
+          // worse for this scene -- a *different* one, so the two fields would disagree about
+          // which part of the circle becomes which part of the glyph and the interpolation would
+          // be comparing nothing.
+          fun align(contour: List<Vec3>): List<Vec3> {
+              var best = contour
+              var bestCost = Double.MAX_VALUE
+              for (reversed in listOf(false, true)) {
+                  val base = if (reversed) contour.reversed() else contour
+                  for (shift in 0 until N) {
+                      var cost = 0.0
+                      for (i in 0 until N) {
+                          val q = base[(i + shift) % N]; val s = source[i]
+                          cost += (q.x - s.x) * (q.x - s.x) + (q.y - s.y) * (q.y - s.y)
+                          if (cost > bestCost) break
+                      }
+                      if (cost < bestCost) { bestCost = cost; best = List(N) { base[(it + shift) % N] } }
+                  }
+              }
+              return best
+          }
+
+          // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
+          // that `flowMatch` reseeds, so this really is the same starting point twice.
+          fun train(target: List<Vec3>) = flowMatch(
+              target, source,
+              FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+          ).export()
+
+          fieldA = train(align(glyph(LETTERS.first)))
+          fieldB = train(align(glyph(LETTERS.second)))
+          println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points")
+  - create:
+      box: li_panels
+      name: three pinned panels
+      frame: { x: 740.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.ShaderNeuralParticles
+          import afield.stdlib.blendWith
+
+          prop<List<afield.stdlib.ShaderNeuralParticles>>(panels)
+
+          // 0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
+          // spine pressing into it -- and they are the reason this figure is not just "a circle".
+          // 0.78 rather than 0.75 because the buckle is deepest a little past three quarters.
+          val STOPS = listOf(0.25f, 0.5f, 0.78f)
+
+          // `name` keeps each system's buffers and modules apart; without it the second one would
+          // bind over the first. `viewCenter` is subtracted before the divide, so a negative x
+          // moves that panel to the right of the screen.
+          once.panels {
+              STOPS.mapIndexed { i, _ ->
+                  ShaderNeuralParticles(fieldA, renderer) {
+                      name = "panel$i"
+                      particleCount = 150_000
+                      stepsPerCycle = 150
+                      // Higher than the sweeping scene's: a still wants the arrived distribution
+                      // crisp rather than the stream between shapes.
+                      dwellCycles = 3f
+                      viewScale = 4.6f
+                      viewCenter = Vector2f((1 - i) * 5.2f, 0f)
+                  }.also { it.installInto() }
+              }
+          }
+
+          // Set once, not per frame. Each panel is a different field from the same trained pair.
+          STOPS.forEachIndexed { i, t ->
+              panels[i].updateWeights(fieldA.blendWith(fieldB, t).network)
+              panels[i].settings.intensity = 1.1f
+              panels[i].settings.arrivalBias = 0.6f
+              panels[i].settings.pointSize = 1.5f
+              panels[i].settings.sourceColor = vec(0.15, 0.45, 1.0, 1.0)
+              panels[i].settings.targetColor = vec(1.0, 0.62, 0.22, 1.0)
+          }
+          println("panels at ${STOPS.joinToString(", ")}")
+  - connect: { parent: li_renderer, child: li_fields }
+  - connect: { parent: li_fields, child: li_panels }
+  - launch: { box: li_renderer, property: code }
+  - await: { wait: pending }
+  - launch: { box: li_fields, property: code }
+  - await: { wait: pending }
+  - launch: { box: li_panels, property: code }
+  - await: { wait: pending }

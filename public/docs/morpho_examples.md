@@ -562,7 +562,7 @@ evolution (3/5 each) and hill climbing finds nothing at all: it converges on a t
 that is 3% wrong and cannot get off it. Those spaces are small enough that sampling them is a
 perfectly good algorithm.
 
-**Or-reduce is the interesting positive result** because it cannot be done without recursion.
+**Or-reduce cannot be done without recursion**, which is what makes it the positive result.
 Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964#const w = Math.max(...inputs.map(x => x.length));`):
 no gate and no combination of gates turns eight wires into one bit. The only route down is to keep
 `SPLIT`ting, and any design that gets the answer right has recursed to reach it.

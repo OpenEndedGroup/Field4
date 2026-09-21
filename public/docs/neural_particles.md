@@ -45,23 +45,24 @@ Field fits either one, and the difference matters more than it sounds. A velocit
 shapes and words reachable. An interaction is a **force**, which is what makes flocks, swarms and
 crowds — and which needs a neighbour search underneath it before any of it is affordable.
 
-The two are built in that order below: tier one is sections 1 and 2, the neighbour search is
-section 3, and tier two is sections 4 to 6.
+The two are built in that order below: tier one is sections 1 to 3, the neighbour search is
+section 4, and tier two is sections 5 to 7.
 
 ## Source files
 
 | file | what is in it |
 |---|---|
-| `afield/stdlib/neuralparticles.kt` | `MlpWeights`, `MlpWeights.glsl`, `FlowMatchExport`, `MlpAgreement` — the network-to-shader bridge |
+| `afield/stdlib/neuralparticles.kt` | `MlpWeights`, `MlpWeights.glsl`, `FlowMatchExport`, `blendWith`, `MlpAgreement` — the network-to-shader bridge |
 | `afield/stdlib/neuralparticles_system.kt` | `ShaderNeuralParticles`, `NeuralParticleSettings` — tier one, as a running system |
 | `afield/stdlib/flowmatching.kt` | `flowMatch`, `contourComponents`, `mixtureSource` — the CPU half, shared with [Flow matching](flow_matching.md) |
 | `afield/stdlib/deepsets.kt` | `trainDeepSets`, `trainEquivariant`, and their GLSL emitters — tier two's learned rule |
 | `afield/four/util/GpuNeighbourGrid.kt` | hash, sort, ranges: the neighbour search both flocks share |
 | `afield/four/physics/ShaderBoids.kt` | `ShaderBoids`, `BoidSettings` — the written rule and the learned one, in one system |
 
-Two transcripts open as complete documents from [Agent transcripts](agent_transcripts.md) or the
-welcome screen: **`neural_particles`** and **`learned_boids`**. Everything below is reachable from
-one of them, and both are the fastest way in — open one, edit a number, watch it change.
+Four transcripts open as complete documents from [Agent transcripts](agent_transcripts.md) or the
+welcome screen: **`neural_particles`**, **`learned_boids`**, **`letter_interpolation`** and
+**`letter_interpolation_panels`**. Everything below is reachable from one of them, and they are
+the fastest way in — open one, edit a number, watch it change.
 
 ---
 
@@ -211,7 +212,64 @@ seconds.
 
 ---
 
-## 3. The neighbour grid
+## 3. Between two trained fields
+
+Train a second field, from the same source, and you can interpolate the **weights**:
+
+```diffstatic {data-lang=kotlin}
+val blended = fieldA.blendWith(fieldB, t)     // t from 0 to 1
+particles.updateWeights(blended.network)      // a buffer write; nothing recompiles
+```
+
+This is not the obvious morph. Interpolating the *targets* — sending point `i` to
+`(1-t)·A_i + t·B_i` — is a straight-line crossfade that needs no network and holds no surprises.
+Interpolating the weights gives a field that was **never trained on anything**, and where it sends
+a particle is a nonlinear function of `t`.
+
+The two are a long way apart. Measured at `t = 0.5`, the weight-space landing sits **0.85 of the
+whole width of the morph** from where the crossfade would put it — nearly as far as the two
+letters are from each other.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/interpolation.png" capture="native-window" wait="35" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="neural-particles-interpolation" alt="Three particle glyphs in a row on black, each a rough ring drawn in warm gold: the first with a bulge on its right, the second a closed lumpy ring, the third with a deep S-shaped buckle pressing in from the right" macro-file="../../dev_docs/agents/transcripts/letter_interpolation_panels.yaml" capture-box="li_renderer"}
+// Built and launched from dev_docs/agents/transcripts/letter_interpolation_panels.yaml
+// (renderer, one training box, and three pinned systems side by side).
+```
+
+Those are `t = 0.25`, `0.5` and `0.78` between a "C" and an "S" — and none of them is a C, an S,
+or a blend of the two. They are letters from an alphabet nobody wrote. The outer two are the ones
+worth looking at: a ring with the S's spine pressing into it, caught before it has finished being
+a ring.
+
+Because what the interpolation actually does is **seal the C into a closed ring and re-open it the
+other way**. It never slides the C's mouth shut. The middle panel is that ring, and it is the
+tidiest thing in the family rather than the messiest: walked in source order, its landing cloud
+measures about **0.6 of a letter's perimeter** — *shorter* than either endpoint, because a circle
+is the shortest closed curve there is. The middle of two letters, in this space, is simpler than
+either of them.
+
+!!! warning "Two conditions, both of which the API enforces or you will get nonsense"
+
+    **The same source cloud.** Both fields must be trained from one shared cloud, so a particle
+    has one start point and two destinations. That is also what makes the two normalisation frames
+    agree — `blendWith` refuses to blend fields normalised differently, because `t = 1` meaning
+    "B's weights read in A's coordinates" is a different field from B and would look exactly like
+    an interesting result.
+
+    **The same initialisation.** Train both with the same `seed`. Hidden units are exchangeable,
+    so two runs from different random starts represent similar functions through different
+    permutations of the same machinery. (Measured, this one is *weaker* than the argument
+    predicts: across three seed pairs the midpoint stayed tidy whether the initialisations were
+    shared or not, probably because a shared source makes the two training problems nearly the
+    same problem. It is still the assumption to design against rather than to rely on.)
+
+The `letter_interpolation` transcript sweeps `t` slowly and continuously — forty seconds there and
+back — and `letter_interpolation_panels` is the still above. Both need letters that are a **single
+closed contour** in the typeface: C, S, E, F, L, T, V, Z and so on. An O or a D has two, and one
+circle cannot be paired with two contours at once.
+
+---
+
+## 4. The neighbour grid
 
 Tier two needs a sum over *nearby* particles, which needs a sort. `GpuNeighbourGrid` is that, and
 it is useful on its own for anything that needs neighbours on the GPU:
@@ -261,7 +319,7 @@ something like it, that ordering is the trap.
 
 ---
 
-## 4. Boids on the grid
+## 5. Boids on the grid
 
 `ShaderBoids` is the reference consumer — classical Reynolds, three terms, on top of that grid:
 
@@ -301,7 +359,7 @@ would leave nothing exact to compare against.
 
 ---
 
-## 5. A learned interaction
+## 6. A learned interaction
 
 A velocity field is blind to the other particles. An interaction is the other kind of rule, and
 Deep Sets is the right family for it:
@@ -406,7 +464,7 @@ fits worse than either.
 
 ---
 
-## 6. The driver
+## 7. The driver
 
 With the symmetry built in and no external forcing, the flock settles into something that reads as
 static: an evenly spaced disc that barely changes. This is worth knowing before you conclude
@@ -450,20 +508,20 @@ honest. No retraining is needed to add or change it.
 | | default | |
 |---|---|---|
 | `radius` | 0.06 | interaction radius; **bounded by the grid's cell size** |
-| `separation`, `alignment`, `cohesion` | 0.02, 1.2, 0.8 | the three Reynolds weights — the textbook values, which **do not flock** at a realistic density; see section 4 |
+| `separation`, `alignment`, `cohesion` | 0.02, 1.2, 0.8 | the three Reynolds weights — the textbook values, which **do not flock** at a realistic density; see section 5 |
 | `separationRadiusFraction` | 1 | shrink separation's reach relative to `radius` for smaller clumps |
 | `minSeparationFraction` | 0.05 | floor on the separation denominator, so a coincident pair is finite |
 | `maxSpeed` | 0.35 | speed limit |
 | `dt` | 1/60 | fixed step |
 | `containment`, `containmentRadius`, `containmentCenter` | 0, 0.8, origin | a soft wall, applied after the rule |
-| `driverStrength`, `driverRadius` | 0, 0.25 | see section 6; negative flees |
+| `driverStrength`, `driverRadius` | 0, 0.25 | see section 7; negative flees |
 | `pointSize`, `slowColor`, `fastColor`, `intensity` | | appearance; colour tracks speed |
 
 ---
 
 ## Running it
 
-The two transcripts are the intended entry point. The four GPU smokes are the same machinery driven
+The four transcripts are the intended entry point. The four GPU smokes are the same machinery driven
 headlessly, and are what to run after changing any of it:
 
 ```diffstatic {data-lang=text}
