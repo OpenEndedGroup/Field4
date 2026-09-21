@@ -222,7 +222,7 @@
   {"doc": "manifold_solids", "box": "manifold_bracket", "codeSha256": "64cb5c18e2678921", "codeLines": 144, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "manifold_solids", "box": "manifold_levelset_slices", "codeSha256": "eea8a1d54866e3a6", "codeLines": 125, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "marf_demo", "box": "marf_path", "codeSha256": "18e96c9857dfc2fb", "codeLines": 24, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "marf_demo", "box": "marf_readers", "codeSha256": "37ae463100455d97", "codeLines": 62, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "marf_demo", "box": "marf_readers", "codeSha256": "81e18a738244197f", "codeLines": 62, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "marf_demo", "box": "marf_sound", "codeSha256": "afd93f3fc13cd9fd", "codeLines": 25, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "marf_demo", "box": "marf_vector", "codeSha256": "902a637067c516bc", "codeLines": 61, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "mesh_geometry_examples", "box": "mesh_bridges", "codeSha256": "73c00d962b88bbb1", "codeLines": 78, "receivers": ["afield.Box"], "preamble": ""},
