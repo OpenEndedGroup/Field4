@@ -49,7 +49,26 @@ Combined focused gate: all 12 new tests passed; log
 
 ## Certification and boundaries
 
-Full combined-tree certification is pending integration of the latest main changes.
+Full combined-tree certification passed on `f2d1586aa`, integrating main
+`6c9351ff7` with the fixes in `18c6a5a72`:
+
+- `./gradlew --no-daemon certify`: **BUILD SUCCESSFUL in 30m 22s**;
+  `/tmp/field4-completion-captures-certify.log`.
+- JVM: 4,121 total, 4,117 passed, four skipped, zero failures/errors.
+- Python tooling: 609 total, 608 passed, one skipped.
+- Citation/documentation contracts: 106 tests passed in the immediately preceding
+  combined-tree merge checks; certification reused that up-to-date result.
+- Expected-failure register: zero registered, zero observed. Generated-reference,
+  transcript, completion-fixture, source-partition, and documentation checks passed.
+- The tracked-file write guard passed; the isolated checkout stayed clean.
+- The JS browser-test task was skipped and JS tests reported no source; these are
+  not a claim of full browser UI regression coverage. The actual Chromium fixtures,
+  live Field output capture, and four native captures above provide targeted evidence.
+
+The final evidence-only commit does not change runtime source. Main was clean at
+the final pre-landing check. All three owned verification ports (17893, 9581, 9583)
+were free after their sessions were stopped. Nothing was pushed.
+
 The native evidence covers Apple M1 Max/macOS, not Windows, Linux, or an OpenXR
 headset/controller session. Temporary logs and build artifacts are local evidence,
 not tracked publication assets. Disk-budget work and the remaining Marf transcript
