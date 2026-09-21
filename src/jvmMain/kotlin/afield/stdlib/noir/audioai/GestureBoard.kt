@@ -30,9 +30,18 @@ import kotlinx.serialization.json.put
  *     val operation = gestureCandidates(source, board, seeds = 0L until 4L)
  */
 
+/**
+ * The DSL scope marker shared by the two gesture-board builders. It stops a nested `curve{}`
+ * block from reaching past its own receiver to call `prompt` or `event` on the board around it.
+ */
 @DslMarker
 annotation class GestureBoardDsl
 
+/**
+ * Collects the breakpoints of one curve inside a `curve{}` block. Points are kept in the order
+ * they are written, and strictly increasing times, values in `0..1` and a minimum of two points
+ * are all checked when the enclosing board is built, not as each point arrives.
+ */
 @GestureBoardDsl
 class GestureCurveBuilder internal constructor(
     private val name: String,
@@ -41,6 +50,7 @@ class GestureCurveBuilder internal constructor(
 ) {
     private val points = mutableListOf<GesturePoint>()
 
+    /** Adds one breakpoint to the curve: [timeSeconds] along the board, [value] in `0..1`. */
     fun point(timeSeconds: Number, value: Number) {
         points += GesturePoint(timeSeconds.toDouble(), value.toDouble())
     }
@@ -48,6 +58,10 @@ class GestureCurveBuilder internal constructor(
     internal fun build(): GestureCurve = GestureCurve(name, kind, points.toList(), weight)
 }
 
+/**
+ * The receiver of a `gestureBoard{}` block: prompt regions, events and curves accumulate here in
+ * the order they are written, and the finished board is validated once, when the block returns.
+ */
 @GestureBoardDsl
 class GestureBoardBuilder internal constructor(
     private val durationSeconds: Double,
@@ -56,18 +70,40 @@ class GestureBoardBuilder internal constructor(
     private val prompts = mutableListOf<GesturePromptRegion>()
     private val events = mutableListOf<GestureEvent>()
     private val curves = mutableListOf<GestureCurve>()
+    /**
+     * Free-form JSON that travels with the board to the service. Neither validation nor
+     * compilation reads it, so it is somewhere to record where a sketch came from.
+     */
     var metadata: JsonObject = JsonObject(emptyMap())
 
+    /**
+     * Adds a timed text region. Protocol version 1 has no timed text condition, so
+     * [compileGestureBoard] folds each region into the one global prompt, worded
+     * `from As to Bs: text`, in the order the regions were written; a region has to fit inside
+     * the board's duration and its [weight] has to lie in `(0, 10]`.
+     */
     fun prompt(startSeconds: Number, durationSeconds: Number, text: String, weight: Number = 1.0) {
         prompts += GesturePromptRegion(
             startSeconds.toDouble(), durationSeconds.toDouble(), text, weight.toDouble()
         )
     }
 
+    /**
+     * Marks a labelled onset at [timeSeconds]. Events are evaluative: nothing is conditioned on
+     * them, and a generated candidate is rewarded for an accent near the marked time. [strength]
+     * is `0..1` and [weight] is in `(0, 10]`.
+     */
     fun event(timeSeconds: Number, label: String, strength: Number = 1.0, weight: Number = 1.0) {
         events += GestureEvent(timeSeconds.toDouble(), label, strength.toDouble(), weight.toDouble())
     }
 
+    /**
+     * Opens a named lane of one [GestureCurveKind] and collects its points. Names have to be
+     * unique within a board and a curve needs at least two points. Like an event, a curve is
+     * measured against the generated waveform rather than sent as a model control, and the
+     * pinned contract has four kinds to measure against: density, activity, register and
+     * brightness.
+     */
     fun curve(
         name: String,
         kind: GestureCurveKind,
@@ -99,6 +135,15 @@ fun gestureBoard(
     return GestureBoardBuilder(duration, prompt).apply(block).build()
 }
 
+/**
+ * Checks a board against the version-1 rules and returns it, so it can be used inline. It
+ * enforces timing (regions and points inside the duration, curve times strictly increasing),
+ * ranges (values and strengths in `0..1`, weights in `(0, 10]`), unique curve names, and that
+ * each element's delivery is the one protocol version 1 defines for it. The `gestureBoard{}`
+ * builder validates on the way out and every function here that takes a board validates on the
+ * way in, so this is the entry point for a board assembled by hand or one that arrived over the
+ * wire.
+ */
 fun validateGestureBoard(board: GestureBoard): GestureBoard {
     require(board.durationSeconds > 0.0) { "gesture duration must be positive" }
     board.promptRegions.forEach {

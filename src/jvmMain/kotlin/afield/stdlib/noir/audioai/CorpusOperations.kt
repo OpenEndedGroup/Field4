@@ -21,12 +21,21 @@ import kotlin.math.abs
  * the distance. All three produce a [ModelOperation] that [FieldAudioClient.submit] executes.
  */
 
-/** Explicit weights for the five interpretable descriptor groups used by corpus retrieval. */
+/**
+ * Explicit weights for the five interpretable descriptor groups used by corpus retrieval. Each
+ * scales how much its own group counts towards the distance between two windows, a zero takes
+ * that group out of the comparison, and at least one of the five has to be positive.
+ */
 data class CorpusDistanceWeights(
+    /** Mean and variation of the twelve chroma classes: the chord and key colour of a window. */
     val harmony: Double = 1.0,
+    /** Dominant-pitch centre, dominant-pitch spread, and how much of the window is voiced. */
     val pitch: Double = 0.7,
+    /** MFCCs with spectral centroid, bandwidth, flatness and rolloff: timbre rather than notes. */
     val texture: Double = 1.0,
+    /** Onset strength, peak density and local tempo statistics. */
     val rhythm: Double = 0.8,
+    /** RMS centre, spread and range: the loudness shape, independent of what is making it. */
     val dynamics: Double = 0.45,
 ) {
     init {

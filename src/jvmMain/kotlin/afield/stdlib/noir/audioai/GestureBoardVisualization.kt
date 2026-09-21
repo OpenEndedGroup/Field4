@@ -4,6 +4,29 @@ package afield.stdlib.noir.audioai
 
 import java.util.Locale
 
+/**
+ * A gesture board drawn as a picture of itself: prompt regions, onset events and parameter curves
+ * on one timeline, each mark labelled with how far into the model it reaches.
+ *
+ * [gestureBoardHtml] renders a [GestureBoard] as a single self-contained section, with inline
+ * styles, one SVG and a few lines of script for the hover cursor. There is no asset to fetch and
+ * no library to install. Every rule and the script are scoped to an id derived from the board's
+ * hash, so one document can show several boards at once. Prompt regions become blocks on the
+ * prompt lane, events become dashed needles at their marked time, and each curve gets a lane of
+ * its own coloured by its [GestureCurveKind].
+ *
+ * The chips above the timeline are the bindings of a [GestureCompilation], and they separate a
+ * mark the backend is conditioned on from a mark it is only scored against. By default the
+ * compilation is the local [compileGestureBoard] preview of the service's version-1 contract
+ * rather than a record of what some particular job sent, and the effective prompt printed beside
+ * the chips is the time-worded text that preview produces.
+ *
+ * Passing a [CandidateSet] adds a ranking strip under the chips: a row per candidate, ordered by
+ * gesture score where the service returned one and by the candidate's own score otherwise, with a
+ * bar for each evaluated lane. A board is validated before anything is drawn, so a sketch the
+ * service would reject fails here rather than being rendered.
+ */
+
 /** Interactive, dependency-free timeline renderer for a [GestureBoard]. */
 object GestureBoardVisualization {
     private val colors = mapOf(
@@ -13,6 +36,14 @@ object GestureBoardVisualization {
         GestureCurveKind.BRIGHTNESS to "#c586c0",
     )
 
+    /**
+     * Draws [board] over [width] pixels of timeline, inside a card 38 pixels wider than that.
+     * [width] must be at least 640 and the SVG keeps it, so a narrower output area scrolls the
+     * timeline horizontally instead of compressing it. [compilation] defaults to the local
+     * preview; passing the result of `FieldAudioClient.compileGesture` instead shows how the live
+     * service wires this same board. [candidates] adds the ranking strip and changes nothing else
+     * on the timeline.
+     */
     fun renderHtml(
         board: GestureBoard,
         compilation: GestureCompilation = compileGestureBoard(board),
@@ -120,6 +151,10 @@ object GestureBoardVisualization {
     }
 }
 
+/**
+ * Draws [board] as a timeline section: the top-level name for [GestureBoardVisualization]'s
+ * renderer, with the same defaults, and the one a box calls.
+ */
 fun gestureBoardHtml(
     board: GestureBoard,
     compilation: GestureCompilation = compileGestureBoard(board),
