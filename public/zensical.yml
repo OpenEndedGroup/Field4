@@ -247,6 +247,10 @@ nav:
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
     - Agent Transcript Gallery: agent_transcripts.md
+    # Sits here rather than beside "Letting an Agent Drive" in the Tour: the Tour page teaches the
+    # backdoor, this one is the boundary of what it can photograph, which is a thing you look up
+    # after a capture has already surprised you.
+    - What a Capture Can and Cannot Show: capture_limits.md
   # Generated from source rather than written: extracted KDoc and codegen output. As finished as
   # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:
