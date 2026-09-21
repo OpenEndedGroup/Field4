@@ -33,6 +33,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.reprojection.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.FabricateReprojectionDemo
 tags: [smoke, four, fabricate, pass-chain, reprojection, temporal, gpu, image]

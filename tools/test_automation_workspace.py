@@ -86,6 +86,7 @@ class AutomationWorkspaceTests(unittest.TestCase):
             runner._http_health_ok = lambda _port: True
             runner._listener_pids = lambda: []
             runner.server_starts = 0
+            runner._capture_environment_check = None
 
             process = mock.Mock()
             process.poll.return_value = None

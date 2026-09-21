@@ -26,6 +26,16 @@ class ConsoleMuteTest {
     }
 
     @Test
+    fun `documented spellings require exact case-sensitive whole-channel membership`() {
+        val spellings = listOf("info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes")
+        assertEquals(
+            listOf(true, false, false, false, false),
+            spellings.map(ConsoleMute::isMuted),
+            "muting must not reorder tags, match substrings, or fold case"
+        )
+    }
+
+    @Test
     fun `StdoutLog drops muted channels and prints the rest`() {
         val printed = captureStdout {
             StdoutLog.log(LogEvent(channel = "info,boxes", message = "resync should be hidden"))

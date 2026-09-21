@@ -12,6 +12,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.neighbour-grid.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.GpuNeighbourGridSmoke
 tags: [smoke, four, gpu, compute, sort, neighbours, particles]

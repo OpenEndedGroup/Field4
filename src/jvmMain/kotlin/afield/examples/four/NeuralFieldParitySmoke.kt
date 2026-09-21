@@ -28,6 +28,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.neural-field-parity.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.NeuralFieldParitySmoke
 tags: [smoke, four, gpu, compute, neural, mlp, flow-matching]

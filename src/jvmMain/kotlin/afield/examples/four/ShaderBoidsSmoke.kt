@@ -13,6 +13,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.shader-boids.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.ShaderBoidsSmoke
 tags: [smoke, four, gpu, compute, boids, neighbours, particles]

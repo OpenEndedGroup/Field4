@@ -38,6 +38,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: keyframe.sweep.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.KeyframeSweepDemo
 tags: [smoke, keyframe, sweep, four, gpu, image]

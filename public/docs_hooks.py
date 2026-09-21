@@ -38,6 +38,7 @@ from verification_runtime import (
     waive_execution_verdict,
 )
 from field_languages import MAIN_LANGUAGE_ROOT_LANGUAGES
+from verification_environment import VerificationEnvironment, VerificationEnvironmentError
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
 # public/ is already on sys.path when the Zensical build imports this module, so
@@ -523,6 +524,9 @@ class RunnerState:
         self._sidecar_started_by_runner = False
         self._sidecar_process: subprocess.Popen[str] | None = None
         self._closed = False
+        self.environment: VerificationEnvironment | None = None
+        self.environment_outcomes: list[dict[str, Any]] = []
+        self._capture_environment_check = None
         self.failures: list[str] = []
         # Captures that failed but had a committed asset already on disk to fall back
         # to (HTML still references a real, previously-captured image) vs. failures
@@ -577,8 +581,8 @@ class RunnerState:
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
         if self.session_enabled:
             LOG.info("Field docs runner warm-session path ENABLED (experimental; fast path with per-process fallback)")
-        if self.runner_mode != "never":
-            self._ensure_runner_owned_field_server(reason=f"{self.runner_mode} docs capture run")
+        # Startup belongs behind the first capture's environment checkpoint.
+        # Construction alone must not boot Field before power/display are checked.
         atexit.register(self.close)
 
     def source_refs_digest(self, code: str) -> str:
@@ -604,6 +608,9 @@ class RunnerState:
         number a reader checks was wrong exactly when it mattered.
         """
         message = f"{page_path.name} -> {output_path}: {error}"
+        if isinstance(error, VerificationEnvironmentError):
+            LOG.warning("Field docs runner environment-incomplete: %s", message)
+            return
         self.failures.append(message)
         # A committed asset already on disk means the generated HTML still points at a
         # real, previously-captured image -- degraded (stale) but not broken. No asset
@@ -1212,6 +1219,8 @@ class RunnerState:
 
         deadline = time.monotonic() + SERVER_START_DEADLINE_SEC
         while time.monotonic() < deadline:
+            if self._capture_environment_check is not None:
+                self._capture_environment_check()
             process = self._shared_field_process
             if process is None:
                 return "start process handle was cleared"
@@ -1692,11 +1701,57 @@ class RunnerState:
         if self._closed:
             return
         self._closed = True
-        self.log_summary()
-        self.save()
-        self._stop_session(reason="runner close")
-        self._stop_shared_field_server()
-        self._stop_semantic_sidecar()
+        if self.environment is not None:
+            self.environment.close()
+        try:
+            self.log_summary()
+            self.save()
+        finally:
+            try:
+                self._stop_session(reason="runner close")
+            finally:
+                try:
+                    self._stop_shared_field_server()
+                finally:
+                    self._stop_semantic_sidecar()
+                    if self.environment is not None:
+                        self.environment.write_report(self.repo_root / "build/docs-environment.json", self.environment_outcomes)
+
+    def capture_with_environment(self, method, **kwargs):
+        if self.environment is None:
+            self.environment = VerificationEnvironment().start()
+        options = kwargs["options"]
+        needs_display = options.graphics_context or options.capture == "native-window"
+        started = False
+        try:
+            token = self.environment.checkpoint(require_display=needs_display)
+            self._capture_environment_check = lambda: self.environment.check(token, require_display=needs_display)
+            started = True
+            try:
+                self._ensure_runner_owned_field_server(reason="environment-checked docs capture")
+                method(**kwargs)
+            except Exception:
+                self.environment.check(token, require_display=needs_display, force=True)
+                raise
+            self.environment.check(token, require_display=needs_display, force=True)
+        except VerificationEnvironmentError as exc:
+            self.environment_outcomes.append({"page": str(kwargs["page_path"]),
+                "block": kwargs["block_index"], "status": "interrupted" if started else "not-run",
+                "reason": str(exc)})
+            if started:
+                # A result produced across a lost prerequisite is not a certified cache hit.
+                for value in (options.screenshot, options.video, options.audio):
+                    if value:
+                        key = str(resolve_output_path(kwargs["page_path"], value))
+                        self.cache.pop(key, None)
+                        self.cache_metadata.pop(key, None)
+                self.dirty = True
+                self.save()
+                self._stop_session(reason="verification environment interrupted")
+                self._stop_shared_field_server()
+            raise
+        finally:
+            self._capture_environment_check = None
 
     def log_summary(self) -> None:
         if self.summary_logged:
@@ -1766,6 +1821,7 @@ class RunnerState:
             exit_grace=10.0,
             input_text=input_text,
             on_start=self._remember_capture_child_pid,
+            check_environment=getattr(self, "_capture_environment_check", None),
         )
         if timed_out:
             emitted = len(parse_backdoor_results(completed.stdout))
@@ -2428,6 +2484,11 @@ def on_post_build(config: Any) -> None:
                 LOG.warning("Field docs runner skipped asset detail: %s", failure)
         STATE.save()
         STATE.close()
+        if STATE.environment_outcomes:
+            raise VerificationEnvironmentError(
+                f"Docs verification incomplete: {len(STATE.environment_outcomes)} capture(s) not run or interrupted; "
+                f"see {STATE.repo_root / 'build/docs-environment.json'}"
+            )
 
 
 def ensure_state(config: Any) -> RunnerState:
@@ -2534,12 +2595,12 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 else:
                     primary_ui_path = ui_video_path or ui_screenshot_path
                     try:
-                        state.ensure_ui_drive(code=runner_code, options=options, page_path=page_path, block_index=block_index)
+                        state.capture_with_environment(state.ensure_ui_drive, code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         screenshot_succeeded = bool(options.screenshot)
                         video_succeeded = bool(options.video)
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=primary_ui_path, error=exc, continuing=state.continue_on_error)
-                        if not state.continue_on_error:
+                        if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
                 site_dir = Path(state.config["site_dir"]).resolve()
                 use_dir_urls = bool(state.config["use_directory_urls"])
@@ -2563,11 +2624,11 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     )
                 else:
                     try:
-                        state.ensure_screenshot(code=runner_code, options=options, page_path=page_path, block_index=block_index)
+                        state.capture_with_environment(state.ensure_screenshot, code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         screenshot_succeeded = True
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc, continuing=state.continue_on_error)
-                        if not state.continue_on_error:
+                        if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
                 if screenshot_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
@@ -2586,11 +2647,11 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     )
                 else:
                     try:
-                        state.ensure_video(code=runner_code, options=options, page_path=page_path, block_index=block_index)
+                        state.capture_with_environment(state.ensure_video, code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         video_succeeded = True
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc, continuing=state.continue_on_error)
-                        if not state.continue_on_error:
+                        if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
                 if video_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
@@ -2610,11 +2671,11 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     )
                 else:
                     try:
-                        state.ensure_audio(options=options, page_path=page_path, block_index=block_index)
+                        state.capture_with_environment(state.ensure_audio, options=options, page_path=page_path, block_index=block_index)
                         audio_succeeded = True
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=audio_path, error=exc, continuing=state.continue_on_error)
-                        if not state.continue_on_error:
+                        if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
                 if audio_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=audio_path)
@@ -4721,6 +4782,7 @@ def build_backdoor_command(
             backdoor_commands.append(shlex.join([
                 "native-screenshot",
                 str(screenshot_path),
+                "--uid", default_target_uid,
                 "--wait-frames", str(options.native_wait_frames),
                 "--timeout", str(options.timeout),
             ]))

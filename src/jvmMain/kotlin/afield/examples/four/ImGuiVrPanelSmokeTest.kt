@@ -9,6 +9,7 @@ import kotlin.math.abs
 /*
 FIELD_TEST
 id: examples.four.imgui-vr-panel-smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.ImGuiVrPanelSmokeTest
 timeoutSec: 60

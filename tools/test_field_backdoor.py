@@ -877,7 +877,188 @@ class ExecutionTruthfulnessTests(unittest.TestCase):
         self.assertTrue(result["data"]["executionErrorsIgnored"])
 
 
+class NativeRendererWaitTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=30, logger=_Logger())
+        self.client.boxes["renderer"] = {"uid": "renderer", "runningStrands": {}}
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        patch = mock.patch("tools.field_backdoor.LOG_ROOT", Path(self.temporary.name))
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def error(self, uid: str = "renderer", *, clear: bool = False) -> None:
+        self.client._apply_event({"name": "output", "uid": uid, "payload": {
+            "kind": "error", "property": "code", "line": -1 if clear else 10,
+            "html": "" if clear else "No usable display: GLFW reported no primary monitor",
+        }})
+
+    async def wait(self, uid: str | None = "renderer") -> dict:
+        # A regression hangs for 30 s; the test's outer bound rejects it within 1 s.
+        return await asyncio.wait_for(
+            self.client.wait_native_renderer(uid=uid, frames=3, timeout=30), timeout=1,
+        )
+
+    async def screenshot(self, *, path: str, **_kwargs) -> dict:
+        Path(path).write_bytes(b"test-only screenshot readiness sentinel")
+        return {"ok": True}
+
+    async def test_existing_error_fails_before_first_capture(self) -> None:
+        self.error()
+        self.client.native_window_screenshot = mock.AsyncMock()
+        result = await self.wait()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["terminal"])
+        self.assertEqual(result["attempts"], 0)
+        self.assertIn("No usable display", result["message"])
+        self.client.native_window_screenshot.assert_not_awaited()
+
+    async def test_native_capture_sends_authored_budget_and_allows_reply_grace(self) -> None:
+        self.client.call_for_single_reply = mock.AsyncMock(return_value={"payload": {"ok": True}})
+        await self.client.native_window_screenshot(path="test.png", wait_frames=3, timeout=120.25)
+        call = self.client.call_for_single_reply.call_args
+        self.assertEqual(call.args[1]["captureTimeoutMs"], 120250)
+        self.assertEqual(call.kwargs["timeout"], 121.25)
+
+    async def test_targeted_readiness_forwards_uid_to_capture(self) -> None:
+        self.client.native_window_screenshot = mock.AsyncMock(side_effect=self.screenshot)
+        self.assertTrue((await self.wait())["ok"])
+        self.assertEqual(self.client.native_window_screenshot.call_args.kwargs["uid"], "renderer")
+
+    async def test_native_screenshot_command_forwards_target(self) -> None:
+        from tools.field_backdoor import dispatch_command
+        self.client.call_for_single_reply = mock.AsyncMock(return_value={"payload": {"ok": True}})
+        line = "native-screenshot result.png --uid renderer --timeout 30"
+        result = await dispatch_command(self.client, parse_command(line), line)
+        self.assertTrue(result["ok"])
+        self.assertEqual(self.client.call_for_single_reply.call_args.args[1]["uid"], "renderer")
+
+    async def test_terminal_capture_failure_is_not_retried(self) -> None:
+        self.client.native_window_screenshot = mock.AsyncMock(return_value={
+            "ok": False, "terminal": True,
+            "message": "Native window capture stalled: windowIndex=0 frame=42 unchanged",
+        })
+        result = await self.wait()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["terminal"])
+        self.assertEqual(result["attempts"], 1)
+        self.assertIn("frame=42", result["error"])
+        self.client.native_window_screenshot.assert_awaited_once()
+
+    async def test_error_during_pending_capture_cancels_the_wait(self) -> None:
+        cancelled = asyncio.Event()
+
+        async def pending(**_kwargs):
+            try:
+                self.error()
+                await asyncio.sleep(30)
+            finally:
+                cancelled.set()
+
+        self.client.native_window_screenshot = pending
+        result = await self.wait()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["terminal"])
+        self.assertTrue(cancelled.is_set())
+        self.assertEqual(result["attempts"], 1)
+
+    async def test_cleared_and_unrelated_errors_do_not_fail_a_ready_renderer(self) -> None:
+        self.error()
+        self.error(clear=True)
+        self.error("another-box")
+        self.client.native_window_screenshot = self.screenshot
+        self.assertTrue((await self.wait())["ok"])
+
+    async def test_no_uid_does_not_guess_which_box_owns_the_renderer(self) -> None:
+        self.error()
+        self.client.native_window_screenshot = self.screenshot
+        self.assertTrue((await self.wait(uid=None))["ok"])
+
+    async def test_transient_not_ready_can_recover(self) -> None:
+        calls = 0
+
+        async def warming(**kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return {"ok": False, "message": "No native window yet"}
+            return await self.screenshot(**kwargs)
+
+        self.client.native_window_screenshot = warming
+        result = await self.wait()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["attempts"], 2)
+
+    async def test_timeout_cancels_pending_capture_and_reports_timeout(self) -> None:
+        cancelled = asyncio.Event()
+
+        async def pending(**_kwargs):
+            try:
+                await asyncio.sleep(30)
+            finally:
+                cancelled.set()
+
+        self.client.native_window_screenshot = pending
+        result = await asyncio.wait_for(
+            self.client.wait_native_renderer(uid="renderer", frames=3, timeout=0.02), timeout=1,
+        )
+        self.assertFalse(result["ok"])
+        self.assertNotIn("terminal", result)
+        self.assertIn("Timed out", result["message"])
+        self.assertTrue(cancelled.is_set())
+
+
 class MacroAliasTests(unittest.TestCase):
+    def run_reply(self, payload: dict, command: str = "macro run demo") -> dict:
+        from tools.field_backdoor import dispatch_command
+
+        client = FieldBackdoor(port=1, workspace=None, default_timeout=0.05, logger=_Logger())
+        client.call_for_single_reply = mock.AsyncMock(return_value={"payload": payload})
+        client.refresh_snapshot = mock.AsyncMock(return_value={"boxes": []})
+        return asyncio.run(dispatch_command(client, parse_command(command), command))
+
+    def test_applied_launch_with_box_error_is_failed_in_both_aliases(self) -> None:
+        for alias in ("macro", "transcript"):
+            with self.subTest(alias=alias):
+                diagnostic = "No usable display: GLFW reported no primary monitor"
+                result = self.run_reply({
+                    "success": True, "message": "applied=3 skipped=0 errors=0", "errors": [],
+                    "output": [{"uid": "renderer", "kind": "error", "line": 10, "html": diagnostic}],
+                }, f"{alias} run demo")
+                self.assertFalse(result["ok"])
+                self.assertFalse(result["data"]["success"])
+                self.assertTrue(result["data"]["operationSuccess"])
+                self.assertEqual(result["data"]["errors"], [diagnostic])
+                self.assertIn(diagnostic, result["data"]["message"])
+
+    def test_undo_reports_execution_failure_too(self) -> None:
+        result = self.run_reply({
+            "success": True,
+            "output": [{"uid": "box", "kind": "error", "line": 1, "html": "undo failed"}],
+        }, "macro undo demo")
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["data"]["operationSuccess"])
+
+    def test_clear_packet_and_normal_output_do_not_fail_macro(self) -> None:
+        result = self.run_reply({"success": True, "output": [
+            {"kind": "error", "line": -1, "html": ""},
+            {"kind": "normal", "line": 1, "html": "error is just a word here"},
+        ]})
+        self.assertTrue(result["ok"])
+
+    def test_waiver_preserves_diagnostic_and_cannot_waive_operation_failure(self) -> None:
+        for operation_success in (True, False):
+            with self.subTest(operation_success=operation_success):
+                result = self.run_reply({
+                    "success": operation_success, "errors": [] if operation_success else ["missing box"],
+                    "output": [{"kind": "error", "line": -1, "html": "runtime failed"}],
+                }, "macro run demo --no-fail-on-error")
+                self.assertEqual(result["ok"], operation_success)
+                self.assertTrue(result["data"]["executionErrorsIgnored"])
+                self.assertIn("runtime failed", result["data"]["errors"])
+                if not operation_success:
+                    self.assertIn("missing box", result["data"]["errors"])
+
     def test_macro_and_transcript_are_exact_parser_aliases(self) -> None:
         macro = parse_command("macro run demo --scope project --project-name example")
         transcript = parse_command("transcript run demo --scope project --project-name example")

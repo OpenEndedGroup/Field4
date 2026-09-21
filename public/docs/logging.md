@@ -115,7 +115,9 @@ waitSec: 1.5
 expect:
   outputContains:
     - "info,boxes"
-    - "muted"
+    - "info,Boxes"
+    - ">true</td>"
+    - ">false</td>"
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/mute-is-exact.png" capture="box" w="860" h="260" wait="1.5" timeout="120" embed=true name="logging-mute-is-exact" alt="A Field box output panel labelled main, holding a two-column table titled 'ConsoleMute compares the whole channel string', headed channel string and isMuted. Five rows: info,boxes is true; boxes,info is false; info,boxes,extra is false; info,Boxes is false; boxes is false. A footnote lists the channels the mute set holds."}
 :::static

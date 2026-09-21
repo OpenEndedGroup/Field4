@@ -27,6 +27,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.simulation-chain.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.FabricateSimulationChainDemo
 tags: [smoke, four, fabricate, pass-chain, fluid, distance-field, gpu, image]

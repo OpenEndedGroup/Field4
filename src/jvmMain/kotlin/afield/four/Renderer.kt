@@ -177,12 +177,6 @@ class Renderer(
         var graphicsPoolsPerThread: MutableMap<Long, CommandPool> = mutableMapOf()
     )
 
-    private data class WindowCaptureRequest(
-        val outputPath: String,
-        val completion: CompletableDeferred<String>,
-        val requestedAtNs: Long = System.nanoTime()
-    )
-
     private data class RecordedWindowCapture(
         val request: WindowCaptureRequest,
         val stagingBuffer: afield.four.buffers.VulkanBuffer,
@@ -275,8 +269,7 @@ class Renderer(
         return index
     }
     fun renderTargetFor(window: Window): RenderTarget = renderTargetFor(windowIndex(window))
-    private val windowCaptureLock = Any()
-    private val pendingWindowCaptures = mutableMapOf<Int, ArrayDeque<WindowCaptureRequest>>()
+    private val windowCaptures = WindowCaptureQueue()
     private val graphicsCompletionLock = Any()
     private val graphicsRecordingContext = ThreadLocal<Pair<Int, Int>?>()
     private val graphicsCompletionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<() -> Unit>>()
@@ -843,20 +836,14 @@ class Renderer(
         require(windowIndex >= 0) { "Window is not owned by this renderer" }
         require(supportsDirectWindowCapture(window)) { "Swapchain does not support transfer-source capture" }
 
-        val completion = CompletableDeferred<String>()
-        var queueSize = 0
-        val request = WindowCaptureRequest(outputPath, completion, startedAt)
-        synchronized(windowCaptureLock) {
-            val queue = pendingWindowCaptures.getOrPut(windowIndex) { ArrayDeque() }
-            queue.addLast(request)
-            queueSize = queue.size
-        }
+        val request = windowCaptures.enqueue(windowIndex, outputPath, startedAt)
+        val queueSize = windowCaptures.pendingCount(windowIndex)
         SaveReloadLog.log(
             "window-capture-requested",
             "path=$outputPath windowIndex=$windowIndex queueSize=$queueSize size=${window.width}x${window.height} timeoutMs=$timeoutMs"
         )
         try {
-            val result = withTimeout(timeoutMs) { completion.await() }
+            val result = windowCaptures.await(request, timeoutMs)
             val totalMs = SaveReloadLog.logTiming(
                 "window-capture-total",
                 startedAt,
@@ -879,12 +866,7 @@ class Renderer(
     }
 
     private fun dequeueWindowCaptureRequests(windowIndex: Int): List<WindowCaptureRequest> {
-        synchronized(windowCaptureLock) {
-            val queue = pendingWindowCaptures.remove(windowIndex) ?: return emptyList()
-            return buildList(queue.size) {
-                while (queue.isNotEmpty()) add(queue.removeFirst())
-            }
-        }
+        return windowCaptures.takeForFrame(windowIndex)
     }
 
     private fun recordPendingWindowCaptures(
@@ -1029,6 +1011,7 @@ class Renderer(
 
     private fun readWindowCapturePixels(capture: RecordedWindowCapture): WindowCapturePixels? {
         try {
+            if (!capture.request.completion.isActive) return null
             var rgba: ByteArray? = null
             capture.stagingBuffer.mapAndRead_bytes {
                 rgba = GpuImageCapture.readRgba(this, capture.format, capture.width, capture.height, "window")
@@ -1044,6 +1027,7 @@ class Renderer(
     }
 
     private fun encodeWindowCapture(capture: WindowCapturePixels) {
+        if (!capture.request.completion.isActive) return
         val startedAt = System.nanoTime()
         var extension = ""
         try {

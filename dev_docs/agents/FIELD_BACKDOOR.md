@@ -157,6 +157,41 @@ point: the verdict is waived, `data.errors` is still filled in, and
 `data.executionErrorsIgnored` records the waiver. The smoke catalog's
 `expect.allowExecutionErrors` and a docs fence's `expect-error=true` add it for you.
 
+`macro run` / `macro undo` (and their `transcript` aliases) also fail when the
+returned box output contains an execution error (empty clear packets are ignored).
+`data.operationSuccess` preserves the server's operation verdict, while `data.executionErrors`, `data.errors`,
+and `data.error` preserve the box diagnostics. `--no-fail-on-error` explicitly waives
+the execution verdict, not a failed operation, and records `data.executionErrorsIgnored`.
+Successful operations are not rolled back by this reporting change.
+
+`wait-native-renderer <uid>` stops immediately on an active execution error from
+that box, including while a screenshot request is pending. The result preserves the
+diagnostic and sets `data.terminal: true`. Cleared errors and other boxes' errors do
+not abort the wait; without a target uid, the wait cannot attribute box errors and
+continues using screenshot readiness and its timeout.
+
+Native captures also report `terminal: true` when a queued request's **own window**
+has not reached its capture point for five seconds. `wait-native-renderer` returns
+that diagnostic without retrying. Expired/cancelled queued requests are removed;
+another window's frames cannot hide the stall, and image encoding after dequeue
+does not count as a stopped frame loop.
+
+`native-screenshot --timeout N` now forwards `N` seconds to the server as
+`captureTimeoutMs`. That is one budget for renderer readiness, settling and capture;
+the client allows one additional second for the reply. `wait-native-renderer` still
+caps the whole wait at its own deadline. Older requests without the new field retain
+the 15-second server default. The five-second no-frame watchdog is independent of
+this budget: a larger authored timeout does not permit a stopped renderer to queue
+requests indefinitely.
+
+`wait-native-renderer <uid>` now forwards the target to the server. Use
+`native-screenshot <path> --uid <box>` to capture that box's window or its nearest
+connected renderer parent. Selection stays within the current document; another
+document opening a window cannot redirect the capture. Without `--uid`, exactly
+one distinct live window must be bound in the current document. Multiple windows
+or ambiguous parents fail explicitly instead of selecting whichever opened last.
+Unknown target uids fail without falling back to a different renderer.
+
 **`open` says whether the document was already there.** Opening a name that is not in the
 server's workspace is how a document gets *created* in Field, so `open` answers `ok`
 either way — and used to look identical whether it had loaded `alife_walls` or invented
@@ -278,7 +313,7 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
 | `screenshot-editor` | `uid path` | `--property --padding --open-outputs --no-pan --timeout` |
 | `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --no-pan --preserve-selection --include-notifications --timeout` |
-| `native-screenshot` | `path` | `--wait-frames --timeout` |
+| `native-screenshot` | `path` | `--uid --wait-frames --timeout` |
 | `wait-native-renderer` | `[uid]` | `--frames --timeout` |
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-editor` | `uid path` | `--property --padding --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |

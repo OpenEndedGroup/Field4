@@ -79,11 +79,13 @@ class TableTest {
 
     @Test
     fun `a satisfied claim leaves the footnote alone and colours nothing`() {
-        val t = Table(listOf("frameNumber")).row(7).row(7).expect("frameNumber") { it == 7 }
+        val t = Table(listOf("frameNumber")).row(7).row(7)
+            .expect("frameNumber", because = "only emitted on failure") { it == 7 }
         t.note = "every builder advanced one frame per pump"
         val html = t.toHTML()
         assertTrue(t.deviations.isEmpty(), "no deviations expected")
         assertFalse("outside expectation" in html, "a satisfied claim adds nothing to the footnote")
+        assertFalse("only emitted on failure" in html, "a satisfied claim emits no failure tooltip")
         assertFalse(CellRole.BAD.cssClass in html, "nothing should be marked as a failure")
         assertTrue("every builder advanced one frame per pump" in html, "the note survives verbatim")
     }

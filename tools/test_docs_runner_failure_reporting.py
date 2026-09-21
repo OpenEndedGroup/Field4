@@ -527,3 +527,9 @@ class ExpectErrorFenceWaiverTests(unittest.TestCase):
     def test_an_ordinary_fence_is_emitted_exactly_as_before(self) -> None:
         for line in self.commands('```field screenshot="x.png"'):
             self.assertNotIn("--no-fail-on-error", line, line)
+
+    def test_native_capture_names_the_fences_target(self) -> None:
+        commands = self.commands('```field screenshot="x.png" capture="native-window" graphics-context=true')
+        capture = next(line for line in commands if line.startswith("native-screenshot "))
+        self.assertIn("--uid docs_", capture)
+        self.assertNotIn("--uid @last", capture)

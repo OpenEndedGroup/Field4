@@ -29,6 +29,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.pass-chain.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.FabricatePassChainDemo
 tags: [smoke, four, fabricate, pass-chain, gpu, image]

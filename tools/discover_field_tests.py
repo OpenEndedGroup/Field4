@@ -451,6 +451,8 @@ def iter_candidate_files(root: Path) -> list[Path]:
 
 
 def validate_annotation(path: Path, line_no: int, annotation: dict[str, Any]) -> dict[str, Any]:
+    if "requiresDisplay" in annotation and not isinstance(annotation["requiresDisplay"], bool):
+        raise ParseError(f"{path}:{line_no}: requiresDisplay must be true or false")
     for key in ("id", "runner"):
         if key not in annotation:
             raise ParseError(f"{path}:{line_no}: missing required field '{key}'")

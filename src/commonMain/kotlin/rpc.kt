@@ -1185,7 +1185,9 @@ data class AgentBoxScreenshot(
 @Serializable
 data class AgentNativeWindowScreenshot(
     val path: String,
-    val waitFrames: Int = 30
+    val waitFrames: Int = 30,
+    val captureTimeoutMs: Long = 15_000L,
+    val uid: String? = null
 )
 
 @Serializable
@@ -1199,7 +1201,8 @@ data class AgentScreenshotResponse(
     val sessionKey: String,
     val clip: Rect? = null,
     val viewport: Rect? = null,
-    val message: String = ""
+    val message: String = "",
+    val terminal: Boolean = false
 )
 
 @Serializable

@@ -28,6 +28,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: four.quadtree-chain.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.examples.four.FabricateQuadtreeChainDemo
 tags: [smoke, four, fabricate, pass-chain, quadtree, morton, statistics, gpu, image]

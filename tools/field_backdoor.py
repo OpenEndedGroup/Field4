@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import datetime
 import json
+import math
 import os
 import re
 import shlex
@@ -1314,6 +1315,7 @@ class FieldBackdoor:
         path: str,
         wait_frames: int,
         timeout: float,
+        uid: str | None = None,
     ) -> dict[str, Any]:
         self.logger.log(
             "native_window_screenshot_start",
@@ -1326,8 +1328,12 @@ class FieldBackdoor:
             {
                 "path": path,
                 "waitFrames": wait_frames,
+                "captureTimeoutMs": max(1, math.ceil(timeout * 1000)),
+                "uid": self.require_box_reference(uid)[0] if uid is not None else None,
             },
-            timeout=timeout,
+            # The authored budget bounds server work; allow its terminal reply to
+            # arrive instead of racing the server's timeout at the same deadline.
+            timeout=timeout + 1.0,
         )
         payload = event["payload"]
         if not isinstance(payload, dict):
@@ -1358,16 +1364,59 @@ class FieldBackdoor:
             path=str(wait_path),
         )
 
+        def terminal_error() -> dict[str, Any] | None:
+            # Without a target uid there is no defensible way to attribute a box error to
+            # this renderer. Use the same active-error/clear semantics as wait-output.
+            event = self._execution_error_event(resolved_uid) if resolved_uid is not None else None
+            if event is None:
+                return None
+            problems = self.execution_errors([event])
+            result = {
+                "ok": False,
+                "uid": resolved_uid,
+                "frames": safe_frames,
+                "attempts": attempts,
+                "path": str(wait_path),
+                "message": problems[0] if problems else "Renderer box reported an execution error",
+                "error": problems[0] if problems else "Renderer box reported an execution error",
+                "errorEvent": event,
+                "terminal": True,
+                "screenshot": last_payload,
+            }
+            self.logger.log("wait_native_renderer_failed", **result)
+            return result
+
         while time.monotonic() < deadline:
+            if failure := terminal_error():
+                return failure
             attempts += 1
-            remaining = max(0.25, deadline - time.monotonic())
+            remaining = max(0.0, deadline - time.monotonic())
+            capture = asyncio.create_task(self.native_window_screenshot(
+                path=str(wait_path), wait_frames=safe_frames, timeout=remaining, uid=resolved_uid,
+            ))
             try:
-                payload = await self.native_window_screenshot(
-                    path=str(wait_path),
-                    wait_frames=safe_frames,
-                    timeout=remaining,
-                )
+                # A screenshot reply may itself take the remaining budget. Observe box
+                # errors while it is in flight, not just between screenshot attempts.
+                while not capture.done():
+                    if failure := terminal_error():
+                        return failure
+                    await asyncio.wait({capture}, timeout=min(0.05, max(0.0, deadline - time.monotonic())))
+                    if time.monotonic() >= deadline and not capture.done():
+                        raise asyncio.TimeoutError("Timed out waiting for native renderer")
+                if failure := terminal_error():
+                    return failure
+                payload = await capture
                 last_payload = payload
+                if payload.get("terminal"):
+                    result = {
+                        "ok": False, "uid": resolved_uid, "frames": safe_frames,
+                        "attempts": attempts, "path": str(wait_path),
+                        "message": payload.get("message", "Native renderer capture failed"),
+                        "error": payload.get("message", "Native renderer capture failed"),
+                        "terminal": True, "screenshot": payload,
+                    }
+                    self.logger.log("wait_native_renderer_failed", **result)
+                    return result
                 if payload.get("ok") and wait_path.exists() and wait_path.stat().st_size > 0:
                     result = {
                         "ok": True,
@@ -1388,6 +1437,11 @@ class FieldBackdoor:
                     attempt=attempts,
                     error=last_error,
                 )
+            finally:
+                if not capture.done():
+                    capture.cancel()
+                # Retrieve exceptions too, including a reply racing a terminal box error.
+                await asyncio.gather(capture, return_exceptions=True)
             await asyncio.sleep(0.05)
 
         result = {
@@ -1983,6 +2037,7 @@ class FieldBackdoor:
         limit: int = 80,
         indices: list[int] | None = None,
         mode: str = "",
+        fail_on_error: bool = True,
         timeout: float,
     ) -> dict[str, Any]:
         event = await self.call_for_single_reply(
@@ -2012,6 +2067,26 @@ class FieldBackdoor:
         # reports "Unknown box uid" even though the box appears milliseconds later.
         if command.strip().lower() in {"run", "undo"} and payload.get("success") is True:
             await self.refresh_snapshot(timeout=timeout)
+        if command.strip().lower() in {"run", "undo"}:
+            # The server's success counts applied operations. A launch operation can apply
+            # successfully while its box fails; MacroOutputLine carries that diagnostic.
+            output = payload.get("output") or []
+            events = [
+                {"name": "output", "uid": line.get("uid"), "payload": line}
+                for line in output if isinstance(line, dict)
+            ]
+            problems = self.execution_errors(events)
+            if problems:
+                payload = dict(payload)
+                payload["operationSuccess"] = bool(payload.get("success"))
+                payload["executionErrors"] = problems
+                payload["errors"] = list(dict.fromkeys([*(payload.get("errors") or []), *problems]))
+                payload["error"] = "\n".join(problems)
+                if fail_on_error:
+                    payload["success"] = False
+                    payload["message"] = f"{payload.get('message', '')} Execution failed: {problems[0]}".strip()
+                else:
+                    payload["executionErrorsIgnored"] = True
         return payload
 
     async def _run_probe(
@@ -2994,6 +3069,7 @@ def build_command_parser() -> argparse.ArgumentParser:
 
     native_screenshot = subparsers.add_parser("native-screenshot", add_help=False)
     native_screenshot.add_argument("path")
+    native_screenshot.add_argument("--uid")
     native_screenshot.add_argument("--wait-frames", type=int, default=30)
     native_screenshot.add_argument("--timeout", type=float)
 
@@ -3119,6 +3195,7 @@ def build_command_parser() -> argparse.ArgumentParser:
         macro_parser.add_argument("--indices", dest="index_values", action="append", default=[])
         macro_parser.add_argument("--mode", default="")
         macro_parser.add_argument("--timeout", type=float)
+        macro_parser.add_argument("--no-fail-on-error", action="store_true")
 
     for command_name in ("run", "launch", "continue"):
         exec_parser = subparsers.add_parser(command_name, add_help=False)
@@ -3471,6 +3548,7 @@ async def dispatch_command(
             path=args.path,
             wait_frames=args.wait_frames,
             timeout=timeout,
+            uid=args.uid,
         )
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
@@ -3654,6 +3732,7 @@ async def dispatch_command(
             limit=args.limit,
             indices=parse_repeated_int_values(args.index_values),
             mode=args.mode,
+            fail_on_error=not args.no_fail_on_error,
             timeout=timeout,
         )
         ok = bool(data.get("success"))

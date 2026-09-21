@@ -7,7 +7,6 @@ import afield.ai.core.aiToolMapper
 import afield.four.synth.musicClock
 import afield.four.synth.patClock
 import afield.four.util.Window
-import afield.four.util.lastWindowToOpen
 import afield.four.util.openWindowsSnapshot
 import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
@@ -60,6 +59,24 @@ private val agentBackdoorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO
 private const val AGENT_GRAPHICS_CONTEXT_ID = "agent_graphics_context"
 private const val AGENT_GRAPHICS_CONTEXT_NAME = "renderer"
 private const val INITIAL_FRAME_PREVIEW_PAINT_PAUSE_MS = 100L
+
+private fun nativeCaptureWindow(info: SessionInformation, uid: String?): Window {
+    val open = openWindowsSnapshot().toSet()
+    val bindings = info.boxes.mapValues { (_, box) ->
+        // Inspect existing engines only: capture selection must never initialize a REPL.
+        val values = box.properties.values.toList() + box.liveKi?.context?.vars?.values.orEmpty().map { it.value }
+        val windows = values.mapNotNull {
+            when (it) {
+                is Window -> it
+                is Renderer -> it.window
+                else -> null
+            }
+        }.filter { it in open }.distinct()
+        val parents = box.parents.filter { info.boxes[it.id] === it }.map { it.id }
+        NativeCaptureBox(parents, windows)
+    }
+    return resolveNativeCaptureTarget(bindings, uid)
+}
 
 private fun escapeNotifyText(text: String): String =
     text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -1460,16 +1477,18 @@ fun installAgentBackdoorHandlers() {
     handlers["agent-native-window-screenshot"] = mutableSetOf({ message, reply ->
         val info = thisSessionInfo.get()
         val request = Json.decodeFromJsonElement<AgentNativeWindowScreenshot>(message.payload!!)
+        // Resolve before handing work to the IO scope, while we have the document context.
+        val target = runCatching { nativeCaptureWindow(info, request.uid) }
         agentBackdoorScope.launch {
             val response = runCatching {
-                val window = lastWindowToOpen ?: error("No afield.four Window has been opened in this session")
+                val window = target.getOrThrow()
                 File(request.path).parentFile?.mkdirs()
-                window.raiseAndScreenshot(request.waitFrames, request.path)
+                window.raiseAndScreenshot(request.waitFrames, request.path, captureTimeoutMs = request.captureTimeoutMs)
                 AgentScreenshotResponse(
                     ok = true,
                     kind = "native-window",
                     path = request.path,
-                    uid = null,
+                    uid = request.uid,
                     documentName = info.documentName,
                     scratch = info.ephemeral,
                     sessionKey = info.filename,
@@ -1484,12 +1503,14 @@ fun installAgentBackdoorHandlers() {
                     ok = false,
                     kind = "native-window",
                     path = request.path,
-                    uid = null,
+                    uid = request.uid,
                     documentName = info.documentName,
                     scratch = info.ephemeral,
                     sessionKey = info.filename,
                     message = throwable.message ?: throwable::class.simpleName
-                    ?: "Unknown native window screenshot error"
+                    ?: "Unknown native window screenshot error",
+                    terminal = throwable is afield.four.NativeWindowCaptureStalledException ||
+                        throwable is NativeCaptureTargetException
                 )
             }
             reply(Message("agent-native-window-screenshot").payload(response))

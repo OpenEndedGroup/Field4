@@ -29,6 +29,7 @@ from PIL import Image, ImageChops, ImageStat
 from discover_field_tests import DEFAULT_ROOTS, discover
 from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
 from field_languages import needs_language_root
+from verification_environment import VerificationEnvironment, VerificationEnvironmentError
 from verification_runtime import (
     automation_server_environment,
     automation_workspace,
@@ -799,6 +800,7 @@ def ensure_persistent_field(
     *,
     workspace: str | None = None,
     boot_timeout: float = 180.0,
+    check_environment: Any = None,
 ) -> subprocess.Popen[Any] | None:
     """Guarantee one warm, *responsive* Field for the whole run.
 
@@ -861,6 +863,12 @@ def ensure_persistent_field(
     proc = subprocess.Popen(command, **popen_kwargs)
     deadline = time.monotonic() + boot_timeout
     while time.monotonic() < deadline:
+        if check_environment is not None:
+            try:
+                check_environment()
+            except BaseException:
+                stop_persistent_field(proc, port=port)
+                raise
         if proc.poll() is not None:
             raise SystemExit(f"Prewarm Field exited early (code {proc.returncode}); see {log_path}")
         if health_check(port, ctx):
@@ -873,6 +881,8 @@ def ensure_persistent_field(
 
 
 def stop_persistent_field(proc: subprocess.Popen[Any] | None, *, port: int) -> None:
+    if proc is None:
+        return  # Preflight refusal / --no-prewarm never grants ownership of a listener.
     if proc is not None and proc.poll() is None:
         terminate_process_tree(proc, grace=10.0)
     ctx = make_unverified_ssl_context()
@@ -1712,21 +1722,21 @@ def collect_output_gap(test: dict[str, Any], backdoor_results: list[dict[str, An
 
 
 def render_event_text(event: dict[str, Any]) -> str:
+    # FieldBackdoor records both message-batch envelopes and their decoded children.
+    # Serializing arbitrary payloads here lets the echoed `code` property satisfy
+    # its own output assertions, even when the box never emits the promised value.
+    # Keep eventKinds separate: it may deliberately assert bookkeeping messages.
     payload = event.get("payload")
     if not isinstance(payload, dict):
-        return json.dumps(payload, ensure_ascii=False)
+        return ""
     name = event.get("name")
-    if name == "output":
+    if name in {"output", "peer-output"}:
         return str(payload.get("html") or "")
     if name == "set-output":
         return str(payload.get("value") or "")
     if name == "notify":
         return str(payload.get("text") or "")
-    if name == "output-control":
-        action = str(payload.get("action") or "")
-        channel = str(payload.get("channel") or "")
-        return f"{action} {channel}".strip()
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    return ""
 
 
 def evaluate_expectations(
@@ -1965,6 +1975,7 @@ def run_one_test(
     workspace: str | None,
     progress: Any = None,
     heartbeat_interval: float = 15.0,
+    check_environment: Any = None,
 ) -> dict[str, Any]:
     test_id = str(test.get("id"))
     command, artifacts = build_backdoor_command(test, port=port, workspace=workspace)
@@ -1994,6 +2005,7 @@ def run_one_test(
         label=test_id,
         completion_probe=commands_complete,
         exit_grace=10.0,
+        check_environment=check_environment,
     )
 
     result: dict[str, Any] = {
@@ -2043,8 +2055,9 @@ def run_one_test(
 
 
 def format_result_line(result: dict[str, Any]) -> str:
-    status = "XFAIL" if result.get("acceptedFailure") else ("PASS" if result["ok"] else "FAIL")
-    return f"{status} {result['id']} ({result['durationMs']} ms)"
+    status = result.get("environmentStatus") or ("XFAIL" if result.get("acceptedFailure") else ("PASS" if result["ok"] else "FAIL"))
+    duration = f"{result['durationMs']} ms" if result.get("durationMs") is not None else "runtime not certified"
+    return f"{status} {result['id']} ({duration})"
 
 
 def parse_args() -> argparse.Namespace:
@@ -2104,7 +2117,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run(args: argparse.Namespace) -> int:
+def requires_native_display(test: dict[str, Any]) -> bool:
+    # Browser screenshots use headless Playwright, not a physical display. JVM
+    # tests that create their own Window declare requiresDisplay explicitly.
+    return graphics_context_config(test) is not None or test.get("requiresDisplay") is True
+
+
+def run(args: argparse.Namespace, environment: VerificationEnvironment | None = None) -> int:
     port_was_explicit = args.port is not None
     requested_port = args.port if port_was_explicit else DEFAULT_AUTOMATION_PORT
     args.port = select_automation_port(requested_port, explicit=port_was_explicit)
@@ -2260,36 +2279,53 @@ def run(args: argparse.Namespace) -> int:
     passed = 0
     failed = 0
     expected_failed = 0
+    environment_incomplete = 0
     total = len(tests)
 
     if tests:
         warn_if_node_too_old(progress)
 
     field_proc: subprocess.Popen[Any] | None = None
-    if tests and not args.no_prewarm:
-        if not args.no_reap:
-            reap_stale_field_jvms(args.port)
-        field_proc = ensure_persistent_field(args.port, workspace=args.workspace)
-        progress(f"Started persistent Field on port {args.port} for this run")
-
     try:
         for index, test in enumerate(tests, start=1):
-            result = run_one_test(
-                test,
-                port=args.port,
-                workspace=args.workspace,
-                progress=progress,
-                heartbeat_interval=args.heartbeat_interval,
-            )
+            started = False
+            wall_started = time.time()
+            try:
+                token = environment.checkpoint(require_display=requires_native_display(test)) if environment else 0
+                def check_environment():
+                    if environment:
+                        environment.check(token, require_display=requires_native_display(test))
+                if not args.no_prewarm and field_proc is None:
+                    if not args.no_reap:
+                        reap_stale_field_jvms(args.port)
+                    field_proc = ensure_persistent_field(args.port, workspace=args.workspace, check_environment=check_environment)
+                    progress(f"Started persistent Field on port {args.port} for this run")
+                check_environment()
+                started = True
+                result = run_one_test(
+                    test, port=args.port, workspace=args.workspace, progress=progress,
+                    heartbeat_interval=args.heartbeat_interval, check_environment=check_environment,
+                )
+                if environment:
+                    environment.check(token, require_display=requires_native_display(test), force=True)
+            except VerificationEnvironmentError as exc:
+                result = {"id": test["id"], "ok": False, "failureKind": "environment",
+                          "environmentStatus": "INTERRUPTED" if started else "NOT RUN",
+                          "durationMs": None, "observedWallMs": round((time.time() - wall_started) * 1000),
+                          "failures": [str(exc)]}
+                stop_persistent_field(field_proc, port=args.port)
+                field_proc = None
             apply_expected_smoke_failure(result, expected_failures)
             results.append(result)
-            if result.get("acceptedFailure"):
+            if result.get("failureKind") == "environment":
+                environment_incomplete += 1
+            elif result.get("acceptedFailure"):
                 expected_failed += 1
             elif result["ok"]:
                 passed += 1
             else:
                 failed += 1
-            if coverage_ordering:
+            if coverage_ordering and result.get("failureKind") != "environment":
                 record_coverage_result(
                     coverage_state,
                     test_id=str(test.get("id") or ""),
@@ -2308,11 +2344,11 @@ def run(args: argparse.Namespace) -> int:
                 break
             # Graphics-context tests wedge the GPU/window state in the persistent server.
             # Recycle after each such test so the next test gets a clean JVM.
-            if not args.no_prewarm and graphics_context_config(test) is not None and index < total:
+            if field_proc is not None and not args.no_prewarm and graphics_context_config(test) is not None and index < total:
                 progress(f"  recycling Field after graphics-context test (GPU state reset)")
                 ctx = make_unverified_ssl_context()
                 recycle_field(args.port, ctx)
-                field_proc = ensure_persistent_field(args.port, workspace=args.workspace)
+                field_proc = None  # Recheck prerequisites before booting the next test.
     finally:
         stop_persistent_field(field_proc, port=args.port)
 
@@ -2324,6 +2360,9 @@ def run(args: argparse.Namespace) -> int:
         "passed": passed,
         "failed": failed,
         "expectedFailed": expected_failed,
+        "environmentIncomplete": environment_incomplete,
+        "complete": len(results) == len(tests) and environment_incomplete == 0,
+        "environment": environment.report() if environment else None,
         "expectedFailureRegistry": str(expected_failures_path),
         "failureKinds": {
             "test": sum(
@@ -2336,6 +2375,7 @@ def run(args: argparse.Namespace) -> int:
                 1 for result in results if result.get("failureKind") == "infrastructure"
             ),
             "contract": sum(1 for result in results if result.get("failureKind") == "contract"),
+            "environment": environment_incomplete,
         },
         "skippedCount": len(skipped),
         "skipped": [
@@ -2361,7 +2401,7 @@ def run(args: argparse.Namespace) -> int:
     else:
         skip_note = f", {len(skipped)} skipped" if skipped else ""
         expected_note = f", {expected_failed} expected failed" if expected_failed else ""
-        print(f"Summary: {passed} passed, {failed} failed{expected_note}{skip_note}")
+        print(f"Summary: {passed} passed, {failed} failed{expected_note}{skip_note}, {environment_incomplete} environment-incomplete")
         if failed:
             kinds = report["failureKinds"]
             print(
@@ -2372,7 +2412,7 @@ def run(args: argparse.Namespace) -> int:
             )
         print(f"Results: {results_path}")
 
-    return 0 if failed == 0 else 1
+    return 1 if failed else 2 if environment_incomplete else 0
 
 
 def main() -> int:
@@ -2392,7 +2432,15 @@ def main() -> int:
         progress=lambda message: print(message, file=stream, flush=True),
         heartbeat_interval=args.heartbeat_interval,
     ):
-        return run(args)
+        environment = VerificationEnvironment().start()
+        try:
+            return run(args, environment)
+        finally:
+            environment.close()
+            results_path = Path(args.results)
+            if not results_path.is_absolute():
+                results_path = REPO_ROOT / results_path
+            environment.write_report(results_path.with_suffix(".environment.json"), [])
 
 
 if __name__ == "__main__":

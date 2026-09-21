@@ -64,6 +64,50 @@ outputs, and concurrent builds can corrupt incremental-compiler backups and clas
 directories. Raw `./gradlew ...` commands do not participate in this Python lock,
 so run compile/test tasks before or after these entrypoints, never alongside them.
 
+Smoke `expect.outputContains` / `outputNotContains` inspect emitted text only:
+`output` and `peer-output` HTML, `set-output` values, and notification text. Source
+echoes, topology updates, output controls, and batch envelopes are not output
+evidence. Use `eventKinds` to assert a protocol event rather than its rendered
+content. A substring check establishes presence, not a row-to-value relationship;
+pair it with a behavioral assertion when that relationship is the claim.
+
+### Continuous macOS prerequisites
+
+The smoke and docs capture runners sample power and display state every 15 seconds,
+including while starting Field and between tests. Long verification requires AC or
+at least 80% battery. A native-window capture or `graphicsContext` smoke also needs
+an online primary display; standalone JVM smokes opening a `Window` declare
+`requiresDisplay: true` in their `FIELD_TEST` annotation. Headless Playwright
+captures (`box`, `window`, `editor`, `ui`) do not need a physical display merely
+because they capture a browser. Optional GPU compute without a window is not
+automatically classified as display-dependent.
+
+Unknown macOS probe results fail closed. Other operating systems are explicitly
+reported as unsupported by this prerequisite probe; they are not claimed certified
+by a macOS check. A closed laptop lid with a working external primary display is
+not rejected solely because of the lid state.
+
+Missing prerequisites yield **NOT RUN**, and observed loss during a test yields
+**INTERRUPTED**, even if the prerequisite returns before the test finishes. Neither
+is a pass, an accepted product failure, or a completed coverage-ledger entry. Smoke
+reports include `environmentIncomplete`, `complete`, and environment observations;
+an environment-incomplete run exits 2 (ordinary test failures still exit 1).
+Independent headless cases continue when only the display is absent.
+
+The monitor also records observation gaps over 45 seconds, with matching macOS
+Sleep/Wake log entries when available. A gap can be sleep, scheduling delay, or a
+clock change: it is not labelled sleep without evidence, and is never silently
+subtracted to produce a guessed active runtime. Interrupted smoke timings are
+`durationMs: null`, with a separate `observedWallMs`.
+
+Docs record each affected page/block in `build/docs-environment.json`, continue
+other fences, and finish nonzero if anything was not run or interrupted. Interrupted
+captures lose their cache certification; existing images are not evidence of a new
+pass. HTML-only `FIELD_DOCS_RUNNER_MODE=never` builds do not require these capture
+prerequisites. Warm-session requests are checked before and after their bounded
+request; the normal per-process path also interrupts its owned child during the
+request. No monitor changes power settings or kills an unrelated Field process.
+
 The Field Audio rows are deliberately not dependencies of `check` or the docs builder. Field's
 published reference is the committed `public/docs/field_audio_service_reference.md`; ordinary docs builds
 use it unchanged even when the private submodule is not initialized. Refreshing that snapshot is

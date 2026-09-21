@@ -258,6 +258,7 @@ def run_with_watchdog(
     exit_grace: float = 10.0,
     input_text: str | None = None,
     on_start: Callable[[int], None] | None = None,
+    check_environment: Callable[[], None] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], int, bool]:
     """Run a child with heartbeats and a hard outer timeout.
 
@@ -283,6 +284,8 @@ def run_with_watchdog(
             popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
         else:
             popen_kwargs["start_new_session"] = True
+        if check_environment is not None:
+            check_environment()
         started = time.monotonic()
         process = subprocess.Popen(list(command), **popen_kwargs)
         if on_start is not None:
@@ -298,6 +301,8 @@ def run_with_watchdog(
         timed_out = False
         try:
             while process.poll() is None:
+                if check_environment is not None:
+                    check_environment()
                 now = time.monotonic()
                 elapsed = now - started
                 if completion_probe is not None and completion_seen_at is None:
@@ -325,6 +330,8 @@ def run_with_watchdog(
                     )
                     next_heartbeat = now + max(1.0, heartbeat_interval)
                 time.sleep(0.25)
+            if check_environment is not None:
+                check_environment()
         except BaseException:
             terminate_process_tree(process)
             raise

@@ -668,12 +668,17 @@ suspend fun Window.raiseAndScreenshot(
     preferDirectCapture: Boolean = true
 ) {
     if (preferDirectCapture) {
-        val renderer = rendererForDirectCapture(captureTimeoutMs)
-        waitFrames {
-            lprintln("info,doc", " -- waiting for renderer frame capture --")
-            yield()
+        require(captureTimeoutMs > 0L) { "Native capture timeout must be positive" }
+        // One budget covers renderer readiness, settling and capture, not a fresh
+        // allowance for each stage. Old clients retain the 15-second default.
+        kotlinx.coroutines.withTimeout(captureTimeoutMs) {
+            val renderer = rendererForDirectCapture(captureTimeoutMs)
+            waitFrames {
+                lprintln("info,doc", " -- waiting for renderer frame capture --")
+                yield()
+            }
+            renderer.captureWindowToFile(this@raiseAndScreenshot, outPath, timeoutMs = captureTimeoutMs)
         }
-        renderer.captureWindowToFile(this, outPath, timeoutMs = captureTimeoutMs)
         return
     }
 
