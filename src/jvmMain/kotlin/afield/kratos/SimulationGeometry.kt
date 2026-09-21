@@ -57,22 +57,54 @@ data class SimulationBounds(val minX: Double, val minY: Double, val minZ: Double
 
 /** Stable authored identity, independent of Manifold's temporary triangle indices. */
 sealed interface SimulationGeometry {
+    /** The authored name a formulation's region keys are derived from. Must not be blank. */
     val id: String
+
+    /** The triangles Field draws. Manifold builds these in every case, including for a primitive. */
     fun surface(): TriMesh
+
+    /**
+     * What the worker is told about this shape, for a domain it has already built.
+     *
+     * A primitive answers with an expression tree and a mesh answers with one distance per node,
+     * so what a caller gets back differs in size and in kind between the two implementations.
+     */
     fun workerData(domain: BackgroundDomain): Map<String, Any?>
 }
 
 /** Analytic CSG classification; Manifold remains the implementation of the renderable surface. */
 sealed interface PrimitiveGeometry : SimulationGeometry {
+    /**
+     * The shape as a wire node the worker evaluates as an exact distance: an `op` tag, an `id`,
+     * and whatever that op needs. Boolean ops nest their operands' expressions inside their own.
+     */
     fun expression(): Map<String, Any?>
+
+    /**
+     * The same shape as a freshly built Manifold solid. The caller owns it, and closes it itself
+     * unless the call is inside a `Solid.scope`.
+     */
     fun solid(): Solid
+
+    /**
+     * Triangulates [solid] inside a `Solid.scope`, which releases the solid and everything built
+     * to make it as soon as the triangles are out, rather than leaving them to a `Cleaner`.
+     */
     override fun surface(): TriMesh = Solid.scope { solid().checked().toTriMesh() }
+
+    /**
+     * Sends [expression], not triangles, so the payload is the same whatever domain it is asked
+     * about and a change to a display tessellation cannot reach the solve.
+     */
     override fun workerData(domain: BackgroundDomain): Map<String, Any?> = mapOf("geometry" to expression())
 }
 
+/** An axis-aligned box, given by the two corners of its [SimulationBounds]. */
 data class SimulationBox(override val id: String, val bounds: SimulationBounds) : PrimitiveGeometry {
     init { require(id.isNotBlank()) }
+    /** The `box` node: the minimum corner and the maximum corner, in metres. */
     override fun expression(): Map<String, Any?> = mapOf("id" to id, "op" to "box", "min" to bounds.wire().take(3), "max" to bounds.wire().drop(3))
+    /** A `Solid.cube` of the extents, translated to the minimum corner. */
     override fun solid(): Solid = bounds.run {
         Solid.cube(maxX-minX, maxY-minY, maxZ-minZ).use { it.translated(minX, minY, minZ) }
     }
@@ -86,13 +118,16 @@ data class SimulationBox(override val id: String, val bounds: SimulationBounds) 
  * That asymmetry is the point of keeping a primitive symbolic rather than shipping its triangles.
  */
 data class SimulationSphere(override val id: String, val x: Double, val y: Double, val z: Double,
+                            /** Radius in metres, and the Manifold segment count for the display surface only. 0 takes the global quality setting. */
                             val radius: Double, val segments: Int = 0) : PrimitiveGeometry {
     init {
         require(id.isNotBlank())
         require(listOf(x, y, z, radius).all(Double::isFinite) && radius > 0) { "sphere needs a finite positive radius" }
     }
+    /** The `sphere` node: centre and radius, the exact ball rather than the drawn one. */
     override fun expression(): Map<String, Any?> =
         mapOf("id" to id, "op" to "sphere", "centre" to listOf(x, y, z), "radius" to radius)
+    /** A `Solid.sphere` translated to the centre. This is the only place `segments` is read. */
     override fun solid(): Solid = Solid.sphere(radius, segments).use { it.translated(x, y, z) }
 }
 
@@ -106,8 +141,11 @@ data class SimulationSphere(override val id: String, val x: Double, val y: Doubl
  * reference vector a naive cross product picked.
  */
 data class SimulationCylinder(override val id: String,
+                              /** One end cap's centre, in metres. */
                               val ax: Double, val ay: Double, val az: Double,
+                              /** The other end cap's centre. The two must differ. */
                               val bx: Double, val by: Double, val bz: Double,
+                              /** Radius in metres, and the Manifold segment count for the display surface only. 0 takes the global quality setting. */
                               val radius: Double, val segments: Int = 0) : PrimitiveGeometry {
     init {
         require(id.isNotBlank())
@@ -120,9 +158,11 @@ data class SimulationCylinder(override val id: String,
     private fun axisLength(): Double = kotlin.math.sqrt(
         (bx - ax) * (bx - ax) + (by - ay) * (by - ay) + (bz - az) * (bz - az))
 
+    /** The `cylinder` node: the two end centres and the radius. The tessellation is not sent. */
     override fun expression(): Map<String, Any?> = mapOf(
         "id" to id, "op" to "cylinder", "a" to listOf(ax, ay, az), "b" to listOf(bx, by, bz), "radius" to radius)
 
+    /** A `Solid.cylinder` built along +Z at the origin, then pushed through the affine below. */
     override fun solid(): Solid {
         val h = axisLength()
         val (dx, dy, dz) = Triple((bx - ax) / h, (by - ay) / h, (bz - az) / h)
@@ -141,11 +181,17 @@ data class SimulationCylinder(override val id: String,
     }
 }
 
+/** The three boolean operations, on the wire as the lowercased name. */
 enum class SimulationBoolean { UNION, DIFFERENCE, INTERSECTION }
+
+/** One boolean operation over two operands. [SimulationGroup] is the n-ary spelling. */
 data class SimulationCSG(override val id: String, val a: PrimitiveGeometry, val b: PrimitiveGeometry,
+                         /** `DIFFERENCE` reads as [a] minus [b]. */
                          val operation: SimulationBoolean = SimulationBoolean.UNION) : PrimitiveGeometry {
     init { require(id.isNotBlank()) }
+    /** The operation as the `op` tag, with both operands' expressions nested inside it. */
     override fun expression(): Map<String, Any?> = mapOf("id" to id, "op" to operation.name.lowercase(), "a" to a.expression(), "b" to b.expression())
+    /** Both operands built, combined, and closed. The result is the caller's. */
     override fun solid(): Solid = a.solid().use { left -> b.solid().use { right ->
         when (operation) { SimulationBoolean.UNION -> left + right; SimulationBoolean.DIFFERENCE -> left - right; SimulationBoolean.INTERSECTION -> left and right }
     } }
@@ -160,6 +206,7 @@ data class SimulationCSG(override val id: String, val a: PrimitiveGeometry, val 
  * reads as the first operand minus every other one.
  */
 data class SimulationGroup(override val id: String, val operation: SimulationBoolean,
+                           /** At least two operands, with distinct ids. `DIFFERENCE` subtracts every later one from the first. */
                            val children: List<PrimitiveGeometry>) : PrimitiveGeometry {
     init {
         require(id.isNotBlank())
@@ -167,8 +214,10 @@ data class SimulationGroup(override val id: String, val operation: SimulationBoo
         val duplicates = children.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "operand ids must be distinct for stable identity: $duplicates" }
     }
+    /** One `op` tag over a `children` list, so the worker reduces the batch instead of recursing. */
     override fun expression(): Map<String, Any?> =
         mapOf("id" to id, "op" to operation.name.lowercase(), "children" to children.map { it.expression() })
+    /** One batched Manifold call over every operand, each of which is closed afterwards. */
     override fun solid(): Solid {
         val solids = children.map { it.solid() }
         try {
@@ -192,7 +241,16 @@ class ManifoldGeometry(override val id: String, solid: Solid) : SimulationGeomet
     private val mesh = solid.checked().toTriMesh()
     private val acceleration by lazy { mesh.bvh() }
     init { require(id.isNotBlank() && !mesh.isEmpty) }
+    /** The triangulation taken at construction. Later edits to the [Solid] are not seen. */
     override fun surface(): TriMesh = mesh
+
+    /**
+     * One little-endian double per node of [domain]: the distance to the surface, negated on the
+     * way out because Kratos counts distance positive inside.
+     *
+     * Unlike a primitive's payload this is sized to one particular domain and is only as good as
+     * the mesh it was snapshotted from, so it costs a node-count pass over the BVH per call.
+     */
     override fun workerData(domain: BackgroundDomain): Map<String, Any?> {
         val data = ByteBuffer.allocate(domain.nodeCount * 8).order(ByteOrder.LITTLE_ENDIAN)
         for (i in 0 until domain.nodeCount) {
@@ -214,6 +272,13 @@ class ManifoldGeometry(override val id: String, solid: Solid) : SimulationGeomet
  * are unavailable on it and [SimulationResult.boundaryMesh] is the view to use instead.
  */
 class BackgroundDomain private constructor(val id: String, val bounds: SimulationBounds, val resolution: Int,
+                                          /**
+                                           * Node coordinates as xyz per node in metres, cell
+                                           * connectivity as [nodesPerCell] node indices per cell,
+                                           * and how long the build took in milliseconds. Every
+                                           * field a result carries is indexed against `positions`
+                                           * in this order.
+                                           */
                                           val positions: DoubleArray, val cells: IntArray, val buildMs: Double,
                                           /**
                                            * 4 for linear tetrahedra, 10 for quadratic ones. A
@@ -226,8 +291,20 @@ class BackgroundDomain private constructor(val id: String, val bounds: Simulatio
 
     /** True when this is a structured grid and so can be sampled by index. */
     val isStructured: Boolean get() = resolution > 0
+    /** Nodes, and so the length every nodal field a result carries has to be. */
     val nodeCount: Int get() = positions.size / 3
+
+    /** Tetrahedra: [cells] divided by [nodesPerCell], so it is right for quadratic meshes too. */
     val cellCount: Int get() = cells.size / nodesPerCell
+
+    /**
+     * How many times this discretisation has been built, which is always 1.
+     *
+     * A geometry change reclassifies this same grid rather than remeshing, so a parameter sweep
+     * that varies an arm length should end with the domain it started with. Several places check
+     * that: it is the evidence that geometry really is an ordinary study axis and not a rebuild
+     * in disguise.
+     */
     val buildCount: Int = 1
     internal fun index(x: Int, y: Int, z: Int): Int = (x * (resolution+1) + y) * (resolution+1) + z
     internal companion object {
@@ -261,6 +338,13 @@ class BackgroundDomain private constructor(val id: String, val bounds: Simulatio
 data class SimulationProbe(val id: String, val x: Double, val y: Double, val z: Double) {
     init { require(id.isNotBlank() && listOf(x,y,z).all(Double::isFinite)) }
 }
+/**
+ * One probe's reading of a result's primary field, tagged with the revision it was taken from.
+ *
+ * `value` is null when the point lies outside the domain or outside the solved region. A probe
+ * keeps its id across revisions, so a point the geometry has moved away from still reports, with
+ * no value.
+ */
 data class SimulationProbeSample(val probeId: String, val revision: SimulationRevision, val value: Double?) {
     /** The schema-1 name, when the field being probed is a temperature. */
     val temperature: Double? get() = value
