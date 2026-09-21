@@ -165,6 +165,10 @@ against a per-frame `applyToMesh`. It does **not** generalise to any per-frame b
 demo box rewrites its 128-matrix palette every frame, animates at ~120 fps, and photographs
 without a timeout. The trap is the per-frame *vertex re-upload* specifically.
 
+Both of these limits are published for readers, alongside the other nine the tree states, on
+`public/docs/capture_limits.md`. That page also names the technique for telling a capture that
+timed out from a subject that is broken — run a **trusted control** in the same invocation.
+
 **`MeshInstance.applyToMesh` cannot be called from a `main`.** Its buffers come from
 `defaultBuffer { … }.buffer` (`src/jvmMain/kotlin/afield/four/buffers/magic.kt:237#buffer`), which
 allocates through `src/jvmMain/kotlin/afield/four/buffers/VulkanBuffer.kt:102#renderer` — a

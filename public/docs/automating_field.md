@@ -77,9 +77,15 @@ line. That is how a script *knows* the code ran, and it is where compile errors 
 exceptions appear. Running a box that isn't there, or that has no code, comes back as a
 failure that names the box, never as a silent skip.
 
-The backdoor also captures pictures (a single box, the editor, the whole window, or the
-native `afield.four` graphics window) and short videos, which is how this site's figures
-are made.
+The backdoor also captures pictures — a single box, the editor, the whole window, or the
+native `afield.four` graphics window — which is how this site's figures are made. It
+records short videos of the first three. The native graphics window is stills only.
+
+That asymmetry is not the only thing a capture will not do for you, and some of the rest
+fail quietly: a `screenshot-box` of a box whose outputs were never opened comes back
+`ok: true` and 48 pixels square. **[What a Capture Can and Cannot
+Show](capture_limits.md)** is the boundary, with the reply field that tells you which
+side of it you are on.
 
 ## Where to go next
 

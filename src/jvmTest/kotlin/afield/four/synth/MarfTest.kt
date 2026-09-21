@@ -401,4 +401,256 @@ class MarfTest {
             "and the early staircase lags the ordinary one by exactly one step"
         )
     }
+
+    // ── the field clocks, and what they refuse ────────────────────────────────────────────
+
+    /**
+     * The ten address spellings one person actually tried, and what each of them used to mean.
+     *
+     * Not invented. `dev_docs/agents/demos/marf_demo/operations.yaml` records thirty-eight
+     * edit-and-run cycles on one box between 03:38:58 and 03:42:10 UTC on 2026-09-21, about five
+     * seconds apart, working through these. Eight of the ten produced a sequence byte-identical to
+     * something strictly simpler than what was typed, and nothing said so.
+     */
+    private val theNightsAttempts = listOf(
+        "<0 3>", "<0 3> 1", "1 <0 3>", "<0 3>*2", "<0 3>!2",
+        "<0 3>, 1", "<0 3> 1*8", "<0 3> 1 2", "<0 3> <0 4>", "3 <0 3>"
+    )
+
+    private fun addressesUnder(spec: String, clock: MarfFieldClock, count: Int): List<Double> {
+        val reader = marfValues(0, 1, 2, 3, 4).read(pat(spec).nums(), fields = clock, name = "probe")
+        return reader.stagesIn(PatArc(PatQ.ZERO, PatQ.of(count.toLong()))).take(count).map { it.address }
+    }
+
+    @Test
+    fun `STAGES refuses a field whose sub-cycle steps it cannot see, and names the field`() {
+        val thrown = assertFailsWith<IllegalArgumentException> {
+            marfValues(0, 1, 2, 3, 4).read(pat("<0 3> 1").nums(), fields = MarfFieldClock.STAGES, name = "addr")
+        }
+        val message = thrown.message ?: ""
+        assertTrue("address" in message, "the refusal must name the field it is about: $message")
+        assertTrue("'addr'" in message, "and the reader, so a four-reader box says which: $message")
+        assertTrue("2 steps inside cycle 0" in message, "and what it saw: $message")
+        assertTrue("MarfFieldClock.STEPS" in message, "and the remedy: $message")
+
+        // Every non-address field is checked too, and each says its own name.
+        val builds = listOf<Pair<String, () -> Unit>>(
+            "value" to { marf(value = pat("0 1").nums(), fields = MarfFieldClock.STAGES); Unit },
+            "duration" to {
+                marf(value = pat("<0 1>").nums(), duration = pat("1 2").nums(), fields = MarfFieldClock.STAGES)
+                Unit
+            },
+            "curve" to {
+                marf(value = pat("<0 1>").nums(), curve = curves("linear exp"), fields = MarfFieldClock.STAGES)
+                Unit
+            },
+            "trigger" to {
+                marf(value = pat("<0 1>").nums(), trigger = bools("1 0"), fields = MarfFieldClock.STAGES)
+                Unit
+            },
+            "speed" to {
+                marf(value = pat("<0 1>").nums(), speed = pat("1 2").nums(), fields = MarfFieldClock.STAGES)
+                Unit
+            }
+        )
+        for ((field, build) in builds) {
+            val failure = assertFailsWith<IllegalArgumentException>("the $field field was accepted") { build() }
+            assertTrue(
+                "the $field pattern" in (failure.message ?: ""),
+                "the $field refusal named the wrong field: ${failure.message}"
+            )
+        }
+    }
+
+    @Test
+    fun `a stack is refused in both sequence readings, because no clock can read one`() {
+        // "<0 3>, 1" has exactly ONE onset per cycle, so a step count does not catch it. Two events
+        // share that instant, patSampleOver takes the first, and the second layer is unreachable.
+        assertEquals(
+            1,
+            marfFieldSteps(pat("<0 3>, 1").nums(), 0L).size,
+            "this test is only meaningful while the stack is a single-step pattern"
+        )
+        for (clock in listOf(MarfFieldClock.STAGES, MarfFieldClock.STEPS)) {
+            val thrown = assertFailsWith<IllegalArgumentException>("$clock accepted a stacked field") {
+                marfValues(0, 1, 2, 3, 4).read(pat("<0 3>, 1").nums(), fields = clock, name = "stacked")
+            }
+            val message = thrown.message ?: ""
+            assertTrue("stacks 2 layers" in message, "$clock: $message")
+            assertTrue("address" in message, "$clock: $message")
+            assertTrue(
+                "MarfFieldClock.STEPS" !in message,
+                "$clock must not suggest a mode that would not help either: $message"
+            )
+        }
+    }
+
+    @Test
+    fun `the refusal does not fire on the legitimate spellings, and never fires in CYCLES`() {
+        // The population: every field spelling this repository's own STAGES call sites use, plus
+        // the defaults every reader gets whether it asks for them or not.
+        val legitimate = listOf(
+            "<0 3>", "<0 1 2 1 3 4>", "<0 2 4 1 3>", "<0 .5 .2 1>", "<1 4 .25 2>", "<1 0>", "<0 4>"
+        )
+        for (spec in legitimate) {
+            marfValues(0, 1, 2, 3, 4).read(pat(spec).nums(), fields = MarfFieldClock.STAGES, name = "ok")
+        }
+        // slow(n) leaves cycles with no onset of their own; those are held stages, not a violation.
+        marfValues(0, 1, 2, 3, 4)
+            .read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "slow")
+        // A signal has no onsets at all. It is one analog event per query, so it is one step.
+        marfValues(0, 1, 2, 3, 4)
+            .read(saw().slow(8).range(0.0, 4.0), fields = MarfFieldClock.STAGES, name = "glide")
+        // And the full default field set, which is what `marf(value = …)` alone hands over.
+        marf(value = pat("<0 1>").nums(), fields = MarfFieldClock.STAGES)
+        marf(value = pat("<0 1>").nums(), fields = MarfFieldClock.STEPS)
+
+        // CYCLES is exempt by design: a field is a control voltage there, and a four-step address
+        // across a bar is the reading that mode exists for.
+        for (spec in listOf("0 1 2 3", "<0 3> 1", "<0 3>, 1")) {
+            marfValues(0, 1, 2, 3, 4).read(pat(spec).nums(), fields = MarfFieldClock.CYCLES, name = "cv")
+        }
+    }
+
+    @Test
+    fun `STEPS agrees with STAGES exactly wherever STAGES was already right`() {
+        // The claim is equality, not closeness, over the population of patterns that have at most
+        // one onset per cycle — which is every STAGES spelling in the tree.
+        val agreeing = listOf("<0 3>", "<0 2 4 1 3>", "<0 1 2 1 3 4>", "<0 4>")
+        for (spec in agreeing) {
+            assertEquals(
+                addressesUnder(spec, MarfFieldClock.STAGES, 12),
+                addressesUnder(spec, MarfFieldClock.STEPS, 12),
+                "STEPS must be a refinement of STAGES, not a rival, and \"$spec\" disagreed"
+            )
+        }
+
+        // The load-bearing one: slow(3) must still hold each entry for three stages. That is what
+        // the "at least one step per cycle" rule buys, and the gallery's reader B depends on it.
+        val shared = marfValues(0, 1, 2, 3, 4)
+        val held = { clock: MarfFieldClock ->
+            shared.read(pat("<0 2 4 1 3>").nums().slow(3), fields = clock, name = "b")
+                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(9))).take(9).map { it.address }
+        }
+        assertEquals(
+            listOf(0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 4.0, 4.0, 4.0),
+            held(MarfFieldClock.STAGES),
+            "the published behaviour of slow(3) on an address"
+        )
+        assertEquals(held(MarfFieldClock.STAGES), held(MarfFieldClock.STEPS))
+    }
+
+    @Test
+    fun `STEPS reads the sequence that was written, for every spelling of that night`() {
+        // Under STAGES, eight of these ten were byte-identical to something simpler. Under STEPS
+        // each is its own sequence, and each is the one the spelling looks like.
+        val expected = mapOf(
+            "<0 3>" to listOf(0.0, 3.0, 0.0, 3.0, 0.0, 3.0, 0.0, 3.0),
+            "<0 3> 1" to listOf(0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 3.0, 1.0),
+            "1 <0 3>" to listOf(1.0, 0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 3.0),
+            "<0 3>*2" to listOf(0.0, 3.0, 0.0, 3.0, 0.0, 3.0, 0.0, 3.0),
+            "<0 3>!2" to listOf(0.0, 0.0, 3.0, 3.0, 0.0, 0.0, 3.0, 3.0),
+            "<0 3> 1 2" to listOf(0.0, 1.0, 2.0, 3.0, 1.0, 2.0, 0.0, 1.0),
+            "<0 3> <0 4>" to listOf(0.0, 0.0, 3.0, 4.0, 0.0, 0.0, 3.0, 4.0)
+        )
+        for ((spec, want) in expected) {
+            assertEquals(want, addressesUnder(spec, MarfFieldClock.STEPS, 8), "STEPS of \"$spec\"")
+        }
+
+        // Nine of the ten are readable by one clock or the other. The tenth is the stack, and it is
+        // refused by both — which is the honest answer, not an omission.
+        val readable = theNightsAttempts.count { spec ->
+            runCatching { addressesUnder(spec, MarfFieldClock.STEPS, 4) }.isSuccess
+        }
+        assertEquals(9, readable, "exactly one of the ten attempts should be beyond every clock")
+
+        // The count that carries the argument. Under STAGES the nine non-stack spellings give three
+        // distinct sequences between them — six of the nine are a duplicate of a simpler one's
+        // reading. Under STEPS they give seven.
+        val underStages = theNightsAttempts
+            .mapNotNull { spec -> runCatching { addressesUnder(spec, MarfFieldClock.CYCLES, 8) }.getOrNull() }
+        assertEquals(10, underStages.size, "CYCLES reads all ten, which is why it stays the default")
+        val distinctUnderSteps = theNightsAttempts
+            .mapNotNull { spec -> runCatching { addressesUnder(spec, MarfFieldClock.STEPS, 8) }.getOrNull() }
+            .distinct()
+        assertTrue(
+            distinctUnderSteps.size >= 6,
+            "STEPS should tell most of these nine spellings apart; it told ${distinctUnderSteps.size}"
+        )
+    }
+
+    @Test
+    fun `each field walks its own step grid, so two fields of different lengths stay independent`() {
+        // An address with two steps a cycle and a duration with one. Each advances exactly one
+        // entry per stage, in its own alphabet — which is the property that makes STEPS a clock
+        // rather than a re-spelling of the address.
+        val reader = marfValues(0, 1, 2, 3, 4).read(
+            pat("<0 3> 1").nums(),
+            duration = pat("<1 2>").nums(),
+            fields = MarfFieldClock.STEPS,
+            name = "mixed"
+        )
+        val stages = reader.stagesIn(PatArc(PatQ.ZERO, PatQ.of(24))).take(8)
+        assertEquals(
+            listOf(0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 3.0, 1.0),
+            stages.map { it.address },
+            "the address advances one step per stage"
+        )
+        assertEquals(
+            listOf(PatQ.ONE, PatQ.of(2), PatQ.ONE, PatQ.of(2), PatQ.ONE, PatQ.of(2), PatQ.ONE, PatQ.of(2)),
+            stages.map { it.duration },
+            "and the duration advances one step per stage, on its own grid, exactly"
+        )
+        // Exact spans, in PatQ. 1 + 2 + 1 + 2 = 6 cycles for four stages, with no Double anywhere.
+        assertEquals(PatQ.ZERO, stages[0].start)
+        assertEquals(PatQ.of(6), stages[4].start)
+        assertEquals(PatQ.of(12), stages[7].end)
+    }
+
+    @Test
+    fun `the step grid is what the refusal and the clock both read, and it is exact`() {
+        assertEquals(listOf(PatQ.of(2)), marfFieldSteps(pat("<0 3>").nums(), 2L))
+        assertEquals(
+            listOf(PatQ.of(2), PatQ.of(5, 2)),
+            marfFieldSteps(pat("<0 3> 1").nums(), 2L),
+            "the second step of cycle 2 is exactly 5/2, not 2.5"
+        )
+        assertEquals(
+            listOf(PatQ.of(1)),
+            marfFieldSteps(pat("<0 2 4 1 3>").nums().slow(3), 1L),
+            "a cycle a slow field has no onset in is still one step, and that is what holds it"
+        )
+        assertEquals(
+            listOf(PatQ.of(3)),
+            marfFieldSteps(constant(0.25), 3L),
+            "a signal has no onsets, so it is one step per cycle and reads as it always did"
+        )
+    }
+
+    @Test
+    fun `a STEPS reader gives the same answer however it is asked, forwards or backwards`() {
+        // The step cursor is the only stateful thing in a reader. A query that lands before the
+        // retained timeline rewinds it to zero, so the same instant asked twice — in either order —
+        // must give the same stage, exactly.
+        val reader = marfValues(0, 1, 2, 3, 4)
+            .read(pat("<0 3> 1 2").nums(), fields = MarfFieldClock.STEPS, name = "cursor")
+        val forwards = (0..23).map { reader.stageAt(PatQ.of(it.toLong())).address }
+        val backwards = (23 downTo 0).map { reader.stageAt(PatQ.of(it.toLong())).address }.reversed()
+        assertEquals(forwards, backwards, "the step cursor must not depend on the order of queries")
+        reader.reset()
+        assertEquals(forwards, (0..23).map { reader.stageAt(PatQ.of(it.toLong())).address })
+    }
+
+    @Test
+    fun `every reader knows which clock it was built with`() {
+        assertEquals(MarfFieldClock.CYCLES, marfValues(0, 1).read(pat("0 1").nums()).fieldClock)
+        assertEquals(
+            MarfFieldClock.STAGES,
+            marfValues(0, 1).read(pat("<0 1>").nums(), fields = MarfFieldClock.STAGES).fieldClock
+        )
+        assertEquals(
+            MarfFieldClock.STEPS,
+            marf(value = pat("<0 1> 2").nums(), fields = MarfFieldClock.STEPS).fieldClock
+        )
+    }
 }
