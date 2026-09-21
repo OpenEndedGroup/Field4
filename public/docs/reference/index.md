@@ -215,7 +215,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [KratosStudy.kt](simulation.md#kratosstudy-kt) | Simulation | 77 | 35 | Run one Kratos session many times over a declared design space, and compare the answers. |  |
 | [KratosStudyFigure.kt](simulation.md#kratosstudyfigure-kt) | Simulation | 12 | 12 | A `StudyLandscape` and a `StudyOptimisation`, as a picture. |  |
 | [KratosStudyRun.kt](simulation.md#kratosstudyrun-kt) | Simulation | 21 | 14 | One parameter study over a heated part, in the three sizes a demo has to exist in. |  |
-| [LambdaSoundDocs.kt](patterns.md#lambdasounddocs-kt) | Patterns | 30 | 28 |  |  |
+| [LambdaSoundDocs.kt](patterns.md#lambdasounddocs-kt) | Patterns | 30 | 28 | A λ-term's *reduction* as a rhythm — the schedule, not the answer. |  |
 | [lambdaterms.kt](visualization.md#lambdaterms-kt) | Visualization | 28 | 28 | λ-terms as a front end to the interaction nets in `interactionnets.kt`: text in, a reduced net out, a term back. |  |
 | [LaunchBundle.kt](synthesis.md#launchbundle-kt) | Synthesis | 3 | 3 | `+` for the audio return values, so one box can launch more than one thing. |  |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 10 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
@@ -224,8 +224,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [linalg.kt](math.md#linalg-kt) | Math | 86 | 77 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Datalog in a box](../datalog.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md) |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | [Marf.kt](patterns.md#marf-kt) | Patterns | 109 | 66 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
-| [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 |  |  |
-| [MarfSmokeTest.kt](patterns.md#marfsmoketest-kt) | Patterns | 2 | 1 |  |  |
+| [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
+| [MarfSmokeTest.kt](patterns.md#marfsmoketest-kt) | Patterns | 2 | 1 | The worked example for `Marf.kt`, and the check that it holds together: one bank, several readers, and what each reader is doing printed as text. |  |
 | [MarfVectors.kt](patterns.md#marfvectors-kt) | Patterns | 22 | 4 | `MarfSpace` instances for Field's generated linalg vectors, so a reader can emit a position, a colour or a set of material parameters instead of one number. |  |
 | [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
 | [megaTextures.kt](graphics.md#megatextures-kt) | Graphics | 12 | 12 | A directory of images as one texture, however many of them there are. |  |

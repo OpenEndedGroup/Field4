@@ -50,7 +50,7 @@ expect:
  * pulse tick per triggering stage, no stage starting past the plotted window, and no non-finite
  * output. So a figure can neither invent a stage nor lose one.
  *
- * Two checks are about the layer rather than the drawing, and they are the ones worth having:
+ * Two checks are about the layer rather than the drawing:
  *
  * - **the output is continuous across every interior stage boundary whose arriving stage does not
  *   step** — exactly, comparing the departing stage's value at phase 1 against the arriving stage's
@@ -71,6 +71,13 @@ expect:
  *
  * Add a figure by appending one [Figure] to [FIGURES]; `MarfDocsGuardTest` then requires
  * `public/docs/marf.md` to reference it, and requires every committed SVG to belong to one.
+ */
+
+/**
+ * Renders every [Figure] in [FIGURES] to SVG and asserts each one against the readers that drew it.
+ *
+ * [bank] is the five-stage scalar bank the figures read; [vectorPath] is the `Vector3f` reader the
+ * vector figure needs.
  */
 object MarfGallery {
 
