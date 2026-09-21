@@ -247,10 +247,6 @@ nav:
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
     - Agent Transcript Gallery: agent_transcripts.md
-    # Sits here rather than beside "Letting an Agent Drive" in the Tour: the Tour page teaches the
-    # backdoor, this one is the boundary of what it can photograph, which is a thing you look up
-    # after a capture has already surprised you.
-    - What a Capture Can and Cannot Show: capture_limits.md
   # Generated from source rather than written: extracted KDoc and codegen output. As finished as
   # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:
@@ -307,9 +303,15 @@ nav:
     # Internals on this section's own test: mechanism, hand-written, and read when you are working
     # out why Field did something rather than when you are writing a box. It is a sibling of
     # server_surface.md — that page says what Field exposes to a client, this one says where the
-    # process's own output goes. Last of the runtime-surface three and before the build page,
+    # process's own output goes. Third of the runtime-surface four and before the build page,
     # because the terminal it describes is the one `building_and_testing.md` tells you to read.
     - Where Field's Output Goes: logging.md
+    # Last of the runtime-surface four. It sits here rather than in "AI & Agents" on this section's
+    # own test: mechanism, hand-written, and read when you are working out why Field did something
+    # rather than when you are writing a box. Its sibling is logging.md — that page says where the
+    # process's output goes, this one says how much of it a picture can hold, and both are things
+    # you look up after something has already surprised you rather than while composing.
+    - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
 
 markdown_extensions:
