@@ -30,6 +30,13 @@ import kotlin.test.assertTrue
  * `dev_docs/DEMO_CORPUS_AUDIT.md` is dated 19 September and was written to warn about precisely
  * this. `skinned_characters` landed the same day.
  *
+ * **Both halves of that were paid off on 2026-09-21** — `dev_docs/agents/transcripts/
+ * skinned_characters.yaml` and `marf_demo.yaml`, both `COMPILE_ONLY` — so [UNVERIFIED] is empty and
+ * every demo document in the corpus has its box Kotlin compiled on every build. The paragraph above
+ * is kept in the past tense rather than deleted, because it is the measurement that says what this
+ * class is worth: the `skinned_characters` sweep found a box (`twist_compare`) that had not
+ * compiled since the day it landed, and a green `check` had said nothing about it for two days.
+ *
  * ## The shape of the assertions
  *
  * Both directions, and a named list on each side:
@@ -93,24 +100,19 @@ class AgentDemoRegistrationTest {
         /**
          * Demo documents that no harness compiles or replays, with why, and what would fix it.
          *
-         * Two entries, and both are debts rather than decisions. Writing the transcript is the fix;
-         * until someone does, these lines are the difference between a known gap and an invisible
-         * one. Eleven Kotlin box bodies are named here and compiled by nothing.
+         * **Empty, since 2026-09-21, and that is the point of the list rather than a reason to
+         * delete it.** It held one entry when it landed (`skinned_characters`) and two the next
+         * morning (`marf_demo` arrived in `bc71ed216`); both were paid off by writing the
+         * `COMPILE_ONLY` transcripts the entries themselves prescribed, which is the fix the text
+         * of an exemption is supposed to name. Eleven Kotlin box bodies — seven and four — went
+         * from compiled-by-nothing to compiled on every build.
+         *
+         * Empty is also the only state in which the *other* assertion here is load-bearing:
+         * [everyDemoDocumentIsRegisteredForVerification] now fails outright for any demo that
+         * arrives without a transcript, with nothing in the way. Adding an entry back is a decision
+         * somebody makes on purpose, in writing, with a reason and a fix — not a default.
          */
-        val UNVERIFIED = mapOf(
-            "skinned_characters" to
-                "Landed 2026-09-19 from the gpu-vertex-skinning branch with no transcript. Its boxes " +
-                "open a Window and a Renderer, so the transcript that fixes this belongs in " +
-                "COMPILE_ONLY, not EXECUTE. Until it exists, seven Kotlin box bodies are compiled by " +
-                "nothing -- including gpu_crowd, the newest and most complex, which the same night added.",
-            "marf_demo" to
-                "Landed 2026-09-20 in bc71ed216 with no transcript, taking the corpus to 21. Three of " +
-                "its four boxes are pure CPU (pattern algebra into FLines), but the fourth -- " +
-                "b38c3ac4, `marf_sound` -- ends on patSpatial(), which opens a realtime audio device " +
-                "through Dough and Steam Audio, so the transcript that fixes this belongs in " +
-                "COMPILE_ONLY, not EXECUTE. Until it exists, four Kotlin box bodies are compiled by " +
-                "nothing.",
-        )
+        val UNVERIFIED = emptyMap<String, String>()
     }
 
     private fun demoDirectories(): List<String> {
@@ -155,8 +157,9 @@ class AgentDemoRegistrationTest {
     /**
      * Nothing may be *in* the corpus without being verified by something, or listed as not.
      *
-     * This is the assertion the demo corpus never had. `skinned_characters` fails it today and is
-     * held by [UNVERIFIED]; a twenty-first demo arriving with no transcript fails it outright.
+     * This is the assertion the demo corpus never had. It was held open by [UNVERIFIED] until
+     * 2026-09-21; with that map empty, a twenty-second demo arriving with no transcript fails it
+     * outright, and the failure message is the whole remedy.
      */
     @Test
     fun everyDemoDocumentIsRegisteredForVerification() {
@@ -204,7 +207,7 @@ class AgentDemoRegistrationTest {
      * only, while its file says it is run. A weaker verification than the registry advertises is
      * exactly the failure mode this branch is about, in miniature.
      *
-     * Population measured 2026-09-21: 141 transcripts, 141 registry entries, no overlaps.
+     * Population measured 2026-09-21: 143 transcripts, 143 registry entries, no overlaps.
      */
     @Test
     fun theThreeVerificationLevelsAreDisjoint() {
@@ -214,13 +217,13 @@ class AgentDemoRegistrationTest {
             .filter { it.isFile && it.extension == "yaml" }
             .map { it.nameWithoutExtension }
             .toSet()
-        assertTrue(onDisk.size >= 141, "the transcript corpus has shrunk to ${onDisk.size}; it was 141 on 2026-09-21")
+        assertTrue(onDisk.size >= 143, "the transcript corpus has shrunk to ${onDisk.size}; it was 143 on 2026-09-21")
         val entries = DemoTranscriptExecSmokeTest.EXECUTE.size +
             DemoTranscriptExecSmokeTest.COMPILE_ONLY.size +
             DemoTranscriptExecSmokeTest.KOTLINJS.size
         assertTrue(
-            entries >= 141,
-            "the verification registries have shrunk to $entries entries; they held 141 on 2026-09-21",
+            entries >= 143,
+            "the verification registries have shrunk to $entries entries; they held 143 on 2026-09-21",
         )
 
         val classifiedTwice = DemoTranscriptExecSmokeTest.EXECUTE
