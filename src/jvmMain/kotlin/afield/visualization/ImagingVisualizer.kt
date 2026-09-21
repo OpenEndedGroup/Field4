@@ -27,22 +27,21 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Inline visualizers for the CPU imaging / computer-vision family (`afield.stdlib/imaging*.kt`).
+ * Inline visualizers for the CPU imaging and computer-vision family (`afield.stdlib/imaging*.kt`):
+ * what a gradient, a pyramid, a flow field or a list of corners looks like when a box evaluates one.
  *
- * The imaging layer is ~250 public symbols of raster and feature code, and until this file existed
- * only one of its types was legible in a box: [Img] drew a bare thumbnail from its own
- * `toHTML`, and *everything else* — gradients, pyramids, corners, Hough peaks, optical flow,
- * connected components — fell through to a reflective object tree. A list of forty [Corner]s is a
- * wall of `{x=…, y=…, response=…}`; a [GaussianPyramid] is `GaussianPyramid@3f1a2b`. Those are
- * exactly the values you want to *look* at.
+ * The imaging layer is around 250 public symbols of raster and feature code, and [Img] is the only
+ * one of its types that carries a picture of its own. Everything else falls through to a reflective
+ * object tree unless something here claims it, and there a list of forty [Corner]s is a wall of
+ * `{x=…, y=…, response=…}` and a [GaussianPyramid] is `GaussianPyramid@3f1a2b`. Those are exactly
+ * the values you want to look at.
  *
- * ## Where this hooks in
+ * #### Where this hooks in
  *
- * Three one-line hooks, small enough that this file can grow without touching
- * `ValueVisualizer.kt`:
+ * Three one-line hooks, small enough that this file can grow without touching `ValueVisualizer.kt`:
  *
- *  - [Img.toHTML] delegates to [img] — [Img] implements [ToHTML], which `ValueVisualizer` dispatches
- *    *before* its built-in table, so improving the `Img` picture has to happen there.
+ *  - `Img.toHTML` delegates to [img]. [Img] implements [ToHTML], which `ValueVisualizer` dispatches
+ *    before its built-in table, so improving the `Img` picture has to happen there.
  *  - `ValueVisualizer.visualizeBuiltIn`'s fallback branch tries [format] first, which covers the
  *    non-data classes ([Gradient], [GaussianPyramid], [LaplacianPyramid], [FlowField],
  *    [ComponentLabelling]).
@@ -50,40 +49,44 @@ import kotlin.math.sqrt
  *    outputs (`List<Corner>`, `List<HoughLine>`, `List<HoughCircle>`, `List<FlowVector>`,
  *    `List<Img>`).
  *
- * All constants live in the nested `K` object rather than on `ValueVisualizer`'s constant block:
- * three previous inline-graphics branches all appended to that same anchor and add/add-conflicted
- * every time.
- *
- * ## How a float image is turned into pixels — the normalisation policy
+ * #### Turning a float image into pixels
  *
  * The family is float-channel and unbounded: a Sobel `dx`, a Laplacian and a
  * difference-of-Gaussians are legitimately signed, an unnormalised response legitimately exceeds 1,
  * and a division somewhere upstream legitimately produces a NaN. A visualizer that clamps all of
- * those to `0..1` shows you a flat white or flat black rectangle and tells you nothing, so
- * [renderRaster] picks one of three modes and **always names the one it picked in the caption**:
+ * those to `0..1` shows a flat white or a flat black rectangle and tells you nothing, so the raster
+ * renderer picks one of three modes:
  *
- *  - **direct** — every finite sample is already in `0..1`. Shown as-is; nothing is rescaled.
+ *  - **direct** — every finite sample already sits in `0..1`. Shown as-is; nothing is rescaled.
  *  - **signed ±m** — some finite sample is negative. The range is made symmetric about zero
- *    (`m = max(|min|, |max|)`) so that *zero is a fixed, recognisable colour*. A 1-channel image is
+ *    (`m = max(|min|, |max|)`) so that zero is a fixed, recognisable colour. A 1-channel image is
  *    additionally run through the `coolwarm` diverging ramp from [Colormaps] (blue negative, pale
- *    zero, red positive) because the sign of a gradient is the interesting part and grey cannot
- *    carry it. Multi-channel signed data is offset/scaled per sample without a ramp.
- *  - **auto-ranged lo…hi** — everything is non-negative but the maximum exceeds 1. Linearly
- *    rescaled; the true range is printed, so a "bright" pixel is never mistaken for 1.0.
+ *    zero, red positive), because grey cannot carry the sign of a gradient. Multi-channel signed
+ *    data is offset and scaled per sample without a ramp.
+ *  - **auto-ranged** — everything is non-negative but the maximum exceeds 1. Linearly rescaled, with
+ *    the data's true range printed beside it, so a bright pixel is never mistaken for 1.0.
+ *
+ * The caption names the mode whenever the mode rescaled something; the statistics table inside the
+ * disclosure names it in every case, including the fourth one, where no sample is finite at all.
  *
  * Non-finite samples (NaN, ±∞) are counted, excluded from every statistic, and painted **magenta**
- * so they are impossible to miss — the alternative, which is what `Img.toHTML` did before, is that
- * one NaN poisons `min()`/`max()`, `normalized()` returns an all-NaN image, the PNG quantiser turns
- * NaN into 0 and you get a silently all-black thumbnail captioned `range NaN…NaN`.
+ * so they are impossible to miss. Excluding them is what keeps one NaN out of the minimum and the
+ * maximum, where it would take the whole display range with it and quantise to a uniformly black
+ * thumbnail captioned `range NaN…NaN`.
  *
  * A 4-channel image is drawn over a **checkerboard**, so transparent and black are distinguishable.
  *
- * ## The disclosure
+ * #### The disclosure
  *
  * Each raster visualizer carries a closed `<details>` with the per-channel strip, a per-channel
- * histogram computed over the *full-resolution* samples, and the numeric stats. It is a plain
- * `<details>` element rather than a `lazy-value-fragment` expander link, because it needs no
- * running server, so it works identically in a live box, in a docs capture and in a saved HTML file.
+ * histogram computed over the full-resolution samples, and the numeric stats. It is a plain
+ * `<details>` element rather than a `lazy-value-fragment` expander link, so it needs no running
+ * server and works identically in a live box, in a docs capture and in a saved HTML file.
+ */
+
+/**
+ * The dispatch surface: [format] for a single imaging value, [formatList] for a homogeneous list of
+ * them, and [img] for the [Img] thumbnail that `Img.toHTML` calls directly.
  */
 object ImagingVisualizer {
 
@@ -184,7 +187,7 @@ object ImagingVisualizer {
 
     /**
      * The inline picture for an [Img]: an aspect-correct thumbnail of the actual pixels under the
-     * range policy documented on [ImagingVisualizer], a one-line readout, and a disclosure holding
+     * range policy this file's overview sets out, a one-line readout, and a disclosure holding
      * the per-channel strip, histogram and statistics.
      *
      * Called from `Img.toHTML()`, so this *is* what evaluating an image in a box shows.

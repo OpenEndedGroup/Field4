@@ -6,44 +6,44 @@ import org.jetbrains.kotlinx.dataframe.DataRow
 import org.jetbrains.kotlinx.dataframe.api.GroupBy
 
 /**
- * Makes Kotlin DataFrame values render as Field values — `.h`, `.h2`, `display` and box return
- * values — without DataFrame having to know Field exists.
+ * Makes Kotlin DataFrame values render as Field values (`.h`, `.h2`, `display` and box return
+ * values) without DataFrame having to know Field exists.
  *
  * `DataFrame` is a third-party interface, so it cannot implement [ToHTML] the way [Table] and [Img]
  * do. Both registries exist for exactly this: [ValuePrinterRegistry] for the compact `.h` form, and
  * [H2ValueRegistry] for `.h2`. Everything here is a thin adapter onto primitives that already exist,
  * so a frame gets the same styling, the same expander and the same paging as every other value.
  *
- * ### `.h` — a head, and the shape
+ * #### The compact `.h` form
  *
- * [table] already renders a column-oriented table in the repo's output style, so a frame's compact
- * form is `table(...)` over the first [HEAD_ROWS] rows plus a shape line. Only the head is touched:
- * `take` on each column's iterator, never `toList()` on the frame, so printing a million-row frame
- * costs the same as printing ten rows.
+ * [table] already renders a column-oriented table in Field's output style, so a frame's compact
+ * form is that table over the first `HEAD_ROWS` rows, plus a line giving the shape. Only the head is
+ * touched: each column is indexed for its first `HEAD_ROWS` cells rather than the frame being
+ * materialised, so printing a million-row frame costs about what printing ten rows costs.
  *
- * ### `.h2` — a streaming scroller, for free
+ * #### The `.h2` scroller
  *
- * [H2ValueSnapshot] *adapts* one value into another for the lazy renderer, rather than producing
- * HTML. So `.h2` on a frame adapts it into [LazyRows] — a `List<Map<String, Any?>>` view that reads a
- * row only when asked — and the h2 **explorer** (`h2explorer.kt`, reached as an iframe onto
- * `/h2-explorer?root=<token>` and fed over the `/ws` `__h2_explorer__` channel) streams windows of it
- * by index. That is what makes this a real scroller for a large frame rather than a big HTML dump: the
- * server holds the frame (not a rendering of it) behind an `.h2` token, and each scroll materialises
- * only the window being looked at.
+ * [H2ValueSnapshot] adapts one value into another for the lazy renderer rather than producing HTML.
+ * So `.h2` on a frame adapts it into a private list-of-rows view that reads a row only when asked,
+ * and the h2 explorer (`h2explorer.kt`, reached as an iframe onto `/h2-explorer?root=<token>` and fed
+ * over the `/ws` `__h2_explorer__` channel) streams windows of it by index. The server holds the
+ * frame rather than a rendering of it behind an `.h2` token, and each scroll materialises only the
+ * window being looked at, which is what makes a large frame a scroller instead of a large HTML dump.
+ * `ValueVisualizer`'s `/lazy-value-fragment` renderer is a separate path, for expanding a value in
+ * place rather than scrolling one.
  *
- * Do not confuse that path with `ValueVisualizer.renderListContinuation`, which serves
- * `/lazy-value-fragment` — a *different* renderer for expanding a value in place. This KDoc named the
- * wrong one until 2026-08-22, and the cost was concrete: the smoke test exercised
- * `renderLazyFragment` believing it was the `.h2` path, so every row of a `.h2` frame rendered as the
- * string `Map(size=3)` in the actual widget and nothing failed.
+ * Going through the registries rather than a bespoke widget also means a frame nested inside another
+ * value, a list of frames or a data class with a frame field, expands with the same machinery.
  *
- * Doing it this way rather than with a bespoke widget also means a frame nested *inside* another
- * value — a list of frames, a data class with a frame field — expands with the same machinery.
+ * #### Where the adapters get registered
  *
- * ### Registration
- *
- * [install] is idempotent and called from `Server.main`. A bare `jvm-main` harness does not run
- * that, so tests call it explicitly; see `DataFrameVisualizerSmokeTest`.
+ * `install` is idempotent and runs during server start-up. A bare `jvm-main` harness does not run
+ * that, so tests call it explicitly; `DataFrameVisualizerSmokeTest` is the worked example.
+ */
+
+/**
+ * The registration point, and the four renderers behind it: a frame, a single column, a single row
+ * and a grouped frame, each as one HTML fragment.
  */
 object DataFrameVisualizer {
 
