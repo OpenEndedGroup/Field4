@@ -4040,9 +4040,7 @@ FUNCTIONS_PLOT_DIR=/tmp/functions-plots python3 tools/run_field_tests.py --id fu
 Render to a temp directory and copy the files in, rather than writing into the working tree while the
 runner's Field server is watching it.
 
-Being a FIELD_TEST rather than a script, the gallery asserts as well as draws, so a figure the code
-has stopped producing fails a build instead of sitting on the page. What it asserts and at what
-thresholds are in `dev_docs/FUNCTIONS_PLOT_GALLERY.md`.
+What the gallery asserts and at what thresholds are in `dev_docs/FUNCTIONS_PLOT_GALLERY.md`.
 
 The mp4 is the one best-effort figure: a machine with no `ffmpeg` gets a printed note and the rest
 of the gallery, rather than a failed build.
