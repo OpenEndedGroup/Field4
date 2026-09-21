@@ -8,14 +8,14 @@ message printed in its own output, and one whose patterns are **accepted and dra
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch --with-playwright --port 9101 \
-  --command 'macro write marf_field_clocks --file dev_docs/agents/artifacts/marf_field_clocks/marf_field_clocks.yaml' \
+  --command 'macro write marf_field_clocks --file dev_docs/agents/transcripts/marf_field_clocks.yaml' \
   --command 'macro run marf_field_clocks'
 ```
 
-Drop `--with-playwright` if you only want to read the output events; the boxes run either way, but
-the backdoor is headless and `screenshot-box` returns a 48×48 placeholder with `ok: true` when no
-client is attached, because `displayOpen(...)` sends an output-control message to a client and with
-nobody there it has nowhere to land. Or open a real Field and paste the three box bodies in.
+Drop `--with-playwright` if you only want to read the output events; the boxes run either way.
+For screenshots, attach the browser before execution: without it the output DOM never exists.
+The capture guard now rejects that missing output instead of accepting the historical 48×48
+handle-only placeholder. Or open a real Field and paste the three box bodies in.
 
 ## What each box shows
 
@@ -45,16 +45,10 @@ sequence byte-identical to something strictly simpler than what had been typed �
 constant `1`, `"<0 3>*2"` was the constant `0` — and nothing raised, warned or logged. The `CYCLES`
 column of the last box is that behaviour, still there, still correct for that reading.
 
-## Why this is not in `dev_docs/agents/transcripts/`
+## Registration
 
-**A deliberate deferral, not an oversight.** Registering a transcript means three set-equality or
-count edits — a name in `DemoTranscriptExecSmokeTest`'s `EXECUTE`/`COMPILE_ONLY`/`KOTLINJS`
-partition, an entry plus totals on `public/docs/agent_transcripts.md`, and possibly a materialized
-starting-point bundle. On the night this was written a sibling branch was adding `marf_demo.yaml`
-and therefore incrementing exactly those same three, and two branches each going `N → N+1` on a set
-equality is a merge that conflicts textually or, worse, merges cleanly into a wrong total. The
-2026-09-19 Z5 precedent is to land the scene first and promote it in its own change.
-
-**To promote it**, move the yaml to `dev_docs/agents/transcripts/marf_field_clocks.yaml` and follow
-the five steps in `dev_docs/agent_transcript_index.md`. It belongs in `EXECUTE`: every box is
-pure-CPU, self-contained, and finishes on its own.
+Promoted on 2026-09-21 after the sibling Marf demo landed. The canonical YAML now lives in
+`dev_docs/agents/transcripts/marf_field_clocks.yaml`, is in `DemoTranscriptExecSmokeTest.EXECUTE`,
+and has a gallery entry and generated starting point. Every box is pure-CPU, self-contained,
+and finishes on its own. This directory retains the original, real capture evidence; it no
+longer carries an unregistered copy of the runnable source.

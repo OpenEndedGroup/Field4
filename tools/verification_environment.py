@@ -1,4 +1,4 @@
-"""Read-only macOS verification prerequisites; unsupported hosts are explicitly reported.
+"""Read-only verification prerequisites: cross-platform disk, macOS power/display.
 
 An observation gap is not proof of sleep. Preserve the gap and any matching macOS
 Sleep/Wake log lines rather than subtracting guessed sleep time from test timings.
@@ -6,7 +6,10 @@ Sleep/Wake log lines rather than subtracting guessed sleep time from test timing
 from __future__ import annotations
 
 import json
+import math
+import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -17,6 +20,73 @@ from pathlib import Path
 
 class VerificationEnvironmentError(RuntimeError):
     pass
+
+
+GIB = 1024 ** 3
+
+
+def _disk_setting(name: str, value: float | None, default: float) -> int:
+    try:
+        gib = float(os.environ.get(name, default) if value is None else value)
+        if not math.isfinite(gib) or gib < 0:
+            raise ValueError()
+        return int(gib * GIB)
+    except (ValueError, TypeError, OverflowError):
+        raise VerificationEnvironmentError(f"{name} must be a finite non-negative GiB value") from None
+
+
+class DiskBudget:
+    """Admission budgets the whole run; sampling protects the floor throughout it.
+
+    Volume-wide free-space changes include other writers. Never present them as
+    this checkout's footprint, reclaimable bytes, or an attribution of consumption.
+    This observer neither reserves filesystem blocks nor removes anything.
+    """
+    def __init__(self, path: Path, *, probe=shutil.disk_usage, floor_gib=None,
+                 reserve_gib=None, planned_gib=None):
+        self.path, self.probe = path.resolve(), probe
+        self.floor = _disk_setting("FIELD_VERIFY_DISK_FLOOR_GIB", floor_gib, 8)
+        self.reserve = _disk_setting("FIELD_VERIFY_DISK_RESERVE_GIB", reserve_gib, 0)
+        self.planned = _disk_setting("FIELD_VERIFY_DISK_PLANNED_GIB", planned_gib, 0)
+        self.admitted = False
+        self.start_free: int | None = None
+        self.minimum_free: int | None = None
+
+    def sample(self) -> dict:
+        result = {"path": str(self.path), "freeBytes": None,
+                  "protectedBytes": self.floor + self.reserve}
+        try:
+            free = self.probe(self.path).free
+            if not isinstance(free, int) or free < 0:
+                raise ValueError("invalid free-space reading")
+            result["freeBytes"] = free
+            if self.start_free is None:
+                self.start_free = free
+            self.minimum_free = free if self.minimum_free is None else min(free, self.minimum_free)
+        except (OSError, ValueError) as exc:
+            result["probeError"] = str(exc)
+        return result
+
+    def admit(self, snapshot: dict):
+        if self.admitted:
+            return
+        required = self.floor + self.reserve + self.planned
+        free = snapshot.get("freeBytes")
+        if free is None or free < required:
+            available = "unknown" if free is None else f"{free / GIB:.2f} GiB"
+            raise VerificationEnvironmentError(
+                f"disk budget: {available} available at {self.path}; need {required / GIB:.2f} GiB "
+                f"(floor {self.floor / GIB:g} + reserve {self.reserve / GIB:g} + "
+                f"planned whole-run growth {self.planned / GIB:g}). No cleanup was attempted.")
+        self.admitted = True
+
+    def report(self) -> dict:
+        return {"path": str(self.path), "floorBytes": self.floor, "reserveBytes": self.reserve,
+                "plannedBytes": self.planned, "admitted": self.admitted,
+                "initialFreeBytes": self.start_free, "minimumFreeBytes": self.minimum_free,
+                "maxObservedVolumeLossBytes": (None if self.start_free is None else
+                                              self.start_free - self.minimum_free),
+                "attribution": "whole volume, including other writers; not checkout consumption"}
 
 
 def parse_power(text: str) -> dict:
@@ -70,6 +140,14 @@ def sleep_evidence(start: float, end: float) -> list[str]:
 
 
 def environment_problem(snapshot: dict, *, require_display: bool) -> str | None:
+    disk = snapshot.get("disk")
+    if disk is not None:
+        if disk.get("freeBytes") is None:
+            return f"disk state unknown at {disk['path']} (probe failed)"
+        if disk["freeBytes"] < disk["protectedBytes"]:
+            return (f"disk floor: {disk['freeBytes'] / GIB:.2f} GiB available at {disk['path']}; "
+                    f"preserve {disk['protectedBytes'] / GIB:.2f} GiB including reserve. "
+                    "No cleanup was attempted.")
     if not snapshot.get("supported"):
         return None
     if snapshot.get("onAC") is None:
@@ -88,8 +166,13 @@ class VerificationEnvironment:
     action returns, an observed loss during that action invalidates its result.
     """
     def __init__(self, *, probe=probe_environment, clock=time.time, evidence=sleep_evidence,
-                 sample_interval: float = 15, gap_seconds: float = 45):
+                 sample_interval: float = 15, gap_seconds: float = 45,
+                 disk_path: Path | None = None, disk_probe=shutil.disk_usage,
+                 disk_floor_gib=None, disk_reserve_gib=None, disk_planned_gib=None):
         self.probe, self.clock, self.evidence = probe, clock, evidence
+        self.disk = DiskBudget(disk_path or Path.cwd(), probe=disk_probe,
+                               floor_gib=disk_floor_gib, reserve_gib=disk_reserve_gib,
+                               planned_gib=disk_planned_gib)
         self.started_at = clock()
         self.sample_interval, self.gap_seconds = sample_interval, gap_seconds
         self.snapshot: dict = {}
@@ -120,6 +203,7 @@ class VerificationEnvironment:
                 return
         snapshot = self.probe()
         with self._lock:
+            snapshot = {**snapshot, "disk": self.disk.sample()}
             self.sample_count += 1
             self.last_sample = now
             if snapshot != self.snapshot:
@@ -146,6 +230,7 @@ class VerificationEnvironment:
             problem = environment_problem(self.snapshot, require_display=require_display)
             if problem:
                 raise VerificationEnvironmentError(problem)
+            self.disk.admit(self.snapshot["disk"])
             return len(self.events)
 
     def check(self, checkpoint: int, *, require_display: bool, force: bool = False):
@@ -165,6 +250,7 @@ class VerificationEnvironment:
             return {"startedAtEpochSec": self.started_at, "reportedAtEpochSec": self.clock(),
                     "sampleIntervalSec": self.sample_interval, "gapThresholdSec": self.gap_seconds,
                     "sampleCount": self.sample_count, "latest": dict(self.snapshot),
+                    "diskBudget": self.disk.report(),
                     "events": list(self.events)}
 
     def close(self):

@@ -85,14 +85,14 @@ property that makes a page like this checkable by a person at all.
 
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
-| transcripts, top level | 143 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
-| transcripts, recursive | 151 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
+| transcripts, top level | 144 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
+| transcripts, recursive | 152 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
 | demo documents | 21 | `ls -1d dev_docs/agents/demos/*/` | held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS` |
 | demos shipping a `build.yaml` | 9 | `ls -1 dev_docs/agents/demos/*/build.yaml` | the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars |
-| entries on `public/docs/agent_transcripts.md` | 143 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
-| materialized starting-point bundles | 138 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
+| entries on `public/docs/agent_transcripts.md` | 144 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
+| materialized starting-point bundles | 139 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
 
-The two transcript counts are both right and they are not the same measurement: 151 = 143 + 8 under `docs_capture/`. If you quote one of them, say which.
+The two transcript counts are both right and they are not the same measurement: 152 = 144 + 8 under `docs_capture/`. If you quote one of them, say which.
 
 <!-- guard-corpora: generated end -->
 

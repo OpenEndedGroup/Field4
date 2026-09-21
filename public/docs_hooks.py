@@ -1762,7 +1762,7 @@ class RunnerState:
 
     def capture_with_environment(self, method, **kwargs):
         if self.environment is None:
-            self.environment = VerificationEnvironment().start()
+            self.environment = VerificationEnvironment(disk_path=self.repo_root).start()
         options = kwargs["options"]
         needs_display = options.graphics_context or options.capture == "native-window"
         started = False

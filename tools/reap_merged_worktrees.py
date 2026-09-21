@@ -515,7 +515,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--planned-gib", type=float, default=0.0, metavar="GIB",
-        help="Expected cost of worktrees about to be created, added to the reservation check.",
+        help="Expected whole-run volume growth (worktrees, builds, downloads and concurrent writers), added to the reservation check; not just checkout size.",
     )
     parser.add_argument(
         "--report-root", action="append", type=Path, default=[], metavar="PATH",

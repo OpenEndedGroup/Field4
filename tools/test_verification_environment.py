@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "public"))
 import docs_hooks
 import run_field_tests as smoke
 from verification_environment import (VerificationEnvironment, VerificationEnvironmentError,
-                                     environment_problem, parse_display, parse_power, sleep_evidence)
+                                     DiskBudget, GIB, environment_problem, parse_display, parse_power, sleep_evidence)
 from verification_runtime import run_with_watchdog
 
 
@@ -23,8 +23,11 @@ class EnvironmentTests(unittest.TestCase):
     def setUp(self):
         self.now = 100.
         self.state = dict(GOOD)
+        self.free = 64 * GIB
         self.monitor = VerificationEnvironment(probe=lambda: dict(self.state), clock=lambda: self.now,
-                                               evidence=lambda a, b: ["Sleep/Wake fixture"])
+                                               evidence=lambda a, b: ["Sleep/Wake fixture"],
+                                               disk_probe=lambda path: SimpleNamespace(free=self.free),
+                                               disk_floor_gib=8, disk_reserve_gib=0, disk_planned_gib=0)
         self.monitor.sample(force=True)
 
     def change(self, **fields):
@@ -252,6 +255,107 @@ class EnvironmentTests(unittest.TestCase):
                   re.search(r"\bWindow\(", (root / test["sourceFile"]).read_text())]
         self.assertGreaterEqual(len(direct), 10)
         self.assertEqual([t["id"] for t in direct if t.get("requiresDisplay") is not True], [])
+
+    def test_disk_floor_applies_even_when_mac_probes_are_unsupported(self):
+        self.free = 7 * GIB
+        self.change(supported=False)
+        with self.assertRaisesRegex(VerificationEnvironmentError, "disk floor"):
+            self.monitor.checkpoint(require_display=False)
+
+    def test_disk_loss_cannot_be_erased_by_recovery(self):
+        token = self.monitor.checkpoint(require_display=False)
+        self.free = 7 * GIB
+        self.change()
+        self.free = 20 * GIB
+        self.change()
+        with self.assertRaisesRegex(VerificationEnvironmentError, "disk floor"):
+            self.monitor.check(token, require_display=False)
+        self.assertEqual(self.monitor.report()["diskBudget"]["minimumFreeBytes"], 7 * GIB)
+        self.assertEqual(self.monitor.report()["diskBudget"]["maxObservedVolumeLossBytes"], 57 * GIB)
+
+    def test_disk_probe_failure_is_not_treated_as_unsupported(self):
+        self.monitor.disk.probe = Mock(side_effect=OSError("volume unavailable"))
+        self.change(supported=False)
+        with self.assertRaisesRegex(VerificationEnvironmentError, "disk state unknown"):
+            self.monitor.checkpoint(require_display=False)
+
+    def test_low_disk_starts_no_smoke_and_is_not_a_test_failure(self):
+        self.free = 7 * GIB
+        self.change()
+        code, report, count = self.run_smoke_fixture([{"id": "disk-blocked"}], Mock())
+        self.assertEqual((code, count, report["failed"]), (2, 0, 0))
+        self.assertEqual(report["results"][0]["environmentStatus"], "NOT RUN")
+
+    def test_low_disk_starts_no_docs_server(self):
+        state, action = self.docs_state(), Mock()
+        self.free = 7 * GIB
+        self.change()
+        with self.assertRaisesRegex(VerificationEnvironmentError, "disk floor"):
+            state.capture_with_environment(action, options=self.options(), page_path=Path("disk.md"), block_index=1)
+        action.assert_not_called()
+        state._ensure_runner_owned_field_server.assert_not_called()
+        self.assertEqual(state.environment_outcomes[0]["status"], "not-run")
+
+    def test_docs_disk_loss_invalidates_capture_even_after_recovery(self):
+        state = self.docs_state()
+        def capture(**kwargs):
+            self.free = 7 * GIB
+            self.change()
+            self.free = 20 * GIB
+            self.change()
+        with self.assertRaisesRegex(VerificationEnvironmentError, "disk floor"):
+            state.capture_with_environment(capture, options=self.options(), page_path=Path("disk.md"), block_index=1)
+        self.assertEqual(state.environment_outcomes[0]["status"], "interrupted")
+        state._stop_shared_field_server.assert_called_once()
+
+
+class DiskBudgetTests(unittest.TestCase):
+    def budget(self, free=20, **kwargs):
+        return DiskBudget(Path.cwd(), probe=lambda path: SimpleNamespace(free=int(free * GIB)),
+                          floor_gib=8, reserve_gib=2, planned_gib=kwargs.get("planned", 6))
+
+    def test_planned_growth_is_admission_only_reserve_is_continuous(self):
+        budget = self.budget(free=16)
+        budget.admit(budget.sample())  # equality is sufficient
+        budget.probe = lambda path: SimpleNamespace(free=10 * GIB)
+        snapshot = budget.sample()
+        budget.admit(snapshot)  # do not charge the six GiB again at every action
+        self.assertIsNone(environment_problem({"supported": False, "disk": snapshot}, require_display=False))
+        budget.probe = lambda path: SimpleNamespace(free=10 * GIB - 1)
+        self.assertIn("disk floor", environment_problem({"supported": False, "disk": budget.sample()}, require_display=False))
+
+    def test_floor_alone_does_not_admit_an_unfunded_run(self):
+        budget = self.budget(free=15)
+        with self.assertRaisesRegex(VerificationEnvironmentError, "planned whole-run growth 6"):
+            budget.admit(budget.sample())
+        self.assertFalse(budget.admitted)
+
+    def test_configuration_rejects_negative_nonfinite_and_bad_numbers(self):
+        for value in (-1, "nan", "inf", "broken"):
+            with self.subTest(value=value), self.assertRaisesRegex(VerificationEnvironmentError, "finite non-negative"):
+                DiskBudget(Path.cwd(), floor_gib=value)
+
+    def test_environment_configuration_is_reported(self):
+        with patch.dict("os.environ", {"FIELD_VERIFY_DISK_FLOOR_GIB": "5",
+                                       "FIELD_VERIFY_DISK_RESERVE_GIB": "8",
+                                       "FIELD_VERIFY_DISK_PLANNED_GIB": "22"}):
+            budget = DiskBudget(Path.cwd())
+        self.assertEqual((budget.floor, budget.reserve, budget.planned), (5 * GIB, 8 * GIB, 22 * GIB))
+
+    def test_report_does_not_call_a_volume_drop_checkout_consumption(self):
+        budget = self.budget()
+        budget.sample()
+        budget.probe = lambda path: SimpleNamespace(free=30 * GIB)
+        budget.sample()
+        self.assertEqual(budget.report()["maxObservedVolumeLossBytes"], 0)
+        self.assertIn("other writers", budget.report()["attribution"])
+
+    def test_disk_path_is_the_explicit_checkout_not_the_callers_cwd(self):
+        with tempfile.TemporaryDirectory() as directory:
+            probe = Mock(return_value=SimpleNamespace(free=20 * GIB))
+            budget = DiskBudget(Path(directory), probe=probe, floor_gib=8, reserve_gib=0, planned_gib=0)
+            budget.sample()
+            probe.assert_called_once_with(Path(directory).resolve())
 
 
 if __name__ == "__main__":
