@@ -642,8 +642,31 @@ class MarfTest {
     }
 
     @Test
-    fun `every reader knows which clock it was built with`() {
-        assertEquals(MarfFieldClock.CYCLES, marfValues(0, 1).read(pat("0 1").nums()).fieldClock)
+    fun `every reader knows which clock it was built with, and AUTO is resolved before it is asked`() {
+        // AUTO is the default and never survives construction: a reader reports the reading it got.
+        // A stepped address is a sequence, so it gets STEPS — this is the case that used to answer
+        // CYCLES and read "<0 3> 1" as "<0 3>" without saying anything.
+        assertEquals(MarfFieldClock.STEPS, marfValues(0, 1).read(pat("0 1").nums()).fieldClock)
+
+        // A signal has no discrete event to step through, so it stays a voltage. Walking it would
+        // sample once per cycle, and a cycle-periodic signal sampled once per cycle is a constant.
+        assertEquals(
+            MarfFieldClock.CYCLES,
+            marfValues(0, 1).read(saw().range(0.0, 1.0)).fieldClock
+        )
+
+        // AUTO is decided from the LEADING field, so a stepped address with a continuous duration is
+        // a sequence: one reader carries one clock.
+        assertEquals(
+            MarfFieldClock.STEPS,
+            marfValues(0, 1).read(pat("0 1").nums(), duration = saw().range(0.5, 1.0)).fieldClock
+        )
+
+        // And an explicit clock is always carried through untouched.
+        assertEquals(
+            MarfFieldClock.CYCLES,
+            marfValues(0, 1).read(pat("0 1").nums(), fields = MarfFieldClock.CYCLES).fieldClock
+        )
         assertEquals(
             MarfFieldClock.STAGES,
             marfValues(0, 1).read(pat("<0 1>").nums(), fields = MarfFieldClock.STAGES).fieldClock

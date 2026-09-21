@@ -330,24 +330,39 @@ object MarfGallery {
                 cycles = 8,
                 lanes = bank().let { shared ->
                     listOf(
-                        Lane.of("\"0 1 2 3\"", shared.read(pat("0 1 2 3").nums(), duration = quarters, name = "run")),
+                        Lane.of(
+                            "\"0 1 2 3\"",
+                            shared.read(
+                                pat("0 1 2 3").nums(),
+                                duration = quarters,
+                                fields = MarfFieldClock.STEPS,
+                                name = "run"
+                            )
+                        ),
                         Lane.of(
                             "every 4 rev",
                             shared.read(
                                 pat("0 1 2 3").nums().every(4) { it.rev() },
                                 duration = quarters,
+                                fields = MarfFieldClock.STEPS,
                                 name = "reversed"
                             )
                         ),
                         Lane.of(
                             "\"0 1 2 3 2 1\"",
-                            shared.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), name = "pingpong")
+                            shared.read(
+                                pat("0 1 2 3 2 1").nums(),
+                                duration = constant(1.0 / 6.0),
+                                fields = MarfFieldClock.STEPS,
+                                name = "pingpong"
+                            )
                         ),
                         Lane.of(
                             "struct euclid 5 8",
                             shared.read(
                                 struct(euclid(5, 8), pat("0 4 2 3").nums()),
                                 duration = constant(0.125),
+                                fields = MarfFieldClock.STEPS,
                                 name = "euclid"
                             )
                         )
@@ -365,15 +380,26 @@ object MarfGallery {
                         "a rest in the address should hold the previous slot: $euclid"
                     }
                 },
-                // No `fields` argument anywhere, and that is the point of this figure rather than
-                // an omission: these are CYCLES readers, so the address is a control voltage and a
-                // four-step-per-cycle address is exactly what the mode is for. The guard checks
-                // that absence as hard as it checks the presences above.
+                // `fields = MarfFieldClock.STEPS` on every lane, and stated rather than left to the
+                // default even though the default would now give it. Until 2026-09-21 these were
+                // CYCLES readers and this figure's comment said the *absence* of a `fields` argument
+                // was its point — the address as a control voltage, four steps a cycle being exactly
+                // what that mode is for. `AUTO` became the default that day and sends a stepped
+                // address to STEPS, so the absence stopped meaning anything and the figure would have
+                // gone on claiming a reading it no longer used. Naming it keeps the snippet and the
+                // lanes one string, which is what the clock guard below actually checks.
+                //
+                // The lanes read the same as they did: `verify` still pins the reversal at
+                // `[3,2,1,0]` then `[0,1,2,3]`, and the euclidean rests still hold at
+                // `[0,0,4,4,4,2,3,3]` rather than snapping to slot 0. That equality is the argument
+                // that STEPS was made a superset rather than a different reading — see
+                // `marfFieldSteps`, whose grid counts a rest as a step precisely so this holds.
                 snippet = """
-                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25))                    // forward
-                    b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25)) // periodic reversal
-                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0))           // ping-pong
-                    b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125))
+                    val steps = MarfFieldClock.STEPS
+                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25), fields = steps)                    // forward
+                    b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25), fields = steps) // periodic reversal
+                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), fields = steps)           // ping-pong
+                    b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125), fields = steps)
                 """.trimIndent()
             ),
 
