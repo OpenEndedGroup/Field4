@@ -147,9 +147,25 @@ BODY_TELLS = [
     # return here". That is a threshold named by a fixed English idiom, not an evaluative label,
     # and the idiom has no form in which it could be this fault. One instance in the whole tree,
     # so this buys a single true negative; it costs nothing and it cannot mask a real hit.
+    # CALIBRATION, 2026-09-21 (forty-first firing). `argument` shipped beside `point` with no
+    # lookahead of its own, and unlike `point` it never got one. In THIS codebase `argument` is
+    # overwhelmingly the programming term: of the twelve occurrences of `the argument` in
+    # public/docs, TEN are a call's argument -- Forth arity ("the argument count off the top of
+    # the stack"), `hostCall1`'s argument count, `hostMacro`'s argument values, FieldML resolving
+    # "on the argument *names* alone", `fieldStatsHere`'s "parse the argument text", and
+    # interaction nets' "`aux(1)` is the argument, and `aux(0)` is where the result comes back
+    # out". That last one is the only thing `is the argument` has ever matched tree-wide, and it
+    # is a false positive: a `LAM`/`APP` port table, not an evaluative label.
+    #
+    # Both rhetorical uses in the tree are `the argument FOR <doing something>`
+    # (`petri_sound`'s "the argument for using a net rather than a…", `stacksl_surrogate_demo`'s
+    # "the argument for a per-family surrogate"), so requiring `for` keeps the true sense
+    # reachable and retires the false one. Observed, not invented -- the same method the `point`
+    # lookahead was built by. (`keyframer_worked_example`'s "the argument makes itself" is the
+    # rhetorical sense too, but it is not the `is the` form and was never matched.)
     ("slide-label", r"(?<!which )(?<!that )(?<!it )(?<!this )"
                     r"\b(is|are) the (sanity check|payoff|"
-                    r"point(?!\s+(at which|where|when|on|of no return)\b)|argument|"
+                    r"point(?!\s+(at which|where|when|on|of no return)\b)|argument(?=\s+for\b)|"
                     r"interesting (part|bit)|real (trick|insight)|one that matters|one to (have|watch))\b"
                     r"|\b(is|are) an? (sanity check|payoff|real (trick|insight))\b", 7),
     # `X is the whole design` -- the stakes label bolted onto a concrete fact, the same move as
@@ -388,6 +404,28 @@ BODY_TELLS = [
      r"imagined|hoped|believed|stated|invented|eyeballed)\b", 6),
 ]
 
+# Hits that ARE the detector working and are NOT faults, recorded so a firing does not
+# re-litigate them. Unlike RETIRED these patterns stay live and keep scoring, because a
+# standing residual on a known page costs one lookup while the pattern itself still earns
+# its place -- see the note on `head-negspace` for the one case where that is load-bearing.
+STANDING_KEEPS = {
+    "head-negspace": "0 true / 8 keeps on committed prose across 41 firings, and the four "
+                     "firings that called it 'not worth a firing' were right about the "
+                     "ranking. DO NOT demote or retire it anyway: it has caught THIS TASK'S "
+                     "OWN DRAFT twice (2026-09-18 chain_pattern_particles, 2026-09-19 "
+                     "sound_paths -- both headings written while fixing a heading fault), "
+                     "and it only caught them because the board number moved. Weight 0 "
+                     "would keep the --why row and lose the catch. The eight keeps are "
+                     "genuine limitation and troubleshooting headings, which is a shape "
+                     "documentation needs: manifold.md x2, alife_examples.md 'What local "
+                     "steering cannot do', geometry_from_disk.md 'When it does not look "
+                     "right', solid_notation.md :639, chain_lambda_sound.md:69 'The "
+                     "scheduler does not change how long it takes' (a RESULT, not negative "
+                     "space), and CaSoundDocs.kt + LambdaSoundDocs.kt 'What it does not do' "
+                     "(both landed 2026-09-21; the content is a capability list). Recognise "
+                     "and move on.",
+}
+
 # Lexical patterns retired from the old scorer, with the reason. Do not re-add without
 # checking hit by hit: each of these was verified to be a false positive across the tree.
 RETIRED = {
@@ -532,6 +570,21 @@ def score(text):
                 continue
             if re.search(pat, title, re.I):
                 hit(name, w, lineno, title)
+        # 2026-09-21: the exact converse of the A' fix below, and it went unnoticed for as long.
+        # A' says "BODY_TELLS never looked at an admonition title ... a title is read as a
+        # heading; score it as one" -- but BODY_TELLS never looked at a *real* heading either,
+        # because `split_prose` routes `#` lines into `heads` and `continue`s. So
+        # `### Two conventions worth knowing before you tune a weight` (a textbook `worth-knowing`)
+        # and `### Fidelity, and the honesty check that is not optional` (`honest`) scored exactly
+        # 0, and an admonition wearing the identical words scored 5 and 6. Three true hits found
+        # the night this was added, no false ones; the families are the calibrated body families,
+        # so this adds no new vocabulary, only the surface it was always meant to cover.
+        #
+        # Inline code is replaced with a sentinel first, for the same reason section B does it.
+        head_text = re.sub(r"`[^`]+`", "§", title)
+        for name, pat, w in BODY_TELLS:
+            if re.search(pat, head_text, re.I):
+                hit("head-" + name, w, lineno, title)
 
     # A'. admonition titles carry the same faults, and Marc reads them as headings
     for a in admons:
@@ -831,6 +884,9 @@ def main():
                 print(f"  {r['path']}: {r['hits']}")
             sys.exit(1)
         print("\nOK: every target-voice page is at or under 12.")
+        print("\nStanding keeps (a nonzero score here is the detector working, not a fault):")
+        for k, v in STANDING_KEEPS.items():
+            print(f"  {k}: {v}")
         print("\nRetired patterns (do not re-add without a hit-by-hit check):")
         for k, v in RETIRED.items():
             print(f"  {k}: {v}")

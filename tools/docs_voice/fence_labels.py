@@ -56,6 +56,23 @@ _LABEL_HEAD_FAMILIES = {"head-stakes", "head-semicolon"}
 HEAD_TELLS = [(n, re.compile(p, re.I), w) for (n, p, w) in sv.HEADING_TELLS
               if n in _LABEL_HEAD_FAMILIES]
 
+# ...and not every label is in heading position. A `title`, a box `name`, a `.label()` or a
+# `subtitle` names a thing in a few words, so a semicolon inside one really is a heading trying
+# to be two headings. A `caption` or a `note` is the running sentence UNDER a figure, where a
+# semicolon is ordinary punctuation joining two clauses — "The box halves when h halves; the
+# sphere quarters." is the best line on tetgen.md.
+#
+# Measured 2026-09-21 over all 1477 labels in the tree, hidden and generated included: TEN carry
+# a semicolon and ALL TEN are a `caption` or a `note`. Zero `title`, `box-name`, `label` or
+# `subtitle` contains one. So this exemption cannot cost a true hit — there are none to lose —
+# and it retires the entire 5-page / 40-point hand board, of which three rows were marked
+# [BAKED INTO THE COMMITTED FIGURE] and would have cost a re-capture to "fix". The other seven
+# are `&middot;`-separated build counts that survive normalise() only where the entity is split
+# across a source line. head-stakes still applies everywhere: "you won't believe panel 3" is a
+# fault in a caption exactly as it is in a title.
+_CAPTION_KINDS = {"caption", "note", "footer", "legend", "tooltip"}
+_NOT_IN_CAPTIONS = {"head-semicolon"}
+
 
 def labels(text: str, include_hidden: bool = False):
     """Yield (lineno, kind, label_text) for every reader-visible label in a fence."""
@@ -106,6 +123,8 @@ def scan(text: str, include_hidden: bool = False):
             if pat.search(probe):
                 out.append((kind, lineno, name, w, label, baked))
         for name, pat, w in HEAD_TELLS:
+            if kind in _CAPTION_KINDS and name in _NOT_IN_CAPTIONS:
+                continue
             if pat.search(probe):
                 out.append((kind, lineno, "head:" + name, w, label, baked))
     return out

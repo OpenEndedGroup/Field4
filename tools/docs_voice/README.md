@@ -43,6 +43,8 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `embedded_prose.py` | prose emitted by box code | strings a box prints into its own output panel |
 | `fence_labels.py` | fence labels and notes | the same families in a figure's label |
 | `moves.py` | whole-page shapes | one rhetorical move repeated once per section — invisible sentence by sentence |
+| `self_narration.py` | page prose | a page describing its own drafting or reporting on the work of writing it, rather than describing its subject |
+| `test_census.py` | page prose and tables | a page enumerating what its tests assert, which belongs in `dev_docs/<SUBJECT>_MEASUREMENTS.md` |
 | `section_shape.py`, `shape_census.py` | page structure | how much of a page is verification rather than use |
 | `check_anchors.py` | `](#slug)` links | in-page links to headings that no longer exist |
 | `check_links.py` | relative links | targets that do not resolve |

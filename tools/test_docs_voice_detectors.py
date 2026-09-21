@@ -110,5 +110,51 @@ class TargetVoice(unittest.TestCase):
         self.assertEqual(total, 0, f"fired on plain documentation prose: {dict(hits)}")
 
 
+class Narrowings(unittest.TestCase):
+    """Both directions of the narrowings a firing paid to derive.
+
+    A narrowing is the one edit shape this suite's docstring names as most dangerous: it
+    is made to kill a false positive, and it is trivially over-applied into a pattern that
+    matches nothing. Each case below pins the false positive *staying* dead AND the true
+    sense staying reachable, so a later widening and a later over-narrowing both fail here
+    rather than in a ledger entry six firings on.
+    """
+
+    def test_argument_is_only_a_label_when_it_is_an_argument_for_something(self):
+        sv = load("score_voice")
+        # 2026-09-21: ten of the twelve `the argument` in public/docs are a call's
+        # argument. This one is an interaction-net port table, and it used to score.
+        prog = "`aux(1)` is the argument, and `aux(0)` is where the result comes back out.\n"
+        self.assertEqual(
+            sv.score(prog)[0], 0,
+            "`is the argument` fires on the programming term again; check the `for` lookahead")
+        # NOT "That is the argument for ...", which the family's own `(?<!that )` lookbehind
+        # blocks whatever `argument` does -- the ledger recorded that sentence as this
+        # narrowing's regression check and it never fired either way.
+        rhetorical = "The deciding factor is the argument for deriving the count.\n"
+        self.assertGreater(
+            sv.score(rhetorical)[0], 0,
+            "the rhetorical `the argument for <doing something>` is no longer reachable")
+
+    def test_a_semicolon_is_punctuation_in_a_caption_and_two_headings_in_a_title(self):
+        fl = load("fence_labels")
+
+        def semicolons(arg):
+            """`fence_labels` reads labels out of a fence BODY, not out of its header."""
+            fence = "```diffstatic {data-lang=kotlin}\nchart(%s)\n```\n" % arg
+            return [h for h in fl.scan(fence) if h[2] == "head:head-semicolon"]
+
+        # All ten semicolon-carrying labels in the tree are captions, where a semicolon
+        # joins two clauses of a running sentence. In a title it is a heading split in two.
+        self.assertEqual(
+            semicolons('caption = "The box halves when h halves; the sphere quarters."'), [],
+            "head-semicolon fires inside a caption again; three rows it would flag are "
+            "baked into committed figures and would cost a re-capture to 'fix'")
+        self.assertTrue(
+            semicolons('title = "Loading a mesh; what the loader refuses"'),
+            "head-semicolon no longer reaches a title, which is the only place it ever "
+            "meant anything")
+
+
 if __name__ == "__main__":
     unittest.main()
