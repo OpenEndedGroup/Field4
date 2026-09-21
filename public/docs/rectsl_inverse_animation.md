@@ -390,7 +390,7 @@ A wrong derivative is worse than no derivative, so the lowering never guesses. `
 `closable` is borrowed from the stdlib's own `FnOpStatus`, and it separates two facts a reader has to
 be able to tell apart: **not yet written**, and **no correct lowering exists**.
 
-| refused | closable? | why, and what it would take |
+| refused | closable? | why |
 | --- | --- | --- |
 | `mod` | yes | not for want of a sign primitive — `trunc(z) = s·floor(z) − (1−s)·floor(−z)` with `s` the exact step is exact at every double. What defeats it is that Kotlin's `%` on doubles is the *exact* remainder, and `a − b·trunc(a/b)` is a different function once the quotient outgrows 53 bits: `1e17 % 3` is `1.0` and the reconstruction says `0.0`, silently, *as a zero* — indistinguishable from the near-zero guard having fired. A constant pair still folds. |
 | `bounce-*` easings | yes | four parabolic arcs, each join needing its own clamped ramp. Expressible with the machinery above; not yet expressed. |
@@ -405,8 +405,8 @@ infinity is ever created to be masked. Adding `−0.0` then repairs the sign of 
 numerator lowers to `−0.0` where the sampler says `0.0`, and a signed zero is enough to spin a
 `->face-travel` rect through half a turn.
 
-A row leaves that table by being tried, not by being argued with: `missing` names what a lowering
-would take, and the way to close it is to write the lowering and compare it against the sampler.
+For a `closable` row, `missing` names what a lowering would take, so a refusal tells you what to
+write rather than only that you cannot proceed.
 
 The fitter has a matching refusal. A staircase's derivative really is zero, so a parameter reachable
 *only* through a `floor`, a gate or a hold has no path to the value at all — present in the graph and
