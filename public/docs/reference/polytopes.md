@@ -1497,7 +1497,7 @@ A partition of the elements into classes that combinatorially indistinguishable 
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CombinatorialOrbitsSummary</span><span class="p">(</span><span class="k">val</span> <span class="n">vertexClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">faceClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fullyTransitive</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/polytope/Symmetry/#L77)
 
-Compact inspection value; the class *sizes* are the interesting fact at a live-coding prompt.
+Compact inspection value: the class *sizes* on their own, short enough to read at a live-coding prompt.
 
 | Declaration | Summary |
 | --- | --- |

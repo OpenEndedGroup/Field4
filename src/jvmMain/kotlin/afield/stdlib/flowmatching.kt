@@ -41,8 +41,8 @@ import kotlin.random.Random
  * val threads = field.paths(80)                         // the trajectories, as FLines
  * ```
  *
- * With a `from` cloud supplied it becomes a morph instead of a generator, and then [FlowMatchField.transport]
- * is the interesting call: it runs the ODE only part-way, so `transport(a, to = 0.5)` is a genuine
+ * With a `from` cloud supplied it becomes a morph instead of a generator, and
+ * [FlowMatchField.transport] runs the ODE only part-way: `transport(a, to = 0.5)` is a genuine
  * half-way shape rather than a vertex-wise average of two point lists.
  *
  * ```kotlin
