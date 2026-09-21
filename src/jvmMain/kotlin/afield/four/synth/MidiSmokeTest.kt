@@ -33,11 +33,24 @@ expect:
 /** Runs the Standard MIDI File smoke checks; `main` is the `synth.midi-file.smoke` entrypoint. */
 object MidiSmokeTest {
 
+    /**
+     * The `synth.midi-file.smoke` entrypoint. An optional first argument is a directory to write
+     * into; without one the run works in a temp directory and deletes it. Throws when a check
+     * fails, so the runner sees a non-zero exit.
+     */
     @JvmStatic
     fun main(args: Array<String>) {
         check(runTests(args.firstOrNull()?.let(::File))) { "Midi smoke tests failed" }
     }
 
+    /**
+     * Runs every check in turn and reports whether they all passed, printing `Midi smoke tests
+     * passed` on success and the first failure's stack trace otherwise.
+     *
+     * Files go to [outputDirectory] when one is named and to a temp directory that is deleted on
+     * the way out when one is not. Naming one also regenerates the committed piano-roll figure; a
+     * CI run names none, so it writes nothing into the repository.
+     */
     fun runTests(outputDirectory: File? = null): Boolean {
         val dir = outputDirectory ?: Files.createTempDirectory("afield-midi-smoke").toFile()
         return try {
