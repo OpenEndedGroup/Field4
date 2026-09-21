@@ -697,11 +697,9 @@ the image is that box's own output area. The ToyCar figure depends on a committe
 `assets/fabricate_demo/ToyCar.glb`, so if that file is ever replaced, this page's counts and
 `MeshFromDiskTest` go wrong together.
 
-Every number quoted on this page is asserted as an exact value: the ToyCar counts, the fidelity table
-row by row, the `84 + 50n` STL size, the five shading counts, and the fact that `.step` fails. They
-live in `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, sixteen tests, with `MeshIoTest.kt`
-covering the OBJ/STL readers themselves: quads, negative indices, the `solid`-prefixed-binary sniff
-trap, uv survival.
+Every number quoted on this page is asserted as an exact value in
+`src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, with `MeshIoTest.kt` covering the OBJ/STL
+readers themselves: quads, negative indices, the `solid`-prefixed-binary sniff trap, uv survival.
 
 ??? aside "Forcing these captures to re-run"
     A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
