@@ -239,7 +239,7 @@ support: for two sites at `p_i`, `p_j` with weight ratio `k = w_j/w_i`, the Apol
 centred at `(k² p_i − p_j) / (k² − 1)`, and that is asserted against `arc.support.center` on every
 build.
 
-### Watch the bisector bow
+### Sweeping one site's weight
 
 Three still panels at three weights cannot show the bisector becoming a circle; the transition is
 between them. Here is the same construction with one number swept: site 1's weight, from 1.0 up to
