@@ -30,7 +30,33 @@ import afield.ml.type.TPVar
 import afield.ml.type.TPWildcard
 import afield.ml.type.TPattern
 
+/**
+ * The last stage of the FieldML front end: the typed tree becomes the [CoreExpr] tree the evaluator
+ * walks.
+ *
+ * Almost all of it is a rename. Each case of the typed tree has one case in the core tree, the
+ * inferred type is copied across, and the source range is dropped. Two things inference needed go
+ * no further: a `let`'s parameter list, which by this point is the lambda sitting in its value,
+ * and a constructor's type scheme, which reduces to the name and arity [CoreConstructor] keeps.
+ *
+ * The one real transformation is currying. A lambda written `fun x y -> ...` becomes two nested
+ * one-parameter [CLam] nodes, so the evaluator only ever binds one parameter at a time. Each of
+ * those nodes carries its own type and they are different types: the outer node's is the whole
+ * arrow, the inner node's is the arrow that starts at the second parameter. So the lowering walks
+ * the arrow outside in, one step per parameter, keeping the type each parameter starts from, and
+ * then builds the nodes from the innermost parameter back out.
+ *
+ * Nothing here reports anything. A tree that reaches this stage has already been typed, so there is
+ * no result to check: [FieldMLCompiler] runs the lowerer and returns what comes back.
+ */
+
+/**
+ * Turns a typed tree into the core tree the evaluator runs.
+ *
+ * An instance holds no state, so one will lower any number of trees.
+ */
 class Lowerer {
+    /** The [CoreExpr] equivalent of [expr], with its lambdas curried and its ranges dropped. */
     fun lower(expr: TExpr): CoreExpr =
         when (expr) {
             is TExprInt -> CInt(expr.value, expr.type)
