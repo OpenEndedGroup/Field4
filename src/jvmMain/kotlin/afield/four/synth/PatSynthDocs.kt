@@ -31,8 +31,7 @@ expect:
  *
  * **Block size does not change the output.** The same bar rendered at 64, 128, 512 and 1024 frames
  * per block comes back bit-identical. A scheduler that started each note at the top of the block it
- * fell in would pass every level and onset check here and fail this one, which is the whole reason
- * it exists.
+ * fell in would pass every level and onset check here, and fail this one.
  *
  * **The seam voice is the offline voice.** [patRenderStereo] and [patSynthRenderStereo] are asked for
  * the same bar, and their onset counts and levels are compared. The two are not bit-identical: the
@@ -41,7 +40,14 @@ expect:
  *
  * **The band analysis separates a kick from a hat.** [BandSplit] over a kick-only render and a
  * hat-only render has to order its low and high bands opposite ways round. That is the smallest claim
- * that says the filters are filtering, and it is what the GPU half of the chain reads.
+ * that says the filters are filtering, and it is the property anything driving a display off
+ * [BandSplit] rests on.
+ */
+
+/**
+ * The three scenes, the three scheduler checks, and the renderer that writes the `.wav`s out.
+ *
+ * [SCENES] is the gallery in order; [BLOCK_SIZES] is the sweep the invariance check runs.
  */
 object PatSynthDocs {
 

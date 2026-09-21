@@ -71,7 +71,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 20 |  |  |
 | [CandidateBoard.kt](audio-ai.md#candidateboard-kt) | Audio AI | 1 | 1 | The candidate board: the instrument for choosing between the alternatives a generation produced. |  |
 | [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 42 | 40 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
-| [CaSoundDocs.kt](patterns.md#casounddocs-kt) | Patterns | 13 | 11 |  |  |
+| [CaSoundDocs.kt](patterns.md#casounddocs-kt) | Patterns | 13 | 11 | A cellular automaton as a rhythm, by way of the pattern language's own inverse parser. |  |
 | [CeresExpression.kt](solvers.md#ceresexpression-kt) | Solvers | 77 | 44 | Residuals written in Kotlin, compiled to a little register machine, and differentiated exactly by Ceres. |  |
 | [CeresGeometry.kt](solvers.md#ceresgeometry-kt) | Solvers | 351 | 104 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
 | [CeresRealization.kt](polytopes.md#ceresrealization-kt) | Polytopes | 20 | 15 | Optional bridge: run a `RelaxationPlan` on the native Ceres solver instead of the built-in one. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
@@ -177,7 +177,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | [H2DomainAdapters.kt](visualization.md#h2domainadapters-kt) | Visualization | 1 | 1 | `.h2` adapters for the Field types where the *reflective* default in `H2Reflect.kt` reads badly. |  |
 | [H2Reflect.kt](visualization.md#h2reflect-kt) | Visualization | 0 | 0 | The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by every surface that shows them. |  |
-| [HeadTrackedSpatial.kt](patterns.md#headtrackedspatial-kt) | Patterns | 24 | 16 |  | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md) |
+| [HeadTrackedSpatial.kt](patterns.md#headtrackedspatial-kt) | Patterns | 24 | 16 | The seam between a tracked head and `patSpatial`'s listener. | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md) |
 | [HeadTrackedSpatialSmokeTest.kt](patterns.md#headtrackedspatialsmoketest-kt) | Patterns | 2 | 1 |  |  |
 | [heatmap.kt](visualization.md#heatmap-kt) | Visualization | 6 | 6 | A rectangular array of numbers as a colour-mapped picture in a box output, in one call. |  |
 | [HostBridge.kt](languages.md#hostbridge-kt) | Languages | 29 | 29 | How a FieldML box calls Kotlin: `hostCall`, `hostNew` and `hostGet` all arrive here, and so does a `.field` read on a host value. |  |
@@ -304,7 +304,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatSpatialSmokeTest.kt](patterns.md#patspatialsmoketest-kt) | Patterns | 2 | 1 |  |  |
 | [PatSpatialSoundDocs.kt](audio.md#patspatialsounddocs-kt) | Audio | 23 | 23 | The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches. |  |
 | [PatSynth.kt](patterns.md#patsynth-kt) | Patterns | 47 | 24 | A pattern on the audio seam: `pat(...)` driving Field's own voices in realtime. | [A pattern that moves particles](../chain_pattern_particles.md) |
-| [PatSynthDocs.kt](patterns.md#patsynthdocs-kt) | Patterns | 8 | 5 |  |  |
+| [PatSynthDocs.kt](patterns.md#patsynthdocs-kt) | Patterns | 8 | 5 | The scenes and the checks for `patSynth`, the pattern scheduler that sits on the audio seam. |  |
 | [PatTranscription.kt](patterns.md#pattranscription-kt) | Patterns | 74 | 25 | Recovered audio, written back out as notation Field can re-render. |  |
 | [PatTranscriptionCorpus.kt](patterns.md#pattranscriptioncorpus-kt) | Patterns | 78 | 28 | A corpus that scores a transcription against the notation that generated the audio. |  |
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 | The figure that makes the round trip something you look at rather than read about. |  |
