@@ -889,7 +889,7 @@ differs is *which* reaction fires at each beat, and there is real choice about t
 visit different intermediate graphs and different peak sizes on the way to one answer. The box prints
 its own verdict per row — `one answer: true` when the four de Bruijn keys agree with each other *and*
 with `referenceNormalOrder`, and `identical pose: true` when the four final layouts are point-for-point
-equal. That second claim is the hard one to make honestly, because `Net.relax` is 2D and path-dependent:
+equal. That second claim is the hard one, because `Net.relax` is 2D and path-dependent:
 four isomorphic graphs draw four different ways and the picture then claims the opposite of the theorem.
 The final pose is therefore a three-round Weisfeiler-Leman refinement — a node's label is its type folded
 with its neighbours' labels, in **port order** — so the ordering is a structural invariant and nothing
@@ -1638,7 +1638,7 @@ its `mainLanguage` property is what makes the four boxes below Python. This one 
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
 started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
 
-It is also the one scene CI barely covers, and it is worth knowing which part is yours to check.
+It is also the one scene CI barely covers.
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells** — they are
 not Kotlin, and the harness now says so rather than reporting every word as an unresolved reference —
 so one box of five is verified by the build. Driven by hand against a real interpreter on 2026-09-19
@@ -2406,9 +2406,9 @@ around your own. The learned half is a Deep Sets interaction,
 `a = phi(v, SUM psi, MEAN psi)`, about a thousand parameters fitted by reverse-mode autodiff, which
 Smile cannot express because the gradient runs through a sum over a variable-length set.
 
-Worth knowing before you read anything into the picture: the right flock looking like the left one is
-not evidence. Almost any attraction-and-repulsion rule with a speed limit produces something an
-audience accepts. The numbers that mean something are in the smokes —
+The right flock looking like the left one is not evidence. Almost any attraction-and-repulsion rule
+with a speed limit produces something an audience accepts. The numbers that mean something are in
+the smokes —
 `four.neighbour-grid.smoke` checks the search against brute force as *sets* (a query that misses a
 tenth of its neighbours yields a force a few percent out and a flock that still flocks), and
 `four.shader-boids.smoke` grades both rules against a CPU brute force per particle.

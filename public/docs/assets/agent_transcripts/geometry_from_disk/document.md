@@ -14,15 +14,15 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-The round trip is worth doing once yourself, because what comes back is not what went out.
+What comes back from a file is not what went out, and this is the round trip that shows it.
 Nothing here writes into the repository: a temp directory, deleted at the end.
 
 ```edn [field-box id="disk_roundtrip" role="properties"]
-{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 52 "characters" 2570 "sha256" "2bbd8736edd8f1ed65f2e356d80c0f61af2747c0ed05a1d98c4f8fd9f8a06da5"}]}
+{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 52 "characters" 2571 "sha256" "b7df8f365974edea44df9db40d0329c04f92fd6b931ec6e18c942f29fdc34681"}]}
 ```
 
 ```kotlin [field-property box="disk_roundtrip" name="code" path="disk_roundtrip_code_.kt"]
-// The round trip is worth doing once yourself, because what comes back is not what went out.
+// What comes back from a file is not what went out, and this is the round trip that shows it.
 // Nothing here writes into the repository: a temp directory, deleted at the end.
 val dir = java.nio.file.Files.createTempDirectory("mesh-round-trip").toFile()
 val source = icosphereMesh(3, 1.0).withColor(0.3, 0.7, 1.0)

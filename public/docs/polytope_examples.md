@@ -878,7 +878,7 @@ sphere, the centroid of those tangency points is the origin, and every face is p
 specific object rather than a prettier relaxation, and for the polyhedra this library produces it is
 *the* object:
 
-!!! info "The guarantee"
+!!! info "When the canonical form is unique"
 
     For a convex polyhedron (by Steinitz's theorem, for any 3-connected planar graph) the canonical
     form **exists and is unique** up to Möbius transformations of the sphere. Pinning the tangency
@@ -1578,9 +1578,6 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   --command 'macro write polytope_conway_gallery --file dev_docs/agents/transcripts/polytope_conway_gallery.yaml' \
   --command 'macro run polytope_conway_gallery'
 ```
-
-All four are exercised by the transcript execution smoke, so their box bodies cannot rot
-silently.
 
 ## Limitations
 

@@ -26,7 +26,7 @@ expect:
  * device, so [DocsAudioProvenance] re-renders both on every build and holds them against the
  * numbers this file asserts.
  *
- * ## Why two clips of one notation, rather than one good one
+ * ## Why the two clips differ only in `voices`
  *
  * Polyphony cannot be demonstrated by a single clip. A recording of a chord and a recording of an
  * arpeggio sound different for reasons that have nothing to do with voices, so a reader has no way
@@ -40,7 +40,7 @@ expect:
  * once* box, which is where the shape of it came from. That box displays its two renders as players
  * in its own output; these two fences are how the same comparison reaches the page.
  *
- * ## The voice is one oscillator, and that is a measurement decision
+ * ## Why the voice is a single sawtooth
  *
  * The program here is **not** the detuned pair the rest of `faust.md` uses. The starting point's
  * chord box records why: two sawtooths 0.5% apart put a *beating pair* into the band the count is
@@ -48,7 +48,7 @@ expect:
  * thing the figure is for. A clip whose stated measurement is a peak count has to be a signal with
  * one partial per note.
  *
- * ## The band, and why a peak in it is a note
+ * ## Why a peak in this band can only be a note
  *
  * The smoke test counts spectral peaks between [BAND_LO_HZ] and [BAND_HI_HZ] during the first chord,
  * `[c4,ef4,g4]`. Its fundamentals are 130.81, 155.56 and 196.00 Hz and the lowest second harmonic in

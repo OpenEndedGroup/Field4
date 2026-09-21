@@ -567,7 +567,7 @@ Constructors validate aggressively: coordinates and weights must be finite, weig
 point indices distinct where the opcode requires it, and the `-1`/`PointId.ALL_POINTS` sentinel
 may only be used alone and only where a constraint allows it.
 
-### Two conventions worth knowing before you tune a weight
+### Weights are square-rooted, and compiling captures a pose
 
 **Weights are square-rooted.** Every native functor stores `s = sqrt(weight)` and multiplies its
 residual by `s`, so Ceres minimises `weight * residual^2`. A residual weight of `k` in the usual

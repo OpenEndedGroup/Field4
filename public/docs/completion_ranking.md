@@ -281,10 +281,10 @@ called-out member clears a page of uncategorised rows, and **below** what recenc
 you use still wins over what the author guessed. The numbers are `COMMON_MEMBER_BASE = 40` decaying
 `2` per position, against a category ceiling of `28` and a recency ceiling near `62`.
 
-The magnitude lives on **both** sides of the wire (`CommonMemberPrior.BASE`/`STEP` in Kotlin and
-`COMMON_MEMBER_BASE`/`COMMON_MEMBER_STEP` in JavaScript), and the build asserts the two agree, since a
-server that ranks members the client scores differently would be worse than no prior. The weights are
-under revision, so treat the four literals above as a snapshot and the *ordering* as the contract.
+The ordering is the contract and the four literals are its current tuning. The magnitude lives on
+**both** sides of the wire (`CommonMemberPrior.BASE`/`STEP` in Kotlin and
+`COMMON_MEMBER_BASE`/`COMMON_MEMBER_STEP` in JavaScript), and the build asserts the two agree, since
+a server that ranks members the client scores differently would be worse than no prior.
 
 The prior also covers a gap recency cannot: **recency is `localStorage`.** It is empty for a new user,
 empty in a fresh browser profile, and empty in every test, because the harness clears it. So the term

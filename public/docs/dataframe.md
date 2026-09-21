@@ -21,7 +21,7 @@ people.age            // resolves. Not people["age"], not a cast, not a generate
 
 The typing does not survive a compile boundary, though, and `typed()` is the call that gets you across. The sections below cover the shape that works, where the boundary falls, and why it falls there.
 
-!!! tip "Run it, don't read it"
+!!! tip "This page as a document you can open"
     Everything here is in the shipped, replayable example `dataframe_typed_columns` — four boxes, in the [Agent Transcript Gallery](agent_transcripts.md).
 
 ---

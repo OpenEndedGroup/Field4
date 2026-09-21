@@ -2881,7 +2881,7 @@ val center = fline {
 lines(listOf(poly, center), w = 420.0, h = 260.0, fitToSize = true)
 ```
 
-## Java2D bridge (advanced but incredibly useful)
+## Java2D bridge
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2926,7 +2926,7 @@ val hitPts = polylineFrom(hits.map { it.v2 }).apply {
 lines(listOf(circle, diag, hitPts), w = 420.0, h = 320.0, fitToSize = true)
 ```
 
-## Bonus: the tiny path mini-language `data(format, parameters)`
+## The tiny path mini-language `data(format, parameters)`
 
 ```diffstatic {data-lang=kotlin}
 :::static

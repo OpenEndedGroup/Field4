@@ -447,16 +447,10 @@ a live-coding environment: a slow first compile is a warm-up, whereas a missing 
 | `FaustEngine.warmInBackground()` | pay the cold start early |
 | `FaustEngine.libfaustVersion()` | which compiler is actually loaded |
 
-Five tests cover this, and they assert the vendored compiler's behaviour as well as Field's, so a
-version bump that changes anything cannot pass unnoticed:
-
-| | |
-|---|---|
-| `synth.faust.smoke` | compile, UI metadata, diagnostics, render, parameter writes, meters, mono fan-out, effects (the input path), block diagram, render speed |
-| `faust.editor-extension.workout` | the shipped `faust.js` under node against the shipped vocabulary — regions, tokenizer, lexical diagnostics, qualified completion, the line arithmetic from both ends |
-| `faust.box.controls` | the compiler reached from inside a real box, generated controls, offline render into an output area |
-| `faust.box.compile-error` | a bad program's line survives the trip, and the compiler recovers afterwards |
-| `synth.faust.poly` | the polyphonic path — control discovery and its refusal, onset timing, pitch, the spectral polyphony check, patterned parameters, voice allocation and stealing, audio-thread allocation, real-time budgets |
+Field's Faust smokes assert the vendored compiler's behaviour as well as Field's own, so a version
+bump that changes either cannot pass unnoticed. Which smoke covers what — the compiler and its
+diagnostics, the editor extension under node, the box path, and the polyphonic layer — is in
+`dev_docs/FAUST_MEASUREMENTS.md`.
 
 What none of them covers is the launch itself: a box staying lit while sound comes out of a speaker.
 That is the generic audio return-value path, and it needs an audio device.

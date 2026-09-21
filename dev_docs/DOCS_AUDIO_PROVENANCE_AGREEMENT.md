@@ -60,39 +60,48 @@ drives over the backdoor, and correlates the result against the committed bytes.
 
 The corpus audit prints its whole table: `run_field_tests.py --id synth.docs.audio.provenance`.
 
-### The family counts are pinned here, and `sound.md` restates them
+### The family counts, and the only place they are written down
 
 `DocsAudioProvenanceGuardTest` asserts both the total and the per-family split:
 
 | family | pinned count |
 |---|---|
-| `STAND_IN_SYNTH` | 37 |
+| `STAND_IN_SYNTH` | 40 |
 | `DIRT_SAMPLES` | 1 |
 | `MIXED_SAMPLES_AND_STAND_IN` | 1 |
 | `DOUGH_DSP` | 7 |
 | `FAUST` | 3 |
 | `DOUGH_WASM` | 2 |
-| **total (`EXPECTED_FENCE_COUNT`)** | **51** |
+| **total (`EXPECTED_FENCE_COUNT`)** | **54** |
 
-The guard's failure message says, in as many words, that `sound.md` states these counts in
-prose — which makes the page a second copy with no assertion behind it.
+This table is a transcription of the assertion and has itself been stale: it read 37 and 51 from
+2026-09-16 until 2026-09-21, while the guard asserted 40 and 54. Read the test, not this table,
+when the two disagree.
+
+`sound.md` no longer restates any of it. It states the one thing a reader listening to the site
+acts on — that three quarters of the audio is the stand-in — and cites this note for the rest.
 
 ## Open
 
-- **`sound.md`'s census has now gone stale twice**, and nothing catches it. It was re-measured on
-  2026-09-16 by `bd64dcdad` against 51 across eight pages, having read "forty-three clips across
-  five pages" — and a concurrent pass that same night independently corrected it to 49 across
-  seven, which was *also* wrong by the time it was written, because `pat_spatial.md` had just
+- **The census went stale three times on `sound.md` and once here**, and nothing catches it. It was
+  re-measured on 2026-09-16 by `bd64dcdad` against 51 across eight pages, having read "forty-three
+  clips across five pages" — and a concurrent pass that same night independently corrected it to 49
+  across seven, which was *also* wrong by the time it was written, because `pat_spatial.md` had just
   added the `DOUGH_WASM` family. Two passes, one night, two different wrong answers to a question
-  the guard already knows the answer to.
+  the guard already knows the answer to. The table above then sat at 51 for five more days.
 
-    **The guard does not read those numbers off the page**, so this will happen again the next time
-    `EXPECTED_FENCE_COUNT` moves. An assertion that scrapes the page's own table against the family
-    map is the fix and would be cheap: the table's first column is the count and its second names
-    the family. Until then, anyone editing that table should read `EXPECTED_FENCE_COUNT` rather
-    than counting.
+    **The guard does not read those numbers off any page**, so a copy anywhere goes stale the next
+    time `EXPECTED_FENCE_COUNT` moves. On 2026-09-21 the copy on `sound.md` was deleted rather than
+    re-synchronised, which removes the recurrence there; this note's table is the remaining copy and
+    is marked as a transcription above. An assertion that scrapes it against the family map is still
+    the cheap fix.
 - **"All of them currently score 1.0000" is printed, not asserted.** The page carried this as a
   count — "all forty-one", corrected to "all fifty-one" by `bd64dcdad` — and the count was the
   third number in the same paragraph with nothing behind it. The assertion is against
   `REPRODUCIBILITY_FLOOR`; the tally of how many currently sit at 1.0000 is output. The sentence is
   gone from the page rather than corrected again.
+- **`marf.md` has no clip, and the figures on it are geometry.** A `MarfReader`'s output is a
+  control signal rather than a note stream, so the clip worth having is one voice whose gain, pan
+  and filter are three readers over one bank. That needs a registered offline renderer for the
+  control-signal path, which does not exist. Moved here from the page on 2026-09-20: which
+  renderers the docs build happens to have is not something a reader of `marf.md` acts on.

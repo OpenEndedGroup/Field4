@@ -18,27 +18,15 @@ Those are the five stages of `(λx. x x) (λy. y)`, the smallest term that shows
 
 Before you build on `normalise`: closed terms are the contract, because a free variable that gets duplicated reads back as an agent id rather than as its name. A term with no normal form does not terminate, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. And `Run.steps` counts betas, fan meetings and erasures alike, so it is not a β-step count and not comparable to one.
 
-It does not depend on the scheduler, though. The reaction count is the same under every `ActivationOrder`, on every term measured, and so is the multiset of rules fired. [A λ-term you can hear](chain_lambda_sound.md) is the measurement — 100 reductions over the corpus, plus the four counterexamples below — and the reason, which is that interaction nets are strongly confluent.
+How long it takes does not depend on the scheduler. Over the 25-term corpus the reaction count is the same under every `ActivationOrder`, and so is the multiset of rules fired, because interaction nets are strongly confluent. [A λ-term you can hear](chain_lambda_sound.md) is where that is measured and drawn.
 
-What is checked, and how: `readback(reduce(compile(t)))` is asserted α-equivalent to a plain capture-avoiding normal-order evaluator over a named corpus of 25 closed terms — Church numerals with `succ`, `add`, `mul` and `pred`, Church booleans with `if`, `S`/`K`/`I`, terms whose reduction copies a redex, and terms that erase an argument — and the same normal form is asserted across four `ActivationOrder`s, since the scheduler is a free choice and the answer must not be one. That is `stdlib.lambda-terms.smoke`. Over the corpus it takes 228 net reactions against the evaluator's 117 β-steps; those are two different units and neither is the word *optimal*.
+## Where the sharing is wrong
 
-## The sharing is right on the corpus and wrong in general
+The sharing is correct over that corpus and it is not correct in general. The clean line is by type: the property harness has never found a simply-typed closed term that disagrees, under any scheduler. Self-application, and an erasing abstraction under duplication, are exactly the shapes simple types forbid. This is not Lamping's optimal reduction — there are no brackets and no croissants — and without that bookkeeping a distinct label per fan is not enough once reduction starts copying the labels.
 
-The sharing is correct over that 25-term corpus. It is not correct in general, and since 2026-09-19 a second test says so with a population rather than an adjective.
+Outside that line, the trap is that **a wrong answer does not always announce itself.** Some disagreements read back with a `⊥` you can see. Others are an ordinary-looking term with one variable occurrence out of scope and no mark of any kind, so a clean-looking readback of an untypable term is not a checked answer.
 
-`stdlib.lambda-terms.property` generates closed terms from a seed instead of taking a hand-written list, and runs the same oracle identity over them: 4 000 simply-typed terms and 300 untyped ones, each under four schedulers, 17 200 checks. Four of those are a **wrong answer carrying no warning mark of any kind**, which is the case worth separating out — a marked answer at least tells you not to trust it. The smallest of the quiet four:
-
-| | |
-|---|---|
-| term | `(\m n f x. f (f x)) (\f. f) (\x. x) ((\n f x. f (n f x)) (\n f x. n f x))` |
-| correct | `λx. λx'. x (λx'1. x (λx''. x (λx''. x x' x'') x'') x'1)` |
-| net | `λa. λb. a (λc. a (λd. a (λe. a b e) d) e)` |
-
-One variable occurrence is wrong, and out of scope. Nothing in the answer says so.
-
-The smallest disagreement of *any* kind is smaller — twelve nodes and four β-steps, `(\x z. x z x) (\x y. y y)`, where a duplicated abstraction that erases its own argument loses one copy of the answer to the eraser. But that one reads back as `λa. λb. b ⊥`, so it announces itself, and it is the easy case. Four counterexamples are pinned as named regressions, two quiet and two marked, and the four schedulers disagree with *each other* on 9 of the 4 300 generated terms — so confluence is a property of the corpus too, and not of the rule book.
-
-The one clean line to draw is by type: **not one of the 4 000 simply-typed terms disagrees, under any scheduler.** Self-application, and an erasing abstraction under duplication, are exactly the shapes simple types forbid. This is not Lamping's optimal reduction — there are no brackets and no croissants — and without that bookkeeping a distinct label per fan is not enough once reduction starts copying the labels. `dev_docs/INTERACTION_NETS_LAMBDA.md` has the whole ledger, the shrunk counterexamples, and what it would take to fix.
+`dev_docs/INTERACTION_NETS_LAMBDA.md` has the population, the pinned counterexamples and what it would take to fix.
 
 ## Beta bridge with swapped pair orientation
 

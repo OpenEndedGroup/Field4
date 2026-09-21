@@ -71,7 +71,7 @@ import afield.stdlib.sin
  * over pixels its gradient is additive — so [softRasterLossAndGradient] walks the image in row
  * chunks, one tape per chunk, and accumulates. Memory becomes a choice rather than a limit.
  *
- * # Fidelity, and the honesty check that is not optional
+ * # Fidelity between the two interpreters
  *
  * A second interpreter of the same graph is exactly the situation where a *slightly different
  * function* gets differentiated confidently. `autodiff_fn.kt` has a name for the guard against that
