@@ -6,9 +6,10 @@ worked examples an agent copies, runs, and adapts when [automating Field](automa
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
-search for it there and open an editable copy in your workspace. Four are not, and each says why in
+search for it there and open an editable copy in your workspace. Five are not, and each says why in
 its own entry: two are integration probes rather than scenes, and two are the halves of the
-graphics-topology rule — a renderer with nothing to draw, and a draw box with no renderer. Needing a
+graphics-topology rule — a renderer with nothing to draw, and a draw box with no renderer. The fifth,
+`mega_texture_wall`, needs both an external renderer and a directory of images you supply. Needing a
 gesture, a headset or a service is *not* on that list. A scene you have to click once, or point at a
 device you own, is still a scene.
 

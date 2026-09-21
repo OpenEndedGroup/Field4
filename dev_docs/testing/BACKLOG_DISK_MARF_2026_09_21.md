@@ -44,6 +44,9 @@ Moved the existing YAML, unchanged, from `agents/artifacts/marf_field_clocks/` t
 gallery entry, generated its starting-point bundle, and regenerated the completion
 manifest and guard census. Counts are now 144 transcripts, 81 in EXECUTE, and 139
 materialized starting points. The original real screenshots remain untouched.
+Final review also corrected the gallery introduction's pre-existing four-versus-five
+exclusion count: `mega_texture_wall` needs an external renderer and supplied images.
+The commit hook rechecks the index and citation contracts for that prose correction.
 
 The first documentation gate correctly failed: `displayClearAll` was still listed
 as compiled-but-never-evaluated, but the newly registered CPU-only transcript now
