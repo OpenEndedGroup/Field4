@@ -73,7 +73,7 @@ data class CombinatorialOrbits(
         get() = vertexClassCount == 1 && edgeClassCount == 1 && faceClassCount == 1
 }
 
-/** Compact inspection value; the class *sizes* are the interesting fact at a live-coding prompt. */
+/** Compact inspection value: the class *sizes* on their own, short enough to read at a live-coding prompt. */
 data class CombinatorialOrbitsSummary(
     /** Sizes only, in class order. Which elements are in which class is not recoverable from here. */
     val vertexClassSizes: List<Int>,
