@@ -914,6 +914,33 @@ private fun <A> marfFieldEventCount(pattern: PatPattern<A>, cycle: Long): Int =
     pattern.events(PatArc(PatQ.of(cycle), PatQ.of(cycle + 1))).size
 
 /**
+ * The **value-bearing** instants in cycle [cycle] of [pattern]: its distinct onsets, or the cycle's
+ * own start when it has none.
+ *
+ * What [marfFieldSteps] was before it grew to include event *ends*, and kept separately rather than
+ * folded into it, because the two counts answer different questions and using one for both is a bug
+ * in each direction:
+ *
+ * - [marfFieldSteps] asks **where do stages fall**, so a rest is a step: it is a stage that holds.
+ * - This asks **how many values did the author write**, which is what [marfCheckFieldClock] refuses
+ *   on. A rest carries no value, so discarding one loses nothing an author could observe.
+ *
+ * Measured, when they were briefly the same function: refusing on boundaries made
+ * `MarfFieldClock.STAGES` reject `"<0 3> ~"` — one onset, one value, nothing discarded — and it
+ * made the *stack* check miss `"0 ~, 1"`, because `events > steps` compares two layers against a
+ * grid the trailing rest had just widened to two. Onsets restore both.
+ */
+private fun <A> marfFieldOnsets(pattern: PatPattern<A>, cycle: Long): List<PatQ> {
+    val c = PatQ.of(cycle)
+    val onsets = pattern.events(PatArc(c, PatQ.of(cycle + 1)))
+        .filter { it.hasOnset }
+        .map { it.arc.start }
+        .distinct()
+        .sorted()
+    return if (onsets.isEmpty()) listOf(c) else onsets
+}
+
+/**
  * The instant at which stage [index] reads [pattern], under [clock].
  *
  * Stateful for [MarfFieldClock.STEPS] only, because the `k`-th step of a pattern cannot be computed
@@ -999,7 +1026,7 @@ internal fun <A> marfCheckFieldClock(
 ) {
     if (!clock.isSequence) return
     for (cycle in 0L until MARF_FIELD_CHECK_CYCLES.toLong()) {
-        val steps = marfFieldSteps(pattern, cycle)
+        val steps = marfFieldOnsets(pattern, cycle)
         if (clock == MarfFieldClock.STAGES && steps.size > 1) {
             throw IllegalArgumentException(
                 "reader '$reader': the $field pattern puts ${steps.size} steps inside cycle $cycle " +
