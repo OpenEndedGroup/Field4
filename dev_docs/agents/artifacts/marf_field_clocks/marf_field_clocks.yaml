@@ -1,0 +1,220 @@
+name: marf_field_clocks
+description: >
+  Three blank-canvas boxes on MARF's field clocks, and the point is the pair: one box whose
+  patterns are REFUSED at construction with the new message printed in its output, and one whose
+  patterns are accepted and drawn. The material is not invented — it is the ten address spellings
+  one person actually tried across thirty-eight edit-and-run cycles in four minutes on the night
+  Marf.kt landed, every one of which used to be read in silence. Pure CPU: no Window, no Renderer,
+  no audio device. Replay into a fresh Field and execute each box.
+operations:
+
+  # ── 1 ── the refusal, watched firing ────────────────────────────────────────────────────
+  - create:
+      box: marf_clocks_refused
+      name: marf clocks — refused
+      # Laid out so the three output panels do not overlap on the canvas: this one is
+      # narrow and very tall (five refusal messages), so it owns the left column alone.
+      frame: { x: 60.0, y: 60.0, w: 430.0, h: 140.0 }
+      properties:
+        code: |
+          // Five of the ten address spellings from 03:38:58–03:42:10 UTC on 2026-09-21. Under
+          // MarfFieldClock.STAGES each was read at one instant per cycle, so a pattern with two
+          // steps in a cycle had one of them latched and the rest discarded — with no exception,
+          // no warning and no log line. Four of these five are now refused where you type them.
+          displayClearAll()
+          displayOpen("verdict")
+
+          val bank = marfValues(0, 1, 2, 3, 4)
+
+          val readOut: (String, MarfFieldClock) -> String = { spec, clock ->
+              runCatching {
+                  bank.read(pat(spec).nums(), fields = clock, name = "addr")
+                      .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+                      .take(8)
+                      .joinToString(" ") { s -> s.address.toInt().toString() }
+              }.fold({ seq -> "reads as `$seq`" }, { e -> "**REFUSED** — ${e.message}" })
+          }
+
+          val spellings = listOf("<0 3> 1", "1 <0 3>", "<0 3>*2", "<0 3>, 1", "<0 3>")
+
+          val body = StringBuilder()
+          body.append("## What `STAGES` now refuses\n\n")
+          spellings.forEach { spec ->
+              body.append("`address = \"$spec\"`\n\n")
+              body.append(": ").append(readOut(spec, MarfFieldClock.STAGES)).append("\n\n")
+          }
+          body.append("## The same five under `CYCLES`, which is exempt\n\n")
+          body.append("A field is a control voltage there, every pattern means something, and\n")
+          body.append("nothing below raises. This is the reading that was always safe.\n\n")
+          spellings.forEach { spec ->
+              body.append("- `\"$spec\"` ").append(readOut(spec, MarfFieldClock.CYCLES)).append("\n")
+          }
+
+          markdown("verdict", body.toString())
+
+  - execute:
+      box: marf_clocks_refused
+      property: code
+      type: fragment
+
+  # ── 2 ── the sequence the spellings look like, drawn ────────────────────────────────────
+  - create:
+      box: marf_clocks_steps
+      name: marf clocks — STEPS
+      # 1080x380 of line art, so it needs the full width of the right column.
+      frame: { x: 900.0, y: 60.0, w: 430.0, h: 140.0 }
+      properties:
+        code: |
+          // The other half. MarfFieldClock.STEPS subdivides each cycle of STAGES: a field
+          // contributes one stage per onset, and at least one per cycle. So "<0 3> 1" is the
+          // three-entry sequence it looks like rather than an error, and the bottom lane shows
+          // the property that makes STEPS a clock rather than a re-spelling of the address —
+          // the address and the duration walk their OWN grids, one entry each per stage.
+          displayClearAll()
+          displayOpen("lines")
+          displayOpen("key")
+
+          val bank = marfBank(
+              rampTo(0.1, 1.0), rampTo(0.9, 1.0), holdAt(0.45, 1.0),
+              oscTo(0.75, 1.0, cycles = 3.0), curveTo(0.2, 1.0, amount = 4.0)
+          )
+
+          val readers = listOf(
+              "<0 3>  STAGES" to bank.read(pat("<0 3>").nums(), fields = MarfFieldClock.STAGES, name = "a"),
+              "<0 3> 1  STEPS" to bank.read(pat("<0 3> 1").nums(), fields = MarfFieldClock.STEPS, name = "b"),
+              "<0 3> 1 2  STEPS" to bank.read(pat("<0 3> 1 2").nums(), fields = MarfFieldClock.STEPS, name = "c"),
+              "<0 3> 1 + dur <1 2>" to bank.read(
+                  pat("<0 3> 1").nums(),
+                  duration = pat("<1 2>").nums(),
+                  fields = MarfFieldClock.STEPS,
+                  name = "d"
+              )
+          )
+
+          val cycles = 12L
+          val W = 1000.0
+          val laneH = 74.0
+          val palette = listOf(
+              vec(0.45, 0.82, 1.0, 0.95),
+              vec(1.0, 0.60, 0.26, 0.95),
+              vec(0.52, 0.90, 0.52, 0.95),
+              vec(0.85, 0.62, 1.0, 0.95)
+          )
+
+          val out = mutableListOf<FLine>()
+          readers.forEachIndexed { lane, entry ->
+              val reader = entry.second
+              val top = 16.0 + lane * (laneH + 18.0)
+              // Dashed verticals are the stage boundaries the step grid laid out.
+              reader.stagesIn(PatArc(PatQ.ZERO, PatQ.of(cycles))).forEach { s ->
+                  val bx = 60.0 + (s.start.toDouble() / cycles) * W
+                  out += fline {
+                      moveTo(bx, top); lineTo(bx, top + laneH)
+                      stroked = true; thickness = 1.0; color = vec(0.40, 0.44, 0.54, 0.85)
+                  }
+              }
+              out += fline {
+                  moveTo(60.0, top + laneH); lineTo(60.0 + W, top + laneH)
+                  stroked = true; thickness = 1.0; color = vec(0.32, 0.35, 0.43, 0.9)
+              }
+              out += fline {
+                  for (i in 0..1200) {
+                      val t = i / 1200.0 * cycles
+                      val px = 60.0 + (t / cycles) * W
+                      val py = top + laneH - reader.value(t) * (laneH - 6.0)
+                      if (i == 0) moveTo(px, py) else lineTo(px, py)
+                  }
+                  stroked = true; thickness = 1.8; color = palette[lane]
+              }
+          }
+          lines(out, w = 1080.0, h = 380.0, fitToSize = true)
+
+          val key = StringBuilder()
+          key.append("**Twelve cycles, top to bottom.** The address each lane actually walked:\n\n")
+          readers.forEachIndexed { lane, entry ->
+              val seq = entry.second.stagesIn(PatArc(PatQ.ZERO, PatQ.of(cycles)))
+                  .take(8).joinToString(" ") { s -> s.address.toInt().toString() }
+              key.append("- `${entry.first}` — `$seq`\n")
+          }
+          key.append("\nThe top lane is the one spelling that was always read correctly. Lanes two\n")
+          key.append("and three are spellings that used to collapse onto it. The bottom lane is the\n")
+          key.append("same address as lane two against `duration = \"<1 2>\"` — two grids of different\n")
+          key.append("lengths, each advancing one entry per stage, which is why its boundaries fall\n")
+          key.append("in different places while its addresses match lane two's exactly.\n")
+          markdown("key", key.toString())
+
+  - execute:
+      box: marf_clocks_steps
+      property: code
+      type: fragment
+
+  # ── 3 ── the whole night, as a ledger ───────────────────────────────────────────────────
+  - create:
+      box: marf_clocks_ledger
+      name: marf clocks — the night's ten
+      # Below the figure, clear of both.
+      frame: { x: 900.0, y: 820.0, w: 430.0, h: 140.0 }
+      properties:
+        code: |
+          // All ten spellings, all three clocks, side by side. `operations.yaml` in the
+          // marf_demo document records these being tried one after another about five seconds
+          // apart. Read the STAGES column: eight of the ten are one of three sequences.
+          displayClearAll()
+          displayOpen("ledger")
+
+          val bank = marfValues(0, 1, 2, 3, 4)
+          val spellings = listOf(
+              "<0 3>", "<0 3> 1", "1 <0 3>", "<0 3>*2", "<0 3>!2",
+              "<0 3>, 1", "<0 3> 1*8", "<0 3> 1 2", "<0 3> <0 4>", "3 <0 3>"
+          )
+
+          val cell: (String, MarfFieldClock) -> String = { spec, clock ->
+              runCatching {
+                  bank.read(pat(spec).nums(), fields = clock, name = "l")
+                      .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+                      .take(8)
+                      .joinToString("") { s -> s.address.toInt().toString() }
+              }.fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
+          }
+
+          val table = StringBuilder()
+          table.append("| address | `CYCLES` | `STAGES` | `STEPS` |\n")
+          table.append("| --- | --- | --- | --- |\n")
+          spellings.forEach { spec ->
+              table.append("| `$spec` ")
+              table.append("| ").append(cell(spec, MarfFieldClock.CYCLES)).append(" ")
+              table.append("| ").append(cell(spec, MarfFieldClock.STAGES)).append(" ")
+              table.append("| ").append(cell(spec, MarfFieldClock.STEPS)).append(" |\n")
+          }
+
+          val stagesDistinct = spellings.mapNotNull { spec ->
+              runCatching {
+                  bank.read(pat(spec).nums(), fields = MarfFieldClock.STAGES, name = "l")
+                      .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8))).take(8).map { s -> s.address }
+              }.getOrNull()
+          }
+          val stepsDistinct = spellings.mapNotNull { spec ->
+              runCatching {
+                  bank.read(pat(spec).nums(), fields = MarfFieldClock.STEPS, name = "l")
+                      .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8))).take(8).map { s -> s.address }
+              }.getOrNull()
+          }
+          table.append("\n")
+          table.append("`STAGES` now accepts ${stagesDistinct.size} of the ten and reads ")
+          table.append("${stagesDistinct.distinct().size} distinct sequence(s) out of them. ")
+          table.append("`STEPS` accepts ${stepsDistinct.size} and reads ")
+          table.append("${stepsDistinct.distinct().size}. ")
+          table.append("The one neither can read is the stack, `\"<0 3>, 1\"` — two layers on one ")
+          table.append("instant, one latched value per stage, and no choice of clock recovers the ")
+          table.append("second. That is refused too, and says so rather than naming a mode that ")
+          table.append("would not help.\n")
+
+          markdown("ledger", table.toString())
+
+  - execute:
+      box: marf_clocks_ledger
+      property: code
+      type: fragment
+
+  - wait:
+      millis: 400
