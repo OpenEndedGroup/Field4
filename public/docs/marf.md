@@ -317,6 +317,20 @@ of one bank; that needs a registered offline renderer, which does not exist yet.
 
 ---
 
+## Running it
+
+There is a saved document that opens and runs all of this, four boxes over one bank:
+
+```diffstatic {data-lang=bash}
+./field.sh dev_docs/agents/demos -d marf_demo
+```
+
+Three of its boxes draw the figures above from live readers; the fourth plays one, sending the same
+bank through `patSpatial` so that a reader's output becomes a source's azimuth, its filter cutoff
+and its distance. `dev_docs/MARF_DEMO.md` is the note that goes with it.
+
+---
+
 ## Where the pieces are
 
 | | |
