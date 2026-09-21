@@ -255,6 +255,25 @@ class DocumentedApiEvaluationTest {
         "zeroInit" to
             "gpu_state.md; gpu_state is COMPILE_ONLY. Zero-initialised device-local storage is a " +
                 "residency choice made at allocation, so there is nothing to assert without a device.",
+        // Added 2026-09-21, and they arrived the same way the path-tracer instrument's five did:
+        // `marf_demo` and `skinned_characters` were promoted out of `dev_docs/agents/demos/` into
+        // the transcript corpus, and until then nothing in CI compiled either scene, so neither API
+        // was in this census at all. Both pages were already published and already teaching them.
+        // The two rows are deliberately NOT the same kind of row, which is the distinction this
+        // ledger exists to keep visible.
+        "gltfModelHere" to
+            "afield_four_graphics.md, geometry_from_disk.md; skinned_characters is COMPILE_ONLY " +
+                "because it opens a GLFW window and a Vulkan renderer. The call installs a loaded " +
+                "glTF into a live renderer's scene graph, so there is no device-free thing to assert.",
+        "displayClearAll" to
+            "funFeatures.md, visualizers.md; marf_demo is COMPILE_ONLY because its fourth box opens " +
+                "a realtime audio device. This row is a DEBT, not a hardware limit, and is written " +
+                "that way on purpose: Box.displayClearAll() is two lines in outputs.kt that send one " +
+                "'clear-all' output control, it needs no device, and the only reason CI does not run " +
+                "it is that the single transcript reaching it is classified by its noisiest box. The " +
+                "cheap fix is an EXECUTE transcript or jvmTest that opens two channels, clears all, " +
+                "and asserts both closed -- which nothing in the tree does for any of displayClear, " +
+                "displayClose or displayClearAll.",
     )
 
     // -----------------------------------------------------------------------------------------------

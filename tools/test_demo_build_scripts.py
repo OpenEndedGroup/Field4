@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hold each demo's `build.yaml` to the document it claims to have built.
 
-Nine of the twenty documents under `dev_docs/agents/demos/` ship an agent-authored
+Nine of the twenty-one documents under `dev_docs/agents/demos/` ship an agent-authored
 `build.yaml` beside the saved `metadata.edn`, and each one says, in its own description, some
 version of "this transcript is what built this document; re-running it rebuilds it". Nothing
 checked that. On 2026-09-18 the promotion sweep (`ad06001ac`) discovered by hand that two of the
@@ -27,6 +27,15 @@ than a count, so the next time this fires it says which document arrived; and wh
 `skinned_characters` — that it exists — is now separate from whether anything verifies it, which is
 `AgentDemoRegistrationTest`'s job and was nobody's.
 
+It fired again on 2026-09-20, exactly as designed and for the second night running: `bc71ed216`
+added `marf_demo`, the twenty-first, and this suite said so **by name** with the three remedies
+attached — against the previous night's useless `20 != 19`. The part worth carrying forward is not
+that the guard worked. It is that `bc71ed216`'s own commit message records its author checking this
+family by hand (*"`checkAgentTranscriptLayouts` scans demo documents and is not in the pre-commit
+guard"*) and re-running the guard they had noticed, while this one — the one wired into `check` via
+`checkPythonTools` — went unrun, because nothing runs `check` on commit. `main` then sat red for
+hours. A guard that only fires in a place nobody looks is a slower version of no guard.
+
 What this does NOT check: that re-running the script produces the same frames, names, graph
 topology or property set. Only the Kotlin, which is where every drift found so far has been, and
 which is the part that stops compiling. A full replay-and-compare is `checkAgentTranscripts`'
@@ -46,7 +55,7 @@ TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 DEMOS_ROOT = REPO_ROOT / "dev_docs" / "agents" / "demos"
 
-# The demo corpus, by name. Measured 2026-09-20: `ls -1d dev_docs/agents/demos/*/`.
+# The demo corpus, by name. Measured 2026-09-21: `ls -1d dev_docs/agents/demos/*/` — 21.
 #
 # This was a bare `assertEqual(20, len(demos))` until 2026-09-20. The count was not wrong — it is
 # the assertion that caught `skinned_characters` arriving from a sibling branch the night before,
@@ -66,6 +75,10 @@ CORPUS = {
     "interaction_nets_lambda",
     "keyframe_key_discovery",
     "logging_layer",
+    # Landed 2026-09-20 in `bc71ed216`, the twenty-first. Ships no `build.yaml`, so the nine below
+    # is unchanged. Its author ran `checkAgentTranscriptLayouts` by hand and missed this suite,
+    # which is wired into `check` — see the module docstring for why that is the interesting part.
+    "marf_demo",
     "midi_clip",
     "path_tracer_instrument",
     "path_tracing_emitters",

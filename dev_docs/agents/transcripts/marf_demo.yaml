@@ -1,0 +1,243 @@
+name: marf_demo
+description: |
+  **One bank of stages, read four different ways — three drawn, one heard.** A MARF *bank* is a
+  list of stages (a ramp, a step, a hold, an oscillation, a curve) with no position of its own. A
+  *reader* supplies the position: a pattern of slot addresses, read on a clock. Nothing about the
+  bank knows how many readers it has, or whether they are drawing or playing.
+
+  Box 1, `marf_readers`, is the picture of that: one bank, three readers, three lanes at one shared
+  time scale, so reading down a column compares the same instant. Box 2, `marf_path`, uses two
+  readers of one bank as `x` and `y` of a single FLine — the path stays coherent without the
+  coordinates being synchronised, because both read the same material. Box 3, `marf_vector`, shows
+  that a stage's value need not be a number: one `Vector3f` reader drawn as its three components,
+  with the stage boundaries falling in the same places in all three lanes because there is one
+  stage structure carrying three values. Box 4, `marf_sound`, sends three readers of the same bank
+  into `patSpatial` as azimuth, filter cutoff and distance.
+
+  **Why this is `COMPILE_ONLY` and not `EXECUTE`.** Box 4 ends on `patSpatial(voice, cps = 2.0)`,
+  which opens a realtime audio device through Dough and Steam Audio's HRTF path. That is not
+  something to start at 2am on a build machine, and a `patSynth` launch outlives the box that made
+  it. The other three boxes are pure CPU and would run happily; splitting them into a second
+  transcript would split the one point the document makes — that the bank does not know whether it
+  is being drawn or heard — across two files, so all four compile here instead.
+
+  The saved document at `dev_docs/agents/demos/marf_demo/` is this same scene, and the box bodies
+  below are byte-identical to its committed `<box>_code_.kt` sidecars. They carry no imports, on
+  purpose: `marfBank`, `Vector3f`, `FLine`, `PatArc` and `PatQ` all arrive through the default box
+  preamble (`intro` in `Boxes.kt`), and a transcript that added imports would be compiling a
+  different program from the one that ships.
+
+  **What this file claims, and what it does not.** It claims these four bodies still *compile*
+  against today's stdlib. It does not claim they still *behave* as their prose says: CI compiles
+  them with the terminal evaluation skipped, so a change that leaves every signature alone and
+  changes what a call does is invisible here by construction. The Marf surface these bodies depend
+  on is `marfBank`, `marfBankIn`, `MarfVector3f`, `rampTo`, `oscTo`, `holdAt`, `curveTo`,
+  `stageTo`, `MarfCurve.Smooth` / `.Exp` / `.Osc`, `MarfBank.read(value, duration, fields, name)`
+  with `MarfFieldClock.STAGES`, and the reader's `.value(t)`, `.stagesIn(PatArc(...))` and
+  `.signal()`. Two of the four boxes pass a multi-step alternation as a `STAGES` field pattern,
+  which is the idiom to check first if this file ever stops compiling.
+operations:
+  - create:
+      box: marf_readers
+      name: one bank, three readers
+      frame: { x: 60.0, y: 60.0, w: 340.0, h: 136.0 }
+      properties:
+        code: |
+          // One bank, three readers. The bank has no position of its own; the readers do.
+          displayClearAll()          // drop anything a previous run left on another channel
+          displayOpen("lines")
+          displayOpen("legend")
+
+          val b = marfBank(
+              rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
+              oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+          )
+          val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES, name = "A")
+          val c = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "B")
+          val g = b.read(saw().slow(8).range(0.0, 4.0), duration = constant(0.25), name = "glide")
+
+          // Three lanes at one shared time scale, so reading down a column compares the same instant.
+          // The dashed verticals are stage boundaries — the structure the pattern algebra laid out.
+          val cycles = 8L
+          val W = 1060.0
+          val laneH = 96.0
+          val palette = listOf(
+              vec(0.45, 0.82, 1.0, 0.95),
+              vec(1.0, 0.60, 0.26, 0.95),
+              vec(0.52, 0.90, 0.52, 0.95)
+          )
+
+          val out = mutableListOf<FLine>()
+          listOf(a, c, g).forEachIndexed { lane, reader ->
+              val top = 14.0 + lane * (laneH + 20.0)
+              reader.stagesIn(PatArc(PatQ.ZERO, PatQ.of(cycles))).forEach { s ->
+                  val bx = 20.0 + (s.start.toDouble() / cycles) * W
+                  out += fline {
+                      moveTo(bx, top); lineTo(bx, top + laneH)
+                      stroked = true; thickness = 1.0; color = vec(0.40, 0.44, 0.54, 0.85)
+                  }
+              }
+              out += fline {
+                  moveTo(20.0, top + laneH); lineTo(20.0 + W, top + laneH)
+                  stroked = true; thickness = 1.0; color = vec(0.32, 0.35, 0.43, 0.9)
+              }
+              out += fline {
+                  for (i in 0..800) {
+                      val t = i / 800.0 * cycles
+                      val px = 20.0 + (t / cycles) * W
+                      val py = top + laneH - reader.value(t) * (laneH - 6.0)
+                      if (i == 0) moveTo(px, py) else lineTo(px, py)
+                  }
+                  stroked = true; thickness = 1.8; color = palette[lane]
+              }
+          }
+          lines(out, w = 1100.0, h = 360.0, fitToSize = true)
+
+          markdown(
+              "legend",
+              """
+              **One bank, three readers** — eight cycles, top to bottom:
+
+              - <span style="color:#73d1ff">blue</span> — `read "<0 1 2 1 3 4>"`
+              - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 2 4 1 3>"`, each address held three stages
+              - <span style="color:#85e585">green</span> — `read saw slow 8`, a fractional address blending two slots
+
+              Same five stages in all three. Only the trajectory differs.
+              """.trimIndent()
+          )
+  - create:
+      box: marf_path
+      name: two readers as two coordinates
+      frame: { x: 440.0, y: 60.0, w: 340.0, h: 136.0 }
+      properties:
+        code: |
+          // Two readers of one bank as two coordinates. The path stays coherent without the
+          // coordinates being synchronised, because both read the same material on their own clocks.
+          displayClearAll()
+          displayOpen("lines")   // an unopened channel measures 0x0
+
+          val b = marfBank(
+              rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
+              oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+          )
+          val x = b.read(pat("<0 1 2 3 4>").nums(), fields = MarfFieldClock.STAGES, name = "x")
+          val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "y")
+
+          val path = fline {
+              for (i in 0..2400) {
+                  val t = i / 100.0
+                  val px = 40.0 + x.value(t) * 460.0
+                  val py = 20.0 + y.value(t) * 260.0
+                  if (i == 0) moveTo(px, py) else lineTo(px, py)
+              }
+              stroked = true
+              thickness = 1.5
+              color = vec(0.5, 0.85, 1.0, 0.8)
+          }
+          lines(listOf(path), w = 560.0, h = 300.0, fitToSize = true)
+  - create:
+      box: marf_vector
+      name: one Vector3f reader, three components
+      frame: { x: 60.0, y: 226.0, w: 340.0, h: 136.0 }
+      properties:
+        code: |
+          // A stage's value need not be a number. One Vector3f reader, drawn as its three components:
+          // one stage structure carrying three values, so the osc:2 stage bumps all of them at once.
+          displayClearAll()          // drop anything a previous run left on another channel
+          displayOpen("lines")
+
+          val path = marfBankIn(
+              MarfVector3f,
+              stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
+              stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
+              stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
+              stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z")
+          ).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
+
+          val cycles = 6L
+          val W = 1060.0
+          val laneH = 96.0
+          val palette = listOf(
+              vec(0.45, 0.82, 1.0, 0.95),
+              vec(1.0, 0.60, 0.26, 0.95),
+              vec(0.52, 0.90, 0.52, 0.95)
+          )
+          val component: List<(Vector3f) -> Double> = listOf({ v -> v.x.toDouble() }, { v -> v.y.toDouble() }, { v -> v.z.toDouble() })
+
+          val out = mutableListOf<FLine>()
+          component.forEachIndexed { lane, pick ->
+              val top = 14.0 + lane * (laneH + 20.0)
+              // The boundaries are the SAME in all three lanes: one reader, one stage structure.
+              path.stagesIn(PatArc(PatQ.ZERO, PatQ.of(cycles))).forEach { s ->
+                  val bx = 20.0 + (s.start.toDouble() / cycles) * W
+                  out += fline {
+                      moveTo(bx, top); lineTo(bx, top + laneH)
+                      stroked = true; thickness = 1.0; color = vec(0.40, 0.44, 0.54, 0.85)
+                  }
+              }
+              out += fline {
+                  moveTo(20.0, top + laneH); lineTo(20.0 + W, top + laneH)
+                  stroked = true; thickness = 1.0; color = vec(0.32, 0.35, 0.43, 0.9)
+              }
+              out += fline {
+                  for (i in 0..600) {
+                      val t = i / 600.0 * cycles
+                      val px = 20.0 + (t / cycles) * W
+                      val py = top + laneH - pick(path.value(t)) * (laneH - 6.0)
+                      if (i == 0) moveTo(px, py) else lineTo(px, py)
+                  }
+                  stroked = true; thickness = 1.8; color = palette[lane]
+              }
+          }
+          lines(out, w = 1100.0, h = 360.0, fitToSize = true)
+
+          markdown(
+              "legend",
+              """
+              **One `Vector3f` reader, three components** — <span style="color:#73d1ff">x</span>,
+              <span style="color:#ff9942">y</span>, <span style="color:#85e585">z</span>.
+
+              The stage boundaries fall in the same places in all three lanes, because there is one stage
+              structure carrying three values. `signal { it.x.toDouble() }` is how a vector reader reaches
+              the rest of the language, which is scalar nearly everywhere.
+              """.trimIndent()
+          )
+  - create:
+      box: marf_sound
+      name: the same bank, heard
+      frame: { x: 440.0, y: 226.0, w: 340.0, h: 136.0 }
+      properties:
+        code: |
+          // MARF as control voltage into a real synth: pat -> Dough -> Steam Audio HRTF, realtime.
+          // Three readers of one bank become where the sound is, how open its filter is, and how far away.
+          // Nothing about the bank knows it is being read three times, or heard rather than drawn.
+          displayClearAll()
+
+          val b = marfBank(
+              rampTo(0.05, 1.0), rampTo(0.95, 0.5), holdAt(0.45, 2.0),
+              oscTo(0.80, 1.0, cycles = 3.0), curveTo(0.15, 0.25, amount = 4.0)
+          )
+
+          // a fractional address, so the source glides rather than stepping between slots
+          val azR = b.read(saw().slow(8).range(0.0, 4.0), duration = constant(0.25), name = "az")
+          // reader A's stage shapes, heard as filter movement: the ramp, the step, the osc:3 wiggle
+          val cutoff = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES, name = "cutoff")
+          // held addresses, so distance moves in steps and then sits still
+          val near = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "near")
+
+          val voice = pat("bd ~ sd ~, hh*8").with(
+              param("az", azR.signal().range(-80.0, 80.0)),
+              param("lpf", cutoff.signal().rangex(250.0, 7000.0)),
+              param("dist", near.signal().range(1.0, 5.0)),
+              gain(0.9)
+          )
+
+          patSpatial(voice, cps = 2.0)
+  - execute: { box: marf_readers, property: code }
+  - await: {}
+  - execute: { box: marf_path, property: code }
+  - await: {}
+  - execute: { box: marf_vector, property: code }
+  - await: {}
+  - execute: { box: marf_sound, property: code }
+  - await: {}
