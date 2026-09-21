@@ -14,7 +14,7 @@ Underneath all three sits `FabricateScene`, a Three.js-shaped scene graph that o
 
 Two constraints apply to the renderers themselves. A renderer is constructed, installed and closed on Field's render thread, like any other `afield.four` module — installing under a name already in use retires the previous occupant, so there is no coroutine lifetime bookkeeping to do. And a device is required: nothing here that draws does so into an `FLine`, or in a headless test, the way the `Math` page's contents do. For the same ground with pictures, see [The Fabricate renderer](../fabricate_renderer.md), [Path tracing](../path_tracing.md) and [afield.four graphics](../afield_four_graphics.md).
 
-27 source file(s), 638 public symbol(s), 299 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 638 public symbol(s), 305 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -66,24 +66,36 @@ Ordered, inspectable pass contract for [`StandardRenderer`](renderers.md#standar
 
 ## FabricateGltfBridge.kt { #fabricategltfbridge-kt }
 
+The glTF side of the fabricated scene model: one call that turns a loaded `GltfSupport.GltfModel`
+into a [`FabricateScene`](renderers.md#fabricatescene-kt-fabricatescene), and two conversions beside it.
+
+There are two routes from a loaded model into the PBR renderer and they differ in what they
+touch. `FabricateGltfBridge.fromModel` builds a scene graph and stops, so a caller can read or
+rewrite the imported nodes before any GPU resource exists. `StandardRenderer.Bundle.registerGltf`
+does that same import and then registers a pulling mesh per node, which is what the renderer
+draws from and what a tool inspecting node names does not need.
+
+Nothing here loads a file. `GltfSupport.loadGltfBasic` is the loader and `MeshFromDisk.kt`
+describes the route in; this is the conversion at the end of it.
+
 `src/jvmMain/kotlin/afield/four/fabricated/FabricateGltfBridge.kt` — [read the source](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/)
 
 ### Top-level functions { #fabricategltfbridge-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">MaterialTextured</span><span class="p">.</span><span class="nf">toFabricateMaterial</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateMaterial</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L16) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">toFabricateTextureSemantic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L19) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">MaterialTextured</span><span class="p">.</span><span class="nf">toFabricateMaterial</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateMaterial</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L44) | `FabricateMaterial.fromGltf` as an extension, for a glTF material already in hand. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">toFabricateTextureSemantic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L57) | An Assimp texture-type constant as the glTF name for that slot: `baseColor`, `normal`, `metallicRoughness` and so on, with an unrecognised type rendered as `texture-` and its number rather than dropped. |
 
 ### FabricateGltfBridge { #fabricategltfbridge-kt-fabricategltfbridge }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FabricateGltfBridge</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L7)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FabricateGltfBridge</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L21)
 
 Converts the existing Assimp/GLTF loader model into the fabricated scene/material data model.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fromModel</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">GltfModel</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;gltf&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateScene</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L8) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fromModel</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">GltfSupport</span><span class="p">.</span><span class="nc">GltfModel</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;gltf&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">FabricateScene</span></code>](source/jvmMain/afield/four/fabricated/FabricateGltfBridge/#L30) | A [`FabricateScene`](renderers.md#fabricatescene-kt-fabricatescene) holding `model`'s meshes, with no renderer and no GPU resources attached. |
 
 ## FabricateMaterialLibrary.kt { #fabricatemateriallibrary-kt }
 
@@ -1782,17 +1794,36 @@ A play head over `frameCount` frames: play, pause, scrub, loop, and run backward
 
 ## simpleGaussianSplatSupport.kt { #simplegaussiansplatsupport-kt }
 
+A Gaussian-splat shader pair seeded into a box as editable starter source, so the splat shader is
+live Field code rather than source hidden inside `GaussianSplatRenderer`.
+
+The two entry points are call-shaped macros, so their Kotlin bodies only throw and the work is in
+the expansion: it writes the renderer's starter vertex and fragment source into the box's
+`vertex` and `fragment` properties, compiles them, reflects their interface into generated
+bindings, and rewrites the call to `_moduleHere`. What comes back is an ordinary graphics
+module, with the reload actions and shader-error reporting every other shader box has, and
+`GaussianSplatRenderer.Cloud` takes it as `suppliedRenderModule`.
+
+There are two of them because multiview is a different vertex shader and not a flag.
+`gaussianSplatMultiviewModuleHere` seeds the variant that requires `GL_EXT_multiview` and selects
+a model-view and projection matrix per eye from `gl_ViewIndex`; use it when the cloud draws into
+a `RenderToTexture` whose `multiviewViewMask` is non-zero, and the mono one otherwise. The
+fragment shader is the same in both cases.
+
+The seeding happens once. `macro_moduleHereWithDefaultShaders` writes the starter source only
+where the box has no shader source of its own, so an edited shader survives re-running the macro.
+
 `src/jvmMain/kotlin/afield/four/fabricated/simpleGaussianSplatSupport.kt` — [read the source](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/)
 
 ### Top-level functions { #simplegaussiansplatsupport-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L23) | A box-owned Gaussian-splat graphics module, initially seeded with Field's built-in mono shader. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L34) | The multiview counterpart to `gaussianSplatModuleHere`. Use this for a `RenderToTexture` whose `multiviewViewMask` is non-zero; the seeded vertex shader exposes left/right model-view and projection matrices and selects them with `gl_ViewIndex`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L41) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L49) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerGaussianSplatModuleMacros</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L57) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L44) | A box-owned Gaussian-splat graphics module, initially seeded with Field's built-in mono shader. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L55) | The multiview counterpart to `gaussianSplatModuleHere`. Use this for a `RenderToTexture` whose `multiviewViewMask` is non-zero; the seeded vertex shader exposes left/right model-view and projection matrices and selects them with `gl_ViewIndex`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L70) | The macro expansion behind `gaussianSplatModuleHere`: the ordinary graphics-module expansion, with `GaussianSplatRenderer`'s mono splat shader pair as the source to seed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;gaussianSplatMultiviewModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L85) | `macro_gaussianSplatModuleHere` with the multiview vertex shader, behind `gaussianSplatMultiviewModuleHere`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerGaussianSplatModuleMacros</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/simpleGaussianSplatSupport/#L99) | Puts both splat macros into `MacroRegistry.callRewrite`, under the names box code writes. |
 
 ## standardRenderer.kt { #standardrenderer-kt }
 
