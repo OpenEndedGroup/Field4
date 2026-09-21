@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14580 public symbols across 371 source files**, 8405 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14582 public symbols across 371 source files**, 8407 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -19,7 +19,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Simulation](simulation.md) | 28 | 858 | 449 (52%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 398 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
-| [Function](function.md) | 12 | 427 | 309 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
+| [Function](function.md) | 12 | 429 | 311 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 16 | 515 | 461 (89%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1059 | 438 (41%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
@@ -161,7 +161,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FunctionGraphRules.kt](function.md#functiongraphrules-kt) | Function | 41 | 15 | The query and rule-runner layer over the graph copier in FunctionGraph.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionOps.kt](function.md#functionops-kt) | Function | 12 | 9 | The op vocabulary for the whole `Fn` graph family, held in one object, `OpRegistry`: which op names the stdlib actually emits into a graph node, which of them are aliases of each other, and which can be rebuilt from an arbitrary node's role-addressed children — those rebuildable ones each carrying a family label (oscillator, noise, transform, …). |  |
 | [FunctionRewriteDsl.kt](function.md#functionrewritedsl-kt) | Function | 70 | 70 | The `selector => action` string rewrite DSL, compiled and applied end to end. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [FunctionRewriteKotlin.kt](function.md#functionrewritekotlin-kt) | Function | 16 | 16 | The bridge that gives the string rewrite DSL a real Kotlin right-hand side. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
+| [FunctionRewriteKotlin.kt](function.md#functionrewritekotlin-kt) | Function | 18 | 18 | The bridge that gives the string rewrite DSL a real Kotlin right-hand side. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionRewritePattern.kt](function.md#functionrewritepattern-kt) | Function | 13 | 11 | The third rewriting surface in the family, and the algebraic one. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [Functions.kt](math.md#functions-kt) | Math | 548 | 461 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 27 | 15 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |

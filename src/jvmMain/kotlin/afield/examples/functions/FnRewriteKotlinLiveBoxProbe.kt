@@ -60,6 +60,13 @@ object FnRewriteKotlinLiveBoxProbe {
     private val entries = java.util.concurrent.atomic.AtomicInteger()
     private val entryMillis = java.util.concurrent.ConcurrentLinkedQueue<Long>()
     @Volatile private var startedAt = 0L
+    @Volatile private var negativeCacheVerified = false
+
+    /** Called only after the live compiler rejection, repair and invalidation assertions pass. */
+    @JvmStatic
+    fun verifiedNegativeCache() {
+        negativeCacheVerified = true
+    }
 
     /** Called by the box body, once per entry. */
     @JvmStatic
@@ -130,6 +137,28 @@ object FnRewriteKotlinLiveBoxProbe {
     /** A body that only has to compile and evaluate, so [HOST] ends up with a warm, idle engine. */
     private val HOST_IDLE_BODY = """println("HOST_READY")"""
 
+    /** Exercise a real compiler rejection, then repair the same idle engine and explicitly retry. */
+    private val FAILURE_CACHE_BODY = listOf(
+        "import afield.stdlib.*",
+        "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.tick()",
+        "val host = parents.last()",
+        "val evaluator = SourceBackedFnRewriteNumberEvaluator(host.id)",
+        "val options = FnRewriteOptions(kotlinNumberContext = evaluator)",
+        "val base = with(Functions) { sin(saw(0.18)) * 0.45 }",
+        "val spec = \"**/[tag=number] => *= @{backlogRepairedNumber}\"",
+        "val first = runCatching { base.previewRewrite(spec, options) }.exceptionOrNull()",
+        "check(first != null && first.message.orEmpty().contains(\"backlogRepairedNumber\"))",
+        "repeat(2) { check(runCatching { base.previewRewrite(spec, options) }.exceptionOrNull() === first) }",
+        "val repair = host.ki.compileSnippetAndWait(\"val backlogRepairedNumber = 1.0\", implicits = listOf(host))",
+        "check(repair != null)",
+        "repair.evalAndWait(implicits = listOf(host), onEvalException = { throw it })",
+        "check(runCatching { base.previewRewrite(spec, options) }.exceptionOrNull() === first)",
+        "evaluator.clearCache()",
+        "base.previewRewrite(spec, options)",
+        "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.verifiedNegativeCache()",
+        "println(\"$DONE negative cache recovered\")",
+    ).joinToString("\n")
+
     /**
      * `block` — the same question for [afield.stdlib.SourceBackedBlock], the other route into the same
      * trap: a rehydrating block invoked from inside its own box's running body.
@@ -163,6 +192,7 @@ object FnRewriteKotlinLiveBoxProbe {
      * the caller's environment never reaches this JVM.
      */
     fun run(mode: String) {
+        negativeCacheVerified = false
         startRunloopDaemon()
 
         val (document, session) = freshSession(mode)
@@ -237,11 +267,12 @@ object FnRewriteKotlinLiveBoxProbe {
         // log channel, which reaches this process's stdout but never `run.output`.
         println("PROBE completed=$completed entries=$entered")
         println("PROBE verdict=$verdict")
+        if (mode == "failurecache") println("PROBE negativeCacheVerified=$negativeCacheVerified")
 
         // Non-zero unless the rewrite either completed cleanly or refused legibly. The runner thread is
         // a daemon and its stack may be hundreds of frames deep and wedged, so exit explicitly rather
         // than trusting a return from main to bring the JVM down.
-        exitProcess(if (completed) 0 else 1)
+        exitProcess(if (completed && (mode != "failurecache" || negativeCacheVerified)) 0 else 1)
     }
 
     /**
@@ -291,6 +322,8 @@ object FnRewriteKotlinLiveBoxProbe {
         // In host mode the idle box is created and executed FIRST, so its engine exists and is not
         // mid-evaluation when the second box asks it to compile.
         val body = when (mode) {
+            "failurecache" -> boxOps(HOST, "Fn Rewrite Host", 80.0, HOST_IDLE_BODY) +
+                boxOps(BOX, "Fn Rewrite Cache Probe", 260.0, FAILURE_CACHE_BODY, connectUnder = HOST)
             "host" -> boxOps(HOST, "Fn Rewrite Host", 80.0, HOST_IDLE_BODY) +
                 boxOps(BOX, "Fn Rewrite Probe", 260.0, HOST_BODY, connectUnder = HOST)
             "blockhost" -> boxOps(HOST, "Block Host", 80.0, HOST_IDLE_BODY) +
@@ -362,6 +395,25 @@ expect:
 object FnRewriteKotlinTwoBoxProbe {
     @JvmStatic
     fun main(args: Array<String>) = FnRewriteKotlinLiveBoxProbe.run("host")
+}
+
+/*
+FIELD_TEST
+id: functions.rewrite-kotlin.failure-cache
+runner: jvm-main
+entrypoint: afield.examples.functions.FnRewriteKotlinFailureCacheProbe
+tags: [smoke, functions, kotlin, fnrewrite]
+timeoutSec: 120
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "PROBE completed=true entries=1"
+    - "PROBE negativeCacheVerified=true"
+*/
+/** Verify negative caching and explicit recovery against a real idle box's Kotlin compiler. */
+object FnRewriteKotlinFailureCacheProbe {
+    @JvmStatic
+    fun main(args: Array<String>) = FnRewriteKotlinLiveBoxProbe.run("failurecache")
 }
 
 /*

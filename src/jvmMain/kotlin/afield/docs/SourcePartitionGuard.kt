@@ -94,15 +94,14 @@ object SourcePartitionGuard {
      * this ratchet from 33 to 32. It is the movement that pushed the guard one line over on
      * 2026-09-04, when `H2StructuredExplorerTest.kt` arrived carrying the first instance.
      *
-     * What remains is the other flavour, the **annotated accessor** — `@Synchronized` above
-     * `get() = values.size`, four times in `stats.kt` — plus a tail of wrapped expression bodies whose
-     * continuation line begins with something `CONTINUES_BEFORE` does not list (a bare `value`, a
-     * dangling `else`). Both strand a fragment from the declaration it belongs to, which a page would
-     * render anonymously. Neither loses a line.
+     * Annotated accessors and soft-modifier expression heads were subsequently attributed. The
+     * September 20 census had 29 remaining lines: wrapped conditionals, comments inside expression
+     * bodies, and a wrapped file annotation. Recognizing these takes the census to one line (the
+     * standalone enum separator in SoundRenderPathDocs), without relaxing any tiling/index checks.
      *
      * Lower it whenever the scanner learns a shape; raise it only with a reason.
      */
-    private const val MAX_FILLER_CODE_LINES = 32
+    private const val MAX_FILLER_CODE_LINES = 1
 
     /**
      * The ratchet on declarations [KotlinSourceIndex] reports from *inside a function body*.
