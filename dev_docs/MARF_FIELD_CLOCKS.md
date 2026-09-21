@@ -131,12 +131,13 @@ So the framing that makes `STEPS` easy to hold in the head: **`STEPS` subdivides
   exact — but it has to be *tested* backwards, because "forwards only" is the order every natural
   test uses. `MarfTest` asks 24 instants forwards, then the same 24 in reverse, then again after a
   `reset()`.
-- **A guard cannot see a snippet.** `MarfDocsGuardTest` re-rendered every SVG and pinned
-  figure-to-page correspondence, and still let two published listings ship with
-  `fields = MarfFieldClock.STAGES` deleted while the code that drew the figures kept it. The
-  structural fix is to make the snippet and the code one object: a `Figure` now carries its
-  published snippet, `MarfReader` carries its `fieldClock`, and the guard compares them. The
-  corrections were the small part.
+- **A guard that re-renders every figure still shipped a false snippet.** `MarfDocsGuardTest`
+  re-rendered every committed SVG and pinned figure-to-page correspondence, and two published
+  listings still went out with `fields = MarfFieldClock.STAGES` deleted while the code that drew
+  the figures kept it — because every check it had stopped at the fence. The structural fix is to
+  make the snippet and the code one object: a `Figure` now carries its published snippet,
+  `MarfReader` carries its `fieldClock`, and the guard compares them. The corrections were the
+  small part.
 - **A guard written after the fact must be shown to fail on the defect it was written for.** The
   negative control runs all three new checks against the two listings exactly as they shipped in
   `bc71ed216` and asserts each fails — five reader calls, five defects, no clock named anywhere —

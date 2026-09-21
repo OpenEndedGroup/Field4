@@ -334,10 +334,11 @@ with fields = MarfFieldClock.STEPS.
 
 This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale. It is
 here because the silence was measured rather than imagined: the person who built the demo document
-spent four minutes and thirty-eight edit-and-run cycles moving one reader's address between
-`"<0 3> 1"`, `"<0 3> 1*8"`, `"<0 3>*2"`, `"<0 3>, 1"`, `"1 <0 3>"` and `"3 <0 3>"`, and under
-`STAGES` eight of those ten spellings produced a sequence byte-identical to something strictly
-simpler than what was written. `"1 <0 3>"` was the constant `1`. `"<0 3>*2"` was the constant `0`.
+spent four minutes and thirty-eight edit-and-run cycles moving one reader's address through ten
+spellings — among them `"<0 3> 1"`, `"<0 3> 1*8"`, `"<0 3>*2"`, `"<0 3>, 1"`, `"1 <0 3>"` and
+`"3 <0 3>"` — and under `STAGES` eight of the ten produced a sequence byte-identical to something
+strictly simpler than what was written. `"1 <0 3>"` was the constant `1`, and `"<0 3>*2"` was the
+constant `0`. All ten, against all three clocks, are tabulated in `dev_docs/MARF_FIELD_CLOCKS.md`.
 
 A **stack** is the one case no clock reads. `"<0 3>, 1"` puts two layers on a single instant, a
 field latches to one value per stage, and the second layer is unreachable — so the sequence
