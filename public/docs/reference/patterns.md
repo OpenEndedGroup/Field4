@@ -890,10 +890,11 @@ readers, and what each reader is doing printed as text.
 
 `main` prints five rows per reader — current address, current stage, stage phase, generated
 value and stage-boundary pulses — for two readers over shared material, then swaps
-`every(4) { rev() }` into one reader's address and prints them again. If content, timing,
-addressing and interpolation really are separate, transforming one reader's address cannot
-disturb the other and cannot alter the bank, and both of those are asserted rather than left to
-the eye. The transform itself only bites on an address with steps inside the cycle: on a `<…>`
+`every(4) { rev() }` into one reader's address and prints them again. Content, timing, addressing
+and interpolation are separate, so transforming one reader's address cannot disturb the other and
+cannot alter the bank; the run checks both.
+
+The transform itself only bites on an address with steps inside the cycle: on a `<…>`
 address, which holds one event per cycle, `rev()` has nothing to reverse, so the run repeats the
 comparison over four stages a cycle and asserts that cycle 0 comes out reversed and cycle 1 does
 not.
@@ -2755,15 +2756,15 @@ Every `.wav` here comes out of `patSynthRenderStereo`, which drives a real [`Pat
 [`SynthContext`](synthesis.md#signal-kt-synthcontext) block by block exactly as [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudioengine) would. So these files are a record of
 the realtime path with no audio device attached, rather than a second implementation of it.
 
-### The three checks that are about the scheduler rather than the sound
+### Three properties of the scheduler
 
 **Block size does not change the output.** The same bar rendered at 64, 128, 512 and 1024 frames
 per block comes back bit-identical. A scheduler that started each note at the top of the block it
 fell in would pass every level and onset check here, and fail this one.
 
-**The seam voice is the offline voice.** `patRenderStereo` and `patSynthRenderStereo` are asked for
-the same bar, and their onset counts and levels are compared. The two are not bit-identical: the
-offline renderer works in seconds and truncates, this one works in frames and rounds, so a note can
+**The seam voice is the offline voice.** `patRenderStereo` and `patSynthRenderStereo` render the
+same bar to the same onset counts and the same levels, but not to the same bytes: the offline
+renderer works in seconds and truncates, this one works in frames and rounds, so a note can
 differ by a frame at each end and a dense passage by a few merged onsets.
 
 **The band analysis separates a kick from a hat.** [`BandSplit`](audio.md#bandanalysis-kt-bandsplit) over a kick-only render and a
