@@ -1,4 +1,4 @@
-# The completion panel is a code browser
+# Browsing code from the completion panel
 
 When you trigger autocomplete (`ctrl-space`), the panel on the right of the
 popup is clickable. Every `[Symbol]` cross-reference in a KDoc comment, and the
@@ -90,7 +90,7 @@ uploaded by this feature. Because they contain full source, treat them with the 
 care as the Field documents themselves. `AFIELD_COMPLETION_INTERACTION_LOG_PATH` can redirect the log
 directory.
 
-## Browsing vs. resolving
+## Browsing the full index
 
 The panel resolves symbols; it doesn't list them, so it can't help with a
 question you can't yet name. [What's already in the box](reference/index.md) is
