@@ -1,6 +1,6 @@
 # Fabricate Renderer
 
-[`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer) is the quick path into the fabricated renderer: a scene you have only registered geometry into comes back lit, shadowed and ambient-occluded by the stock setup, so the first picture you get is one you can judge. Metalness changes the material, shadows land where objects touch the ground, and ambient occlusion darkens contacts rather than adding noise. Tone mapping is the one thing you have to ask for — see [Tone Mapping and Bloom](#tone-mapping-and-bloom).
+[`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer) is the quick path into the fabricated renderer: a scene you have only registered geometry into comes back lit, shadowed and ambient-occluded by the stock setup, so the first picture you get is one you can judge. Metalness changes the material, shadows land where objects touch the ground, and ambient occlusion darkens contacts rather than adding noise. Tone mapping is the one thing you have to ask for — see [Tone mapping and bloom](#tone-mapping-and-bloom).
 
 This page shows the renderer working. The [Renderers](reference/renderers.md) reference page is the other half of it: every public declaration in the fabricated package with the KDoc that sits beside it in the source, including the scene graph and pass machinery the examples below reach through, and the two renderers this page does not cover — the progressive path tracer and the Gaussian splat renderer.
 
@@ -76,7 +76,7 @@ graph.attachTo(renderer)
 
 `bundle.attachTo(renderer)` is the convenience form for `bundle.frameGraph().attachTo(renderer)`. `bundle.present(...)` presents `bundle.postStack.output()`, so any effect you append after the stock stack becomes the final image automatically.
 
-## Editing the Built-in Shaders
+## Editing the built-in shaders
 
 Fabricate's own passes are ordinary `Module`s carrying GLSL source, so they can be bound to boxes and edited/hot-reloaded exactly like a shader you write yourself. `bundle.bindShadersToBoxes()` creates one box per pass — g-buffer, shadow, AO, lighting, transparency, motion blur, FXAA, plus any post effects (tone map, bloom, your own) and textured g-buffer variants from glTF import. Each box shows the pass's `vertex`/`fragment` GLSL in editable tabs; `alt r` reloads it, `alt shift enter` does an ABI-preserving live pipeline swap.
 
@@ -95,7 +95,7 @@ bundle.bindShaderToBox("std-lighting", bundle.lightingModule)
 
 Reloads reuse the pass's existing `Parameters`, so the renderer's texture bindings, attachment formats, and push-constant seeding are preserved — only the GLSL changes. Edit the lighting fragment to try a different BRDF, or the FXAA pass to swap in a different AA, and the change is live on the next frame. `bundle.shaderModules()` returns the same `name → ModulePointer` map for programmatic access, and `bundle.shaderSources()` returns the raw `vertex`/`fragment` text for inspection without a session.
 
-## Scene Graph and Transforms
+## Scene graph and transforms
 
 Fabricate has a small scene layer on top of `afield.four`: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
 
@@ -136,7 +136,7 @@ bundle.sceneGraph.advance(1f / 60f)
 bundle.sortTransparentMeshes()
 ```
 
-## Render Planning
+## Render planning
 
 The scene graph answers "what exists?" and the render plan answers "what order should it draw in?" `FabricateScenePlanner` walks the current scene, resolves material records into a compact table, and splits draw items into opaque, alpha-mask, transparent, and shadow-caster queues.
 
@@ -154,9 +154,9 @@ The planner is pure Kotlin. It is useful in tests, docs harnesses, and future re
 
 Style rule: keep user intent on `FabricateMaterial` and `FabricateRenderable`; let the planner classify it. Prefer `FabricateAlphaMode.OPAQUE`, `.MASK`, and `.BLEND` over ad hoc booleans, and use `material.sortOrder` only when a stable override matters.
 
-## Default Scene
+## Default scene
 
-The default scene is a plain one: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
+The default scene is a plain one: three colored torii, the standard camera, and the stock lighting setup. It is what `StandardRenderer.build(...)` gives you before you have chosen anything, so it is also the shortest route to a picture.
 
 The scene is node/material creation plus mesh binding, and nothing else:
 
@@ -198,9 +198,9 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-default-scene.png" source-image="/tmp/docs-fabricate-default-native.png" wait="15.0" timeout="120" execution="launch" embed=true graphics-context=true name="fabricate-default-scene" hidden=true fabricate-scene="default-scene"}
 ```
 
-## Shiny Torii on Checkerboard Planes
+## Shiny torii on checkerboard planes
 
-A compact "hero" scene: reflective torii over a checkerboard floor. This is a quick visual sanity check for specular highlights, floor contacts, and stable shading under denser geometry.
+Reflective torii over a checkerboard floor: specular highlights, contact shadows where an object meets the ground, and shading that stays stable as the geometry gets denser.
 
 The checkerboard here is mesh-side: alternating tile geometry receives alternating `FabricateMaterial` values. The harness packs the two parities into pulling meshes for fewer draw items; conceptually, the scene logic is this:
 
@@ -264,9 +264,9 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shiny-checkerboard.png" source-image="/tmp/docs-fabricate-shiny-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shiny-torii-checkerboard" hidden=true fabricate-scene="shiny-torii-checkerboard"}
 ```
 
-## Two Camera Framings Over One Scene
+## Two camera framings over one scene
 
-This scene keeps geometry fixed and compares two camera framings over the same checkerboard setup to make near-versus-far depth layering obvious in a single capture.
+The same checkerboard setup, geometry unchanged, seen from two cameras — a near framing and a far one, so the depth layering reads off one image.
 
 Nothing changes between the two halves except `camera.at` and `camera.target`:
 
@@ -301,9 +301,9 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-camera-depth-study.png" source-image="/tmp/docs-fabricate-camera-depth-study-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-camera-depth-study" hidden=true fabricate-scene="camera-depth-study"}
 ```
 
-## Shader-Generated Checkerboard
+## Shader-generated checkerboard
 
-This variant keeps floor geometry to a single scaled cube and generates the checker tiles procedurally in the g-buffer fragment shader. It demonstrates a production-ready path where shader-side tiling replaces mesh-side tile splits.
+This variant keeps floor geometry to a single scaled cube and generates the checker tiles procedurally in the g-buffer fragment shader.
 Use shader-generated tiles when you want lower mesh/buffer overhead; use mesh-split tiles when you need per-tile transforms or per-tile material control.
 The checker pattern is evaluated in world space, so model scaling directly affects tile density.
 
@@ -362,7 +362,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard" hidden=true fabricate-scene="shader-generated-checkerboard"}
 ```
 
-## Blended Transparency
+## Blended transparency
 
 Transparent meshes render after the deferred lighting pass. Fabricate copies the lit opaque scene into `transparentComposite`, then draws transparent pulling meshes with alpha blending while sampling opaque g-buffer depth to discard hidden fragments.
 
@@ -421,7 +421,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-blended-transparency.png" source-image="/tmp/docs-fabricate-blended-transparency-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-blended-transparency" hidden=true fabricate-scene="blended-transparency"}
 ```
 
-## Lights and Skybox
+## Lights and skybox
 
 The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights`, which is 64, all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
 
@@ -467,7 +467,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-multi-light-skybox.png" source-image="/tmp/docs-fabricate-multi-light-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-multi-light-skybox" hidden=true fabricate-scene="multi-light-skybox"}
 ```
 
-## Post Stack
+## Post stack
 
 The post stack is Fabricate's small EffectComposer equivalent. It starts with the transparent composite and, by default, runs motion blur then FXAA:
 
@@ -520,7 +520,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
 ```
 
-## Tone Mapping and Bloom
+## Tone mapping and bloom
 
 Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping maps HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow — the two effects most responsible for a scene reading as "correct" rather than washed out.
 
@@ -556,7 +556,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-tonemap-bloom.png" source-image="/tmp/docs-fabricate-tonemap-bloom-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-tonemap-bloom" hidden=true fabricate-scene="tonemap-bloom"}
 ```
 
-## GLTF Loading and Animation
+## glTF loading and animation
 
 The GLTF path uses the existing Assimp-backed loader, then imports mesh instances into the Fabricate scene graph. Opaque meshes go to the g-buffer/shadow pair. Alpha materials go to the blended transparency pass.
 
@@ -742,7 +742,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shadows" hidden=true fabricate-scene="shadows"}
 ```
 
-## Ambient Occlusion
+## Ambient occlusion
 
 The left side disables ambient occlusion; the right side turns it on. Both show the same cluster of matte spheres resting together on the floor. AO only modulates the ambient term here (direct light is never occluded), so its effect is clearest in the contact valleys between touching spheres — where the surfaces are starved of direct light and lit mostly by ambient. Turning AO on drops those seams from a soft grey to a firm dark crease.
 
