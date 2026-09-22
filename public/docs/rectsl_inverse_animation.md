@@ -432,11 +432,11 @@ The residual tables, the corpus's two halves and what each half is evidence of a
 The figure at the top of this page is a CPU raster rather than a GPU capture. Its rectangles are
 sampled from the tracks at the instants shown, but they are not the shader's own answer.
 
-## The rest of what a symbolic IR is good for
+## Printing, comparison and rewriting
 
-Of the five things a closure cannot be (printed, compared, serialized, rewritten, emitted as GLSL),
-GLSL and this page's differentiable backend are the two big ones. The remaining three come almost free
-once the IR is data.
+Emitting GLSL and fitting against the differentiable backend are what most of the symbolic IR is
+built for. Printing a track, comparing two of them and rewriting one come almost free once the IR
+is data.
 
 - `Track.describe()` prints a tree as its algebra —
   `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)` — rather than as nested constructors.
