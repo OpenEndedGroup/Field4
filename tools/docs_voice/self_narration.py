@@ -65,11 +65,21 @@ DOC_SELF = (
 )
 
 # Verbs that place the subject in a superseded state of the *text*.
+#
+# The `... until` arm was added 2026-09-22 after `gpu_state.md` published
+# "That sum is what this page taught until StackSL grew a genuinely volumetric family"
+# for as long as the page has existed, scoring 0.  The family missed it on VOCABULARY,
+# not on wrapping: the sentence is a textbook docs changelog and `taught` was simply
+# not in the list.  `until` is what keeps the arm narrow -- "this section describes the
+# fallback" is ordinary reference prose, and only the terminated form is a changelog.
+# 1 true, 0 false in public/docs, 0 on Marc's four.
 REVISION = (
     r"(?:used\s+to\s+(?:say|end|read|open|claim|be|call|report|carry|list)"
     r"|no\s+longer\s+(?:can|does|says?|reads?|claims?)"
     r"|has\s+since\s+been\s+(?:corrected|rewritten|reworded|changed)"
-    r"|was\s+previously\s+(?:worded|written|called|stated))"
+    r"|was\s+previously\s+(?:worded|written|called|stated)"
+    r"|(?:taught|said|showed|recommended|advised|described|carried|printed|reported)"
+    r"\s+(?:this\s+|that\s+)?(?:\w+\s+){0,3}?until\b)"
 )
 
 SELF_TELLS = [
@@ -105,6 +115,7 @@ MUST_FIRE = [
     ("The four terms where the reducer is wrong are the interesting stress case.", "evaluative-label"),
     ("Or-reduce is the interesting positive result because it needs recursion.", "evaluative-label"),
     ("A command with no binding yet is the interesting row.", "evaluative-label"),
+    ("That sum is what this page taught until StackSL grew a volumetric family.", "docs-changelog"),
 ]
 
 MUST_NOT_FIRE = [
@@ -115,6 +126,8 @@ MUST_NOT_FIRE = [
     "Version 0 was written before `wet` existed; a scope outgrows its own files.",
     "a test written before the atom that binds its variable is reported as a refusal",
     "including a partial batch written before an agent failure",
+    # `... until` without a doc-self subject: an ordinary fact about a runtime.
+    "The scheduler carried the whole queue until the first tick, and then handed it on.",
     # Marc's own voice, from the four calibration pages.
     "The reading is total; the parameterisation is where the refusals live.",
     "Drop a file on the canvas and it becomes a box you can run.",
@@ -122,7 +135,7 @@ MUST_NOT_FIRE = [
 
 
 def hits_for(text):
-    """At most one hit per family per line.
+    """At most one hit per family per paragraph.
 
     `docs-changelog` is six overlapping alternations by construction -- the two
     subject/verb orderings plus four fixed phrases -- so a single sentence that names
@@ -185,14 +198,25 @@ def main():
             continue
         text = path.read_text(errors="replace")
         prose, _table, heads, _admons, _bullets = sv.split_prose(text)
+        # Paragraph-joined, because both families here match phrases several words long
+        # and `public/docs` wraps at about 100 columns.  `flow_matching.md`'s "and
+        # `transport` is the interesting / call" put `the interesting` at the end of one
+        # line and `call` at the start of the next, and this detector -- whose second
+        # family exists precisely to catch that label -- read 0.  See
+        # `sv.prose_paragraphs` for the general form of the mistake.
+        #
         # Admonition titles live on the heading list; a changelog wearing one is still a
-        # changelog, which is exactly how chain_lambda_sound.md hid.
-        lines = list(prose) + [(n, t) for n, t in heads]
+        # changelog, which is exactly how chain_lambda_sound.md hid.  Each is its own
+        # one-line unit -- a title does not continue into the body.
+        units = sv.prose_paragraphs(prose) + [
+            (re.sub(r"`[^`]+`", "§", t.strip()), [(0, n)]) for n, t in heads
+        ]
         found = []
-        for lineno, ln in lines:
+        for joined, index in units:
             scanned += 1
-            blanked = re.sub(r"`[^`]*`", "``", ln)
-            for name, weight, snippet in hits_for(blanked):
+            for name, weight, snippet in hits_for(joined):
+                lineno = index[0][1] if len(index) == 1 else sv.line_at(
+                    index, joined.find(snippet))
                 owner = sv.owner_of(text, lineno) if generated else None
                 found.append((name, weight, lineno, snippet, owner))
         if found:
@@ -206,7 +230,7 @@ def main():
             print(f"          {name} :{lineno}  {snippet[:82]}{tail}")
     nonzero = len(rows)
     total = sum(r[0] for r in rows)
-    print(f"\nscanned {scanned} line(s); {nonzero} page(s) nonzero, sum {total}")
+    print(f"\nscanned {scanned} paragraph(s); {nonzero} page(s) nonzero, sum {total}")
 
 
 if __name__ == "__main__":

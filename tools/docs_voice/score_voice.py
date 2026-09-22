@@ -165,7 +165,7 @@ BODY_TELLS = [
     # rhetorical sense too, but it is not the `is the` form and was never matched.)
     ("slide-label", r"(?<!which )(?<!that )(?<!it )(?<!this )"
                     r"\b(is|are) the (sanity check|payoff|"
-                    r"point(?!\s+(at which|where|when|on|of no return)\b)|argument(?=\s+for\b)|"
+                    r"point(?!\s+(at which|where|when|on|of no return)\b)(?!-)|argument(?=\s+for\b)|"
                     r"interesting (part|bit)|real (trick|insight)|one that matters|one to (have|watch))\b"
                     r"|\b(is|are) an? (sanity check|payoff|real (trick|insight))\b", 7),
     # `X is the whole design` -- the stakes label bolted onto a concrete fact, the same move as
@@ -328,10 +328,12 @@ BODY_TELLS = [
                      r"is the next thing|not wired up yet|for when it does|"
                      r"is what we should|TODO|FIXME|remains to be done|"
                      r"has not been done yet|would be nice to)\b", 9),
-    # the effort brag, which survives from the old scorer because it never false-positived
+    # the effort brag, which survives from the old scorer because it never false-positived.
+    # `worth doing` was dropped on 2026-09-22 -- see RETIRED; it had a clean record only
+    # because the tree's one instance was wrapped across a line break.
     ("effort-brag", r"\b(hard[- ]won|meticulous|painstaking|non[- ]trivial|"
                     r"surprisingly (hard|tricky|subtle)|took (several|many) \w+ to|"
-                    r"worth doing|a lot of work)\b", 6),
+                    r"a lot of work)\b", 6),
     # the tics with a clean record
     ("load-bearing", r"load[- ]bearing", 8),
     ("honest", r"\bhonest(y|ly)?\b", 6),
@@ -433,6 +435,15 @@ RETIRED = {
     "gate": "names a real Faust control and a real Gradle task",
     "used to": "legitimately describes a prior state of a *shape*, not a changelog",
     "in practice": "ordinary English, 1 point, no signal",
+    "worth doing": "dropped from `effort-brag` on 2026-09-22, the firing that made it visible. "
+                   "It had a clean record for 44 firings because the tree's ONE instance in "
+                   "public/docs is wrapped across a line break -- `installation.md`'s 'tells you "
+                   "whether that is worth / doing' -- and section B could not see it. The "
+                   "paragraph join surfaced it and it is a false positive: 'worth doing' there is "
+                   "the OUTPUT of Check for updates, not the author admiring their own labour. "
+                   "The eight instances in `src/` are all design rationale ('Compiling a pattern "
+                   "is worth doing when the same query runs repeatedly'), which the task file "
+                   "says to keep. 0 true out of 9",
     "under the hood": "never fired on a real fault in 28 runs",
     "rather than": "the bare form. Marc 0.27-1.29 per 1k vs a tree median of 2.2 and a top of "
                    "7.5, so the density gap is real -- but the hits are overwhelmingly good "
@@ -467,6 +478,64 @@ ADMONITION = re.compile(r"^(!!!|\?\?\?\+?)\s+\w+")
 
 OVERSIZED_ADMONITION_LINES = 14   # a !!! block longer than this interrupts rather than aside
 BULLET_NUMBERS_MIN = 3            # this many number-heavy bullets in one run wants a table
+
+# A line that opens a new block rather than continuing the one above it.
+BLOCK_OPENER = re.compile(r"^\s*(?:[-*+]\s|\d+\.\s|>)")
+
+
+def prose_paragraphs(prose):
+    """Rejoin hard-wrapped prose lines, keeping each paragraph's line index.
+
+    `public/docs` wraps at about 100 columns, and a BODY_TELL longer than a few words
+    is therefore as likely to straddle a line break as not.  Section B of `score()`
+    scanned one line at a time from the day it was written, so every one of those was
+    invisible -- `flow_matching.md`'s "and `transport` is the interesting / call" split
+    `the interesting` from `call` and scored 0 on a textbook `evaluative-label`.  This
+    is the fifth time this task has been bitten by a single-line scan over wrapped
+    prose (`self_narration.py` 2026-09-20, `admon_position.py` 2026-09-21,
+    `page_self_vouching.py` 2026-09-22, and the two grep sweeps before them), which is
+    the argument for fixing it in the shared helper rather than once per detector.
+
+    Yield is small and the fix is still right: tree-wide this surfaces two rows the
+    line scan could not reach, and it cannot *lose* one, because every line's text
+    appears exactly once in exactly one paragraph.  A bullet starts a new paragraph and
+    then absorbs its own continuation lines, which is what a wrapped bullet is.
+
+    Returns [(joined_text, [(offset, lineno), ...])]; `line_at` maps a match offset
+    back to the line the match starts on, so a hit still reports a real line number.
+    Inline code is blanked per line, *before* joining, so those offsets stay aligned.
+    """
+    runs, cur = [], []
+    for i, ln in prose:
+        if not ln.strip() or BLOCK_OPENER.match(ln):
+            if cur:
+                runs.append(cur)
+            cur = [(i, ln)] if ln.strip() else []
+            continue
+        cur.append((i, ln))
+    if cur:
+        runs.append(cur)
+
+    out = []
+    for run in runs:
+        text, index, pos = [], [], 0
+        for i, ln in run:
+            s = re.sub(r"`[^`]+`", "§", ln.strip())
+            index.append((pos, i))
+            text.append(s)
+            pos += len(s) + 1
+        out.append((" ".join(text), index))
+    return out
+
+
+def line_at(index, offset):
+    """The line number a paragraph offset falls on."""
+    found = index[0][1]
+    for pos, lineno in index:
+        if pos > offset:
+            break
+        found = lineno
+    return found
 
 
 def split_prose(text):
@@ -615,12 +684,12 @@ def score(text):
     # The replacement is a sentinel, not nothing: deleting a span joins the words either side
     # and can *manufacture* a tic that nobody wrote. "and that `Fn` carries a real graph node"
     # became "and that  carries a" and scored agent_transcripts.md 8 for carries-a-trap.
-    prose_text_lines = [(i, re.sub(r"`[^`]+`", "§", ln)) for i, ln in prose]
-    for name, pat, w in BODY_TELLS:
-        rx = re.compile(pat, re.I)
-        for i, ln in prose_text_lines:
-            for m in rx.finditer(ln):
-                hit(name, w, i, m.group(0))
+    # Paragraph-joined, not line by line: see prose_paragraphs() for why a single-line
+    # scan over 100-column prose is structurally blind to half of these patterns.
+    for joined, index in prose_paragraphs(prose):
+        for name, pat, w in BODY_TELLS:
+            for m in re.finditer(pat, joined, re.I):
+                hit(name, w, line_at(index, m.start()), m.group(0))
 
     # C1. number-heavy bullets that want a table
     for run in bullets:
