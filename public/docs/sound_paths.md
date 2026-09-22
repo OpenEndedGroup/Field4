@@ -3,9 +3,7 @@
 You want to hear something. There is more than one way, and this page maps all of them.
 
 **Eight things in Field make samples. Five things carry samples out of the process. Four bring them
-in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `8`, and a path that
-arrives in the tree and not in the tables below
-[fails the build](#where-the-list-comes-from).
+in.**
 
 ---
 
@@ -72,11 +70,11 @@ plot them, write them to a file — you cannot do to those. The way back in is `
 | `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
 | `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
 
-Every audio figure in these docs, all fifty-one of them, comes out of the `wav-file` sink, which is
-why they regenerate on a build machine with no sound card. That is also what bounds what
-`pat-spatial` can publish: two of those fifty-one are the *mono source* its dough engine produces,
-and none of them is its spatialised output, because this sink cannot be pointed at a path that only
-runs in realtime. [Its page says why](pat_spatial.md#why-there-is-no-clip-of-the-output).
+Every audio figure in these docs comes out of the `wav-file` sink, which is why they regenerate on
+a build machine with no sound card. That is also what bounds what `pat-spatial` can publish: its
+two figures are the *mono source* its dough engine produces, and neither is its spatialised output,
+because this sink cannot be pointed at a path that only runs in realtime.
+[Its page says why](pat_spatial.md#why-there-is-no-clip-of-the-output).
 
 ## Spatial audio: thread-local contexts, and rendering with no device
 
@@ -87,9 +85,7 @@ position is a tag in a pattern, the HRTF is Steam Audio's rather than OpenAL's, 
 speakers through the ordinary seam rather than through a context of its own. The trade runs the other
 way on the one axis that matters for these docs: `spatial-openal` can be driven with no device at
 all, by the loopback renderer described below, and `pat-spatial` cannot be driven faster than wall
-clock by anything — which is why it is the one path here whose own page has to
-[explain an absent figure](pat_spatial.md#why-there-is-no-clip-of-the-output) rather than publish
-one. Neither of them has a clip on this site; only one of them *could*.
+clock by anything. Neither has a clip on this site.
 
 `spatial-openal` defaults to one shared engine. Two constructor arguments change that, and both
 exist so that spatial audio can happen somewhere other than the speakers of the machine you are
@@ -135,7 +131,7 @@ this tree exercises it.
 
 ---
 
-## One seam, and eleven of seventeen paths on it
+## The seam
 
 There is exactly one signature everything realtime meets at:
 
