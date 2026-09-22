@@ -383,15 +383,20 @@ void main() {
                 "field carries max |div| %.4f")
                 .format(worstDivError, worstDivIndex, CELLS, maxDivBefore)
         )
-        // fp32 over four terms of order 1: a few ULPs, so 1e-5 is generous and 1e-3 would hide a
-        // real stencil error. Both numbers are printed either way.
+        // Measured 1.192e-07 at cell 96, which is one ULP of a number of order 1 — the GLSL and
+        // the Kotlin sum the same four terms in the same order, so the only difference available
+        // is the compiler's contraction choice. 1e-6 is eight times the measurement, which leaves
+        // room for a fused multiply-add on one side and not the other, and nothing else.
         probe.atMost(
-            "divergence pass vs closed form", worstDivError, 1e-5f,
+            "divergence pass vs closed form", worstDivError, 1e-6f,
             buffer = "divergence", index = worstDivIndex
         )
         probe.allFinite("divergence pass", gpuDiv, buffer = "divergence")
-        // The trivial-pass guard: a field of zeros would satisfy everything below.
-        probe.atLeast("input field max |div|", maxDivBefore, 2.0f, buffer = "velocity")
+        // The trivial-pass guard: a field of zeros would satisfy everything below. The fixture is
+        // a fixed superposition computed on the CPU, so this is exactly reproducible — measured
+        // 1.7649, and a floor of 1.5 fails the moment somebody edits `seedField` into something
+        // flat rather than passing quietly on it.
+        probe.atLeast("input field max |div|", maxDivBefore, 1.5f, buffer = "velocity")
 
         // --- claim 2: the sweep. Pressure re-zeroed each sample, so `frames x JACOBI` is the
         // whole iteration count and the curve is comparable point to point.
@@ -433,23 +438,35 @@ void main() {
         probe.exactly("sweep is monotone (non-monotone steps)", regressions, 0)
         val best = samples.last()
         val worst = samples.first()
+        // Measured 2250.8x at 256 sweeps. Jacobi has no atomics and no race, the fixture is
+        // fixed, and the frame count at this end of the sweep is exactly 16, so this number is
+        // reproducible on a given GPU rather than approximately so. 1500 is a third below it; a
+        // chain that lost a stage or a barrier reports single digits, not 1400.
         probe.atLeast(
-            "reduction at ${best.sweeps} sweeps", best.ratio, 20.0f, buffer = "velocityOut"
+            "reduction at ${best.sweeps} sweeps", best.ratio, 1500.0f, buffer = "velocityOut"
         )
         // And that the *extra* sweeps did something. A chain missing a barrier between Jacobi
         // iterations reads a stale pressure every time, so every sample comes back identical --
         // which passes a reduction floor and a monotonicity check but not this.
+        //
+        // Measured 533x. The floor is 100 rather than 400 because the *first* sample's population
+        // is `max(1, framesToLand)`: on a contended GPU that can be 2 frames, which makes the
+        // first point 32 sweeps instead of 16 and legitimately shrinks this ratio to about 286.
+        // The sweep table prints the frame count for each point, so the population is visible.
         probe.atLeast(
             "extra sweeps helped (${worst.sweeps} -> ${best.sweeps})",
-            worst.after / best.after, 2.0f
+            worst.after / best.after, 100.0f
         )
 
         // --- claim 3: the projection moved the field, and left it finite.
         var worstMove = 0f
         for (i in 0 until FIELD_FLOATS) worstMove = maxOf(worstMove, abs(lastProjected[i] - seeded[i]))
-        probe.atLeast("projection changed the field", worstMove, 0.1f, buffer = "velocityOut")
+        // Measured 1.434 against a field whose own max |div| is 1.765, i.e. the correction is the
+        // same order as the thing being corrected. A floor of 1.0 is a real constraint; 0.1 would
+        // have passed on a projection that barely touched the field.
+        probe.atLeast("projection changed the field", worstMove, 1.0f, buffer = "velocityOut")
         probe.allFinite("projected field", lastProjected, buffer = "velocityOut")
-        probe.varies("projected field", lastProjected, 0.5f, buffer = "velocityOut")
+        probe.varies("projected field", lastProjected, 1.2f, buffer = "velocityOut")
 
         // --- claim 4: the Jacobi stage directly, as a Poisson residual.
         val pressure = probe.read(pressureA)
@@ -459,13 +476,25 @@ void main() {
                 residual, maxDivBefore, 100f * residual / maxDivBefore
             )
         )
-        probe.atMost("Poisson residual / max |div|", residual / maxDivBefore, 0.25f, buffer = "pressureA")
+        // Measured 4.45e-04 of max |div| after 256 sweeps. 5e-3 is an order of magnitude above it
+        // and still an order of magnitude below the 4.5e-2 that 64 sweeps would give, so this
+        // claim can tell the sweep lengths apart rather than accepting any of them.
+        probe.atMost("Poisson residual / max |div|", residual / maxDivBefore, 5e-3f, buffer = "pressureA")
         probe.allFinite("pressure", pressure, buffer = "pressureA")
-        probe.varies("pressure", pressure, 0.05f, buffer = "pressureA")
+        // Measured 11.91. The pressure field is the solution of a Poisson problem with an O(1)
+        // right-hand side over 64 cells, so it is an order of magnitude larger than the velocity;
+        // a floor of 8 catches a solve that collapsed to near-constant, which 0.05 would not.
+        probe.varies("pressure", pressure, 8.0f, buffer = "pressureA")
 
         // --- and that the whole chain re-lands promptly once warm, which is the claim that the
-        // sentinel mechanism is measuring something and not just always true.
-        probe.atMost("frames to land once warm", probe.framesToLand, 4)
+        // sentinel mechanism is measuring something rather than being always true.
+        //
+        // Measured 1. It is structurally 1: `landed()` waits *every* compute fence for this
+        // window, so one pumped frame is one completed chain no matter how many frames the
+        // renderer keeps in flight. The bound is 2 rather than 1 only so a scheduling hiccup is
+        // not a red test; a 3 here would mean the sentinel is surviving a completed frame, which
+        // is a real finding and should fail.
+        probe.atMost("frames to land once warm", probe.framesToLand, 2)
 
         return probe.verdict("gpu pressure projection chain")
     }
