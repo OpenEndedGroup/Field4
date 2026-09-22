@@ -71,6 +71,65 @@ picture on disk is a true capture of it. Concretely:
 
 Prefer building the wrapper when the figure is what you are changing. Skipping is for when it is not.
 
+## Captures with a *platform* prerequisite — macOS cannot produce these at all
+
+The Ceres case above is a prerequisite you can satisfy: run a Gradle task and the figure comes
+out. Ray tracing is the other kind. `Device.kt#supportsRayTracing = enableRayTracing` takes its
+value from a conjunction carrying an unconditional `!Options.isMac`, so no command, flag, property
+or environment variable makes these four captures possible on a Mac; every render method instead
+reaches `RayTracingDocsHarness.kt#private fun rayTracingUnavailable`, which throws rather than
+writing a stand-in. An agent on this machine cannot pay this debt however long it tries.
+
+| page | assets | prerequisite |
+|---|---|---|
+| `public/docs/ray_tracing_examples.md` | `assets/rt-uv-gradient.png`, `assets/rt-triangle-scene.png`, `assets/rt-shader-tiles.png`, `assets/rt-mirror-balls.png` | a **Linux** device exposing `VK_KHR_ray_tracing_pipeline` |
+
+The gate is in Field, not in the driver:
+
+```kotlin
+// Device.kt
+enableRayTracing = Options.enableRayTracing && !Options.isMac && rayFeatureProbe.pipeline
+```
+
+`!Options.isMac` is unconditional, and `Options.enableRayTracing` itself defaults to `!isMac`.
+The device never reaches `rayFeatureProbe`, so this is not a MoltenVK capability question that a
+driver update could change — though MoltenVK does not expose the extension either. The gate
+arrived in `03ad66360`, the commit that added ray tracing, so ray tracing has never once been
+enabled on macOS in this project.
+
+Every `RayTracingDocsHarness` render method therefore reaches `rayTracingUnavailable`, which
+**throws and writes nothing**. That refusal is deliberate and recent. The harness used to write a
+"Ray Tracing / Not Available" card instead, and on 2026-07-09 four of those cards were committed
+as this page's figures under prose claiming they were renders — a placeholder is a perfectly valid
+PNG, so nothing in the build could tell.
+
+**What holds the line now.** `KNOWN_PLACEHOLDERS` in `tools/check_doc_assets.py` carries the four
+paths. They are reported on every run and do not gate, so docs stay buildable; but
+`tools/test_check_doc_assets.py` fails if an entry outlives the placeholder it names, so the list
+cannot quietly become permanent. Any placeholder *not* on that list fails immediately. Run the
+checker to see the current position — it prints `KNOWN GAP — 4 published figure(s) are still
+placeholder cards` and still exits 0.
+
+**Two traps specific to this page.**
+
+- **`citationGates` is vacuous here.** `ray_tracing_examples.md` is not in
+  `CitationContractTest.GUARDED_PAGES` — that map is `dev_docs/*` plus
+  `public/docs/autodiff_examples.md`. A green `citationGates` says nothing about this page, so do
+  not quote it as cover for an edit here.
+- **The page's only test coverage is the four fences, and all four `skipOn: [darwin]`.** They are
+  the entire ray tracing test population: no file under `src/jvmTest` mentions ray tracing at all,
+  and these four are the *only* `skipOn: [darwin]` entries in the whole `discover_field_tests.py`
+  corpus. On a Mac, coverage of everything this page teaches is zero, and nothing local
+  compensates.
+
+**What a macOS agent should do instead.** The pictures are unavailable; the code is not. The page
+prints eight GLSL and Kotlin excerpts and asserts the harness runs them, and that is checkable by
+reading `RayTracingDocsHarness.kt` — the shader sources are `val` constants near the bottom of the
+file, so the excerpts can be compared directly against what compiles. Drift found that way is a
+real defect on a page whose figures cannot back it up. Correcting prose to match the *code* is
+always allowed; what the section above forbids is the opposite move, editing prose to match a
+*picture* you did not regenerate.
+
 ## Decision guide (what works today)
 
 | You want… | Do this | Status |
