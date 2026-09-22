@@ -1,0 +1,197 @@
+import afield.four.modules.fromContext
+import afield.four.util.GpuProbe
+
+val renderer: Renderer = fromContext()
+
+// The chain the workspace document actually runs, at a size that fits in a box.
+//
+// A MAC (staggered) grid: u on the left x-face of each cell, v on the bottom y-face,
+// both in the x and y of one vec4. Divergence is a forward difference and the pressure
+// gradient is a backward difference, so the two are exact adjoints and div.grad is
+// precisely the 5-point Laplacian the Jacobi sweeps invert.
+val N = 32
+val CELLS = N * N
+val FLOATS = CELLS * 4
+val GROUPS = CELLS / 64
+val SWEEPS = 12
+
+val head = """#version 450
+#extension GL_EXT_buffer_reference : require
+layout(std430, buffer_reference) buffer Field { vec4 v[]; };
+layout(local_size_x = 64) in;
+"""
+
+val divergenceGlsl = head + """
+layout(push_constant) uniform Push { Field velocity; Field divergence; uint side; } pc;
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    uint n = pc.side;
+    if (id >= n * n) return;
+    uint i = id % n; uint j = id / n;
+    float uL = (i == 0u)     ? 0.0 : pc.velocity.v[id].x;
+    float uR = (i + 1u >= n) ? 0.0 : pc.velocity.v[id + 1u].x;
+    float vB = (j == 0u)     ? 0.0 : pc.velocity.v[id].y;
+    float vT = (j + 1u >= n) ? 0.0 : pc.velocity.v[id + n].y;
+    pc.divergence.v[id] = vec4((uR - uL) + (vT - vB), 0.0, 0.0, 0.0);
+}
+"""
+
+val jacobiGlsl = head + """
+layout(push_constant) uniform Push { Field pressureIn; Field pressureOut; Field divergence; uint side; } pc;
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    uint n = pc.side;
+    if (id >= n * n) return;
+    uint i = id % n; uint j = id / n;
+    float pL = pc.pressureIn.v[(i == 0u)     ? id : id - 1u].x;
+    float pR = pc.pressureIn.v[(i + 1u >= n) ? id : id + 1u].x;
+    float pB = pc.pressureIn.v[(j == 0u)     ? id : id - n ].x;
+    float pT = pc.pressureIn.v[(j + 1u >= n) ? id : id + n ].x;
+    pc.pressureOut.v[id] = vec4((pL + pR + pB + pT - pc.divergence.v[id].x) * 0.25, 0.0, 0.0, 0.0);
+}
+"""
+
+val projectGlsl = head + """
+layout(push_constant) uniform Push { Field velocity; Field pressure; Field velocityOut; uint side; } pc;
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    uint n = pc.side;
+    if (id >= n * n) return;
+    uint i = id % n; uint j = id / n;
+    float pC = pc.pressure.v[id].x;
+    float pL = pc.pressure.v[(i == 0u) ? id : id - 1u].x;
+    float pB = pc.pressure.v[(j == 0u) ? id : id - n ].x;
+    float u = (i == 0u) ? 0.0 : pc.velocity.v[id].x - (pC - pL);
+    float v = (j == 0u) ? 0.0 : pc.velocity.v[id].y - (pC - pB);
+    pc.velocityOut.v[id] = vec4(u, v, 0.0, 0.0);
+}
+"""
+
+val probe = GpuProbe(renderer, "chain")
+val velocity = probe.fixture("velocity", FLOATS)
+val velocityOut = probe.fixture("velocityOut", FLOATS)
+val divergence = probe.fixture("divergence", FLOATS)
+val pressureA = probe.fixture("pressureA", FLOATS)
+val pressureB = probe.fixture("pressureB", FLOATS)
+
+// A multi-scale divergent field. Jacobi kills high-frequency error in a handful of
+// sweeps and low frequency in hundreds, so a single-scale field would report either a
+// spectacular reduction or a negligible one and neither would say anything.
+val seeded = FloatArray(FLOATS)
+for (j in 0 until N) for (i in 0 until N) {
+    val x = (i + 0.5) / N
+    val y = (j + 0.5) / N
+    val o = (j * N + i) * 4
+    seeded[o] = (kotlin.math.sin(2 * Math.PI * x * 3) * kotlin.math.cos(2 * Math.PI * y * 2) +
+        0.5 * kotlin.math.sin(2 * Math.PI * x * 9)).toFloat()
+    seeded[o + 1] = (kotlin.math.cos(2 * Math.PI * x * 2) * kotlin.math.sin(2 * Math.PI * y * 3) +
+        0.5 * kotlin.math.sin(2 * Math.PI * y * 7)).toFloat()
+}
+probe.upload(velocity, seeded)
+probe.fill(pressureA, 0f)
+probe.fill(pressureB, 0f)
+
+// The oracle: the divergence stencil again, in Kotlin, so the "after" number is not
+// computed by the thing being graded.
+fun divergenceOf(f: FloatArray): FloatArray {
+    val d = FloatArray(CELLS)
+    for (j in 0 until N) for (i in 0 until N) {
+        val id = j * N + i
+        val uL = if (i == 0) 0f else f[id * 4]
+        val uR = if (i + 1 >= N) 0f else f[(id + 1) * 4]
+        val vB = if (j == 0) 0f else f[id * 4 + 1]
+        val vT = if (j + 1 >= N) 0f else f[(id + N) * 4 + 1]
+        d[id] = (uR - uL) + (vT - vB)
+    }
+    return d
+}
+
+fun maxAbs(a: FloatArray): Float {
+    var m = 0f
+    for (v in a) if (v.isFinite()) m = maxOf(m, kotlin.math.abs(v))
+    return m
+}
+
+// Three stages. Note there is ONE `stage` call for all twelve Jacobi sweeps: a Stage is
+// one shader and one compile, and each `dispatch` adds a workgroup launch plus its own
+// barrier, so sweep k reads what sweep k-1 wrote. Twelve compiles would have been the
+// obvious mistake. SWEEPS is even, so the answer lands back in pressureA.
+probe.stage("divergence", divergenceGlsl).dispatch(groups = GROUPS) {
+    bind("velocity") { velocity }
+    bind("divergence") { divergence }
+    bind("side") { N }
+}
+val jacobi = probe.stage("jacobi", jacobiGlsl)
+for (k in 0 until SWEEPS) {
+    val from = if (k % 2 == 0) pressureA else pressureB
+    val to = if (k % 2 == 0) pressureB else pressureA
+    jacobi.dispatch(groups = GROUPS, label = "sweep" + k) {
+        bind("pressureIn") { from }
+        bind("pressureOut") { to }
+        bind("divergence") { divergence }
+        bind("side") { N }
+    }
+}
+probe.stage("project", projectGlsl).dispatch(groups = GROUPS) {
+    bind("velocity") { velocity }
+    bind("pressure") { pressureA }
+    bind("velocityOut") { velocityOut }
+    bind("side") { N }
+}
+
+frames {
+    try {
+        probe.arm(velocityOut, divergence)
+        while (probe.stillWaiting()) frame()
+        println("chain: " + probe.stageList.size + " stages, " +
+            probe.stageList.sumOf { it.dispatchCount } + " dispatches, landed after " +
+            probe.framesToLand + " frame(s)")
+
+        // Claim 1: the divergence pass against the closed form, at every cell.
+        val gpuDiv = probe.read(divergence)
+        val cpuDiv = divergenceOf(seeded)
+        var worstErr = 0f
+        var worstAt = -1
+        for (id in 0 until CELLS) {
+            val e = kotlin.math.abs(gpuDiv[id * 4] - cpuDiv[id])
+            if (e > worstErr) { worstErr = e; worstAt = id }
+        }
+        val before = maxAbs(cpuDiv)
+        probe.atMost("divergence pass vs closed form", worstErr, 1e-6f,
+            buffer = "divergence", index = worstAt)
+        // Measured 2.546231 on this fixture, which is deterministic CPU arithmetic.
+        // A floor of 2.2 fails if somebody edits the seed into something flat, which
+        // is the only way the rest of this box could pass while meaning nothing.
+        probe.atLeast("input field max |div|", before, 2.2f, buffer = "velocity")
+
+        // Claim 2: the sweep. Pressure re-zeroed each sample, so frames x SWEEPS is
+        // the whole iteration count and the points are comparable.
+        println("  frames  sweeps   max |div| after   reduction")
+        var first = 0f
+        var last = 0f
+        for (f in listOf(1, 2, 4, 8)) {
+            probe.idle()
+            probe.fill(pressureA, 0f)
+            probe.fill(pressureB, 0f)
+            probe.arm(velocityOut)
+            while (probe.stillWaiting()) frame()
+            var pumped = probe.framesToLand
+            while (pumped < f) { frame(); pumped++ }
+            probe.idle()
+            val after = maxAbs(divergenceOf(probe.read(velocityOut)))
+            if (first == 0f) first = after
+            last = after
+            println("  %6d  %6d   %15.5f   %7.1fx".format(pumped, pumped * SWEEPS, after, before / after))
+        }
+        // Measured 2584.5x at 96 sweeps and 262.4x between the ends of the sweep.
+        // These floors sit just under the measurements on purpose: `>= 30` against
+        // 2584 is not a test, and a floor that cannot fail is this project's
+        // recurring weakness. A chain that lost a barrier reports single digits.
+        probe.atLeast("reduction, best sample", before / last, 1500f, buffer = "velocityOut")
+        probe.atLeast("extra sweeps helped", first / last, 150f)
+        probe.allFinite("projected field", probe.read(velocityOut), buffer = "velocityOut")
+        probe.verdict("chain") { println(it) }
+    } finally {
+        probe.close()
+    }
+}

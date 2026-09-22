@@ -1,10 +1,11 @@
 package afield.examples.four
 
 import afield.four.Renderer
-import afield.four.buffers.defaultBuffer
 import afield.four.util.GpuNeighbourGrid
+import afield.four.util.GpuProbe
 import afield.four.util.Options
 import afield.four.util.Window
+import afield.four.util.gpuProbe
 import afield.stdlib.linalg.Vector2f
 import kotlin.math.hypot
 import kotlin.system.exitProcess
@@ -50,6 +51,26 @@ expect:
  *   best. A cloud with most of its mass in a few cells is the one that finds it.
  * - **Particles outside the domain are clamped, not dropped.** They still appear in exactly one
  *   cell's run, because a lost particle is a particle that silently stops interacting.
+ * - **The grid's four output buffers were actually written.** They are adopted as [GpuProbe]
+ *   witnesses and prefilled with a sentinel, so a `GpuRadixSort` whose plan never built — which is
+ *   a real failure mode, see below — cannot report agreement with a brute force that also found
+ *   nothing.
+ *
+ * ### What this used to be, and what changed
+ *
+ * This was a hand-rolled probe: its own `defaultBuffer` with `streamReads()` to remember, its own
+ * three seconds of wall-clock spinning, its own four readback arrays, its own
+ * `println("FAIL: …")`/`failures++` at each assertion, and its own cleanup. It is now built on
+ * [GpuProbe], which is the same assertions with the harness removed — and one assertion *gained*,
+ * because the sentinel makes "the sort never ran" a different answer from "the sets agree".
+ *
+ * The wall-clock wait is the part worth noting. `GpuRadixSort` builds its plan lazily on the first
+ * `sort()` call, which happens *during* the first frame's recording, and a `ComputeModule` whose
+ * shader has not finished compiling renders as a silent no-op. Frames here are about a
+ * millisecond, so a frame count was not a wait and the old code spun for three seconds by the
+ * clock. [GpuProbe.stillWaiting] makes it a condition instead: pump until the four buffers have
+ * demonstrably been written, and fail — naming the buffer and the first unwritten index — if they
+ * never are. Faster in the ordinary case and diagnostic in the bad one.
  *
  * ### Running it
  *
@@ -122,154 +143,209 @@ object GpuNeighbourGridSmoke {
         return out
     }
 
-    private fun check(renderer: Renderer, window: Window, label: String, xy: FloatArray): Int {
-        val count = xy.size / 2
-        println("--- $label: $count particles over ${CELLS}x$CELLS cells")
+    private fun check(renderer: Renderer, window: Window, label: String, xy: FloatArray): Int =
+        gpuProbe(
+            renderer,
+            name = "gridSmoke-$label",
+            pump = { window.pollEvents(); renderer.render() },
+        ) { probe ->
+            val count = xy.size / 2
+            println("--- $label: $count particles over ${CELLS}x$CELLS cells")
 
-        val positions = defaultBuffer(name = "gridSmokePositions") {
-            size = count.toLong() * STRIDE * 4L
-            streamReads()
-        }.toBuffer(renderer)
-        positions.get(write = true).mapAndWrite {
+            // The stride is exercised on purpose, so the fixture is built padded and uploaded in
+            // one go rather than written field by field.
+            val positions = probe.fixture("positions", count * STRIDE)
+            val packed = FloatArray(count * STRIDE)
             for (i in 0 until count) {
-                put(xy[i * 2]); put(xy[i * 2 + 1])
-                repeat(STRIDE - 2) { put(0f) }
+                packed[i * STRIDE] = xy[i * 2]
+                packed[i * STRIDE + 1] = xy[i * 2 + 1]
             }
-        }
+            probe.upload(positions, packed)
 
-        val grid = GpuNeighbourGrid(
-            capacity = count,
-            cellsPerSide = CELLS,
-            domainMin = Vector2f(ORIGIN, ORIGIN),
-            domainSize = DOMAIN,
-            renderer = renderer,
-            name = "gridSmoke",
-        )
-        grid.install(renderer.renderList.others, positions, count, strideFloats = STRIDE)
+            val grid = GpuNeighbourGrid(
+                capacity = count,
+                cellsPerSide = CELLS,
+                domainMin = Vector2f(ORIGIN, ORIGIN),
+                domainSize = DOMAIN,
+                renderer = renderer,
+                name = "gridSmoke",
+            )
+            grid.install(renderer.renderList.others, positions, count, strideFloats = STRIDE)
 
-        // GpuRadixSort builds its plan lazily on the first sort() call, which happens *during*
-        // the first frame's recording, and a ComputeModule whose shader has not finished
-        // compiling renders as a no-op -- silently, the "not valid" branch has its println
-        // commented out. Frames are about a millisecond here, so a frame count is not a wait:
-        // this needs wall-clock time, and without it the sort looks broken.
-        val deadline = System.nanoTime() + 3_000_000_000L
-        var frames = 0
-        while (System.nanoTime() < deadline) {
-            window.pollEvents()
-            renderer.render()
-            frames++
-            Thread.sleep(5)
-        }
-        println("  rendered $frames frames over 8s")
-        renderer.windowContext().computeFences.forEach { it.fenceWait() }
+            // The grid owns these four; adopt them so they can be witnessed. All four are written
+            // in full every frame -- the hash pass fills `count` keys and values, the clear pass
+            // fills every one of `cellCount` starts and ends -- so a surviving sentinel anywhere
+            // in them means a pass did not run.
+            val keysBuf = probe.adopt("keys", grid.keys, count)
+            val valuesBuf = probe.adopt("values", grid.values, count)
+            val startBuf = probe.adopt("cellStart", grid.cellStart, grid.cellCount)
+            val endBuf = probe.adopt("cellEnd", grid.cellEnd, grid.cellCount)
 
-        val keys = IntArray(count)
-        val values = IntArray(count)
-        val start = IntArray(grid.cellCount)
-        val end = IntArray(grid.cellCount)
-        grid.keys.get().mapAndRead_ints { get(keys) }
-        grid.values.get().mapAndRead_ints { get(values) }
-        grid.cellStart.get().mapAndRead_ints { get(start) }
-        grid.cellEnd.get().mapAndRead_ints { get(end) }
-
-        var failures = 0
-
-        // 1. The sort actually sorted, and the runs partition everything.
-        for (j in 1 until count) if (keys[j] < keys[j - 1]) {
-            println("  FAIL: keys are not sorted at $j (${keys[j - 1]} then ${keys[j]})"); failures++; break
-        }
-        val covered = (0 until grid.cellCount).sumOf { (end[it] - start[it]).coerceAtLeast(0) }
-        if (covered != count) {
-            println("  FAIL: cell runs cover $covered entries of $count"); failures++
-        }
-        val seen = BooleanArray(count)
-        var duplicated = 0
-        var wrongCell = 0
-        for (c in 0 until grid.cellCount) for (k in start[c] until end[c]) {
-            if (k < 0 || k >= count) { wrongCell++; continue }
-            if (keys[k] != c) {
-                if (wrongCell == 0) println("  FAIL: entry $k is in cell $c but its key is ${keys[k]}")
-                wrongCell++
-                continue
-            }
-            val p = values[k]
-            if (seen[p]) duplicated++
-            seen[p] = true
-        }
-        if (wrongCell > 0) { println("  FAIL: $wrongCell entries sit in the wrong cell's run"); failures++ }
-        val missing = seen.count { !it }
-        if (duplicated > 0 || missing > 0) {
-            println("  FAIL: $duplicated particles appear twice, $missing never appear"); failures++
-        }
-
-        // 2. The headline: neighbour sets, against brute force, per particle.
-        val radius = grid.cellSize
-        val cellOf = { x: Float, y: Float ->
-            val cx = (((x - ORIGIN) / DOMAIN) * CELLS).toInt().coerceIn(0, CELLS - 1)
-            val cy = (((y - ORIGIN) / DOMAIN) * CELLS).toInt().coerceIn(0, CELLS - 1)
-            cx to cy
-        }
-        var mismatched = 0
-        var totalNeighbours = 0L
-        for (i in 0 until count) {
-            val px = xy[i * 2]
-            val py = xy[i * 2 + 1]
-            val (hx, hy) = cellOf(px, py)
-
-            val fromGrid = HashSet<Int>()
-            for (dy in -1..1) for (dx in -1..1) {
-                val cx = hx + dx
-                val cy = hy + dy
-                if (cx < 0 || cy < 0 || cx >= CELLS || cy >= CELLS) continue
-                val c = cy * CELLS + cx
-                for (k in start[c] until end[c]) {
-                    val j = values[k]
-                    if (j == i) continue
-                    if (hypot((xy[j * 2] - px).toDouble(), (xy[j * 2 + 1] - py).toDouble()) <= radius) fromGrid += j
+            try {
+                // Replaces three seconds of wall-clock spinning with the two questions it was a
+                // proxy for. The sentinel alone is NOT enough here, and that is measured rather
+                // than assumed: with a plain `settle` this passed twice and then failed on the
+                // third distribution with `keys out of order 984` and `entries covered by cell
+                // runs 0`. The hash and clear passes had written all four buffers inside two
+                // frames -- so every sentinel was gone -- while `GpuRadixSort`, whose plan is
+                // built lazily inside its first `sort()` call, had not run at all.
+                //
+                // So the readiness condition is semantic: the keys are actually sorted and the
+                // runs actually cover every entry. Those are two of the assertions below, checked
+                // here as a precondition for grading rather than only as a verdict, which is the
+                // difference between "the grid is wrong" and "the grid has not started".
+                probe.settleUntil(
+                    keysBuf, valuesBuf, startBuf, endBuf,
+                    seconds = 20.0,
+                    readyLabel = "the sorted keys and the cell runs",
+                ) {
+                    val k = probe.readInts(keysBuf, count)
+                    val s = probe.readInts(startBuf, grid.cellCount)
+                    val e = probe.readInts(endBuf, grid.cellCount)
+                    val sorted = (1 until count).none { k[it] < k[it - 1] }
+                    val covered = (0 until grid.cellCount).sumOf { (e[it] - s[it]).coerceAtLeast(0) }
+                    sorted && covered == count
                 }
-            }
+                println("  landed after ${probe.framesToLand} pumped frame(s)")
 
-            val brute = HashSet<Int>()
-            for (j in 0 until count) {
-                if (j == i) continue
-                if (hypot((xy[j * 2] - px).toDouble(), (xy[j * 2 + 1] - py).toDouble()) <= radius) brute += j
-            }
-            // Grade only where the claim actually holds. Particles outside the domain are clamped
-            // into the outermost ring of cells, so out there a cell no longer means a region and
-            // the 3x3 block is not a radius query. Two cells in from the boundary, no clamped
-            // particle can appear in the block, and the grid is claimed to be exact.
-            //
-            // Getting this wrong the other way is instructive: filtering the *brute force* by
-            // domain instead reported four "extra" neighbours, which were real particles genuinely
-            // within the radius that the grid was right to find. The test was wrong, not the grid.
-            if (!wellInside(hx, hy)) continue
+                val keys = probe.readInts(keysBuf, count)
+                val values = probe.readInts(valuesBuf, count)
+                val start = probe.readInts(startBuf, grid.cellCount)
+                val end = probe.readInts(endBuf, grid.cellCount)
 
-            totalNeighbours += brute.size
-            if (fromGrid != brute) {
-                if (mismatched < 3) {
-                    println("  FAIL: particle $i grid=${fromGrid.size} brute=${brute.size} " +
-                        "missing=${(brute - fromGrid).size} extra=${(fromGrid - brute).size}")
+                // 1. The sort actually sorted, and the runs partition everything.
+                var descents = 0
+                var firstDescent = -1
+                for (j in 1 until count) if (keys[j] < keys[j - 1]) {
+                    descents++
+                    if (firstDescent < 0) firstDescent = j
                 }
-                mismatched++
+                probe.exactly(
+                    "keys out of order", descents, 0,
+                    buffer = "keys", index = firstDescent.takeIf { it >= 0 }
+                )
+
+                val covered = (0 until grid.cellCount).sumOf { (end[it] - start[it]).coerceAtLeast(0) }
+                probe.exactly("entries covered by cell runs", covered, count, buffer = "cellStart")
+
+                val seen = BooleanArray(count)
+                var duplicated = 0
+                var wrongCell = 0
+                var firstWrongCell = -1
+                for (c in 0 until grid.cellCount) for (k in start[c] until end[c]) {
+                    if (k < 0 || k >= count) {
+                        wrongCell++
+                        if (firstWrongCell < 0) firstWrongCell = k
+                        continue
+                    }
+                    if (keys[k] != c) {
+                        wrongCell++
+                        if (firstWrongCell < 0) firstWrongCell = k
+                        continue
+                    }
+                    val p = values[k]
+                    if (seen[p]) duplicated++
+                    seen[p] = true
+                }
+                probe.exactly(
+                    "entries in the wrong cell's run", wrongCell, 0,
+                    buffer = "keys", index = firstWrongCell.takeIf { it >= 0 }
+                )
+                probe.exactly("particles appearing twice", duplicated, 0, buffer = "values")
+                probe.exactly("particles never appearing", seen.count { !it }, 0, buffer = "values")
+
+                // 2. The headline: neighbour sets, against brute force, per particle.
+                val radius = grid.cellSize
+                val cellOf = { x: Float, y: Float ->
+                    val cx = (((x - ORIGIN) / DOMAIN) * CELLS).toInt().coerceIn(0, CELLS - 1)
+                    val cy = (((y - ORIGIN) / DOMAIN) * CELLS).toInt().coerceIn(0, CELLS - 1)
+                    cx to cy
+                }
+                var mismatched = 0
+                var firstMismatch = -1
+                var totalNeighbours = 0L
+                for (i in 0 until count) {
+                    val px = xy[i * 2]
+                    val py = xy[i * 2 + 1]
+                    val (hx, hy) = cellOf(px, py)
+
+                    val fromGrid = HashSet<Int>()
+                    for (dy in -1..1) for (dx in -1..1) {
+                        val cx = hx + dx
+                        val cy = hy + dy
+                        if (cx < 0 || cy < 0 || cx >= CELLS || cy >= CELLS) continue
+                        val c = cy * CELLS + cx
+                        for (k in start[c] until end[c]) {
+                            val j = values[k]
+                            if (j == i) continue
+                            if (hypot((xy[j * 2] - px).toDouble(), (xy[j * 2 + 1] - py).toDouble()) <= radius) {
+                                fromGrid += j
+                            }
+                        }
+                    }
+
+                    val brute = HashSet<Int>()
+                    for (j in 0 until count) {
+                        if (j == i) continue
+                        if (hypot((xy[j * 2] - px).toDouble(), (xy[j * 2 + 1] - py).toDouble()) <= radius) {
+                            brute += j
+                        }
+                    }
+                    // Grade only where the claim actually holds. Particles outside the domain are
+                    // clamped into the outermost ring of cells, so out there a cell no longer means
+                    // a region and the 3x3 block is not a radius query. Two cells in from the
+                    // boundary, no clamped particle can appear in the block, and the grid is
+                    // claimed to be exact.
+                    //
+                    // Getting this wrong the other way is instructive: filtering the *brute force*
+                    // by domain instead reported four "extra" neighbours, which were real particles
+                    // genuinely within the radius that the grid was right to find. The test was
+                    // wrong, not the grid.
+                    if (!wellInside(hx, hy)) continue
+
+                    totalNeighbours += brute.size
+                    if (fromGrid != brute) {
+                        if (mismatched < 3) {
+                            println(
+                                "  particle $i grid=${fromGrid.size} brute=${brute.size} " +
+                                    "missing=${(brute - fromGrid).size} extra=${(fromGrid - brute).size}"
+                            )
+                        }
+                        mismatched++
+                        if (firstMismatch < 0) firstMismatch = i
+                    }
+                }
+                val insideCount = (0 until count).count {
+                    val (cx, cy) = cellOf(xy[it * 2], xy[it * 2 + 1])
+                    inside(xy[it * 2], xy[it * 2 + 1]) && wellInside(cx, cy)
+                }
+                println(
+                    "  neighbour sets: $mismatched of $insideCount particles disagree; " +
+                        "mean neighbourhood ${"%.1f".format(totalNeighbours.toDouble() / insideCount)}"
+                )
+                probe.exactly(
+                    "particles whose sets disagree", mismatched, 0,
+                    buffer = "values", index = firstMismatch.takeIf { it >= 0 }
+                )
+                // A query that found nothing would agree with a brute force that found nothing, so
+                // the population is a claim rather than a footnote. The floor is per-particle so
+                // one number holds for all three distributions; the measured means are printed
+                // above and recorded in `dev_docs/GPU_PROBE.md`, and they differ by two orders of
+                // magnitude between the uniform and clustered clouds.
+                //
+                // Measured, one floor for all three distributions: 12.228 over 3,043 graded
+                // particles (uniform), 871.698 over 4,000 (clustered), 4.719 over 1,201
+                // (out of domain). The floor has to clear the sparsest, so 4.0 against 4.719 --
+                // 1.18x of room, which is as tight as a single floor over a 185x spread can be.
+                probe.atLeast("mean neighbourhood", totalNeighbours.toDouble() / insideCount, 4.0)
+                probe.atLeast("particles graded", insideCount, 1100)
+
+                probe.verdict("neighbour grid: $label")
+            } finally {
+                grid.removeFrom(renderer.renderList.others)
+                grid.cleanup()
             }
         }
-        val insideCount = (0 until count).count {
-            val (cx, cy) = cellOf(xy[it * 2], xy[it * 2 + 1])
-            inside(xy[it * 2], xy[it * 2 + 1]) && wellInside(cx, cy)
-        }
-        println("  neighbour sets: $mismatched of $insideCount particles disagree; " +
-            "mean neighbourhood ${"%.1f".format(totalNeighbours.toDouble() / insideCount)}")
-        if (mismatched > 0) failures++
-        // A query that found nothing would agree with a brute force that found nothing.
-        if (totalNeighbours == 0L) {
-            println("  FAIL: nobody had any neighbours; the radius or the data is wrong"); failures++
-        }
-
-        grid.removeFrom(renderer.renderList.others)
-        grid.cleanup()
-        if (failures == 0) println("  ok")
-        return if (failures > 0) 1 else 0
-    }
 
     private fun inside(x: Float, y: Float) =
         x >= ORIGIN && y >= ORIGIN && x < ORIGIN + DOMAIN && y < ORIGIN + DOMAIN
