@@ -33,7 +33,7 @@ floor are close to the camera, the far wall is not, so the brightest values ring
 frame and the darkest sit in the middle. That fact decides the shape of everything below: the solid
 this page builds is a basin, and it is the room turned inside out.
 
-## The hop that did not exist
+## Closing a heightfield into a solid
 
 `Img.toHeightfieldMesh` has always turned a raster into a surface, and `TriMesh.toSolid` has always
 handed a mesh to Manifold. They do not compose, and the reason is in `heightfieldMesh`'s own KDoc:
@@ -46,8 +46,9 @@ The obvious repair is not the shape you want either: `TriMesh.repairToSolid` clo
 capping its *own* rim, which fits a lid across the boundary polygon and encloses only the sliver
 between that lid and the surface.
 
-So this page adds `reliefMesh` and `Img.toReliefMesh` to `mesh_generate.kt`. They drop the rim
-vertically onto a plane and floor it, which is what a lithophane, a relief map or a stamp actually is:
+`reliefMesh` and `Img.toReliefMesh`, in `mesh_generate.kt`, close it the other way: they drop the
+rim vertically onto a plane and floor it, which is what a lithophane, a relief map or a stamp
+actually is:
 
 ```diffstatic {data-lang=kotlin}
 // before: two calls that do not compose
