@@ -34,9 +34,8 @@ rendering; stop a stage to remove it from the pipeline. Relaunch stages in their
 order after rebuilding the resources box. Shader reloads preserve the resources.
 
 Stopping a stage detaches its work so you can edit and relaunch it. Closing the document's
-last session also closes its native renderer. Shutdown waits for the device, drains
-pending releases and disposes registered buffers, textures and shader resources;
-it does not need to wait for the JVM to collect the document's objects.
+last session also closes its native renderer, which waits for the device and then releases
+the buffers, textures and shader resources the graph registered.
 
 ## Resident world tiles
 
@@ -67,11 +66,11 @@ chosen outside boundary condition. The helper does not decide what an unloaded w
 means. The demo uses storage buffers and explicit neighbouring-cell lookup instead.
 
 The arrays returned by these helpers are reusable, borrowed storage. Read/update them
-on the owning simulation thread. This is residency and addressing infrastructure, not a
-second fluid engine: it can also organize particles, density, masks or lighting caches.
+on the owning simulation thread. Nothing in them is specific to fluid: the same residency
+and addressing will organize particles, density, masks or lighting caches.
 For a ready-made fixed-domain solver, see [Fabricate Renderer](fabricate_renderer.md).
 
-## Correspondence has an identity
+## Motion history for the camera and for objects
 
 Use the existing `afield.four.targets.FrameHistory` for camera history. Capture once per
 **rendered frame**, using `Renderer.frameCounter`, target dimensions and a scene epoch.
@@ -100,8 +99,8 @@ resetting or rewinding also invalidates history.
 The demo RTT's second attachment is `(previousU, previousV, valid, coverage)`. These are
 absolute texture coordinates with Field's top-left convention, **not** pixels per second.
 The world has camera correspondence; the rotating marker has camera plus object
-correspondence. Procedural grain is a changing signal carried by the world, so its
-camera correspondence is not a claim that every stochastic detail existed last frame.
+correspondence. Procedural grain moves with the world and so has camera correspondence
+too, but it is a changing signal: reprojecting it will not hold one speck still.
 The overlaid finite strokes are intentionally outside this attachment; a production
 particle pass should supply its own previous positions and coverage.
 
@@ -147,8 +146,7 @@ replace the epoch token and acknowledge the ticket. Failures are reported and co
 without an automatic retry or an implied rollback.
 
 The demo resets tile generations, time and correspondence. GPU resources stay outside
-the callback. Keep this boundary inside the normal box-owned loop or render hook: it
-is not an alternative launch service.
+the callback. Keep this boundary inside the normal box-owned loop or render hook.
 
 `EffectiveParameter` makes a finite scalar's requested value, effective clamped value,
 bounds, units and description inspectable. It is explicit: it cannot discover clamps
@@ -164,5 +162,5 @@ warm-up, camera path and parameters, and keep capture overhead consistent. See
 To include GPU queries, set `Options.profiling = true` in the renderer box before
 restarting the numbered graph. The existing renderer profiler reports frame and module
 timings; support for pipeline statistics varies by device. Keep that setting the same
-for both sides of a comparison. The Profile box captures CPU/allocations; it does not
-silently recreate the renderer to switch GPU queries on.
+for both sides of a comparison. The Profile box captures CPU and allocations only, and
+switching GPU queries on always costs you a restart.

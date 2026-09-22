@@ -52,7 +52,7 @@ Restore rebuilds document state from the target version rather than copying a fi
 
 Boxes that exist in the chosen version are restored with their saved properties. Boxes that do **not** exist in that older version are **tombstoned** rather than deleted, so the restore stays reversible. Each restore records its own transition, so the jump is itself part of the history.
 
-## Digging deeper
+## Search, blame and named versions
 
 Depending on what you have selected, the panel also offers:
 
@@ -61,8 +61,6 @@ Depending on what you have selected, the panel also offers:
 - **Name a version** — give a meaningful label to a save point so you can find it again (named versions get their own list in the sidebar).
 - **Review version jumps** — the sidebar lists the restore transitions you have made, so the act of moving through history is itself recoverable.
 - **See per-version metrics** — boxes, properties and lines for the selected version.
-
-Bookmarks move the view; history recovers content.
 
 ## Where versions come from
 

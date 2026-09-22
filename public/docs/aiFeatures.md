@@ -394,7 +394,7 @@ for the current request. The explicitly invoked filestore maintenance CLI is a
 separate OpenAI-specific tool and may upload the files it is given.
 See [Semantic retrieval](semantic_index.md) for Field's separate local indexes.
 
-## Live source, edits and rendered evidence
+## Source edits, captures and launch receipts
 
 AI4 can inspect the live, saved and last executed revisions of a box property, then
 patch it against the revision it just read. A conflicting edit is refused instead
@@ -406,9 +406,10 @@ property. `DocumentSourceExportRequest` writes a new graph snapshot and selected
 with source hashes and warnings about omitted runtime state. Export does not launch code;
 review external assets, root preambles and dependencies before publishing a starting point.
 
-Shader reload and native-window capture use the same providers in chat and external
-tools. External captures arrive as images. A failed shader reload may leave the last good
-picture visible, so its diagnostics remain separate from the screenshot.
+Reloading a shader and grabbing the native window work the same way whether you ask in
+chat or from an external tool. External captures arrive as images. A failed shader reload
+may leave the last good picture visible, so its diagnostics remain separate from the
+screenshot.
 
 Kotlin launch receipts identify the source that completed setup. A pending running
 stripe is not proof that compilation succeeded, and successful setup is not proof of
