@@ -118,7 +118,8 @@ Jacobi iterations are therefore **one** stage and twenty-four dispatches, not tw
    `ComputeModulePointer.render` has its `println` commented out. So `repeat(4) { frame() }` and
    "three seconds" are both hopes. `arm` prefills the sentinel and `stillWaiting` is a *condition*
    with a deadline, and the deadline's message names the fixture, the count and the first unwritten
-   index.
+   index. And because a written buffer is still not a *finished chain*, `settleUntil` takes a
+   semantic post-condition too — see the two measured traps under the neighbour-grid port below.
 3. **A slot name is not checked.** `Structure.bind(name) { … }` accepts *any* string; only
    `bindPushConstant` reports a miss, and none of the six hand-rolled probes use it. A typo binds
    nothing and the shader reads a null device pointer. `Bindings.bind` validates against the
@@ -131,8 +132,8 @@ Jacobi iterations are therefore **one** stage and twenty-four dispatches, not tw
 - **No host-read barrier.** `afield.four.modules.hostReadBarrier` exists (compute write → host
   read) and is used by none of the six probes, which looked like a latent bug. It is not:
   `VulkanBuffer.mapAndRead` already calls `vmaInvalidateAllocation` over the range before mapping,
-  and `landed()` waits the window's compute fences, which is the execution dependency. A probe
-  reading mid-frame *would* need the barrier, and this is not the facility for that.
+  and `landed()` waits *both* of the window's fence arrays, which is the execution dependency. A
+  probe reading mid-frame *would* need the barrier, and this is not the facility for that.
 - **No headless path.** `afield.four` has no headless mode: a compute-only dispatch still needs a
   `Window` for the device to exist, and an awake display. Building one is a larger, different job.
 
@@ -285,6 +286,88 @@ python3 tools/field_backdoor.py --port <yours> --json \
 
 ---
 
+---
+
+## Collapsing an existing probe: `GpuNeighbourGridSmoke`
+
+`src/jvmMain/kotlin/afield/examples/four/GpuNeighbourGridSmoke.kt`, ported to the facility. Every
+assertion the hand-rolled version made is kept and five are added. Measured before and after on
+the same machine, minutes apart:
+
+| | before | after |
+| --- | --- | --- |
+| wall clock, three distributions | 11,979 ms | 7,112 ms |
+| frames pumped per case | 187 / 199 / 201 | 1 / 2 / 2 |
+| the wait | 3 s by the clock, per case | a condition |
+| assertions | 7, as `println("FAIL: …")` | 8 per case, 24 total, each printed with its bound |
+| total lines | 279 | 355 |
+| **code** lines (comments and blanks stripped) | **186** | **205** |
+
+**It did not shrink the file, and pretending otherwise would be the wrong lesson.** The harness
+lines removed are few — a buffer allocation, a spin, four readback declarations, a cleanup. What
+replaced them is first-offending-index tracking on every claim plus five more assertions. Line
+count is the wrong metric for this change.
+
+The findings are identical, which is what makes it a port rather than a rewrite: `0 of 3043 / 0 of
+4000 / 0 of 1201` particles disagree, mean neighbourhood `12.228 / 871.698 / 4.719`. And the old
+`println("rendered $frames frames over 8s")` was lying about its own three-second deadline, which
+is the sort of thing a wait nobody reads accumulates.
+
+### The race the port found
+
+This is the most useful thing the port did. Porting a passing test produced a **one-in-three
+flake**: `settle` reported landed after 2 frames, and the verdict then said
+
+```
+  ! keys out of order                           984 == 0                [keys index 1]
+  ! entries covered by cell runs                  0 == 2,000            [cellStart]
+  ! particles never appearing                 2,000 == 0                [values]
+  ! particles whose sets disagree             1,189 == 0                [values index 3]
+  4 of 8 claims hold
+```
+
+Two hypotheses died before instrumentation found it. Instrumenting the readiness condition showed
+`readyCalls=1 lastSorted=true lastCovered=2000 of 2000` — a probe **one `println` earlier** had
+read the same four buffers as sorted and fully covered, with nothing running in between. So the
+data was right and then went *backwards*, which can only mean a frame still in flight.
+
+`GpuNeighbourGrid.install` registers its whole chain on `renderer.renderList.others` — the
+**graphics** queue. Every hand-rolled probe in this repository, and the first draft of `GpuProbe`,
+waits only `windowContext().computeFences`, which were signalled because nothing was on the compute
+list at all. The readback was racing the next graphics frame's hash and clear passes clobbering the
+previous frame's sorted keys.
+
+`GpuProbe.idle()` now waits `ctx.fences` **and** `ctx.computeFences`, always — a probe should not
+have to know which queue its subject chose. **8 of 8 repeat runs pass deterministically** after the
+fix, against 2 of 3 before. The original smoke has the same bug and hides it behind the three
+seconds of spinning, which is why it never showed.
+
+### Two more traps, both measured
+
+**A written buffer is not a finished chain.** `settleUntil(vararg outputs, ready = { … })` takes a
+*semantic* post-condition as well as the sentinel. Before the fence fix, two frames were enough for
+the grid's hash and clear passes to write all four of its buffers — so every sentinel was gone —
+while `GpuRadixSort`, whose plan is built lazily inside its first `sort()` call, had not run at all.
+A pass that writes unconditionally clears the sentinel whether or not the pass before it produced
+anything usable. The neighbour grid now requires its keys sorted and its runs covering as a
+*precondition for grading*, not only as a verdict, which is the difference between "the grid is
+wrong" and "the grid has not started".
+
+**A constant is a fixed point of an average.** Arming the Jacobi ping-pong pressure pair of the
+chain probe looked strictly better and was wrong: it hung for 1434 frames and reported `9 of 16384
+slots still hold the sentinel, from index 908` on a solver that was working perfectly, because
+`(4 × −98765 − 0) / 4` is exactly `−98765`. Any interior cell whose four neighbours are all still
+sentinel and whose source term is exactly zero reproduces the sentinel forever. **Arm the buffers a
+chain *ends* at, never an intermediate that is fed back into itself**; the same shape catches any
+smoothing, blurring, relaxing or accumulating stage. The Jacobi stage is still witnessed, by the
+three sweep claims that fail together if it never ran.
+
+**`adopt(name, buffer, floats)`** is the API the port needed: a buffer a library component owns can
+be armed and read. Explicit, because `arm` has to know the size to prefill, and an *un*-adopted
+foreign buffer is still refused rather than skipped — which `four.gpu-probe.self-check` holds.
+
+---
+
 ## Traps paid for, in the order they cost time
 
 - **`run` does not attach a `frames { }`; `launch` does.** A box whose last expression is a
@@ -304,12 +387,18 @@ python3 tools/field_backdoor.py --port <yours> --json \
 - **Only the *last* row of a sweep is a weak claim.** The row that matters is the *difference*
   between rows. A chain missing a barrier reports the same number on every row, which passes both a
   reduction floor and a monotonicity check.
+- **`caffeinate -u -t 2` is not enough for a repeat loop.** A run that comes back
+  `environment-incomplete` with `displayAvailable: false` is the display asleep, not a failure; hold
+  it awake for the whole loop (`caffeinate -u -t 1200 &`) or you will read sleep as red.
 
 ## Known gaps
 
-- `GpuNeighbourGridSmoke` and `GpuSkinningSmoke` are **not** ported to the facility yet, so the
-  duplication is reduced by argument rather than by deletion. The neighbour-grid port is the
-  smaller of the two and the obvious next step.
+- `GpuSkinningSmoke` (685 lines) and the four `ShaderField*`/`FieldStats` probes are **not**
+  ported. `GpuNeighbourGridSmoke` is, and the honest result of that one port is above: the facility
+  bought determinism, a real bug and five assertions, and cost nineteen lines of code. Do not expect
+  the others to shrink either.
+- Four of the six hand-rolled probes still never remove their compute module, getting away with it
+  only because they `exitProcess`. Untouched, because changing them is not this branch's job.
 - Nothing in the repository verifies the demo document's four boxes — see its `README.md` for why
   and what the fix is.
 - `GpuProbe` is new public API in `afield.four.util`, so the generated codebase reference has
