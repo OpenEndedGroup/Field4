@@ -123,7 +123,8 @@ import kotlin.math.abs
  *         probe.arm(out)
  *         while (probe.stillWaiting()) frame()
  *         println(probe.read(out).max())
- *         probe.verdict("check")
+ *         // `{ println(it) }` and not the default: see [verdict].
+ *         probe.verdict("check") { println(it) }
  *     } finally { probe.close() }
  * }
  * ```
@@ -584,34 +585,44 @@ class GpuProbe(
      * The table is the artefact. A reader should be able to see, without reading the source, both
      * what was measured and how much room there was — which is the only way a floor chosen to hide
      * a real error becomes visible.
+     *
+     * [print] exists because of where the lines have to *land*. Box code's `println` is rewritten
+     * by the K2 REPL into `_printlnHere(line, …)`, which posts to that box's output pane; a
+     * `println` inside this library is an ordinary one and goes to the server's stdout. So a probe
+     * driven from a box would print its table somewhere the person looking at the box cannot see
+     * it. Passing `{ println(it) }` from box code fixes that, because the rewrite happens at the
+     * call site in the box.
      */
-    fun verdict(title: String = name): Int {
+    fun verdict(title: String = name, print: (String) -> Unit = ::println): Int {
+        for (line in verdictLines(title)) print(line)
+        return claims.count { !it.passed } + failures.size
+    }
+
+    /**
+     * [verdict]'s table as lines, for a caller that wants to put it somewhere other than a stream
+     * — a box display channel, a markdown fence, a test's assertion message.
+     */
+    fun verdictLines(title: String = name): List<String> {
         val width = (claims.maxOfOrNull { it.label.length } ?: 1).coerceIn(1, 48)
         val dispatchTotal = stages.sumOf { it.dispatchCount }
-        println(
-            "--- $title: ${claims.size} claims over ${stages.size} stage(s), " +
-                "$dispatchTotal dispatch(es)" +
-                (if (landedAfterFrames >= 0) ", landed after $landedAfterFrames pumped frame(s)" else "") +
-                " ---"
-        )
+        val out = mutableListOf<String>()
+        out += "--- $title: ${claims.size} claims over ${stages.size} stage(s), " +
+            "$dispatchTotal dispatch(es)" +
+            (if (landedAfterFrames >= 0) ", landed after $landedAfterFrames pumped frame(s)" else "") +
+            " ---"
         var failed = 0
         for (c in claims) {
             val ok = c.passed
             if (!ok) failed++
-            println(
-                "  %s %-${width}s  %14s %-2s %-14s%s".format(
-                    if (ok) " " else "!", c.label.take(width),
-                    fmt(c.measured), c.comparator, fmt(c.bound), c.where()
-                )
+            out += "  %s %-${width}s  %14s %-2s %-14s%s".format(
+                if (ok) " " else "!", c.label.take(width),
+                fmt(c.measured), c.comparator, fmt(c.bound), c.where()
             )
         }
-        for (f in failures) println("  ! $f")
-        val held = claims.size - failed
-        println(
-            "  $held of ${claims.size} claims hold" +
-                if (failures.isNotEmpty()) ", and ${failures.size} unconditional failure(s)" else ""
-        )
-        return failed + failures.size
+        for (f in failures) out += "  ! $f"
+        out += "  ${claims.size - failed} of ${claims.size} claims hold" +
+            if (failures.isNotEmpty()) ", and ${failures.size} unconditional failure(s)" else ""
+        return out
     }
 
     private fun fmt(v: Double): String = when {
