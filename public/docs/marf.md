@@ -257,10 +257,9 @@ Instances for `Vector2f`, `Vector3f` and `Vector4f` ship with it.
     in-place members that return the receiver, and `/` resolves to the mutating member operator
     rather than the allocating extension. A stage target lives in a bank and is read once per stage
     for as long as the reader runs, so one in-place write does not give you a wrong frame: it
-    rewrites the material. The shipped instances use the out-parameter forms
-    (`a.add(b, Vector3f())`), and `MarfVectorSpaceTest` reads a bank twice and requires the second
-    pass to agree with the first, which is the property a mutating implementation breaks and a type
-    check does not.
+    rewrites the material. Write yours with the out-parameter forms, as the shipped instances do
+    (`a.add(b, Vector3f())`), and read your bank twice: a mutating implementation gives you a
+    different answer the second time, and nothing in the type signature will have warned you.
 
 `MarfSpace` is a vector space, which rules out the types that are not one. A quaternion
 interpolates by `slerp` and a hue wraps, so neither is expressible as add-and-scale and neither has
