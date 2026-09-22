@@ -6,18 +6,14 @@ compiler keeps dividing until a `SPLIT` runs out of bits, and the recursion bott
 fallback. Bus widths are never declared: a 32-bit adder and an 8-bit adder are the same eleven
 lines of source, and the difference is entirely in how far the division ran.
 
-That is a good language and Field did not write it. This page is about what it takes to run it here
-anyway: as much a question about what an environment owes a language as about circuits.
-
-The short version: **none of MorphoHDL is reimplemented.** Field runs upstream's parser, upstream's
-compiler and upstream's layout kernel, byte-identical to
+**None of MorphoHDL is reimplemented.** Field runs upstream's parser, upstream's compiler and
+upstream's layout kernel, byte-identical to
 [commit `3ff923f`](https://github.com/paradigms-of-intelligence/morpho/tree/3ff923f9fafcb5b97ad2ef393795c96710ed00ea),
 and supplies only the things a language needs from an environment rather than from itself:
 simulation, drawing, and somewhere to be typed.
 
-To write MorphoHDL rather than read about it, start at [Using it](#using-it): a `morpho` box takes
-upstream's source directly, and `MorphoGraal` compiles a design from Kotlin in a few lines. The
-sections before it are what the four figures below are showing you.
+To write MorphoHDL, start at [Using it](#using-it): a `morpho` box takes upstream's source
+directly, and `MorphoGraal` compiles a design from Kotlin in a few lines.
 
 ---
 
