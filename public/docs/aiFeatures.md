@@ -393,3 +393,34 @@ OpenAI, OpenRouter, or Anthropic; the model receives only the excerpts selected
 for the current request. The explicitly invoked filestore maintenance CLI is a
 separate OpenAI-specific tool and may upload the files it is given.
 See [Semantic retrieval](semantic_index.md) for Field's separate local indexes.
+
+## Source edits, captures and launch receipts
+
+AI4 can inspect the live, saved and last executed revisions of a box property, then
+patch it against the revision it just read. A conflicting edit is refused instead
+of overwriting newer work. `DocumentSourceReadRequest` and `DocumentSourcePatchRequest`
+are shared with external agents through Field's MCP bridge.
+
+`DocumentBoxNavigateRequest` selects a box, centers the canvas and opens the requested
+property. `DocumentSourceExportRequest` writes a new graph snapshot and selected guides,
+with source hashes and warnings about omitted runtime state. Export does not launch code;
+review external assets, root preambles and dependencies before publishing a starting point.
+
+Reloading a shader and grabbing the native window work the same way whether you ask in
+chat or from an external tool. External captures arrive as images. A failed shader reload
+may leave the last good picture visible, so its diagnostics remain separate from the
+screenshot.
+
+Kotlin launch receipts identify the source that completed setup. A pending running
+stripe is not proof that compilation succeeded, and successful setup is not proof of
+sustained animation. Dependent Kotlin macro operations stop on setup errors and preserve
+prior changes for inspection; undo is an explicit action.
+
+Other language engines retain their normal macro dispatch behavior, with
+`setupVerified: false` and an explicit message that completion is unverified.
+The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
+from every engine, not only Kotlin. The receipt is earned rather than assumed: an engine
+reporting success while the box printed an error still comes back failed.
+
+See [Flow grain and motion](flow_grain.md) for an editable graphics example with resets,
+parameters, motion correspondence and a repeatable profiling scenario.

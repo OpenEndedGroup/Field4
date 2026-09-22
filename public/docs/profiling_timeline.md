@@ -283,3 +283,12 @@ timer — [Holding a Frame Budget](frame_budget.md) covers both, and says which 
 instruments answers which question.
 
 For document versions and restoration, see [Document History](document_history.md).
+
+## Profiling the flow_grain playground
+
+The [flow_grain starting point](flow_grain.md) adds a fixed-size GPU workload and an
+explicit reset boundary. Its profile box resets contents, warms 60 rendered frames,
+then records a 180-frame pan/zoom path. Parameter snapshots distinguish requested
+values from effective limits. The timeline measures the frame thread and named input
+scopes; renderer GPU timers remain a separate measurement. Keep window size, parameters
+and stack-sampling settings identical when comparing captures.

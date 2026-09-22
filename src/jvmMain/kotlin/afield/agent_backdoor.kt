@@ -732,7 +732,8 @@ internal fun buildAgentSnapshot(info: SessionInformation): AgentDocumentSnapshot
         boxes = boxes,
         readOnly = info.readOnly,
         documentExisted = info.documentExisted,
-        attachedToLiveDocument = info.attachedToLiveDocument
+        attachedToLiveDocument = info.attachedToLiveDocument,
+        executionVerdicts = true
     )
 }
 
@@ -866,8 +867,11 @@ internal fun disposeBoxRenderer(box: Box): Boolean {
     inMain {
         runCatching {
             val before = openWindowsSnapshot().size
-            renderer.cleanup()
-            renderer.windows.forEach { it.cleanup() }
+            try {
+                renderer.cleanup()
+            } finally {
+                renderer.windows.forEach { it.cleanup() }
+            }
             val after = openWindowsSnapshot().size
             lprintln(
                 "info,agent_backdoor",
@@ -1117,7 +1121,9 @@ fun installAgentBackdoorHandlers() {
                 val resultJson = Json.parseToJsonElement(aiToolMapper.writeValueAsString(result))
                 reply(
                     Message("agent-ai-tool-call").payload(
-                        AgentAiToolCallResponse(name = request.name, ok = true, result = resultJson)
+                        AgentAiToolCallResponse(name = request.name, ok = true, result = resultJson,
+                            images = (result as? afield.ai.core.CarriesToolImages)?.toolImages.orEmpty()
+                                .take(8).map { AgentToolImage(it.dataUrl, it.caption) })
                     )
                 )
             } catch (t: Throwable) {

@@ -20,7 +20,7 @@ When Caps Lock is off, dragging and resizing stay freeform.
 
 Field looks for nearby layout relationships on each axis independently. That means one drag can snap horizontally and vertically at the same time.
 
-The current system can snap to:
+Field can snap to:
 
 - left-edge alignment
 - right-edge alignment
@@ -40,15 +40,14 @@ The basic use case is lining up boxes.
 - Drag near the top or bottom edge of another box to align horizontal edges.
 - Drag near another box's center line to align centers.
 
-This is useful when you are cleaning up a graph after adding a few boxes quickly and want the layout to read more clearly.
-
 ## Even spacing
 
 Snapping also looks for gaps between nearby boxes.
 
 If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap
 target and draws measurement ticks on the guide line, which is how you get an evenly spaced row or
-a regular vertical stack without measuring by hand.
+a regular vertical stack without measuring by hand. Gaps under 5 px do not count as spacing, so a
+tight cluster of boxes offers nothing to space evenly.
 
 ## Resize snapping
 
@@ -59,12 +58,21 @@ With snapping enabled, a resize gesture can snap the edge you are dragging to ne
 ## Thresholds
 
 Snapping is proximity-based. A box jumps when it gets close enough, not when it lands exactly.
+Alignment and spacing use different distances, and alignment draws its guide before it will take
+the snap.
 
-- edge and center candidates are considered when they are near the current drag position
-- the applied snap uses a tighter threshold before the box actually jumps into place
-- spacing snaps tolerate a larger search area so they are easier to discover
+<div class="field-data-table" markdown>
 
-So the way to use it is to drag near the relationship you want and watch for the guide line.
+| | guide is drawn within | box jumps within |
+| --- | --- | --- |
+| edge and center alignment | 20 px | 10 px |
+| even spacing | 30 px | 30 px |
+
+</div>
+
+So a spacing snap engages anywhere its guide is visible, while an alignment guide can appear while
+you are still too far out for the box to move. Resizing uses the same 10 px as alignment. Drag near
+the relationship you want and watch for the guide line.
 
 ## When to use it
 

@@ -25,7 +25,7 @@ import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 
-class Instance(validate: Boolean) {
+class Instance(private val validate: Boolean) {
 
     var vkInstance: VkInstance
         private set
@@ -35,6 +35,7 @@ class Instance(validate: Boolean) {
 
     private var debugUtilsCreateInfo: VkDebugUtilsMessengerCreateInfoEXT? = null
     private var vkDebugHandle: Long = 0
+    internal val validationActive: Boolean get() = validate && vkDebugHandle != VK10.VK_NULL_HANDLE
 
     init {
         if (Options.enableVR) {

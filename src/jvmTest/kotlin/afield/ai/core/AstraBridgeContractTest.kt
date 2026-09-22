@@ -54,7 +54,7 @@ class AstraBridgeContractTest {
         assertEquals("gpt-5.6-sol", resolved(Ai4ModelDefaults.FLAGSHIP_MODEL, "openai", AiModelSettings(flagshipModel = "gpt-5.6-sol")))
         assertEquals("openai/gpt-5.6-sol", resolved(Ai4ModelDefaults.FLAGSHIP_MODEL, "openrouter"))
         assertEquals("claude-opus-4-8", resolved(Ai4ModelDefaults.FLAGSHIP_MODEL, "anthropic"))
-        assertEquals("gpt-5.6-luna", resolved(Ai4ModelDefaults.FAST_MODEL, "openai"))
+        assertEquals("gpt-6-luna", resolved(Ai4ModelDefaults.FAST_MODEL, "openai"))
         assertEquals("gpt-5.4", resolved(Ai4ModelDefaults.FRONTIER_FALLBACK_MODEL, "openai"))
     }
 

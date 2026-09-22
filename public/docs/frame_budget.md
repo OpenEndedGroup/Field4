@@ -236,7 +236,7 @@ Collector time can include work outside those pauses; neither measure identifies
 whose allocation caused the collection. An absence of recorded pauses does not prove
 that heap allocation is free. Compare bytes per frame and allocation stacks alongside them.
 
-## A JFR sample: 10 ms periods, 150 allocations a second
+## The JFR sampler
 
 The third instrument is optional JFR recording
 (`JvmProfileCapture.kt:16#/** Optional, bounded JFR sampling. Parsing and source lookup never run on the game thread. */`),
@@ -255,18 +255,15 @@ A 10 millisecond period means a sampler that fires 100<!--derive: 1000/10--> tim
 At 60 fps a frame is 16.7 milliseconds long, so about **1.7**<!--derive: 16.7/10--> firings land in each frame —
 but a firing only records your work if your work is what is running when it arrives, so **a
 2 millisecond hitch has about a one in five chance of appearing in any sample at all**, and
-a single hitch that shows up in no sample is the ordinary case rather than a malfunction. More usefully, the sampler sees your
-work in proportion to how much of *wall* time your work occupies, which sets what a
-recording can give you. The three-second
-recording measured below had 63.9 ms of resume time in 3,002.6 ms of wall clock — 2.13<!--derive: 63.9/3002.6*100-->%
-busy. Three seconds at a 10 ms period is 300<!--derive: 3000/10--> possible firings, so about six CPU samples
-should have landed in the workload, and **nine did** — out of 207 sampled events, the other
-198 being allocation samples.
+a single hitch that shows up in no sample is the ordinary case rather than a malfunction.
 
-Nine CPU samples in three seconds, with three boxes running. If you want CPU stacks
-worth grouping, the work has to be *happening* while you record: a piece genuinely spending
-half its frame budget in box code will yield a couple of hundred samples in three seconds,
-and a piece that is mostly waiting will yield a handful however long you record it.
+More usefully, the sampler sees your work in proportion to how much of *wall* time your work
+occupies, and that is what sets how long you need to record. The three-second recording measured
+below was 2.13<!--derive: 63.9/3002.6*100-->% busy — 63.9 ms of resume time in 3,002.6 ms of wall
+clock — and it yielded **nine** CPU samples. If you want CPU stacks worth grouping, the work has to
+be *happening* while you record: a piece genuinely spending half its frame budget in box code will
+yield a couple of hundred samples in three seconds, and a piece that is mostly waiting will yield a
+handful however long you record it.
 
 So when the **Hot code** tab shows a percentage, it is a share of sampled events and not a
 share of milliseconds. Two further rules follow from the same fact: an inclusive row counts a sample once per

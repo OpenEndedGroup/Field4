@@ -3,6 +3,7 @@ package afield.four.device
 import afield.four.buffers.BufferParameters
 import afield.four.modules.Introspected
 import afield.four.util.vkCheck
+import afield.four.util.AutoDisposer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRPushDescriptor
 import org.lwjgl.vulkan.VK10.*
@@ -25,9 +26,18 @@ interface UpdatesDescriptorSet {
 abstract class DescriptorSetLayout protected constructor(private val device: Device) {
     var vkDescriptorLayout: Long = 0
         protected set
+    private val autoDisposeToken = AutoDisposer.register(this, "DescriptorSetLayout", owner = device) { }
+
+    protected fun registerCleanup() {
+        val dev = device.vkDevice
+        val layout = vkDescriptorLayout
+        autoDisposeToken.updateCleanup { vkDestroyDescriptorSetLayout(dev, layout, null) }
+    }
 
     fun cleanup() {
+        if (!autoDisposeToken.disable()) return
         vkDestroyDescriptorSetLayout(device.vkDevice, vkDescriptorLayout, null)
+        vkDescriptorLayout = 0L
     }
 
     /**
@@ -163,6 +173,7 @@ abstract class DescriptorSetLayout protected constructor(private val device: Dev
                     "Failed to create descriptor set layout"
                 )
                 super.vkDescriptorLayout = pSetLayout[0]
+                registerCleanup()
             }
         }
 

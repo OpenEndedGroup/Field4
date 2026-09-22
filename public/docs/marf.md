@@ -15,9 +15,9 @@ it is not the step sequencer. It is the way the 248 keeps four things on separat
 Here all four are ordinary [patterns](pattern_language.md). `slow`, `rev`, `every`, `euclid`,
 `degradeBy` and `struct` already work on all four, so this layer adds almost no operators of its
 own. The figures below are drawn by
-[`MarfGallery`](reference/patterns.md#marfgallery-kt), which samples each reader through its own
-public surface and asserts the geometry it drew: one boundary line per stage, one pulse per
-triggering stage, one polyline point per sample.
+[`MarfGallery`](reference/patterns.md#marfgallery-kt), which samples each reader through the same
+public surface you would: one boundary line per stage, one pulse per triggering stage, one polyline
+point per sample.
 
 ---
 
@@ -66,8 +66,7 @@ val env = marf(
 
 The middle lane's four stages are one, four, a quarter and two cycles long. Those numbers are exact:
 stage time accumulates in `PatQ` rationals, never in `Double`, so a reader is still phase-locked to
-the bar after ten thousand stages. The gallery asserts the four durations as rationals rather than
-within a tolerance.
+the bar after ten thousand stages.
 
 Each field is read at the instant the stage begins, through the same latch the parameter algebra
 uses for `gain(...)` at a note onset. Then the next stage begins where this one ends. The reader's
@@ -100,21 +99,18 @@ val d = b.read(pat("<0 4>").nums(), speed = constant(4.0), fields = MarfFieldClo
 
 Three voices reading one score. `slow(3)` holds each address for three stages; `speed = 4`
 divides every duration, so the third lane's stages are a quarter as long as the bank wrote them.
-The bank is the same object in all three lanes, and the gallery requires the three curves to
-differ, so this figure cannot become three copies of one journey.
+The bank is the same object in all three lanes; only the trajectory over it differs.
 
-`fields = MarfFieldClock.STAGES` is load-bearing here, and it is what makes "holds each address for
-three **stages**" true rather than approximately true. The bank's own durations are uneven, so under
-a `CYCLES` reading each address would be latched at whatever wall-clock instant a stage happened to
-start at, and the readers would not walk the bank one slot at a time at all. (`AUTO`, the default,
-would pick `STEPS` for these addresses, which walks them one slot per stage as well — `STAGES` is
-named here because it is the reading this figure was measured under.) This
-snippet is the code that drew the figure above it; `MarfDocsGuardTest` compares the two, and it
-compares this argument in particular, because the page carried the snippet without it for a day.
+`fields = MarfFieldClock.STAGES` is what makes "holds each address for three **stages**" exactly
+true. The bank's own durations are uneven, so under a `CYCLES` reading each address would be latched
+at whatever wall-clock instant a stage happened to start at, and the readers would not walk the bank
+one slot at a time at all. `AUTO`, the default, picks `STEPS` for these addresses, which walks them
+one slot per stage as well; `STAGES` is named here because it is the reading this figure was drawn
+under.
 
 ---
 
-## The trajectory is compositional material
+## Reading a bank in any order
 
 Once the address is a pattern, sequential reading is one case among many, and the pattern algebra
 does the work that a list of traversal modes would otherwise have to.
@@ -261,10 +257,9 @@ Instances for `Vector2f`, `Vector3f` and `Vector4f` ship with it.
     in-place members that return the receiver, and `/` resolves to the mutating member operator
     rather than the allocating extension. A stage target lives in a bank and is read once per stage
     for as long as the reader runs, so one in-place write does not give you a wrong frame: it
-    rewrites the material. The shipped instances use the out-parameter forms
-    (`a.add(b, Vector3f())`), and `MarfVectorSpaceTest` reads a bank twice and requires the second
-    pass to agree with the first, which is the property a mutating implementation breaks and a type
-    check does not.
+    rewrites the material. Write yours with the out-parameter forms, as the shipped instances do
+    (`a.add(b, Vector3f())`), and read your bank twice: a mutating implementation gives you a
+    different answer the second time, and nothing in the type signature will have warned you.
 
 `MarfSpace` is a vector space, which rules out the types that are not one. A quaternion
 interpolates by `slerp` and a hue wraps, so neither is expressible as add-and-scale and neither has
@@ -298,9 +293,9 @@ ordinary sample-and-hold.
 
 ## Which clock the fields are read in
 
-This is the one thing on this page worth reading twice. A field is a pattern, and there are two
-different things a pattern can mean here — a **sequence of steps** or a **voltage you sample** —
-so the layer has to decide which you meant. `MarfFieldClock` is that decision.
+A field is a pattern, and there are two different things a pattern can mean here — a **sequence of
+steps** or a **voltage you sample** — so the layer has to decide which you meant. `MarfFieldClock`
+is that decision.
 
 ![the same two fields under both readings: a stepped address collapses under CYCLES, and a saw freezes under STEPS](assets/marf/marf-field-clocks.svg)
 
@@ -323,7 +318,7 @@ something that repeats every cycle is a single number.
 
 Neither reading is right for both. That is why the default is not a reading.
 
-!!! note "The two pairs use different stage lengths, and that is part of the lesson"
+??? note "Why the two pairs use different stage lengths"
     What `CYCLES` gives you depends on how long a stage is *relative to the pattern's own steps*.
     The collapse in the top pair needs cycle-length stages to show — at quarter-cycle stages
     `CYCLES` samples `"<0 3> 1"` four times a cycle and does reach the `1`. The bottom pair needs
@@ -347,12 +342,6 @@ have a discrete event at all?*
 Two different uses of one parameter, in other words: a field is a *sequence* when you write steps
 and a *voltage* when you write a signal, and which you meant is legible from what you typed. State
 a clock explicitly whenever you want the other reading of the same pattern.
-
-The default was `CYCLES` until 2026-09-21, on the argument that every pattern means *something*
-under it. True, and beside the point: the something is often not what was written. `"<0 3> 1"` read
-as `"<0 3>"` is a silent failure, and `STAGES` discarding sub-cycle steps entirely is a louder one —
-which is why it now refuses rather than discards. Making `STEPS` the blanket default instead would
-have frozen every continuous field. `AUTO` takes neither trade.
 
 `CYCLES` reads each field at the stage's wall-clock instant. This is the control-voltage
 reading and the hardware's one. Every pattern means something in it: `"0 .7 .2 1"` is four values
@@ -414,13 +403,12 @@ alternation, `<…>`, which is one step a cycle, or ask for the sequence you wro
 with fields = MarfFieldClock.STEPS.
 ```
 
-This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale. It is
-here because the silence was measured rather than imagined: the person who built the demo document
-spent four minutes and thirty-eight edit-and-run cycles moving one reader's address through ten
-spellings — among them `"<0 3> 1"`, `"<0 3> 1*8"`, `"<0 3>*2"`, `"<0 3>, 1"`, `"1 <0 3>"` and
-`"3 <0 3>"` — and under `STAGES` eight of the ten produced a sequence byte-identical to something
-strictly simpler than what was written. `"1 <0 3>"` was the constant `1`, and `"<0 3>*2"` was the
-constant `0`. All ten, against all three clocks, are tabulated in `dev_docs/MARF_FIELD_CLOCKS.md`.
+This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale. Under
+`STAGES`, most of the ways of writing a stepped address collapsed onto something strictly simpler
+than what was typed: `"1 <0 3>"` was the constant `1`, `"<0 3>*2"` was the constant `0`, and
+`"<0 3> 1"` was byte-identical to `"<0 3>"`, so there was no way to tell whether the layer had
+disagreed with you or ignored you. The spellings, against all three clocks, are tabulated in
+`dev_docs/MARF_FIELD_CLOCKS.md`.
 
 A **stack** is the one case no clock reads. `"<0 3>, 1"` puts two layers on a single instant, a
 field latches to one value per stage, and the second layer is unreachable — so the sequence

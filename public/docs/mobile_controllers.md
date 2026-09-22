@@ -112,4 +112,4 @@ Tap a result to select its box and property. The controller switches to **Edit**
 5. Adjust live parameters in **Group**, check the result in **Outputs**, or use **Chat** for a larger change.
 6. Use **Edit** for a small direct correction, then **Pad** to launch or stop the selected box.
 
-Landscape works, but portrait is the primary layout. The `controllers-mobile-workspace` UI regression in `tools/run_ui_regressions.py` drives the shell at 390×844 and 430×932, and then at 390×430, which approximates the space left when the software keyboard is up.
+Landscape works, but portrait is the primary layout, and it is laid out for the short viewport a raised keyboard leaves as well as for a whole phone screen. `tools/run_ui_regressions.py` is what holds it to all three.

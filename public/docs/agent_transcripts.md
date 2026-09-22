@@ -58,13 +58,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 144 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 146 transcripts on every build, at three
 depths. 81 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-56 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+58 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -77,7 +77,7 @@ against today's stdlib. A second guard, `checkAgentTranscripts`, materializes ev
 a document and compares it byte-for-byte against the committed starting points, so the copy the
 welcome screen opens is the one the yaml produces today.
 
-There is a second corpus beside this one — the 21 saved documents under `dev_docs/agents/demos/` —
+There is a second corpus beside this one — the 22 saved documents under `dev_docs/agents/demos/` —
 and as of 21 September every one of them has a transcript here, so its box Kotlin is compiled on
 every build. That was not true until then, and the reason it is worth a sentence is what the last
 two arrivals cost: `skinned_characters`' `twist_compare` box had not compiled since the day it
@@ -833,9 +833,9 @@ free with the forward pass. It also prints the exact 2×2 Rosenbrock Hessian, wh
 
 ![f, f prime and f double-prime of exp(-x^2) sin(6x), plotted from one forward sweep](assets/autodiff/autodiff_basics.png)
 
-*Optimizers* walks the same Rosenbrock valley three times on the same exact gradients. The picture is
-the argument for a line search: L-BFGS plunges past 10⁻²⁴ in about 42 iterations and stops, while
-SGD+momentum is still zig-zagging near 10⁻³ at iteration 300 and Adam has barely left 10⁰.
+*Optimizers* walks the same Rosenbrock valley three times on the same exact gradients, and what a
+line search buys shows up immediately: L-BFGS plunges past 10⁻²⁴ in about 42 iterations and stops,
+while SGD+momentum is still zig-zagging near 10⁻³ at iteration 300 and Adam has barely left 10⁰.
 
 ![log10 Rosenbrock loss per iteration for SGD, Adam and L-BFGS](assets/autodiff/autodiff_optimizers.png)
 
@@ -1235,9 +1235,9 @@ differing pixels, measured) and in band three half the darts point backwards. Ea
 nose pip for a reason: a bare rect is symmetric under a half turn, so the one glyph that has to show
 a half turn could not. The second box turns the arrow round and solves *through* the `atan2`, asking how
 steep a climb makes the dart point at 45 degrees, descending the exact gradient from 0.15 to
-1.0000000000000244 with the residual falling 0.637 to 4.7e-15. It also prints the θ-slot map, which
-is the surprising part of the machinery: a heading reads each position track twelve times, so one
-named parameter occupies 36 slots and the fitter has to move all of them as one variable.
+1.0000000000000244 with the residual falling 0.637 to 4.7e-15. It also prints the θ-slot map: a
+heading reads each position track twelve times, so one named parameter occupies 36 slots and the
+fitter has to move all of them as one variable.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rectsl_heading_fit/metadata.edn)
 
@@ -1818,6 +1818,16 @@ here are captures of that window, taken by the docs capture pipeline from *these
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
 
+### flow_grain
+
+A bounded pool of scrolling fluid tiles, flow-oriented grain, smoothed-velocity particle
+strokes and a color/motion RTT. Each shader is an editable box. Execute **Reset** to restart
+contents at a frame boundary without replacing GPU resources; launch **Profile** for a
+repeatable camera path in the existing CPU/allocation timeline. See
+[Flow grain and motion](flow_grain.md) for the storage contracts and controls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/flow_grain/metadata.edn)
+
 ### openxr_eye_intersection
 
 A white wire cube at the closest-approach midpoint of the two real
@@ -1876,6 +1886,22 @@ is a full source frame, and flying at the wall turns it green ahead of you. The 
 
 Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line
 at images of your own — which together are why this one ships no starting point.
+
+### gpu_probe_bench
+
+A bench for asserting things about compute shaders. Four boxes: a renderer, because
+`afield.four` has no headless mode and a compute-only dispatch still needs a window for the device
+to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chain a GPU fluid
+actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
+form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
+read what it says. Every assertion prints the measured value beside the floor it is compared
+against. The library is `afield/four/util/GpuProbe.kt` and the page is [GPU probe](../GPU_PROBE.md).
+
+Registered `COMPILE_ONLY` — box 1 opens a window — so what CI holds is that all four box bodies
+still compile against Field's real K2 import set. The numbers are asserted separately, by the
+`four.gpu-probe.pressure-chain` and `four.gpu-probe.self-check` FIELD_TESTs.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gpu_probe_bench/metadata.edn)
 
 ### gpu_state
 

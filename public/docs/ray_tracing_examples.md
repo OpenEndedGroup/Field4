@@ -4,10 +4,13 @@ Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`
 
 !!! warning "The four figures on this page are placeholder cards"
 
-    Each one reads "Ray Tracing / Not Available". MoltenVK on macOS exposes no
-    `VK_KHR_ray_tracing_pipeline`, so the docs build cannot render these scenes on the machine that
-    publishes them; a real capture needs a device with the extension, which Linux CI has. Until one
-    lands, read the code rather than the pictures.
+    Each one reads "Ray Tracing / Not Available". Field never enables ray tracing on macOS:
+    `enableRayTracing` ands in `!Options.isMac`, so the machine that publishes these docs stops
+    short of the extension probe — MoltenVK exposes no `VK_KHR_ray_tracing_pipeline` either way.
+    Every render method in `RayTracingDocsHarness` refuses in that case rather than writing a
+    stand-in, and the four cards on disk predate that refusal; `tools/check_doc_assets.py` names
+    them so they cannot become permanent. A real capture needs a Linux device with the extension.
+    Until one lands, read the code rather than the pictures.
 
 The shape of a Field ray tracing example is:
 
@@ -36,9 +39,10 @@ The shader bindings in these examples are minimal:
 ```diffstatic {data-lang=glsl}
 layout(set = 0, binding = 0, rgba8) uniform image2D outputImage;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 2) uniform RayCamera { /* origin, right, up, forward, fov, aspect */ } rayCamera;
 ```
 
-Binding 0 is the storage image that gets read back for the docs. Binding 1 appears only in examples that trace against a TLAS.
+Binding 0 is the storage image that gets read back for the docs. Binding 1 appears only in examples that trace against a TLAS. Binding 2 is the camera block `seedRayCameraUniforms` fills, and only Mirror Balls uses it; the other three hard-code their camera in the raygen shader.
 
 ## UV Gradient (raygen only)
 
@@ -82,9 +86,10 @@ FIELD_TEST
 id: docs.raytracing.uv-gradient
 runner: backdoor-box
 graphicsContext: true
-# Raytracing on macOS wedges the GPU RT pipeline after the first test in a shared
-# Field (renders once, then hangs). Skip on darwin; the docs build (fresh Field per
-# capture) still exercises these, and Linux CI runs them normally.
+# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
+# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
+# darwin: nothing on this machine can run this, and the docs build cannot stand in for
+# it either. Linux CI has the extension and runs these normally.
 skipOn: [darwin]
 tags: [docs, raytracing, graphics, uv, gradient]
 timeoutSec: 120
@@ -97,7 +102,9 @@ expect:
   # The "ready" println runs inside the async start(captureScene) coroutine, which
   # the backdoor does not surface as a collectable output event or on stdout. The
   # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran; golden visual correctness is owned by the docs build's committed assets.
+  # ran. Visual correctness is owned by nothing while this figure's committed asset is
+  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
+  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
   screenshot:
     kind: box
     padding: 16
@@ -195,8 +202,10 @@ void main() {
     ivec2 px = ivec2(gl_LaunchIDEXT.xy);
     vec2 uv = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
 
-    vec3 origin = vec3(0.0, 0.0, -2.0);
-    vec3 dir = normalize(vec3((uv * 2.0 - 1.0) * vec2(1.0, -1.0), 1.0));
+    vec3 origin = vec3(0.0, 2.0, -2.0);
+    vec3 dir = normalize(vec3(uv.x * 2.0 - 1.0,
+                              -(uv.y * 2.0 - 1.0) - 0.75,
+                               1.0));
 
     payload = vec3(0.05, 0.05, 0.12);
     traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0,
@@ -212,9 +221,10 @@ FIELD_TEST
 id: docs.raytracing.triangle-scene
 runner: backdoor-box
 graphicsContext: true
-# Raytracing on macOS wedges the GPU RT pipeline after the first test in a shared
-# Field (renders once, then hangs). Skip on darwin; the docs build (fresh Field per
-# capture) still exercises these, and Linux CI runs them normally.
+# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
+# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
+# darwin: nothing on this machine can run this, and the docs build cannot stand in for
+# it either. Linux CI has the extension and runs these normally.
 skipOn: [darwin]
 tags: [docs, raytracing, graphics, triangle, blas, tlas]
 timeoutSec: 180
@@ -227,7 +237,9 @@ expect:
   # The "ready" println runs inside the async start(captureScene) coroutine, which
   # the backdoor does not surface as a collectable output event or on stdout. The
   # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran; golden visual correctness is owned by the docs build's committed assets.
+  # ran. Visual correctness is owned by nothing while this figure's committed asset is
+  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
+  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
   screenshot:
     kind: box
     padding: 16
@@ -312,9 +324,10 @@ FIELD_TEST
 id: docs.raytracing.shader-tiles
 runner: backdoor-box
 graphicsContext: true
-# Raytracing on macOS wedges the GPU RT pipeline after the first test in a shared
-# Field (renders once, then hangs). Skip on darwin; the docs build (fresh Field per
-# capture) still exercises these, and Linux CI runs them normally.
+# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
+# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
+# darwin: nothing on this machine can run this, and the docs build cannot stand in for
+# it either. Linux CI has the extension and runs these normally.
 skipOn: [darwin]
 tags: [docs, raytracing, graphics, shader, tiles, checker]
 timeoutSec: 180
@@ -327,7 +340,9 @@ expect:
   # The "ready" println runs inside the async start(captureScene) coroutine, which
   # the backdoor does not surface as a collectable output event or on stdout. The
   # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran; golden visual correctness is owned by the docs build's committed assets.
+  # ran. Visual correctness is owned by nothing while this figure's committed asset is
+  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
+  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
   screenshot:
     kind: box
     padding: 16
@@ -419,7 +434,7 @@ val module = RayTracingModule(
     Parameters(
         renderer = renderer,
         rayTracingGroups = groups,
-        maxRayRecursionDepth = 2,
+        maxRayRecursionDepth = 3,   // reflection bounces + 1 for the primary ray
         imageResolver = { outputImageView },
         accelerationStructureResolver = { tlas },
         name = "rt-mirror-balls"
@@ -457,7 +472,7 @@ void main() {
 }
 ```
 
-The sphere closest-hit shader then reflects a ray back into the same TLAS. This is why the module requests recursion depth 2:
+The sphere closest-hit shader then reflects a ray back into the same TLAS. The raygen shader starts the payload with two bounces in hand, so the module requests recursion depth 3 — two reflections plus the primary ray. This excerpt is abridged: the shader that runs also tints the metal, computes a Fresnel term, and mixes the returned colour back over a base metal colour after the trace returns.
 
 ```diffstatic {data-lang=glsl}
 struct Payload {
@@ -485,16 +500,17 @@ void main() {
 }
 ```
 
-`renderMirrorBallsScene` puts all of it together: the triangle floor hit group, the procedural sphere hit group, and one reflected bounce.
+`renderMirrorBallsScene` puts all of it together: the triangle floor hit group, the procedural sphere hit group, and two reflected bounces. It is also the only example here that drives its camera from a uniform rather than a literal, via `seedRayCameraUniforms`.
 
 <!--
 FIELD_TEST
 id: docs.raytracing.mirror-balls
 runner: backdoor-box
 graphicsContext: true
-# Raytracing on macOS wedges the GPU RT pipeline after the first test in a shared
-# Field (renders once, then hangs). Skip on darwin; the docs build (fresh Field per
-# capture) still exercises these, and Linux CI runs them normally.
+# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
+# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
+# darwin: nothing on this machine can run this, and the docs build cannot stand in for
+# it either. Linux CI has the extension and runs these normally.
 skipOn: [darwin]
 tags: [docs, raytracing, graphics, spheres, reflection, intersection, sbt]
 timeoutSec: 180
@@ -507,7 +523,9 @@ expect:
   # The "ready" println runs inside the async start(captureScene) coroutine, which
   # the backdoor does not surface as a collectable output event or on stdout. The
   # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran; golden visual correctness is owned by the docs build's committed assets.
+  # ran. Visual correctness is owned by nothing while this figure's committed asset is
+  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
+  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
   screenshot:
     kind: box
     padding: 16

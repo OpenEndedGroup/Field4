@@ -4,10 +4,12 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkFenceCreateInfo
 import afield.four.util.vkCheck
+import afield.four.util.AutoDisposer
 
 class Fence(private val device: afield.four.device.Device, signaled: Boolean) {
     @JvmField
     var vkFence: Long = 0
+    private val autoDisposeToken: AutoDisposer.Token
 
     init {
         MemoryStack.stackPush().use { stack ->
@@ -21,10 +23,17 @@ class Fence(private val device: afield.four.device.Device, signaled: Boolean) {
             )
             vkFence = lp[0]
         }
+        val dev = device.vkDevice
+        val fence = vkFence
+        autoDisposeToken = AutoDisposer.register(this, "Fence", owner = device) {
+            VK10.vkDestroyFence(dev, fence, null)
+        }
     }
 
     fun cleanup() {
+        if (!autoDisposeToken.disable()) return
         VK10.vkDestroyFence(device.vkDevice, vkFence, null)
+        vkFence = 0L
     }
 
     fun fenceWait() {

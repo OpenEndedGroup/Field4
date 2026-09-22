@@ -10,8 +10,8 @@ layout(push_constant) uniform dat {
     Out   outData;    // this frame's positions, read by the draw box
     float time;       // seconds
     float band0;      // 70 Hz    — the kick
-    float band1;      // 420 Hz
-    float band2;      // 2.4 kHz  — the square stab's harmonics
+    float band1;      // 340 Hz
+    float band2;      // 1.6 kHz  — the square stab's harmonics
     float band3;      // 8 kHz    — the hats
     uint  count;
 } pc;

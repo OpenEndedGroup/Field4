@@ -952,7 +952,17 @@ class FieldMcpServer:
             text = json.dumps(result, indent=2, default=str)
             # The RPC can succeed while the tool refuses a stale revision or a read-only write.
             failed = isinstance(result, dict) and (result.get("success") is False or result.get("ok") is False)
-            return self._ok(msg_id, {"content": [{"type": "text", "text": text}], "isError": failed})
+            content = [{"type": "text", "text": text}]
+            # Images travel as MCP image blocks, never as base64 text in the tool result.
+            for image in payload.get("images", [])[:8]:
+                url = image.get("dataUrl", "")
+                header, separator, encoded = url.partition(",")
+                if not separator or header not in ("data:image/png;base64", "data:image/jpeg;base64", "data:image/webp;base64"):
+                    continue
+                if image.get("caption"):
+                    content.append({"type": "text", "text": image["caption"]})
+                content.append({"type": "image", "mimeType": header[5:-7], "data": encoded})
+            return self._ok(msg_id, {"content": content, "isError": failed})
         except McpToolError as exc:
             return self._ok(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
         except Exception as exc:  # noqa: BLE001

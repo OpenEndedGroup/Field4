@@ -86,7 +86,7 @@ frames {
 <!-- field-box id="pp_compute" index="2" -->
 
 ```edn [field-box id="pp_compute" role="properties"]
-{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 44 "characters" 1731 "sha256" "28bd79a468b49fc5fae33bb55db77928672d2f6fcc100710bb49e180344eecaa"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 35 "characters" 1231 "sha256" "706692fffbe8117af9b08b2be27af5cde8dab7e18c458c1b8b166fef797258dc"}]}
+{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 44 "characters" 1731 "sha256" "a39f2af2de49c08d54d47188538768d048ec1a5c23f4d4d5448094a8cd1e8a5f"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 35 "characters" 1231 "sha256" "706692fffbe8117af9b08b2be27af5cde8dab7e18c458c1b8b166fef797258dc"}]}
 ```
 
 ```glsl [field-property box="pp_compute" name="compute" path="pp_compute_compute_.glsl"]
@@ -102,8 +102,8 @@ layout(push_constant) uniform dat {
     Out   outData;    // this frame's positions, read by the draw box
     float time;       // seconds
     float band0;      // 70 Hz    — the kick
-    float band1;      // 420 Hz
-    float band2;      // 2.4 kHz  — the square stab's harmonics
+    float band1;      // 340 Hz
+    float band2;      // 1.6 kHz  — the square stab's harmonics
     float band3;      // 8 kHz    — the hats
     uint  count;
 } pc;

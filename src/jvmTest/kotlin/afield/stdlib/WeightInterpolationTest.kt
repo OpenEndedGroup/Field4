@@ -113,8 +113,8 @@ class WeightInterpolationTest {
         val yout = FloatArray(d)
         val dt = 1f / integrationSteps
         return start.map { p0 ->
-            var x = ((p0.x - export.center[0]) / export.scale).toFloat()
-            var y = ((p0.y - export.center[1]) / export.scale).toFloat()
+            var x = (p0.x - export.center[0]) / export.scale
+            var y = (p0.y - export.center[1]) / export.scale
             for (s in 0 until integrationSteps) {
                 val t = s * dt
                 xin[0] = x; xin[1] = y; xin[d] = t

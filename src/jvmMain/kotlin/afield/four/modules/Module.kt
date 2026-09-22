@@ -528,9 +528,11 @@ class Module(val parameters: Parameters) : Renderable {
     lateinit var vertexInputBindings: VkVertexInputBindingDescription.Buffer
     lateinit var vertexInputState: VkPipelineVertexInputStateCreateInfo
 
+    // Push descriptors still reference these layouts while the pipeline is in use.
+    private val ownedDescriptorLayouts = mutableListOf<DescriptorSetLayout.SimpleDescriptorSetLayout>()
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
-    private val pipelineDisposeToken = AutoDisposer.register(this, "ModulePipeline(${parameters.name})") { }
+    private val pipelineDisposeToken = AutoDisposer.register(this, "ModulePipeline(${parameters.name})", owner = parameters.renderer.device) { }
 
     var vsm: Long = 0L
     var fsm: Long = 0L
@@ -664,6 +666,7 @@ class Module(val parameters: Parameters) : Renderable {
                     parameters.renderer.device, kinds, set, bindingList, where, lens, pushDescriptor = true
                 )
                 layouts[set] = layout
+                ownedDescriptorLayouts += layout
             }
 
             // UBOs (sets >= 1)
@@ -935,20 +938,7 @@ class Module(val parameters: Parameters) : Renderable {
                     ), "Error creating graphics pipeline"
                 )
                 this.pipeline = lp[0]
-                pipelineDisposeToken.updateCleanup {
-                    if (pipeline != 0L) {
-                        VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
-                    }
-                    if (pipelineLayout != 0L) {
-                        VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
-                    }
-                    if (vsm != 0L) {
-                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, vsm, null)
-                    }
-                    if (fsm != 0L) {
-                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
-                    }
-                }
+                pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
 
                 parameters.renderer.device.nameObject(
                     pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
@@ -1115,9 +1105,7 @@ class Module(val parameters: Parameters) : Renderable {
         parameters.vertexIntrospection = update.vertexIntrospection
         parameters.fragmentIntrospection = update.fragmentIntrospection
 
-        pipelineDisposeToken.updateCleanup {
-            destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
-        }
+        pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
 
         parameters.renderer.cleanup.add(Runnable {
             destroyPipelineHandles(oldPipeline, 0L, oldVsm, oldFsm)
@@ -1235,13 +1223,31 @@ class Module(val parameters: Parameters) : Renderable {
         after.putAll(old.after)
     }
 
+    private fun snapshotPipelineCleanup(): () -> Unit {
+        val dev = parameters.renderer.device.vkDevice
+        val p = pipeline
+        val layout = pipelineLayout
+        val sets = ownedDescriptorLayouts.toList()
+        val vsmHandle = vsm
+        val fsmHandle = fsm
+        return {
+            if (p != 0L) VK10.vkDestroyPipeline(dev, p, null)
+            if (layout != 0L) VK10.vkDestroyPipelineLayout(dev, layout, null)
+            if (vsmHandle != 0L) VK10.vkDestroyShaderModule(dev, vsmHandle, null)
+            if (fsmHandle != 0L) VK10.vkDestroyShaderModule(dev, fsmHandle, null)
+            sets.forEach { it.cleanup() }
+        }
+    }
+
     fun cleanup() {
-        pipelineDisposeToken.disable()
+        if (!pipelineDisposeToken.disable()) return
         destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
         pipeline = 0L
         pipelineLayout = 0L
         vsm = 0L
         fsm = 0L
+        ownedDescriptorLayouts.forEach { it.cleanup() }
+        ownedDescriptorLayouts.clear()
     }
 
     private fun destroyPipelineHandles(pipelineHandle: Long, pipelineLayoutHandle: Long, vertexShaderModule: Long, fragmentShaderModule: Long) {

@@ -34,7 +34,8 @@ class ImageView(private val device: Device, val image: Long, val imageViewData: 
     var underlyingImage : Image? = null
     private val autoDisposeToken = AutoDisposer.register(
         this,
-        "ImageView(fmt=${imageViewData.format}, layers=${imageViewData.layerCount}, mips=${imageViewData.mipLevels})"
+        "ImageView(fmt=${imageViewData.format}, layers=${imageViewData.layerCount}, mips=${imageViewData.mipLevels})",
+        owner = device,
     ) { /* set after init */ }
 
     constructor(device: Device, image: Image, imageViewData: ImageViewData) : this(device, image.vkImage, imageViewData) {
@@ -75,7 +76,7 @@ class ImageView(private val device: Device, val image: Long, val imageViewData: 
     }
 
     fun cleanup() {
-        autoDisposeToken.disable()
+        if (!autoDisposeToken.disable()) return
         VK10.vkDestroyImageView(device.vkDevice, vkImageView, null)
     }
 

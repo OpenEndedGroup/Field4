@@ -1,0 +1,1036 @@
+name: flow_grain
+description: Bounded scrolling fluid tiles, world-space grain, velocity strokes and
+  motion correspondence. Normal launch/stop; frame-boundary reset; existing profiling
+  timeline.
+operations:
+- create:
+    box: flow_renderer
+    name: 1. Renderer — launch / stop
+    frame:
+      x: 80.0
+      y: 80.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+        Options.enableHDR = false
+        Options.profiling = false // GPU timings remain in Field's existing renderer profiler.
+        once.renderer {
+            window = Window("Flow grain playground", initialDimensions = Rect(80.0, 80.0, 960.0, 720.0))
+            Renderer(window)
+        }
+        start(renderer::run)
+- create:
+    box: flow_resources
+    name: 2. Resident tiles and resources
+    frame:
+      x: 80.0
+      y: 230.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.SimulationReset
+        import afield.stdlib.EffectiveParameter
+        import afield.stdlib.TileResidency
+        import afield.four.flow.*
+        import afield.four.targets.*
+
+        val render: Renderer = fromContext()
+        fun grid() = defaultBuffer {
+            size = 14400.vec4s
+            zeroInit()
+        }.buffer
+        @exported var flowA = grid()
+        @exported var flowB = grid()
+        @exported var advected = grid()
+        @exported var divergence = grid()
+        @exported var pressureA = grid()
+        @exported var pressureB = grid()
+        @exported var particleA = defaultBuffer {
+            size = 32000.vec4s
+            zeroInit()
+        }.buffer
+        @exported var particleB = defaultBuffer {
+            size = 32000.vec4s
+            zeroInit()
+        }.buffer
+        @exported var tileHeaders = defaultBuffer {
+            perFrame = true
+            size = 25.vec4s
+        }.buffer
+        @exported var cameraHistory = defaultBuffer {
+            perFrame = true
+            size = 17.vec4s
+        }.buffer
+        @exported var itemHistory = defaultBuffer {
+            perFrame = true
+            size = 3.vec4s
+        }.buffer
+        @exported var resetFlow = SimulationReset()
+        @exported var force = EffectiveParameter("Force", 2.5, 0.0, 12.0, "world/s²", "Vortex impulse")
+        @exported var grainCell = EffectiveParameter("Grain cell", .018, .006, .12, "world", "Fixed world noise scale")
+        @exported var strokeTime = EffectiveParameter("Stroke time", .15, .01, .6, "s", "Noise integration interval")
+        @exported var flowLook = vec(.018, .15, .45, 0) // Grain cell, integration seconds, gain, debug view.
+        @exported var flowClock = vec(0, 1.0/60, 0, 0) // Time, fixed step, reset generation, reserved.
+        @exported var flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
+        @exported var flowSimulation = ComputeTarget(render)
+        @exported var flowStep = java.util.concurrent.atomic.AtomicLong()
+        @exported var travel = java.util.concurrent.atomic.AtomicBoolean(false) // Move across tile boundaries and exercise zoom history.
+        @exported var flowWidth = EffectiveParameter("View half-height", 8.0, 3.0, 10.0, "world") // Visible vertical half-width in world units.
+
+        // A color surface and a correspondence attachment. The latter stores previous UV,
+        // validity, and coverage; it is a sampling coordinate, not a velocity in pixels/s.
+        @exported var flowSurface = RenderToTexture {
+            width = 960
+            height = 720
+            colorAttachments = 2
+            colorFormats = listOf(org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT)
+            useDepth = false
+            clearFirst = true
+            clearColor = vec(0, 0, 0, 0)
+            debugName = "flow-correspondence"
+        }
+        val targets = render.renderList.preTargets
+        targets["flow-simulation"] = flowSimulation
+        targets["flow-surface"] = flowSurface
+        loop { true }.end {
+            if (targets["flow-simulation"] === flowSimulation) targets.remove("flow-simulation")
+            if (targets["flow-surface"] === flowSurface) targets.remove("flow-surface")
+        }
+- create:
+    box: flow_inputs
+    name: 3. Frame inputs and reset boundary
+    frame:
+      x: 80.0
+      y: 380.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+        import afield.four.flow.TileAtlasLayout
+        import afield.four.targets.*
+        import afield.stdlib.TileResidency
+        import kotlin.math.*
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
+        val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
+        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
+        val force = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!
+        val grainCell = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("grainCell")!!
+        val strokeTime = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("strokeTime")!!
+        val flowWidth = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("flowWidth")!!
+        val resetFlow = fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")!!
+        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
+        val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
+
+        val pool = TileResidency(5, 5, 4f)
+        val layout = TileAtlasLayout(pool, 24)
+        val camera = FrameHistory()
+        val items = MotionItems()
+        val pose = MotionPose()
+        val itemData = FloatArray(12)
+        val matrix = afield.stdlib.linalg.Matrix4f()
+        val key = "flow-frame-inputs"
+        var ticks = 0L
+        var resetEpoch = 1
+        var lastRendered = Long.MIN_VALUE
+        var report = 0L
+
+        // This hook runs once per rendered frame, before compute/draw. No timer or
+        // swapchain-image index advances the simulation or camera history.
+        frames {
+            val budget = frameProfile("Flow inputs", targetFps = 60.0, allocationKiB = 128.0)
+            val upload: (Renderer.GeometryPhaseScope) -> Unit = {
+                val serial = renderer.frameCounter
+                if (serial != lastRendered) {
+                    lastRendered = serial
+                    budget.beginFrame()
+                    budget.measure("Reset and residency") {
+                        resetFlow.atFrame(serial) {
+                            ticks = 0L
+                            resetEpoch++
+                            pool.invalidate()
+                            camera.invalidate()
+                            items.clear()
+                        }
+                        val time = ticks / 60.0
+                        val pan = if (travel.get()) sin(time * .12) * 28.0 else 0.0
+                        pool.moveTo(pan, 0.0)
+                        tileHeaders.mapAndWrite_ints { put(layout.updateHeaders()) }
+                        val height = flowWidth.effective * if (travel.get()) 1.0 + .18 * sin(time * .25) else 1.0
+                        val width = height * window.width / window.height.toDouble()
+                        matrix.set(
+                            (1.0/width).toFloat(), 0f, 0f, 0f,
+                            0f, (1.0/height).toFloat(), 0f, 0f,
+                            0f, 0f, -1f, 0f,
+                            (-pan/width).toFloat(), 0f, 0f, 1f
+                        )
+                        camera.capture(serial, matrix, 960, 720, resetFlow.epoch)
+                        cameraHistory.mapAndWrite { put(camera.packed) }
+                        flowClock.set(time.toFloat(), 1f/60, resetEpoch.toFloat(), 0f)
+                        flowEmitter.set((pan + cos(time*.7)*2).toFloat(), sin(time*.9).toFloat(), force.effective.toFloat(), 0f)
+                        flowLook.x = grainCell.effective.toFloat()
+                        flowLook.y = strokeTime.effective.toFloat()
+                    }
+                    budget.measure("Object correspondence") {
+                        pose.x = flowEmitter.x
+                        pose.y = flowEmitter.y
+                        pose.angle = flowClock.x
+                        items.begin(serial)
+                        itemData[0] = pose.x
+                        itemData[1] = pose.y
+                        itemData[2] = pose.angle
+                        itemData[3] = 1f
+                        items.write("emitter", pose, itemData, 4, camera.available)
+                        itemHistory.mapAndWrite { put(itemData) }
+                    }
+                    flowStep.set(ticks++)
+                }
+            }
+            renderer.geometryProducers[key] = upload
+            try {
+                while (frame()) {
+                    if (renderer.frameCounter - report >= 120) {
+                        report = renderer.frameCounter
+                        println("render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}")
+                    }
+                }
+            } finally {
+                if (renderer.geometryProducers[key] === upload) renderer.geometryProducers.remove(key)
+                budget.close()
+            }
+        }
+- create:
+    box: flow_helpers
+    name: flow_helpers
+    frame:
+      x: 80.0
+      y: 530.0
+      w: 370.0
+      h: 100.0
+    properties:
+      compute: |
+        // Common storage contract for the editable fluid stages.
+        #include "flow/tiles.glsl"
+        layout(std430, buffer_reference) buffer Field { vec4 v[]; };
+        layout(std430, buffer_reference) readonly buffer Tiles { ivec4 v[]; };
+        layout(push_constant) uniform Push {
+            Field source; // Stage input; xy velocity or x scalar; w generation bits.
+            Field target; // Stage output, on the same graphics queue.
+            Field auxiliary; // Divergence or pressure, depending on the stage.
+            Tiles tiles; // TileResidency.pack: world x/y, generation, occupied.
+            vec4 clock; // x seconds; y step seconds; zw reserved.
+            vec4 emitter; // xy force origin; z strength; w reserved.
+        } pc;
+
+        const int N = 24; // Cells along each tile; matches resources box.
+        const ivec2 SHAPE = ivec2(5, 5); // Bounded residency; no periodic world wrapping.
+        const float TILE = 4.; // World units per tile.
+        const float H = TILE / float(N); // World units per fluid cell.
+        const int CELLS = 25 * N * N;
+
+        bool rock(vec2 p) {
+            // A thin ledge and a disc, evaluated exactly for drawing and approximately for the grid.
+            return (abs(p.y + 2.) < .10 && abs(p.x) < 4.) || length(p - vec2(2.4, 1.2)) < .8;
+        }
+        ivec2 worldCell(int index) {
+            int slot = index / (N * N), local = index % (N * N);
+            return pc.tiles.v[slot].xy * N + ivec2(local % N, local / N);
+        }
+        vec2 worldPosition(int index) { return (vec2(worldCell(index)) + .5) * H; }
+        int cellIndex(ivec2 cell) {
+            ivec2 local = ivec2(flowFloorMod(cell.x, N), flowFloorMod(cell.y, N));
+            ivec2 tile = (cell - local) / N;
+            int slot = flowTileSlot(tile, SHAPE);
+            if (!flowTileResident(pc.tiles.v[slot], tile)) return -1;
+            return slot * N * N + local.y * N + local.x;
+        }
+        vec4 readCell(Field field, ivec2 cell) {
+            int index = cellIndex(cell);
+            if (index < 0 || rock((vec2(cell) + .5) * H)) return vec4(0.);
+            vec4 value = field.v[index];
+            return floatBitsToInt(value.w) == pc.tiles.v[index / (N * N)].z ? value : vec4(0.);
+        }
+        vec4 sampleField(Field field, vec2 p) {
+            vec2 grid = p / H - .5;
+            ivec2 cell = ivec2(floor(grid));
+            vec2 f = fract(grid);
+            return mix(mix(readCell(field, cell), readCell(field, cell + ivec2(1,0)), f.x),
+                       mix(readCell(field, cell + ivec2(0,1)), readCell(field, cell + ivec2(1)), f.x), f.y);
+        }
+        void storeCell(int index, vec3 value) {
+            pc.target.v[index] = vec4(value, intBitsToFloat(pc.tiles.v[index / (N * N)].z));
+        }
+- create:
+    box: flow_advect
+    name: 4. Advect and inject
+    frame:
+      x: 80.0
+      y: 680.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+        import afield.four.buffers.VulkanBuffer
+        import afield.four.modules.computeMemoryBarrier
+        import afield.four.modules.graphicsMemoryBarrier
+        import afield.four.modules.computeTask
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
+        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
+        val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
+        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
+
+        var module = computeModuleHere {}
+
+        val mesh = ComputeMesh()
+        module += "dispatch" to mesh
+        mesh.x = 225 // 14400 cells / 64 threads.
+        mesh.y = 1
+        mesh.source = { if (flowStep.get() % 2L == 0L) flowA else flowB }
+        mesh.target = { advected }
+        mesh.auxiliary = { pressureA }
+        mesh.tiles = { tileHeaders }
+        mesh.clock = { flowClock }
+        mesh.emitter = { flowEmitter }
+        module += "barrier" to computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
+        flowSimulation += "advect" to module
+        loop { true }.end {
+            if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
+        }
+      compute: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow_helpers.compute"
+        layout(local_size_x = 64) in;
+        void main() {
+            int i = int(gl_GlobalInvocationID.x);
+            if (i >= CELLS) return;
+            vec2 p = worldPosition(i);
+            if (rock(p)) { storeCell(i, vec3(0)); return; }
+            vec2 velocity = readCell(pc.source, worldCell(i)).xy;
+            vec2 back = p - velocity * pc.clock.y;
+            if (rock(back)) back = p;
+            velocity = sampleField(pc.source, back).xy * exp(-.2 * pc.clock.y);
+            vec2 offset = p - pc.emitter.xy;
+            float falloff = exp(-dot(offset, offset) / .8);
+            vec2 force = vec2(-offset.y, offset.x) * 8. + vec2(0., 2.);
+            velocity += force * pc.emitter.z * falloff * pc.clock.y;
+            velocity *= min(1., 12. / max(length(velocity), 1e-6));
+            storeCell(i, vec3(velocity, 0));
+        }
+- create:
+    box: flow_divergence
+    name: 5. Divergence
+    frame:
+      x: 80.0
+      y: 830.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+        import afield.four.buffers.VulkanBuffer
+        import afield.four.modules.computeMemoryBarrier
+        import afield.four.modules.graphicsMemoryBarrier
+        import afield.four.modules.computeTask
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
+        val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
+        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+
+        var module = computeModuleHere {}
+
+        val mesh = ComputeMesh()
+        module += "dispatch" to mesh
+        mesh.x = 225 // 14400 cells / 64 threads.
+        mesh.y = 1
+        mesh.source = { advected }
+        mesh.target = { divergence }
+        mesh.auxiliary = { pressureA }
+        mesh.tiles = { tileHeaders }
+        mesh.clock = { flowClock }
+        mesh.emitter = { flowEmitter }
+        module += "barrier" to computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
+        flowSimulation += "divergence" to module
+        loop { true }.end {
+            if (flowSimulation.modules["divergence"] === module) flowSimulation.modules.remove("divergence")
+        }
+      compute: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow_helpers.compute"
+        layout(local_size_x = 64) in;
+        void main() {
+            int i = int(gl_GlobalInvocationID.x);
+            if (i >= CELLS) return;
+            ivec2 c = worldCell(i);
+            float divergence = (readCell(pc.source, c + ivec2(1,0)).x - readCell(pc.source, c - ivec2(1,0)).x
+                              + readCell(pc.source, c + ivec2(0,1)).y - readCell(pc.source, c - ivec2(0,1)).y) / (2. * H);
+            storeCell(i, vec3(divergence, 0, 0));
+        }
+- create:
+    box: flow_pressure
+    name: 6. Pressure — 24 iterations
+    frame:
+      x: 510.0
+      y: 80.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+        import afield.four.buffers.VulkanBuffer
+        import afield.four.modules.computeMemoryBarrier
+        import afield.four.modules.graphicsMemoryBarrier
+        import afield.four.modules.computeTask
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
+        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
+        val pressureB = fromContextWithNameOrNull<FrameBufferGroup>("pressureB")!!
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+
+        var module = computeModuleHere {}
+
+        // The same editable shader performs each iteration. Every dependency has a barrier.
+        for (i in 0 until 24) {
+            val mesh = ComputeMesh()
+            module += "relax-$i" to mesh
+            mesh.x = 225
+            mesh.y = 1
+            mesh.source = { if (i % 2 == 0) pressureA else pressureB }
+            mesh.target = { if (i % 2 == 0) pressureB else pressureA }
+            mesh.auxiliary = { divergence }
+            mesh.tiles = { tileHeaders }
+            mesh.clock = { flowClock }
+            mesh.emitter = { flowEmitter }
+            module += "barrier-$i" to computeTask { _, cmd, _ ->
+                computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            }
+        }
+        flowSimulation += "pressure" to module
+        loop { true }.end {
+            if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
+        }
+      compute: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow_helpers.compute"
+        layout(local_size_x = 64) in;
+        void main() {
+            int i = int(gl_GlobalInvocationID.x);
+            if (i >= CELLS) return;
+            ivec2 c = worldCell(i);
+            float sum = readCell(pc.source, c + ivec2(1,0)).x + readCell(pc.source, c - ivec2(1,0)).x
+                      + readCell(pc.source, c + ivec2(0,1)).x + readCell(pc.source, c - ivec2(0,1)).x;
+            float divergence = readCell(pc.auxiliary, c).x;
+            storeCell(i, vec3((sum - divergence * H * H) * .25, 0, 0));
+        }
+- create:
+    box: flow_project
+    name: 7. Project
+    frame:
+      x: 510.0
+      y: 230.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+        import afield.four.buffers.VulkanBuffer
+        import afield.four.modules.computeMemoryBarrier
+        import afield.four.modules.graphicsMemoryBarrier
+        import afield.four.modules.computeTask
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
+        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
+        val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
+        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
+
+        var module = computeModuleHere {}
+
+        val mesh = ComputeMesh()
+        module += "dispatch" to mesh
+        mesh.x = 225 // 14400 cells / 64 threads.
+        mesh.y = 1
+        mesh.source = { advected }
+        mesh.target = { if (flowStep.get() % 2L == 0L) flowB else flowA }
+        mesh.auxiliary = { pressureA }
+        mesh.tiles = { tileHeaders }
+        mesh.clock = { flowClock }
+        mesh.emitter = { flowEmitter }
+        module += "barrier" to computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
+        flowSimulation += "project" to module
+        loop { true }.end {
+            if (flowSimulation.modules["project"] === module) flowSimulation.modules.remove("project")
+        }
+      compute: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow_helpers.compute"
+        layout(local_size_x = 64) in;
+        void main() {
+            int i = int(gl_GlobalInvocationID.x);
+            if (i >= CELLS) return;
+            ivec2 c = worldCell(i);
+            vec2 gradient = vec2(readCell(pc.auxiliary, c + ivec2(1,0)).x - readCell(pc.auxiliary, c - ivec2(1,0)).x,
+                                 readCell(pc.auxiliary, c + ivec2(0,1)).x - readCell(pc.auxiliary, c - ivec2(0,1)).x) / (2. * H);
+            vec2 velocity = readCell(pc.source, c).xy - gradient;
+            if (rock(worldPosition(i))) velocity = vec2(0);
+            // Enforce no-through-flow against the grid stencil. Drawing uses the exact mask below.
+            if (rock((vec2(c + ivec2(1,0)) + .5) * H) && velocity.x > 0.) velocity.x = 0.;
+            if (rock((vec2(c - ivec2(1,0)) + .5) * H) && velocity.x < 0.) velocity.x = 0.;
+            if (rock((vec2(c + ivec2(0,1)) + .5) * H) && velocity.y > 0.) velocity.y = 0.;
+            if (rock((vec2(c - ivec2(0,1)) + .5) * H) && velocity.y < 0.) velocity.y = 0.;
+            storeCell(i, vec3(velocity, 0));
+        }
+- create:
+    box: flow_particles
+    name: 8. Advect finite grains
+    frame:
+      x: 510.0
+      y: 380.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+        import afield.four.buffers.VulkanBuffer
+        import afield.four.modules.computeMemoryBarrier
+        import afield.four.modules.graphicsMemoryBarrier
+        import afield.four.modules.computeTask
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
+        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
+        val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
+        val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
+
+        var module = computeModuleHere {}
+
+        val mesh = ComputeMesh()
+        module += "advect particles" to mesh
+        mesh.x = 250
+        mesh.y = 1
+        mesh.source = { if (flowStep.get() % 2L == 0L) particleA else particleB }
+        mesh.target = { if (flowStep.get() % 2L == 0L) particleB else particleA }
+        mesh.auxiliary = { if (flowStep.get() % 2L == 0L) flowB else flowA }
+        mesh.tiles = { tileHeaders }
+        mesh.clock = { flowClock }
+        mesh.emitter = { flowEmitter }
+        module += "barrier" to computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
+        flowSimulation += "particles" to module
+        loop { true }.end {
+            if (flowSimulation.modules["particles"] === module) flowSimulation.modules.remove("particles")
+        }
+      compute: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow_helpers.compute"
+        #include "flow/strokes.glsl"
+        #include "flow/grain.glsl"
+        layout(local_size_x = 64) in;
+        vec2 flowVelocity(vec2 p) { return sampleField(pc.auxiliary, p).xy; }
+        float flowMask(vec2 p) { return rock(p) ? 0. : 1.; }
+        void main() {
+            int id = int(gl_GlobalInvocationID.x);
+            if (id >= 16000) return;
+            int slot = id / 640;
+            vec4 old = pc.source.v[id*2];
+            vec4 smoothVelocity = pc.source.v[id*2+1];
+            int generation = pc.tiles.v[slot].z;
+            vec2 lower = vec2(pc.tiles.v[slot].xy) * TILE;
+            vec2 p = old.xy;
+            if (floatBitsToInt(old.w) != generation || any(lessThan(p,lower)) || any(greaterThanEqual(p,lower+TILE))) {
+                p = lower + vec2(flowRandom(ivec2(id % 640, pc.tiles.v[slot].x), pc.tiles.v[slot].y), flowRandom(ivec2(id % 640 + 9923, pc.tiles.v[slot].x), pc.tiles.v[slot].y)) * TILE;
+                smoothVelocity = vec4(0);
+            }
+            vec2 velocity = flowVelocity(p) + vec2(0,-.18);
+            vec2 next = p + velocity * pc.clock.y;
+            if (!rock(next)) p = next;
+            else velocity *= 0.;
+            pc.target.v[id*2] = vec4(p, 0, intBitsToFloat(generation));
+            pc.target.v[id*2+1] = vec4(flowSmoothVelocity(smoothVelocity.xy, velocity, pc.clock.y, .12),0,0);
+        }
+- create:
+    box: flow_grain
+    name: 9. Grain and correspondence RTT
+    frame:
+      x: 510.0
+      y: 530.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
+        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
+        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
+        val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
+        val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
+        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
+        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
+        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
+
+        var module = moduleHere {
+            flowSurface.apply()
+            primitiveType = triangles
+            blend = false // Correspondence is a coordinate, never alpha-blended.
+            depthTest = false
+            depthWrite = false
+        }
+        val mesh = Mesh()
+        module += "grain surface" to mesh
+        mesh.velocity = { if (flowStep.get() % 2L == 0L) flowB else flowA }
+        mesh.tiles = { tileHeaders }
+        mesh.history = { cameraHistory }
+        mesh.clock = { flowClock }
+        mesh.look = { flowLook }
+        mesh.item = { itemHistory }
+        mesh.resize(3)
+        flowSurface += "flow-grain" to module
+        loop { true }.end { if (flowSurface.modules["flow-grain"] === module) flowSurface.modules.remove("flow-grain") }
+      vertex: |
+        #version 450
+        layout(location = 0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2. - 1., 0, 1);
+            uv = vec2(p.x, 1. - p.y);
+        }
+      fragment: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow/grain.glsl"
+        #include "flow/motion.glsl"
+        #include "flow/tiles.glsl"
+        layout(std430, buffer_reference) readonly buffer Field { vec4 v[]; };
+        layout(std430, buffer_reference) readonly buffer Tiles { ivec4 v[]; };
+        layout(std430, buffer_reference) readonly buffer History { FlowFrameHistory frame; };
+        layout(push_constant) uniform Push {
+            Field item; // Current pose and MotionItems previous affine/validity.
+            Field velocity; // Current projected fluid velocity.
+            Tiles tiles; // Resident world coordinates and generations.
+            History history; // FrameHistory's complete 68-float layout.
+            vec4 clock; // x time; y dt; zw reserved.
+            vec4 look; // x world grain cell; y stroke seconds; z gain; w debug view.
+        } pc;
+        layout(location = 0) in vec2 uv;
+        layout(location = 0) out vec4 color;
+        layout(location = 1) out vec4 motion; // Previous UV, valid, coverage. No blending on this attachment.
+
+        const float H = 4. / 24.;
+        bool rock(vec2 p) { return (abs(p.y + 2.) < .10 && abs(p.x) < 4.) || length(p - vec2(2.4, 1.2)) < .8; }
+        float flowMask(vec2 p) { return rock(p) ? 0. : 1.; }
+        vec2 atCell(ivec2 cell) {
+            ivec2 local = ivec2(flowFloorMod(cell.x,24),flowFloorMod(cell.y,24));
+            ivec2 tile = (cell - local) / 24;
+            int slot = flowTileSlot(tile,ivec2(5));
+            if (!flowTileResident(pc.tiles.v[slot], tile)) return vec2(0);
+            vec4 v = pc.velocity.v[slot * 576 + local.y * 24 + local.x];
+            return floatBitsToInt(v.w) == pc.tiles.v[slot].z ? v.xy : vec2(0);
+        }
+        vec2 flowVelocity(vec2 p) {
+            vec2 grid = p / H - .5, f = fract(grid);
+            ivec2 c = ivec2(floor(grid));
+            return mix(mix(atCell(c),atCell(c+ivec2(1,0)),f.x),mix(atCell(c+ivec2(0,1)),atCell(c+ivec2(1)),f.x),f.y);
+        }
+        void main() {
+            vec2 world = flowUVToWorld(uv, pc.history.frame.inverseCurrent);
+            vec4 clip = pc.history.frame.current * vec4(world,0,1);
+            vec4 previousClip = pc.history.frame.reprojection * clip;
+            motion = vec4(flowClipToUV(previousClip), pc.history.frame.viewport.z, 1);
+            float pixelWorld = length(pc.history.frame.inverseCurrent[0].xy) * 2. / pc.history.frame.viewport.x;
+            float grain = flowGrain(world, vec2(0), pixelWorld, pc.look.x, pc.look.y, .9, pc.clock.x, 1.6);
+            // Light is evaluated after the noise integration, preserving a sharp geometric shadow.
+            vec2 light = vec2(-3., 3.);
+            vec2 ray = world - light;
+            float illumination = 1. / (1. + dot(ray,ray) * .035);
+            for (int i=1; i<=48; ++i) if (rock(light + ray * (float(i) / 48.))) illumination = .02;
+            float ink = smoothstep(.08,.32,grain) * illumination * pc.look.z;
+            color = vec4(vec3(ink),1);
+            if (rock(world)) color.rgb = vec3(0);
+            // The moving, rotating emitter has object motion in addition to the camera.
+            vec4 pose = pc.item.v[0];
+            float c = cos(pose.z), s = sin(pose.z);
+            vec2 local = mat2(c,-s,s,c) * (world-pose.xy);
+            if (abs(local.x)<.45 && abs(local.y)<.13) {
+                color.rgb = vec3(.9);
+                vec2 before = flowPreviousPosition(world,pose.xy,pc.item.v[1]);
+                motion = vec4(flowClipToUV(pc.history.frame.previous*vec4(before,0,1)),pc.item.v[2].x,1);
+            }
+            if (pc.look.w > .5 && pc.look.w < 1.5) color.rgb = vec3(abs(flowVelocity(world)) * .2,0);
+            if (pc.look.w > 1.5) {
+                vec4 prior = pc.history.frame.reprojection * vec4(uv * vec2(2,-2) + vec2(-1,1),0,1);
+                color.rgb = pc.history.frame.viewport.z > .5 ? vec3(flowClipToUV(prior),0) : vec3(1,0,0);
+            }
+        }
+- create:
+    box: flow_resolve
+    name: 10. Present color or motion
+    frame:
+      x: 510.0
+      y: 680.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
+        val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
+
+        // The color and motion attachment are both available to future postprocessing boxes.
+        var module = moduleHere {
+            depthTest = false
+            depthWrite = false
+            primitiveType = triangles
+            textures("colorTexture" to flowSurface.imageViewArray[0], "motionTexture" to flowSurface.imageViewArray[1])
+        }
+        val mesh = Mesh()
+        module += "present" to mesh
+        mesh.look = { flowLook }
+        mesh.resize(3)
+        renderer += "flow-resolve" to module
+        loop { true }.end {
+            if (renderer.renderList.modules["flow-resolve"] === module) renderer.renderList.modules.remove("flow-resolve")
+        }
+      vertex: |
+        #version 450
+        layout(location = 0) out vec2 uv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2. - 1., 0, 1);
+            uv = vec2(p.x, 1. - p.y);
+        }
+      fragment: |
+        #version 450
+        layout(set=0,binding=0) uniform sampler2D colorTexture;
+        layout(set=0,binding=1) uniform sampler2D motionTexture;
+        layout(push_constant) uniform Push {
+            vec4 look; // w: 0 color; 3 previous UV; 4 displacement magnified.
+        } pc;
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 color;
+        void main() {
+            color = texture(colorTexture,uv);
+            vec4 motion = texture(motionTexture,uv);
+            if (pc.look.w > 2.5 && pc.look.w < 3.5) color = vec4(motion.z > .5 ? vec3(motion.xy,0) : vec3(1,0,0),1);
+            if (pc.look.w > 3.5) color = vec4(motion.z > .5 ? vec3(.5+(motion.xy-uv)*12.,.5) : vec3(1,0,0),1);
+        }
+- create:
+    box: flow_strokes
+    name: 11. Velocity strokes
+    frame:
+      x: 510.0
+      y: 830.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
+        val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
+        val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
+        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
+
+        var module = moduleHere { depthTest = false
+            depthWrite = false
+            primitiveType = triangles }
+        val mesh = Mesh()
+        module += "velocity strokes" to mesh
+        mesh.particles = { if (flowStep.get() % 2L == 0L) particleB else particleA }
+        mesh.history = { cameraHistory }
+        val strokeLook = vec(.18, .6, 1, 0) // Stroke seconds, half-width pixels, gain, reserved.
+        mesh.look = { strokeLook }
+        val strokeViewport = vec(0, 0, 0, 0)
+        mesh.viewport = { strokeViewport.set(window.width.toFloat(), window.height.toFloat(), 0f, 0f) }
+        mesh.resize(16000 * 6)
+        renderer += "flow-strokes" to module
+        loop { true }.end { if (renderer.renderList.modules["flow-strokes"] === module) renderer.renderList.modules.remove("flow-strokes") }
+      vertex: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        #include "flow/strokes.glsl"
+        #include "flow/motion.glsl"
+        layout(std430, buffer_reference) readonly buffer Field { vec4 v[]; };
+        layout(std430, buffer_reference) readonly buffer History { FlowFrameHistory frame; };
+        layout(push_constant) uniform Push {
+            Field particles; // Pairs of position/generation and smoothed velocity.
+            History history; // Camera matrices and target resolution.
+            vec4 viewport; // xy current window dimensions; zw reserved.
+            vec4 look; // x seconds of stroke; y half-width pixels; z gain; w reserved.
+        } pc;
+        layout(location=0) out vec2 edge;
+        layout(location=1) out vec2 world;
+        const vec2 corners[6] = vec2[6](vec2(0,-1),vec2(1,-1),vec2(1,1),vec2(0,-1),vec2(1,1),vec2(0,1));
+        void main() {
+            int id = gl_VertexIndex / 6;
+            vec2 p = pc.particles.v[id*2].xy;
+            vec2 v = pc.particles.v[id*2+1].xy;
+            edge = corners[gl_VertexIndex % 6];
+            world = p;
+            gl_Position = flowStrokeClip(p, v, vec2(0,-1), edge, pc.history.frame.current,
+                pc.viewport.xy, pc.look.x, .035, .65, pc.look.y);
+        }
+      fragment: |
+        #version 450
+        layout(location=0) in vec2 edge;
+        layout(location=1) in vec2 world;
+        layout(location=0) out vec4 color;
+        void main() {
+            bool rock = (abs(world.y+2.)<.10 && abs(world.x)<4.) || length(world-vec2(2.4,1.2))<.8;
+            if (rock) discard;
+            float alpha = (1.-abs(edge.y)) * smoothstep(0.,.25,edge.x);
+            float light = 1. / (1. + dot(world-vec2(-3,3), world-vec2(-3,3))*.035);
+            color = vec4(vec3(.8), alpha * light * .35);
+        }
+- create:
+    box: flow_controls
+    name: Parameters — edit and execute
+    frame:
+      x: 940.0
+      y: 80.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
+        val force = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!
+        val grainCell = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("grainCell")!!
+        val strokeTime = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("strokeTime")!!
+        val flowWidth = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("flowWidth")!!
+        val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
+
+        // Edit and execute this box. The shader receives the effective values; all values
+        // and bounds remain inspectable through Field's ordinary object viewer.
+        force.requested = 2.5 // Vortex acceleration, clamped to 0–12 world units / second².
+        grainCell.requested = .018 // World-space cell size, clamped to .006–.12.
+        strokeTime.requested = .15 // Integrated path length in seconds, clamped to .01–.6.
+        travel.set(false) // Scroll across the fixed tile pool and vary zoom.
+        flowWidth.requested = 8.0 // Visible vertical half-width in world units.
+        flowLook.w = 0f // 0 grain; 1 fluid velocity; 2 camera UV; 3 object+camera UV; 4 displacement.
+        listOf(force.snapshot(), grainCell.snapshot(), strokeTime.snapshot(), flowWidth.snapshot())
+- create:
+    box: flow_reset
+    name: Reset — execute
+    frame:
+      x: 940.0
+      y: 230.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val resetFlow = fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")!!
+
+        // Ordinary execution queues a reset; the existing renderer consumes it once at its boundary.
+        println("Reset requested: ${resetFlow.request()}")
+- create:
+    box: flow_profile
+    name: Profile — 180 rendered frames
+    frame:
+      x: 940.0
+      y: 380.0
+      w: 370.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.four.modules.fromContextWithNameOrNull
+
+        // Dependencies are explicit graph exports; resources stay in their parent box.
+        val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")) { "Missing resetFlow; run Resources first" }
+        val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")) { "Missing travel; run Resources first" }
+        val settings = listOf("force", "grainCell", "strokeTime", "flowWidth").map { parameterName ->
+            requireNotNull(fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>(parameterName)) {
+                "Run Resources first: missing parameter $parameterName"
+            }.snapshot()
+        }
+
+        // Compare a deterministic 180-frame path with identical settings after a reset.
+        // Stop Box also ends this capture and restores the previous travel setting.
+        frames {
+            val wasTravelling = travel.getAndSet(true)
+            var recording = false
+            try {
+                val ticket = resetFlow.request()
+                while (frame() && resetFlow.completed < ticket) {}
+                println("Profile settings: $settings; reset ticket=${resetFlow.completed}")
+                val start = renderer.frameCounter
+                while (frame() && renderer.frameCounter - start < 60) {} // Warm shaders and caches.
+                CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 30.0, stacks=true))
+                recording = true
+                val recordingStart = renderer.frameCounter
+                while (frame() && renderer.frameCounter - recordingStart < 180) {}
+                val result = CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("stop"))
+                recording = false
+                thisBox.inBrowser("window.showProfilingTimeline(); document.getElementById('profile-tab-frames').click()")
+                println("Flow profile: ${result.frameRecords.size} intervals; ${renderer.frameCounter-recordingStart} rendered frames")
+            } finally {
+                if (recording) CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("stop"))
+                travel.set(wasTravelling)
+            }
+        }
+- connect:
+    parent: flow_renderer
+    child: flow_resources
+- connect:
+    parent: flow_resources
+    child: flow_inputs
+- connect:
+    parent: flow_resources
+    child: flow_helpers
+- connect:
+    parent: flow_resources
+    child: flow_advect
+- connect:
+    parent: flow_resources
+    child: flow_divergence
+- connect:
+    parent: flow_resources
+    child: flow_pressure
+- connect:
+    parent: flow_resources
+    child: flow_project
+- connect:
+    parent: flow_resources
+    child: flow_particles
+- connect:
+    parent: flow_resources
+    child: flow_grain
+- connect:
+    parent: flow_resources
+    child: flow_resolve
+- connect:
+    parent: flow_resources
+    child: flow_strokes
+- connect:
+    parent: flow_resources
+    child: flow_controls
+- connect:
+    parent: flow_resources
+    child: flow_reset
+- connect:
+    parent: flow_resources
+    child: flow_profile
+- stop:
+    box: flow_profile
+- stop:
+    box: flow_reset
+- stop:
+    box: flow_controls
+- stop:
+    box: flow_strokes
+- stop:
+    box: flow_resolve
+- stop:
+    box: flow_grain
+- stop:
+    box: flow_particles
+- stop:
+    box: flow_project
+- stop:
+    box: flow_pressure
+- stop:
+    box: flow_divergence
+- stop:
+    box: flow_advect
+- stop:
+    box: flow_inputs
+- stop:
+    box: flow_resources
+- launch:
+    box: flow_renderer
+    property: code
+- launch:
+    box: flow_resources
+    property: code
+- launch:
+    box: flow_inputs
+    property: code
+- launch:
+    box: flow_advect
+    property: code
+- launch:
+    box: flow_divergence
+    property: code
+- launch:
+    box: flow_pressure
+    property: code
+- launch:
+    box: flow_project
+    property: code
+- launch:
+    box: flow_particles
+    property: code
+- launch:
+    box: flow_grain
+    property: code
+- launch:
+    box: flow_resolve
+    property: code
+- launch:
+    box: flow_strokes
+    property: code
+- wait:
+    frames: 120

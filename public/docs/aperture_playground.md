@@ -24,7 +24,7 @@ same boxes. Replay restores the example code; continue editing individual boxes 
 // The transcript creates the real renderer, textures and editable shader graph.
 ```
 
-## The graph is the instrument
+## What each box owns
 
 | Box | Owns | Try changing |
 | --- | --- | --- |

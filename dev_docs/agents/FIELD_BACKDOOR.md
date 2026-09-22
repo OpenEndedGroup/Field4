@@ -310,13 +310,13 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 <!-- BEGIN CAPTURE SIGNATURES (checked by tools/test_field_backdoor.py) -->
 | command | positional arguments | notable options |
 | --- | --- | --- |
-| `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
-| `screenshot-editor` | `uid path` | `--property --padding --open-outputs --no-pan --timeout` |
-| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --no-pan --preserve-selection --include-notifications --timeout` |
+| `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
+| `screenshot-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --timeout` |
+| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --preserve-selection --include-notifications --timeout` |
 | `native-screenshot` | `path` | `--uid --wait-frames --timeout` |
 | `wait-native-renderer` | `[uid]` | `--frames --timeout` |
-| `record-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
-| `record-editor` | `uid path` | `--property --padding --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 <!-- END CAPTURE SIGNATURES -->
 
@@ -428,3 +428,12 @@ When the user is actively watching and editing a Field document, an external Cod
 - Treat the collaboration as a shared performance state: do not stop the visible server/window at handoff unless asked, do not take over an unidentified session, and report which boxes are genuinely launched versus merely configured.
 
 Validated on the `dust_two` document: the renderer/window box was launched, the Gaussian-splat module rendered into the selected RTT, stereo camera matrices were bound, playback telemetry advanced, and editing/reloading the generated splat shader worked while the user watched the result.
+
+## Source and execution provenance
+
+`help` and `help <command>` return command-language help without exiting the session.
+Launch/run/continue now wait for a correlated Kotlin setup verdict, including its source
+revision. They fetch current live source instead of trusting an earlier snapshot. A
+successful setup still requires a rendered frame or later telemetry to verify animation.
+For revision-safe editing, shared AI4 tools, reset, export and capture workflows, see
+[Live graphics workflow](light_infrastructure/AGENT_WORKFLOW.md).

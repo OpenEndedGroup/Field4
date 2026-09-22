@@ -89,9 +89,7 @@ Regenerate it with
 uv run --project . --group backdoor python tools/run_field_tests.py --id examples.document-on-disk.smoke
 ```
 
-which is also what guards it: the smoke asserts this page still contains both blocks verbatim, so a
-change to any of those three `maxBackups` arguments fails a test instead of leaving the page wrong.
-The producer is
+which is what produced the two blocks above:
 `src/jvmMain/kotlin/afield/examples/DocumentOnDiskSmokeTest.kt:35#object DocumentOnDiskSmokeTest`.
 
 Two things in that listing are not about backups. `AGENTS.md` and `README.md` are seeded into any

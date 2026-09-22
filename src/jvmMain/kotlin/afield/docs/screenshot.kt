@@ -459,6 +459,7 @@ private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "panIntoView" to panIntoView,
     "hideMonaco" to hideMonaco,
     "openOutputs" to openOutputs,
+    "expectOutputs" to expectOutputs,
     "preserveSelection" to preserveSelection,
     "includeNotifications" to includeNotifications
 )
@@ -469,6 +470,7 @@ private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf
     "panIntoView" to panIntoView,
     "showEditor" to showEditor,
     "openOutputs" to openOutputs,
+    "expectOutputs" to expectOutputs,
     "editorOnly" to editorOnly,
     "padding" to padding,
     "waitMs" to waitMs,
@@ -661,6 +663,31 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
             if (imgs.some((img) => !img.complete || img.naturalWidth === 0)) return false;
             return true;
           };
+          /**
+           * The blocking half of [outputsReady], for a capture whose output is not in a panel.
+           *
+           * "There is no output area" and "the output area is not finished" are different facts,
+           * and only the second should hold a shot. An inline capture must still refuse a panel
+           * that is mid-flight -- otherwise declaring `outputs="inline"` would become a way to mute
+           * the half-drawn-waveform catch -- but it must not wait for a panel that will never exist.
+           */
+          const outputsNotBlocked = (root) => {
+            if (!root) return false;
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) return true;
+            const iframes = Array.from(outputArea.querySelectorAll("iframe"));
+            iframes.forEach(materialiseDeferredFrame);
+            if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) return false;
+            if (Array.from(outputArea.querySelectorAll('[aria-busy="true"]')).some(isVisibleNode)) return false;
+            return !visibleStatusTexts(outputArea).some(blockedStatusText);
+          };
+          /** Geometry of the whole box, for captures whose content is the editor rather than a panel. */
+          const boxSignature = (root) => {
+            if (!root) return null;
+            const r = root.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0) return null;
+            return Math.round(r.width) + "x" + Math.round(r.height) + "/" + root.scrollWidth + "/" + root.scrollHeight;
+          };
           const outputsReady = (root) => {
             if (!root) {
               return false;
@@ -697,7 +724,17 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
               await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
               continue;
             }
-            if (request.openOutputs) {
+            // What the fence declared this capture's output to be. A panel must be revealed and
+            // must hold settled content; inline output lives beside the code and has no panel to
+            // wait for, so demanding one could never be satisfied; "none" asserts emptiness.
+            const expects = request.expectOutputs || "panel";
+            // A panel capture is held to panel content; an inline one only to a panel that exists
+            // being un-stuck, plus its own geometry settling; "none" asserts there is nothing.
+            const panelKind = expects === "panel";
+            const readyFn = panelKind ? outputsReady : outputsNotBlocked;
+            const signatureFn = panelKind ? contentSignature : boxSignature;
+            const laidOutFn = panelKind ? contentLaidOut : (() => true);
+            if (request.openOutputs && expects !== "none") {
               // Reveal before testing geometry: opening disclosures is part of preparation, and
               // waiting on their still-collapsed layout first can never establish readiness.
               await Promise.resolve(window.fieldBackdoorPrepareBoxScreenshot(request));
@@ -709,7 +746,7 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
               // and then FAILS naming what blocked it. A capture that cannot be taken correctly is
               // worth more as an error than as a blurred asset nobody re-checks.
               const notReadyBox = findBox(request.uid);
-              if (notReadyBox && !outputsReady(notReadyBox)) {
+              if (notReadyBox && !readyFn(notReadyBox)) {
                 const area = notReadyBox.querySelector(".outputArea");
                 const blocking = area ? visibleStatusTexts(area).filter(blockedStatusText) : [];
                 lastMessage = blocking.length
@@ -732,8 +769,8 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
                 if (!currentBox) {
                   break;
                 }
-                const signature = contentSignature(currentBox);
-                if (outputsReady(currentBox) && contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
+                const signature = signatureFn(currentBox);
+                if (readyFn(currentBox) && laidOutFn(currentBox) && signature !== null && signature === previousSignature) {
                   stableSamples += 1;
                   if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
                     break;
@@ -979,6 +1016,31 @@ internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, p
             if (imgs.some((img) => !img.complete || img.naturalWidth === 0)) return false;
             return true;
           };
+          /**
+           * The blocking half of [outputsReady], for a capture whose output is not in a panel.
+           *
+           * "There is no output area" and "the output area is not finished" are different facts,
+           * and only the second should hold a shot. An inline capture must still refuse a panel
+           * that is mid-flight -- otherwise declaring `outputs="inline"` would become a way to mute
+           * the half-drawn-waveform catch -- but it must not wait for a panel that will never exist.
+           */
+          const outputsNotBlocked = (root) => {
+            if (!root) return false;
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) return true;
+            const iframes = Array.from(outputArea.querySelectorAll("iframe"));
+            iframes.forEach(materialiseDeferredFrame);
+            if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) return false;
+            if (Array.from(outputArea.querySelectorAll('[aria-busy="true"]')).some(isVisibleNode)) return false;
+            return !visibleStatusTexts(outputArea).some(blockedStatusText);
+          };
+          /** Geometry of the whole box, for captures whose content is the editor rather than a panel. */
+          const boxSignature = (root) => {
+            if (!root) return null;
+            const r = root.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0) return null;
+            return Math.round(r.width) + "x" + Math.round(r.height) + "/" + root.scrollWidth + "/" + root.scrollHeight;
+          };
           const outputsReady = (root) => {
             if (!root) {
               return false;
@@ -1023,10 +1085,15 @@ internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, p
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }
-              if (request.openOutputs) {
+              const expects = request.expectOutputs || "panel";
+              const panelKind = expects === "panel";
+              const readyFn = panelKind ? outputsReady : outputsNotBlocked;
+              const signatureFn = panelKind ? contentSignature : boxSignature;
+              const laidOutFn = panelKind ? contentLaidOut : (() => true);
+              if (request.openOutputs && expects !== "none") {
                 await Promise.resolve(window.fieldBackdoorPrepareWindowScreenshot(request));
                 const currentBox = findBox(request.uid);
-                if (!currentBox || !outputsReady(currentBox)) {
+                if (!currentBox || !readyFn(currentBox)) {
                   lastMessage = "output not ready (missing, busy, or an iframe has not finished loading)";
                   await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                   continue;
@@ -1043,8 +1110,8 @@ internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, p
                   if (!currentBox) {
                     break;
                   }
-                  const signature = contentSignature(currentBox);
-                  if (outputsReady(currentBox) && contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
+                  const signature = signatureFn(currentBox);
+                  if (readyFn(currentBox) && laidOutFn(currentBox) && signature !== null && signature === previousSignature) {
                     stableSamples += 1;
                     if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
                       break;
@@ -1197,6 +1264,7 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
                 panIntoView = request.panIntoView,
                 showEditor = request.showEditor,
                 openOutputs = request.openOutputs,
+                expectOutputs = request.expectOutputs,
                 editorOnly = request.editorOnly,
                 padding = request.padding,
                 waitMs = request.waitMs,
@@ -1341,6 +1409,7 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
                 panIntoView = request.panIntoView,
                 hideMonaco = true,
                 openOutputs = request.openOutputs,
+                expectOutputs = request.expectOutputs,
                 preserveSelection = request.preserveSelection,
                 includeNotifications = request.includeNotifications
             )
@@ -1449,6 +1518,7 @@ suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVid
                 panIntoView = request.panIntoView,
                 showEditor = request.showEditor,
                 openOutputs = request.openOutputs,
+                expectOutputs = request.expectOutputs,
                 editorOnly = request.editorOnly,
                 padding = request.padding
             )

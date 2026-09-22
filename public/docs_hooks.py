@@ -427,6 +427,7 @@ class RunnerOptions:
     box_w: float
     box_h: float
     open_outputs: bool
+    expect_outputs: str
     wait_output: bool
     wait_output_kind: str
     wait_output_channel: str | None
@@ -2825,7 +2826,20 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         raise RuntimeError(f"{page_path}:{line_number} unsupported execution={execution!r}")
 
     with_editor = capture == "window-editor" or parse_bool(first_attr(attrs, "with-editor", "with_editor"), default=False)
-    open_outputs = parse_bool(first_attr(attrs, "open-outputs", "open_outputs"), default=True)
+    # What this fence says its box's output IS, so readiness is checked against a stated
+    # expectation instead of a default nobody chose. `panel` keeps the historical behaviour --
+    # reveal the output panels and require visible, settled content in them. `inline` is for a
+    # figure whose output appears beside the code in the editor: there is no panel, so demanding
+    # one can never be satisfied and the capture can never pass. `none` asserts emptiness.
+    #
+    # `open-outputs` remains as the older spelling and still wins when a page sets it explicitly;
+    # otherwise it follows from `outputs`, because "reveal the panels" is meaningless without one.
+    expect_outputs = (first_attr(attrs, "outputs") or "panel").strip().lower()
+    if expect_outputs not in {"panel", "inline", "none"}:
+        raise RuntimeError(f"{page_path}:{line_number} unsupported outputs={expect_outputs!r}")
+    open_outputs = parse_bool(
+        first_attr(attrs, "open-outputs", "open_outputs"), default=expect_outputs == "panel"
+    )
     wait_output = parse_bool(first_attr(attrs, "wait-output", "wait_output", "waitForOutput", "wait-for-output"), default=False)
     wait_output_kind = (first_attr(attrs, "wait-output-kind", "wait_output_kind") or "display").strip().lower()
     if wait_output_kind not in {"inline", "display", "all"}:
@@ -2889,6 +2903,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         box_w=parse_float(first_attr(attrs, "w"), default=default_box_w),
         box_h=parse_float(first_attr(attrs, "h"), default=default_box_h),
         open_outputs=open_outputs,
+        expect_outputs=expect_outputs,
         wait_output=wait_output,
         wait_output_kind=wait_output_kind,
         wait_output_channel=first_attr(attrs, "wait-output-channel", "wait_output_channel"),
@@ -3488,6 +3503,7 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "boxW": options.box_w,
         "boxH": options.box_h,
         "openOutputs": options.open_outputs,
+        "expectOutputs": options.expect_outputs,
         "withEditor": options.with_editor,
         "graphicsContext": options.graphics_context,
         "video": options.video,
@@ -4821,6 +4837,7 @@ def build_backdoor_command(
                 parts.append("--restart-target")
             if options.open_outputs:
                 parts.append("--open-outputs")
+            parts.extend(["--expect-outputs", options.expect_outputs])
             backdoor_commands.append(shlex.join(parts))
         else:
             parts = [
@@ -4837,6 +4854,7 @@ def build_backdoor_command(
                 parts.append("--restart-target")
             if options.open_outputs:
                 parts.append("--open-outputs")
+            parts.extend(["--expect-outputs", options.expect_outputs])
             if options.with_editor:
                 parts.append("--with-editor")
             backdoor_commands.append(shlex.join(parts))
@@ -4862,6 +4880,7 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            parts.extend(["--expect-outputs", options.expect_outputs])
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             target_uid = default_target_uid
@@ -4875,6 +4894,7 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            parts.extend(["--expect-outputs", options.expect_outputs])
             backdoor_commands.append(shlex.join(parts))
         else:
             target_uid = default_target_uid
@@ -4887,6 +4907,7 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            parts.extend(["--expect-outputs", options.expect_outputs])
             if options.with_editor:
                 parts.append("--with-editor")
             backdoor_commands.append(shlex.join(parts))

@@ -21,7 +21,7 @@ class TextureSampler(
     addressModeW: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
 ) {
     var vkSampler: Long = 0
-    private val autoDisposeToken = AutoDisposer.register(this, "TextureSampler(mips=$mipLevels)") { /* set after init */ }
+    private val autoDisposeToken = AutoDisposer.register(this, "TextureSampler(mips=$mipLevels)", owner = renderer.device) { /* set after init */ }
 
     init {
         println(" making sampler")
@@ -54,7 +54,7 @@ class TextureSampler(
     }
 
     fun cleanup() {
-        autoDisposeToken.disable()
+        if (!autoDisposeToken.disable()) return
         VK10.vkDestroySampler(renderer.device.vkDevice, vkSampler, null)
     }
 

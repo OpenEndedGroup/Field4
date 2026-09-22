@@ -79,8 +79,10 @@ same comment in three or four files at once — `document.md`, `metadata.edn`, e
 `hidden=true` runner fences are never emitted into the built page (see `HIDDEN_ATTR` below) and
 are skipped by default; `--include-hidden` brings them back if you are auditing the capture
 scripts themselves. And `public/docs/assets/agent_transcripts/*/document.md` is **generated**
-from `dev_docs/agents/transcripts/*.yaml` by `materializeAgentTranscripts` and drift-checked by
-`checkAgentTranscripts` — editing the `document.md` is reverted. The banner says so.
+from `dev_docs/agents/transcripts/*.yaml` by `regenerateAgentTranscriptStartingPoints` and
+drift-checked by `checkAgentTranscripts` — editing the `document.md` is reverted. The banner says
+so. (This said `materializeAgentTranscripts` until 2026-09-21, which is not a task in this build
+and fails with "Task not found". Verified by running the real one.)
 
 Usage:
     in_fences.py public/docs [--why <page>] [--top N] [--include-hidden]
@@ -259,7 +261,7 @@ def main() -> int:
         print("INCLUDING hidden runner fences. Those are capture scripts the built page never")
         print("emits; a comment in one is read by nobody. Do not open a commit on them.")
     print("A row under assets/agent_transcripts/ is GENERATED from dev_docs/agents/transcripts/")
-    print("*.yaml — fix the yaml, then `./gradlew materializeAgentTranscripts`.\n")
+    print("*.yaml — fix the yaml, then `./gradlew regenerateAgentTranscriptStartingPoints`.\n")
     print(f"{'score':>5} {'hits':>4}  page")
     for sc, n, p, hits in rows[: a.top]:
         print(f"{sc:5d} {n:4d}  {p}")

@@ -39,7 +39,7 @@ The block below is a Python box's `code`, and the picture under it is that box's
 where the output lands: a single line is a chip beside the line that printed it, and anything
 multi-line gets a block of its own underneath.
 
-```diffstatic_runner {data-lang=python screenshot="assets/python/first_cell.png" capture="editor" wait="4" padding="10" w="900" h="400" timeout="240" requires="jep,python:numpy" embed=true name="python-first-cell" alt="A Python box printing its interpreter version and a three-by-four numpy array, the array rendered as an aligned monospace block."}
+```diffstatic_runner {data-lang=python screenshot="assets/python/first_cell.png" capture="editor" outputs="inline" wait="4" padding="10" w="900" h="400" timeout="240" requires="jep,python:numpy" embed=true name="python-first-cell" alt="A Python box printing its interpreter version and a three-by-four numpy array, the array rendered as an aligned monospace block."}
 :::static
 # A single-line print appears inline, beside the line that made it.
 import platform
@@ -75,7 +75,7 @@ in the second.
 
 A cell that prints nothing displays the value of its last expression instead:
 
-```diffstatic_runner {data-lang=python screenshot="assets/python/last_expression.png" capture="editor" wait="4" padding="10" w="900" h="300" timeout="240" requires="jep" embed=true name="python-last-expression" alt="A Python box whose final line is an expression, showing the resulting number beside it in the editor."}
+```diffstatic_runner {data-lang=python screenshot="assets/python/last_expression.png" capture="editor" outputs="inline" wait="4" padding="10" w="900" h="300" timeout="240" requires="jep" embed=true name="python-last-expression" alt="A Python box whose final line is an expression, showing the resulting number beside it in the editor."}
 :::static
 # Nothing is printed, so the value of the last line is what you see.
 import math
@@ -151,7 +151,7 @@ redirection happens underneath it.
 Because JEP is in-process, the JVM is importable. `java.lang`, and any class on Field's classpath,
 resolves as a Python module.
 
-```diffstatic_runner {data-lang=python screenshot="assets/python/jvm_interop.png" capture="editor" wait="4" padding="10" w="900" h="340" timeout="240" requires="jep" embed=true name="python-jvm-interop" alt="A Python box importing java.lang.System and Field's own PythonInterface, printing the JVM version and the name of the box it is running inside."}
+```diffstatic_runner {data-lang=python screenshot="assets/python/jvm_interop.png" capture="editor" outputs="inline" wait="4" padding="10" w="900" h="340" timeout="240" requires="jep" embed=true name="python-jvm-interop" alt="A Python box importing java.lang.System and Field's own PythonInterface, printing the JVM version and the name of the box it is running inside."}
 :::static
 # java.lang, and anything else on Field's classpath, is importable.
 from java.lang import System
@@ -259,13 +259,19 @@ Three of the pictures are the box's *editor*, because that is where `print` outp
 expression land — beside the line that produced them. The plotly one is the box's output pane,
 because an embedded page is a display channel rather than an inline annotation.
 
-All four need JEP, so each declares `jep` in `requires`. The numpy and Plotly examples also
-declare `python:numpy` and `python:plotly.graph_objects` where used. Preflight imports those
-modules in the JEP-capable interpreter Field resolves, not the docs builder's Python. A full
-recapture fails before starting Field if these prerequisites are missing; cached builds warn.
-Use `FIELD_PYTHON_VENV` or `FIELD_PYTHON_EXECUTABLE` for docs interpreter overrides (not JVM-only properties).
-The one shell block is the install recipe and
-is illustration only — running it during a docs build would compile a C extension.
+All four need JEP, so each declares `jep` in `requires`; the numpy and Plotly examples also declare
+`python:numpy` and `python:plotly.graph_objects`. Preflight imports those modules in the JEP-capable
+interpreter Field resolves, which is not the docs builder's own Python and usually not the same set
+of packages. A recapture missing a prerequisite stops before Field starts rather than failing at the
+capture itself; a cached build warns and carries on with the committed pictures.
+
+To aim a docs build at a particular interpreter, set `FIELD_PYTHON_VENV` or
+`FIELD_PYTHON_EXECUTABLE`. Activating a venv is not enough on its own: in
+`PythonInterface.pythonConfigChoices` those two rank above the interpreter the welcome screen
+persisted, and `VIRTUAL_ENV` and `CONDA_PREFIX` rank below it.
+
+The one shell block is the install recipe and is illustration only — running it during a docs build
+would compile a C extension.
 
 Two claims here have no picture under them. A still taken after a `tqdm` loop finishes shows an
 empty bar, and the shared global namespace needs two co-operating boxes where a runner fence builds

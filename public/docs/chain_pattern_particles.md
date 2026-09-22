@@ -111,8 +111,8 @@ val series = PatSynthDocs.bandSeries(audio, split, windowFrames = 2048, hopFrame
 val seconds = series.indices.map { it * 256.0 / PatSynthDocs.SR }
 showSignals(
     "70 Hz" to series.map { it[0] },
-    "420 Hz" to series.map { it[1] },
-    "2.4 kHz" to series.map { it[2] },
+    "340 Hz" to series.map { it[1] },
+    "1.6 kHz" to series.map { it[2] },
     "8 kHz" to series.map { it[3] },
     x = seconds,
     title = "four bands of one bar, the numbers the shader reads",
@@ -122,23 +122,22 @@ showSignals(
 :::endfold
 ```
 
-![Four traces over two seconds: a 70 Hz trace spiking sixteen times, a 420 Hz trace spiking with it at about two thirds the height, and 2.4 kHz and 8 kHz traces that stay busier and flatter](assets/chain_pattern_particles/bands.png)
+![Four traces over two seconds: a 70 Hz trace spiking sixteen times, a 340 Hz trace spiking with it at about two thirds the height, and 1.6 kHz and 8 kHz traces that stay busier and flatter](assets/chain_pattern_particles/bands.png)
 
-Sixteen kicks in two seconds in the lowest band, which is `bd*4` at two cycles per second. The 420 Hz
+Sixteen kicks in two seconds in the lowest band, which is `bd*4` at two cycles per second. The 340 Hz
 band spikes with them rather than with the offbeat stabs, because a kick's attack is broadband and
 sixteen kicks are louder in that band than four stabs. The top two bands stay busy and comparatively
 flat, because sixteen hats a cycle never leave a gap. That difference is the whole reason the rings
 look different from each other.
 
-!!! note "The filters belong to the analysis, not to the audio graph"
+??? aside "Take band levels from the tap"
 
-    `afield.four.synth`'s nodes are audio-thread-owned. A `Signal` caches per `SynthContext` and per
-    cycle, but many nodes carry mutable DSP state past that cache, so rendering one graph from two
-    threads can corrupt it. A `BandSplit`'s band-passes are constructed by and reachable only from
-    that object, and their input is a buffer it owns. What it reads is a snapshot the audio path
-    *published*, through `PatSynthLaunch.tap`, rather than a second rendering of the graph the engine
-    is already rendering. Re-rendering a synth graph to get a display value is how a modulation
-    oscillator ends up running at double speed.
+    Take your band levels from `PatSynthLaunch.tap`, which is a snapshot the audio path published.
+    Do not render the synth graph a second time to get a display value: `afield.four.synth`'s nodes
+    are audio-thread-owned, and many of them carry mutable DSP state past the per-cycle `Signal`
+    cache, so a second render from another thread is how a modulation oscillator ends up running at
+    double speed. `BandSplit` follows the rule: its band-passes and their input buffer are its own,
+    and all it reads is the tap.
 
 ## Into the push constants
 
@@ -150,8 +149,8 @@ layout(push_constant) uniform dat {
     Out   outData;    // this frame's positions, read by the draw box
     float time;
     float band0;      // 70 Hz    — the kick
-    float band1;      // 420 Hz
-    float band2;      // 2.4 kHz  — the square stab's harmonics
+    float band1;      // 340 Hz
+    float band2;      // 1.6 kHz  — the square stab's harmonics
     float band3;      // 8 kHz    — the hats
     uint  count;
 } pc;

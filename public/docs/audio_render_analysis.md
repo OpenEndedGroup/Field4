@@ -22,10 +22,10 @@ The project model stays in Field. `RenderedAudioFile.provenance` stays with the 
 and the source code stays in its box. The server asset id names only the WAV bytes, which
 means two programs that genuinely render identical audio share the asset and its cached analyses.
 
-## The complete live-coding path
+## Rendering a Pat pattern and analysing it
 
-This Pat example shows every boundary. `renderDirtWav` may be replaced by any renderer in the
-table below; the import, job and visualization half is unchanged.
+`renderDirtWav` may be replaced by any renderer in the table below; the import, job and
+visualization half is unchanged.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*

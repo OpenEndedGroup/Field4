@@ -147,9 +147,25 @@ BODY_TELLS = [
     # return here". That is a threshold named by a fixed English idiom, not an evaluative label,
     # and the idiom has no form in which it could be this fault. One instance in the whole tree,
     # so this buys a single true negative; it costs nothing and it cannot mask a real hit.
+    # CALIBRATION, 2026-09-21 (forty-first firing). `argument` shipped beside `point` with no
+    # lookahead of its own, and unlike `point` it never got one. In THIS codebase `argument` is
+    # overwhelmingly the programming term: of the twelve occurrences of `the argument` in
+    # public/docs, TEN are a call's argument -- Forth arity ("the argument count off the top of
+    # the stack"), `hostCall1`'s argument count, `hostMacro`'s argument values, FieldML resolving
+    # "on the argument *names* alone", `fieldStatsHere`'s "parse the argument text", and
+    # interaction nets' "`aux(1)` is the argument, and `aux(0)` is where the result comes back
+    # out". That last one is the only thing `is the argument` has ever matched tree-wide, and it
+    # is a false positive: a `LAM`/`APP` port table, not an evaluative label.
+    #
+    # Both rhetorical uses in the tree are `the argument FOR <doing something>`
+    # (`petri_sound`'s "the argument for using a net rather than a…", `stacksl_surrogate_demo`'s
+    # "the argument for a per-family surrogate"), so requiring `for` keeps the true sense
+    # reachable and retires the false one. Observed, not invented -- the same method the `point`
+    # lookahead was built by. (`keyframer_worked_example`'s "the argument makes itself" is the
+    # rhetorical sense too, but it is not the `is the` form and was never matched.)
     ("slide-label", r"(?<!which )(?<!that )(?<!it )(?<!this )"
                     r"\b(is|are) the (sanity check|payoff|"
-                    r"point(?!\s+(at which|where|when|on|of no return)\b)|argument|"
+                    r"point(?!\s+(at which|where|when|on|of no return)\b)(?!-)|argument(?=\s+for\b)|"
                     r"interesting (part|bit)|real (trick|insight)|one that matters|one to (have|watch))\b"
                     r"|\b(is|are) an? (sanity check|payoff|real (trick|insight))\b", 7),
     # `X is the whole design` -- the stakes label bolted onto a concrete fact, the same move as
@@ -312,10 +328,12 @@ BODY_TELLS = [
                      r"is the next thing|not wired up yet|for when it does|"
                      r"is what we should|TODO|FIXME|remains to be done|"
                      r"has not been done yet|would be nice to)\b", 9),
-    # the effort brag, which survives from the old scorer because it never false-positived
+    # the effort brag, which survives from the old scorer because it never false-positived.
+    # `worth doing` was dropped on 2026-09-22 -- see RETIRED; it had a clean record only
+    # because the tree's one instance was wrapped across a line break.
     ("effort-brag", r"\b(hard[- ]won|meticulous|painstaking|non[- ]trivial|"
                     r"surprisingly (hard|tricky|subtle)|took (several|many) \w+ to|"
-                    r"worth doing|a lot of work)\b", 6),
+                    r"a lot of work)\b", 6),
     # the tics with a clean record
     ("load-bearing", r"load[- ]bearing", 8),
     ("honest", r"\bhonest(y|ly)?\b", 6),
@@ -388,6 +406,28 @@ BODY_TELLS = [
      r"imagined|hoped|believed|stated|invented|eyeballed)\b", 6),
 ]
 
+# Hits that ARE the detector working and are NOT faults, recorded so a firing does not
+# re-litigate them. Unlike RETIRED these patterns stay live and keep scoring, because a
+# standing residual on a known page costs one lookup while the pattern itself still earns
+# its place -- see the note on `head-negspace` for the one case where that is load-bearing.
+STANDING_KEEPS = {
+    "head-negspace": "0 true / 8 keeps on committed prose across 41 firings, and the four "
+                     "firings that called it 'not worth a firing' were right about the "
+                     "ranking. DO NOT demote or retire it anyway: it has caught THIS TASK'S "
+                     "OWN DRAFT twice (2026-09-18 chain_pattern_particles, 2026-09-19 "
+                     "sound_paths -- both headings written while fixing a heading fault), "
+                     "and it only caught them because the board number moved. Weight 0 "
+                     "would keep the --why row and lose the catch. The eight keeps are "
+                     "genuine limitation and troubleshooting headings, which is a shape "
+                     "documentation needs: manifold.md x2, alife_examples.md 'What local "
+                     "steering cannot do', geometry_from_disk.md 'When it does not look "
+                     "right', solid_notation.md :639, chain_lambda_sound.md:69 'The "
+                     "scheduler does not change how long it takes' (a RESULT, not negative "
+                     "space), and CaSoundDocs.kt + LambdaSoundDocs.kt 'What it does not do' "
+                     "(both landed 2026-09-21; the content is a capability list). Recognise "
+                     "and move on.",
+}
+
 # Lexical patterns retired from the old scorer, with the reason. Do not re-add without
 # checking hit by hit: each of these was verified to be a false positive across the tree.
 RETIRED = {
@@ -395,6 +435,15 @@ RETIRED = {
     "gate": "names a real Faust control and a real Gradle task",
     "used to": "legitimately describes a prior state of a *shape*, not a changelog",
     "in practice": "ordinary English, 1 point, no signal",
+    "worth doing": "dropped from `effort-brag` on 2026-09-22, the firing that made it visible. "
+                   "It had a clean record for 44 firings because the tree's ONE instance in "
+                   "public/docs is wrapped across a line break -- `installation.md`'s 'tells you "
+                   "whether that is worth / doing' -- and section B could not see it. The "
+                   "paragraph join surfaced it and it is a false positive: 'worth doing' there is "
+                   "the OUTPUT of Check for updates, not the author admiring their own labour. "
+                   "The eight instances in `src/` are all design rationale ('Compiling a pattern "
+                   "is worth doing when the same query runs repeatedly'), which the task file "
+                   "says to keep. 0 true out of 9",
     "under the hood": "never fired on a real fault in 28 runs",
     "rather than": "the bare form. Marc 0.27-1.29 per 1k vs a tree median of 2.2 and a top of "
                    "7.5, so the density gap is real -- but the hits are overwhelmingly good "
@@ -429,6 +478,64 @@ ADMONITION = re.compile(r"^(!!!|\?\?\?\+?)\s+\w+")
 
 OVERSIZED_ADMONITION_LINES = 14   # a !!! block longer than this interrupts rather than aside
 BULLET_NUMBERS_MIN = 3            # this many number-heavy bullets in one run wants a table
+
+# A line that opens a new block rather than continuing the one above it.
+BLOCK_OPENER = re.compile(r"^\s*(?:[-*+]\s|\d+\.\s|>)")
+
+
+def prose_paragraphs(prose):
+    """Rejoin hard-wrapped prose lines, keeping each paragraph's line index.
+
+    `public/docs` wraps at about 100 columns, and a BODY_TELL longer than a few words
+    is therefore as likely to straddle a line break as not.  Section B of `score()`
+    scanned one line at a time from the day it was written, so every one of those was
+    invisible -- `flow_matching.md`'s "and `transport` is the interesting / call" split
+    `the interesting` from `call` and scored 0 on a textbook `evaluative-label`.  This
+    is the fifth time this task has been bitten by a single-line scan over wrapped
+    prose (`self_narration.py` 2026-09-20, `admon_position.py` 2026-09-21,
+    `page_self_vouching.py` 2026-09-22, and the two grep sweeps before them), which is
+    the argument for fixing it in the shared helper rather than once per detector.
+
+    Yield is small and the fix is still right: tree-wide this surfaces two rows the
+    line scan could not reach, and it cannot *lose* one, because every line's text
+    appears exactly once in exactly one paragraph.  A bullet starts a new paragraph and
+    then absorbs its own continuation lines, which is what a wrapped bullet is.
+
+    Returns [(joined_text, [(offset, lineno), ...])]; `line_at` maps a match offset
+    back to the line the match starts on, so a hit still reports a real line number.
+    Inline code is blanked per line, *before* joining, so those offsets stay aligned.
+    """
+    runs, cur = [], []
+    for i, ln in prose:
+        if not ln.strip() or BLOCK_OPENER.match(ln):
+            if cur:
+                runs.append(cur)
+            cur = [(i, ln)] if ln.strip() else []
+            continue
+        cur.append((i, ln))
+    if cur:
+        runs.append(cur)
+
+    out = []
+    for run in runs:
+        text, index, pos = [], [], 0
+        for i, ln in run:
+            s = re.sub(r"`[^`]+`", "§", ln.strip())
+            index.append((pos, i))
+            text.append(s)
+            pos += len(s) + 1
+        out.append((" ".join(text), index))
+    return out
+
+
+def line_at(index, offset):
+    """The line number a paragraph offset falls on."""
+    found = index[0][1]
+    for pos, lineno in index:
+        if pos > offset:
+            break
+        found = lineno
+    return found
 
 
 def split_prose(text):
@@ -532,6 +639,21 @@ def score(text):
                 continue
             if re.search(pat, title, re.I):
                 hit(name, w, lineno, title)
+        # 2026-09-21: the exact converse of the A' fix below, and it went unnoticed for as long.
+        # A' says "BODY_TELLS never looked at an admonition title ... a title is read as a
+        # heading; score it as one" -- but BODY_TELLS never looked at a *real* heading either,
+        # because `split_prose` routes `#` lines into `heads` and `continue`s. So
+        # `### Two conventions worth knowing before you tune a weight` (a textbook `worth-knowing`)
+        # and `### Fidelity, and the honesty check that is not optional` (`honest`) scored exactly
+        # 0, and an admonition wearing the identical words scored 5 and 6. Three true hits found
+        # the night this was added, no false ones; the families are the calibrated body families,
+        # so this adds no new vocabulary, only the surface it was always meant to cover.
+        #
+        # Inline code is replaced with a sentinel first, for the same reason section B does it.
+        head_text = re.sub(r"`[^`]+`", "§", title)
+        for name, pat, w in BODY_TELLS:
+            if re.search(pat, head_text, re.I):
+                hit("head-" + name, w, lineno, title)
 
     # A'. admonition titles carry the same faults, and Marc reads them as headings
     for a in admons:
@@ -562,12 +684,12 @@ def score(text):
     # The replacement is a sentinel, not nothing: deleting a span joins the words either side
     # and can *manufacture* a tic that nobody wrote. "and that `Fn` carries a real graph node"
     # became "and that  carries a" and scored agent_transcripts.md 8 for carries-a-trap.
-    prose_text_lines = [(i, re.sub(r"`[^`]+`", "§", ln)) for i, ln in prose]
-    for name, pat, w in BODY_TELLS:
-        rx = re.compile(pat, re.I)
-        for i, ln in prose_text_lines:
-            for m in rx.finditer(ln):
-                hit(name, w, i, m.group(0))
+    # Paragraph-joined, not line by line: see prose_paragraphs() for why a single-line
+    # scan over 100-column prose is structurally blind to half of these patterns.
+    for joined, index in prose_paragraphs(prose):
+        for name, pat, w in BODY_TELLS:
+            for m in re.finditer(pat, joined, re.I):
+                hit(name, w, line_at(index, m.start()), m.group(0))
 
     # C1. number-heavy bullets that want a table
     for run in bullets:
@@ -831,6 +953,9 @@ def main():
                 print(f"  {r['path']}: {r['hits']}")
             sys.exit(1)
         print("\nOK: every target-voice page is at or under 12.")
+        print("\nStanding keeps (a nonzero score here is the detector working, not a fault):")
+        for k, v in STANDING_KEEPS.items():
+            print(f"  {k}: {v}")
         print("\nRetired patterns (do not re-add without a hit-by-hit check):")
         for k, v in RETIRED.items():
             print(f"  {k}: {v}")

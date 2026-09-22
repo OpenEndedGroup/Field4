@@ -31,7 +31,7 @@ expect:
     - "app needs log, store, ui, util"
     - "does app need log? true"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/modules.png" capture="editor" wait="4" padding="10" timeout="180" embed=true name="datalog-modules" w="900" h="420"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/modules.png" capture="editor" outputs="inline" wait="4" padding="10" timeout="180" embed=true name="datalog-modules" w="900" h="420"}
 :::static
 val d = Datalog()
 d.add("""
@@ -445,7 +445,7 @@ a fact with a variable in it. Lines beginning with `#` are session commands.
 
 No Kotlin at all in one of these. The box below is a Datalog box, and this is its whole contents:
 
-```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box.png" capture="editor" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box" w="900" h="360"}
+```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box" w="900" h="360"}
 :::static
 % a spreadsheet's worth of cells, and one rule about them
 cell(a1, 3). cell(a2, 4). cell(a3, 10).
@@ -457,7 +457,7 @@ over(C) :- cell(C, V), V > 5.
 
 Run a `#why` next to it and the box answers with the derivation rather than the row:
 
-```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box_why.png" capture="editor" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box-why" w="900" h="300"}
+```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box_why.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box-why" w="900" h="300"}
 :::static
 cell(a1, 3). cell(a3, 10).
 over(C) :- cell(C, V), V > 5.

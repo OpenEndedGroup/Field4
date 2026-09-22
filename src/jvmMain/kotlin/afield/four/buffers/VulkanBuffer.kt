@@ -138,7 +138,7 @@ class VulkanBuffer(
     var zeroBeforeComputation = false
     var source: BufferParameters? = null
 
-    private val autoDisposeToken = AutoDisposer.register(this, "VulkanBuffer(size=$requestedSize)") { /* set after allocate */ }
+    private val autoDisposeToken = AutoDisposer.register(this, "VulkanBuffer(size=$requestedSize)", owner = renderer.device) { /* set after allocate */ }
 
     init {
         allocate()
@@ -462,6 +462,8 @@ class VulkanBuffer(
 
     /** Defer destruction with your renderer.cleanup, or call directly when safe. */
     fun pushCleanup() {
+        // Ownership of these handles moves to the deferred action. GC must not free them again.
+        if (!autoDisposeToken.disable()) return
         val oldBuffer = buffer
         val oldAlloc  = allocation
         val oldHost   = hostBuffer
@@ -472,12 +474,14 @@ class VulkanBuffer(
         allocationMemoryFlags = 0
         mappedMemory = 0L
         hostBuffer = null
+        allocationSize = 0L
+        gpuAddress = 0L
 
         renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, oldHost))
     }
 
     fun cleanup() {
-        autoDisposeToken.disable()
+        if (!autoDisposeToken.disable()) return
         if (hostBuffer != null) MemoryUtil.memFree(hostBuffer)
         if (buffer != VK_NULL_HANDLE && allocation != 0L) {
             vmaDestroyBuffer(allocatorForRenderer(renderer), buffer, allocation)

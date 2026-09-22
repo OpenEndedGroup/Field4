@@ -83,9 +83,9 @@ records short videos of the first three. The native graphics window is stills on
 
 That asymmetry is not the only thing a capture will not do for you, and some of the rest
 fail quietly: a `screenshot-box` of a box whose outputs were never opened comes back
-`ok: true` and 48 pixels square. **[What a Capture Can and Cannot
-Show](capture_limits.md)** is the boundary, with the reply field that tells you which
-side of it you are on.
+`ok: true`, clipped to the collapsed box rather than to the output you wanted. **[What a
+Capture Can and Cannot Show](capture_limits.md)** is the boundary, with the reply field
+that tells you which side of it you are on.
 
 ## Where to go next
 

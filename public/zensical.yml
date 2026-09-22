@@ -58,6 +58,7 @@ nav:
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
     - Simulation Time: simulation_clock.md
+    - Flow Grain and Motion: flow_grain.md
     - Profiling Timeline: profiling_timeline.md
     # Beside profiling_timeline.md rather than under Internals, and the split between the two is
     # audience: that page is the panel's controls, this one is what the numbers under them mean and
