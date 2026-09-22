@@ -435,22 +435,18 @@ class MarfTest {
 
         // Every non-address field is checked too, and each says its own name.
         val builds = listOf<Pair<String, () -> Unit>>(
-            "value" to { marf(value = pat("0 1").nums(), fields = MarfFieldClock.STAGES); Unit },
+            "value" to { marf(value = pat("0 1").nums(), fields = MarfFieldClock.STAGES) },
             "duration" to {
                 marf(value = pat("<0 1>").nums(), duration = pat("1 2").nums(), fields = MarfFieldClock.STAGES)
-                Unit
             },
             "curve" to {
                 marf(value = pat("<0 1>").nums(), curve = curves("linear exp"), fields = MarfFieldClock.STAGES)
-                Unit
             },
             "trigger" to {
                 marf(value = pat("<0 1>").nums(), trigger = bools("1 0"), fields = MarfFieldClock.STAGES)
-                Unit
             },
             "speed" to {
                 marf(value = pat("<0 1>").nums(), speed = pat("1 2").nums(), fields = MarfFieldClock.STAGES)
-                Unit
             }
         )
         for ((field, build) in builds) {
