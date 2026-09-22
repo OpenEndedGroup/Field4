@@ -99,8 +99,8 @@ resetting or rewinding also invalidates history.
 The demo RTT's second attachment is `(previousU, previousV, valid, coverage)`. These are
 absolute texture coordinates with Field's top-left convention, **not** pixels per second.
 The world has camera correspondence; the rotating marker has camera plus object
-correspondence. The grain itself does not: it is a changing signal carried by the world,
-so reprojecting it through these coordinates will not hold a speck still.
+correspondence. Procedural grain moves with the world and so has camera correspondence
+too, but it is a changing signal: reprojecting it will not hold one speck still.
 The overlaid finite strokes are intentionally outside this attachment; a production
 particle pass should supply its own previous positions and coverage.
 

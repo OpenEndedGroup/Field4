@@ -22,7 +22,7 @@ The project model stays in Field. `RenderedAudioFile.provenance` stays with the 
 and the source code stays in its box. The server asset id names only the WAV bytes, which
 means two programs that genuinely render identical audio share the asset and its cached analyses.
 
-## Render a Pat pattern and analyse it
+## Rendering a Pat pattern and analysing it
 
 `renderDirtWav` may be replaced by any renderer in the table below; the import, job and
 visualization half is unchanged.

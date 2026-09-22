@@ -407,9 +407,9 @@ with source hashes and warnings about omitted runtime state. Export does not lau
 review external assets, root preambles and dependencies before publishing a starting point.
 
 Reloading a shader and grabbing the native window work the same way whether you ask in
-chat or from an external tool. External captures arrive as images. A failed shader
-reload may leave the last good
-picture visible, so its diagnostics remain separate from the screenshot.
+chat or from an external tool. External captures arrive as images. A failed shader reload
+may leave the last good picture visible, so its diagnostics remain separate from the
+screenshot.
 
 Kotlin launch receipts identify the source that completed setup. A pending running
 stripe is not proof that compilation succeeded, and successful setup is not proof of
