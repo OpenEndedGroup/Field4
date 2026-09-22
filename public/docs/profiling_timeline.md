@@ -284,7 +284,7 @@ instruments answers which question.
 
 For document versions and restoration, see [Document History](document_history.md).
 
-## A rendered scenario
+## Profiling the flow_grain playground
 
 The [flow_grain starting point](flow_grain.md) adds a fixed-size GPU workload and an
 explicit reset boundary. Its profile box resets contents, warms 60 rendered frames,
