@@ -4,8 +4,6 @@
 
 This page shows the renderer working. The [Renderers](reference/renderers.md) reference page is the other half of it: every public declaration in the fabricated package with the KDoc that sits beside it in the source, including the scene graph and pass machinery the examples below reach through, and the two renderers this page does not cover — the progressive path tracer and the Gaussian splat renderer.
 
-Every example below is also a `FIELD_TEST`: if a picture here is wrong, the build says so.
-
 The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics — considerably more than a hand-built torus asks for. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness.
 
 ??? aside "How the captures on this page are made"
