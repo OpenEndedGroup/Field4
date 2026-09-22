@@ -64,6 +64,17 @@ picture on disk is a true capture of it. Concretely:
   without the wrapper *will* fail the build. If you are force-recapturing a page for some unrelated
   reason and do not want to build Ceres, set
   `FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR=true` alongside it.
+- **But know what that combination builds: a failed capture drops the figure out of the page, even
+  though the asset is still on disk.** The embed is gated on the capture having succeeded
+  (`docs_hooks.py#if options.screenshot and screenshot_succeeded`), and the error path leaves that
+  flag false, so no `![…]` is ever written. The log line reads `capture FAILED, falling back to
+  committed asset on disk`, which is true of the *file* and not of the *page*. Measured on
+  `ray_tracing_examples.md`, whose four figures no Mac can render: forcing all four captures
+  produced a built page with **zero** `<img>` elements, while the same page built with
+  `FIELD_DOCS_RUNNER_MODE=never` emitted all four. A normal build is unaffected, because `never`
+  and a cache hit both take the branch that only asks whether the file exists. So do not review, or
+  publish, the site a forced recapture leaves behind — rebuild the page in `never` mode first, or
+  you will conclude the figures have gone missing.
 - If you skip, **leave the committed PNG and its prose alone.** The one thing that is still not
   allowed is editing the numbers in the surrounding text to match a picture you did not regenerate,
   or replacing the figure with a hand-made one. A stale-but-real capture with prose that matches it
