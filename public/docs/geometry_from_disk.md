@@ -692,14 +692,13 @@ negative volume. `fixWinding()` is the fix.
 
 ## Where the pictures come from
 
-All four figures above are produced by the docs build executing the fence above them in a real box:
-the image is that box's own output area. The ToyCar figure depends on a committed 5.4 MB binary,
-`assets/fabricate_demo/ToyCar.glb`, so if that file is ever replaced, this page's counts and
-`MeshFromDiskTest` go wrong together.
-
-Every number quoted on this page is asserted as an exact value in
-`src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, with `MeshIoTest.kt` covering the OBJ/STL
-readers themselves: quads, negative indices, the `solid`-prefixed-binary sniff trap, uv survival.
+The figures above are each a real box's own output area, captured by the docs build running the
+fence above them. The ToyCar figure reads a committed 5.4 MB binary,
+`assets/fabricate_demo/ToyCar.glb`; replace that file and this page's counts describe a different
+car. The counts themselves are pinned in
+`src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
+behaviour they rest on: quads, negative indices, the `solid`-prefixed-binary sniff trap, uv
+survival.
 
 ??? aside "Forcing these captures to re-run"
     A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
