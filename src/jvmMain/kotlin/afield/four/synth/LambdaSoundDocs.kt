@@ -446,18 +446,18 @@ object LambdaSoundDocs {
         sweep.mapValues { (_, traces) -> traces.values.map { it.betaCondensation.notation }.distinct().size }
 
     /**
-     * The four terms `stdlib.lambda-terms.property` pinned as confluence counterexamples, verbatim.
+     * The four terms `stdlib.lambda-terms.property` pins by name, verbatim.
      *
      * The corpus is 25 terms the front end is known to be *right* on, so a step-count invariance
-     * measured only there is a claim about a friendly population. These four are the terms where
-     * the fan bookkeeping is known to be wrong, so they are where the invariance has the best
-     * chance of breaking, and running them is what stops [stepCountIsScheduleInvariant] being a
-     * measurement of the corpus's own good manners.
+     * measured only there is a claim about a friendly population. These four are the heaviest
+     * sharing the harness has found, and three of them are still answered wrongly, so they are
+     * where the invariance has the best chance of breaking. Running them is what stops
+     * [stepCountIsScheduleInvariant] being a measurement of the corpus's own good manners.
      *
-     * Copied rather than imported because `LambdaPropertyOracleTest.knownDisagreements` is private
-     * and the two files answer different questions of the same terms;
-     * [assertTheProbesAreStillCounterexamples] re-derives the disagreement here so the copy cannot
-     * go stale in the direction that matters.
+     * Copied rather than imported because `LambdaPropertyOracleTest.knownCases` is private and the
+     * two files answer different questions of the same terms; [DISAGREEING_PROBES] and
+     * [assertTheProbesAreStillCounterexamples] re-derive which of them disagree here, so the copy
+     * cannot go stale in the direction that matters.
      */
     val CONFLUENCE_PROBES: Map<String, String> = linkedMapOf(
         "quiet-wrong-branch" to
@@ -468,22 +468,47 @@ object LambdaSoundDocs {
     )
 
     /**
-     * Each [CONFLUENCE_PROBES] entry is still a disagreement with the normal-order evaluator.
+     * Which of [CONFLUENCE_PROBES] disagree with the normal-order evaluator — three of the four.
      *
-     * The premise. If one of these quietly started agreeing, the probe below would be measuring
-     * four ordinary terms and reporting the invariance as if it had been stressed.
+     * `quiet-wrong-branch` was the fourth until 2026-09-22, when the cause of its wrong answer turned
+     * out to be a stale binder name in `LambdaTerms.readback` rather than the fan labelling; see
+     * `dev_docs/INTERACTION_NETS_LAMBDA.md`. It stays in the probe set, because what makes it a stress
+     * case for step-count invariance is its *sharing*, and that has not changed: 26 reactions under
+     * every scheduler, before the fix and after it.
+     */
+    val DISAGREEING_PROBES: Set<String> = setOf(
+        "dup-of-an-erasing-abstraction",
+        "two-applied-to-two-unwalkable",
+        "compose-self-apply-scope-leak"
+    )
+
+    /**
+     * Exactly [DISAGREEING_PROBES] of [CONFLUENCE_PROBES] disagree with the normal-order evaluator.
+     *
+     * The premise, asserted as **set equality** rather than as "each one still disagrees". A probe that
+     * starts agreeing is news either way — good if it was fixed, bad if the evaluator broke — and a set
+     * comparison names which one moved and in which direction. The one-sided version of this check is
+     * what fired on 2026-09-22: it was right to fire, and it could say only that *a* probe had stopped
+     * disagreeing, not that three still did.
      */
     fun assertTheProbesAreStillCounterexamples(maxSteps: Int = 4_000) {
+        val disagreeing = LinkedHashSet<String>()
         CONFLUENCE_PROBES.forEach { (name, source) ->
             val term = LambdaTerms.parse(source)
             check(LambdaTerms.freeVariablesOf(term).isEmpty()) { "probe '$name' is not closed" }
             val oracle = LambdaTerms.referenceNormalOrder(term, maxSteps = 2_000, maxWorkNodes = 4_000_000)
             val run = LambdaTerms.normalise(term, maxSteps = maxSteps)
-            check(!LambdaTerms.alphaEquivalent(run.result, oracle)) {
-                "probe '$name' now AGREES with the evaluator. Good news, and this page's " +
-                    "'measured where it is most likely to break' sentence is now describing a term that " +
-                    "does not break — repick the probe"
-            }
+            if (!LambdaTerms.alphaEquivalent(run.result, oracle)) disagreeing += name
+        }
+        check(disagreeing == DISAGREEING_PROBES) {
+            "the probes that disagree with the evaluator are $disagreeing, pinned $DISAGREEING_PROBES. " +
+                "Newly agreeing (${DISAGREEING_PROBES - disagreeing}) is good news, and this page's count " +
+                "of terms the reducer gets wrong has to be recounted with it; newly disagreeing " +
+                "(${disagreeing - DISAGREEING_PROBES}) is a regression."
+        }
+        check(DISAGREEING_PROBES.isNotEmpty()) {
+            "no probe disagrees any more, so the stress case is gone — the invariance below would be " +
+                "measured on ordinary terms. Repick the probes from LambdaPropertyOracleTest's named cases."
         }
     }
 
