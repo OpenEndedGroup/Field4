@@ -1,4 +1,4 @@
-# Beat and pitch analysis: from source to synchronized views
+# Beat and pitch analysis
 
 Where the beats are and what note is sounding are separate questions here, and they arrive as
 separate jobs. `analysis.beats` takes the first at several window lengths at once, since a tempo
@@ -23,8 +23,9 @@ into Field's output JSON.
 ## The views
 
 Every panel draws a server-downsampled preview: 1,200 points per series by default, 4,096 at most.
-Full-resolution arrays stay in NPZ. The beat view separates onset, tempo and confidence lanes; pYIN shows pitch against a note grid with its
-voicing track; Basic Pitch combines a piano roll with maximum activation and active-pitch count.
+Full-resolution arrays stay in NPZ. The beat view separates onset, tempo and confidence lanes; pYIN
+shows pitch against a note grid with its voicing track; Basic Pitch combines a piano roll with
+maximum activation and active-pitch count.
 Hover, zoom and pan one panel and the others follow. A live board can join the source player on the
 same shared timeline: playback drives every analysis cursor, hovering either surface highlights the
 other, and clicking an analysis plot seeks the recording.
@@ -75,13 +76,13 @@ display("main", analysisPreviewDashboardHtml(
 ))
 ```
 
-![](assets/audio_ai_analysis/synchronized_analysis.png)
+![Three stacked analysis panels over a twelve-second timeline, above the source waveform and its transport: beats, with onset, local tempo and tempo confidence lanes; pitch mono, with a pYIN curve against a C3 to C4 grid and a voicing track; pitch poly, with a Basic Pitch piano roll over activation and active-pitch curves](assets/audio_ai_analysis/synchronized_analysis.png)
 
-## Submit, monitor, await, visualize
+## Running all three from one box
 
-This is the complete live-coding path. The source waveform appears immediately; the persistent
-monitor and three replace-in-place status cards remain useful while the worker runs; only terminal
-successful jobs are turned into an analysis board.
+The source waveform appears immediately. The persistent monitor and three replace-in-place status
+cards report each job while the worker runs, and a job becomes a panel on the analysis board only
+once it has finished successfully.
 
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.AudioVisualizerOptions
