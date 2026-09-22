@@ -188,7 +188,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 Reach for `capture="editor"` when the subject is the Monaco pane itself: inline visualizers such as the histogram and piano-roll decorations.
 
 ````text
-```diffstatic_runner {data-lang=kotlin screenshot="assets/editor-inline-histogram.png" wait="1.0" capture="editor"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/editor-inline-histogram.png" wait="1.0" capture="editor" outputs="inline"}
 :::static
 val hist = __m("docs-hist")
 listOf(0.14, 0.36, 0.49, 0.81, 0.63, 0.52, 0.27, 0.71, 0.58).forEach { value ->

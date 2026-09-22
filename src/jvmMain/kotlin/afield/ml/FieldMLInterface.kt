@@ -5,6 +5,7 @@ import afield.BoxExecution
 import afield.CachedLaunchReturn
 import afield.CompletionRequest
 import afield.Execute
+import afield.ExecutionTrace
 import afield.ExecuteSymbol
 import afield.HasOutput
 import afield.IsRunning
@@ -83,12 +84,12 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
      * text is.
      */
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeOnce(inside, execute, reply, fragment = true)
+        executeOnce(inside, execute, reply, fragment = true, mode = "fragment")
     }
 
     /** Run the whole box and print what it evaluated to, without offering the result to the launch machinery. */
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeOnce(inside, execute, reply, fragment = false)
+        executeOnce(inside, execute, reply, fragment = false, mode = "run")
     }
 
     /**
@@ -106,11 +107,17 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
         val launchEpoch = inside.captureLaunchEpoch()
+        val trace = ExecutionTrace.forEngine(inside, execute, "launch", reply)
         inMain {
-            if (!inside.isLaunchEpochCurrent(launchEpoch)) return@inMain
-            configureOutputProxies(inside, reply, originSession)
+            if (!inside.isLaunchEpochCurrent(launchEpoch)) {
+                trace.finish(false, "launch cancelled by a stop before it started")
+                return@inMain
+            }
+            configureOutputProxies(inside, trace.reply, originSession)
             val compileResult = FieldMLCompiler.compile(code)
-            if (!reportDiagnostics(inside, execute, compileResult, originSession, reply)) {
+            if (reportDiagnostics(inside, execute, compileResult, originSession, trace.reply)) {
+                trace.finish(false, "the box did not compile")
+            } else {
                 val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
                 inside.runGeneration[strand] = generation
                 inside.currentRunningStates[strand] = RunningState(generation, FIELDML_PENDING_LAUNCH_MODE)
@@ -125,7 +132,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                     if (!output.printed) {
                         dispatchExecutionOutput(
                             inside,
-                            reply,
+                            trace.reply,
                             Output(
                                 uid = inside.id,
                                 line = fieldMLResultLine(execute.line, compileResult),
@@ -166,17 +173,22 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                     if (!consumed) {
                         inside.cachedLaunchReturns.remove(strand)
                     }
+                    // Evaluated, and its value either taken up by the registry or cached. What
+                    // the registry drives from here is the run, not the setup.
+                    trace.finish(inside.isLaunchEpochCurrent(launchEpoch))
                 } catch (_: CancellationException) {
                     if (inside.currentRunningStates[strand]?.watermark == generation) {
                         inside.currentRunningStates.remove(strand)
                     }
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
+                    trace.finish(false, "launch cancelled")
                 } catch (t: Throwable) {
                     if (inside.currentRunningStates[strand]?.watermark == generation) {
                         inside.currentRunningStates.remove(strand)
                     }
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
                     inside.output.error(fieldMLErrorMessage(t), execute.property, execute.line)
+                    trace.finish(false)
                 }
             }
         }
@@ -221,15 +233,19 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     /** `fieldml`: what the AI layer and the operation transcript are told a box's `code` property is written in. */
     override val languageName: String get() = "fieldml"
 
-    private fun executeOnce(inside: Box, execute: Execute, reply: (Message) -> Unit, fragment: Boolean) {
+    private fun executeOnce(
+        inside: Box, execute: Execute, reply: (Message) -> Unit, fragment: Boolean, mode: String
+    ) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         inMain {
             val watermark = ++inside.fragmentGeneration
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
             send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
+            var ok = false
             try {
                 val result = FieldMLCompiler.compile(execute.code)
-                if (!reportDiagnostics(inside, execute, result, originSession, reply)) {
+                if (!reportDiagnostics(inside, execute, result, originSession, trace.reply)) {
                     val output = TrackingOutput(inside.output)
                     val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(result.core!!)
                     val typeText = afield.ml.type.TypePrinter().print(result.typed!!.type)
@@ -237,7 +253,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                     if (!output.printed) {
                         dispatchExecutionOutput(
                             inside,
-                            reply,
+                            trace.reply,
                             Output(
                                 uid = inside.id,
                                 line = fieldMLResultLine(execute.line, result),
@@ -249,10 +265,12 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                             originSession = originSession,
                         )
                     }
+                    ok = true
                 }
             } catch (t: Throwable) {
                 inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
             } finally {
+                trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }

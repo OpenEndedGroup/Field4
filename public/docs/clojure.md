@@ -48,7 +48,7 @@ expect:
     - "clojure 1.11.3"
     - "4 edges"
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/output.png" capture="editor" wait="4" padding="10" timeout="240" embed=true name="clojure-output" w="900" h="360" alt="A Clojure box in Field's editor. Beside line 2 a chip reads clojure 1.11.3, and beside the last line a chip reads 4 edges. The parentheses are coloured by nesting depth."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/output.png" capture="editor" outputs="inline" wait="4" padding="10" timeout="240" embed=true name="clojure-output" w="900" h="360" alt="A Clojure box in Field's editor. Beside line 2 a chip reads clojure 1.11.3, and beside the last line a chip reads 4 edges. The parentheses are coloured by nesting depth."}
 :::static
 ;; Each line of output lands beside the form that made it.
 (println "clojure" (clojure-version))
@@ -81,7 +81,7 @@ expect:
   outputContains:
     - "385"
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/last_value.png" capture="editor" wait="4" padding="10" timeout="240" embed=true name="clojure-last-value" w="900" h="240" alt="A Clojure box whose only form is a threaded expression, with the result 385 shown beside it in the editor."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/last_value.png" capture="editor" outputs="inline" wait="4" padding="10" timeout="240" embed=true name="clojure-last-value" w="900" h="240" alt="A Clojure box whose only form is a threaded expression, with the result 385 shown beside it in the editor."}
 :::static
 ;; Nothing is printed, so the value of the last form is what you see.
 (->> (range 1 11)
@@ -184,7 +184,7 @@ expect:
     - "a / b / c"
     - "\"forms\":3"
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/libraries.png" capture="editor" wait="4" padding="10" timeout="240" embed=true name="clojure-libraries" w="900" h="280" alt="A Clojure box requiring clojure.string, clojure.set and clojure.data.json, printing a joined set and a JSON object beside the lines that produced them."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/libraries.png" capture="editor" outputs="inline" wait="4" padding="10" timeout="240" embed=true name="clojure-libraries" w="900" h="280" alt="A Clojure box requiring clojure.string, clojure.set and clojure.data.json, printing a joined set and a JSON object beside the lines that produced them."}
 :::static
 ;; Clojure's own libraries are on Field's classpath, so `require` is just `require`.
 (require '[clojure.string :as str]
@@ -296,7 +296,7 @@ expect:
   outputNotContains:
     - "this line does not"
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/error.png" capture="editor" expect-error=true wait="4" padding="10" timeout="240" embed=true name="clojure-error" w="900" h="280" alt="A four-line Clojure box. Line 1 shows the chip this line runs, and line 3 — the division — carries the error Divide by zero. Line 4's print never ran."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/error.png" capture="editor" outputs="inline" expect-error=true wait="4" padding="10" timeout="240" embed=true name="clojure-error" w="900" h="280" alt="A four-line Clojure box. Line 1 shows the chip this line runs, and line 3 — the division — carries the error Divide by zero. Line 4's print never ran."}
 :::static
 (println "this line runs")
 (def parts 0)

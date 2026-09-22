@@ -6,6 +6,7 @@ import afield.Completion
 import afield.CompletionRequest
 import afield.Execute
 import afield.ExecuteSymbol
+import afield.ExecutionTrace
 import afield.IsRunning
 import afield.Message
 import afield.Metadata
@@ -65,17 +66,30 @@ class DatalogExecution(val inside: Box) : BoxExecution {
     override val languageName: String get() = "datalog"
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        runOnce(inside, execute, "fragment", reply)
+    }
+
+    /**
+     * One run of the program, reported under [mode].
+     *
+     * Every entry point lands here because Datalog has only the one behaviour, but they must not
+     * all *claim* to be the same thing: `ExecutionReports` records a setup only from a mode that is
+     * not `"fragment"`, so running or launching a box has to say so.
+     */
+    private fun runOnce(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         inMain {
             val watermark = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
+            var ok = false
             try {
                 val text = runProgram(execute.code)
-                clearErrorStatus(inside, reply, originSession)
+                clearErrorStatus(inside, trace.reply, originSession)
                 dispatchExecutionOutput(
                     inside,
-                    reply,
+                    trace.reply,
                     Output(
                         uid = inside.id,
                         line = execute.line + execute.code.split("\n").size,
@@ -85,19 +99,21 @@ class DatalogExecution(val inside: Box) : BoxExecution {
                     ),
                     originSession = originSession,
                 )
+                ok = true
             } catch (e: DlException) {
                 val line = if (e.line >= 0) execute.line + e.line - 1 else execute.line
                 inside.error(e.message ?: "datalog error", line = line, property = "code")
             } catch (e: Throwable) {
                 inside.error(e.message ?: e.javaClass.simpleName, line = execute.line, property = "code")
             } finally {
+                trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeFragment(inside, execute, reply)
+        runOnce(inside, execute, "run", reply)
     }
 
     /**
@@ -105,7 +121,7 @@ class DatalogExecution(val inside: Box) : BoxExecution {
      * "running" forever while holding a finished model would only lie in the UI.
      */
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) {
-        executeFragment(inside, execute.copy(code = code), reply)
+        runOnce(inside, execute.copy(code = code), "launch", reply)
     }
 
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {

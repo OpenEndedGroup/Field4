@@ -1194,12 +1194,28 @@ _orig_print(" python interpreter has finished starting up ")
     val otherError = Regex("<class\\s+'([^']+)'>:(.*)")
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        runOnce(inside, execute, "fragment", reply)
+    }
+
+    /**
+     * One execution of the cell, reported under [mode].
+     *
+     * Python has a single behaviour for fragment, run and launch — the interpreter keeps its
+     * globals either way — but they must not all claim to be the same thing: `ExecutionReports`
+     * records a setup only from a mode that is not `"fragment"`.
+     *
+     * The receipt is finished in the `finally` below rather than by inspecting the result,
+     * because a Python error arrives as an error *output* through `deliverErr`, and that is
+     * routed through the trace — so a cell that raises still yields a failed receipt.
+     */
+    private fun runOnce(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         val originSession = thisSession.get()
         inMain {
 
             hackJepThreadContext()
             var withholdEndNotification = false
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
             hasHadOutput = false
             deliverStdOut = {
                 inside.print(formatOutput(it))
@@ -1314,7 +1330,7 @@ _orig_print(" python interpreter has finished starting up ")
                 if (!hasHadOutput) {
                     dispatchExecutionOutput(
                         inside,
-                        reply,
+                        trace.reply,
                         Output(
                             uid = inside.id,
                             line = resultLine,
@@ -1325,6 +1341,7 @@ _orig_print(" python interpreter has finished starting up ")
                         originSession = originSession
                     )
                 }
+                trace.finish(true)
             }
         }
     }
@@ -1335,14 +1352,14 @@ _orig_print(" python interpreter has finished starting up ")
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeFragment(inside, execute, reply)
+        runOnce(inside, execute, "run", reply)
     }
 
     override fun launchAll(
         inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit
     ) {
         // for python this is the same as execute all,
-        executeFragment(inside, execute, reply)
+        runOnce(inside, execute, "launch", reply)
     }
 
     override fun stop(inside: Box) {

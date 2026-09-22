@@ -1120,6 +1120,28 @@ data class Set_number(val uid: String, val property: String, val number: Double)
 data class Set_boolean(val uid: String, val property: String, val number: Boolean)
 
 
+/**
+ * What a capture expects a box's output to look like, so readiness can be checked against a
+ * stated expectation rather than guessed from a default nobody chose.
+ *
+ * The distinction exists because "open the outputs" and "there are outputs to open" are not the
+ * same claim, and conflating them made every editor capture uncheckable: a box whose output is
+ * inline chips in the gutter has no output *panel*, so a readiness rule that waits for one can
+ * never be satisfied and can never be wrong either.
+ */
+object ExpectedOutputs {
+    /** An output panel that must be revealed and must hold visible, settled content. */
+    const val PANEL = "panel"
+
+    /** Output rendered beside the code in the editor. There is no panel, and waiting for one hangs. */
+    const val INLINE = "inline"
+
+    /** Deliberately no output: a handle-only or empty-state capture, asserted rather than tolerated. */
+    const val NONE = "none"
+
+    val ALL = setOf(PANEL, INLINE, NONE)
+}
+
 @Serializable
 data class BoxScreenshotRequest(
     val uid: String,
@@ -1128,7 +1150,9 @@ data class BoxScreenshotRequest(
     val hideMonaco: Boolean = true,
     val openOutputs: Boolean = false,
     val preserveSelection: Boolean = false,
-    val includeNotifications: Boolean = false
+    val includeNotifications: Boolean = false,
+    /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
+    val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
 @Serializable
@@ -1151,7 +1175,9 @@ data class WindowScreenshotRequest(
     val padding: Double = 12.0,
     val waitMs: Double = 0.0,
     val preserveSelection: Boolean = false,
-    val includeNotifications: Boolean = false
+    val includeNotifications: Boolean = false,
+    /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
+    val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
 @Serializable
@@ -1175,7 +1201,9 @@ data class AgentWindowScreenshot(
     val padding: Double = 12.0,
     val waitMs: Double = 0.0,
     val preserveSelection: Boolean = false,
-    val includeNotifications: Boolean = false
+    val includeNotifications: Boolean = false,
+    /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
+    val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
 @Serializable
@@ -1186,7 +1214,9 @@ data class AgentBoxScreenshot(
     val panIntoView: Boolean = true,
     val openOutputs: Boolean = true,
     val preserveSelection: Boolean = false,
-    val includeNotifications: Boolean = false
+    val includeNotifications: Boolean = false,
+    /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
+    val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
 @Serializable
@@ -1225,7 +1255,9 @@ data class AgentWindowVideo(
     val durationSec: Double = 5.0,
     val fps: Int = 30,
     val frameSynchronous: Boolean = false,
-    val restartTarget: Boolean = false
+    val restartTarget: Boolean = false,
+    /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
+    val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
 @Serializable
@@ -1239,7 +1271,9 @@ data class AgentBoxVideo(
     val durationSec: Double = 5.0,
     val fps: Int = 30,
     val frameSynchronous: Boolean = false,
-    val restartTarget: Boolean = false
+    val restartTarget: Boolean = false,
+    /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
+    val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
 @Serializable

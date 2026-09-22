@@ -61,10 +61,21 @@ internal class ExecutionTrace(
 ) {
     private val verdict = ExecutionVerdict(box.id, property, source)
     private var completed = false
-    val reply: (Message) -> Unit = { message -> verdict.observe(message); downstream?.invoke(message) }
+
+    /**
+     * A caller that sent no request id is not awaiting a receipt, so there is nobody to correlate
+     * one with. The trace still exists and still forwards, which is what lets an engine construct
+     * one unconditionally and thread it through a single code path instead of carrying a nullable
+     * reply and a branch at every output site.
+     */
+    private val awaited = requestId.isNotBlank()
+
+    val reply: (Message) -> Unit =
+        if (awaited) { message -> verdict.observe(message); downstream?.invoke(message) }
+        else { message -> downstream?.invoke(message) }
 
     fun finish(success: Boolean, reason: String = "") {
-        if (completed) return
+        if (!awaited || completed) return
         completed = true
         val failure = runCatching { verdict.check() }.exceptionOrNull()?.message.orEmpty()
         val ok = success && failure.isEmpty()
@@ -76,5 +87,24 @@ internal class ExecutionTrace(
         )
         ExecutionReports.publish(box, result)
         downstream?.invoke(Message("execution-verdict").payload(result))
+    }
+
+    companion object {
+        /**
+         * The receipt for one engine execution, made where the request arrives.
+         *
+         * Every engine but Kotlin's dispatches its work onto the runloop and returns before any of
+         * it has run, so a receipt can only be *finished* from inside that dispatch — in the same
+         * `finally` that lowers the running stripe. Building it here and finishing it there is what
+         * keeps "the box ran" and "the receipt says the box ran" the same event rather than two
+         * that happen to agree.
+         *
+         * The engine's own success flag is necessary but not sufficient: output routed through
+         * [reply] is watched too, so a box that reports completion while printing an error still
+         * yields a failed receipt. That is the rule this file is for — a receipt is earned by
+         * observed behaviour, never invented from an engine's optimism.
+         */
+        fun forEngine(box: Box, execute: Execute, mode: String, reply: ((Message) -> Unit)?) =
+            ExecutionTrace(box, execute.property, execute.code, execute.requestId, mode, reply)
     }
 }

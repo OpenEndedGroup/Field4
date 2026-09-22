@@ -193,15 +193,21 @@ class MorphoExecution(val inside: Box) : BoxExecution {
     // ---------------------------------------------------------------- execute
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) =
-        executeAll(inside, execute, reply)
+        growOnce(inside, execute, "fragment", reply)
 
     /** Compile and grow the whole circuit, once. */
-    override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+    override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        growOnce(inside, execute, "run", reply)
+
+    /** One compile-and-grow of the circuit, reported under [mode]. See DatalogExecution.runOnce. */
+    private fun growOnce(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         inMain {
             val generation = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, generation, "__fragment__")))
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
+            var ok = false
             try {
                 val directive = parseDirective(execute.code)
                 if (directive == null) {
@@ -217,13 +223,15 @@ class MorphoExecution(val inside: Box) : BoxExecution {
                         optimize = directive.optimize,
                     ).growFully()
                     inside.morphoCircuit = circuit
-                    clearErrors(execute, reply, originSession)
-                    report(execute, reply, originSession, describe(circuit))
+                    clearErrors(execute, trace.reply, originSession)
+                    report(execute, trace.reply, originSession, describe(circuit))
+                    ok = true
                 } catch (e: Throwable) {
                     if (e is InterruptedException) throw e
                     fail(execute, e, directive.line)
                 }
             } finally {
+                trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, generation, "__fragment__")))
             }
         }
@@ -241,12 +249,14 @@ class MorphoExecution(val inside: Box) : BoxExecution {
         inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit
     ) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, "launch", reply)
         inMain {
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
 
             val directive = parseDirective(code)
             if (directive == null) {
                 inside.error(missingDirectiveMessage(code), line = execute.line, property = "code")
+                trace.finish(false, "the box named no design directive")
                 return@inMain
             }
 
@@ -261,16 +271,21 @@ class MorphoExecution(val inside: Box) : BoxExecution {
             } catch (e: Throwable) {
                 if (e is InterruptedException) throw e
                 fail(execute, e, directive.line)
+                trace.finish(false, "the circuit did not compile")
                 return@inMain
             }
 
             inside.morphoCircuit = circuit
-            clearErrors(execute, reply, originSession)
+            clearErrors(execute, trace.reply, originSession)
 
             strandJobs[strand]?.cancel()
             val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
             inside.runGeneration[strand] = generation
             send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand)))
+
+            // Compiled, installed and the growth strand started. Whether the layout settles
+            // prettily over the next few hundred frames is not something a setup receipt claims.
+            trace.finish(true)
 
             strandJobs[strand] = inMain {
                 try {

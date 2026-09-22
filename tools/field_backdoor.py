@@ -1224,6 +1224,7 @@ class FieldBackdoor:
         show_editor: bool,
         editor_only: bool,
         open_outputs: bool,
+        expect_outputs: str = "panel",
         padding: float,
         pan_into_view: bool,
         wait_ms: float,
@@ -1245,6 +1246,7 @@ class FieldBackdoor:
             showEditor=show_editor,
             editorOnly=editor_only,
             openOutputs=open_outputs,
+            expectOutputs=expect_outputs,
             padding=padding,
             panIntoView=pan_into_view,
             waitMs=wait_ms,
@@ -1259,6 +1261,7 @@ class FieldBackdoor:
                 "panIntoView": pan_into_view,
                 "showEditor": show_editor,
                 "openOutputs": open_outputs,
+                "expectOutputs": expect_outputs,
                 "editorOnly": editor_only,
                 "padding": padding,
                 "waitMs": wait_ms,
@@ -1281,6 +1284,7 @@ class FieldBackdoor:
         padding: float,
         pan_into_view: bool,
         open_outputs: bool,
+        expect_outputs: str = "panel",
         timeout: float,
         preserve_selection: bool = False,
         include_notifications: bool = False,
@@ -1294,6 +1298,7 @@ class FieldBackdoor:
             padding=padding,
             panIntoView=pan_into_view,
             openOutputs=open_outputs,
+            expectOutputs=expect_outputs,
             timeout=timeout,
         )
         event = await self.call_for_single_reply(
@@ -1304,6 +1309,7 @@ class FieldBackdoor:
                 "padding": padding,
                 "panIntoView": pan_into_view,
                 "openOutputs": open_outputs,
+                "expectOutputs": expect_outputs,
                 "preserveSelection": preserve_selection,
                 "includeNotifications": include_notifications,
             },
@@ -1471,6 +1477,7 @@ class FieldBackdoor:
         show_editor: bool,
         editor_only: bool,
         open_outputs: bool,
+        expect_outputs: str = "panel",
         padding: float,
         pan_into_view: bool,
         duration: float,
@@ -1493,6 +1500,7 @@ class FieldBackdoor:
             showEditor=show_editor,
             editorOnly=editor_only,
             openOutputs=open_outputs,
+            expectOutputs=expect_outputs,
             padding=padding,
             panIntoView=pan_into_view,
             duration=duration,
@@ -1510,6 +1518,7 @@ class FieldBackdoor:
                 "panIntoView": pan_into_view,
                 "showEditor": show_editor,
                 "openOutputs": open_outputs,
+                "expectOutputs": expect_outputs,
                 "editorOnly": editor_only,
                 "padding": padding,
                 "durationSec": duration,
@@ -3032,6 +3041,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     editor_open.add_argument("uid")
     editor_open.add_argument("--property", default="code")
     editor_open.add_argument("--open-outputs", action="store_true")
+    editor_open.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     editor_open.add_argument("--padding", type=float, default=12.0)
     editor_open.add_argument("--no-pan", action="store_true")
     editor_open.add_argument("--timeout", type=float)
@@ -3042,6 +3052,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_window.add_argument("--property", default="code")
     screenshot_window.add_argument("--with-editor", action="store_true")
     screenshot_window.add_argument("--open-outputs", action="store_true")
+    screenshot_window.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     screenshot_window.add_argument("--no-pan", action="store_true")
     screenshot_window.add_argument("--wait-ms", type=float, default=0.0)
     screenshot_window.add_argument("--preserve-selection", action="store_true")
@@ -3054,6 +3065,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_editor.add_argument("--property", default="code")
     screenshot_editor.add_argument("--padding", type=float, default=12.0)
     screenshot_editor.add_argument("--open-outputs", action="store_true")
+    screenshot_editor.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     screenshot_editor.add_argument("--no-pan", action="store_true")
     screenshot_editor.add_argument("--timeout", type=float)
 
@@ -3062,6 +3074,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("path")
     screenshot_box.add_argument("--padding", type=float, default=12.0)
     screenshot_box.add_argument("--open-outputs", dest="open_outputs", action="store_true", default=True)
+    screenshot_box.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     screenshot_box.add_argument("--no-open-outputs", dest="open_outputs", action="store_false")
     screenshot_box.add_argument("--no-pan", action="store_true")
     screenshot_box.add_argument("--preserve-selection", action="store_true")
@@ -3085,6 +3098,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_window.add_argument("--property", default="code")
     record_window.add_argument("--with-editor", action="store_true")
     record_window.add_argument("--open-outputs", action="store_true")
+    record_window.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     record_window.add_argument("--no-pan", action="store_true")
     record_window.add_argument("--duration", type=float, default=5.0)
     record_window.add_argument("--fps", type=int, default=30)
@@ -3098,6 +3112,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_editor.add_argument("--property", default="code")
     record_editor.add_argument("--padding", type=float, default=12.0)
     record_editor.add_argument("--open-outputs", action="store_true")
+    record_editor.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     record_editor.add_argument("--no-pan", action="store_true")
     record_editor.add_argument("--duration", type=float, default=5.0)
     record_editor.add_argument("--fps", type=int, default=30)
@@ -3491,6 +3506,7 @@ async def dispatch_command(
             show_editor=args.with_editor,
             editor_only=False,
             open_outputs=args.open_outputs,
+            expect_outputs=getattr(args, "expect_outputs", "panel"),
             padding=12.0,
             pan_into_view=not args.no_pan,
             wait_ms=args.wait_ms,
@@ -3518,6 +3534,7 @@ async def dispatch_command(
             show_editor=True,
             editor_only=True,
             open_outputs=args.open_outputs,
+            expect_outputs=getattr(args, "expect_outputs", "panel"),
             padding=args.padding,
             pan_into_view=not args.no_pan,
             wait_ms=0.0,
@@ -3542,6 +3559,7 @@ async def dispatch_command(
             padding=args.padding,
             pan_into_view=not args.no_pan,
             open_outputs=args.open_outputs,
+            expect_outputs=getattr(args, "expect_outputs", "panel"),
             timeout=timeout,
             preserve_selection=args.preserve_selection,
             include_notifications=args.include_notifications,
@@ -3593,6 +3611,7 @@ async def dispatch_command(
             show_editor=args.with_editor,
             editor_only=False,
             open_outputs=args.open_outputs,
+            expect_outputs=getattr(args, "expect_outputs", "panel"),
             padding=12.0,
             pan_into_view=not args.no_pan,
             duration=args.duration,
@@ -3622,6 +3641,7 @@ async def dispatch_command(
             show_editor=True,
             editor_only=True,
             open_outputs=args.open_outputs,
+            expect_outputs=getattr(args, "expect_outputs", "panel"),
             padding=args.padding,
             pan_into_view=not args.no_pan,
             duration=args.duration,

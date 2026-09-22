@@ -985,21 +985,37 @@ class ClojureExecution(val inside: Box) : BoxExecution {
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         // Captured out here, like DatalogExecution does: `thisSession` is per-thread and `inMain`
         // resumes on the runloop's thread, where it is empty.
+        evaluateOnce(inside, execute, "fragment", reply)
+    }
+
+    /**
+     * One evaluation of the box, reported under [mode].
+     *
+     * `executeFragment` and `executeAll` do the same thing here — Clojure has no separate
+     * whole-buffer path — but they must not claim the same thing: `ExecutionReports` only records a
+     * *setup* from a mode that is not `"fragment"`, so running a box would otherwise never register
+     * as having been set up.
+     */
+    private fun evaluateOnce(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         inMain {
             val wm = ++inside.fragmentGeneration
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
+            var outcome: EvalOutcome? = null
             try {
-                echoValue(inside, evaluateReporting(inside, execute))
+                outcome = evaluateReporting(inside, execute)
+                echoValue(inside, outcome)
             } finally {
+                trace.finish(outcome?.ok == true)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
             }
         }
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeFragment(inside, execute, reply)
+        evaluateOnce(inside, execute, "run", reply)
     }
 
     /**
@@ -1017,11 +1033,16 @@ class ClojureExecution(val inside: Box) : BoxExecution {
     ) {
         val originSession = thisSession.get()
         val launchEpoch = inside.captureLaunchEpoch()
+        val trace = ExecutionTrace.forEngine(inside, execute, "launch", reply)
         inMain {
             // A stop that landed between the request and here cancels the launch rather than
             // racing it. Same guard, same reason, as FieldMLExecution.launchAll.
-            if (!inside.isLaunchEpochCurrent(launchEpoch)) return@inMain
-            configureOutputProxies(inside, reply, originSession)
+            if (!inside.isLaunchEpochCurrent(launchEpoch)) {
+                // The awaiting caller still needs an answer, and "cancelled" is the honest one.
+                trace.finish(false, "launch cancelled by a stop before it started")
+                return@inMain
+            }
+            configureOutputProxies(inside, trace.reply, originSession)
 
             val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
             inside.runGeneration[strand] = generation
@@ -1057,6 +1078,10 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                         .payload(IsRunning(execute.uid, false, generation, strand, PENDING_LAUNCH_MODE))
                 )
             }
+            // Setup is what a launch receipt is about, exactly as it is for Kotlin: the box
+            // evaluated and its value was either taken up by the registry or echoed. Whether an
+            // animation the registry is now driving stays healthy is not something this can claim.
+            trace.finish(outcome.ok && inside.isLaunchEpochCurrent(launchEpoch))
         }
     }
 

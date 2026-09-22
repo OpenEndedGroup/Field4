@@ -30,7 +30,7 @@ The typing does not survive a compile boundary, though, and `typed()` is the cal
 
 The plugin's happy path is a chain written in one go. Every step re-types the frame, so the *next* step can name the columns the previous one produced:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-typed-columns.png" wait="3.0" capture="editor" padding="10" w="900" h="330" timeout="90" embed=true name="dataframe-typed-columns"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-typed-columns.png" wait="3.0" capture="editor" outputs="inline" padding="10" w="900" h="330" timeout="90" embed=true name="dataframe-typed-columns"}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
