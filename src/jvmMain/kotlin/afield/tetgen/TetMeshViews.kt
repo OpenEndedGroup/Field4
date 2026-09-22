@@ -24,10 +24,10 @@ import kotlin.math.sqrt
  *   not bound it, and it is the number that detects a sliver.
  *
  * All of these read a cell's first four indices and ignore the rest, so a 10-node mesh from
- * [TetMesh.quadratic] measures and draws exactly as its 4-node original does. That is correct rather
- * than approximate: the six midside nodes sit at the midpoints of straight edges, so the region, the
- * boundary and every quality measure are the same. What the extra nodes change is the interpolation
- * inside an element, which none of these views is looking at.
+ * [TetMesh.quadratic] measures and draws exactly as its 4-node original does. The six midside nodes
+ * sit at the midpoints of straight edges, so the region, the boundary and every quality measure are
+ * the same. What the extra nodes change is the interpolation inside an element, which none of these
+ * views is looking at.
  */
 
 /**
