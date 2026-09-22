@@ -74,6 +74,11 @@ CARRIER_PAGES = {
     "public/docs/faust.md",
     "public/docs/fieldml_host_bridge.md",
     "public/docs/fline_examples.md",
+    # Added 2026-09-22: `b5b9ad9e0` landed `flow_grain.md` with a correct viewer-relative link
+    # and left this ledger behind, so the guard was red on `main`. The shape was checked, which
+    # is the whole point of failing here: `offline.html?file=assets/…/metadata.edn`, no leading
+    # slash on either half.
+    "public/docs/flow_grain.md",
     "public/docs/gpu_state.md",
     "public/docs/nano_examples.md",
     "public/docs/openxr_eye_intersection.md",

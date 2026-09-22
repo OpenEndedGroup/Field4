@@ -230,7 +230,7 @@ data class ShaderReloadError(
  * caption is the only text travelling with the picture, and a bare picture answers no question.
  */
 internal const val POST_RELOAD_SCREENSHOT_CAPTION: String =
-    "Post-shader-reload screenshot of the afield.four render window, captured after the settle delay. " +
+    "Post-shader-reload screenshot of the afield.four render window, captured after a rendered frame. " +
         "Inspect it against what the user asked for, together with any earlier screenshot. If the " +
         "requested visual result is not achieved, edit and reload again before finalizing."
 
@@ -369,7 +369,7 @@ data class MacroWriteResult(
     val operationCount: Int = 0
 )
 
-@JsonClassDescription("Run or undo a saved operation-transcript macro. Use direction=do to replay it and direction=undo to run it backwards. targetBoxes may contain box uids or names; when set, the macro's first recorded source box is remapped to each target box, which is the normal way to do a recorded macro to the current/selected box. Empty targetBoxes replays the recorded uids literally. Inspect applied/skipped/errors; if applied=0 or errors are returned, do not repeat the identical request. If a normal run reports operation errors in chat, Field will attempt an automatic undo and return the undo result; inspect that result and ask before retrying.")
+@JsonClassDescription("Run or undo a saved operation-transcript macro. Use direction=do to replay it and direction=undo to run it backwards. targetBoxes may contain box uids or names; when set, the macro's first recorded source box is remapped to each target box, which is the normal way to do a recorded macro to the current/selected box. Empty targetBoxes replays the recorded uids literally. Inspect applied/skipped/errors; if applied=0 or errors are returned, do not repeat the identical request. A failed Kotlin setup stops dependent operations and preserves changes already applied. Other language engines retain ordinary dispatch and report setupVerified=false; success then means operations were dispatched, not that their code completed. Inspect errors before retrying; undo is a separate explicit action.")
 data class MacroRunRequest(
     val name: String,
     val direction: String = "do",
@@ -385,7 +385,9 @@ data class MacroRunResult(
     val targetBoxes: List<String> = emptyList(),
     val applied: Int = 0,
     val skipped: Int = 0,
-    val errors: List<String> = emptyList()
+    val errors: List<String> = emptyList(),
+    val output: List<afield.MacroOutputLine> = emptyList(),
+    val setupVerified: Boolean = true
 )
 
 /** Code-use telemetry tools ------------------------------------------------- */
@@ -750,11 +752,9 @@ data class ToolImage(
  *    no error on the provider this project is built around. See `toolResultBlock` and
  *    `AnthropicToolImageTest`.
  *
- * **Not** the MCP backdoor. `agent-ai-tool-call` replies with `aiToolMapper` JSON, and the
- * `@get:JsonIgnore` below quite correctly keeps the images out of it, so an agent on the backdoor
- * gets the numbers and not the picture. That is right for a JSON transport, but it does mean a tool
- * whose answer is *only* an image has nothing to say there. Design around it: put anything the model
- * must not miss in the result as well as in the picture.
+ * The MCP backdoor carries images separately in `AgentAiToolCallResponse.images` and translates
+ * them to MCP image blocks. The ordinary result JSON still excludes image data. Include measurements
+ * and a caption alongside each image so all callers can understand what it proves.
  *
  * # The one thing to get right
  *

@@ -55,7 +55,13 @@ TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 DEMOS_ROOT = REPO_ROOT / "dev_docs" / "agents" / "demos"
 
-# The demo corpus, by name. Measured 2026-09-21: `ls -1d dev_docs/agents/demos/*/` — 21.
+# The demo corpus, by name. Measured 2026-09-22: `ls -1d dev_docs/agents/demos/*/` — 22.
+#
+# Twenty-two *directories*, twenty-one *documents*: `flow_grain` arrived on 2026-09-22 with no
+# `metadata.edn`, and is the first entry here that is not a saved document at all. This set is the
+# directory listing, which is the population a sibling branch grows, so it holds all 22. Anything
+# that asks "is this document verified?" has to filter on `metadata.edn` first — see the note on
+# the entry itself, and `AgentDemoRegistrationTest.demoDocuments`.
 #
 # This was a bare `assertEqual(20, len(demos))` until 2026-09-20. The count was not wrong — it is
 # the assertion that caught `skinned_characters` arriving from a sibling branch the night before,
@@ -71,6 +77,13 @@ CORPUS = {
     "chart_primitive",
     "completion_rank_at_scale",
     "confluence_grid",
+    # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
+    # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
+    # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`
+    # reads these `.kt`/`.comp`/`.frag`/`.glsl` files and emits
+    # `dev_docs/agents/transcripts/flow_grain.yaml`, which is registered `COMPILE_ONLY`. So it is
+    # verified, and by the harness this family cares about; it just is not verified *as a document*.
+    "flow_grain",
     "frame_history_reprojection",
     "interaction_nets_lambda",
     "keyframe_key_discovery",

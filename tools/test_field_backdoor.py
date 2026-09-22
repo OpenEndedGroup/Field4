@@ -524,6 +524,7 @@ class BackdoorLiveCodingStateTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.05, logger=_Logger())
         self.client.boxes["box"] = {"uid": "box", "runningStrands": {}}
+        self.client.execution_verdicts = True
         self.seq = 0
 
     def emit(self, name: str, payload: dict) -> dict:
@@ -695,15 +696,16 @@ class BackdoorLiveCodingStateTests(unittest.TestCase):
                 self.seq += 1
                 event = {
                     "seq": self.seq,
-                    "name": "is-running",
-                    "messageName": "is-running",
+                    "name": "execution-verdict",
+                    "messageName": "execution-verdict",
                     "uid": execution["uid"],
                     "payload": {
                         "uid": execution["uid"],
                         "strand": execution["strand"],
                         "watermark": 1,
-                        "mode": "launching",
-                        "isRunning": True,
+                        "stage": "setup-complete",
+                        "success": True,
+                        "requestId": execution["requestId"],
                     },
                 }
                 self.client.event_seq = self.seq

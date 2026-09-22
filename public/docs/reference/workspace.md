@@ -4,9 +4,40 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-2 source file(s), 79 public symbol(s), 76 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+3 source file(s), 92 public symbol(s), 77 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## EffectiveParameter.kt { #effectiveparameter-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/EffectiveParameter.kt` — [read the source](source/jvmMain/afield/stdlib/EffectiveParameter/)
+
+### EffectiveParameter { #effectiveparameter-kt-effectiveparameter }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">EffectiveParameter</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">units</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/EffectiveParameter/#L6)
+
+A named finite scalar with explicit requested/effective values and units.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">units</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">requested</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/EffectiveParameter/#L19) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">effective</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/EffectiveParameter/#L21) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">clamped</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/EffectiveParameter/#L22) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">snapshot</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParameterValue</span></code>](source/jvmMain/afield/stdlib/EffectiveParameter/#L23) |  |
+
+### ParameterValue { #effectiveparameter-kt-parametervalue }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ParameterValue</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">requested</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">effective</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">units</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/EffectiveParameter/#L29)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">requested</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">effective</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">units</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## props.kt { #props-kt }
 

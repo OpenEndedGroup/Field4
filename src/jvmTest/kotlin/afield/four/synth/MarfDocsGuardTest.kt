@@ -3,6 +3,7 @@ package afield.four.synth
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -316,9 +317,9 @@ class MarfDocsGuardTest {
 
         // 1. The verbatim check: the figure's real snippet is not in the page as it shipped.
         val twoReaders = MarfGallery.FIGURES.first { it.id == "two-readers" }
-        assertTrue(twoReaders.snippet != null, "the two-readers figure must publish a snippet")
+        val snippet = assertNotNull(twoReaders.snippet, "the two-readers figure must publish a snippet")
         assertTrue(
-            fences.none { it.contains(twoReaders.snippet!!) },
+            fences.none { it.contains(snippet) },
             "the verbatim check would have passed on the page that shipped, so it is worthless"
         )
 
@@ -337,13 +338,13 @@ class MarfDocsGuardTest {
 
         // And the other direction, on the corrected text rather than on a sed of the broken one:
         // the figure's own published snippet must pass every check, or the guard is just a wall.
-        val fixed = readerCalls(twoReaders.snippet!!)
+        val fixed = readerCalls(snippet)
         assertEquals(3, fixed.size, "the corrected listing still reads the bank three times: $fixed")
         assertEquals(
             0,
             fixed.count { usesAlternation(it) && "fields" !in it },
             "the guard must accept the fix as well as reject the defect: $fixed"
         )
-        assertEquals(setOf(MarfFieldClock.STAGES), clocksNamedIn(twoReaders.snippet!!))
+        assertEquals(setOf(MarfFieldClock.STAGES), clocksNamedIn(snippet))
     }
 }

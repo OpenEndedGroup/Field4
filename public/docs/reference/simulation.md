@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-28 source file(s), 858 public symbol(s), 501 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+29 source file(s), 873 public symbol(s), 505 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2528,6 +2528,33 @@ What a `thermal.stationary` session returns.
 [<code class="highlight"><span class="k">typealias</span> <span class="nc">FlowResult</span> <span class="o">=</span> <span class="nc">SimulationResult</span></code>](source/jvmMain/afield/kratos/SimulationResult/#L539)
 
 What a `flow.embedded` session returns. See [`SimulationResult`](simulation.md#simulationresult-kt-simulationresult).
+
+## TileResidency.kt { #tileresidency-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/TileResidency.kt` — [read the source](source/jvmMain/afield/stdlib/TileResidency/)
+
+### TileResidency { #tileresidency-kt-tileresidency }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">TileResidency</span><span class="p">(</span><span class="k">val</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tileSize</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L16)
+
+A bounded, world-aligned rectangle of tiles, stored in reusable toroidal slots. Moving one tile replaces only the entering row/column. Teleporting replaces at most `capacity` tiles. No resources or threads are created here.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">capacity</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L21) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">x</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L22) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">y</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L23) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">generation</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L24) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">changed</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L25) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">changedCount</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L27) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">minX</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L29) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">minY</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L31) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">relocations</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L33) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">slot</span><span class="p">(</span><span class="n">tx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ty</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L36) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resident</span><span class="p">(</span><span class="n">tx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ty</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L39) | -1 outside the resident rectangle, even if the modulo slot contains another tile. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">invalidate</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L45) | Drop contents at the next move, preserving generation identities. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">moveTo</span><span class="p">(</span><span class="n">px</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">py</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L47) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pack</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/stdlib/TileResidency/#L82) | Four ints per slot: world tile x/y, generation, occupied. No Float precision loss. |
 
 ## movement.kt { #movement-kt }
 

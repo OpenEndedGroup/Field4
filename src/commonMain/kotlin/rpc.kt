@@ -150,7 +150,8 @@ data class Execute(
     val code: String,
     val singleLine: Boolean,
     val property: String = "code",
-    val strand: String = "default"
+    val strand: String = "default",
+    val requestId: String = ""
 )
 
 @Serializable
@@ -624,7 +625,8 @@ data class MacroTranscriptCommandResponse(
     val total: Int = 0,
     val hasMore: Boolean = false,
     val prompt: String = "",
-    val output: List<MacroOutputLine> = emptyList()
+    val output: List<MacroOutputLine> = emptyList(),
+    val setupVerified: Boolean = true
 )
 
 @Serializable
@@ -678,7 +680,8 @@ data class AgentDocumentSnapshot(
      * share, which is what matters when attaching to a Field somebody else is using.
      */
     @EncodeDefault
-    val attachedToLiveDocument: Boolean = false
+    val attachedToLiveDocument: Boolean = false,
+    val executionVerdicts: Boolean = false
 )
 
 @Serializable
@@ -789,8 +792,12 @@ data class AgentAiToolCallResponse(
     val name: String,
     val ok: Boolean,
     val result: JsonElement? = null,
-    val error: String? = null
+    val error: String? = null,
+    val images: List<AgentToolImage> = emptyList()
 )
+
+@Serializable
+data class AgentToolImage(val dataUrl: String, val caption: String = "")
 
 /** Set a single string property on a box (e.g. `notes`). Direct, reliable setter. */
 @Serializable
@@ -1279,7 +1286,7 @@ data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
 
 // Slideshow messages
 @Serializable
-data class SelectAndEditBox(val uid: String, val property: String = "code", val scrollToLine: Int? = null, val highlightLine: Int? = null)
+data class SelectAndEditBox(val uid: String, val property: String = "code", val scrollToLine: Int? = null, val highlightLine: Int? = null, val center: Boolean = false)
 
 @Serializable
 data class ShowSlideNote(
@@ -1977,3 +1984,12 @@ data class CustomMarkingResponse(val uid: String, val entries: List<CustomMarkin
 
 @Serializable
 data class CustomMarkingFire(val callbackId: String)
+
+/** An awaited execution result, explicitly separate from running and GPU presentation. */
+@Serializable
+data class ExecutionReport(
+    val uid: String, val property: String, val revision: String,
+    val requestId: String = "", val mode: String = "launch",
+    val stage: String = "setup-complete", val success: Boolean,
+    val error: String = ""
+)

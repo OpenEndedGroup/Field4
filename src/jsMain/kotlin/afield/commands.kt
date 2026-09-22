@@ -858,7 +858,7 @@ private fun macroPaletteRun(name: String, scope: String, projectName: String = "
             announce = true
         ) { response ->
             if (response.success) {
-                resolve(response.asDynamic())
+                resolve(JSON.parse<dynamic>(Json.encodeToString(MacroTranscriptCommandResponse.serializer(), response)))
             } else {
                 reject(Throwable(response.message))
             }

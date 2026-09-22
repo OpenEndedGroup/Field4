@@ -223,8 +223,9 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
 
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
-    private val pipelineDisposeToken = AutoDisposer.register(this, "RayTracingPipeline(${parameters.name})") { }
+    private val pipelineDisposeToken = AutoDisposer.register(this, "RayTracingPipeline(${parameters.name})", owner = parameters.renderer.device) { }
     internal var sbt: ShaderBindingTable? = null
+    private var descriptorLayouts: Map<Int, DescriptorSetLayout.SimpleDescriptorSetLayout> = emptyMap()
 
     val pushConstantSize: Int
 
@@ -251,6 +252,7 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
             buildResources()
             createPipeline(computedPushConstantSize)
             sbt = ShaderBindingTable(parameters.renderer, pipeline, groupCount(), groupRegions())
+            pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
 
             valid = true
         } catch (e: Exception) {
@@ -375,8 +377,6 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
         }
     }
 
-    private var descriptorLayouts: Map<Int, DescriptorSetLayout.SimpleDescriptorSetLayout> = emptyMap()
-
     private fun createPipeline(pushConstantSize: Int) {
         MemoryStack.stackPush().use { stack ->
             val shaderStages = VkPipelineShaderStageCreateInfo.calloc(stageRecords.size, stack)
@@ -481,9 +481,7 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
                 "${parameters.name} RayTracingPipeline"
             )
 
-            pipelineDisposeToken.updateCleanup {
-                cleanupPipelineObjects()
-            }
+            pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
         }
     }
 
@@ -558,9 +556,27 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
         }
     }
 
+    private fun snapshotPipelineCleanup(): () -> Unit {
+        val dev = parameters.renderer.device.vkDevice
+        val p = pipeline
+        val layout = pipelineLayout
+        val shaders = stageRecords.map { it.shaderModule }
+        val table = sbt
+        val sets = descriptorLayouts.values.toList()
+        return {
+            table?.cleanup()
+            if (p != 0L) vkDestroyPipeline(dev, p, null)
+            if (layout != 0L) vkDestroyPipelineLayout(dev, layout, null)
+            shaders.forEach { if (it != 0L) vkDestroyShaderModule(dev, it, null) }
+            sets.forEach { it.cleanup() }
+        }
+    }
+
     fun cleanup() {
-        pipelineDisposeToken.disable()
+        if (!pipelineDisposeToken.disable()) return
         cleanupPipelineObjects()
+        descriptorLayouts.values.forEach { it.cleanup() }
+        descriptorLayouts = emptyMap()
     }
 
     private fun cleanupPipelineObjects() {

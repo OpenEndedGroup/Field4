@@ -166,7 +166,7 @@ class FrameHistory {
 
         available = !reset &&
                 this.epoch === epoch &&
-                frameId == this.frameId + 1 &&
+                this.frameId != Long.MAX_VALUE && frameId == this.frameId + 1 &&
                 this.width == width &&
                 this.height == height
 
@@ -202,7 +202,10 @@ class FrameHistory {
      * rejection test to a neighbourhood, and `z` is the flag that says whether to bother.
      */
     @Synchronized
-    fun params(): Vector4f = Vector4f(width.toFloat(), height.toFloat(), if (available) 1f else 0f, 0f)
+    fun params(): Vector4f = params(Vector4f())
+
+    /** Reuse a vector when polling every frame. */
+    fun params(out: Vector4f): Vector4f = out.set(width.toFloat(), height.toFloat(), if (available) 1f else 0f, 0f)
 
     @Synchronized
     override fun toString(): String =

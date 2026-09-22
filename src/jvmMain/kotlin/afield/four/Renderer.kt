@@ -5,6 +5,7 @@ import afield.Rect
 import afield.Runloop
 import afield.Runloop.Companion.isMainThread
 import afield.four.buffers.ParallelGeometryPool
+import afield.four.buffers.cleanupAllocatorForRenderer
 import afield.four.device.*
 import afield.four.device.Queue
 import afield.four.device.Queue.GraphicsQueue
@@ -20,6 +21,7 @@ import afield.four.util.AutoDisposer
 import afield.four.util.MapOfSequences
 import afield.four.util.Options
 import afield.four.util.Window
+import afield.four.util.drainDeferredCleanup
 import afield.util.PngEncoder
 import afield.logTime
 import afield.logTime_
@@ -280,6 +282,7 @@ class Renderer(
 
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
+    private var cleanedUp = false
 
     internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
         val key = graphicsRecordingContext.get()
@@ -733,11 +736,17 @@ class Renderer(
     }
 
     fun cleanup() {
+        if (cleanedUp) return
+        cleanedUp = true
+        running = false
         uninstallRunloopGeometryBeginHook()
 
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
+        // Pending releases normally wait for later frames. Shutdown has no later frame;
+        // release them now, before their fences, command pools and device disappear.
+        var deferredFailure = drainDeferredCleanup(cleanup, cleanupStack)
         if (Options.enableVR) {
             Instance.cleanupOpenXRBootstrap()
         }
@@ -767,10 +776,20 @@ class Renderer(
         workerExecutor.shutdownNow()
         queueDispatcher.close()
         queueExecutor.shutdownNow()
+
+        // A document can still hold its resources when its renderer closes. GC alone
+        // cannot establish the lifetime of native objects owned by this device.
+        AutoDisposer.releaseOwner(device) { cleanup.add(it) }
+        drainDeferredCleanup(cleanup, cleanupStack)?.let { failure ->
+            if (deferredFailure == null) deferredFailure = failure
+            else deferredFailure.addSuppressed(failure)
+        }
+        cleanupAllocatorForRenderer(this)
         device.cleanup()
         physicalDevice.cleanup()
         instance.cleanup()
         windows.forEach { it.associatedRenderer = null }
+        deferredFailure?.let { throw it }
     }
 
     /** Monotonic frame id incremented after each completed [render] call. */
@@ -1117,6 +1136,7 @@ class Renderer(
     }
 
     fun render() {
+        check(!cleanedUp) { "Renderer has been cleaned up" }
         val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
         val frameId = frameCounter
         beginFrameUploadStats()
@@ -1259,7 +1279,7 @@ class Renderer(
         }
 
         // Drain GC-driven disposals onto the render-thread cleanup queue
-        AutoDisposer.drain { cleanup.add(it) }
+        AutoDisposer.drain(device) { cleanup.add(it) }
 
         renderEnd.update()
         CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = frameCounter)

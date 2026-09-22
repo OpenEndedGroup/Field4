@@ -2277,7 +2277,8 @@ class Server {
                             applied = run.applied,
                             skipped = run.skipped,
                             errors = run.errors,
-                            output = run.output
+                            output = run.output,
+                            setupVerified = run.setupVerified
                         )
                     }
                     "undo" -> {
@@ -2300,7 +2301,8 @@ class Server {
                             applied = run.applied,
                             skipped = run.skipped,
                             errors = run.errors,
-                            output = run.output
+                            output = run.output,
+                            setupVerified = run.setupVerified
                         )
                     }
                     else -> OperationTranscript.MacroResult(false, "Unknown macro command '${request.command}'.")
@@ -2337,7 +2339,8 @@ class Server {
                                 total = result.total,
                                 hasMore = result.hasMore,
                                 prompt = result.prompt,
-                                output = result.output
+                                output = result.output,
+                                setupVerified = result.setupVerified
                             )
                         )
                     )

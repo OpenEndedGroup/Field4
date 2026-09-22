@@ -146,9 +146,11 @@ class MeshModule(val parameters: Parameters) : Renderable {
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
 
+    // Push descriptors still reference these layouts while the pipeline is in use.
+    private val ownedDescriptorLayouts = mutableListOf<DescriptorSetLayout.SimpleDescriptorSetLayout>()
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
-    private val pipelineDisposeToken = AutoDisposer.register(this, "MeshPipeline(${parameters.name})") { }
+    private val pipelineDisposeToken = AutoDisposer.register(this, "MeshPipeline(${parameters.name})", owner = parameters.renderer.device) { }
 
     var tsm: Long = 0L
     var msm: Long = 0L
@@ -306,6 +308,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     parameters.renderer.device, kinds, set, bindingList, where, lens, pushDescriptor = true
                 )
                 layouts[set] = layout
+                ownedDescriptorLayouts += layout
             }
 
             // UBOs (sets >= 1)
@@ -608,23 +611,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     "Error creating graphics pipeline"
                 )
                 this.pipeline = lp[0]
-                pipelineDisposeToken.updateCleanup {
-                    if (pipeline != 0L) {
-                        VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
-                    }
-                    if (pipelineLayout != 0L) {
-                        VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
-                    }
-                    if (msm != 0L) {
-                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, msm, null)
-                    }
-                    if (tsm != 0L) {
-                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, tsm, null)
-                    }
-                    if (fsm != 0L) {
-                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
-                    }
-                }
+                pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
                 parameters.renderer.device.nameObject(
                     pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
                 )
@@ -724,8 +711,26 @@ class MeshModule(val parameters: Parameters) : Renderable {
         after.putAll(old.after)
     }
 
+    private fun snapshotPipelineCleanup(): () -> Unit {
+        val dev = parameters.renderer.device.vkDevice
+        val p = pipeline
+        val layout = pipelineLayout
+        val sets = ownedDescriptorLayouts.toList()
+        val tsmHandle = tsm
+        val msmHandle = msm
+        val fsmHandle = fsm
+        return {
+            if (p != 0L) VK10.vkDestroyPipeline(dev, p, null)
+            if (layout != 0L) VK10.vkDestroyPipelineLayout(dev, layout, null)
+            if (tsmHandle != 0L) VK10.vkDestroyShaderModule(dev, tsmHandle, null)
+            if (msmHandle != 0L) VK10.vkDestroyShaderModule(dev, msmHandle, null)
+            if (fsmHandle != 0L) VK10.vkDestroyShaderModule(dev, fsmHandle, null)
+            sets.forEach { it.cleanup() }
+        }
+    }
+
     fun cleanup() {
-        pipelineDisposeToken.disable()
+        if (!pipelineDisposeToken.disable()) return
         if (pipeline != 0L) {
             VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
             pipeline = 0L
@@ -746,6 +751,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
             VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, fsm, null)
             fsm = 0L
         }
+        ownedDescriptorLayouts.forEach { it.cleanup() }
+        ownedDescriptorLayouts.clear()
     }
 
     private fun createShaderModule(code: ByteBuffer): Long {

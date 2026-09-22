@@ -2036,7 +2036,11 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
                 "Include '$FIELD_STATS_INCLUDE_NAME' requires fieldStatsHere(...) or useFieldStats(...)."
             )
         FIELD_QUANTILE_WARP_INCLUDE_NAME -> fieldQuantileWarpIncludeSource()
-        else -> null
+        // Packaged pure functions must be available to macro expansion/completion before
+        // a resources box has executed. An explicit include-root registration still wins.
+        else -> if (includePath.startsWith("flow/") && !shaderIncludeRoots.containsKey("flow"))
+            afield.four.flow.FlowShaders.source(includePath.removePrefix("flow/"))
+        else null
     }
 }
 
