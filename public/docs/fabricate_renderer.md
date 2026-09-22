@@ -266,7 +266,7 @@ expect:
 
 ## Two camera framings over one scene
 
-The same checkerboard setup, geometry unchanged, seen from two cameras — a near framing and a far one, so the depth layering reads off one image.
+The same checkerboard setup, geometry unchanged, seen from two cameras: a near framing and a far one, so the depth layering reads off one image.
 
 Nothing changes between the two halves except `camera.at` and `camera.target`:
 
