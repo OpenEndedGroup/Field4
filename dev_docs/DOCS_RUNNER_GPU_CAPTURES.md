@@ -124,9 +124,11 @@ placeholder cards` and still exits 0.
 **Two traps specific to this page.**
 
 - **`citationGates` is vacuous here.** `ray_tracing_examples.md` is not in
-  `CitationContractTest.GUARDED_PAGES` — that map is `dev_docs/*` plus
-  `public/docs/autodiff_examples.md`. A green `citationGates` says nothing about this page, so do
-  not quote it as cover for an edit here.
+  `CitationContractTest.GUARDED_PAGES`. That map holds **35** entries, **13** of them under
+  `public/docs/` — including `gpu_state.md`, the sibling GPU page — so "it only guards `dev_docs`"
+  is not the reason this page is uncovered; the reason is simply that nobody added it. A green
+  `citationGates` says nothing about this page, so do not quote it as cover for an edit here.
+  Re-derive with `grep -oE '"public/docs/[a-z_]+\.md"' src/jvmTest/kotlin/afield/docs/CitationContractTest.kt | sort -u | wc -l`.
 - **The page's only test coverage is the four fences, and all four `skipOn: [darwin]`.** They are
   the entire ray tracing test population: no file under `src/jvmTest` mentions ray tracing at all,
   and these four are the *only* `skipOn: [darwin]` entries in the whole `discover_field_tests.py`
@@ -134,7 +136,8 @@ placeholder cards` and still exits 0.
   compensates.
 
 **What a macOS agent should do instead.** The pictures are unavailable; the code is not. The page
-prints eight GLSL and Kotlin excerpts and asserts the harness runs them, and that is checkable by
+prints fifteen GLSL and Kotlin excerpts — nineteen fences, of which four are the
+`diffstatic_runner` captures — and asserts the harness runs them, and that is checkable by
 reading `RayTracingDocsHarness.kt` — the shader sources are `val` constants near the bottom of the
 file, so the excerpts can be compared directly against what compiles. Drift found that way is a
 real defect on a page whose figures cannot back it up. Correcting prose to match the *code* is
