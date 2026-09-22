@@ -340,17 +340,14 @@ radius two), which curls into visible spiral cores. That is a different *phase*,
 reported as a length scale rather than left to the eye, though note the direction: the wider
 neighbourhood gives the **smaller** correlation length, because the spiral arms are narrow.
 
-!!! note "This statistic's floor is 0.632, not 0"
+??? note "This statistic's floor is 0.632, not 0"
     [`correlationLength`](reference/alife.md#alife-kt) is the lag at which the direction-averaged
     autocorrelation first falls to `1/e`, linearly interpolated. For a field with *no* correlation at all
     the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is `1 − 1/e = 0.632`:
-    a floor, reached from below by nothing. So the right comparison for a settled field is with its own
-    pixels *shuffled*, which lands on that floor to six decimal places, rather than with a chosen
-    constant, and that is the comparison CI makes. Be careful reading the two numbers the box below
-    prints (**2.77** and **1.96** on its 200×200 fields) against the ones quoted in
-    `dev_docs/ALIFE.md` (**2.80** and **2.01**): those are the gallery's 220×220 fields, a different
-    measurement of the same phenomenon, not a discrepancy. A checkerboard, the shortest wavelength a
-    lattice holds, reads exactly `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
+    a floor, reached from below by nothing. So compare a settled field against its own pixels
+    *shuffled*, which lands on that floor to six decimal places, rather than against a chosen
+    constant. A checkerboard, the shortest wavelength a lattice holds, reads exactly
+    `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/cyclic.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
