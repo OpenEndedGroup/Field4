@@ -103,32 +103,42 @@ class NanoExecution(val inside: Box) : BoxExecution {
     // ── BoxExecution ──────────────────────────────────────────────────────────
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        runOnce(inside, execute, "fragment", reply)
+    }
+
+    /** One assemble-and-run of the program, reported under [mode]. See DatalogExecution.runOnce. */
+    private fun runOnce(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         inMain {
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
             clearStepDecoration()
-            configureOutput(inside, execute.line, reply, originSession)
+            configureOutput(inside, execute.line, trace.reply, originSession)
+            var ok = false
             try {
-                runNano(execute.code, execute.line, reply, originSession, maxSteps = 100_000)
+                runNano(execute.code, execute.line, trace.reply, originSession, maxSteps = 100_000)
+                ok = true
             } finally {
+                trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
             }
         }
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeFragment(inside, execute, reply)
+        runOnce(inside, execute, "run", reply)
     }
 
     override fun launchAll(
         inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit
     ) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, "launch", reply)
         inMain {
             val wm = ++inside.fragmentGeneration
 
-            configureOutputProxies(inside, reply, originSession)
+            configureOutputProxies(inside, trace.reply, originSession)
             val outputs = mutableListOf<Int>()
             var runtimeError: String? = null
             vm.onOutput = { value ->
@@ -147,6 +157,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
                 result.errors.forEach { e ->
                     inside.error(e.message, line = execute.line + e.line - 1, property = "code")
                 }
+                trace.finish(false, "the program did not assemble")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, strand)))
                 return@inMain
             }
@@ -204,6 +215,10 @@ class NanoExecution(val inside: Box) : BoxExecution {
             }
 
             publishState(vm.pc, emptySet(), emptySet())
+
+            // The program assembled, loaded and published its first state; the stepping loop below
+            // is the run, not the setup. Same boundary Kotlin's launch receipt draws.
+            trace.finish(runtimeError == null)
 
             inMain {
                 try {

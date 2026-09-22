@@ -39,8 +39,19 @@ The shell entry point also retains ordinary `--help`.
 Markdown links. Its response says navigation was *requested*; use a UI observation
 when visual placement itself is the thing under test.
 
-Execution receipts currently cover Kotlin. Direct awaited backdoor run/launch/continue
-refuse unsupported engines before executing; they do not invent a successful receipt.
+Execution receipts cover every engine. An awaited backdoor run/launch/continue gets a
+receipt from Clojure, Python, Datalog, FieldML, Forth, Nano and Morpho as well as Kotlin.
+The engine builds it where the request arrives and finishes it where the work actually
+ends — inside the runloop dispatch, not at the point the handler returned, which for
+every engine but Kotlin's is before any of the work has run. A receipt is still never
+invented: the engine's own success flag is necessary but not sufficient, because output
+routed through the trace is watched too, so a box that reports completion while printing
+an error yields a failed receipt.
+
+For a launch the receipt means *setup* completed — the box evaluated and its value was
+taken up by the return-value registry or echoed — not that an animation the registry is
+now driving stays healthy. That is the boundary Kotlin's launch receipt already drew.
+
 Ordinary frontend execution and macros retain other languages' existing dispatch path.
 A macro containing those operations reports `setupVerified: false` and an explicit
 message: its `success` covers dispatch, not completion. Observe subsequent outputs and

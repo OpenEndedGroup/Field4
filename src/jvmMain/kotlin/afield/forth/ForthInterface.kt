@@ -113,26 +113,33 @@ class ForthExecution(val inside: Box) : BoxExecution {
      * here: it belongs to `launchAll`.
      */
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        evalOnce(inside, execute, "fragment", reply)
+    }
+
+    /** One `forth.eval` of the box, reported under [mode]. See DatalogExecution.runOnce. */
+    private fun evalOnce(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
         inMain {
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
             val hadVisibleOutput = configureForthOutput(
                 inside = inside,
                 executeLine = execute.line,
-                reply = reply,
+                reply = trace.reply,
                 originSession = originSession,
                 allowFrameYield = false
             )
+            var ok = false
             try {
                 val diagnostics = forth.eval(execute.code)
                 if (diagnostics.isEmpty()) {
-                    clearExecutionErrorStatus(reply, originSession)
+                    clearExecutionErrorStatus(trace.reply, originSession)
                 }
                 if (diagnostics.isEmpty() && !hadVisibleOutput()) {
                     dispatchExecutionOutput(
                         inside,
-                        reply,
+                        trace.reply,
                         Output(
                             uid = inside.id,
                             line = execute.line + execute.code.split("\n").size,
@@ -148,7 +155,9 @@ class ForthExecution(val inside: Box) : BoxExecution {
                         inside.error(diag.message, line = errLine, property = "code")
                     }
                 }
+                ok = diagnostics.isEmpty()
             } finally {
+                trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
             }
         }
@@ -161,7 +170,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
      * for a whole-box run to reset that a fragment run would not.
      */
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        executeFragment(inside, execute, reply)
+        evalOnce(inside, execute, "run", reply)
     }
 
     /**
@@ -182,12 +191,13 @@ class ForthExecution(val inside: Box) : BoxExecution {
         inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit
     ) {
         val originSession = thisSession.get()
+        val trace = ExecutionTrace.forEngine(inside, execute, "launch", reply)
         inMain {
             val wm = ++inside.fragmentGeneration
             configureForthOutput(
                 inside = inside,
                 executeLine = execute.line,
-                reply = reply,
+                reply = trace.reply,
                 originSession = originSession,
                 allowFrameYield = true
             )
@@ -199,11 +209,12 @@ class ForthExecution(val inside: Box) : BoxExecution {
                     val errLine = if (diag.line >= 0) execute.line + diag.line else execute.line
                     inside.error(diag.message, line = errLine, property = "code")
                 }
+                trace.finish(false, "the box did not define its words without a diagnostic")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, strand)))
                 return@inMain
             }
 
-            clearExecutionErrorStatus(reply, originSession)
+            clearExecutionErrorStatus(trace.reply, originSession)
 
             // If code ends with a word call (last non-whitespace token), register it as a strand
             val tokens = forth.tokenize(code.trim())
@@ -258,6 +269,10 @@ class ForthExecution(val inside: Box) : BoxExecution {
             } else {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, strand)))
             }
+            // The words are defined and the strand, if the last token named one, is running. A
+            // box whose last token is not a colon definition is a successful launch that simply
+            // started nothing, which is what this engine's KDoc above says it should be.
+            trace.finish(true)
         }
     }
 

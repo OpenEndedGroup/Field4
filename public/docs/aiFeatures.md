@@ -417,8 +417,9 @@ prior changes for inspection; undo is an explicit action.
 
 Other language engines retain their normal macro dispatch behavior, with
 `setupVerified: false` and an explicit message that completion is unverified.
-The external backdoor's awaited `run`, `launch` and `continue` commands currently
-require Kotlin receipts; they refuse unsupported engines before execution.
+The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
+from every engine, not only Kotlin. The receipt is earned rather than assumed: an engine
+reporting success while the box printed an error still comes back failed.
 
 See [Flow grain and motion](flow_grain.md) for an editable graphics example with resets,
 parameters, motion correspondence and a repeatable profiling scenario.
