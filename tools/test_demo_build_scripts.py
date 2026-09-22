@@ -55,11 +55,11 @@ TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 DEMOS_ROOT = REPO_ROOT / "dev_docs" / "agents" / "demos"
 
-# The demo corpus, by name. Measured 2026-09-22: `ls -1d dev_docs/agents/demos/*/` — 22.
+# The demo corpus, by name. Measured 2026-09-22: `ls -1d dev_docs/agents/demos/*/` — 23.
 #
-# Twenty-two *directories*, twenty-one *documents*: `flow_grain` arrived on 2026-09-22 with no
+# Twenty-three *directories*, twenty-two *documents*: `flow_grain` arrived on 2026-09-22 with no
 # `metadata.edn`, and is the first entry here that is not a saved document at all. This set is the
-# directory listing, which is the population a sibling branch grows, so it holds all 22. Anything
+# directory listing, which is the population a sibling branch grows, so it holds all 23. Anything
 # that asks "is this document verified?" has to filter on `metadata.edn` first — see the note on
 # the entry itself, and `AgentDemoRegistrationTest.demoDocuments`.
 #
@@ -85,6 +85,12 @@ CORPUS = {
     # verified, and by the harness this family cares about; it just is not verified *as a document*.
     "flow_grain",
     "frame_history_reprojection",
+    # Promoted 2026-09-22 out of `dev_docs/agents/artifacts/`, the twenty-third directory. Ships no
+    # `build.yaml` (so the nine below is unchanged); its transcript
+    # `dev_docs/agents/transcripts/gpu_probe_bench.yaml` is registered `COMPILE_ONLY`, because box 1
+    # opens a Window. It was parked under `artifacts/` for one day to avoid editing a file a
+    # concurrent session held, and nothing under `artifacts/` is named by any registry in the tree.
+    "gpu_probe_bench",
     "interaction_nets_lambda",
     "keyframe_key_discovery",
     "logging_layer",

@@ -4,15 +4,16 @@ description: |
   screen, the pressure-projection chain the workspace document actually runs, and a deliberate
   under-dispatch so a reader can watch the sentinel fire.
 
-  This transcript is what built `dev_docs/agents/artifacts/gpu_probe_bench/probe_bench/`;
+  This transcript is what built `dev_docs/agents/demos/gpu_probe_bench/`;
   re-running it rebuilds that document. It only creates and connects the boxes -- it does not
   launch them, so no window opens while the document is being written.
 
-  Lives beside its artifact rather than in `dev_docs/agents/transcripts/` on purpose: registering
-  a transcript there means editing `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt`,
-  which was off limits on the night this was written. Consequence, stated plainly: no registry
-  compiles or replays these four boxes, so the only evidence they run is that they were run by
-  hand, one at a time, and their output recorded in `README.md`.
+  Registered `COMPILE_ONLY`: replaying the boxes would need a window, since box 1 opens one and
+  `afield.four` has no headless mode. What the registration buys is that all four box bodies are
+  compiled against Field's real K2 and preamble import set on every build -- the one place box code
+  can diverge from `jvmMain` and that no Gradle gate could otherwise see. The GPU numbers are
+  asserted separately by the `four.gpu-probe.pressure-chain` and `four.gpu-probe.self-check`
+  FIELD_TESTs.
 operations:
   - create:
       box: probe_renderer
@@ -98,7 +99,7 @@ operations:
   - create:
       box: probe_chain
       name: 3 - divergence, 12 Jacobi sweeps, project
-      frame: { x: 520.0, y: 200.0, w: 460.0, h: 190.0 }
+      frame: { x: 520.0, y: 200.0, w: 460.0, h: 160.0 }
       properties:
         code: |
           import afield.four.modules.fromContext
@@ -353,4 +354,4 @@ operations:
   - connect: { parent: probe_renderer, child: probe_caught }
   # Persist the assembled boxes as the loadable document. `save` takes the document
   # DIRECTORY, not a metadata.edn inside it.
-  - save: { path: dev_docs/agents/artifacts/gpu_probe_bench/probe_bench }
+  - save: { path: dev_docs/agents/demos/gpu_probe_bench }

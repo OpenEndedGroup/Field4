@@ -392,6 +392,13 @@ object DemoTranscriptExecSmokeTest {
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
         "graphics_renderer_launch",
+        // Box 1 opens a Window because `afield.four` has no headless mode — a compute-only dispatch
+        // still needs one for the device to exist — so the bench cannot be replayed here. What this
+        // entry buys is the thing that was actually missing: all four box bodies are compiled
+        // against Field's real K2/preamble import set on every build, which is where box code
+        // diverges from `jvmMain` and where no Gradle gate could previously see it. The GPU numbers
+        // themselves are asserted by `four.gpu-probe.pressure-chain` and `four.gpu-probe.self-check`.
+        "gpu_probe_bench",
         // These open a native Vulkan renderer; real pixels and reloads are checked separately.
         "path_tracing_materials",
         "path_tracing_camera",

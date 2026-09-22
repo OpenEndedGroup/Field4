@@ -259,18 +259,18 @@ And after five probes, all closed, `renderer.computeList.modules` is back to the
 
 ## The loadable demo
 
-`dev_docs/agents/artifacts/gpu_probe_bench/probe_bench/` — four boxes, and its `README.md` carries
-the output of each. Built by `dev_docs/agents/artifacts/gpu_probe_bench/build_probe_bench.yaml`.
+`dev_docs/agents/demos/gpu_probe_bench/` — four boxes, and its `README.md` carries
+the output of each. Built by `dev_docs/agents/transcripts/gpu_probe_bench.yaml`.
 
 ```
-./field.sh dev_docs/agents/artifacts/gpu_probe_bench/probe_bench --read-only
+./field.sh dev_docs/agents/demos/gpu_probe_bench --read-only
 ```
 
 All four boxes were launched one at a time against a real GPU. The invocation, for the record:
 
 ```
 python3 tools/field_backdoor.py --port <yours> --json \
-  --workspace dev_docs/agents/artifacts/gpu_probe_bench --document probe_bench \
+  --workspace dev_docs/agents/demos --document gpu_probe_bench \
   --command "launch probe_renderer --property code" \
   --command "sleep 5" \
   --command "launch probe_hello  --timeout 120" \

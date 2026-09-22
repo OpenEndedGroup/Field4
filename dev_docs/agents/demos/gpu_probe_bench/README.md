@@ -9,13 +9,13 @@ fire and read what it says.
 ## Open it
 
 ```
-./field.sh dev_docs/agents/artifacts/gpu_probe_bench/probe_bench --read-only
+./field.sh dev_docs/agents/demos/gpu_probe_bench --read-only
 ```
 
 or, with a Field already running,
 
 ```
-open 'http://localhost:<port>/offline.html?file=dev_docs/agents/artifacts/gpu_probe_bench/probe_bench/metadata.edn'
+open 'http://localhost:<port>/offline.html?file=dev_docs/agents/demos/gpu_probe_bench/metadata.edn'
 ```
 
 **Launch box 1 first**, then 2, 3 and 4 in any order. Before box 1 has run there is no `Renderer`
@@ -115,16 +115,20 @@ reproducible.
 - **All four boxes were launched, one at a time, by the agent that wrote them**, against a real GPU
   on 2026-09-22, and every number above is copied from the box output that came back. The exact
   invocation is in `dev_docs/GPU_PROBE.md`.
-- **Nothing in the repository verifies these four boxes.** Registering a demo under
-  `dev_docs/agents/demos/` requires an entry in
-  `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt`, which was off limits to the
-  night's agents, so this lives under `dev_docs/agents/artifacts/` instead. That means no gate
-  compiles this box Kotlin and no gate replays it: if `GpuProbe`'s API moves, these four boxes go
-  stale silently. Promoting this directory to `dev_docs/agents/demos/` plus two registry lines is
-  the fix, and it is recorded as a merge condition in the night's worklog.
-- The **library** these boxes call is verified two ways that do sit in the FIELD_TEST catalog:
+- **CI now compiles all four box bodies on every build.** This directory was promoted out of
+  `dev_docs/agents/artifacts/` on 2026-09-22, and
+  `dev_docs/agents/transcripts/gpu_probe_bench.yaml` is registered `COMPILE_ONLY` in
+  `DemoTranscriptExecSmokeTest`. That is the gap worth closing: box code goes through the K2 REPL
+  against a different import set from `jvmMain`, so it can be green in the library and red in the
+  box with no Gradle gate able to see it. `COMPILE_ONLY` rather than replayed because box 1 opens a
+  window.
+- **For one day it was verified by nothing, and that is worth keeping on the page.** It was parked
+  under `artifacts/` to avoid editing a file a concurrent session held, and the cost was exactly
+  what this bullet said at the time: nothing under `artifacts/` is named by any registry in the
+  tree, so the only evidence these four boxes ran was that a human had run them once, by hand.
+- The **library** these boxes call is verified two further ways, both in the FIELD_TEST catalog:
   `tools/run_field_tests.py --id four.gpu-probe.pressure-chain` (the same chain at 64x64, sixteen
   claims) and `--id four.gpu-probe.self-check` (five deliberate faults, each of which must be
-  caught).
-- `../build_probe_bench.yaml` is the operation transcript that built this document. Re-running it
-  rebuilds it.
+  caught). Those assert the numbers; the transcript registration asserts the boxes compile.
+- `../../transcripts/gpu_probe_bench.yaml` is the operation transcript that built this document.
+  Re-running it rebuilds it.

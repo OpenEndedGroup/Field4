@@ -59,10 +59,10 @@ class AgentDemoRegistrationTest {
         const val TRANSCRIPTS = "dev_docs/agents/transcripts"
 
         /**
-         * The twenty-two demo directories this file was measured against, 2026-09-22 at `b5b9ad9e0`.
+         * The twenty-three demo directories this file was measured against, 2026-09-22.
          *
-         * Twenty-two directories, twenty-one of them documents; see [demoDocuments] for why the two
-         * populations came apart and which assertions range over which.
+         * Twenty-three directories, twenty-two of them documents; see [demoDocuments] for why the
+         * two populations came apart and which assertions range over which.
          *
          * Recount with `ls -1 dev_docs/agents/demos`. Adding a demo means adding its name here and
          * registering it in [DemoTranscriptExecSmokeTest] — two lines, and the failure below tells
@@ -93,6 +93,12 @@ class AgentDemoRegistrationTest {
             // put there, twice over: it is not a demo document, and it is not unverified.
             "flow_grain",
             "frame_history_reprojection",
+            // Promoted 2026-09-22 out of `dev_docs/agents/artifacts/`, where its author parked it
+            // because this class's sibling `DemoTranscriptExecSmokeTest` was held by a concurrent
+            // session that night. That routing was declared at the time and it cost exactly what
+            // was predicted: nothing under `artifacts/` is named by any registry, so for one day
+            // the only evidence its four boxes ran was that a human had run them once, by hand.
+            "gpu_probe_bench",
             "interaction_nets_lambda",
             "keyframe_key_discovery",
             "logging_layer",
