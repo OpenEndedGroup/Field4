@@ -310,13 +310,13 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 <!-- BEGIN CAPTURE SIGNATURES (checked by tools/test_field_backdoor.py) -->
 | command | positional arguments | notable options |
 | --- | --- | --- |
-| `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
-| `screenshot-editor` | `uid path` | `--property --padding --open-outputs --no-pan --timeout` |
-| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --no-pan --preserve-selection --include-notifications --timeout` |
+| `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
+| `screenshot-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --timeout` |
+| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --preserve-selection --include-notifications --timeout` |
 | `native-screenshot` | `path` | `--uid --wait-frames --timeout` |
 | `wait-native-renderer` | `[uid]` | `--frames --timeout` |
-| `record-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
-| `record-editor` | `uid path` | `--property --padding --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 <!-- END CAPTURE SIGNATURES -->
 
