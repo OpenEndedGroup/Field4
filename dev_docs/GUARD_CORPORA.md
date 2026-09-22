@@ -90,7 +90,7 @@ property that makes a page like this checkable by a person at all.
 | demo directories | 23 | `ls -1d dev_docs/agents/demos/*/` | held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them (`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a saved document, so the loadable-document population is one smaller and is what `AgentDemoRegistrationTest.demoDocuments` filters to |
 | demos shipping a `build.yaml` | 9 | `ls -1 dev_docs/agents/demos/*/build.yaml` | the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars |
 | entries on `public/docs/agent_transcripts.md` | 146 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
-| materialized starting-point bundles | 140 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
+| materialized starting-point bundles | 141 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
 
 The two transcript counts are both right and they are not the same measurement: 154 = 146 + 8 under `docs_capture/`. If you quote one of them, say which.
 
