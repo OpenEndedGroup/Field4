@@ -428,7 +428,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-metrics.mp4" wait="1.0" capture="editor" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-metrics"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-metrics.mp4" wait="1.0" capture="editor" outputs="inline" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-metrics"}
 :::static
 var tick = 0.0
 var visualizerFrame = 0
@@ -496,7 +496,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-live-history.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-live-history"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-live-history.mp4" wait="2.0" capture="editor" outputs="inline" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-live-history"}
 :::static
 println("live history launched")
 
@@ -549,7 +549,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-pianoroll"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="2.0" capture="editor" outputs="inline" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-pianoroll"}
 :::static
 val arp = noteProcess {
     val chord = listOf(48, 55, 60, 64)
