@@ -5,6 +5,7 @@
   let morphoRegistered = false;
   let clojureRegistered = false;
   let rectslRegistered = false;
+  let glslRegistered = false;
 
   // A declared `data-lang` that highlight.js does not know is rendered PLAIN, never guessed.
   //
@@ -39,10 +40,13 @@
   // wired up in `registerFieldLanguages`) or alias it here to a built-in whose lexical shape
   // genuinely matches -- same comment syntax above all.
   const LANGUAGE_ALIASES = {
-    // GLSL is C's lexical family: `//` and `/* */` comments, braces, semicolons, C numeric literals.
-    // cpp also carries `uniform`/`layout`/`vec4`-shaped identifiers as plain identifiers rather than
-    // mismatching them, which is the correct outcome.
-    glsl: "cpp",
+    // GLSL used to be aliased to `cpp` here, on the grounds that it is C's lexical family: `//` and
+    // `/* */` comments, braces, semicolons, C numeric literals. That is true and it is also the
+    // floor rather than the ceiling -- cpp knows none of the vocabulary that carries meaning in a
+    // shader, so `vec3`, `uniform`, `layout`, `gl_LaunchIDEXT` and `#version` all rendered as plain
+    // identifiers and a 25-line fence came out with four blue words in it. `registerGlslLanguage`
+    // below replaces the alias; the entry is gone rather than overridden, because
+    // `resolveLanguage` consults this map *first* and an alias would win over the real grammar.
     // StackSL *is* a Forth: `: name ... ;` definitions, postfix words, a data stack. The grammar
     // registered below was written for it -- its FIELD_WORDS list is Field's own vocabulary
     // (`fline`, `vec2`, `plot-stack`, `println`), which is why aliasing here rather than writing a
@@ -367,6 +371,241 @@
     rectslRegistered = true;
   }
 
+  // GLSL, for `data-lang=glsl` fences -- 56 of them across field_probes, gpu_state, path_tracing,
+  // ray_tracing_examples, neural_particles, flow_grain, afield_four_graphics and the chain pages.
+  // The common highlight.js build has no glsl at all; this file used to alias it to `cpp`, which
+  // got the comments, braces and numbers right and then stopped. Everything that carries meaning in
+  // a shader -- the types, the storage and layout qualifiers, the `gl_` builtins, the preprocessor,
+  // the builtin function library -- is vocabulary cpp does not have, so it all fell through as
+  // plain identifiers.
+  //
+  // The vocabulary is mirrored from the editor's own GLSL grammar,
+  // `src/commonMain/resources/glsl.js` (Monarch, `bithero/glsl`), so a fence and the editor agree
+  // about what a word is. Where that grammar lists a family exhaustively -- 180-odd sampler,
+  // texture and image types -- this one matches the family by shape instead, because the list is
+  // generated in spelling (`isampler2DArrayShadow` is prefix + dimension + array + shadow) and a
+  // regex cannot go stale the way a transcribed list can.
+  //
+  // Three things here that a stock GLSL grammar would not have:
+  //
+  //   - Field's template spans. `{% include "fieldProbe" %}` and `{{ pc.dec }}` are how a Field
+  //     shader pulls in a preamble or a generated block, they appear in the docs corpus more often
+  //     than any GLSL builtin except `vec3`, and they are not GLSL -- so they are scoped `meta`,
+  //     the same colour as the `#` preprocessor, which is what they are the Field-side equivalent
+  //     of. The editor colours them too (`delimiter.template`).
+  //   - `field…` helpers as builtins, by shape (`fieldProbe`, `fieldStatsRecord`,
+  //     `fieldStatsQuantile`). Inside a GLSL fence, an identifier spelled that way came from an
+  //     injected Field preamble, so it is a builtin from the shader author's point of view. Shape
+  //     rather than a list, for the same reason as the sampler types.
+  //   - Layout qualifier names. `set`, `binding`, `push_constant`, `std430`, `local_size_x`,
+  //     `rgba8`, `buffer_reference` are meaningful only inside `layout(…)` and are not keywords
+  //     anywhere else, so they are scoped `attr` and only within the parens.
+  //
+  // A builtin function is only coloured as one when it is *called* (`BUILTIN_CALL` requires the
+  // open paren). `texture` is the builtin, `texture2D` is a type, and `length`, `data` and `mix`
+  // are all plausible variable names in this corpus -- gating on the paren keeps a variable named
+  // `normal` from reading as `normalize`'s cousin.
+  //
+  // Deliberately not attempted: `/* … */` spanning lines. `highlightLine` colours one line at a
+  // time, so the continuation lines of a block comment are not knowable here -- the same limit the
+  // cpp alias had, and the reason the corpus uses `//`.
+  function registerGlslLanguage() {
+    if (!window.hljs || glslRegistered || hljs.getLanguage("glsl")) {
+      glslRegistered = true;
+      return;
+    }
+
+    hljs.registerLanguage("glsl", function(hljs) {
+      // Control flow and declaration structure, plus the storage, precision and interpolation
+      // qualifiers -- `storage` and `keywords` in the editor's grammar, one colour here because a
+      // fence has fewer colours than an editor theme does.
+      const KEYWORDS = [
+        "if", "else", "for", "while", "do", "switch", "case", "default", "break", "continue",
+        "return", "discard", "struct", "subroutine",
+        "in", "out", "inout", "uniform", "buffer", "shared", "layout", "attribute", "varying",
+        "precision", "highp", "mediump", "lowp", "const", "centroid", "sample", "patch",
+        "smooth", "flat", "noperspective", "coherent", "volatile", "restrict", "readonly",
+        "writeonly",
+        // Vulkan ray tracing storage classes: the qualifier that makes a variable a hit attribute
+        // or a ray payload. GLSL 4.6 + GL_EXT_ray_tracing.
+        "hitAttributeEXT", "rayPayloadEXT", "rayPayloadInEXT", "callableDataEXT",
+        "callableDataInEXT", "shaderRecordEXT"
+      ];
+
+      // The scalar types and the handful of opaque ones that are not spelled as a family. The
+      // vector, matrix, sampler, texture and image families are matched by shape below.
+      const TYPES = [
+        "void", "bool", "int", "uint", "float", "double", "atomic_uint",
+        "accelerationStructureEXT", "rayQueryEXT"
+      ];
+
+      // GLSL 4.6's builtin function library, in the order the spec groups it.
+      const BUILTIN_FUNCTIONS = [
+        // angle and trigonometry, exponential
+        "radians", "degrees", "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
+        "asinh", "acosh", "atanh", "pow", "exp", "log", "exp2", "log2", "sqrt", "inversesqrt",
+        // common
+        "abs", "sign", "floor", "trunc", "round", "roundEven", "ceil", "fract", "mod", "modf",
+        "min", "max", "clamp", "mix", "step", "smoothstep", "isnan", "isinf", "fma", "frexp",
+        "ldexp", "floatBitsToInt", "floatBitsToUint", "intBitsToFloat", "uintBitsToFloat",
+        // packing
+        "packUnorm2x16", "packSnorm2x16", "packUnorm4x8", "packSnorm4x8", "unpackUnorm2x16",
+        "unpackSnorm2x16", "unpackUnorm4x8", "unpackSnorm4x8", "packHalf2x16", "unpackHalf2x16",
+        "packDouble2x32", "unpackDouble2x32",
+        // geometry and matrices
+        "length", "distance", "dot", "cross", "normalize", "faceforward", "reflect", "refract",
+        "matrixCompMult", "outerProduct", "transpose", "determinant", "inverse",
+        // vector relational
+        "lessThan", "lessThanEqual", "greaterThan", "greaterThanEqual", "equal", "notEqual",
+        "any", "all", "not",
+        // integer
+        "uaddCarry", "usubBorrow", "umulExtended", "imulExtended", "bitfieldExtract",
+        "bitfieldInsert", "bitfieldReverse", "bitCount", "findLSB", "findMSB",
+        // texture and image
+        "textureSize", "textureQueryLod", "textureQueryLevels", "textureSamples", "texture",
+        "textureProj", "textureLod", "textureOffset", "texelFetch", "texelFetchOffset",
+        "textureProjOffset", "textureLodOffset", "textureProjLod", "textureProjLodOffset",
+        "textureGrad", "textureGradOffset", "textureProjGrad", "textureProjGradOffset",
+        "textureGather", "textureGatherOffset", "textureGatherOffsets",
+        "imageSize", "imageSamples", "imageLoad", "imageStore", "imageAtomicAdd", "imageAtomicMin",
+        "imageAtomicMax", "imageAtomicAnd", "imageAtomicOr", "imageAtomicXor",
+        "imageAtomicExchange", "imageAtomicCompSwap", "subpassLoad",
+        // derivatives and interpolation
+        "dFdx", "dFdy", "dFdxFine", "dFdyFine", "dFdxCoarse", "dFdyCoarse", "fwidth", "fwidthFine",
+        "fwidthCoarse", "interpolateAtCentroid", "interpolateAtSample", "interpolateAtOffset",
+        // atomics, barriers, invocation control
+        "atomicAdd", "atomicMin", "atomicMax", "atomicAnd", "atomicOr", "atomicXor",
+        "atomicExchange", "atomicCompSwap", "atomicCounter", "atomicCounterIncrement",
+        "atomicCounterDecrement", "barrier", "memoryBarrier", "memoryBarrierAtomicCounter",
+        "memoryBarrierBuffer", "memoryBarrierShared", "memoryBarrierImage", "groupMemoryBarrier",
+        "emitVertex", "endPrimitive",
+        // Vulkan ray tracing and debug printf
+        "traceRayEXT", "reportIntersectionEXT", "ignoreIntersectionEXT", "terminateRayEXT",
+        "executeCallableEXT", "rayQueryInitializeEXT", "rayQueryProceedEXT",
+        "rayQueryTerminateEXT", "rayQueryGetIntersectionTEXT",
+        "rayQueryGetIntersectionTypeEXT", "debugPrintfEXT"
+      ];
+
+      // The words Field's own template tags are built from -- `templateWords` in the editor grammar.
+      const TEMPLATE_WORDS = [
+        "if", "else", "elif", "elseif", "endif", "for", "endfor", "while", "endwhile",
+        "include", "copyPC"
+      ];
+
+      // The scalar types are a mode rather than a `keywords` entry because a `contains` rule wins
+      // over keyword matching, and the rule that colours a call (`USER_CALL`) would otherwise take
+      // `int(x)`, `uint(bits)` and `float(n)` -- GLSL's constructor-syntax casts, which the corpus
+      // is full of -- and colour them as functions the shader defines.
+      const SCALAR_TYPE = new RegExp("\\b(?:" + TYPES.join("|") + ")\\b");
+      // `vec3`, `ivec4`, `mat4`, `dmat3x2`. One regex rather than 40 entries.
+      const VECTOR_OR_MATRIX_TYPE = /\b(?:[ibud]?vec[234]|d?mat[234](?:x[234])?)\b/;
+      // `sampler2D`, `isampler2DArray`, `image2D`, `texture2DMSArray`, `usampler2DRectShadow`,
+      // `subpassInputMS`, and bare `sampler`/`samplerShadow` for a separate-sampler binding. The
+      // longer spellings come first so `samplerShadow` is not read as `sampler` plus a word.
+      const OPAQUE_TYPE =
+        /\b(?:[iu]?(?:sampler|texture|image)(?:1D|2D|3D|Cube|Buffer|2DRect)(?:Array)?(?:Shadow|MS(?:Array)?)?|[iu]?subpassInput(?:MS)?|samplerShadow|sampler)\b/;
+      const BUILTIN_CALL = new RegExp("\\b(?:" + BUILTIN_FUNCTIONS.join("|") + ")(?=\\s*\\()");
+      const TEMPLATE_WORD = new RegExp("\\b(?:" + TEMPLATE_WORDS.join("|") + ")\\b");
+      // A call that is not a builtin and not a type constructor. The control-flow words are
+      // followed by `(` too, and a `contains` rule wins over keyword matching, so they have to be
+      // excluded here or `if (` would render as a function named `if`.
+      const USER_CALL =
+        /\b(?!(?:if|for|while|switch|return|do|else|layout|struct)\b)[A-Za-z_]\w*(?=\s*\()/;
+
+      return {
+        name: "GLSL",
+        aliases: ["vert", "frag", "comp", "geom", "rgen", "rchit", "rahit", "rmiss", "rint"],
+        case_insensitive: false,
+        keywords: {
+          keyword: KEYWORDS.join(" "),
+          literal: "true false"
+        },
+        contains: [
+          hljs.C_LINE_COMMENT_MODE,
+          hljs.C_BLOCK_COMMENT_MODE,
+          // Field's template expression and tag spans, delimiters included: not GLSL, and the
+          // reader should be able to see that at a glance.
+          {
+            scope: "meta",
+            begin: /\{\{/,
+            end: /\}\}/,
+            relevance: 10,
+            contains: [
+              hljs.QUOTE_STRING_MODE,
+              { scope: "attr", match: /[A-Za-z_][\w.]*/ }
+            ]
+          },
+          {
+            scope: "meta",
+            begin: /\{%/,
+            end: /%\}/,
+            relevance: 10,
+            contains: [
+              hljs.QUOTE_STRING_MODE,
+              { scope: "keyword", match: TEMPLATE_WORD },
+              { scope: "attr", match: /[A-Za-z_][\w.]*/ }
+            ]
+          },
+          // The preprocessor: `#version 460`, `#extension … : require`, `#include "…"`, and the
+          // conditional family. Coloured as one span, with the version number and the include path
+          // keeping their own colours inside it.
+          {
+            scope: "meta",
+            begin: /^[ \t]*#[ \t]*[a-z_]+/,
+            end: /$/,
+            relevance: 10,
+            contains: [
+              hljs.QUOTE_STRING_MODE,
+              { scope: "string", begin: /</, end: />/ },
+              { scope: "number", match: /\b\d+\b/ }
+            ]
+          },
+          // `gl_FragCoord`, `gl_LaunchIDEXT`, `gl_RayFlagsOpaqueEXT`. By prefix, because the `gl_`
+          // namespace is reserved for exactly this and every extension adds to it.
+          { scope: "built_in", match: /\bgl_[A-Za-z_]\w*/, relevance: 10 },
+          // Field's injected helpers, from `{% include "fieldProbe" %}` and friends.
+          { scope: "built_in", match: /\bfield(?:Probe|Stats)[A-Za-z0-9_]*/, relevance: 10 },
+          // `layout(set = 0, binding = 1, std430)`. The qualifier names are `attr` and only here.
+          {
+            begin: [/\blayout\b/, /[ \t]*/, /\(/],
+            beginScope: { 1: "keyword" },
+            end: /\)/,
+            relevance: 10,
+            contains: [
+              { scope: "attr", match: /\b[a-z_]\w*\b/ },
+              { scope: "number", match: /\b\d+\b/ }
+            ]
+          },
+          { scope: "type", match: SCALAR_TYPE, relevance: 0 },
+          { scope: "type", match: VECTOR_OR_MATRIX_TYPE, relevance: 0 },
+          { scope: "type", match: OPAQUE_TYPE, relevance: 0 },
+          { scope: "built_in", match: BUILTIN_CALL, relevance: 0 },
+          // `struct Payload {` — the name being declared.
+          {
+            begin: [/\bstruct\b/, /\s+/, /[A-Za-z_]\w*/],
+            beginScope: { 1: "keyword", 3: "type" },
+            relevance: 10
+          },
+          { scope: "title.function", match: USER_CALL, relevance: 0 },
+          // An UpperCamel identifier that is not a call: in this corpus that is a struct or an
+          // interface block -- `State state;`, `Material material;`, `Payload payload;`. A
+          // heuristic, and the one place this grammar guesses: an UpperCamel *function* declared
+          // without a call site on the same line would read as a type. Accepted because the
+          // struct-heavy pages (gpu_state, path_tracing) are the ones that need it, and because
+          // being read as a type is a near miss rather than a keyword inside a comment.
+          { scope: "type", match: /\b[A-Z][A-Za-z0-9_]*\b/, relevance: 0 },
+          // C numeric literals, with GLSL's `u`/`f`/`lf` suffixes. `1.0f`, `3u`, `0xffu`, `1e-3`.
+          {
+            scope: "number",
+            match: /\b0[xX][0-9a-fA-F]+[uU]?|\b\d+[uU]\b|(?:\b\d+\.\d*|\.\d+|\b\d+)(?:[eE][-+]?\d+)?(?:[fF]|lf|LF)?/,
+            relevance: 0
+          }
+        ]
+      };
+    });
+    glslRegistered = true;
+  }
+
   /**
    * Register every grammar this repo adds to highlight.js.
    *
@@ -379,6 +618,7 @@
     registerMorphoLanguage();
     registerClojureLanguage();
     registerRectSLLanguage();
+    registerGlslLanguage();
   }
 
   function ensureHighlight() {
