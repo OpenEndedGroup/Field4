@@ -13,6 +13,18 @@ The bridge talks to an **already-running** Field; it never launches the JVM. The
 is to converse about the document you already have open. If Field is not running (or has
 no document open) tools return a friendly error telling you to open it.
 
+## Live source and graphics
+
+The shared AI4 registry includes `DocumentSourceReadRequest`, revision-checked
+`DocumentSourcePatchRequest`, `DocumentBoxNavigateRequest`, and deliberate
+`DocumentSourceExportRequest`. External agents also use the same shader reload,
+context-variable and native-window capture providers as chat. Capture results become
+MCP image blocks; inspect the operation result as well as transport success.
+
+See [the live graphics workflow](light_infrastructure/AGENT_WORKFLOW.md) for source
+provenance, awaited Kotlin setup receipts, partial macro failures, exports, resets and
+repeatable profiling. This is also the handoff for the public `flow_grain` starting point.
+
 ## Prerequisite: the repo virtualenv
 
 The server is launched as `.venv/bin/python3 tools/field_mcp.py` (see

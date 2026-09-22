@@ -1326,6 +1326,8 @@ class KotlinExecution : BoxExecution {
             reply: (Message) -> Unit
         ) {
             val box = request.box
+            val trace = ExecutionTrace(box, request.exec.property, request.exec.code, request.exec.requestId, "launch", reply)
+            var executionSucceeded = false
 
             // Hold the "launching" marker (the stripy annotation `prepareBatchLaunchRequests` sends
             // for every box in the batch) until this box's own work is done and its launch state
@@ -1349,7 +1351,7 @@ class KotlinExecution : BoxExecution {
                 Box.withBoxContext(box) {
                     box.resetStdlibRandom()
                     resetLaunchSetupState(box)
-                    configureOutputProxies(box, reply, request.originSession)
+                    configureOutputProxies(box, trace.reply, request.originSession)
                     // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins on failure.
                     PinnedConsole.clearError(box.id)
                     beginExecutionErrorScope(box)
@@ -1363,7 +1365,7 @@ class KotlinExecution : BoxExecution {
                         if (nl) output.add("")
                         dispatchExecutionOutput(
                             box,
-                            reply,
+                            trace.reply,
                             Output(
                                 uid = box.id,
                                 line = line.i,
@@ -1378,7 +1380,7 @@ class KotlinExecution : BoxExecution {
                         hasError = hasError || content != null
                         dispatchExecutionOutput(
                             box,
-                            reply,
+                            trace.reply,
                             Output(
                                 uid = box.id,
                                 line = line.i,
@@ -1438,7 +1440,7 @@ class KotlinExecution : BoxExecution {
                                 onCompileError = { diagnostics ->
                                     reportCompileDiagnostics(
                                         box = box,
-                                        reply = reply,
+                                        reply = trace.reply,
                                         originSession = request.originSession,
                                         code = request.normalizedCode,
                                         diagnostics = diagnostics,
@@ -1499,7 +1501,7 @@ class KotlinExecution : BoxExecution {
                         results.forEach { returnValue ->
                             reportReturnValueAndLaunch(
                                 box = box,
-                                reply = reply,
+                                reply = trace.reply,
                                 originSession = request.originSession,
                                 returnValue = returnValue,
                                 printedSize = printedSize,
@@ -1509,6 +1511,7 @@ class KotlinExecution : BoxExecution {
                                 launchEpoch = request.launchEpoch,
                             )
                         }
+                        executionSucceeded = true
                     } else {
                         lprintln("error,execution", "batch launch finished with errors")
                     }
@@ -1528,6 +1531,7 @@ class KotlinExecution : BoxExecution {
                 }
             } finally {
                 clearPendingOnce()
+                trace.finish(executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch))
             }
         }
 
@@ -2008,6 +2012,8 @@ class KotlinExecution : BoxExecution {
                 originSession,
                 0,
                 property = execute.property,
+                requestId = execute.requestId,
+                sourceText = execute.code,
                 runSetupBlocks = true,
                 finishedHandler = {
                     inside._currentlyExecutingFragment = false
@@ -2035,6 +2041,8 @@ class KotlinExecution : BoxExecution {
                 originSession,
                 0,
                 property = execute.property,
+                requestId = execute.requestId,
+                sourceText = execute.code,
                 runSetupBlocks = true,
                 finishedHandler = {
                     inside._currentlyExecutingFragment = false
@@ -2059,6 +2067,9 @@ class KotlinExecution : BoxExecution {
                 originSession,
                 execute.line,
                 property = execute.property,
+                requestId = execute.requestId,
+                sourceText = execute.code,
+                executionMode = "run",
                 finishedHandler = {
                     send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
                 }) {}
@@ -2123,6 +2134,10 @@ class KotlinExecution : BoxExecution {
                 originSession,
                 execute.line,
                 property = execute.property,
+                requestId = execute.requestId,
+                sourceText = execute.code,
+                executionMode = "launch",
+                accepted = { inside.isLaunchEpochCurrent(launchEpoch) },
                 finishedHandler = {
                     if (inside.currentRunningStates[strand]?.watermark == pendingWatermark) {
                         inside.currentRunningStates.remove(strand)
@@ -2222,8 +2237,13 @@ class KotlinExecution : BoxExecution {
             returnType = cached.returnValue.javaClass.name
         )
         inMain {
-            if (!inside.isLaunchEpochCurrent(launchEpoch)) return@inMain
-            configureOutputProxies(inside, reply, originSession)
+            val trace = ExecutionTrace(inside, execute.property, execute.code, execute.requestId, "continue", reply)
+            if (!inside.isLaunchEpochCurrent(launchEpoch)) {
+                trace.finish(false, "Launch was cancelled before installation")
+                return@inMain
+            }
+            try {
+            configureOutputProxies(inside, trace.reply, originSession)
             ReturnValueRegistry.launchPrepared(inside, cached.returnValue, strand, launchEpoch) { isRunning, notifiedStrand, watermark ->
                 if (isRunning) {
                     inside.currentRunningStates[notifiedStrand] = RunningState(watermark, launchMode)
@@ -2249,6 +2269,11 @@ class KotlinExecution : BoxExecution {
                     returnType = cached.returnValue.javaClass.name
                 )
             }
+            trace.finish(true)
+            } catch (failure: Throwable) {
+                trace.finish(false, failure.message ?: failure.javaClass.name)
+                throw failure
+            }
         }
     }
 
@@ -2261,6 +2286,10 @@ class KotlinExecution : BoxExecution {
         ln: Int,
         property: String = "code",
         runSetupBlocks: Boolean = true,
+        requestId: String = "",
+        executionMode: String = "fragment",
+        sourceText: String = code,
+        accepted: () -> Boolean = { true },
         finishedHandler: () -> Unit = {},
         handleReturn: (Any?) -> Unit
     ) {
@@ -2268,6 +2297,8 @@ class KotlinExecution : BoxExecution {
         // here -- on the way in, not on success, since a run that fails has still rebuilt whatever
         // it got to and the flag would otherwise stick around describing a reload two edits ago.
         box.needsRerun = null
+        val trace = ExecutionTrace(box, property, sourceText, requestId, executionMode, reply)
+        var executionSucceeded = false
 
         Box.withBoxContext(box) {
             val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
@@ -2307,7 +2338,7 @@ class KotlinExecution : BoxExecution {
 //                    lprintln("debug,execution", "out $content")
                     dispatchExecutionOutput(
                         box,
-                        reply,
+                        trace.reply,
                         Output(
                             uid = box.id,
                             line = line.i,
@@ -2323,7 +2354,7 @@ class KotlinExecution : BoxExecution {
                     hasError = hasError || content != null
                     dispatchExecutionOutput(
                         box,
-                        reply,
+                        trace.reply,
                         Output(
                             uid = box.id,
                             line = (line + ln).i,
@@ -2374,7 +2405,7 @@ class KotlinExecution : BoxExecution {
                                 if (it.location != null) {
                                     dispatchExecutionOutput(
                                         box,
-                                        reply,
+                                        trace.reply,
                                         Output(
                                             uid = box.id,
                                             line = it.location!!.start.line,
@@ -2392,7 +2423,7 @@ class KotlinExecution : BoxExecution {
                                 } else {
                                     dispatchExecutionOutput(
                                         box,
-                                        reply,
+                                        trace.reply,
                                         Output(
                                             uid = box.id,
                                             line = ln + dur,
@@ -2426,7 +2457,7 @@ class KotlinExecution : BoxExecution {
                         val stack = stackLocationsForEvalException(box, evalException, location, property)
                         dispatchExecutionOutput(
                             box,
-                            reply,
+                            trace.reply,
                             Output(
                                 uid = box.id,
                                 line = firstLine,
@@ -2451,7 +2482,7 @@ class KotlinExecution : BoxExecution {
                             }?.let { diagnostic ->
                                 dispatchExecutionOutput(
                                     box,
-                                    reply,
+                                    trace.reply,
                                     Output(
                                         uid = box.id,
                                         line = diagnostic.location?.start?.line ?: 0,
@@ -2475,7 +2506,7 @@ class KotlinExecution : BoxExecution {
                             pinSetupException(box, "${box.id}#$block", block, throwable)
                             dispatchExecutionOutput(
                                 box,
-                                reply,
+                                trace.reply,
                                 Output(
                                     uid = box.id,
                                     line = 0,
@@ -2506,7 +2537,7 @@ class KotlinExecution : BoxExecution {
                             is ResultValue.Unit -> {
                                 if (size == 0) dispatchExecutionOutput(
                                     box,
-                                    reply,
+                                    trace.reply,
                                     Output(
                                         uid = box.id,
                                         line = dur,
@@ -2525,7 +2556,7 @@ class KotlinExecution : BoxExecution {
                             is ResultValue.Error -> {
                                 dispatchExecutionOutput(
                                     box,
-                                    reply,
+                                    trace.reply,
                                     Output(
                                         uid = box.id,
                                         line = ln + dur,
@@ -2547,7 +2578,7 @@ class KotlinExecution : BoxExecution {
                                     if (returnValue.value == null) {
                                         dispatchExecutionOutput(
                                             box,
-                                            reply,
+                                            trace.reply,
                                             Output(
                                                 uid = box.id,
                                                 line = dur,
@@ -2573,7 +2604,7 @@ class KotlinExecution : BoxExecution {
                                     if (value.length > 0) {
                                         dispatchExecutionOutput(
                                             box,
-                                            reply,
+                                            trace.reply,
                                             Output(
                                                 uid = box.id,
                                                 line = ln + dur,
@@ -2586,7 +2617,7 @@ class KotlinExecution : BoxExecution {
                                         )
                                     } else dispatchExecutionOutput(
                                         box,
-                                        reply,
+                                        trace.reply,
                                         Output(
                                             uid = box.id,
                                             line = ln + dur,
@@ -2605,7 +2636,7 @@ class KotlinExecution : BoxExecution {
                             null -> {
                                 if (size == 0) dispatchExecutionOutput(
                                     box,
-                                    reply,
+                                    trace.reply,
                                     Output(
                                         uid = box.id,
                                         line = ln + dur,
@@ -2622,6 +2653,7 @@ class KotlinExecution : BoxExecution {
                         }
 
                     }
+                    executionSucceeded = true
                 } else {
                     lprintln("error,execution", "execution finished with errors")
                     finishTelemetry("execute-error")
@@ -2633,7 +2665,7 @@ class KotlinExecution : BoxExecution {
                 lprintln("error,execution", t.stackTraceToString())
                 dispatchExecutionOutput(
                     box,
-                    reply,
+                    trace.reply,
                     Output(
                         uid = box.id,
                         line = ln + dur,
@@ -2645,7 +2677,7 @@ class KotlinExecution : BoxExecution {
                 )
             } finally {
                 finishTelemetry("execute-finished")
-                finishedHandler()
+                try { finishedHandler() } finally { trace.finish(executionSucceeded && accepted()) }
             }
         }
 

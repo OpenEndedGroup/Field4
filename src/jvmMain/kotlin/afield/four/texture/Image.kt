@@ -37,7 +37,7 @@ class Image(private val device: Device, val imageData: ImageData) {
     var drmPlaneLayouts: List<DmaBufPlaneLayout> = emptyList()
         private set
 
-    private val autoDisposeToken = AutoDisposer.register(this, "Image(format=${imageData.format}, ${imageData.width}x${imageData.height})") { /* set after init */ }
+    private val autoDisposeToken = AutoDisposer.register(this, "Image(format=${imageData.format}, ${imageData.width}x${imageData.height})", owner = device) { /* set after init */ }
 
     init {
         MemoryStack.stackPush().use { stack ->
@@ -234,7 +234,7 @@ class Image(private val device: Device, val imageData: ImageData) {
     }
 
     fun cleanup() {
-        autoDisposeToken.disable()
+        if (!autoDisposeToken.disable()) return
         // cachedOpaqueFd (if any) is intentionally not close()'d here: plain JVM code has no public
         // way to close a raw fd number (FileDescriptor has no public int constructor pre-reflection
         // hacks). Ring sizes are 2-3 per streamer, so this leaks a handful of fds for the process's

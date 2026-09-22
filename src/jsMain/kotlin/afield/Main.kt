@@ -5913,7 +5913,7 @@ suspend fun main() {
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
-        navigateToBoxProperty(sel.uid, sel.property, sel.scrollToLine, sel.highlightLine)
+        navigateToBoxProperty(sel.uid, sel.property, sel.scrollToLine, sel.highlightLine, center = sel.center)
 
         Handled.yes
     }

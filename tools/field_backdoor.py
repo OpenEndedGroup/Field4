@@ -268,6 +268,11 @@ def grade_execution(
     is still populated and ``data["executionErrorsIgnored"]`` says the verdict was waived.
     """
     problems = client.execution_errors(events)
+    for event in events:
+        payload = event.get("payload") or {}
+        if event.get("name") == "execution-verdict" and payload.get("success") is False:
+            detail = payload.get("error") or "Execution did not complete setup"
+            problems.append(f"{payload.get('uid')}/{payload.get('property')} [{payload.get('revision')}]: {detail}")
     if not problems:
         return data, not timed_out
     data = dict(data)
@@ -1025,6 +1030,7 @@ class FieldBackdoor:
         next_document_name = snapshot.get("documentName")
         self.document_name = next_document_name
         self.scratch = bool(snapshot.get("scratch"))
+        self.execution_verdicts = bool(snapshot.get("executionVerdicts"))
         # Reported by the server rather than echoed back from the request, so a caller can tell
         # that read-only was actually honoured.
         self.read_only = bool(snapshot.get("readOnly"))
@@ -2259,9 +2265,9 @@ class FieldBackdoor:
     async def execution_code(
         self, resolved: str, box: dict[str, Any], property_name: str, timeout: float
     ) -> str:
-        value = box.get(property_name)
-        if isinstance(value, str):
-            return value
+        # A source patch, another client or the editor may have changed the live property
+        # without updating this compact snapshot. Execute the server's source, never a
+        # stale cached preview. Explicit inline source is handled by the callers.
         return await self.get_property(uid=resolved, property_name=property_name, timeout=timeout)
 
     async def ai_tools_list(self, *, timeout: float) -> list[dict[str, Any]]:
@@ -2435,11 +2441,13 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def run_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+        if not getattr(self, "execution_verdicts", False):
+            raise BackdoorError("This server cannot report an awaited execution verdict. Restart Field with this checkout.")
         resolved, box = self.require_box_reference(uid)
         self.logger.log("run_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = await self.execution_code(resolved, box, property_name, timeout)
+        code = value if value is not None else await self.execution_code(resolved, box, property_name, timeout)
         reply_name = f"exec_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -2451,6 +2459,7 @@ class FieldBackdoor:
                 "code": code,
                 "singleLine": False,
                 "property": property_name,
+                "requestId": reply_name,
             },
             reply_to=reply_name,
             reply_context={"uid": resolved, "command": "run"},
@@ -2459,10 +2468,8 @@ class FieldBackdoor:
         def predicate():
             events = self.events_since(start_seq)
             for event in events:
-                if event["name"] != "is-running" or event.get("uid") != resolved:
-                    continue
                 payload = event.get("payload") or {}
-                if payload.get("strand") == "__fragment__" and payload.get("isRunning") is False:
+                if event.get("name") == "execution-verdict" and payload.get("requestId") == reply_name and payload.get("uid") == resolved:
                     return events
             return None
 
@@ -2485,11 +2492,13 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def launch_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+        if not getattr(self, "execution_verdicts", False):
+            raise BackdoorError("This server cannot report an awaited launch verdict. Restart Field with this checkout; a running stripe does not prove compilation succeeded.")
         resolved, box = self.require_box_reference(uid)
         self.logger.log("launch_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = await self.execution_code(resolved, box, property_name, timeout)
+        code = value if value is not None else await self.execution_code(resolved, box, property_name, timeout)
         reply_name = f"launch_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -2501,6 +2510,7 @@ class FieldBackdoor:
                 "code": code,
                 "singleLine": False,
                 "property": property_name,
+                "requestId": reply_name,
             },
             reply_to=reply_name,
             reply_context={"uid": resolved, "command": "launch"},
@@ -2509,16 +2519,9 @@ class FieldBackdoor:
         def predicate():
             events = self.events_since(start_seq)
             for event in events:
-                if event["name"] != "is-running" or event.get("uid") != resolved:
-                    continue
                 payload = event.get("payload") or {}
-                strand = payload.get("strand") or "default"
-                if strand != "default":
-                    continue
-                if payload.get("isRunning") is True:
-                    return events, True
-                if payload.get("isRunning") is False:
-                    return events, False
+                if event.get("name") == "execution-verdict" and payload.get("requestId") == reply_name and payload.get("uid") == resolved:
+                    return events, bool(self.boxes.get(resolved, {}).get("runningStrands"))
             return None
 
         timed_out = False
@@ -2536,8 +2539,9 @@ class FieldBackdoor:
             "property": property_name,
             "codeLength": len(code),
             "running": running,
-            "runningObservation": "initial-signal",
+            "runningObservation": "timeout" if timed_out else "setup-complete",
             "runningMayBeTransient": True,
+            "verdict": next((e.get("payload") for e in events if e.get("name") == "execution-verdict" and (e.get("payload") or {}).get("requestId") == reply_name), None),
         }
         self.logger.log("launch_box_complete", uid=resolved, timedOut=timed_out, running=running, eventCount=len(events))
         return data, events, timed_out
@@ -2565,6 +2569,9 @@ class FieldBackdoor:
         if len(set(resolved)) != len(resolved):
             raise BackdoorError("launch-batch cannot contain the same box more than once")
 
+        if not getattr(self, "execution_verdicts", False):
+            raise BackdoorError("This server cannot report awaited execution verdicts; restart Field with this checkout.")
+        reply_name = f"launch_batch_{uuid.uuid4().hex}"
         executions = [
             {
                 "uid": uid,
@@ -2574,10 +2581,10 @@ class FieldBackdoor:
                 "singleLine": False,
                 "property": property_name,
                 "strand": strand,
+                "requestId": reply_name,
             }
             for uid, box in resolved_boxes
         ]
-        reply_name = f"launch_batch_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         self.logger.log(
             "launch_batch_start",
@@ -2595,16 +2602,13 @@ class FieldBackdoor:
 
         def predicate():
             events = self.events_since(start_seq)
-            acknowledged = {
-                event.get("uid")
-                for event in events
-                if event.get("name") == "is-running"
-                and event.get("uid") in resolved
-                and (event.get("payload") or {}).get("isRunning") is True
-                and ((event.get("payload") or {}).get("strand") or "default") == strand
+            completed = {
+                (event.get("payload") or {}).get("uid") for event in events
+                if event.get("name") == "execution-verdict"
+                and (event.get("payload") or {}).get("requestId") == reply_name
             }
-            if len(acknowledged) == len(resolved):
-                return events, acknowledged
+            if set(resolved).issubset(completed):
+                return events, completed
             return None
 
         timed_out = False
@@ -2619,12 +2623,9 @@ class FieldBackdoor:
             timed_out = True
             events = self.events_since(start_seq)
             acknowledged = {
-                event.get("uid")
-                for event in events
-                if event.get("name") == "is-running"
-                and event.get("uid") in resolved
-                and (event.get("payload") or {}).get("isRunning") is True
-                and ((event.get("payload") or {}).get("strand") or "default") == strand
+                (event.get("payload") or {}).get("uid") for event in events
+                if event.get("name") == "execution-verdict"
+                and (event.get("payload") or {}).get("requestId") == reply_name
             }
         finally:
             self.reply_contexts.pop(reply_name, None)
@@ -2634,9 +2635,10 @@ class FieldBackdoor:
             "boxCount": len(resolved),
             "property": property_name,
             "strand": strand,
-            "queued": len(acknowledged) == len(resolved),
+            "queued": True,
+            "setupComplete": len(acknowledged) == len(resolved),
             "acknowledgedUids": [uid for uid in resolved if uid in acknowledged],
-            "runningObservation": "pending-signal",
+            "runningObservation": "awaiting-setup" if timed_out else "setup-complete",
             "runningMayBeTransient": True,
         }
         self.logger.log(
@@ -2733,11 +2735,13 @@ class FieldBackdoor:
         return data, events
 
     async def continue_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+        if not getattr(self, "execution_verdicts", False):
+            raise BackdoorError("This server cannot report awaited execution verdicts; restart Field with this checkout.")
         resolved, box = self.require_box_reference(uid)
         self.logger.log("continue_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = await self.execution_code(resolved, box, property_name, timeout)
+        code = value if value is not None else await self.execution_code(resolved, box, property_name, timeout)
         reply_name = f"continue_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -2749,6 +2753,7 @@ class FieldBackdoor:
                 "code": code,
                 "singleLine": False,
                 "property": property_name,
+                "requestId": reply_name,
             },
             reply_to=reply_name,
             reply_context={"uid": resolved, "command": "continue"},
@@ -2757,16 +2762,9 @@ class FieldBackdoor:
         def predicate():
             events = self.events_since(start_seq)
             for event in events:
-                if event["name"] != "is-running" or event.get("uid") != resolved:
-                    continue
                 payload = event.get("payload") or {}
-                strand = payload.get("strand") or "default"
-                if strand != "default":
-                    continue
-                if payload.get("isRunning") is True:
-                    return events, True
-                if payload.get("isRunning") is False:
-                    return events, False
+                if event.get("name") == "execution-verdict" and payload.get("requestId") == reply_name and payload.get("uid") == resolved:
+                    return events, bool(self.boxes.get(resolved, {}).get("runningStrands"))
             return None
 
         timed_out = False
@@ -2998,6 +2996,9 @@ class FieldBackdoor:
 def build_command_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="field-backdoor", add_help=False)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    help_parser = subparsers.add_parser("help", add_help=False)
+    help_parser.add_argument("topic", nargs="?")
 
     open_parser = subparsers.add_parser("open", add_help=False)
     open_parser.add_argument("document", nargs="?")
@@ -3328,6 +3329,14 @@ async def dispatch_command(
     auto_playwright_timeout: float | None = None,
 ) -> dict[str, Any]:
     client.logger.log("command_dispatch_start", commandLine=command_line, command=args.command)
+    if args.command == "help":
+        parser = build_command_parser()
+        choices = next(a.choices for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+        if args.topic and args.topic not in choices:
+            raise BackdoorError(f"Unknown command {args.topic!r}")
+        text = choices[args.topic].format_help() if args.topic else parser.format_help()
+        return command_result(command_line, True, data={"help": text})
+
     if args.command == "open":
         data = await client.open_document(
             args.document,

@@ -129,9 +129,11 @@ class ComputeModule(val parameters: Parameters) : Renderable {
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
 
+    // Push descriptors still reference these layouts while the pipeline is in use.
+    private val ownedDescriptorLayouts = mutableListOf<DescriptorSetLayout.SimpleDescriptorSetLayout>()
     var pipelineLayout: Long = 0L
     var pipeline: Long = 0L
-    private val pipelineDisposeToken = AutoDisposer.register(this, "ComputePipeline(${parameters.name})") { }
+    private val pipelineDisposeToken = AutoDisposer.register(this, "ComputePipeline(${parameters.name})", owner = parameters.renderer.device) { }
 
     data class PipelineUpdate(
         val computeIntrospection: Introspection,
@@ -223,6 +225,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     parameters.renderer.device, kinds, set, bindingList, stages, lens, pushDescriptor = true
                 )
                 layoutMap[set] = layout
+                ownedDescriptorLayouts += layout
             }
 
             // UBOs
@@ -359,17 +362,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     "Error creating compute pipeline"
                 )
                 this.pipeline = lp[0]
-                pipelineDisposeToken.updateCleanup {
-                    if (pipeline != 0L) {
-                        VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
-                    }
-                    if (pipelineLayout != 0L) {
-                        VK10.vkDestroyPipelineLayout(parameters.renderer.device.vkDevice, pipelineLayout, null)
-                    }
-                    if (csm != 0L) {
-                        VK10.vkDestroyShaderModule(parameters.renderer.device.vkDevice, csm, null)
-                    }
-                }
+                pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
                 parameters.renderer.device.nameObject(
                     pipeline, VK10.VK_OBJECT_TYPE_PIPELINE, "${parameters.name} Pipeline"
                 )
@@ -439,9 +432,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
         parameters.computeIntrospection = update.computeIntrospection
 
-        pipelineDisposeToken.updateCleanup {
-            destroyPipelineHandles(pipeline, pipelineLayout, csm)
-        }
+        pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
 
         parameters.renderer.cleanup.add(Runnable {
             destroyPipelineHandles(oldPipeline, 0L, oldCsm)
@@ -564,12 +555,28 @@ class ComputeModule(val parameters: Parameters) : Renderable {
         after.putAll(old.after)
     }
 
+    private fun snapshotPipelineCleanup(): () -> Unit {
+        val dev = parameters.renderer.device.vkDevice
+        val p = pipeline
+        val layout = pipelineLayout
+        val sets = ownedDescriptorLayouts.toList()
+        val csmHandle = csm
+        return {
+            if (p != 0L) VK10.vkDestroyPipeline(dev, p, null)
+            if (layout != 0L) VK10.vkDestroyPipelineLayout(dev, layout, null)
+            if (csmHandle != 0L) VK10.vkDestroyShaderModule(dev, csmHandle, null)
+            sets.forEach { it.cleanup() }
+        }
+    }
+
     fun cleanup() {
-        pipelineDisposeToken.disable()
+        if (!pipelineDisposeToken.disable()) return
         destroyPipelineHandles(pipeline, pipelineLayout, csm)
         pipeline = 0L
         pipelineLayout = 0L
         csm = 0L
+        ownedDescriptorLayouts.forEach { it.cleanup() }
+        ownedDescriptorLayouts.clear()
     }
 
     private fun destroyPipelineHandles(pipelineHandle: Long, pipelineLayoutHandle: Long, shaderModule: Long) {

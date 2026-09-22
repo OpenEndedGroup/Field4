@@ -8,95 +8,14 @@ import afield.OperationTranscript
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Provider-neutral bridge that exposes a **Tier-1 subset** of the ai4 agent tool
- * vocabulary (the same `ToolRegistry` used by the OpenAI harness in
- * [OpenAiIdeCodexBridge]) to the agent backdoor, and thence to MCP via
- * `tools/field_mcp.py`.
- *
- * "Tier-1" = the providers that depend only on a [SessionInformation]'s document
- * path or on backend singletons, so they can be wired here **without touching the
- * production chat handler `installAi4()`**:
- *   - Macro*        → [OperationTranscript]
- *   - SemanticRetrieval* → [SemanticRetrievalService]
- *   - Scratchpad / Checklist → per-document [AgentMemoryState]
- *
- * The box-scoped ("Tier-2") providers — CompileKotlin, EvaluateKotlin, ReloadShaders,
- * ListDefinitions, EditFile, CodeUse*, workspaceSymbolSearch — are entangled with
- * ~1000 lines of request-scoped helpers inside `installAi4()` and are intentionally
- * left unwired here. Because [ToolRegistry] gates every tool on its provider being
- * present, an unwired provider simply means the tool does not appear over MCP;
- * nothing errors. They come online when `installAi4()` is refactored to expose a
- * shared context factory (the staged Tier-2 work).
- *
- * This registry deliberately mirrors the relevant registrations in
- * [OpenAiIdeCodexBridge.registerBuiltIns]; keep the two in sync until the shared
- * factory dedups them.
- */
+/** Shared AI4 registry for external agents; targets must be explicit in this context. */
 internal object Ai4BackdoorTools {
     private val memoryByDocument = ConcurrentHashMap<String, AgentMemoryState>()
 
-    /** A registry populated with the Tier-1 tools (passthroughs to context providers). */
-    val registry: ToolRegistry = ToolRegistry().apply {
-        // Everything registered through AgentToolExtensions, exactly as registerBuiltInAgentTools does
-        // it for the in-app agents — and first, so that a name collision is resolved the same way in
-        // both registries: whatever core registers below wins.
-        //
-        // This line was missing until 2026-08-11, and its absence made a documented claim false rather
-        // than merely incomplete. AgentToolExtensions' own KDoc promised "nothing extra to write for
-        // the OpenAI path or the MCP face", and the MCP face was the one surface that never saw an
-        // extension tool: this registry is built by hand here rather than by registerBuiltInAgentTools,
-        // so it had no route to them. A cluster's tools were reachable from AI Chat and invisible to
-        // Claude Code over the backdoor, with nothing anywhere saying so.
-        //
-        // applyTo also *subscribes* this registry, so a tool a box registers later shows up on the next
-        // agent-ai-tools-list without the backdoor being restarted.
-        AgentToolExtensions.applyTo(this)
-        registerDocumentGuideTools(this)
+    /** The same registry used by in-Field chat; availability follows the wired providers. */
+    val registry: ToolRegistry = ToolRegistry().also(::registerBuiltInAgentTools)
 
-        register(MacroListRequest::class.java, { it.listMacros != null }) { ctx, req ->
-            ctx.listMacros!!.invoke(req)
-        }
-        register(MacroReadRequest::class.java, { it.readMacro != null }) { ctx, req ->
-            ctx.readMacro!!.invoke(req)
-        }
-        register(MacroWriteRequest::class.java, { it.writeMacro != null }) { ctx, req ->
-            ctx.writeMacro!!.invoke(req)
-        }
-        register(MacroRunRequest::class.java, { it.runMacro != null }) { ctx, req ->
-            ctx.runMacro!!.invoke(req)
-        }
-        register(SemanticRetrievalSearchRequest::class.java, { it.semanticRetrievalSearch != null }) { ctx, req ->
-            ctx.semanticRetrievalSearch!!.invoke(req)
-        }
-        register(SemanticRetrievalStatusRequest::class.java, { it.semanticRetrievalStatus != null }) { ctx, _ ->
-            ctx.semanticRetrievalStatus!!.invoke()
-        }
-        register(SemanticRetrievalRebuildRequest::class.java, { it.semanticRetrievalRebuild != null }) { ctx, _ ->
-            ctx.semanticRetrievalRebuild!!.invoke()
-        }
-        register(ScratchpadReadRequest::class.java, { it.agentMemory != null }) { ctx, _ ->
-            ctx.agentMemory!!.readScratchpad()
-        }
-        register(ScratchpadUpdateRequest::class.java, { it.agentMemory != null }) { ctx, req ->
-            ctx.agentMemory!!.updateScratchpad(req)
-        }
-        register(ChecklistReadRequest::class.java, { it.agentMemory != null }) { ctx, _ ->
-            ctx.agentMemory!!.readChecklist()
-        }
-        register(ChecklistUpdateRequest::class.java, { it.agentMemory != null }) { ctx, req ->
-            ctx.agentMemory!!.updateChecklist(req)
-        }
-        // Tier-2 box-scoped code tools (shared with the OpenAI harness via Ai4CodeToolProviders).
-        register(CompileKotlinRequest::class.java, { it.compileKotlin != null }) { ctx, req ->
-            ctx.compileKotlin!!.invoke(req)
-        }
-        register(EvaluateKotlinExpressionRequest::class.java, { it.evaluateKotlinExpression != null }) { ctx, req ->
-            ctx.evaluateKotlinExpression!!.invoke(req)
-        }
-    }
-
-    /** Build a [ToolExecutionContext] wiring the Tier-1 providers for [sessionInfo]. */
+    /** Build a [ToolExecutionContext] wiring the shared document and runtime providers for [sessionInfo]. */
     fun buildContext(sessionInfo: SessionInformation): ToolExecutionContext {
         val docPath = sessionInfo.filename
         val docName = File(docPath).name
@@ -184,23 +103,7 @@ internal object Ai4BackdoorTools {
                 else uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })?.id
                     ?: token
             }
-            val result = OperationTranscript.runMacro(
-                documentPath = docPath,
-                name = req.name,
-                targetBoxes = targets,
-                direction = req.direction,
-                strict = req.strict
-            )
-            MacroRunResult(
-                success = result.success,
-                message = result.message,
-                name = result.name,
-                direction = result.direction,
-                targetBoxes = result.targetBoxes,
-                applied = result.applied,
-                skipped = result.skipped,
-                errors = result.errors
-            )
+            macroRunToolResult(docPath, req, targets)
         }
 
         val semanticRetrievalSearch: (SemanticRetrievalSearchRequest) -> SemanticRetrievalToolResult = { req ->
@@ -249,7 +152,31 @@ internal object Ai4BackdoorTools {
             )
         }
 
+        val runtimeTools = Ai4RuntimeToolProviders(sessionInfo, refResolver, boxByIdOrNull)
         return ToolExecutionContext(
+            listDefinitions = {
+                ListDefinitionsResult(sessionInfo.boxes.values.sortedBy { it.id }.flatMap { box ->
+                    val ref = fileRefFor(docName, box.id, "code")
+                    box.ki.context.vars.values.map { DefinitionInfo(it.name, "variable", ref, "Kotlin") } +
+                        box.ki.context.functions.values.map { DefinitionInfo(it.toString(true), "function", ref, "Kotlin") }
+                })
+            },
+            listFileContents = {
+                ListContentsResult(contents = sessionInfo.boxes.values.sortedBy { it.id }.flatMap { box ->
+                    Box.ioSeparateProperties.keys.sorted().mapNotNull { property ->
+                        (box.getPropertyRaw(property) as? String)?.let { contents ->
+                            ListContentEntry(fileRefFor(docName, box.id, property), property,
+                                if (property == "code") "Kotlin" else "text", contents,
+                                box.id, box.name, "document")
+                        }
+                    }
+                })
+            },
+            reloadShaders = runtimeTools.reloadShaders,
+            captureRenderWindow = runtimeTools.captureRenderWindow,
+            listKotlinContextVariables = runtimeTools.listKotlinContextVariables,
+            codeUseQuery = runtimeTools.codeUseQuery,
+            workspaceSymbolSearch = runtimeTools.workspaceSymbolSearch,
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,

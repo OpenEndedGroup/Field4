@@ -165,6 +165,12 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        "flowMask" to
+            "flow_grain.md; this is an editable GLSL obstacle callback. The native flow_grain " +
+                "capture evaluates it on a GPU; headless CI compiles the document's Kotlin only.",
+        "flowVelocity" to
+            "flow_grain.md; this is an editable GLSL velocity callback over live fluid buffers. " +
+                "The native flow_grain capture evaluates it outside headless CI.",
         // The five the path-tracer instrument teaches. They became visible to this guard when
         // `path_tracer_instrument` was promoted out of `dev_docs/agents/demos/` into the corpus:
         // the scene was always documented, and until then nothing in CI compiled it either.
@@ -195,10 +201,6 @@ class DocumentedApiEvaluationTest {
         "shadeMaterial" to
             "path_tracing.md; this is a GLSL material hook in the editable compute shader. " +
                 "Live material-box checks exercise it on a GPU; headless CI compiles the transcript.",
-        "setDefaultSampler" to
-            "afield_four_graphics.md; aperture_playground is COMPILE_ONLY because constructing " +
-                "its RTT and Vulkan sampler needs a real renderer/device. The docs capture executes " +
-                "the complete graph on a GPU; headless CI compiles its Kotlin only.",
         "eyeGazeState" to
             "vision.md; openxr_eye_intersection is COMPILE_ONLY. The target requires a live " +
                 "Vulkan/OpenXR session. Native binding calls and state validity are tested separately.",

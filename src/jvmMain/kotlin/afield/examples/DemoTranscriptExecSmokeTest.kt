@@ -374,6 +374,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
+        "flow_grain",
         "aperture_playground",
         // Persistent optional Kratos worker; exercised separately by the live playground check.
         "kratos_thermal_playground",
@@ -768,7 +770,7 @@ object DemoTranscriptExecSmokeTest {
                 continue
             }
             if (target.getPropertyRaw("_tombstone").isTrue()) continue
-            val code = target.code
+            val code = (target.getPropertyRaw("code") as? String).orEmpty()
             if (code.isBlank()) {
                 println("[compile]   $id: no Kotlin `code` (shader-only box) — skipped")
                 continue

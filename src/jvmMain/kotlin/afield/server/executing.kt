@@ -10,6 +10,13 @@ private fun clearEditorOutputsForLaunch(uid: String) {
     send(Message("clear-editor-outputs").payload(ClearEditorOutputs(uid)))
 }
 
+private fun lacksExecutionReceipt(box: Box, exec: Execute, reply: (Message) -> Unit): Boolean {
+    if (exec.requestId.isBlank() || box.ke is KotlinExecution) return false
+    ExecutionTrace(box, exec.property, exec.code, exec.requestId, "unsupported", reply)
+        .finish(false, "Awaited execution receipts are not yet supported by ${box.ke.languageName}; no code was launched.")
+    return true
+}
+
 @RunsAt(installHandlers)
 fun executing() {
 
@@ -31,7 +38,7 @@ fun executing() {
             val box = box(exec.uid)
             FlightRecorder.recordExecuteEntrypoint("execute-fragment", box, exec)
             OperationTranscript.recordExecuteFragment(box, exec)
-            box.ke.executeFragment(box, exec, reply)
+            if (!lacksExecutionReceipt(box, exec, reply)) box.ke.executeFragment(box, exec, reply)
             Handled.yes
         })
 
@@ -66,7 +73,7 @@ fun executing() {
                     box.properties["_preamble"] = "" // remove record of previous preamble line execs
                     box.properties["_introduction"] = "" // ditto for introduction
                     box.properties.remove("_attic")
-                    box.ke.executeAll(box, exec, reply)
+                    if (!lacksExecutionReceipt(box, exec, reply)) box.ke.executeAll(box, exec, reply)
                 } finally {
                     if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
                     if (previousSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousSessionInfo)
@@ -85,7 +92,7 @@ fun executing() {
             clearEditorOutputsForLaunch(exec.uid)
             FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
             OperationTranscript.recordLaunch(box, exec, strand = "default")
-            box.ke.launchAll(box, exec, exec.code, "default", reply)
+            if (!lacksExecutionReceipt(box, exec, reply)) box.ke.launchAll(box, exec, exec.code, "default", reply)
 
 
             Handled.yes
@@ -108,7 +115,7 @@ fun executing() {
                 KotlinExecution.launchBatch(kotlinRequests, reply)
             } else {
                 requests.forEach { (box, exec) ->
-                    box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
+                    if (!lacksExecutionReceipt(box, exec, reply)) box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
                 }
             }
 
@@ -122,7 +129,7 @@ fun executing() {
             val box = box(exec.uid)
 
             FlightRecorder.recordLaunchEntrypoint("continue-all", box, exec, strand = "default")
-            box.ke.continueAll(box, exec, exec.code, "default", reply)
+            if (!lacksExecutionReceipt(box, exec, reply)) box.ke.continueAll(box, exec, exec.code, "default", reply)
 
 
             Handled.yes
@@ -137,7 +144,7 @@ fun executing() {
             clearEditorOutputsForLaunch(exec.uid)
             FlightRecorder.recordLaunchEntrypoint("launch-fragment", box, exec, strand = exec.strand)
             OperationTranscript.recordLaunch(box, exec, strand = exec.strand)
-            box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
+            if (!lacksExecutionReceipt(box, exec, reply)) box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
 
             Handled.yes
         })

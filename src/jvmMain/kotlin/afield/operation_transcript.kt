@@ -72,7 +72,8 @@ object OperationTranscript {
         val total: Int = 0,
         val hasMore: Boolean = false,
         val prompt: String = "",
-        val output: List<MacroOutputLine> = emptyList()
+        val output: List<MacroOutputLine> = emptyList(),
+        val setupVerified: Boolean = true
     )
 
     data class MacroRunResult(
@@ -86,7 +87,8 @@ object OperationTranscript {
         val errors: List<String> = emptyList(),
         // Box output/errors emitted while executing/launching boxes during this run,
         // so an agent driving a transcript can see println/_print output and errors.
-        val output: List<MacroOutputLine> = emptyList()
+        val output: List<MacroOutputLine> = emptyList(),
+        val setupVerified: Boolean = true
     )
 
     private data class DocumentState(
@@ -479,9 +481,20 @@ object OperationTranscript {
         var applied = 0
         var skipped = 0
         val collected = java.util.Collections.synchronizedList(mutableListOf<MacroOutputLine>())
-        val collect: (Message) -> Unit = { msg -> captureMacroOutput(msg, collected) }
+        val unverified = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        val collect: (Message) -> Unit = { msg ->
+            if (msg.name == "execution-dispatched") {
+                val payload = msg.payload as? kotlinx.serialization.json.JsonObject
+                unverified.add(payload?.get("uid")?.toString().orEmpty())
+            }
+            synchronized(collected) { if (collected.size < 200) captureMacroOutput(msg, collected) }
+        }
 
         targets.forEach { target ->
+            if (normalizedDirection == "do" && errors.isNotEmpty()) {
+                skipped += ordered.size
+                return@forEach
+            }
             val primarySource = firstOperationBox(operations)
             val boxMap = if (target.isNotBlank() && primarySource != null) mapOf(primarySource to target) else emptyMap()
             var launchIndex = 0
@@ -516,6 +529,10 @@ object OperationTranscript {
                         skipped += launchGroup.size
                         errors += result.exceptionOrNull()?.message ?: "Unknown macro launch group failure."
                     }
+                    if (errors.isNotEmpty()) {
+                        skipped += ordered.size - index
+                        break
+                    }
                     continue
                 }
 
@@ -540,6 +557,12 @@ object OperationTranscript {
                             ?: "Unknown macro operation failure."
                 }
                 index++
+                // A failed prerequisite must not launch dependent code. Undo remains
+                // best-effort so a broken box cannot prevent later cleanup operations.
+                if (normalizedDirection == "do" && errors.isNotEmpty()) {
+                    skipped += ordered.size - index
+                    break
+                }
             }
         }
         if (applied > 0) runCatching { doResync() }
@@ -548,16 +571,19 @@ object OperationTranscript {
         } else {
             ""
         }
+        val dispatchMessage = if (unverified.isEmpty()) "" else
+            " ${unverified.size} non-Kotlin execution(s) dispatched; setup completion is unverified."
         return MacroRunResult(
             success = errors.isEmpty(),
-            message = "Ran macro '$cleanName': applied=$applied skipped=$skipped errors=${errors.size}.$noChangeMessage",
+            message = "Ran macro '$cleanName': applied=$applied skipped=$skipped errors=${errors.size}.$noChangeMessage$dispatchMessage",
             name = cleanName,
             direction = normalizedDirection,
             targetBoxes = targetBoxes,
             applied = applied,
             skipped = skipped,
             errors = errors,
-            output = collected.toList()
+            output = collected.toList(),
+            setupVerified = unverified.isEmpty() && errors.isEmpty()
         )
     }
 
@@ -1451,7 +1477,13 @@ object OperationTranscript {
                 val action = if (direction == "undo") {
                     if (verb == "connect") "disconnect" else "connect"
                 } else verb
-                if (action == "connect") parent.connect(child) else parent.disconnect(child)
+                if (action == "connect") {
+                    parent.connect(child)
+                    if (payload["nested"] == true) child.nestedIn = parent
+                } else {
+                    if (payload["nested"] == true && child.nestedIn === parent) child.nestedIn = null
+                    parent.disconnect(child)
+                }
                 true
             }
             "execute", "execute-fragment" -> {
@@ -1461,7 +1493,9 @@ object OperationTranscript {
                 val exec = executeFromPayload(target.id, payload, fallbackType = "fragment")
                 // Await completion (like the launch path) so the fragment's output is
                 // captured into the run result — fire-and-forget stalls headlessly.
-                runBlocking { target.ke.executeFragmentAndWait(target, exec) { send(it); collect(it) } }
+                checkedMacroExecution(target, exec, collect) { reply ->
+                    runBlocking { target.ke.executeFragmentAndWait(target, exec, reply) }
+                }
                 true
             }
             // Drive the attached Playwright page with an arbitrary Kotlin script (the
@@ -1566,7 +1600,9 @@ object OperationTranscript {
                 } else null
 
                 try {
-                    runBlocking { target.ke.executeFragmentAndWait(target, exec) { send(it); collect(it) } }
+                    checkedMacroExecution(target, exec, collect) { reply ->
+                        runBlocking { target.ke.executeFragmentAndWait(target, exec, reply) }
+                    }
                 } finally {
                     if (recorder != null && videoPath != null) {
                         val frames = runBlocking { recorder.stopAndEncode(java.nio.file.Path.of(videoPath)) }
@@ -1686,26 +1722,53 @@ object OperationTranscript {
         }
         if (launches.isEmpty()) return 0 to operations.size
 
-        val cleared = mutableSetOf<String>()
-        launches.forEach { launch ->
-            if (cleared.add(launch.target.id)) {
+        // Reject unresolved prerequisites before launching anything in the group.
+        if (skipped > 0) return 0 to operations.size
+        var applied = 0
+        for (launch in launches) {
+            val result = runCatching {
                 send(Message("clear-editor-outputs").payload(ClearEditorOutputs(launch.target.id)))
+                notifyMacroLaunch(launch.target, launch.exec, launch.context)
+                checkedMacroExecution(launch.target, launch.exec, collect) { reply ->
+                    if (launch.target.ke is KotlinExecution) {
+                        runBlocking { KotlinExecution.launchBatchAndWait(listOf(launch.target to launch.exec), reply) }
+                    } else {
+                        // Preserve the ordinary engine's launch path. The result below marks
+                        // dispatch separately; only Kotlin currently promises awaited setup.
+                        launch.target.ke.launchAll(launch.target, launch.exec, launch.exec.code, launch.exec.strand, reply)
+                    }
+                }
             }
-            notifyMacroLaunch(launch.target, launch.exec, launch.context)
+            if (result.isFailure) {
+                val failure = result.exceptionOrNull()!!
+                if (diagnostics == null) throw failure
+                diagnostics.add(failure.message ?: failure.javaClass.name)
+                return applied to operations.size - applied
+            }
+            applied++
         }
+        return applied to skipped
+    }
 
-        val requests = launches.map { it.target to it.exec }
-        if (requests.all { (target, _) -> target.ke is KotlinExecution }) {
-            runBlocking {
-                KotlinExecution.launchBatchAndWait(requests) { send(it); collect(it) }
-            }
-        } else {
-            requests.forEach { (target, exec) ->
-                target.ke.launchAll(target, exec, exec.code, strand = exec.strand, reply = { send(it); collect(it) })
-            }
+    private fun checkedMacroExecution(
+        target: Box,
+        exec: Execute,
+        collect: (Message) -> Unit,
+        execute: ((Message) -> Unit) -> Unit
+    ) {
+        val verdict = ExecutionVerdict(target.id, exec.property, exec.code)
+        execute { message ->
+            verdict.observe(message)
+            send(message)
+            collect(message)
         }
-
-        return launches.size to skipped
+        verdict.check()
+        if (target.ke !is KotlinExecution) {
+            collect(Message("execution-dispatched").payload(ExecutionReport(
+                target.id, exec.property, sourceRevision(exec.code), mode = "macro",
+                stage = "dispatched", success = true
+            )))
+        }
     }
 
     private sealed interface LaunchResolution {
@@ -1886,7 +1949,7 @@ object OperationTranscript {
                 uid = str("uid").orEmpty(),
                 kind = str("kind") ?: "normal",
                 line = int("line") ?: -1,
-                html = html
+                html = html.take(8192)
             )
         )
     }
