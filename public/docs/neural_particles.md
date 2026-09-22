@@ -246,20 +246,19 @@ measures about **0.6 of a letter's perimeter** — *shorter* than either endpoin
 is the shortest closed curve there is. The middle of two letters, in this space, is simpler than
 either of them.
 
-!!! warning "Two conditions, both of which the API enforces or you will get nonsense"
+!!! warning "What `blendWith` needs from the two fields"
 
     **The same source cloud.** Both fields must be trained from one shared cloud, so a particle
     has one start point and two destinations. That is also what makes the two normalisation frames
-    agree — `blendWith` refuses to blend fields normalised differently, because `t = 1` meaning
-    "B's weights read in A's coordinates" is a different field from B and would look exactly like
-    an interesting result.
+    agree, and this one the API does enforce: `blendWith` refuses to blend fields normalised
+    differently, because `t = 1` meaning "B's weights read in A's coordinates" is a different field
+    from B and would look exactly like an interesting result.
 
-    **The same initialisation.** Train both with the same `seed`. Hidden units are exchangeable,
-    so two runs from different random starts represent similar functions through different
-    permutations of the same machinery. (Measured, this one is *weaker* than the argument
-    predicts: across three seed pairs the midpoint stayed tidy whether the initialisations were
-    shared or not, probably because a shared source makes the two training problems nearly the
-    same problem. It is still the assumption to design against rather than to rely on.)
+    **The same initialisation.** Train both with the same `seed`; nothing checks this for you.
+    Hidden units are exchangeable, so two runs from different random starts represent similar
+    functions through different permutations of the same machinery, and averaging across a
+    permutation should produce nothing. `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md` records a
+    measurement that complicates the argument without changing the instruction.
 
 The `letter_interpolation` transcript sweeps `t` slowly and continuously — forty seconds there and
 back — and `letter_interpolation_panels` is the still above. Both need letters that are a **single
