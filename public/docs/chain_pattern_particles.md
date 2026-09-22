@@ -130,15 +130,14 @@ sixteen kicks are louder in that band than four stabs. The top two bands stay bu
 flat, because sixteen hats a cycle never leave a gap. That difference is the whole reason the rings
 look different from each other.
 
-!!! note "The filters belong to the analysis, not to the audio graph"
+??? aside "Take band levels from the tap"
 
-    `afield.four.synth`'s nodes are audio-thread-owned. A `Signal` caches per `SynthContext` and per
-    cycle, but many nodes carry mutable DSP state past that cache, so rendering one graph from two
-    threads can corrupt it. A `BandSplit`'s band-passes are constructed by and reachable only from
-    that object, and their input is a buffer it owns. What it reads is a snapshot the audio path
-    *published*, through `PatSynthLaunch.tap`, rather than a second rendering of the graph the engine
-    is already rendering. Re-rendering a synth graph to get a display value is how a modulation
-    oscillator ends up running at double speed.
+    Take your band levels from `PatSynthLaunch.tap`, which is a snapshot the audio path published.
+    Do not render the synth graph a second time to get a display value: `afield.four.synth`'s nodes
+    are audio-thread-owned, and many of them carry mutable DSP state past the per-cycle `Signal`
+    cache, so a second render from another thread is how a modulation oscillator ends up running at
+    double speed. `BandSplit` follows the rule: its band-passes and their input buffer are its own,
+    and all it reads is the tap.
 
 ## Into the push constants
 
