@@ -556,7 +556,7 @@ object LambdaTerms {
      * answer at all — which copy of a shared subterm a term position means is not local information — and a reduction
      * that left any fan standing reads back as `⋈`.
      *
-     * What it will not do is invent structure that is not there, and the five marks it can leave instead are all
+     * What it will not do is invent structure that is not there, and the six marks it can leave instead are all
      * things to fail a test over rather than paper over:
      *
      * | mark | what it means |
@@ -566,6 +566,13 @@ object LambdaTerms {
      * | `⋈` | a fan's *principal* port sat in a term position with no matching fan choice on the stack |
      * | `∞` | the walk came back to a port already on its own path, with the same stack |
      * | `…` | the walk ran past [maxNodes], or past [maxDepth] frames |
+     * | `?`*id* | a variable occurrence whose binder is not open on the walk's own path |
+     *
+     * The last one is the closedness invariant, and it is a mark rather than an assertion. **A readback of a closed
+     * term is closed**: an occurrence lies inside its binder's body, so the binder is on the path the walk took to
+     * reach it, and a lookup that misses is a net whose wiring is not a term. Reporting it in the answer rather than
+     * throwing keeps `readback` total — a caller gets a term it can print, with the defect at the position that has
+     * it — and is the same contract the other five marks already offer. [marksOf] is the check.
      *
      * @param freeVariables from [CompiledTerm.freeVariables]; a `VAR` or `CONST` agent absent from it reads back as
      * its own agent id
@@ -597,6 +604,32 @@ object LambdaTerms {
     fun readback(compiled: CompiledTerm, maxNodes: Int = 200_000, maxDepth: Int = 3_000): Term =
         readback(compiled.net, compiled.freeVariables, maxNodes, maxDepth)
 
+    /** The five single-glyph marks of [readback]'s table. `?`*id* is the sixth and is matched by prefix. */
+    val MARKS: Set<String> = setOf("⊥", "·", "⋈", "∞", "…")
+
+    /**
+     * Every [readback] mark in [term], as the glyphs of [readback]'s table — empty exactly when the answer is a term
+     * the reducer is prepared to stand behind.
+     *
+     * This is the check to write next to a [normalise], and it is not the same question as "did it finish".
+     * `Run.finished` says the reduction did not run out of reactions; this says the *readback* found a term where the
+     * net was. Both can be true and the answer still wrong — the net's sharing is correct on simply-typed terms and
+     * not in general — but neither being true means the answer is not one.
+     *
+     * A `?`*id* collapses to `"?"`, because the agent id after it identifies the offending port rather than the kind
+     * of failure, and a node type the walk has no case for reports as its `type:port`.
+     */
+    fun marksOf(term: Term): Set<String> = when (term) {
+        is Term.Var -> when {
+            term.name in MARKS -> setOf(term.name)
+            term.name.startsWith("?") -> setOf("?")
+            ":" in term.name -> setOf(term.name.substringBefore(':') + ":port")
+            else -> emptySet()
+        }
+        is Term.Lam -> marksOf(term.body)
+        is Term.App -> marksOf(term.fn) + marksOf(term.arg)
+    }
+
     // Port indices, for the `peer.index` tests below: 0 is the principal, and aux(i) is index i + 1.
     //
     // `path` holds the ports on the current walk, keyed together with the fan stack: a shared subterm is legitimately
@@ -624,8 +657,24 @@ object LambdaTerms {
                 node.type == Lambda.LAM && peer.index == 0 -> {
                     val name = binderName(next[0]++)
                     // An occurrence of this variable is a walk that arrives *at* the binder port, from below.
-                    binders[node.aux(0).id] = name
-                    Term.Lam(name, on(node.aux(1)))
+                    //
+                    // Saved on the way in and put back on the way out, which is the same thing `compile` does with
+                    // its `shadowed` binding three hundred lines up. `binders` is one map for the whole walk and a
+                    // *shared* abstraction is legitimately walked more than once — once per copy, each copy taking
+                    // its own fresh name — so a visit that leaves its entry behind redirects every occurrence read
+                    // after it to the inner copy's binder. That was a wrong variable in an answer that carried no
+                    // mark at all; it is `quiet-wrong-branch` in `afield.examples.stdlib.LambdaPropertyOracleTest`.
+                    //
+                    // Restoring it also makes the `?` below mean something. `binders` now holds exactly the binders
+                    // open on this walk's own path, so a lookup that misses is an occurrence outside its binder's
+                    // body — which a net that is a term cannot contain.
+                    val binder = node.aux(0).id
+                    val shadowed = binders.put(binder, name)
+                    try {
+                        Term.Lam(name, on(node.aux(1)))
+                    } finally {
+                        if (shadowed == null) binders.remove(binder) else binders[binder] = shadowed
+                    }
                 }
                 node.type == Lambda.LAM && peer.index == 1 -> Term.Var(binders[peer.id] ?: "?${peer.id}")
                 node.type == Lambda.APP && peer.index == 1 -> Term.App(on(node.principal), on(node.aux(1)))

@@ -92,9 +92,10 @@ That last sentence was true for a reason worth knowing: **all ten of those obser
 ## What to be careful of
 
 - **Closed terms are the contract.** An open term compiles, and each *occurrence* of a free variable becomes its own unshared `Lambda.VAR` agent with its name kept in `CompiledTerm.freeVariables` — but `dup-var` builds fresh agents with fresh ids when it copies one, so a free variable that gets duplicated reads back as an agent id rather than as its name. `corpus()` is closed throughout and asserts it.
-- **`Run.steps` is a property of the term and this rule book, and *not* of the schedule.** This bullet said "a property of this rule book and this schedule" until 2026-09-20, and the schedule half is false. `synth.lambda.sound` reduces all 25 corpus terms under all four reproducible `ActivationOrder`s — 100 reductions, 912 reactions — and the reaction count is the same under every order on every term. So is the *multiset of rules fired*, which is the stronger claim and rules out equal totals arriving by coincidence. The four confluence counterexamples below are invariant too: 26, 18, 19 and 12 reactions, every order, on terms whose *answers* are wrong. Interaction nets are strongly confluent — two available reactions are on disjoint pairs of agents, so firing one can only move the other, never destroy it — and a strongly confluent system that terminates takes the same number of steps down every path. What is still true, and is the half of the bullet worth keeping, is that a step here counts betas, fan meetings and erasures alike, so it is not a β-step count and not comparable to one. Compare two step counts only when both rule books are stated.
+- **A readback of a closed term is closed, and `readback` says so.** An occurrence lies inside its binder's body, so the binder is on the path the walk took to reach it; a lookup that misses is a net whose wiring is not a term, and it reads back as `?`*id*. `LambdaTerms.marksOf` is the check to write next to a `normalise`, and it is not the same question as `Run.finished` — that says the reduction did not run out of reactions, this says the readback found a term where the net was. Both can be true and the answer still wrong, because the sharing is correct on simply-typed terms and not in general; but an unmarked answer is at least an answer.
+- **`Run.steps` is a property of the term and this rule book, and *not* of the schedule.** This bullet said "a property of this rule book and this schedule" until 2026-09-20, and the schedule half is false. `synth.lambda.sound` reduces all 25 corpus terms under all four reproducible `ActivationOrder`s — 100 reductions, 912 reactions — and the reaction count is the same under every order on every term. So is the *multiset of rules fired*, which is the stronger claim and rules out equal totals arriving by coincidence. The four named counterexamples below are invariant too: 26, 18, 19 and 12 reactions, every order. Three of the four still have a wrong *answer*; the 26-reaction one is right as of 2026-09-22 and its reaction count did not move, which is the point — the step count was never the thing that was wrong. Interaction nets are strongly confluent — two available reactions are on disjoint pairs of agents, so firing one can only move the other, never destroy it — and a strongly confluent system that terminates takes the same number of steps down every path. What is still true, and is the half of the bullet worth keeping, is that a step here counts betas, fan meetings and erasures alike, so it is not a β-step count and not comparable to one. Compare two step counts only when both rule books are stated.
 - **A term with no normal form does not terminate.** `normalise` takes a `maxSteps` and `Run.finished` is false when it ran out, which is the only honest answer.
-- **The fan labels are not levels, and as of 2026-09-19 that is a measured defect and not a worry.** Duplicating a fan gives the copies the *same* label, which is the classical bookkeeping problem. The 25-term corpus does not exhibit it. A generated population does — see "What the property harness found" below, which supersedes what this bullet used to say. Both mechanisms named here are confirmed by reading: `fan-fan` (`interactionnets.kt:2691`) branches on `fanLabelOf(first) == fanLabelOf(second)` and nothing else, and `NodeState.split` (`interactionnets.kt:259`) is a `copyDeep` that touches energy, hue, phase and age and leaves `scalars` alone, so every rule that copies a fan copies its label; and `readback`'s bracket guard (`lambdaterms.kt:548`) compares labels only.
+- **The fan labels are not levels, and as of 2026-09-19 that is a measured defect and not a worry.** Duplicating a fan gives the copies the *same* label, which is the classical bookkeeping problem. The 25-term corpus does not exhibit it. A generated population does — see "What the property harness found" below, which supersedes what this bullet used to say. What the labels are **not** responsible for is the quiet class: the one term whose answer was wrong with no mark on it was a stale binder name in `readback`, and the labels were a plausible culprit that reading the reducer did not support. Three disagreements remain and the labels are the live suspect for those. Both mechanisms named here are confirmed by reading: `fan-fan` (`interactionnets.kt:2691`) branches on `fanLabelOf(first) == fanLabelOf(second)` and nothing else, and `NodeState.split` (`interactionnets.kt:259`) is a `copyDeep` that touches energy, hue, phase and age and leaves `scalars` alone, so every rule that copies a fan copies its label; and `readback`'s bracket guard (`lambdaterms.kt:548`) compares labels only.
 
 ## What the property harness found — 2026-09-19
 
@@ -102,37 +103,49 @@ That last sentence was true for a reason worth knowing: **all ten of those obser
 
 **The population.** 4 000 simply-typed closed terms at seed `20260919`, plus 300 untyped "duplicator soup" terms at seed `20260919002`, each under the same four `ActivationOrder`s — **17 200 checks**, of which **16 832** had a live oracle. Distributions are printed by the test and floored by it: typed 2 512 distinct de Bruijn keys, sizes 3–49 nodes, λ-depth 2–9, 2 413 terms compiling to at least one fan and 1 504 to four or more; soup 293 distinct, sizes 6–281, 200 terms at four or more fans.
 
-**The ledger**, pinned in `LambdaPropertyOracleTest` exactly and in *both* directions:
+**The ledger**, pinned in `LambdaPropertyOracleTest` exactly and in *both* directions. Both columns are the same population, the same seeds and the same four schedulers; the only thing that changed between them is `readback`.
 
-| | count | of |
-|---|---|---|
-| disagreements carrying **no readback mark at all** | **4** | 17 200 |
-| disagreements carrying a mark | 84 | 17 200 |
-| readbacks of a *closed* term that are **not closed** | 28 | 17 200 |
-| terms on which the four schedulers disagree | 9 | 4 300 |
-| net ran out of reactions | 24 | 17 200 |
-| oracle over budget (untyped family only) | 368 | 17 200 |
+| | 2026-09-19 | 2026-09-22 | of |
+|---|---|---|---|
+| disagreements carrying **no readback mark at all** | 4 | **0** | 17 200 |
+| disagreements carrying a mark | 84 | 84 | 17 200 |
+| readbacks of a *closed* term that are **not closed** | 28 | **0** | 17 200 |
+| checks carrying the `?` mark | — | 24 | 17 200 |
+| agreements | 16 720 | 16 724 | 17 200 |
+| terms on which the four schedulers disagree | 9 | 9 | 4 300 |
+| net ran out of reactions | 24 | 24 | 17 200 |
+| oracle over budget (untyped family only) | 368 | 368 | 17 200 |
 
-**So the answer is: the quiet one.** The page used to say a term that breaks the labelling "could surface either way: as a `⋈`, or as a wrong normal form with no marker at all". It surfaces as both, and the marker-free case is real. Shrunk to 26 reactions:
+**Every disagreement announces itself.** All 84 that remain carry a mark, and none of the 17 200 checks is a wrong answer delivered silently. Read rows one and three against row four, because the two zeros are not the same event: four checks became *right*, and the other 24 still have the defect and now report it as a `?` rather than spelling the out-of-scope occurrence as an ordinary variable name. A zero with no `?` count beside it would be satisfied just as well by a detector that stopped detecting, which is how this class stayed quiet in the first place.
+
+### What the quiet one actually was
+
+Not the fan labels. The four quiet checks were **one term under four schedulers**, and the cause was in the readback:
 
 ```
 (\m n f x. f (f x)) (\f. f) (\x. x) ((\n f x. f (n f x)) (\n f x. n f x))
 
 correct   λa. λb. a (λc. a (λd. a (λe. a b e) d) c)
-net       λa. λb. a (λc. a (λd. a (λe. a b e) d) e)
+was       λa. λb. a (λc. a (λd. a (λe. a b e) d) e)
 ```
 
-One variable occurrence, one wrong choice of fan branch, no mark anywhere. It is caught at all only because the `e` it chose happens to be **out of scope** — and a readback of a closed term being closed is an invariant `readback` neither checks nor has a mark for. Nothing makes the next one out of scope.
+One variable occurrence, and the `e` it chose is the binder of an abstraction three levels down whose body had already closed. `walk` kept **one** `binders` map for the whole readback, wrote a fresh name into it on the way *in* to an abstraction, and never put the previous entry back. A shared abstraction is legitimately walked once per copy and each copy takes its own name, so the inner copy's entry outlived it and every occurrence read after it resolved to the inner binder. `compile` had the right idiom three hundred lines up — it saves a `shadowed` binding and puts it back — and `walk` now does the same. That term agrees with the oracle under all four schedulers, and the wrong answer it used to give is pinned next to the right one as a counterfactual, so a revert fails rather than passing quietly.
 
-Three more are shrunk and pinned as named regressions:
+Scoping those names also gives `readback` a **reported closedness invariant**, which is what recommendation 1 below asked for, arrived at as a mark rather than as an assertion. `binders` now holds exactly the binders open on the walk's own path, so a lookup that misses is an occurrence outside its binder's body — which a net that is a term cannot contain. It reads back as `?`*id*, and `LambdaTerms.marksOf` is the one-call check: new, and public, because until now the only mark detector in the tree was private to this test, and a detector a test owns is one box code cannot run.
+
+**A throw was considered and rejected.** It is a third behaviour every caller has to explain, and it turns a wrong *answer* into a crash for box code and the published demo boxes. A separate `readbackChecked` was rejected for a different reason: two entry points, and the quiet class stays reachable through the cheap one.
+
+Three cases remain wrong, shrunk and pinned as named regressions:
 
 | name | term | correct | net today |
 |---|---|---|---|
 | `dup-of-an-erasing-abstraction` | `(\x z. x z x) (\x y. y y)` | `λz. λy. y y` | `λa. λb. b ⊥` |
 | `two-applied-to-two-unwalkable` | `(\x y. y y) (\x. x) (\f x. f (f x))` | Church 4 | `λa. λb. …`, 19 reactions, "finished" |
-| `compose-self-apply-scope-leak` | `(\m n f. m (n f)) (\f. f f) (\n f. f (n f))` | 9-node term | a 9 887-character term with a free variable in it |
+| `compose-self-apply-scope-leak` | `(\m n f. m (n f)) (\f. f f) (\n f. f (n f))` | 9-node term | a term of thousands of characters, marked `…` and `?` |
 
 The first is twelve nodes and four β-steps, nowhere near any budget: a duplicated abstraction that *erases* its argument loses one copy of the answer to the `ERASE`. That is the erase side of the bookkeeping, not the fan-label side — the failure is wider than the bullet above guessed.
+
+The third is the one the new mark changed. Its answer used to contain a bare `v499` — a readback of a closed term with a free variable in it, and nothing to say so. The wiring defect is the same; it now says `?` at the position that has it, so the case is pinned by its mark set rather than by a nine-thousand-character string.
 
 **The most useful split is by family, and it is worth stating in the direction that was actually measured: no *typed* term disagrees.** Not one of the 4 000 simply-typed terms disagrees, under any scheduler. The converse — "every counterexample is untypable" — is an *inference* rather than a measurement: there is no type checker in this branch, the untyped soup family is not guaranteed untypable, and only the four pinned terms have been checked by inspection (all four self-apply). Every counterexample came from the untyped family, which is weaker than every counterexample being untypable. Self-application and an erasing abstraction under duplication are precisely the shapes simple types forbid, which is a real, if narrow, statement of where the front end can be trusted: *on simply-typable closed terms, 16 000 checks found nothing.*
 
@@ -144,14 +157,18 @@ The first is twelve nodes and four β-steps, nowhere near any budget: a duplicat
 - **`referenceNormalOrder`'s `maxSteps` did not bound its cost.** Two ways, both now fixed. `substitute` recomputed `freeVariablesOf(value)` at *every* abstraction it descended through, making one substitution `O(|body| × |value|)` — a thread dump found 616 seconds of CPU in that one line. And one β-step can nearly double a term, so a step budget is not a memory budget: a generated term reached 3.3 GB, 300 steps into a 300-step budget. There is now a second budget, `maxWorkNodes`, charged with the size of every substitution result.
 - **A reaction budget on the net side is a quadratic time budget.** `Reducer` calls `Net.incrementAges` once per reaction and that is `O(nodes)`, so on a net that grows, 20 000 reactions is not 20 000 units of work. One soup draw spent 94 seconds there. Not a defect, but it is why the harness's soup budget is 4 000 and not more.
 - **Shrink within the class you are shrinking.** A mark-agnostic shrinker walked the first quiet counterexample straight into a `…`-marked one — a different bug, and not the headline. The quiet class now shrinks against a quiet-preserving predicate.
+- **A harness that fails fast on a premise costs a run per fact.** Four named cases under four schedulers is sixteen facts, and a `require` that throws at the first one reports one of them against a three-minute sweep. Both the named-case check and the ledger now collect every mismatch and fail once with the list. Two runs of this test learned what three would have.
+- **The mechanism was in the reporter, not the thing reported.** Three days of this page blamed the fan labels for the quiet class, on a reading of the reduction rules that is correct as far as it goes. The defect was in `readback`, which every one of those measurements ran through. When the oracle and the net disagree, the *comparison* has two sides and a readback in the middle.
 
 ### What to do about it
 
-Not fixed tonight, in rough order of cost:
+In rough order of cost, with what has since been done to each:
 
-1. **Make `readback` assert closedness.** It is one line and it converts the quiet class into a loud one for every case where the wrongly-chosen variable is out of scope. It would have caught all four.
-2. **Give `readback` a depth budget it can actually reach**, or make `walk` iterative. The promised `…` is currently a crash.
-3. **Levels.** The real fix is Lamping's bracket/croissant bookkeeping, or Asperti–Guerrini's. Distinct labels per fan at compile time are not enough once reduction starts copying them, which is what these four terms demonstrate.
+1. ~~**Make `readback` assert closedness.**~~ **Done, 2026-09-22, and it was not one line and not an assertion.** The estimate assumed the quiet answers came from a wrong choice of fan branch, so that closedness would *catch* them. The cause was `walk`'s own binder-name map, so scoping the names *removes* the four and turns the closedness invariant into a reported `?` mark at the same time. The measured effect is the two columns above.
+2. **Give `readback` a depth budget it can actually reach**, or make `walk` iterative. The promised `…` is currently a crash on a default stack. Not fixed.
+3. **Levels.** The real fix for what remains is Lamping's bracket/croissant bookkeeping, or Asperti–Guerrini's. Distinct labels per fan at compile time are not enough once reduction starts copying them, which is what the three remaining pinned terms demonstrate. Not fixed.
+
+One thing the fix above does *not* do is make the reducer right. It makes the reducer honest: 84 of 17 200 checks are still a disagreement, and every one of them says so.
 
 ## Where things are
 

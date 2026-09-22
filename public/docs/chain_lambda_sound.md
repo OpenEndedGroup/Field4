@@ -121,13 +121,17 @@ terminates reaches its normal form in the same number of steps down every path. 
 result and not a discovery of this page. What this page does is measure it in *this* implementation,
 where it is not a given, because the fan labelling is known to be wrong on some terms.
 
-The four terms where the reducer is known to be *wrong* are the stress case: a confluence failure
-is exactly what could break the count. `stdlib.lambda-terms.property` pinned four
-of them on 2026-09-19 — a wrong normal form with no warning mark, a duplicated abstraction that
-loses a copy to its eraser, an answer the readback cannot walk, and a readback of a closed term with
-a free variable in it. `LambdaSoundDocs.CONFLUENCE_PROBES` re-runs those four under the four
-schedulers and reports the counts: **26, 18, 19 and 12 reactions, the same under every order.**
-Wrong answers, arrived at in a fixed number of steps.
+The terms where the sharing is heaviest are the stress case: a confluence failure is exactly what
+could break the count. `stdlib.lambda-terms.property` pins four of them — a duplicated abstraction
+that loses a copy to its eraser, an answer the readback cannot walk, a readback with an occurrence
+outside its binder's body, and one that used to come back with a wrong variable and no warning mark
+until `readback` started scoping its binder names. `LambdaSoundDocs.CONFLUENCE_PROBES` re-runs all
+four under the four schedulers and reports the counts: **26, 18, 19 and 12 reactions, the same under
+every order.** Three of the four answers are still wrong, and every one of those three says so.
+
+The counts did not move when the fourth was fixed, which is worth more than the fix: that repair was
+in the readback, so it changed what the walk reports and not what the reducer does, and 26 on either
+side of it is how you can tell.
 
 ## What the scheduler does change
 

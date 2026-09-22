@@ -24,7 +24,9 @@ How long it takes does not depend on the scheduler. Over the 25-term corpus the 
 
 The sharing is correct over that corpus and it is not correct in general. The clean line is by type: the property harness has never found a simply-typed closed term that disagrees, under any scheduler. Self-application, and an erasing abstraction under duplication, are exactly the shapes simple types forbid. This is not Lamping's optimal reduction — there are no brackets and no croissants — and without that bookkeeping a distinct label per fan is not enough once reduction starts copying the labels.
 
-Outside that line, the trap is that **a wrong answer does not always announce itself.** Some disagreements read back with a `⊥` you can see. Others are an ordinary-looking term with one variable occurrence out of scope and no mark of any kind, so a clean-looking readback of an untypable term is not a checked answer.
+Outside that line, **a wrong answer announces itself.** Every disagreement the property harness finds reads back carrying one of `readback`'s marks, and `LambdaTerms.marksOf` is the call that asks: empty means the readback found a term where the net was, and anything else is the reducer declining to answer. `?` is the closedness invariant — a variable occurrence lies inside its binder's body, so a binder that is not open on the walk's own path is a net whose wiring is not a term.
+
+`marksOf` is a different question from `Run.finished`. That one says the reduction did not run out of reactions; this one says the answer is a term. Both can hold and the answer still be wrong outside the typed line, but a marked answer is the reducer telling you not to trust it, and an unmarked one is at least an answer.
 
 `dev_docs/INTERACTION_NETS_LAMBDA.md` has the population, the pinned counterexamples and what it would take to fix.
 

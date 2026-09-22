@@ -73,22 +73,29 @@ relation really is a function of the pair, which is the premise strong confluenc
 
 The corpus is 25 terms the front end is known to be *right* on, so invariance measured only there
 is a statement about a friendly population. `stdlib.lambda-terms.property` pinned four terms on
-2026-09-19 where the fan bookkeeping is *wrong*, which is where a confluence failure would show.
+2026-09-19 where the sharing is heaviest, which is where a confluence failure would show.
 `LambdaSoundDocs.CONFLUENCE_PROBES` copies those four verbatim and re-runs them:
 
-| probe | reactions, all four orders |
-|---|---|
-| `quiet-wrong-branch` | 26 |
-| `dup-of-an-erasing-abstraction` | 18 |
-| `two-applied-to-two-unwalkable` | 19 |
-| `compose-self-apply-scope-leak` | 12 |
+| probe | reactions, all four orders | answer |
+|---|---|---|
+| `quiet-wrong-branch` | 26 | right, since 2026-09-22 |
+| `dup-of-an-erasing-abstraction` | 18 | wrong, marked `⊥` |
+| `two-applied-to-two-unwalkable` | 19 | wrong, marked `…` |
+| `compose-self-apply-scope-leak` | 12 | wrong, marked `…` and `?` |
 
-Wrong answers, arrived at in a fixed number of steps. `assertTheProbesAreStillCounterexamples`
-re-derives the disagreement before measuring, so if one of them ever starts agreeing with the
-evaluator the probe fails rather than silently becoming four ordinary terms.
+Three wrong answers and one right one, each arrived at in a fixed number of steps. The counts are
+the same as they were before `quiet-wrong-branch` was fixed, and that is the useful part: the fix
+was in `LambdaTerms.readback`, so it changed what the walk *reports* and not what the reducer
+*does*. 26 on either side of it is the evidence.
 
-The copy is deliberate: `LambdaPropertyOracleTest.knownDisagreements` is private, and the two files
-ask different questions of the same four terms. The assertion is what keeps the copy honest in the
+`DISAGREEING_PROBES` pins which three disagree, and `assertTheProbesAreStillCounterexamples`
+compares the derived set against it by **equality**, so a probe that changes side fails and names
+itself — good news or bad, but never silent. The one-sided version of that check is what caught
+`quiet-wrong-branch` on 2026-09-22; it was right to fire, and it could say only that *a* probe had
+stopped disagreeing.
+
+The copy is deliberate: `LambdaPropertyOracleTest.knownCases` is private, and the two files ask
+different questions of the same four terms. The set assertion is what keeps the copy honest in the
 direction that matters.
 
 ## Two smaller findings the page publishes
