@@ -6,9 +6,10 @@ worked examples an agent copies, runs, and adapts when [automating Field](automa
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
-search for it there and open an editable copy in your workspace. Four are not, and each says why in
+search for it there and open an editable copy in your workspace. Five are not, and each says why in
 its own entry: two are integration probes rather than scenes, and two are the halves of the
-graphics-topology rule — a renderer with nothing to draw, and a draw box with no renderer. Needing a
+graphics-topology rule — a renderer with nothing to draw, and a draw box with no renderer. The fifth,
+`mega_texture_wall`, needs both an external renderer and a directory of images you supply. Needing a
 gesture, a headset or a service is *not* on that list. A scene you have to click once, or point at a
 device you own, is still a scene.
 
@@ -57,8 +58,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 143 transcripts on every build, at three
-depths. 80 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 144 transcripts on every build, at three
+depths. 81 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -98,6 +99,19 @@ Minimal blank-canvas macro that creates one runnable output box.
 ![One box named main on an otherwise empty canvas, its output a pale card reading "hello from OperationTranscript"](assets/macro-hello-display.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/hello_display/metadata.edn)
+
+### marf_field_clocks
+
+Three boxes make the [MARF field-clock](marf.md) distinction visible. The first prints four
+`STAGES` refusals beside the same spellings read silently under `CYCLES`; `"1 <0 3>"` there becomes
+`1 1 1 1 1 1 1 1`. The second draws four readers over twelve cycles, including a reader whose
+address and duration advance on different grids. The last computes a ledger of ten spellings
+against all three clocks. `STEPS` recovers sub-cycle addresses, but it cannot choose between
+simultaneous layers: the stack `"<0 3>, 1"` is refused rather than silently losing a layer.
+All three boxes execute headless without an audio device; the separate `marf_demo` below includes
+a live audio instrument and is compiled instead.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/marf_field_clocks/metadata.edn)
 
 ### profiling_timeline
 

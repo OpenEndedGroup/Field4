@@ -2432,7 +2432,7 @@ def main() -> int:
         progress=lambda message: print(message, file=stream, flush=True),
         heartbeat_interval=args.heartbeat_interval,
     ):
-        environment = VerificationEnvironment().start()
+        environment = VerificationEnvironment(disk_path=REPO_ROOT).start()
         try:
             return run(args, environment)
         finally:

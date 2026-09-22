@@ -71,7 +71,27 @@ evidence. Use `eventKinds` to assert a protocol event rather than its rendered
 content. A substring check establishes presence, not a row-to-value relationship;
 pair it with a behavioral assertion when that relationship is the claim.
 
-### Continuous macOS prerequisites
+### Continuous verification prerequisites
+
+The smoke and docs capture runners check the checkout volume's free space on every
+15-second sample, on all operating systems. The default protected floor is 8 GiB.
+Configure `FIELD_VERIFY_DISK_FLOOR_GIB`, `FIELD_VERIFY_DISK_RESERVE_GIB` (default 0),
+and `FIELD_VERIFY_DISK_PLANNED_GIB` (default 0) with finite non-negative GiB values.
+Before the first action, free space must cover **floor + reserve + planned growth**;
+throughout execution it must cover **floor + reserve**. Planned growth is charged
+once per runner invocation, not once per capture. Zero planned growth means no
+growth estimate was supplied, not that the run is expected to allocate nothing.
+
+Budget the expected **whole-run volume loss**, including build outputs, downloads,
+temporary files and concurrent writers, not merely the checkout footprint. The
+2026-09-21 nightly observed about 22 GiB of volume loss against 6.82 GiB in its three
+worktrees: a six-GiB worktree estimate was not a sufficient run budget. The monitor
+records initial/minimum free bytes and maximum observed volume loss in the environment
+report; these are shared-volume measurements, never an attribution to Field or an
+estimate of reclaimable space. Sampling cannot prevent a sudden loss between probes
+or reserve actual filesystem blocks. A low/unknown disk reading refuses new work or
+interrupts an owned capture/test; it never deletes anything. Raw Gradle, standalone
+backdoor and UI-regression commands are not covered by this smoke/docs monitor.
 
 The smoke and docs capture runners sample power and display state every 15 seconds,
 including while starting Field and between tests. Long verification requires AC or
@@ -83,8 +103,8 @@ because they capture a browser. Optional GPU compute without a window is not
 automatically classified as display-dependent.
 
 Unknown macOS probe results fail closed. Other operating systems are explicitly
-reported as unsupported by this prerequisite probe; they are not claimed certified
-by a macOS check. A closed laptop lid with a working external primary display is
+reported as unsupported by the power/display probe (disk checks still apply); they
+are not claimed certified by a macOS check. A closed laptop lid with a working external primary display is
 not rejected solely because of the lid state.
 
 Missing prerequisites yield **NOT RUN**, and observed loss during a test yields

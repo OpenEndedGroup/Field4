@@ -96,6 +96,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
+        // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
+        "marf_field_clocks",
         // Three bounded CPU/allocation workloads, one real recording, then stop and assert samples.
         "profiling_timeline",
         "simulation_clock",
