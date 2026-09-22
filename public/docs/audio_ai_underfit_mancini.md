@@ -1,9 +1,9 @@
 # Experiment in Terror with an Underfit LoRA
 
 This example carries a complete album experiment through Field Audio's durable API. A pinned
-Underfit rank-16 DoRA-rows checkpoint, trained for 1,000 steps on lossless 12-second chunks of all
-12 tracks on Henry Mancini's *Experiment in Terror*, is applied to Stable Audio 3's small-music
-base model.
+Underfit rank-16 DoRA-rows checkpoint, trained for 1,000 steps on 165 lossless 12-second chunks
+from all 12 tracks on Henry Mancini's *Experiment in Terror*, is applied to Stable Audio 3's
+small-music base model.
 
 The live request imports a held-out source excerpt, keeps a 12-second source window, and asks for a
 30-second candidate with a modest guidance value (`cfg = 1.5`). The source distance is controlled by
