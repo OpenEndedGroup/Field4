@@ -3,15 +3,23 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
 ```
 
-## 1. 1 - a window, because there is no headless mode
+## 1. root
 
-<!-- field-box id="probe_renderer" index="0" -->
+<!-- field-box id="root" index="0" -->
+
+```edn [field-box id="root" role="properties"]
+{"id" "root" "index" 0 "name" "root" "parents" ["metaroot"] "children" ["probe_chain" "probe_renderer" "probe_caught" "probe_hello"] "properties" {"children" #{#afield/box "probe_chain" #afield/box "probe_renderer" #afield/box "probe_caught" #afield/box "probe_hello"} "parents" #{#afield/box "metaroot"} "name" "root" "nested" #{}} "blockProperties" []}
+```
+
+## 2. 1 - a window, because there is no headless mode
+
+<!-- field-box id="probe_renderer" index="1" -->
 
 ```edn [field-box id="probe_renderer" role="properties"]
-{"id" "probe_renderer" "index" 0 "name" "1 - a window, because there is no headless mode" "parents" ["root"] "children" ["probe_hello" "probe_chain" "probe_caught"] "properties" {"children" #{#afield/box "probe_hello" #afield/box "probe_chain" #afield/box "probe_caught"} "parents" #{#afield/box "root"} "name" "1 - a window, because there is no headless mode" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 110.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_renderer_code_.kt" "lines" 16 "characters" 573 "sha256" "74c3dc7a20ab66f43ec5e4348cfa250d6c51ccb2beae20b38b5a60d914907644"}]}
+{"id" "probe_renderer" "index" 1 "name" "1 - a window, because there is no headless mode" "parents" ["root"] "children" ["probe_hello" "probe_chain" "probe_caught"] "properties" {"children" #{#afield/box "probe_hello" #afield/box "probe_chain" #afield/box "probe_caught"} "parents" #{#afield/box "root"} "name" "1 - a window, because there is no headless mode" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 110.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_renderer_code_.kt" "lines" 16 "characters" 573 "sha256" "74c3dc7a20ab66f43ec5e4348cfa250d6c51ccb2beae20b38b5a60d914907644"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
 ```
 
 ```kotlin [field-property box="probe_renderer" name="code" path="probe_renderer_code_.kt"]
@@ -33,12 +41,21 @@ once.renderer {
 start(renderer::run)
 ```
 
-## 2. 3 - divergence, 12 Jacobi sweeps, project
+```text [field-property box="probe_renderer" name="preamble"]
+import afield.four.Renderer
+import afield.four.util.Window
+var Box.window by Inheritance<Window>() /**/
+val Once.window by Onceing<Window>() /**/
+var Box.renderer by Inheritance<Renderer>() /**/
+val Once.renderer by Onceing<Renderer>() /**/
+```
 
-<!-- field-box id="probe_chain" index="1" -->
+## 3. 3 - divergence, 12 Jacobi sweeps, project
+
+<!-- field-box id="probe_chain" index="2" -->
 
 ```edn [field-box id="probe_chain" role="properties"]
-{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 190.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 197 "characters" 8233 "sha256" "f01725117c5ea49d22f614698f0dbf5bc64fcdb02f8f1114facd61c64de793d5"}]}
+{"id" "probe_chain" "index" 2 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 190.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 197 "characters" 8233 "sha256" "f01725117c5ea49d22f614698f0dbf5bc64fcdb02f8f1114facd61c64de793d5"}]}
 ```
 
 ```kotlin [field-property box="probe_chain" name="code" path="probe_chain_code_.kt"]
@@ -241,12 +258,12 @@ frames {
 }
 ```
 
-## 3. 4 - half a grid, so the sentinel fires
+## 4. 4 - half a grid, so the sentinel fires
 
-<!-- field-box id="probe_caught" index="2" -->
+<!-- field-box id="probe_caught" index="3" -->
 
 ```edn [field-box id="probe_caught" role="properties"]
-{"id" "probe_caught" "index" 2 "name" "4 - half a grid, so the sentinel fires" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "4 - half a grid, so the sentinel fires" "_tombstone" false "frame" #afield/rect [40.0 420.0 420.0 150.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_caught_code_.kt" "lines" 44 "characters" 1594 "sha256" "30fdecb5c3fc52086014c843e44c030209052c6a7355f85cf3b93960e3ff9b57"}]}
+{"id" "probe_caught" "index" 3 "name" "4 - half a grid, so the sentinel fires" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "4 - half a grid, so the sentinel fires" "_tombstone" false "frame" #afield/rect [40.0 420.0 420.0 150.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_caught_code_.kt" "lines" 44 "characters" 1594 "sha256" "30fdecb5c3fc52086014c843e44c030209052c6a7355f85cf3b93960e3ff9b57"}]}
 ```
 
 ```kotlin [field-property box="probe_caught" name="code" path="probe_caught_code_.kt"]
@@ -296,12 +313,12 @@ frames {
 }
 ```
 
-## 4. 2 - the whole idiom, on one screen
+## 5. 2 - the whole idiom, on one screen
 
-<!-- field-box id="probe_hello" index="3" -->
+<!-- field-box id="probe_hello" index="4" -->
 
 ```edn [field-box id="probe_hello" role="properties"]
-{"id" "probe_hello" "index" 3 "name" "2 - the whole idiom, on one screen" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "2 - the whole idiom, on one screen" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 150.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_hello_code_.kt" "lines" 53 "characters" 2454 "sha256" "651d7a1f60a0825f17778be3ed71062aa5f1db1746e68aae5e0fad4bb459d291"}]}
+{"id" "probe_hello" "index" 4 "name" "2 - the whole idiom, on one screen" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "2 - the whole idiom, on one screen" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 150.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_hello_code_.kt" "lines" 53 "characters" 2454 "sha256" "651d7a1f60a0825f17778be3ed71062aa5f1db1746e68aae5e0fad4bb459d291"}]}
 ```
 
 ```kotlin [field-property box="probe_hello" name="code" path="probe_hello_code_.kt"]

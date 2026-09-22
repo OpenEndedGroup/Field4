@@ -89,7 +89,7 @@ there was.
 
 ```
 caught, as it should be:
-  probe 'caught': the GPU never finished writing, after 479 pumped frames.
+  probe 'caught': the GPU never finished writing, after 464 pumped frames.
     fixture 'out': 128 of 256 slots still hold the sentinel, from index 128
     Causes, in the order they actually happen: a slot bound to the wrong buffer; too few
     workgroups to cover the output; an early return in main() that skips part of the range;
@@ -104,6 +104,11 @@ decoration: the index is the diagnosis. Index 0 means a binding; exactly half me
 size; an isolated index means a race.
 
 Edit `bind("count") { 32 }` to `64` and re-launch; it goes green.
+
+The frame count is the one number here that moves between runs — 464, 479 and 480 observed —
+because `stillWaiting` spins on a condition for the four seconds it is given, and how many frames
+fit in four seconds depends on what else is using the GPU. Everything else on this page is
+reproducible.
 
 ## Provenance, honestly
 
