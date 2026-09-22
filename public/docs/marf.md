@@ -110,7 +110,7 @@ under.
 
 ---
 
-## The trajectory is compositional material
+## Reading a bank in any order
 
 Once the address is a pattern, sequential reading is one case among many, and the pattern algebra
 does the work that a list of traversal modes would otherwise have to.
