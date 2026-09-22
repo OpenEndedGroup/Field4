@@ -1,6 +1,6 @@
 # Prose detectors for `public/docs`
 
-Thirteen read-only analysers that measure the documentation tree's *voice*: the rhetorical
+Fourteen read-only analysers that measure the documentation tree's *voice*: the rhetorical
 moves that make a page read as written-by-a-machine rather than as documentation. They were
 built one at a time by the nightly `documentation-voice-pass`, each one added the night a
 firing found a fault the existing set could not see.
@@ -45,6 +45,9 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `moves.py` | whole-page shapes | one rhetorical move repeated once per section — invisible sentence by sentence |
 | `self_narration.py` | page prose | a page describing its own drafting or reporting on the work of writing it, rather than describing its subject |
 | `test_census.py` | page prose and tables | a page enumerating what its tests assert, which belongs in `dev_docs/<SUBJECT>_MEASUREMENTS.md` |
+| `admon_position.py` | `!!!` admonitions | an always-open block large enough to interrupt, and how far into the page it interrupts |
+| `page_self_vouching.py` | page prose | a page arguing for its own trustworthiness instead of stating the fact and citing it |
+| `heading_case.py` | heading text and heading levels | a section heading in Title Case, and a page whose sections skip `##`. Structural, not lexical: no other detector here reads casing or level |
 | `section_shape.py`, `shape_census.py` | page structure | how much of a page is verification rather than use |
 | `check_anchors.py` | `](#slug)` links | in-page links to headings that no longer exist |
 | `check_links.py` | relative links | targets that do not resolve |
