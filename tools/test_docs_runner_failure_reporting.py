@@ -535,3 +535,65 @@ class ExpectErrorFenceWaiverTests(unittest.TestCase):
         capture = next(line for line in commands if line.startswith("native-screenshot "))
         self.assertIn("--uid docs_", capture)
         self.assertNotIn("--uid @last", capture)
+
+
+class CaptureFallbackEmbeddingTests(unittest.TestCase):
+    """A continuing recapture failure must retain each available figure in the page."""
+
+    def render(self, root, kind, existing, *, continuing=True):
+        state = _Recorder()
+        state.docs_dir = root
+        state.repo_root = root
+        state.config = {"site_dir": str(root / "site"), "use_directory_urls": True}
+        state.runner_mode = "always"
+        state.runner_media = "all"
+        state.continue_on_error = continuing
+        for method in ("ensure_screenshot", "ensure_video", "ensure_audio", "ensure_ui_drive"):
+            setattr(state, method, None)
+
+        def fail(*args, **kwargs):
+            raise RuntimeError("deliberate capture failure")
+
+        state.capture_with_environment = fail
+        for name in existing:
+            (root / name).write_bytes(b"saved fixture")
+        attrs = {
+            "screenshot": 'screenshot="still.png"',
+            "video": 'video="clip.mp4"',
+            "audio": 'audio="sound.wav" audio-spec="fixture"',
+            "ui": 'capture="ui" screenshot="still.png" video="clip.mp4"',
+        }[kind]
+        rendered = docs_hooks.process_markdown(
+            markdown=f'```diffstatic_runner embed=true {attrs}\nprintln("fixture")\n```\n',
+            page_path=root / "page.md", state=state, files=None,
+        )
+        return rendered, state
+
+    def test_saved_media_remains_embedded_and_failure_remains_recorded(self):
+        for kind, name in (("screenshot", "still.png"), ("video", "clip.mp4"), ("audio", "sound.wav")):
+            with self.subTest(kind=kind), TemporaryDirectory() as tmp:
+                rendered, state = self.render(Path(tmp), kind, [name])
+                self.assertIn(name, rendered.split("```\n")[-1])
+                self.assertEqual(len(state.failures), 1)
+                self.assertEqual(len(state.fallback_failures), 1)
+
+    def test_missing_media_is_not_embedded(self):
+        for kind in ("screenshot", "video", "audio", "ui"):
+            with self.subTest(kind=kind), TemporaryDirectory() as tmp:
+                rendered, state = self.render(Path(tmp), kind, [])
+                self.assertEqual(rendered.split("```\n")[-1], "")
+                self.assertEqual(len(state.failures), 1)
+
+    def test_ui_falls_back_independently_for_each_output(self):
+        for names in (["still.png"], ["clip.mp4"], ["still.png", "clip.mp4"]):
+            with self.subTest(names=names), TemporaryDirectory() as tmp:
+                rendered, state = self.render(Path(tmp), "ui", names)
+                embeds = rendered.split("```\n")[-1]
+                for name in ("still.png", "clip.mp4"):
+                    self.assertEqual(name in embeds, name in names)
+                self.assertEqual(len(state.failures), 1)
+
+    def test_fail_fast_still_raises_even_with_a_saved_image(self):
+        with TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(RuntimeError, "deliberate capture failure"):
+                self.render(Path(tmp), "screenshot", ["still.png"], continuing=False)

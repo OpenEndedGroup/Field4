@@ -2643,17 +2643,17 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 repo_root=state.repo_root,
                 page_path=page_path,
             )
-            screenshot_succeeded = False
-            video_succeeded = False
-            audio_succeeded = False
+            screenshot_available = False
+            video_available = False
+            audio_available = False
             if options.capture == "ui":
                 # One drive run produces the video and/or the still together.
                 ui_screenshot_path = resolve_output_path(page_path, options.screenshot) if options.screenshot else None
                 ui_video_path = resolve_output_path(page_path, options.video) if options.video else None
                 if state.runner_mode == "never" or (state.runner_media == "video" and not options.video):
-                    screenshot_succeeded = bool(ui_screenshot_path and ui_screenshot_path.exists())
-                    video_succeeded = bool(ui_video_path and ui_video_path.exists())
-                    for ok, path in ((screenshot_succeeded, ui_screenshot_path), (video_succeeded, ui_video_path)):
+                    screenshot_available = bool(ui_screenshot_path and ui_screenshot_path.exists())
+                    video_available = bool(ui_video_path and ui_video_path.exists())
+                    for ok, path in ((screenshot_available, ui_screenshot_path), (video_available, ui_video_path)):
                         if path is None:
                             continue
                         state.assets_reused += 1 if ok else 0
@@ -2662,88 +2662,95 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     primary_ui_path = ui_video_path or ui_screenshot_path
                     try:
                         state.capture_with_environment(state.ensure_ui_drive, code=runner_code, options=options, page_path=page_path, block_index=block_index)
-                        screenshot_succeeded = bool(options.screenshot)
-                        video_succeeded = bool(options.video)
+                        screenshot_available = bool(options.screenshot)
+                        video_available = bool(options.video)
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=primary_ui_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
+                        # Readiness for embedding is separate from capture success: retain
+                        # saved media in continuing builds without erasing the failed verdict.
+                        screenshot_available = bool(ui_screenshot_path and ui_screenshot_path.is_file())
+                        video_available = bool(ui_video_path and ui_video_path.is_file())
                 site_dir = Path(state.config["site_dir"]).resolve()
                 use_dir_urls = bool(state.config["use_directory_urls"])
-                if screenshot_succeeded and ui_screenshot_path:
+                if screenshot_available and ui_screenshot_path:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=site_dir, use_directory_urls=use_dir_urls, output_path=ui_screenshot_path)
-                if video_succeeded and ui_video_path:
+                if video_available and ui_video_path:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=site_dir, use_directory_urls=use_dir_urls, output_path=ui_video_path)
             elif options.screenshot:
                 screenshot_path = resolve_output_path(page_path, options.screenshot)
                 if state.runner_mode == "never" or state.runner_media == "video":
-                    screenshot_succeeded = screenshot_path.exists()
-                    if screenshot_succeeded:
+                    screenshot_available = screenshot_path.exists()
+                    if screenshot_available:
                         state.assets_reused += 1
                     else:
                         state.missing_assets += 1
                     LOG.info(
                         "Field docs runner %s: %s screenshot asset %s",
                         "mode=never" if state.runner_mode == "never" else "media=video",
-                        "using existing" if screenshot_succeeded else "skipping missing",
+                        "using existing" if screenshot_available else "skipping missing",
                         screenshot_path,
                     )
                 else:
                     try:
                         state.capture_with_environment(state.ensure_screenshot, code=runner_code, options=options, page_path=page_path, block_index=block_index)
-                        screenshot_succeeded = True
+                        screenshot_available = True
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
-                if screenshot_succeeded:
+                        screenshot_available = screenshot_path.is_file()
+                if screenshot_available:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
             if options.video and options.capture != "ui":
                 video_path = resolve_output_path(page_path, options.video)
                 if state.runner_mode == "never":
-                    video_succeeded = video_path.exists()
-                    if video_succeeded:
+                    video_available = video_path.exists()
+                    if video_available:
                         state.assets_reused += 1
                     else:
                         state.missing_assets += 1
                     LOG.info(
                         "Field docs runner mode=never: %s video asset %s",
-                        "using existing" if video_succeeded else "skipping missing",
+                        "using existing" if video_available else "skipping missing",
                         video_path,
                     )
                 else:
                     try:
                         state.capture_with_environment(state.ensure_video, code=runner_code, options=options, page_path=page_path, block_index=block_index)
-                        video_succeeded = True
+                        video_available = True
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
-                if video_succeeded:
+                        video_available = video_path.is_file()
+                if video_available:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
             if options.audio and options.capture != "ui":
                 audio_path = resolve_output_path(page_path, options.audio)
                 if state.runner_mode == "never" or state.runner_media == "video":
-                    audio_succeeded = audio_path.exists()
-                    if audio_succeeded:
+                    audio_available = audio_path.exists()
+                    if audio_available:
                         state.assets_reused += 1
                     else:
                         state.missing_assets += 1
                     LOG.info(
                         "Field docs runner %s: %s audio asset %s",
                         "mode=never" if state.runner_mode == "never" else "media=video",
-                        "using existing" if audio_succeeded else "skipping missing",
+                        "using existing" if audio_available else "skipping missing",
                         audio_path,
                     )
                 else:
                     try:
                         state.capture_with_environment(state.ensure_audio, options=options, page_path=page_path, block_index=block_index)
-                        audio_succeeded = True
+                        audio_available = True
                     except RuntimeError as exc:
                         state.handle_capture_error(page_path=page_path, output_path=audio_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error and not isinstance(exc, VerificationEnvironmentError):
                             raise
-                if audio_succeeded:
+                        audio_available = audio_path.is_file()
+                if audio_available:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=audio_path)
 
         hide_source = fence_name in RUNNER_FENCES and options.hidden
@@ -2752,10 +2759,10 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
             out.extend(rewritten_body)
             out.append(closing_line)
         if fence_name in RUNNER_FENCES and options.embed:
-            if options.screenshot and screenshot_succeeded:
+            if options.screenshot and screenshot_available:
                 out.append("\n")
                 out.append(f"![{options.alt or options.box_name}]({markdown_path_for(page_path, options.screenshot)})\n")
-            if options.video and video_succeeded:
+            if options.video and video_available:
                 # Emit a docs-root-relative path (e.g. "assets/foo.mp4"), the same
                 # convention used for the screenshot embed above. zensical rewrites
                 # raw-HTML src attributes for the page's URL depth just like it does
@@ -2767,7 +2774,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 out.append(f'<video controls autoplay loop muted playsinline style="max-width:100%">\n')
                 out.append(f'  <source src="{video_rel}" type="video/mp4">\n')
                 out.append(f'</video>\n')
-            if options.audio and audio_succeeded:
+            if options.audio and audio_available:
                 # Page-relative path, same convention as the screenshot/video embeds above;
                 # zensical rewrites raw-HTML src attributes for the page's URL depth.
                 audio_rel = markdown_path_for(page_path, options.audio)

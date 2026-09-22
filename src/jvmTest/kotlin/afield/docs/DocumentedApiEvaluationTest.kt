@@ -165,6 +165,27 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // Visible since the page census includes bare API names, not only call syntax (W1).
+        "computeMemoryBarrier" to
+            "agent_transcripts.md; a Vulkan command-buffer barrier. Its compiled graphics " +
+                "transcripts need a live device to submit and observe the dependency.",
+        "flowSmoothVelocity" to
+            "flow_grain.md; a GLSL helper evaluated in the native flow_grain capture. " +
+                "Headless transcript verification compiles the Kotlin, not the shader execution.",
+        "flowStrokeClip" to
+            "flow_grain.md; a GLSL stroke projection helper used by the native drawing pass. " +
+                "The transcript is COMPILE_ONLY; no registered evaluator reaches this shader.",
+        "takeFocus" to
+            "puppet_browser.md; PuppetBrowserKeyboard needs a native Window and browser producer. " +
+                "youtube_vr_browser compiles this focus handoff but does not execute it in CI.",
+        "cvtColor" to
+            "imaging_examples.md names OpenCV's conversion as a comparison. onnx_webcam_live " +
+                "calls it but is COMPILE_ONLY because it needs a camera. A synthetic Mat test " +
+                "could cover the conversion independently; this row records that remaining gap.",
+        "modelWorld" to
+            "openxr_eye_intersection.md; this is the scene-local matrix callback parameter of " +
+                "lineMesh, not a global Field API. The lexical census includes its invocation; " +
+                "the containing OpenXR transcript is COMPILE_ONLY and needs a live headset.",
         "flowMask" to
             "flow_grain.md; this is an editable GLSL obstacle callback. The native flow_grain " +
                 "capture evaluates it on a GPU; headless CI compiles the document's Kotlin only.",
@@ -291,9 +312,25 @@ class DocumentedApiEvaluationTest {
             .map { it.name to it.readText() }
     }
 
-    private fun pagesNaming(api: String): List<String> {
-        val rx = Regex("""\b${Regex.escape(api)}\s*\(""")
-        return publishedPages.filter { (_, text) -> rx.containsMatchIn(text) }.map { it.first }
+    private fun pagesNaming(api: String, pages: List<Pair<String, String>> = publishedPages): List<String> {
+        // Prose and inline code name APIs without calling them. Match whole identifiers so
+        // marksOf is visible but marksOfTree and _marksOf are not mistaken for that API.
+        val rx = Regex("""(?<![\p{L}\p{N}_$])${Regex.escape(api)}(?![\p{L}\p{N}_$])""")
+        return pages.filter { (_, text) -> rx.containsMatchIn(text) }.map { it.first }
+    }
+
+    @Test
+    fun documentationNamesNeedNotBeCalls() {
+        val pages = listOf(
+            "prose.md" to "Use marksOf to inspect the result.",
+            "code.md" to "The `marksOf` API.",
+            "call.md" to "marksOf(term)",
+            "qualified.md" to "Lambda.marksOf",
+            "other.md" to "marksOfTree _marksOf marksOf_ remarksOf λmarksOf marksOfλ",
+        )
+        assertEquals(listOf("prose.md", "code.md", "call.md", "qualified.md"), pagesNaming("marksOf", pages))
+        assertEquals(emptyList(), pagesNaming("missingApi", pages))
+        assertTrue("interaction_nets_examples.md" in pagesNaming("marksOf"))
     }
 
     /**
@@ -424,7 +461,7 @@ class DocumentedApiEvaluationTest {
             if (vanished.isEmpty()) null else
                 "${vanished.size} row(s) in COMPILE_ONLY_REMAINDER name an API the census cannot see " +
                     "at all: $vanished. It is no longer called by any transcript, or no longer named " +
-                    "as a call on a published page, or the scan has broken. Check the population " +
+                    "on a published page, or the scan has broken. Check the population " +
                     "figures above before deleting the row — a collapsed denominator presents exactly " +
                     "like a tidy-up.",
         )
