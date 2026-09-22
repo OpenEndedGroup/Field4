@@ -131,10 +131,8 @@ frame one integrates from.
 
 Run the example with `listOf(stateA)` in that loop and the picture survives it. Every particle spends
 frame one at the origin, the restoring force in this scene pulls each one back to its anchor, and
-after that the two runs are not merely similar, they are on the same trajectory. Replaying both
-against a live renderer and reading the probe at matched renderer frames, the mean per-particle speed
-agreed to a median of 0.0003 over 109 matched frames; the worst gap, 0.005, was at the earliest frame
-either run reported, still inside the startup transient.
+after that the two runs are not merely similar, they are on the same trajectory:
+`dev_docs/GPU_STATE_MEASUREMENTS.md` has what the probe read from each of them.
 
 Which makes it worse, not better. A bug whose only symptom is one bad frame at startup is a bug that
 hides, and it hides here only because this scene has a spring in it that forgets its initial
@@ -275,10 +273,9 @@ Three things in that program repay a second look.
 `coord.xy + coord.zw * 0.07`, so a single call fed a 3D position gives you a field in *(x, y)* with
 *z* entering at a fourteenth of the weight of *x*: a shear, not a third dimension. The workaround
 people wrote before there was an alternative was to sum three sheared slices, *f(x,y) + f(y,z) +
-f(z,x)*, which costs three `fbm`s and is still three 2D fields rather than one 3D one. That sum is
-what this page taught until StackSL grew a genuinely volumetric family — `noise3`, `fbm3`, `fbmd3`,
-`warp3`, `curl3`, `worley3`, `noise4` and `fbm4`, which read `input.xyz`, or the whole `vec4`, as a
-real coordinate. The [StackSL Cheatsheet](stacksl_cheatsheet.md) has the table; in new code, reach
+f(z,x)*, which costs three `fbm`s and is still three 2D fields rather than one 3D one. StackSL now
+has a genuinely volumetric family instead — `noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`,
+`noise4` and `fbm4`, which read `input.xyz`, or the whole `vec4`, as a real coordinate. The [StackSL Cheatsheet](stacksl_cheatsheet.md) has the table; in new code, reach
 for those.
 
 `fbm4` rather than the three-dimensional `fbm3` because this field has to move. The shader hands the
@@ -364,9 +361,9 @@ including the GPU-only sibling `fieldStats`.
 
 For the scene above, that card reports 40,000 calls, all finite, none NaN, over a reservoir of 4,096.
 Those four never move. The mean per-particle speed and the exact maximum do, because the noise field
-does: across one run's 222 snapshots they stayed inside 0.029 to 0.058 and 0.091 to 0.187, reading
-about 0.052 and 0.16 most of the time. Those are one run's numbers, not a derivation. What you do
-with them is turn the force gain up and watch the mean move further than that, or watch the maximum
+does: on one run they sat near 0.05 and 0.16, and `dev_docs/GPU_STATE_MEASUREMENTS.md` has the range
+they held over it. What you do with them is turn the force gain up and watch the mean leave that
+range, or watch the maximum
 *not* move because a clamp is firing, while you are still typing. A readback would tell you the same
 thing and you would never leave it switched on.
 

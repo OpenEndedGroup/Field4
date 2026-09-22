@@ -29,7 +29,7 @@ probability; `polyphonicPitchAnalysis` when there are chords and you want discre
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisOperations.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/AnalysisOperations/)
 
-**Used in:** [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md)
+**Used in:** [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md)
 
 ### Top-level functions { #analysisoperations-kt-functions }
 
@@ -97,7 +97,7 @@ across panels that share a `syncGroup`.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisVisualization.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/AnalysisVisualization/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md)
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md)
 
 ### Top-level functions { #analysisvisualization-kt-functions }
 
@@ -532,7 +532,7 @@ origins.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/JobMonitor.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/JobMonitor/)
 
-**Used in:** [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Short-time spectral spaces](../audio_ai_spectral_embeddings.md)
+**Used in:** [Beat and pitch analysis](../audio_ai_analysis.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Short-time spectral spaces](../audio_ai_spectral_embeddings.md)
 
 ### Top-level functions { #jobmonitor-kt-functions }
 
@@ -684,7 +684,7 @@ an older Field; the reverse is not true, because the service rejects unknown fie
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/Protocol/)
 
-**Used in:** [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### AssetRegion { #protocol-kt-assetregion }
 

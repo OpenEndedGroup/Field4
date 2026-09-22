@@ -25,8 +25,6 @@ val morph = flowMatch(to = cloudB, from = cloudA)
 val halfway = morph.transport(cloudA, to = 0.5) // a real intermediate distribution
 ```
 
-Everything below is executed when this page is built.
-
 ## Learning a shape, and sampling from it
 
 With no `from` cloud the particles start from a standard Gaussian, which makes the result a
@@ -100,9 +98,9 @@ and its samples come back on that same plane. `FlowMatchOptions.dimension` overr
 
 ## Two clouds, and a source topology that has to match
 
-Given a `from` cloud the field becomes a map between two shapes, and `transport` is the interesting
-call, because it can stop at any `t`. `transport(cloudA, to = 0.5)` is a genuine intermediate
-distribution rather than a vertex-wise average of two point lists.
+Given a `from` cloud the field becomes a map between two shapes, and `transport` can stop at any
+`t`. `transport(cloudA, to = 0.5)` is a genuine intermediate distribution rather than a vertex-wise
+average of two point lists.
 
 When something upstream already knows which point goes where — a shared arc coordinate along two
 curves, say — `FlowCoupling.PAIRED` uses that correspondence instead of guessing one. The target

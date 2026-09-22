@@ -167,12 +167,11 @@ has exactly **two** boundary loops, one per wall. `Solid.levelSetOf` closes it a
 instead, which is the `levelSet` row of [Solids & Booleans](manifold.md)'s own comparison table doing
 the thing that row is about.
 
-Neither is wrong. The cut is a property of the *window*, not of either marcher, and the difference is
-what each does about a window it has been handed. Padding the field with one empty slice at each end
-makes the question go away, and then both close, which is what the figure that gets rendered uses. It
-also makes the caps flat: without the padding the surface snaps to the last sample plane with a
-sawtooth wherever neighbouring samples differ, because the jump to `sampledField3D`'s `outside` value
-happens in no distance at all.
+Pad the field with one empty slice at each end and both close, which is what the rendered figure
+uses. The padding also makes the caps flat: without it the surface snaps to the last sample plane
+with a sawtooth wherever neighbouring samples differ, because the jump to `sampledField3D`'s
+`outside` value happens in no distance at all. The cut is a property of the *window* rather than of
+either marcher, so a volume that already ends in empty space needs none of this.
 
 !!! note "`min` is not the union's distance on the inside"
 

@@ -833,9 +833,9 @@ free with the forward pass. It also prints the exact 2×2 Rosenbrock Hessian, wh
 
 ![f, f prime and f double-prime of exp(-x^2) sin(6x), plotted from one forward sweep](assets/autodiff/autodiff_basics.png)
 
-*Optimizers* walks the same Rosenbrock valley three times on the same exact gradients. The picture is
-the argument for a line search: L-BFGS plunges past 10⁻²⁴ in about 42 iterations and stops, while
-SGD+momentum is still zig-zagging near 10⁻³ at iteration 300 and Adam has barely left 10⁰.
+*Optimizers* walks the same Rosenbrock valley three times on the same exact gradients, and what a
+line search buys shows up immediately: L-BFGS plunges past 10⁻²⁴ in about 42 iterations and stops,
+while SGD+momentum is still zig-zagging near 10⁻³ at iteration 300 and Adam has barely left 10⁰.
 
 ![log10 Rosenbrock loss per iteration for SGD, Adam and L-BFGS](assets/autodiff/autodiff_optimizers.png)
 
