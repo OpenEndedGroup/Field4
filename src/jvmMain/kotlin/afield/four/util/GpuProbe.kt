@@ -61,7 +61,9 @@ import kotlin.math.abs
  *    `repeat(4) { frame() }` nor three seconds of wall clock is a wait; both are a hope. [arm] and
  *    [stillWaiting] make it a *condition*: prefill every output with [SENTINEL], then pump until
  *    every witnessed slot has actually been overwritten, and fail with a deadline — naming the
- *    buffer and the first unwritten index — if it never is.
+ *    buffer and the first unwritten index — if it never is. And because a *written* buffer is
+ *    still not a *finished chain*, [settleUntil] takes a semantic post-condition as well; the two
+ *    traps that make that necessary are measured in its KDoc and in [arm]'s.
  * 3. **A slot name is not checked.** `Structure.bind` accepts any string at all, so a misspelled
  *    push-constant name binds nothing and the shader reads a null device pointer or whatever was
  *    in that memory before. [Bindings.bind] validates against the shader's introspected push
@@ -180,7 +182,30 @@ class GpuProbe(
         return b
     }
 
-    /** The name [fixture] gave this buffer, for messages. */
+    /**
+     * Take a buffer this probe did **not** allocate under its wing, so it can be armed and read.
+     *
+     * The case this exists for: a probe over a library component — `GpuNeighbourGrid`,
+     * `GpuRadixSort`, a `GpuSkinner` — whose interesting outputs are buffers the component owns.
+     * Without this, the only witnessable buffers would be the probe's own fixtures, and "did the
+     * grid's range pass run" would be unanswerable.
+     *
+     * Explicit rather than automatic, because [arm] has to know the size to prefill and the
+     * caller is the only one who does. An un-adopted foreign buffer is *refused* by [arm] rather
+     * than skipped: a skipped witness is a sentinel that cannot fire, which is worse than no
+     * sentinel at all because it reads as evidence.
+     *
+     * Adopting does not transfer ownership — [close] does not remove the component's modules, and
+     * the caller still calls the component's own `removeFrom`/`cleanup`.
+     */
+    fun adopt(name: String, buffer: FrameBufferGroup, floats: Int): FrameBufferGroup {
+        require(floats > 0) { "adopt('$name') needs a positive float count, not $floats" }
+        fixtures[buffer] = name
+        sizes[buffer] = floats
+        return buffer
+    }
+
+    /** The name [fixture] or [adopt] gave this buffer, for messages. */
     fun nameOf(buffer: FrameBufferGroup): String = fixtures[buffer] ?: "<not a probe fixture>"
 
     /** How many floats [fixture] allocated, or 0 if this is not one of ours. */
@@ -339,6 +364,20 @@ class GpuProbe(
      *
      * After this, [landed] answers "has the GPU overwritten all of it yet" by *looking*, rather
      * than by counting frames. Call it again to re-arm for another dispatch.
+     *
+     * ### Arm the end of a chain, not an intermediate that feeds back into itself
+     *
+     * **A constant is a fixed point of an average**, and the sentinel is a constant. Arming the
+     * ping-pong pressure pair of a Jacobi solver looks strictly better than not and is wrong:
+     * `(4 x -98765 - 0) / 4` is exactly `-98765`, so any interior cell whose four neighbours are
+     * all still sentinel and whose source term is exactly zero reproduces the sentinel forever.
+     * Measured on the probe this facility was written for — 1434 pumped frames, and then
+     * `9 of 16384 slots still hold the sentinel, from index 908`, on a solver that was working
+     * perfectly.
+     *
+     * The same shape catches any smoothing, blurring, relaxing or accumulating stage. So arm the
+     * buffers a chain *ends* at, and prove the middle with [settleUntil] and with claims about
+     * what the middle is for.
      */
     fun arm(vararg outputs: FrameBufferGroup, seconds: Double = DEFAULT_LANDING_SECONDS) {
         witnesses.clear()
@@ -364,7 +403,7 @@ class GpuProbe(
      * not be gradeable.
      */
     fun landed(): Boolean {
-        renderer.windowContext().computeFences.forEach { it.fenceWait() }
+        idle()
         for (w in witnesses) {
             var survivors = 0
             w.buffer.mapAndRead {
@@ -396,14 +435,34 @@ class GpuProbe(
     val framesToLand: Int get() = landedAfterFrames
 
     /**
-     * Wait this window's compute fences — "the GPU has nothing of mine left in flight".
+     * Wait every fence this window has — "the GPU has nothing of mine left in flight".
      *
      * Needed before a host write to a buffer a dispatch might still be reading, which is what
      * re-seeding a fixture between runs is. [landed] does this already; this is the same wait
      * without the sentinel scan.
+     *
+     * ### Both fence arrays, and why that is not paranoia
+     *
+     * `WindowContext` has `computeFences` *and* `fences` — graphics — and all six hand-rolled
+     * probes in this repository wait only the first. For work registered on
+     * `renderer.computeList` that is correct. For work registered on `renderer.renderList.others`
+     * it is not, and `GpuNeighbourGrid.install` puts its whole chain there, on the graphics queue.
+     *
+     * That was a real, live race, found by instrumenting a flake rather than by reading: the
+     * ported `GpuNeighbourGridSmoke` failed about one run in three with `keys out of order 984`
+     * and `entries covered by cell runs 0`, while a readiness probe *one `println` earlier* had
+     * read the same buffers as sorted and fully covered. Nothing ran in between. The compute
+     * fences were signalled because nothing was on the compute list at all, so the readback was
+     * racing a graphics frame still in flight — the hash and clear passes of the *next* frame
+     * clobbering the sorted keys of the last one. The original smoke has the same bug and hides
+     * it behind three seconds of wall-clock spinning.
+     *
+     * So this waits both, always. A probe should not have to know which queue its subject chose.
      */
     fun idle() {
-        renderer.windowContext().computeFences.forEach { it.fenceWait() }
+        val ctx = renderer.windowContext()
+        ctx.fences.forEach { it.fenceWait() }
+        ctx.computeFences.forEach { it.fenceWait() }
     }
 
     private fun landingReport(): String {
@@ -441,6 +500,53 @@ class GpuProbe(
         val p = requirePump()
         arm(*outputs, seconds = seconds)
         while (stillWaiting()) p()
+    }
+
+    /**
+     * [settle], and then keep pumping until [ready] holds as well.
+     *
+     * **A written buffer is not a finished chain**, and this is the API that admits it. The
+     * sentinel answers "did something write here", which is the right question for a single
+     * dispatch and an incomplete one for a chain: a pass that writes unconditionally clears the
+     * sentinel whether or not the pass *before* it produced anything usable.
+     *
+     * Measured, because this was found the hard way rather than reasoned about. Porting
+     * [afield.examples.four.GpuNeighbourGridSmoke] to [settle] passed twice and then failed on the
+     * third distribution with `keys out of order 984` and `entries covered by cell runs 0`: the
+     * grid's hash and clear passes had written all four of its buffers inside two frames — so
+     * every sentinel was gone — while `GpuRadixSort`, whose plan is built lazily inside the first
+     * `sort()` call, had not run at all. The old code's three seconds of wall-clock spinning was
+     * not merely slow; it was a guess that happened to be large enough, and two frames was a
+     * guess that was not.
+     *
+     * So [ready] is a *semantic* post-condition the caller supplies — "the keys are sorted", "the
+     * runs cover every entry", "the residual has fallen" — evaluated after each pump, under the
+     * same deadline. [readyLabel] goes into the failure message, because "it timed out" and "the
+     * sort never ran" are different bugs.
+     */
+    fun settleUntil(
+        vararg outputs: FrameBufferGroup,
+        seconds: Double = DEFAULT_LANDING_SECONDS,
+        readyLabel: String = "the caller's readiness condition",
+        ready: () -> Boolean,
+    ) {
+        val p = requirePump()
+        arm(*outputs, seconds = seconds)
+        while (stillWaiting()) p()
+        while (!ready()) {
+            if (System.nanoTime() > landingDeadline) throw GpuProbeNeverLanded(
+                "probe '$name': every armed output was written after $pumpedFrames pumped " +
+                    "frames, but $readyLabel never held.\n" +
+                    "  A written buffer is not a finished chain. A pass that writes " +
+                    "unconditionally clears the sentinel whether or not the pass before it " +
+                    "produced anything usable — a lazily-built sort, a shader still compiling, a " +
+                    "stage registered after the one that consumes it. This is the wait that " +
+                    "catches that, and the sentinel alone is the wait that does not."
+            )
+            p()
+            pumpedFrames++
+        }
+        landedAfterFrames = pumpedFrames
     }
 
     /** Render [n] frames. Needs [pump], which means `jvmMain`. */

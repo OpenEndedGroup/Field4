@@ -361,6 +361,21 @@ void main() {
         // --- wait for the chain to exist at all. This is the wait that matters: a ComputeModule
         // whose shader has not finished compiling dispatches as a silent no-op, so the question is
         // "has the output been written", not "have four frames gone by".
+        // The two graded outputs, and deliberately NOT the pressure pair.
+        //
+        // Arming `pressureA`/`pressureB` looks strictly better and is wrong, measured: it hung
+        // for 1434 frames and then reported `9 of 16384 slots still hold the sentinel, from index
+        // 908`. The Jacobi stencil is an average, and a constant is a fixed point of an average:
+        // `(4 x -98765 - 0) / 4` is exactly `-98765`, so any interior cell whose four neighbours
+        // are all still sentinel and whose divergence is exactly zero reproduces the sentinel
+        // forever. A sentinel must not be a fixed point of the shader that is supposed to
+        // overwrite it — witness the END of a chain, not an intermediate that is fed back into
+        // itself.
+        //
+        // The Jacobi stage's execution is not left unwitnessed by this. A stage that never ran
+        // leaves the pressure at zero, the projection returns its input, and three of the claims
+        // below — the reduction, `extra sweeps helped` and `projection changed the field` — fail
+        // together rather than quietly.
         probe.settle(velocityOut, divergence)
         val warmFrames = probe.framesToLand
         println("  cold start: landed after $warmFrames pumped frames (three shader compiles)")
