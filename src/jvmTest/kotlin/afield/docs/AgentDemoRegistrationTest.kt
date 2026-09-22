@@ -59,7 +59,10 @@ class AgentDemoRegistrationTest {
         const val TRANSCRIPTS = "dev_docs/agents/transcripts"
 
         /**
-         * The twenty-one demo documents this file was measured against, 2026-09-21 at `bc71ed216`.
+         * The twenty-two demo directories this file was measured against, 2026-09-22 at `b5b9ad9e0`.
+         *
+         * Twenty-two directories, twenty-one of them documents; see [demoDocuments] for why the two
+         * populations came apart and which assertions range over which.
          *
          * Recount with `ls -1 dev_docs/agents/demos`. Adding a demo means adding its name here and
          * registering it in [DemoTranscriptExecSmokeTest] — two lines, and the failure below tells
@@ -81,6 +84,14 @@ class AgentDemoRegistrationTest {
             "chart_primitive",
             "completion_rank_at_scale",
             "confluence_grid",
+            // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
+            // here (this set is the directory listing) and is invisible to the two assertions that
+            // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under
+            // `dev_docs/agents/transcripts/` is registered COMPILE_ONLY, so its box Kotlin
+            // compiles on every build. It does not
+            // belong in UNVERIFIED, and would fail `anUnverifiedEntryThatIsNowVerifiedFails` if
+            // put there, twice over: it is not a demo document, and it is not unverified.
+            "flow_grain",
             "frame_history_reprojection",
             "interaction_nets_lambda",
             "keyframe_key_discovery",
@@ -111,18 +122,48 @@ class AgentDemoRegistrationTest {
          * [everyDemoDocumentIsRegisteredForVerification] now fails outright for any demo that
          * arrives without a transcript, with nothing in the way. Adding an entry back is a decision
          * somebody makes on purpose, in writing, with a reason and a fix — not a default.
+         *
+         * It survived its first real test on 2026-09-22 by *not* growing. `flow_grain` arrived in
+         * `b5b9ad9e0` and three corpus ledgers went stale, so the question was put as: does it need
+         * an entry here? No, on two independent grounds — it is not a demo document (no
+         * `metadata.edn`, so [anUnverifiedEntryThatIsNowVerifiedFails] rejects the entry outright),
+         * and its transcript was registered `COMPILE_ONLY` in the same commit, so the Kotlin this
+         * list would have been excusing is compiled on every build already. The commit's gap was
+         * the three name-lists, not the verification.
          */
         val UNVERIFIED = emptyMap<String, String>()
     }
 
+    /**
+     * Every directory under `dev_docs/agents/demos/` — the population [DEMO_CORPUS] is a list of.
+     *
+     * Unfiltered on purpose. This is the thing a sibling branch grows, and the corpus assertion has
+     * to see an arrival whatever shape it is in; a directory that this method skipped would be
+     * invisible to every corpus guard in the tree, which is a worse failure than an unclassified one.
+     */
     private fun demoDirectories(): List<String> {
         val root = File(DEMOS)
         assertTrue(root.isDirectory, "no demo corpus at ${root.absolutePath}")
         return (root.listFiles() ?: emptyArray())
-            .filter { it.isDirectory && File(it, "metadata.edn").isFile }
+            .filter { it.isDirectory }
             .map { it.name }
             .sorted()
     }
+
+    /**
+     * The subset of [demoDirectories] that is a loadable *document*, i.e. ships a `metadata.edn`.
+     *
+     * The two were the same method until 2026-09-22, when `flow_grain` landed in `b5b9ad9e0` as the
+     * first entry under `demos/` that is not a saved document: it holds the hand-authored `.kt` and
+     * GLSL sources that `tools/demos/build_flow_grain.py` assembles into
+     * `dev_docs/agents/transcripts/flow_grain.yaml`. Only documents can be replayed or classified, so only
+     * documents are what [everyDemoDocumentIsRegisteredForVerification] and [UNVERIFIED] range over
+     * — while [DEMO_CORPUS] ranges over the directory listing. Collapsing the two again makes one of
+     * those two assertions state a rule over a population it does not hold, which is the exact
+     * defect `dev_docs/GUARD_CORPORA.md` exists to name.
+     */
+    private fun demoDocuments(): List<String> =
+        demoDirectories().filter { File("$DEMOS/$it/metadata.edn").isFile }
 
     private fun registry(): Map<String, String> =
         DemoTranscriptExecSmokeTest.EXECUTE.associateWith { "EXECUTE" } +
@@ -151,20 +192,24 @@ class AgentDemoRegistrationTest {
             "demo document(s) $gone are in DEMO_CORPUS but not on disk; if they were removed or " +
                 "renamed, update DEMO_CORPUS, UNVERIFIED and the counts in dev_docs/DEMO_CORPUS_AUDIT.md",
         )
-        assertTrue(found.size >= 21, "the demo corpus has shrunk to ${found.size}; it was 21 on 2026-09-21")
+        assertTrue(found.size >= 22, "the demo corpus has shrunk to ${found.size}; it was 22 on 2026-09-22")
     }
 
     /**
      * Nothing may be *in* the corpus without being verified by something, or listed as not.
      *
      * This is the assertion the demo corpus never had. It was held open by [UNVERIFIED] until
-     * 2026-09-21; with that map empty, a twenty-second demo arriving with no transcript fails it
-     * outright, and the failure message is the whole remedy.
+     * 2026-09-21; with that map empty, the next demo *document* arriving with no transcript fails
+     * it outright, and the failure message is the whole remedy.
+     *
+     * Ranges over [demoDocuments], not [demoDirectories]: a directory with no `metadata.edn` cannot
+     * be replayed or classified, so demanding a transcript of one would be a rule stated over a
+     * population that cannot satisfy it.
      */
     @Test
     fun everyDemoDocumentIsRegisteredForVerification() {
         val registry = registry()
-        val unregistered = demoDirectories().filter { demo ->
+        val unregistered = demoDocuments().filter { demo ->
             val transcript = File("$TRANSCRIPTS/$demo.yaml").isFile
             !(transcript && demo in registry) && demo !in UNVERIFIED
         }
@@ -192,7 +237,7 @@ class AgentDemoRegistrationTest {
             "$repaired now have registered transcripts; delete their UNVERIFIED entries so the list " +
                 "keeps meaning what it says",
         )
-        val absent = (UNVERIFIED.keys - demoDirectories().toSet()).sorted()
+        val absent = (UNVERIFIED.keys - demoDocuments().toSet()).sorted()
         assertEquals(emptyList(), absent, "$absent are in UNVERIFIED but are not demo documents at all")
     }
 
@@ -207,7 +252,7 @@ class AgentDemoRegistrationTest {
      * only, while its file says it is run. A weaker verification than the registry advertises is
      * exactly the failure mode this branch is about, in miniature.
      *
-     * Population measured 2026-09-21: 143 transcripts, 143 registry entries, no overlaps.
+     * Population measured 2026-09-22: 145 transcripts, 145 registry entries, no overlaps.
      */
     @Test
     fun theThreeVerificationLevelsAreDisjoint() {
@@ -217,13 +262,13 @@ class AgentDemoRegistrationTest {
             .filter { it.isFile && it.extension == "yaml" }
             .map { it.nameWithoutExtension }
             .toSet()
-        assertTrue(onDisk.size >= 143, "the transcript corpus has shrunk to ${onDisk.size}; it was 143 on 2026-09-21")
+        assertTrue(onDisk.size >= 145, "the transcript corpus has shrunk to ${onDisk.size}; it was 145 on 2026-09-22")
         val entries = DemoTranscriptExecSmokeTest.EXECUTE.size +
             DemoTranscriptExecSmokeTest.COMPILE_ONLY.size +
             DemoTranscriptExecSmokeTest.KOTLINJS.size
         assertTrue(
-            entries >= 143,
-            "the verification registries have shrunk to $entries entries; they held 143 on 2026-09-21",
+            entries >= 145,
+            "the verification registries have shrunk to $entries entries; they held 145 on 2026-09-22",
         )
 
         val classifiedTwice = DemoTranscriptExecSmokeTest.EXECUTE

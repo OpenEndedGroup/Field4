@@ -97,9 +97,13 @@ CORPORA: tuple[Row, ...] = (
     ),
     Row(
         "demo_documents",
-        "demo documents",
+        "demo directories",
         "ls -1d dev_docs/agents/demos/*/",
-        "held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`",
+        "held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and "
+        "`test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them "
+        "(`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a "
+        "saved document, so the loadable-document population is one smaller and is what "
+        "`AgentDemoRegistrationTest.demoDocuments` filters to",
     ),
     Row(
         "demo_build_scripts",
