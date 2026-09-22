@@ -17,15 +17,14 @@ matrix you computed yourself**, and `smileMdsDistances`' own one-line summary sa
 "useful for transport, edit, and graph distances". Both examples below are one of those, and neither
 has anything to do with sound.
 
-!!! note "On Apple Silicon the eigensolver is LAPACK, not ARPACK"
+??? note "On Apple Silicon the eigensolver is LAPACK, not ARPACK"
 
-    Smile takes its top-*d* eigenpairs from ARPACK, and bytedeco's `libarpack.2.dylib` for
-    `macosx-arm64` needs `libgfortran.5`, `libquadmath.0` and `libgcc_s.1.1`, none of which any
-    bytedeco artifact in this build ships on that platform
-    (`build.gradle.kts:119#val arpackVersion = "3.9.1-1.5.12"`). So `smileMds` probes the binding
-    once and falls back to LAPACK's `dsyevd` when it is missing
-    (`smile_mds.kt:349#private val arpackAvailable: Boolean by lazy {`), which is the path the
-    numbers on this page were measured on. `smileTsne` does not touch ARPACK either way.
+    `smileMds` probes the ARPACK binding once and falls back to LAPACK's `dsyevd` when it is
+    missing (`smile_mds.kt:349#private val arpackAvailable: Boolean by lazy {`). On `macosx-arm64`
+    it is missing: the ARPACK native library this build pins wants a Fortran runtime that no
+    bytedeco artifact ships for that platform
+    (`build.gradle.kts:119#val arpackVersion = "3.9.1-1.5.12"`). So LAPACK is the path the numbers
+    on this page were measured on. `smileTsne` does not touch ARPACK either way.
 
 ## Where the family lives
 

@@ -184,11 +184,9 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     all. `loop` gives up nothing by ignoring the value, and `forever { }`'s own `Boolean` is the
     only return-based way to end a frame program.
 
-    It follows from `job?.cancel()` preceding `yield()`, and
-    `FramesSemanticsTest.frameNeverReturnsFalse` pins it across all three stop routes — which
-    matters because the end phase lives in that `catch`, so a `frame()` that started returning
-    `false` would exit `eachFrame` through its loop condition and stop running `.end { }`
-    altogether.
+    The throw is what runs your `.end { }`: the end phase lives in that `catch`, so a body that
+    left through a `false` return would skip it. `dev_docs/frames_stop_end_phase.md` has the three
+    stop routes side by side.
 
 !!! note "`forever { }` needs qualifying"
     A box imports both `afield.*` and `afield.four.util.*`, and each declares a `forever` — one
@@ -196,19 +194,16 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     therefore an overload resolution ambiguity, which is why the figure above says
     `afield.forever { }`.
 
-??? aside "`forever` and `Frames.plus` have no callers in the tree"
-    Nothing in Field's own source calls either the `Frames` `forever` or the parallel-composition
-    operator `Frames.plus`. Both are public, and both are less exercised than the other three
-    builders. `forever` behaves as documented; the figure above drives it.
+??? aside "Running two frame programs at once with `a + b`"
+    A launcher installs its stop fences (`shouldend`, `onAtEndStart`, `onAtEndFinish`,
+    `shouldCancelAtEnd`) on the `Frames` it was handed, which for `a + b` is the *combined* one, and
+    the children are reached only through `body()`. `plus` forwards all four down to them, lazily,
+    so a child is fenced exactly as the parent is and a re-run stops each child in its own right
+    rather than only via the parent's `finally`.
 
-    `Frames.plus` needs one thing said about it if you compose frame programs. A launcher installs
-    its stop fences (`shouldend`, `onAtEndStart`, `onAtEndFinish`, `shouldCancelAtEnd`) on the
-    `Frames` it was handed, which for `a + b` is the *combined* one, and the children are reached
-    only through `body()`. `plus` forwards all four down to them, lazily, so a child is fenced
-    exactly as the parent is and a re-run stops each child in its own right rather than only via the
-    parent's `finally`. One rough edge is left, and it is cosmetic: all three end phases of
-    `(a.end + b.end).end` route through the same hook pair, so the box can report `"ending"` more
-    than once for one stop.
+    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
+    through the same hook pair, so the box can report `"ending"` more than once for one stop.
+    `dev_docs/frames_stop_end_phase.md` records the rest.
 
 ## What stops one
 

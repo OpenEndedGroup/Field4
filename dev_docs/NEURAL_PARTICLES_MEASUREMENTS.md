@@ -191,12 +191,29 @@ against a parity of 1.62e-05.
 
 ---
 
+## Measurement seven: the shared-seed condition is weaker than the argument for it
+
+`blendWith` interpolates two fields in weight space, and the standard argument says both must be
+trained from the same initialisation: hidden units are exchangeable, so two runs from different
+random starts represent similar functions through different permutations of the same machinery, and
+averaging across a permutation should produce nothing.
+
+Measured, it is weaker than that. Across three seed pairs the midpoint stayed tidy whether the
+initialisations were shared or not. The likely reason is that the other condition does most of the
+work: both fields are trained from one shared source cloud, which makes the two training problems
+nearly the same problem, and a nearly-identical problem lands in a nearly-identical basin whatever
+the start.
+
+Recorded rather than acted on. Three pairs is not a result to relax a condition on, and the cost of
+passing the same `seed` is nothing, so `public/docs/neural_particles.md` still states it as a
+requirement. **Open:** whether it stays tidy as the two clouds are allowed to diverge -- the regime
+where the shared-source explanation predicts it should stop.
 
 ---
 
 ## The discipline, in general
 
-Two habits that the six sections above keep arriving at independently.
+Two habits that the sections above keep arriving at independently.
 
 ### Always against a floor and a ceiling
 

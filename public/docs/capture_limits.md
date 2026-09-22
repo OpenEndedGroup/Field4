@@ -175,10 +175,10 @@ to the browser recorder, and silently records the wrong window
 (`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page currently does this, so the trap is real
 and unsprung.
 
-A native-window recorder **does** exist, which is the narrower and more useful truth:
-`Window.raiseAndRecord`, in `afield/docs/doc.kt`, raises the GLFW window and records its rectangle
-with macOS `screencapture`. Its only caller is the `render_clip` comment command in the same file,
-which neither the backdoor nor the docs fence harness reaches.
+A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/docs/doc.kt`, raises
+the GLFW window and records its rectangle with macOS `screencapture`. Its only caller is the
+`render_clip` comment command in the same file, which neither the backdoor nor the docs fence
+harness reaches.
 
 It is also on the *old* mechanism. The still path was moved to the renderer's own swapchain copy and
 the recording path was not, so the recorder that exists needs Screen-Recording permission and fails

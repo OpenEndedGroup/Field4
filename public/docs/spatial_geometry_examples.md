@@ -1232,16 +1232,16 @@ bridge does its own repair.
 ## Where the pictures come from
 
 Every figure on this page is the output of the `diffstatic_runner` fence above it, executed inside a
-Field box.
+Field box, and the numbers they carry are asserted in
+`src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`.
 
-The *claims* are guarded by `src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`: the Euler
-counts, the Apollonius circle's analytic centre, the score-tie invariant on every weighted cell
-boundary, and both of the marching-squares cases above.
-
-A fence re-runs only when the build decides its capture is stale, and that decision is made from
-`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`, which lists no stdlib source. Edit
-`contours.kt` and an incremental build is a cache hit. These figures were generated with
-`FIELD_DOCS_RUNNER_MODE=always`; see `dev_docs/docs_capture_staleness.md`.
+??? aside "What decides whether a fence is re-run"
+    A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of
+    date, and that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in
+    `public/docs_hooks.py`) which covers the runner's own machinery and no stdlib source at all. So
+    editing `contours.kt` leaves every digest unchanged and an incremental build is a cache hit.
+    These figures were generated with `FIELD_DOCS_RUNNER_MODE=always`, which forces them;
+    `dev_docs/docs_capture_staleness.md` has the rest.
 
 ## Reference
 
