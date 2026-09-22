@@ -68,6 +68,22 @@ def repo_path(path: str) -> Path:
     return REPO_ROOT / path
 
 
+def repo_relative(path: Path) -> str:
+    """`path` as a repository-relative string, for an error message a reader can paste.
+
+    This was *used* by the extended-face branch below and never defined, from the commit that
+    introduced it until 2026-09-22 — so the one code path that reports a shipped Extended Iosevka
+    raised `NameError` instead of naming the file, and the guard crashed rather than failing. It
+    survived because the branch is unreachable while the tree is clean: no extended face is
+    present, so the loop body never ran and no test called it. That is the whole argument for
+    `tools/test_check_offline_assets.py` existing.
+    """
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def git_ls_files(patterns: tuple[str, ...]) -> list[str]:
     command = ["git", "ls-files", "--", *patterns]
     completed = subprocess.run(
