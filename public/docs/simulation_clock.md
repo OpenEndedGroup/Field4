@@ -86,7 +86,7 @@ elapsed seconds discarded by the catch-up limit. These bounds prevent an accumul
 catch-up queue; they cannot interrupt an infinite loop inside a coroutine. Keep individual
 resumes short. `runCurrent()` pumps ready work without advancing time.
 
-## Stop is still Stop
+## Stopping the box
 
 `withSimulationClock` inherits the current box's job, source identity, and document.
 It closes in `finally`: cancel the child tree, drain cancellation continuations, and
@@ -95,10 +95,10 @@ Cleanup cannot wait for future simulation time after the clock has stopped. A fa
 child cancels the enclosing box through normal structured concurrency.
 
 Use the scope inside `frames`, as above. A raw `SimulationClock(context)` is available
-for backend code, but its caller must close it on the thread that advances it. Returning
-a bare clock from a box is not an execution convention. Avoid `GlobalScope` for owned work.
+for backend code, but its caller must close it on the thread that advances it. Nothing
+will advance a clock you hand back out of a box. Avoid `GlobalScope` for owned work.
 
-## Record, change, compare
+## Comparing two recordings
 
 The starting point marks complete frame intervals and two scopes, **Simulation** and
 **Vectors**. Its named **Orbit** and **Pulse** child lanes appear inside the update work.
