@@ -6,7 +6,7 @@ Signal processing needs pictures. A filter can reveal structure or erase the det
 
 ## Filter chains as layered curves
 
-Stacking three filters is easy; seeing whether the stack helped is the part that needs a picture. What you want from a smoothing chain is less junk and the same gesture, and those two are traded against each other.
+Stacking three filters is easy; seeing whether the stack helped is not. What you want from a smoothing chain is less junk and the same gesture, and those two are traded against each other.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -44,7 +44,7 @@ showSignals(
 
 One `showSignals` call puts all three streams on one axis. Watch the chain order: `band` is applied to `s`, the output of `ema` and `oneEuro`, not to `signal`, so the band-pass sees a stream the two smoothers have already been through.
 
-![](assets/timeseries_examples/filter_chains.png)
+![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, an orange smoothed trace attenuated to roughly a fifth of it and lagging behind, and a green band-pass trace that stays almost flat at zero](assets/timeseries_examples/filter_chains.png)
 
 That order is why the band-pass trace sits nearly flat: most of the 4.7 Hz content it is tuned for was taken out upstream. The smoothed trace has a catch of its own. `OneEuroFilter` derives its `dt` from `System.currentTimeMillis()` between calls, so a `for` loop over a stored array hands it about a millisecond per sample and it smooths far harder than its 1 Hz `minCutoff` implies; the attenuation and the lag visible here are that, not a missing fundamental. Its cutoffs are in Hz and mean what they say when the samples really do arrive at 120 Hz.
 
@@ -84,8 +84,10 @@ showSignals(
 
 The stream gets a `+0.95` spike at every 83rd sample and a `-0.8` dip at every 127th, and both detectors report their verdict on the same axis as the signal: `1f` from the gamma detector on the sample that fired, and from the beta detector `+1f` for an upper-tail event and `-1f` for a lower-tail one.
 
-![](assets/timeseries_examples/distribution_events.png)
+![Three traces over 360 samples: a blue raw signal riding a slow sine, an orange gamma-event trace that spikes to 1 on single samples, and a green beta-event trace that holds at +1 or -1 across long stretches](assets/timeseries_examples/distribution_events.png)
 
-The gamma detector, fed `abs(x)`, marks single samples. The beta detector holds `+1` and `-1` across whole stretches instead, and that is a setting rather than a discovery: its 64-sample window is shorter than the 109 samples the 1.1 Hz sine takes to come round at 120 samples a second, so every fit is a fit over a trend and the trend's own continuation keeps landing in a tail. Give a distribution fit at least one full cycle of any periodic component, or detrend before the detector sees it. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When the value you care about is *hidden* behind the noise rather than merely buried in it, a state you can only measure indirectly, reach for [State estimation](state_estimation_examples.md).
+The gamma detector, fed `abs(x)`, marks single samples. The beta detector holds `+1` and `-1` across whole stretches instead, and its window is why: 64 samples is shorter than the 109 the 1.1 Hz sine takes to come round at 120 samples a second, so every fit is a fit over a trend and the trend's own continuation keeps landing in a tail. Give a distribution fit at least one full cycle of any periodic component, or detrend before the detector sees it.
+
+For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When the value you care about is *hidden* behind the noise rather than merely buried in it, a state you can only measure indirectly, reach for [State estimation](state_estimation_examples.md).
 
 These filters all work in the time domain. When the question is which *frequencies* a signal is made of (brightness, timbre, a chirp's trajectory), cross over to the frequency-domain companion: [Spectral examples](spectral_examples.md) (FFT, STFT / spectrograms, and streaming spectral features that compose with the same `then` chain).
