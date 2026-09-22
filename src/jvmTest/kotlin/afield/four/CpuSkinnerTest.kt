@@ -170,7 +170,7 @@ class CpuSkinnerTest {
             val failure = runCatching { CpuSkinner(model.meshes.first()) }.exceptionOrNull()
             println("[cpu-skinner] rigid mesh -> ${failure?.message}")
             assertTrue(failure is IllegalArgumentException, "expected a refusal, got $failure")
-            assertTrue("has no skin" in (failure?.message ?: ""), "and it should say why")
+            assertTrue("has no skin" in (failure.message ?: ""), "and it should say why")
         } finally {
             for (m in model.meshes) {
                 memFree(m.buffers.vertexData)
