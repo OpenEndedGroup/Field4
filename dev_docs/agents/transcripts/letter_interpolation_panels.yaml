@@ -56,8 +56,8 @@ operations:
 
           // Both fields must start from the *same* cloud. That is what gives a particle one start
           // point and two destinations, and it is also what makes the two normalisation frames
-          // agree -- `blendWith` refuses to mix two coordinate systems, so this is load-bearing
-          // rather than tidy.
+          // agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
+          // requirement and not a tidiness.
           val source = (0 until N).map {
               val a = 2 * Math.PI * it / N
               vec(Math.cos(a), Math.sin(a), 0.0)

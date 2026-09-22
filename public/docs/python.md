@@ -259,13 +259,19 @@ Three of the pictures are the box's *editor*, because that is where `print` outp
 expression land — beside the line that produced them. The plotly one is the box's output pane,
 because an embedded page is a display channel rather than an inline annotation.
 
-All four need JEP, so each declares `jep` in `requires`. The numpy and Plotly examples also
-declare `python:numpy` and `python:plotly.graph_objects` where used. Preflight imports those
-modules in the JEP-capable interpreter Field resolves, not the docs builder's Python. A full
-recapture fails before starting Field if these prerequisites are missing; cached builds warn.
-Use `FIELD_PYTHON_VENV` or `FIELD_PYTHON_EXECUTABLE` for docs interpreter overrides (not JVM-only properties).
-The one shell block is the install recipe and
-is illustration only — running it during a docs build would compile a C extension.
+All four need JEP, so each declares `jep` in `requires`; the numpy and Plotly examples also declare
+`python:numpy` and `python:plotly.graph_objects`. Preflight imports those modules in the JEP-capable
+interpreter Field resolves, which is not the docs builder's own Python and usually not the same set
+of packages. A recapture missing a prerequisite stops before Field starts rather than failing at the
+capture itself; a cached build warns and carries on with the committed pictures.
+
+To aim a docs build at a particular interpreter, set `FIELD_PYTHON_VENV` or
+`FIELD_PYTHON_EXECUTABLE`. Activating a venv is not enough on its own: in
+`PythonInterface.pythonConfigChoices` those two rank above the interpreter the welcome screen
+persisted, and `VIRTUAL_ENV` and `CONDA_PREFIX` rank below it.
+
+The one shell block is the install recipe and is illustration only — running it during a docs build
+would compile a C extension.
 
 Two claims here have no picture under them. A still taken after a `tqdm` loop finishes shows an
 empty bar, and the shared global namespace needs two co-operating boxes where a runner fence builds

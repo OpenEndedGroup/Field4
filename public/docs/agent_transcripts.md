@@ -1235,9 +1235,9 @@ differing pixels, measured) and in band three half the darts point backwards. Ea
 nose pip for a reason: a bare rect is symmetric under a half turn, so the one glyph that has to show
 a half turn could not. The second box turns the arrow round and solves *through* the `atan2`, asking how
 steep a climb makes the dart point at 45 degrees, descending the exact gradient from 0.15 to
-1.0000000000000244 with the residual falling 0.637 to 4.7e-15. It also prints the θ-slot map, which
-is the surprising part of the machinery: a heading reads each position track twelve times, so one
-named parameter occupies 36 slots and the fitter has to move all of them as one variable.
+1.0000000000000244 with the residual falling 0.637 to 4.7e-15. It also prints the θ-slot map: a
+heading reads each position track twelve times, so one named parameter occupies 36 slots and the
+fitter has to move all of them as one variable.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rectsl_heading_fit/metadata.edn)
 
