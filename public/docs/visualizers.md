@@ -347,7 +347,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" alt="four imaging panels in a row, each a thumbnail over a line of metadata and a row of disclosure links. An RGB image of a yellow rectangle and a cyan disc on a four-way colour gradient, labelled 180x132, rgb, range 0.1 to 0.98; a signed Sobel response of the same scene painted in the blue-white-red coolwarm map, labelled range -0.4083 to 0.4089, signed; a GaussianPyramid as four rungs at true relative scale, 180x132 down to 22x16; and a List of 9 Corners as coloured dots on black, labelled with its response range and an inferred extent of 118.23 by 106.17" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
 :::static
 val scene = Img.generateRGB(180, 132) { x, y ->
     var r = 0.10f + 0.30f * (x / 179f)
@@ -611,7 +611,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-html.png" wait="4.0" capture="box" open-outputs="true" embed=true name="display-html"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-html.png" alt="three output channels stacked in one box. 'hello' holds a small blue-bordered card reading 'display(...) can show any HTML you like.'; 'pretty' holds a syntax-coloured dump of a four-entry map with tempo 122, mode mixolydian, active true and notes [C, E, G, Bb]; 'heavy' holds a LinkedHashMap of 18 rows rendered as a scrollable two-column table of key against value, its rows named row-0 upward and every value a Map of size 10" wait="4.0" capture="box" open-outputs="true" embed=true name="display-html"}
 :::static
 val tiny = linkedMapOf(
     "tempo" to 122,
@@ -670,7 +670,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-markdown.png" wait="2.0" capture="box" open-outputs="true" w="900" embed=true name="display-markdown"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-markdown.png" alt="one markdown card headed 'what the run settled on'. A two-column reading/value table gives tempo 122, drift -0.004 and voice 'saw 110 *'. Under it a status line reads stable, budget 83% used in amber, no retries. Then a two-column row labelled BEFORE and AFTER, holding gain 0.2 on the left and gain 0.9 on the right, and a quoted solver-output block reading 'converged in 41 steps, residual 3.2e-7'" wait="2.0" capture="box" open-outputs="true" w="900" embed=true name="display-markdown"}
 :::static
 val readings = linkedMapOf("tempo" to 122, "drift" to -0.004, "voice" to "saw 110 *")
 val rows = readings.entries.joinToString("\n") { (k, v) -> "| ${k.md} | ${v.md} |" }
@@ -734,7 +734,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-browsers.png" wait="3.0" capture="box" open-outputs="true" w="1200" h="260" embed=true name="display-browsers"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-browsers.png" alt="two inspector channels over the same nested scene map. 'outline' is a tree browser with camera expanded to show x, y, zoom and active, and layers and palette still folded. 'columns' is a column browser, its root column listing camera, layers and palette with a scrollbar down the right of the pane" wait="3.0" capture="box" open-outputs="true" w="1200" h="260" embed=true name="display-browsers"}
 :::static
 val scene = linkedMapOf(
     "camera" to linkedMapOf(
@@ -818,7 +818,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-controls.png" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="controls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-controls.png" alt="five stacked control widgets in one output channel, all drawn in cyan on black. GAIN, a horizontal slider a third of the way along, reading 0.35. ORBIT, a square vec2 pad with crosshairs and a handle pulled down and right of centre, annotated theta -30 degrees, magnitude 0.40, X 0.35, Y -0.20. ARMED, a checked checkbox. NAME, a text field holding 'Field'. ACCENT, an orange swatch beside an alpha slider at 0.85, with rgba(0.95, 0.45, 0.15, 0.85) printed above it" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="controls"}
 :::static
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector4f
@@ -866,7 +866,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" alt="two channels. 'surface' holds the same five widgets under different names: BLOOM at 0.62, a WIND pad with its handle up and left at theta 146 degrees and magnitude 0.54, TRAILS checked, LABEL reading 'wake field', and a cyan TINT swatch at alpha 0.90. 'preview' below it holds a wide rendered strip, warm brown at the left and a soft blue bloom left of centre, with the line wind=(-0.45, 0.32), bloom=0.62, trails=true underneath, so the preview and the widgets agree" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
 :::static
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector4f
@@ -971,7 +971,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-recorded-audio.png" wait="2.5" capture="box" open-outputs="true" padding="12" w="1200" h="310" embed=true name="recorded-audio"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-recorded-audio.png" alt="an audio channel headed 'five-second synthetic recording'. A wide cyan waveform block fills the pane, with one vertical amber band about a fifth of the way in marking the playhead. Beneath it: plus, minus and 'all' zoom buttons, the window 0:00.80 to 0:03.50 of 0:05.00, the hint 'wheel zoom at playhead, drag pan, click seek', and a browser audio transport parked at 0:01 of 0:05" wait="2.5" capture="box" open-outputs="true" padding="12" w="1200" h="310" embed=true name="recorded-audio"}
 :::static
 import afield.stdlib.*
 
@@ -1305,7 +1305,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="350" trim=true embed=true name="signal-panels"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" alt="four synth panels in amber and blue on black. 'audio' pairs a dense stereo waveform at peak 0.858, rms 0.382 with a spectrum whose harmonics march up to a broad shelf past 5 kHz. 'scope' shows the same pair after filtering: a smaller waveform at peak 0.355 and a spectrum whose partials die away by 5 kHz. 'env' draws an ADSR, the orange gate dropping partway across and the blue level decaying after it, tagged RELEASE, lvl 0.401. 'comp' overlays an amber signal swelling into a compressor's blue gain-reduction curve, tagged GR 18.5 dB, threshold -18.0 dB, ratio 6.00:1" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="350" trim=true embed=true name="signal-panels"}
 :::static
 import afield.four.synth.*
 
