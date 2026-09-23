@@ -73,6 +73,9 @@ CORPUS = {
     "alife_evolution",
     "alife_script",
     "alife_walls",
+    # 2026-09-23, interval-arithmetic envelopes for Fn. Ships a `build.yaml`, so the count below
+    # moved 9 -> 10; its four boxes were measured equal to the document's sidecars on arrival.
+    "certified_envelope",
     "chart_clip",
     "chart_primitive",
     "completion_rank_at_scale",
@@ -162,7 +165,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            9,
+            10,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",

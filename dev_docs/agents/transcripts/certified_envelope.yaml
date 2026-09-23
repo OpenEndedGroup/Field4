@@ -1,0 +1,156 @@
+name: certified_envelope
+description: |
+  Certified envelopes for Functions.Fn. An hour-long signal with a 10 ms glitch placed exactly between two of the
+  signal viewer's 0.02 s samples: box 1 draws the sampled min/max envelope the function workbench draws, and the
+  glitch is not in it (missed by 0.4956 in its bin). Box 2 draws the same viewer with the opt-in certified band
+  (certifiedSignalChannel), which reaches the glitch's true height, because it bounds every value in each bin by
+  interval arithmetic over the FnFormulas table instead of sampling. Box 3 is certifiedRange (the global max, its
+  witness x and a proven bound 1e-9 above it) and three yes/no claims. Box 4 is what refuses - a fn { } lambda,
+  by name - and the workbench's 'holds exactly 1 for 30 seconds' claim proven exactly on a formula-built event.
+  The saved document at `dev_docs/agents/demos/certified_envelope/` is this same scene.
+operations:
+  - create:
+      box: sampled
+      name: "1 - An hour, and a glitch the plot never sees"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.SignalChannel
+          import afield.stdlib.SignalViewer
+          import afield.stdlib.SignalViewerOptions
+          import afield.stdlib.displaySignal
+
+          // One hour: a slow 40-second swing, plus a glitch 10 ms wide at 1234.57 s — exactly halfway
+          // between two of the viewer's 0.02 s samples. Built from Functions ops rather than a
+          // fn { } lambda, so every node has a formula. Box 2 needs that.
+          val signal = with(Functions) {
+              sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) +
+                  gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
+          }
+
+          // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
+          val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
+          afield.Box.context.get()!!.displaySignal(viewer, "main",
+              SignalViewerOptions(label = "sampled envelope only", viewKey = "certified_envelope:sampled"))
+
+          // The same query the plot makes, read back as numbers. Bin 342 holds the glitch.
+          val bins = viewer.window(0.0, 3600.0, 1000).lanes[0].current
+          val bin = (1234.57 / 3.6).toInt()
+          display("numbers", Table(listOf("what", "value"), title = "what the sampled plot can see")
+              .row("f(1234.57), the glitch's peak", signal(1234.57))
+              .row("sampled max, bin $bin", bins.high[bin])
+              .row("sampled max, whole hour", bins.high.max())
+              .row("missed by", signal(1234.57) - bins.high[bin])
+              .role("value", CellRole.ACCENT))
+  - create:
+      box: certified
+      name: "2 - The certified band catches it"
+      frame: { x: 60.0, y: 760.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.SignalViewer
+          import afield.stdlib.SignalViewerOptions
+          import afield.stdlib.certifiedEnvelope
+          import afield.stdlib.certifiedSignalChannel
+          import afield.stdlib.displaySignal
+
+          // The same signal as box 1. certifiedSignalChannel draws its sampled envelope in white and,
+          // behind it in amber, a certified bound per bin: every value the function takes in the bin
+          // lies inside, whether or not a sample landed on it. Nothing here is sampled more finely.
+          val signal = with(Functions) {
+              sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) +
+                  gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
+          }
+          val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
+          afield.Box.context.get()!!.displaySignal(viewer, "main",
+              SignalViewerOptions(label = "sampled envelope, with its certified band", viewKey = "certified_envelope:certified"))
+
+          // The band, read back: bin 342 is bounded above by the glitch's true height.
+          val band = signal.certifiedEnvelope(0.0, 3600.0, 1000)
+          val bin = (1234.57 / 3.6).toInt()
+          display("numbers", Table(listOf("what", "value"), title = "the certified band, as numbers")
+              .row("f(1234.57), the glitch's peak", signal(1234.57))
+              .row("certified max, bin $bin", band.high[bin])
+              .row("certified min, bin $bin", band.low[bin])
+              .row("enclosures for 1000 bins", band.enclosures)
+              .role("value", CellRole.ACCENT))
+  - create:
+      box: range
+      name: "3 - certifiedRange, with witnesses"
+      frame: { x: 60.0, y: 1480.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.certifiedNeverExceeds
+          import afield.stdlib.certifiedRange
+          import afield.stdlib.certifiedReaches
+
+          // Branch-and-bound over the hour: the true maximum is at least the value reached at the
+          // witness, and at most the proven bound. The same for the minimum.
+          val signal = with(Functions) {
+              sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) +
+                  gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
+          }
+          val range = signal.certifiedRange(0.0, 3600.0, tolerance = 1e-9)
+          val max = range.max!!
+          val min = range.min!!
+          display("range", Table(listOf("side", "reached", "at x", "proven bound", "enclosures"),
+              title = "certifiedRange(0, 3600): certified = ${range.certified}")
+              .row("max", max.value, max.witness, max.bound, max.enclosures)
+              .row("min", min.value, min.witness, min.bound, min.enclosures)
+              .role("at x", CellRole.ACCENT))
+
+          // Yes/no questions with the same guarantee. A refutation carries the x that breaks the claim.
+          val claims = listOf(
+              signal.certifiedNeverExceeds(0.7, 0.0, 3600.0),
+              signal.certifiedNeverExceeds(0.8, 0.0, 3600.0),
+              signal.certifiedReaches(0.75, 0.0, 3600.0),
+          )
+          display("claims", Table(listOf("claim", "verdict", "witness x"))
+              .rows(claims.map { listOf(it.claim, it.kind.name, it.witness) })
+              .roleBy("verdict") { if (it == "PROVEN") CellRole.OK else CellRole.WARN })
+  - create:
+      box: limits
+      name: "4 - What refuses, and an exact hold"
+      frame: { x: 60.0, y: 1800.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.certifiedEquals
+          import afield.stdlib.certifiedNeverExceeds
+          import afield.stdlib.enclose
+
+          // What refuses. The function workbench's channels are fn(0.0..3600.0, name) { seconds -> ... }
+          // lambdas: one opaque node each, so there is nothing for an interval walk to read. It refuses by
+          // name rather than guess.
+          val lambdaChannel = with(Functions) { fn(0.0..3600.0, "x") { t -> 0.45 + 0.2 * kotlin.math.sin(t) } }
+          val refused = lambdaChannel.enclose(0.0, 3600.0)
+
+          // The workbench's claim that an event holds exactly 1 for 30 seconds, rebuilt from formula ops:
+          // rise 185..285, hold to 315, fall to 415, over the moving background.
+          val held = with(Functions) {
+              val one = c(1.0, Functions.Domain.ALL)
+              val background = sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45)
+              val envelope = smoothStep(185.0, 285.0, Functions.Domain.ALL) *
+                  (one - smoothStep(315.0, 415.0, Functions.Domain.ALL))
+              one - (one - background) * (one - envelope)
+          }
+          val checks = listOf(
+              held.certifiedEquals(1.0, 285.0, 315.0),
+              held.certifiedEquals(1.0, 284.0, 315.0),
+              held.certifiedNeverExceeds(1.0, 0.0, 3600.0, slack = 1e-12),
+          )
+          display("limits", Table(listOf("question", "answer"), title = "refusals and exact holds")
+              .row("enclose the lambda channel", "certified = ${refused.certified}: ${refused.refusal}")
+              .rows(checks.map { listOf(it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")) })
+              .role("answer", CellRole.ACCENT))
+  - execute: { box: sampled, property: code }
+  - await: {}
+  - execute: { box: certified, property: code }
+  - await: {}
+  - execute: { box: range, property: code }
+  - await: {}
+  - execute: { box: limits, property: code }
+  - await: {}

@@ -80,6 +80,8 @@ class AgentDemoRegistrationTest {
             "alife_evolution",
             "alife_script",
             "alife_walls",
+            // 2026-09-23: interval-arithmetic envelopes for Fn; registered EXECUTE.
+            "certified_envelope",
             "chart_clip",
             "chart_primitive",
             "completion_rank_at_scale",
