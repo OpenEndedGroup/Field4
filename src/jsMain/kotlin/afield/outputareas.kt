@@ -853,7 +853,7 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
 
     val channelId = set.channel
     val title = if (set.channel == "ai-chat") "AI Chat" else set.channel
-    val preserveExistingContent = isPersistentThreeOutput(set.value)
+    val preserveExistingContent = set.channel == "ai-chat" || isPersistentThreeOutput(set.value)
     val initialContent = if (preserveExistingContent) PRESERVE_DISCLOSURE_CONTENT else ""
     val contentRoot = (inter.upsertDisclosure as (String, String, String) -> HTMLElement).invoke(
         channelId,

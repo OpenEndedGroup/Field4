@@ -18,6 +18,19 @@ the server to inspect or propose edits to box properties and related source.
 
 ![](assets/screenshot_47.png)
 
+The conversation belongs to the box. Field saves it with the document, including model
+labels, tool results and images. Reopen **AI Chat (panel)** after a reload or restart to
+read it and continue. Different property editors of the same box share that conversation.
+`/clear` deletes the box's saved conversation and starts a new one. Finish the current
+AI turn before clearing. Ordinary document autosave also checkpoints running replies.
+
+After a restart or provider change, AI4 uses the recent saved text as context. The full
+transcript stays in the document's `<box-id>_ai4_chat_history_.md` sidecar. To keep resumed
+requests bounded, model context uses at most the most recent 64,000 characters (preferring
+whole turns); saved images remain visible but must be attached again for fresh image analysis.
+Existing conversations from versions before this feature need to be exported before restarting
+those versions, because their transcripts lived only in memory.
+
 You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
@@ -372,8 +385,9 @@ The simplest setup is the AI settings card on `/welcome`, where you can select
 OpenAI, OpenRouter or Anthropic (Claude), save the corresponding key, and
 optionally override model names. Anthropic is the one that takes no key: it
 authenticates from an `ant auth login` profile, minting a short-lived bearer
-token per request. Provider changes take effect on the next AI request; existing
-AI conversations are cleared so state from one provider is never sent to another.
+token per request. Provider changes take effect on the next AI request.
+Provider threads are reset when settings change. Box conversations remain saved; the next turn
+uses the saved conversation as context with the newly selected provider.
 Model overrides are stored separately for each provider and can be cleared by
 saving an empty model field. Saved keys live under `~/.afield/`; they are not
 stored in a document.

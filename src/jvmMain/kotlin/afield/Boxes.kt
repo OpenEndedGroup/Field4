@@ -493,6 +493,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "_controlGroupValues",
             "ai4_auto_name",
             "ai4_auto_name_signature",
+            "ai4_chat_history",
+            "ai4_chat_running",
             "fileManagerAccessHistory"
         )
 
@@ -538,6 +540,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // round-tripped even if something had set it. See SidecarPropertyRegistrationSmokeTest,
             // which now requires every key here to have a matching ioPersistentProperties pattern.
             "notes" to "md",
+            "ai4_chat_history" to "md",
             "metadata" to "yaml"
         )
 

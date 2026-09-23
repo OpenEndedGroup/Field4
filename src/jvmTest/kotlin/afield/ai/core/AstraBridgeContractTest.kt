@@ -32,18 +32,36 @@ class AstraBridgeContractTest {
         "content":[{"type":"output_text","text":"Inspected roof.","annotations":[]}]
     }]""")
 
-    private fun withServer(block: (HttpServer, MutableList<JsonNode>, OpenAiIdeCodexBridge) -> Unit) {
+    private fun withServer(provider: String = "openai", block: (HttpServer, MutableList<JsonNode>, OpenAiIdeCodexBridge) -> Unit) {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val requests = CopyOnWriteArrayList<JsonNode>()
         val baseUrl = "http://127.0.0.1:${server.address.port}/v1"
         val client = OpenAIOkHttpClient.builder().apiKey("protocol-test").baseUrl(baseUrl).maxRetries(0).build()
         val bridge = OpenAiIdeCodexBridge(
-            runtimeConfig = AiProviderRuntimeConfig("openai", "protocol-test", "test", baseUrl, AiModelSettings()),
+            runtimeConfig = AiProviderRuntimeConfig(provider, "protocol-test", "test", baseUrl, AiModelSettings()),
             client = client,
             model = Ai4ModelDefaults.FLAGSHIP_MODEL
         )
         server.start()
         try { block(server, requests, bridge) } finally { server.stop(0); client.close() }
+    }
+
+    @Test
+    fun aFreshProviderThreadReceivesTheSavedBoxConversation() = withServer("openrouter") { server, requests, bridge ->
+        server.createContext("/v1/responses") { exchange ->
+            requests.add(mapper.readTree(exchange.requestBody))
+            val body = finalResponse("resp_resumed")
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
+            exchange.responseBody.use { it.write(body.toByteArray()) }
+        }
+        val history = "<<you>>\nKeep channel z delayed.\n<<ai>>\nThe delay is 1.25 seconds."
+        val state = bridge.startThread("afield://study/source/code", "val duration = 3600.0" + AiBoxConversation.resumeContext(history))
+        bridge.send(state, "Keep that delay and change the duration.")
+        val sent = requests.single()["input"].toString()
+        assertTrue(sent.contains("The delay is 1.25 seconds."))
+        assertTrue(sent.contains("Keep that delay and change the duration."))
+        assertFalse(requests.single().has("previous_response_id"), "Restart must not depend on a stale provider response ID")
     }
 
     @Test

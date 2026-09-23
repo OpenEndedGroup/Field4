@@ -1514,14 +1514,32 @@ function renderChatMessages(messages, markdown, options) {
         });
 }
 
+// Fetch on panel creation, without replacing a newer streamed/local turn or another box's chat.
+function restoreAiChat(container, uid) {
+        const before = container.__aiChatHistory || "";
+        const epoch = container.__aiChatEpoch = (container.__aiChatEpoch || 0) + 1;
+        sendWithReply("ai-chat-history", {uid}, `ai-chat-load-${uid}-${Date.now()}-${Math.random()}`, (_message, response) => {
+                if (container.__aiChatEpoch !== epoch || container.__aiChat?.uid !== uid) return "remove";
+                if ((container.__aiChatHistory || "") !== before || response?.uid !== uid) return "remove";
+                if (typeof response.history === "string") aiChatUpdate(container, uid, response.history);
+                return "remove";
+        });
+}
+
 function ensureAiChat(container, uid, property) {
         if (container.__aiChat) {
                 const existing = container.__aiChat;
                 if (existing.root && container.contains(existing.root)) {
+                        const changedBox = existing.uid !== uid;
                         existing.uid = uid;
                         existing.property = property || existing.property;
                         existing.root.dataset.uid = uid || existing.root.dataset.uid || "";
                         existing.root.dataset.property = existing.property || "code";
+                        if (changedBox) {
+                                container.__aiChatHistory = controllerChatHistory.get(uid) || "";
+                                renderChatMessages(existing.messages, container.__aiChatHistory);
+                                restoreAiChat(container, uid);
+                        }
                         return existing;
                 }
         }
@@ -1703,7 +1721,7 @@ function ensureAiChat(container, uid, property) {
                 return [
                         "**Commands**",
                         "- `/help` show available commands",
-                        "- `/clear` clear this chat panel",
+                        "- `/clear` delete this box’s saved conversation and start fresh",
                         "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
                         "",
@@ -1773,10 +1791,21 @@ function ensureAiChat(container, uid, property) {
 
                 if (command === "clear") {
                         textarea.value = "";
-                        container.__aiChatHistory = "";
-                        attachments.length = 0;
-                        renderPreview();
-                        messages.innerHTML = "";
+                        const targetUid = chatUid();
+                        setCommandBusy(true);
+                        sendWithReply("ai-chat-history", {uid: targetUid, clear: true},
+                                `ai-chat-clear-${targetUid}-${Date.now()}`, (_message, response) => {
+                                        setCommandBusy(false);
+                                        if (response?.error) {
+                                                window.notify?.(response.error, "AI4");
+                                                return "remove";
+                                        }
+                                        if (chatUid() !== targetUid) return "remove";
+                                        aiChatUpdate(container, targetUid, response?.history || "");
+                                        attachments.length = 0;
+                                        renderPreview();
+                                        return "remove";
+                                });
                         return true;
                 }
 
@@ -1859,6 +1888,7 @@ function ensureAiChat(container, uid, property) {
         container.appendChild(root);
 
         container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code"};
+        restoreAiChat(container, uid);
         return container.__aiChat;
 }
 
@@ -2030,6 +2060,7 @@ function highlightCodeBlock(block) {
 
 function aiChatUpdate(container, uid, markdown) {
         const chat = ensureAiChat(container, uid, container.__aiChat?.property || "code");
+        container.__aiChatEpoch = (container.__aiChatEpoch || 0) + 1;
         container.__aiChatHistory = markdown || "";
         renderChatMessages(chat.messages, container.__aiChatHistory);
         updateControllerChat(uid, markdown);
@@ -2076,7 +2107,7 @@ function syncControllerChatSelection() {
         const name = box?.name || box?.getAttribute?.("data-name") || uid;
         const property = window.selectedProperty || window.currentSelectedProperty || "code";
         heading.textContent = `AI4 · ${String(name).trim() || uid} · ${property}`;
-        const history = controllerChatHistory.get(uid) || container.__aiChatHistory || "";
+        const history = controllerChatHistory.get(uid) || "";
         const chat = ensureAiChat(container, uid, property);
         container.__aiChatHistory = history;
         renderChatMessages(chat.messages, history, { forceBottom: true });
@@ -2110,7 +2141,7 @@ function openAiChatForBox(uid, property) {
         const contain = outputArea.querySelector(".disclosure-group");
         if (!contain) return;
         const inter = disclosureInterface(contain);
-        const content = inter.upsertDisclosure("ai-chat", "AI Chat", "");
+        const content = inter.upsertDisclosure("ai-chat", "AI Chat", "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__");
         const chat = ensureAiChat(content, uid, property || "code");
         inter.open("ai-chat");
         setTimeout(() => {
