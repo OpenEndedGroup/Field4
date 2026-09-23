@@ -141,7 +141,23 @@ addend is non-zero at any x and the rest are ±0, so the sum is that addend's bi
 
 The refutation is real and small: in the last instant of a rise the shoulder's
 `(1 − merge)·pulsed + merge` rounds 4 ulps above 1 before the `when` hands over to the exact hold.
-A sampled check at the 0.02 s viewer grid does not see it (no grid point lands there).
+A sampled check at the viewer's 0.02 s grid does not see it: 0 of 180 001 grid points exceed 1 on
+any channel, and the grid max is exactly 1.0 (measured with the lambda, demo-box probe, 2026-09-23).
+
+**What the band costs on this graph** (narrated, `theCertifiedBandOnTheWorkedExampleIsTimedAtTheViewersBinCounts`,
+best of 3, channel x; asserted only < 12 s, the route timeout):
+
+| viewer window | mode, bins | sampled lambda | sampled + certified band |
+| --- | --- | --- | --- |
+| whole hour | envelope, 1000 | 7.8 ms | 4 731 ms (~600×) |
+| one event, 185–415 s | envelope, 1000 | 0.6 ms | 1 734 ms |
+| 280–290 s | waveform, 2000 intervals | 0.2 ms | 160 ms |
+
+So the demo signal's 1.0–1.2× (a two-op graph) does not generalise: on the worked example's rewrite
+an overview request spends ~5 s in `certifiedEnvelope` (tolerance 1e-3 × lane range, depth ≤ 6).
+Usable, well under the timeout, and not interactive. The obvious levers, untried: a lower `maxDepth`
+for overview windows, caching per-bin results across pans, and compiling the graph once per window
+instead of walking `graphNode()` per enclosure.
 
 **Walker changes this pass needed** (each argued in its KDoc): `IfEq`/`IfLt` of a subexpression
 against itself are decided; graph-level rules for a `multiply` of one `Fn` with itself (square) and

@@ -202,6 +202,30 @@ class FnIntervalWorkbenchTest {
      * 30-second plateau, and not for longer; the background stays inside the band its own constants
      * imply; every channel stays in [0, 1].
      */
+    /**
+     * A narrated measurement, not a contract: what the certified band costs on a realistic graph —
+     * the worked example's rewrite, ~40 formula nodes per shoulder — against sampling the original
+     * lambda, at the viewer's own bin counts. Asserted only against the route's 12 s timeout.
+     */
+    @Test
+    fun theCertifiedBandOnTheWorkedExampleIsTimedAtTheViewersBinCounts() {
+        val lambda = workbenchLambda(0, "x")
+        val formula = workbenchFormula(0, "x")
+        val sampled = SignalViewer(listOf(SignalChannel("x", lambda::eval)), 0.0, durationSeconds)
+        val certified = SignalViewer(listOf(SignalChannel("x", lambda::eval, certified = formula)), 0.0, durationSeconds)
+        fun best(block: () -> Unit): Double = (1..3).minOf { val t = System.nanoTime(); block(); (System.nanoTime() - t) / 1e6 }
+        for ((from, to, points) in listOf(Triple(0.0, durationSeconds, 1000), Triple(185.0, 415.0, 1000), Triple(280.0, 290.0, 1000))) {
+            sampled.window(from, to, points); certified.window(from, to, points)
+            val s = best { sampled.window(from, to, points) }
+            val c = best { certified.window(from, to, points) }
+            val w = certified.window(from, to, points)
+            println("FN INTERVAL WORKBENCH TIMING [$from, $to] ${w.mode} ${w.lanes[0].certified!!.low.size} bins: " +
+                "sampled ${"%.1f".format(s)} ms, sampled + certified ${"%.1f".format(c)} ms (${"%.1f".format(c / s)}x)")
+            assertTrue(c < 12_000.0, "a certified window took $c ms; the viewer route times out at 12 s")
+        }
+        sampled.close(); certified.close()
+    }
+
     @Test
     fun theWorkedExamplesClaimsAreCertified() {
         val channels = names.mapIndexed { i, n -> workbenchFormula(i, n) }
