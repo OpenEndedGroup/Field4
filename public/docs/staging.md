@@ -2,7 +2,7 @@
 
 The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to be read in order. This is the map for afterwards: what is in each section, and which page inside it to open first.
 
-Three pages open with a warning, and they are the only three that do. Two are about maturity: [Apple Vision Pro](vision.md) is a front end still being built and says so, and [Ray Tracing Examples](ray_tracing_examples.md) walks a real Vulkan pipeline but renders its four figures as placeholder cards, because macOS exposes no ray-tracing extension. The third is about *where*: [Geometry in the Headset](vision_geometry.md) is written for code running inside that visionOS app, and only its geometry half can be previewed on a desk.
+Three of the pages below want a caveat before you open them. Two are about maturity: [Apple Vision Pro](vision.md) is a front end still being built and says so, and [Ray Tracing Examples](ray_tracing_examples.md) walks a real Vulkan pipeline but renders its four figures as placeholder cards, because macOS exposes no ray-tracing extension. The third is about *where*: [Geometry in the Headset](vision_geometry.md) is written for code running inside that visionOS app, and only its geometry half can be previewed on a desk.
 
 ## Working in a document
 
