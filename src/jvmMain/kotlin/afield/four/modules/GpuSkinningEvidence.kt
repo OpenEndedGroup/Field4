@@ -103,6 +103,17 @@ object GpuSkinningEvidence {
             println("output    : ${out.absolutePath}")
             println()
 
+            if ("--twist-only" in args) {
+                // Only the dual-quaternion section, so re-deriving it does not rewrite the
+                // linear-blend evidence that was committed from an earlier run.
+                twist(renderer, window, mesh, camera, skinner, cpu, instance, out)
+                println()
+                println("gpu skinning evidence written (twist section only)")
+                renderer.cleanup()
+                window.cleanup()
+                exitProcess(0)
+            }
+
             // ---------------------------------------------------------------- one character
             frameSingle(camera)
             skinner.bindTo(mesh, camera, instanceCount = 1, tint = false)
@@ -158,6 +169,10 @@ object GpuSkinningEvidence {
             // ---------------------------------------------------------------- the crowd
             println()
             crowd(renderer, window, mesh, camera, skinner, out)
+
+            // ---------------------------------------------------------------- the candy wrapper
+            println()
+            twist(renderer, window, mesh, camera, skinner, cpu, instance, out)
 
             println()
             println("gpu skinning evidence written")
@@ -305,6 +320,96 @@ object GpuSkinningEvidence {
             println("  FAIL: the crowd frame is blank")
             exitProcess(1)
         }
+    }
+
+    /**
+     * The candy wrapper, through the real renderer: the `twist` clip under both methods.
+     *
+     * Three captures and two assertions:
+     *
+     * - `gpu_dq_twist_t100` against `cpu_dq_twist_t100` — GPU dual-quaternion skinning against a
+     *   [CpuSkinner] running [DualQuaternionSkinning.skin], through the identical pipeline, as
+     *   [pair] does for linear blending. Must be the same picture to [PIXEL_TOL].
+     * - and the control that makes that zero mean something: the GPU *linear* frame of the same
+     *   pose must differ from the GPU DQ frame by at least [CONTROL_MIN]. If the method word were
+     *   ignored, both GPU frames would be the linear one and the pair above would fail — but only
+     *   if the CPU DQ frame differs, which is this check's job to establish.
+     * - `twist_lbs_vs_dqs`: two instances in **one draw call**, left linear and right dual
+     *   quaternion, both at 180°. The picture this whole section is for.
+     */
+    private fun twist(
+        renderer: Renderer,
+        window: Window,
+        mesh: Mesh,
+        camera: Camera,
+        skinner: GpuSkinner,
+        cpu: CpuSkinner,
+        instance: GltfSupport.MeshInstance,
+        out: File,
+    ) {
+        // The linear CpuSkinner left its last pose in instance.buffers, and a CpuSkinner snapshots
+        // its bind pose from those buffers at construction -- so without this reset the DQ skinner
+        // below would take the bend/curl blend for the bind pose and skin it again. It did, the
+        // first time: 5.67 mean levels against a GPU frame that was right. The trap GpuSkinner's
+        // KDoc warns about, met from the CPU side.
+        cpu.reset()
+        val twist =skinner.skin.skeleton.clip("twist") ?: error("the bending cylinder has no 'twist' clip")
+        val half = twist.durationSeconds * 0.5f
+        frameSingle(camera)
+        // bindTo first: it creates the push-constant block restoreBindPose writes into.
+        skinner.bindTo(mesh, camera, instanceCount = 1, tint = false)
+        skinner.restoreBindPose(mesh)
+
+        val cpuDq = CpuSkinner(
+            instance, GltfSkinning.SkinningOptions(method = GltfSkinning.SkinningMethod.DUAL_QUATERNION)
+        )
+        skinner.method = GltfSkinning.SkinningMethod.DUAL_QUATERNION
+        val d = pair(renderer, window, mesh, camera, skinner, cpuDq, instance, out, "dq_twist_t100") {
+            skinner.uploadPalette(skinner.placedPalette(Matrix4f(), "twist", half))
+            cpuDq.pose("twist", half)
+        }
+        cpuDq.reset()
+        if (d > PIXEL_TOL) {
+            println("  FAIL: GPU and CPU dual-quaternion twist frames differ by $d > $PIXEL_TOL mean levels")
+            exitProcess(1)
+        }
+
+        // The control: same pose, GPU, linear blend.
+        skinner.restoreBindPose(mesh)
+        skinner.method = GltfSkinning.SkinningMethod.LINEAR_BLEND
+        skinner.uploadPalette(skinner.placedPalette(Matrix4f(), "twist", half))
+        val lbs = capture(renderer, window, File(out, "gpu_lbs_twist_t100.png"))
+        val c = difference(lbs, File(out, "gpu_dq_twist_t100.png"), File(out, "diff_lbs_vs_dq_twist.png"))
+        println("  %-18s mean |gpu lbs - gpu dq| %.4f levels   max %d".format("control_twist", c.mean, c.max))
+        if (c.mean < CONTROL_MIN) {
+            println("  FAIL: linear and dual-quaternion twist frames are the same picture (${c.mean}) -- the method word is not reaching the shader")
+            exitProcess(1)
+        }
+
+        // Side by side, one draw call: instance 0 linear on the left, instance 1 DQ on the right.
+        camera.p.orthoness = 0.3
+        camera.p.matchDepth = 2.0
+        camera.target = Vector3f(0f, 2f, 0f)
+        camera.at = Vector3f(0f, 2.4f, -5.2f)
+        camera.p()
+        skinner.bindTo(mesh, camera, instanceCount = 2, tint = true)
+        fun at(x: Float) = Matrix4f().translate(Vector3f(x, 0f, 0f))
+        for ((label, seconds) in listOf("t067" to twist.durationSeconds / 3f, "t100" to half)) {
+            skinner.uploadPalettes(
+                listOf(skinner.placedPalette(at(1.3f), "twist", seconds), skinner.placedPalette(at(-1.3f), "twist", seconds)),
+                listOf(GltfSkinning.SkinningMethod.LINEAR_BLEND, GltfSkinning.SkinningMethod.DUAL_QUATERNION),
+            )
+            val file = capture(renderer, window, File(out, "twist_lbs_vs_dqs_$label.png"))
+            val ink = inkOf(file)
+            println("  %-18s %,8d B   %,d non-background pixels   2 instances, one draw call, words %s".format(
+                "twist_lbs_vs_dqs_$label", file.length(), ink, skinner.methodWords(2).toList()
+            ))
+            if (ink < MIN_INK) {
+                println("  FAIL: the side-by-side twist frame is blank")
+                exitProcess(1)
+            }
+        }
+        skinner.method = GltfSkinning.SkinningMethod.LINEAR_BLEND
     }
 
     /** Instance [i] on an 8x8 grid. */
