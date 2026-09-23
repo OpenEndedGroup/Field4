@@ -205,7 +205,8 @@ object FnAutoDiff {
     fun evalByFormula(fn: Functions.Fn, x: Double): Double {
         val node = fn.graphNode()
         node.numbers["value"]?.let { return it }
-        val formula = FnFormulas.of(node.op)
+        // valueOf, not of: this is the value pin, and it covers FnFormulas.valueOnlyOps too.
+        val formula = FnFormulas.valueOf(node.op)
             ?: error("op '${node.op}' has no formula; see FnFormulas")
         return evalFormula(
             formula,

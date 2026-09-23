@@ -589,7 +589,7 @@ object FnIntervals {
         fun walk(f: Functions.Fn) {
             val node = f.graphNode()
             if (node.numbers.containsKey("value")) return
-            if (FnFormulas.of(node.op) == null) out += node.op
+            if (FnFormulas.valueOf(node.op) == null) out += node.op
             for (edge in node.children) walk(edge.fn)
         }
         walk(fn)
@@ -606,7 +606,7 @@ object FnIntervals {
     fun range(fn: Functions.Fn, x: FnRange): FnRange {
         val node = fn.graphNode()
         node.numbers["value"]?.let { return FnRange.point(it) }
-        val formula = FnFormulas.of(node.op)
+        val formula = FnFormulas.valueOf(node.op)
             ?: throw FnIntervalRefusal(refusalFor(listOf(node.op)))
         return evalFormulaInterval(
             formula,
@@ -638,7 +638,7 @@ object FnIntervals {
 
     internal fun refusalFor(ops: List<String>): String =
         "no certified bound: ${ops.joinToString(", ") { "'$it'" }} ${if (ops.size == 1) "has" else "have"} " +
-            "no formula in FnFormulas, so the interval walk cannot see inside " +
+            "no value formula in FnFormulas, so the interval walk cannot see inside " +
             (if (ops.size == 1) "it" else "them") +
             (if (ops.any { it == "opaque" || it == "lambda" }) " (a hand-written fn { x -> … } lambda is opaque by construction)" else "") +
             ". Build the signal from formula-bearing ops, or give the op a formula"

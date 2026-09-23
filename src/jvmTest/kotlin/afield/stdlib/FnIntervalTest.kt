@@ -25,9 +25,9 @@ class FnIntervalTest {
      * `log` and `divide` are deliberately allowed to see non-positive or zero-crossing inputs, so the
      * NaN and infinity cases are exercised rather than avoided.
      */
-    private fun gen(r: Random, depth: Int): Functions.Fn = with(Functions) {
+    private fun gen(r: Random, depth: Int, valueOnly: Boolean = true): Functions.Fn = with(Functions) {
         fun num(lo: Double, hi: Double) = lo + (hi - lo) * r.nextDouble()
-        fun sub() = gen(r, depth - 1)
+        fun sub() = gen(r, depth - 1, valueOnly)
         fun small() = if (depth <= 1 || r.nextInt(3) == 0) c(num(-2.0, 2.0), unbounded) else sub()
         if (depth <= 0) {
             return when (r.nextInt(4)) {
@@ -37,7 +37,7 @@ class FnIntervalTest {
                 else -> cos(num(0.1, 3.0), amplitude = num(0.2, 2.0), offset = num(-1.0, 1.0))
             }
         }
-        when (r.nextInt(33)) {
+        when (r.nextInt(if (valueOnly) 35 else 33)) {
             0 -> sub() + sub()
             1 -> sub() - sub()
             2 -> sub() * sub()
@@ -70,13 +70,18 @@ class FnIntervalTest {
             29 -> sub() * hammingWindow(win)
             30 -> sub().withName("n")
             31 -> sub().withDomain(win)
+            // The two value-only ops (FnFormulas.valueOnlyOps): a step at a signal or numeric edge,
+            // and the sign of a subgraph that genuinely crosses zero.
+            32 -> if (!valueOnly) identity(unbounded) * sub() // the pre-2026-09-23 draw, unchanged
+                else step(if (r.nextBoolean()) c(num(-2.0, 2.0), unbounded) else small(), unbounded)
+            33 -> sub().sign()
             else -> identity(unbounded) * sub()
         }
     }
 
-    private fun population(count: Int = 600, seed: Int = 20260923): List<Functions.Fn> {
+    private fun population(count: Int = 600, seed: Int = 20260923, valueOnly: Boolean = true): List<Functions.Fn> {
         val r = Random(seed)
-        return List(count) { gen(r, 1 + r.nextInt(4)) }
+        return List(count) { gen(r, 1 + r.nextInt(4), valueOnly) }
     }
 
     private fun opsOf(fn: Functions.Fn, into: MutableSet<String> = mutableSetOf()): MutableSet<String> {
@@ -123,15 +128,21 @@ class FnIntervalTest {
     fun theGeneratorReachesEveryFormulaOpAndEveryExprKind() {
         val seen = mutableSetOf<String>()
         for (fn in population()) opsOf(fn, seen)
-        val missingOps = FnFormulas.ops.filterNot { it in seen }
+        val missingOps = (FnFormulas.ops + FnFormulas.valueOnlyOps).filterNot { it in seen }
         assertTrue(missingOps.isEmpty(), "formula ops the generator never produced: $missingOps")
-        assertTrue(seen.all { FnFormulas.of(it) != null }, "the generator produced a formula-less op: ${seen.filter { FnFormulas.of(it) == null }}")
+        assertTrue(seen.all { FnFormulas.valueOf(it) != null }, "the generator produced a formula-less op: ${seen.filter { FnFormulas.valueOf(it) == null }}")
 
         val kinds = mutableSetOf<String>()
-        for (op in seen) kindsOf(FnFormulas.of(op)!!, kinds)
+        for (op in seen) kindsOf(FnFormulas.valueOf(op)!!, kinds)
         val allKinds = FnExpr::class.sealedSubclasses.mapNotNull { it.simpleName }.toSet()
         assertTrue(allKinds.size >= 28, "sealedSubclasses came back with ${allKinds.size} kinds; the premise check would be vacuous")
         assertEquals(allKinds, kinds, "FnExpr kinds the generated population never reaches")
+
+        // The coverage the interval walk has, derived the way FnOpCoverageTest derives its own.
+        val canonical = OpRegistry.knownOps.map { OpRegistry.canonical(it)?.lowercase() ?: it.lowercase() }.toSortedSet()
+        val enclosable = canonical.filter { FnFormulas.valueOf(it) != null || it == "const" || it == "param" }
+        println("FN INTERVAL COVERAGE: ${enclosable.size} of ${canonical.size} canonical ops enclosable " +
+            "(${FnFormulas.ops.size} formula ops + ${FnFormulas.valueOnlyOps.size} value-only + const/param)")
     }
 
     @Test
@@ -142,6 +153,34 @@ class FnIntervalTest {
         assertEquals(emptySet(), allKinds - rules, "FnExpr kinds with no declared interval rule")
         assertEquals(emptySet(), rules - allKinds, "interval rules for FnExpr kinds that no longer exist")
         assertTrue(FnIntervalRules.rules.values.all { it.length > 15 }, "an interval rule too thin to be a rule")
+    }
+
+    /**
+     * The value-only formulas are pinned the way `AutoDiffFnBridgeTest` pins the rest: raw bits,
+     * against `Fn.eval`, at the inputs where a careless transcription differs — the edge itself,
+     * signed zeros, NaN (`x >= NaN` is false, so a step at a NaN edge is 0, not 1) — and that the
+     * gradient still refuses them.
+     */
+    @Test
+    fun valueOnlyFormulasAreBitIdenticalAndStillRefusedByTheGradient() = with(Functions) {
+        val xs = listOf(-2.0, -0.5, -0.0, 0.0, 0.25, 0.5, 1.0, 3.0, Double.NaN, Double.POSITIVE_INFINITY)
+        val graphs = listOf(
+            step(0.5, unbounded), step(0.0, unbounded), step(Double.NaN, unbounded),
+            step(identity(unbounded) * c(0.5, unbounded), unbounded),
+            identity(unbounded).sign(), (identity(unbounded) - c(0.5, unbounded)).sign(),
+            (identity(unbounded) * c(-1.0, unbounded)).sign()
+        )
+        var compared = 0
+        for (fn in graphs) for (x in xs) {
+            assertEquals(fn.eval(x).toRawBits(), FnAutoDiff.evalByFormula(fn, x).toRawBits(), "${opsOf(fn)} at $x")
+            compared++
+        }
+        assertEquals(70, compared)
+        assertEquals(setOf("sign", "step"), FnFormulas.valueOnlyOps)
+        assertTrue(FnFormulas.valueOnlyOps.none { it in FnAutoDiff.differentiableOps })
+        assertTrue(FnFormulas.valueOnlyOps.all { FnNonDifferentiable.statusOf(it) != null })
+        assertFalse(FnAutoDiff.supports(step(0.5, unbounded)))
+        assertTrue(FnIntervals.supports(step(0.5, unbounded)))
     }
 
     // ---- containment ----------------------------------------------------------------------------
@@ -440,7 +479,9 @@ class FnIntervalTest {
     fun tightnessIsMeasuredAndRatcheted() {
         val oneShot = ArrayList<Double>()
         val binned = ArrayList<Double>()
-        for (fn in population(300, 5)) {
+        // The population the ratchets were measured on (2026-09-23): the generator *without* the two
+        // value-only ops, whose steps make the one-shot numbers a different population, not a worse walker.
+        for (fn in population(300, 5, valueOnly = false)) {
             val xs = DoubleArray(4001) { -2.0 + 4.0 * it / 4000.0 }
             val vs = xs.map { runCatching { fn.eval(it) }.getOrDefault(Double.NaN) }
             if (vs.any { !it.isFinite() }) continue

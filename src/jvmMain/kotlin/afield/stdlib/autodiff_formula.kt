@@ -376,11 +376,49 @@ object FnFormulas {
         put("hammingwindow", raisedCosine(0.54, 0.46))
     }
 
+    /**
+     * Ops whose **value** is declared here but which are deliberately kept out of [ops], and so out of
+     * [FnAutoDiff.differentiableOps].
+     *
+     * `step` and `sign` are refused by the gradient on purpose — see their entry in
+     * [FnNonDifferentiable]: a formula would be honest arithmetic and a dishonest gradient. The
+     * arithmetic is still worth having. It is what lets `evalFormulaInterval` bound them (and so bound
+     * a signal assembled piecewise from them), and what lets [FnAutoDiff.evalByFormula] pin them
+     * bit-identical to `Fn.eval`. [of] never returns these, so the AD walk cannot reach one.
+     *
+     * Both are written so a NaN takes the branch the closure takes: `x >= edge` is false for NaN,
+     * which is not the same as `!(x < edge)`, and `Math.signum` returns its argument for NaN and ±0.
+     */
+    private val valueOnlyTable: Map<String, FnExpr> = buildMap {
+        // Functions.step: if (x >= edge) 1.0 else 0.0
+        put(
+            "step",
+            FnExpr.IfLt(child("edge"), FnExpr.X, lit(1.0), FnExpr.IfEq(FnExpr.X, child("edge"), lit(1.0), lit(0.0)))
+        )
+        // Functions.sign: kotlin.math.sign, i.e. Math.signum
+        put(
+            "sign",
+            FnExpr.IfLt(
+                lit(0.0), child("source"), lit(1.0),
+                FnExpr.IfLt(child("source"), lit(0.0), lit(-1.0), child("source"))
+            )
+        )
+    }
+
     /** The formula for [op], or null when this op has no declared pointwise semantics. */
     fun of(op: String): FnExpr? = table[op.trim().lowercase()]
 
+    /**
+     * The formula that defines [op]'s *value* — [of], or else a [valueOnlyOps] entry. What the
+     * `Double` and interval walkers read; never what the AD walk reads.
+     */
+    fun valueOf(op: String): FnExpr? = op.trim().lowercase().let { table[it] ?: valueOnlyTable[it] }
+
     /** Every op with a declared formula, lower-cased. */
     val ops: Set<String> get() = table.keys
+
+    /** Ops with a declared value formula and a deliberately refused gradient, lower-cased. */
+    val valueOnlyOps: Set<String> get() = valueOnlyTable.keys
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -706,6 +744,8 @@ object FnNonDifferentiable {
                 "report convergence without ever having moved. Refusing says that; returning zero " +
                 "would hide it",
             closable = false, missing = "",
+            // Their *values* are declared in `FnFormulas.valueOnlyOps` since 2026-09-23, so the
+            // interval walk can bound them and `evalByFormula` pins them; the gradient still refuses.
             // `sign` arrived with the 2026-07-31 first-class-op pass, which gave abs/flip/exp
             // formulas and left this one out on purpose. `step` moved here from the non-smooth
             // value-transform group above at the same time: it was declared closable pending
