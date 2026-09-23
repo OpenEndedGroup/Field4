@@ -20,7 +20,7 @@ against it cell by cell before any sound is made.
 
 Rule 30's centre column has no such formula, which is the reason it is here.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/rules.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-rules" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/rules.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-rules" embed=true alt="Two black-and-white space-time diagrams, rule 90's nested Sierpinski triangles and rule 30's chaotic fan, above a two-lane piano roll of one cycle each and a table giving both bars' step count, onset count, condensed notation and compression"}
 :::static
 import afield.four.synth.CaSoundDocs
 
@@ -68,8 +68,6 @@ markdown("notation", """
 :::endfold
 ```
 
-![Two black-and-white space-time diagrams, rule 90's nested Sierpinski triangles and rule 30's chaotic fan, above a two-lane piano roll of one cycle each and a table giving both bars' step count, onset count, condensed notation and compression](assets/chain_ca_sound/rules.png)
-
 Rule 90's row condenses to two Euclidean figures with a rest between them, and the second is the
 first turned: `x(2,7)` and `x(2,7,5)` are the same two-in-seven pattern at two rotations. Pascal's
 triangle is symmetric in *k*, so the bar has to read the same backwards, and that is the form the
@@ -109,7 +107,7 @@ real CA's rows, checks each count against that formula, and maps the digit sum t
 minor pentatonic. The tune is therefore the binary expansion of 0, 1, 2, … read out loud: it falls
 back to the root at every power of two and climbs through the carries in between.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true alt="A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape"}
 :::static
 import afield.four.synth.CaSoundDocs
 
@@ -140,8 +138,6 @@ showPatRollOf(
 :::endfold
 ```
 
-![A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape](assets/chain_ca_sound/scale.png)
-
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-scale.wav" audio-spec="gasket-scale" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-scale-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("gasket-scale").
 ```
@@ -151,7 +147,7 @@ showPatRollOf(
 The same 32-step centre column, taken from six rules, condensed with the same atom — the two clips
 above are one row of this.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true alt="A four-column table of six elementary rules sorted by compression: rules 30 and 45 near 0.8 with long notations full of groupings, then rule 250 at 0.13, rule 90 at 0.10, and rules 110 and 150 at 0.06 with one-token spellings"}
 :::static
 import afield.four.synth.CaSoundDocs
 
@@ -172,8 +168,6 @@ $rows
 """, width = 1080)
 :::endfold
 ```
-
-![A four-column table of six elementary rules sorted by compression: rules 30 and 45 near 0.8 with long notations full of groupings, then rule 250 at 0.13, rule 90 at 0.10, and rules 110 and 150 at 0.06 with one-token spellings](assets/chain_ca_sound/survey.png)
 
 Two rules resist, and they are the two usually called chaotic. Every other column collapses to a
 spelling a person could have typed in one breath: `x*32`, `[x ~]*16`, `x ~!31`. What produced that
