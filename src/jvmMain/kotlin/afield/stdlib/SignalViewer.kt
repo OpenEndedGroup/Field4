@@ -15,7 +15,18 @@ data class SignalChannel(
     val minimum: Double = 0.0,
     val maximum: Double = 1.0,
     val comparison: ((Double) -> Double)? = null,
+    /**
+     * Opt-in: the same function as an [Functions.Fn], whose per-bin **certified** bound
+     * ([certifiedEnvelope]) is drawn as a band behind the sampled envelope — the bound no feature
+     * between samples can escape. Must compute what [value] computes; [certifiedSignalChannel]
+     * builds both from one `Fn`. A graph with formula-less ops is refused, and the lane says so.
+     */
+    val certified: Functions.Fn? = null,
 )
+
+/** A lane whose sampled envelope and certified band both come from [fn]. */
+fun certifiedSignalChannel(name: String, fn: Functions.Fn, minimum: Double = 0.0, maximum: Double = 1.0): SignalChannel =
+    SignalChannel(name, fn::eval, minimum, maximum, certified = fn)
 
 data class SignalViewerOptions(
     val width: Int = 1100,
@@ -32,7 +43,9 @@ data class SignalViewerOptions(
 
 data class SignalTrace(val low: List<Double>, val high: List<Double>)
 data class SignalLaneWindow(val name: String, val minimum: Double, val maximum: Double,
-    val current: SignalTrace, val comparison: SignalTrace?)
+    val current: SignalTrace, val comparison: SignalTrace?,
+    /** Per-bin certified bounds over the same bins as [current] (one per sample interval in waveform mode). */
+    val certified: SignalTrace? = null, val certifiedRefusal: String? = null)
 data class SignalWindow(val start: Double, val end: Double, val mode: String,
     val sampleSpacing: Double, val lanes: List<SignalLaneWindow>)
 
@@ -86,8 +99,16 @@ class SignalViewer(
             }
             return SignalTrace(low.toList(), high.toList())
         }
-        val lanes = channels.map { ch -> SignalLaneWindow(ch.name, ch.minimum, ch.maximum,
-            sample(ch.value), ch.comparison?.let(::sample)) }
+        fun certify(fn: Functions.Fn, ch: SignalChannel): Pair<SignalTrace?, String?> {
+            checkActive()
+            val e = fn.certifiedEnvelope(from, to, if (envelope) bins else intervals,
+                tolerance = (ch.maximum - ch.minimum) * 1e-3, maxDepth = 6)
+            return if (e.certified) SignalTrace(e.low.toList(), e.high.toList()) to null else null to e.refusal
+        }
+        val lanes = channels.map { ch ->
+            val (certified, refusal) = ch.certified?.let { certify(it, ch) } ?: (null to null)
+            SignalLaneWindow(ch.name, ch.minimum, ch.maximum, sample(ch.value), ch.comparison?.let(::sample), certified, refusal)
+        }
         return SignalWindow(from, to, if (envelope) "envelope" else "waveform", span / intervals, lanes)
     }
 

@@ -286,6 +286,39 @@ class FnIntervalTest {
         assertEquals(FnVerdictKind.REFUTED, f.certifiedReaches(truePeak + 1e-3, 0.0, 3600.0).kind)
     }
 
+    /**
+     * The opt-in viewer band: in both of the viewer's modes, every sampled bin lies inside its
+     * certified bin, the band catches the spike the samples miss, and an opaque lane is refused with
+     * its reason rather than given a band.
+     */
+    @Test
+    fun theViewerCarriesACertifiedBandThatContainsItsOwnSamples() = with(Functions) {
+        val spikeAt = 1234.57
+        val f = sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) + gaussian(spikeAt, 0.002, 0.5, unbounded)
+        val opaque = fn(0.0..3600.0) { 0.5 }
+        val viewer = SignalViewer(
+            listOf(certifiedSignalChannel("x", f), SignalChannel("plain", f::eval), SignalChannel("y", opaque::eval, certified = opaque)),
+            0.0, 3600.0, sampleStep = 0.02
+        )
+        for ((from, to) in listOf(0.0 to 3600.0, 1234.0 to 1235.0)) {
+            val w = viewer.window(from, to, 1000)
+            val lane = w.lanes[0]
+            val band = lane.certified!!
+            assertEquals(lane.current.low.size - if (w.mode == "waveform") 1 else 0, band.low.size, "mode ${w.mode}")
+            for (i in band.low.indices) {
+                // In waveform mode bin i spans samples i and i+1.
+                val samples = if (w.mode == "waveform") listOf(lane.current.low[i], lane.current.low[i + 1])
+                    else listOf(lane.current.low[i], lane.current.high[i])
+                for (v in samples) assertTrue(v >= band.low[i] && v <= band.high[i], "${w.mode} bin $i: $v outside [${band.low[i]}, ${band.high[i]}]")
+            }
+            assertTrue(band.high.max() >= f.eval(spikeAt), "${w.mode}: the band misses the spike")
+            assertEquals(null, w.lanes[1].certified)
+            assertEquals(null, w.lanes[2].certified)
+            assertTrue(w.lanes[2].certifiedRefusal!!.contains("'lambda'"), w.lanes[2].certifiedRefusal)
+        }
+        viewer.close()
+    }
+
     // ---- exactness: a held plateau certifies as the point itself ------------------------------------
 
     @Test

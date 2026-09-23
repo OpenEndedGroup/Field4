@@ -71,6 +71,14 @@
             fill:'tonexty',fillcolor:previous?'rgba(150,150,150,.12)':'rgba(235,235,235,.42)',hovertemplate});
         }
       };
+      if(lane.certified){
+        // Opt-in certified bound: every value in the bin lies inside, whether or not a sample landed on it.
+        const c=lane.certified,n=c.low.length,x=Array.from({length:n+1},(_,i)=>data.start+(data.end-data.start)*i/n);
+        const hovertemplate='%{x:.6g} s<br>'+lane.name.replaceAll('<','&lt;')+' certified: %{y:.6g}<extra></extra>';
+        result.push({...base,name:lane.name+' · certified',x,y:[...c.low,c.low[n-1]],line:{color:'rgba(255,170,40,.9)',width:.6,shape:'hv'},hovertemplate});
+        result.push({...base,name:lane.name+' · certified',x,y:[...c.high,c.high[n-1]],line:{color:'rgba(255,170,40,.9)',width:.6,shape:'hv'},
+          fill:'tonexty',fillcolor:'rgba(255,170,40,.28)',hovertemplate});
+      }
       if(lane.comparison)add(lane.comparison,true);add(lane.current,false);
     });return result;
   };
@@ -99,7 +107,9 @@
         data=next;await draw(token);if(disposed||token!==generation)return;
         root.dataset.mode=data.mode;root.dataset.spacing=String(data.sampleSpacing);
         status.textContent=data.mode+' · Δt '+format(data.sampleSpacing);
-        title.textContent=config.label+(data.lanes.some(l=>l.comparison)?' / white: current · dashed grey: '+config.comparisonLabel:'');
+        title.textContent=config.label+(data.lanes.some(l=>l.comparison)?' / white: current · dashed grey: '+config.comparisonLabel:'')+
+          (data.lanes.some(l=>l.certified)?' / amber: certified bound':'')+
+          data.lanes.filter(l=>l.certifiedRefusal).map(l=>' / '+l.name+': '+l.certifiedRefusal).join('');
       }catch(error){if(!disposed&&token===generation)status.textContent='Signal: '+(controller.signal.reason==='timeout'?'request timed out':error.message);}
       finally{clearTimeout(deadline);if(token===generation&&!disposed)root.setAttribute('aria-busy','false');if(request===controller)request=null;}
     },delay);
