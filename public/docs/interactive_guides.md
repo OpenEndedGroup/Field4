@@ -60,7 +60,7 @@ That is already a working guide. It opens a note, selects a box, and leaves the 
 
 A step usually explains the current stage with a note and moves the UI to the place it is talking about in the same breath. Use `selectBox(box, property = "code")` when you already have the target box in scope, and `selectBoxByName(...)` when the guide is driving another named box in the document.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" open-outputs="false" embed=true name="basic-slideshow" w="560" h="140" padding="28"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28"}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -101,7 +101,7 @@ Pair notes with view changes. A note that talks about code should leave that cod
 
 An interactive step wants a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" open-outputs="false" embed=true name="callbacks-and-templates" w="560" h="140" padding="28"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28"}
 :::static
 import afield.logger.lprintln
 import afield.markdownNote
@@ -173,7 +173,7 @@ Chat is optional. It belongs to the step that asks for it.
 - `withChat()` creates a thread for that slide.
 - `withChat(id = "shared-id")` shares one thread across repeated guide instances.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" open-outputs="false" embed=true name="slide-chat" w="560" h="140" padding="28"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28"}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -249,7 +249,7 @@ Annotations let a note point at an exact target.
 
 Use them when a sentence is about one box, one property, or one line.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" open-outputs="false" embed=true name="guide-annotations" padding="12"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" padding="12"}
 :::static
 import afield.markdownNote
 import afield.slideShow
