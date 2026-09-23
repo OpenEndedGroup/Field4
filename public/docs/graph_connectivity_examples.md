@@ -74,7 +74,7 @@ lines(
 
 Same geometry, same query point, same drawing code; only the question changes.
 
-![a scatter of a few hundred pale dots on black with one large yellow query dot near the middle. Orange radius edges fan out to whatever happens to lie inside the radius, thick pale-blue exact edges and thin green approximate ones run to the same handful of nearest points almost everywhere, and one thin green edge leaves the group entirely and runs across the frame to a point far to the lower left](assets/smile_neighbors_examples/query_edges.png)
+![a scatter of a few hundred pale dots on black with one large yellow query dot near the middle. A dozen dark amber radius edges fan out to whatever happens to lie inside the radius; the exact-neighbour edges sit over them in pale blue, thicker and shorter; and the approximate edges are dim enough that only one of them reads at all, the one that leaves the group entirely and runs across the frame to a point far to the lower left](assets/smile_neighbors_examples/query_edges.png)
 
 The exact set is the reference answer and the approximate set is the real-time
 compromise against it, so where a thin green edge leaves the thick blue ones and
@@ -199,7 +199,7 @@ The scene stays fixed while the graph family changes. One `graphLine(...)`
 helper defined in the fence draws all five, taking the colour and thickness for
 each as arguments.
 
-![one point cloud with five graphs drawn over it at once: a faint blue-grey Delaunay haze reaching everywhere, cyan and pink edges through the interior, orange ones sparser again, and a bright thick green spanning tree that reads as a single connected chain running round the outside of the cloud and in along a few spurs](assets/graph_connectivity_examples/geometric_families.png)
+![one point cloud with five graph families drawn over it at once, separated by thickness as much as by colour: a faint blue-grey haze of the densest family reaching everywhere, warmer and progressively sparser edges through the interior, and the spanning tree on top in bright thick green, reading as a single connected chain around the outside of the cloud with a few spurs inward. Only the extremes of the ordering are separable by eye](assets/graph_connectivity_examples/geometric_families.png)
 
 The drawing encodes that ordering as weight. Delaunay is drawn thinnest and
 faintest, at thickness 1.0 and alpha 0.25, and each successive family is thicker
