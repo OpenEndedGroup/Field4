@@ -39,17 +39,43 @@ Not scored:
   - alt strings under four words. "The two flocks" is a label, not prose.
 
 Also reported, because the detector has to walk every capture fence anyway and the
-number is the headline: ALT COVERAGE. A fence with `screenshot=` and no `alt=`
-publishes a figure with no alternative text at all.
+number is the headline: ALT COVERAGE.
+
+**That headline was wrong for five firings, and the way it was wrong is worth keeping
+written down.** It counted a fence with `screenshot=` and no `alt=` as "a published
+figure with no alternative text at all". A `screenshot=` fence publishes no `<img>`
+unless it also carries `embed`, which `docs_hooks.parse_bool(..., default=False)`
+defaults OFF: 475 of this tree's figures reach the page as hand-written
+`![...](...)` markdown lines instead, and those the old count could not see at all.
+So `alife_examples.md` read as 18 figures out of 18 missing while in fact carrying a
+full, careful description on every one of them, and the tree-wide gap was reported as
+505 when the real number was a third smaller. A number that names the wrong surface
+sends the next firing to fix a page that is already right.
+
+Coverage therefore counts what a reader actually meets, over both surfaces:
+
+  - a `screenshot=` fence with `embed` true -- `docs_hooks` emits
+    `![{alt or box_name}](...)`, so no `alt=` means the alt is the box name
+  - a markdown `![...](...)` line outside a fence, covered when its alt clears the
+    same four-word floor the scanner uses
+  - a `screenshot=` fence *without* `embed` is not counted: it publishes nothing
+    itself, and if its PNG appears at all it appears as a markdown line, counted there
+
+Attributes go through a copy of `docs_hooks.parse_attrs`, not a regex, because the
+fence syntax allows bare values: `afield_four_graphics.md` writes `embed=true`
+unquoted, and an `embed="true"` regex silently misses 238 of the 339 embedding
+fences.
 
 Surfaces match score_voice: default / --generated / --assets, same filters.
 Self-test: `--live-fire` puts Marc's own 2026-09-13 quotes in an alt string and
-asserts they fire. A detector that reports zero has to be shown able to report one.
+asserts they fire, and pins each of the four coverage cases above. A detector that
+reports zero has to be shown able to report one.
 """
 from __future__ import annotations
 
 import pathlib
 import re
+import shlex
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -59,7 +85,26 @@ import score_voice as sv  # noqa: E402
 OPENER = re.compile(r"^\s*(?:```|~~~)[a-z_]*\s*\{(?P<attrs>[^}]*)\}")
 ALT = re.compile(r'\balt="(?P<text>[^"]*)"')
 SCREENSHOT = re.compile(r"\bscreenshot=")
+# A published figure the page author wrote by hand, rather than one the fence embeds.
+MARKDOWN_IMAGE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<src>[^)]+)\)")
 MIN_WORDS = 4
+# docs_hooks.TRUE_VALUES, so `embed=true`, `embed="1"` and `embed=on` all agree here.
+TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def parse_attrs(raw):
+    """A copy of `docs_hooks.parse_attrs`, so bare `embed=true` parses like it does."""
+    flattened = raw.replace("{", " ").replace("}", " ")
+    attrs = {}
+    for token in shlex.split(flattened):
+        if token.startswith(".") or token.startswith("#"):
+            continue
+        if "=" in token:
+            key, value = token.split("=", 1)
+            attrs[key.strip()] = value.strip()
+        elif token:
+            attrs[token.strip()] = "true"
+    return attrs
 
 
 def openers(text):
@@ -100,15 +145,41 @@ def scan(text):
                 yield name, lineno, w, hit.group(0), alt
 
 
+def markdown_images(text):
+    """Yield (lineno, alt) for each hand-written image line outside a fence."""
+    in_fence = False
+    for lineno, raw in enumerate(text.split("\n"), 1):
+        stripped = raw.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        for m in MARKDOWN_IMAGE.finditer(raw):
+            yield lineno, m.group("alt").strip()
+
+
 def coverage(text):
-    """Return (figures, with_alt) for capture fences on this page."""
-    figures = with_alt = 0
+    """Return (published, covered) figures on this page, over both publishing surfaces.
+
+    See the module docstring: an `embed`-less `screenshot=` fence is not a published
+    figure, and a hand-written `![...](...)` line is.
+    """
+    published = covered = 0
     for _lineno, attrs in openers(text):
-        if SCREENSHOT.search(attrs):
-            figures += 1
-            if ALT.search(attrs):
-                with_alt += 1
-    return figures, with_alt
+        parsed = parse_attrs(attrs)
+        if "screenshot" not in parsed:
+            continue
+        if parsed.get("embed", "").lower() not in TRUE_VALUES:
+            continue
+        published += 1
+        if "alt" in parsed:
+            covered += 1
+    for _lineno, alt in markdown_images(text):
+        published += 1
+        if len(re.sub(r"`[^`]+`", "§", alt).split()) >= MIN_WORDS:
+            covered += 1
+    return published, covered
 
 
 def live_fire():
@@ -146,9 +217,37 @@ def live_fire():
     short = [h for h in scan(sample) if h[1] == 9]
     assert not short, f"scored a label under the word floor: {short}"
 
-    figures, with_alt = coverage(sample)
-    assert (figures, with_alt) == (4, 4), f"coverage miscounted: {figures}, {with_alt}"
-    print("live-fire coverage: 4 of 4; descriptive alt and short label both silent")
+    # None of the four fences above carries `embed`, so none of them publishes an
+    # `<img>` and none of them is a published figure. The old counter called them four.
+    assert coverage(sample) == (0, 0), f"an embed-less fence was counted: {coverage(sample)}"
+
+    published = "\n".join([
+        # Quoted and bare both embed, and both are missing alt=, so both are uncovered.
+        '```diffstatic_runner {data-lang=kotlin screenshot="e.png" embed="true"}',
+        "// body",
+        "```",
+        "```diffstatic_runner {data-lang=kotlin screenshot=\"f.png\" embed=true}",
+        "// body",
+        "```",
+        # Embedding and described: covered.
+        '```diffstatic_runner {data-lang=kotlin screenshot="g.png" embed=true '
+        'alt="a wireframe cloth hanging from five red pins along its top edge"}',
+        "// body",
+        "```",
+        # Hand-written image lines: the first covered, the second a bare label, the
+        # third empty. All three are figures a reader meets.
+        "![a coiled space curve with a bright green spanning tree following it](h.png)",
+        "![The two flocks](i.png)",
+        "![](j.png)",
+        # Inside a fence, so a sample rather than a figure.
+        "```markdown",
+        "![](not-a-figure.png)",
+        "```",
+    ])
+    got = coverage(published)
+    assert got == (6, 2), f"coverage miscounted the publishing surfaces: {got}"
+    print("live-fire coverage: 6 published, 2 covered; embed-less fences and "
+          "in-fence samples both excluded")
     return 0
 
 
@@ -161,18 +260,18 @@ def main():
     assets = "--assets" in sys.argv
 
     paths = [pathlib.Path(r["path"]) for r in sv.collect(root, generated=generated, assets=assets)]
-    rows, scanned, figures, with_alt = [], 0, 0, 0
+    rows, scanned, published, covered = [], 0, 0, 0
     bare = []
     for path in paths:
         text = path.read_text(errors="replace")
         for _lineno, attrs in openers(text):
             if ALT.search(attrs):
                 scanned += 1
-        f, a = coverage(text)
-        figures += f
-        with_alt += a
-        if f - a:
-            bare.append((f - a, path))
+        p, c = coverage(text)
+        published += p
+        covered += c
+        if p - c:
+            bare.append((p - c, path))
         hits = list(scan(text))
         if hits:
             rows.append((sum(h[2] for h in hits), path, hits))
@@ -186,9 +285,11 @@ def main():
     print(f"\nscanned {scanned} alt string(s) on {len(paths)} page(s); "
           f"{len(rows)} page(s) nonzero, sum {sum(r[0] for r in rows)}")
 
-    pct = round(100 * with_alt / figures, 1) if figures else 0.0
-    print(f"\nALT COVERAGE: {with_alt} of {figures} capture fences carry alt text ({pct}%). "
-          f"{figures - with_alt} published figures have none.")
+    pct = round(100 * covered / published, 1) if published else 0.0
+    print(f"\nALT COVERAGE: {covered} of {published} published figures carry alt text "
+          f"({pct}%). {published - covered} publish with the box name or nothing.")
+    print("  Counted: embedding capture fences, and hand-written image lines. "
+          "An embed-less fence publishes no <img> and is not counted; see the docstring.")
     if "--coverage" in sys.argv:
         bare.sort(key=lambda r: -r[0])
         for n, path in bare[:30]:
