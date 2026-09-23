@@ -8,7 +8,7 @@ git clone https://github.com/OpenEndedGroup/Field4.git
 
 There are no binaries and no installer — the checkout is the installation.
 
-### Quick Start (Double-Click)
+## Starting Field
 
 Launch Field·4 by double-clicking the appropriate file in the repository:
 
@@ -34,7 +34,7 @@ That URL is a real web server, running inside Field and listening on your machin
 network with anyone else, read [What Field Exposes, and What Stops It](server_surface.md) for what
 it exposes and what does, and does not, protect it.
 
-### Troubleshooting
+## Troubleshooting
 
 _Field·4_ is still beta software. Report reproducible problems through the public repository's
 [GitHub issue tracker](https://github.com/OpenEndedGroup/Field4/issues).
@@ -43,7 +43,7 @@ On Mac you might find that Apple cannot abide the idea of you downloading some c
 
 ![](assets/screenshot_4.png)
 
-### Updating
+## Updating
 
 Update it the same way:
 

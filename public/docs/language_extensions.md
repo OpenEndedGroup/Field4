@@ -1,4 +1,4 @@
-# Field Language Extensions
+# Field language extensions
 
 Write a few lines of your own language inside a triple-quoted string in a Kotlin
 box and Monaco sees one long string, coloured all the way through. Field's editor
@@ -34,7 +34,7 @@ The core editor calls `installLanguageExtensions(...)` when Monaco starts and
 changes. An out-of-tree extension that loads after Monaco starts can still call
 `FieldLanguageExtensions.register(...)` and then update the current editor.
 
-## Extension Contract
+## Extension contract
 
 An extension is a plain JavaScript object:
 
@@ -92,7 +92,7 @@ FieldLanguageExtensions.register({
 Each hook is optional. Hook failures are caught and reported to the browser
 console so one experimental language does not take down the editor.
 
-## Embedded Regions
+## Embedded regions
 
 Embedded language support starts with a region detector. A region should include
 absolute offsets into the Monaco model so later hooks can map tokens back to
@@ -117,7 +117,7 @@ The registry annotates returned regions with:
 }
 ```
 
-## RectSL Sketch
+## RectSL sketch
 
 This example detects Kotlin triple-quoted strings whose first non-empty line is
 `#rectsl`.
@@ -192,7 +192,7 @@ FieldLanguageExtensions.register({
 })
 ```
 
-## Flow And Context Lenses
+## Flow and context lenses
 
 `updateFlowLens(...)` is for visual relationships in the text: stack consumers,
 track producers, duplicated rectangles, mirrored keyframes, or timing
@@ -229,7 +229,7 @@ For RectSL, useful context payloads might include the current word's stack
 effect, the selected rectangle/group, sampled track value at the current time, or
 the source and target keyframes of a timing transform.
 
-## Completion Items
+## Completion items
 
 `provideCompletionItems(...)` lets an out-of-tree language answer before Field's
 server-side completion path. This is useful for embedded DSLs, because the
@@ -266,7 +266,7 @@ highlighter and flow lens, so FieldSuggest completion, token colors, and the
 context badge all describe the same language. Field's user-facing completion
 goes through FieldSuggest, not Monaco's built-in suggest widget.
 
-## When To Promote
+## When to promote
 
 Keep a language out of tree while its syntax and semantics are moving quickly.
 Promote it into Field when one of these becomes true:
@@ -279,11 +279,11 @@ Promote it into Field when one of these becomes true:
 Until then, the extension registry lets the language feel native in the editor
 without becoming part of the editor bindings.
 
-## The Other Side Of Promotion: FieldML
+## What a promoted language looks like: FieldML
 
-FieldML is what a promoted language looks like. It is a main language rather
-than an embedded region, so it does not use the registry described above.
-Instead it takes the built-in route, which replaces all three of the registry hooks above:
+FieldML is a main language rather than an embedded region, so it does not use
+the registry described above. It takes the built-in route instead, which
+replaces all three of the registry hooks:
 
 - **Highlighting** comes from a registered Monaco language rather than an
   embedded-region matcher. `src/commonMain/resources/fieldml.js` calls

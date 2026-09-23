@@ -1,4 +1,4 @@
-# Somebody else's language, running in Field
+# MorphoHDL in Field
 
 [MorphoHDL](https://paradigms-of-intelligence.github.io/morpho/) (Apache-2) is a hardware description language
 built on recursive cell division. You write a cell that halves its inputs and calls itself; the
