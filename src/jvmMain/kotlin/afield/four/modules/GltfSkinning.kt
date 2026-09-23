@@ -258,7 +258,7 @@ object GltfSkinning {
      * one is better.
      */
     enum class SkinningMethod {
-        /** Average the joint matrices. Fast, universal, and collapses a twisted joint to a line. */
+        /** Average the joint matrices. Fast, universal, and pinches a half-twisted joint ring to a point. */
         LINEAR_BLEND,
 
         /**
