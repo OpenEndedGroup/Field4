@@ -319,10 +319,16 @@ object FnRangeMath {
         }
     }
 
-    fun hypot(a: FnRange, b: FnRange): FnRange = binary(a, b) {
-        val aa = abs(a)
-        val bb = abs(b)
-        widen(FnRange(Math.hypot(aa.lo, bb.lo), Math.hypot(aa.hi, bb.hi))).let { it.copy(lo = maxOf(0.0, it.lo)) }
+    fun hypot(a: FnRange, b: FnRange): FnRange {
+        val finite = binary(a, b) {
+            val aa = abs(a)
+            val bb = abs(b)
+            widen(FnRange(Math.hypot(aa.lo, bb.lo), Math.hypot(aa.hi, bb.hi))).let { it.copy(lo = maxOf(0.0, it.lo)) }
+        }
+        // hypot(±inf, NaN) is +inf, not NaN — an infinity on either side wins over a NaN on the
+        // other. Found by FnIntervalTest.containmentHoldsFarFromTheOrigin, where exp overflowed.
+        val infinityMeetsNaN = (a.maybeNaN && !b.isEmpty && hasInfinity(b)) || (b.maybeNaN && !a.isEmpty && hasInfinity(a))
+        return if (infinityMeetsNaN) finite.including(Double.POSITIVE_INFINITY) else finite
     }
 
     private fun isInteger(v: Double) = v.isFinite() && v == Math.floor(v)
@@ -358,14 +364,20 @@ object FnRangeMath {
                 // pow(negative, ±inf) is a signed limit rather than NaN in Java; not worth a case.
                 n.isInfinite() -> return@binary FnRange.ENTIRE
                 else -> {
-                    if (a.hi < 0.0) return@binary FnRange.NAN
+                    // A negative base with a non-integer exponent is NaN — except at -inf, which
+                    // the Math.pow Javadoc defines as a limit: pow(-inf, 0.5) is +inf, pow(-inf, -0.5)
+                    // is +0.
+                    val atMinusInfinity = if (a.lo == Double.NEGATIVE_INFINITY) Math.pow(a.lo, n) else Double.NaN
+                    if (a.hi < 0.0) {
+                        return@binary if (atMinusInfinity.isNaN()) FnRange.NAN else FnRange.point(atMinusInfinity).copy(maybeNaN = true)
+                    }
                     val nan = a.lo < 0.0
                     val lo = maxOf(0.0, a.lo)
                     val pl = Math.pow(lo, n)
                     val ph = Math.pow(a.hi, n)
                     return@binary widen(FnRange(minOf(pl, ph), maxOf(pl, ph))).let {
                         FnRange(maxOf(0.0, it.lo), it.hi, nan)
-                    }
+                    }.let { if (atMinusInfinity.isNaN()) it else it.including(atMinusInfinity) }
                 }
             }
         }

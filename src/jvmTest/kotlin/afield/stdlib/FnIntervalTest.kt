@@ -194,6 +194,35 @@ class FnIntervalTest {
         assertTrue(nanSamples > 0, "no sample was NaN, so the NaN rules went untested")
     }
 
+    /**
+     * The same contract an hour away from the origin, where the viewer actually works: `sin`'s
+     * crest test and every phase are computed at x in the thousands, not near 0.
+     */
+    @Test
+    fun containmentHoldsFarFromTheOrigin() {
+        val r = Random(99)
+        var samples = 0
+        var violations = 0
+        var first: String? = null
+        for ((index, fn) in population(300, 17).withIndex()) {
+            for (width in listOf(40.0, 0.5, 1e-3)) {
+                val a = 500.0 + 3000.0 * r.nextDouble()
+                val b = a + width
+                val e = fn.enclose(a, b)
+                assertTrue(e.certified, "graph #$index refused: ${e.refusal}")
+                for (i in 0..80) {
+                    val x = (a + (b - a) * i / 80.0).coerceIn(a, b)
+                    val v = runCatching { fn.eval(x) }.getOrNull() ?: continue
+                    samples++
+                    if (v !in e) { violations++; if (first == null) first = "graph #$index ${opsOf(fn)}: f($x) = $v outside $e" }
+                }
+            }
+        }
+        println("FN INTERVAL FAR CONTAINMENT: $samples samples on x in [500, 3540], $violations violations")
+        assertEquals(0, violations, first)
+        assertTrue(samples > 70_000, "far population shrank to $samples")
+    }
+
     /** The per-bin envelope obeys the same contract, bin by bin, on the same population. */
     @Test
     fun everySampledValueLiesInsideItsCertifiedEnvelopeBin() {
@@ -317,6 +346,26 @@ class FnIntervalTest {
             assertTrue(w.lanes[2].certifiedRefusal!!.contains("'lambda'"), w.lanes[2].certifiedRefusal)
         }
         viewer.close()
+    }
+
+    /**
+     * What the band costs, against what the viewer already spends sampling. Reported, not a
+     * contract — except the one ceiling that is: the viewer's route times a request out at 12 s, so a
+     * certified hour-long window must come in well under that on this machine class.
+     */
+    @Test
+    fun theCertifiedBandCostsAReportedMultipleOfSampling() = with(Functions) {
+        val f = sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) + gaussian(1234.57, 0.002, 0.5, unbounded)
+        val sampledViewer = SignalViewer(listOf(SignalChannel("x", f::eval)), 0.0, 3600.0, sampleStep = 0.02)
+        val certifiedViewer = SignalViewer(listOf(certifiedSignalChannel("x", f)), 0.0, 3600.0, sampleStep = 0.02)
+        repeat(3) { sampledViewer.window(0.0, 3600.0, 1000); certifiedViewer.window(0.0, 3600.0, 1000) } // warm
+        fun best(block: () -> Unit): Double = (1..5).minOf { val t = System.nanoTime(); block(); (System.nanoTime() - t) / 1e6 }
+        val sampledMs = best { sampledViewer.window(0.0, 3600.0, 1000) }
+        val certifiedMs = best { certifiedViewer.window(0.0, 3600.0, 1000) }
+        sampledViewer.close(); certifiedViewer.close()
+        println("FN INTERVAL TIMING: 1000-bin hour window, 180000 samples: sampled ${"%.1f".format(sampledMs)} ms, " +
+            "sampled + certified ${"%.1f".format(certifiedMs)} ms (${"%.2f".format(certifiedMs / sampledMs)}x)")
+        assertTrue(certifiedMs < 4000.0, "a certified window took $certifiedMs ms; the viewer route times out at 12 s")
     }
 
     // ---- exactness: a held plateau certifies as the point itself ------------------------------------

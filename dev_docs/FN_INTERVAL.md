@@ -80,21 +80,33 @@ A bound the function *attains* tangentially cannot be proven exactly by bisectio
 PROVEN. Rewriting as `1 − (1 − b)(1 − e)` isolates the bound (still needs `slack = 1e-12`, from the
 smoothstep rule's 8-ulp widening). Both are pinned in `FnIntervalTest`.
 
-## Numbers (FnIntervalTest, 2026-09-23, 13 tests, all green)
+## Numbers (FnIntervalTest, 2026-09-23, 15 tests, all green)
 
 | what | population | result |
 | --- | --- | --- |
 | containment | 600 generated formula-only graphs × 4 intervals (widths 6, 1, 1e-2, 1e-5) × 121 samples = 290 400 samples, 21 018 of them NaN | **0 violations**, 0 refusals |
 | envelope containment | 200 graphs × 16 bins × 41 samples, NaN excluded | 119 148 samples, **0 violations** |
+| far from the origin | 300 graphs × 3 intervals (widths 40, 0.5, 1e-3) at x ∈ [500, 3540] × 81 samples | 72 900 samples, **0 violations** (after one real bug, below) |
+| one-off sweep, not committed | 40 seeds × 300 graphs × 6 placements (x from −3 to 1e4, widths 1e-6 to 400) × 61 samples | 4 392 000 samples, 0 violations |
 | premise | the same 600 graphs | reach all 33 formula ops and all 28 `FnExpr` kinds |
 | teeth | 200 graphs: the endpoint-only "bound" `[min(f(a), f(b)), max(…)]` | violated on 111 of 200 |
 | spike counterfactual | `sin(1/40)·0.2+0.45 + gaussian(1234.57, 0.002, 0.5)`, viewer 1000 bins, 0.02 s step | sampled bin max 0.3038 vs true peak 0.7994: **missed by 0.4956** (floor asserted 0.45); certified bin max 0.79946 (≥ peak, < peak + 0.01) |
+| cost | the demo's hour, 1000-bin viewer window, 180 000 samples, best of 5 | sampled 12–14 ms; sampled + certified band 12–17 ms (1.01–1.19× over two runs). Asserted only < 4 s (the route times out at 12 s) |
 | tightness, one-shot | 226 graphs on [−2, 2] with finite, non-flat 4001-sample range | width/observed p50 1.0000006, p75 1.1286, p90 2.116, 9 infinite; ratchet p75 ≤ 1.15 |
 | tightness, 64-bin refined | same 226 | p50 1.00000017, p75 1.0007, p90 1.00133, max 2.0; ratchet p90 ≤ 1.0015 |
 
 The generator (`FnIntervalTest.gen`) deliberately lets `pow`, `log` and `divide` see zero-crossing
 and negative inputs, so NaN and infinity rules are exercised, and gives `smoothStep`/`remap`/`scaleX`
 /`softClip`/`gaussian` their degenerate (equal-edge / zero) parameters a fraction of the time.
+
+### The one containment bug the tests found
+
+The near-origin population was green from the first run. Moving the intervals to x ≈ 3400 made
+`exp` overflow, and `hypot(NaN, +inf)` — which Java defines as `+inf`, an infinity beating a NaN —
+was enclosed as "NaN only": 243 violations in 72 900 samples. The `hypot` rule now adds `+inf`
+whenever one side may be infinite and the other NaN. While there, `pow(−inf, non-integer)` (a
+`+inf` or `+0` limit per the `Math.pow` Javadoc, not NaN) was fixed by reading the spec; no test
+had hit it. The lesson is the usual one for a generated population: it only tests where it looks.
 
 ## Viewer hook
 
