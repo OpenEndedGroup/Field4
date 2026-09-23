@@ -31,7 +31,7 @@ expect:
     - "app needs log, store, ui, util"
     - "does app need log? true"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/modules.png" capture="editor" outputs="inline" wait="4" padding="10" timeout="180" embed=true name="datalog-modules" w="900" h="420"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/modules.png" alt="the Kotlin box in the editor with two inline output strips wedged between its lines: one under the first println reading 'app needs log, store, ui, util', one under the last carrying 'modules that need log: 4' and 'does app need log? true'. Inside the triple-quoted string the #datalog marker is gold, rule heads are blue and the variables A, B and C are orange" capture="editor" outputs="inline" wait="4" padding="10" timeout="180" embed=true name="datalog-modules" w="900" h="420"}
 :::static
 val d = Datalog()
 d.add("""
@@ -73,7 +73,7 @@ expect:
     - "facts in 2 relations"
     - "path"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/fixpoint.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-fixpoint" w="760" h="260"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/fixpoint.png" alt="the main output channel: a heading reading '16 facts in 2 relations' over a three-column table of relation, arity and rows, listing edge at arity 2 with 4 rows and path at arity 2 with 12" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-fixpoint" w="760" h="260"}
 :::static
 val d = Datalog()
 d.add("""
@@ -108,7 +108,7 @@ expect:
     - "why path(a, d)"
     - "edge(c, d)"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/why.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-why" w="760" h="260"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/why.png" alt="a derivation tree headed 'why path(a, d)', indented by arrow glyphs: path(a, d) from the recursive clause, then path(a, c) from the same clause, then path(a, b) from the base clause, and at the leaves edge(a, b), edge(b, c) and edge(c, d), each tagged [fact]. Every interior node carries the rule that fired it in brackets" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-why" w="760" h="260"}
 :::static
 val d = Datalog()
 d.add("""
@@ -199,7 +199,7 @@ expect:
     - "footage(S, Total, Best)"
     - "insert"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/takes.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-takes" w="760" h="330"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/takes.png" alt="two stacked output channels. The main one, headed '?- footage(S, Total, Best) (3 rows)', tabulates close 41 4, insert 19 2 and wide 80 5: one row per shot, not per take. The reshoot channel below it, headed '?- reshoot(S) (1 row)', holds the single answer insert" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-takes" w="760" h="330"}
 :::static
 data class Take(val clip: String, val shot: String, val seconds: Int, val rating: Int)
 
@@ -250,7 +250,7 @@ expect:
     - "child(Parent, Child)"
     - "prop(Id, Key, Value)"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/schema.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-schema" w="760" h="290"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/schema.png" alt="a two-column table headed 'what a Field document looks like as facts', pairing each relation with the thing it has one row per: box(Id) every live box, name(Id, Name) a display name where there is one, child(Parent, Child) a graph edge in the direction execution flows, nested(Outer, Inner), frame(Id, X, Y, W, H) position and size, prop(Id, Key, Value) one scalar property, running(Id, Strand) a strand currently executing" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-schema" w="760" h="290"}
 :::static
 display("main", dlBoxRelationTable())
 ```
@@ -271,7 +271,7 @@ expect:
     - "downstream(loader, X)"
     - "shader"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/document.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-document" w="760" h="380"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/document.png" alt="two output channels over the six-box toy document. The main one, '?- downstream(loader, X), name(X, N) (3 rows)', lists draw, mesh and shader, draw among them although it hangs two edges below loader. The leaves channel, '?- leaf(X), name(X, N) (3 rows)', lists draw, notes and shader" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-document" w="760" h="380"}
 :::static
 fun boxNamed(id: String, name: String, parent: Box?): Box {
     val b = Box(id)
@@ -329,7 +329,7 @@ expect:
     - "alias(A, B)"
     - "spare"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/object_graph.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-object-graph" w="760" h="420"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/object_graph.png" alt="two output channels. The main one, '?- alias(A, B) (2 rows)', pairs carrier with spare and spare with carrier: the two names the walk found for one oscillator. The settable channel, '?- reaches(carrier, P), writable(P) (2 rows)', lists the paths carrier/freq and carrier/gain" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-object-graph" w="760" h="420"}
 :::static
 class Osc(var freq: Float, var gain: Float, val label: String)
 class Rig(val carrier: Osc, val modulator: Osc, val spare: Osc, var title: String)
@@ -375,7 +375,7 @@ expect:
   outputContains:
     - "8 stated edges, 34 implied by them"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/reachability.png" wait="1.5" capture="box" open-outputs="true" embed=true name="datalog-reachability" w="760" h="430"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/reachability.png" alt="seven yellow diamond nodes numbered 0 to 6 around an ellipse. Eight thick yellow lines are the stated edges, the ring 0-1-2-3-4 back to 0, plus the branch 1-5-6 rejoining at 2. Behind them a dense haze of thin blue-grey lines joins almost every other pair of nodes: the implied edges, outnumbering the stated ones four to one" wait="1.5" capture="box" open-outputs="true" embed=true name="datalog-reachability" w="760" h="430"}
 :::static
 val links = listOf(0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2)
 
@@ -445,7 +445,7 @@ a fact with a variable in it. Lines beginning with `#` are session commands.
 
 No Kotlin at all in one of these. The box below is a Datalog box, and this is its whole contents:
 
-```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box" w="900" h="360"}
+```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box.png" alt="a Datalog box in the editor: a grey comment line, three cell facts, the rule over(C) :- cell(C, V), V > 5, and the bare goal ?- over(C). Below the last line an inline output strip repeats the goal and gives a one-column table whose single answer is a3" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box" w="900" h="360"}
 :::static
 % a spreadsheet's worth of cells, and one rule about them
 cell(a1, 3). cell(a2, 4). cell(a3, 10).
@@ -457,7 +457,7 @@ over(C) :- cell(C, V), V > 5.
 
 Run a `#why` next to it and the box answers with the derivation rather than the row:
 
-```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box_why.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" embed=true name="datalog-box-why" w="900" h="300"}
+```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box_why.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" name="datalog-box-why" w="900" h="300"}
 :::static
 cell(a1, 3). cell(a3, 10).
 over(C) :- cell(C, V), V > 5.
@@ -477,7 +477,7 @@ differently from the same predicate used in a body, variables differently from c
 hovering a predicate reports its arity and how many clauses define it. Completion offers the
 program's own predicates first, then the builtins and the box-graph relations.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" screenshot="assets/datalog/region.png" wait="0" timeout="120" embed=true hidden=true name="datalog-region"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" screenshot="assets/datalog/region.png" alt="eleven lines of Kotlin in the editor, the middle eight of them inside a triple-quoted string that opens with a gold #datalog. Within the region the rule heads needs, busy and orphan are blue while the same imports predicate is blue where it heads a fact and plain white inside a rule body; variables are orange, constants white, and the aggregate keyword count is violet" wait="0" timeout="120" embed=true hidden=true name="datalog-region"}
 ui.eval("var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor(id)
 ui.pause(700)
