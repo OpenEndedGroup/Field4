@@ -55,11 +55,11 @@ TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 DEMOS_ROOT = REPO_ROOT / "dev_docs" / "agents" / "demos"
 
-# The demo corpus, by name. Measured 2026-09-22: `ls -1d dev_docs/agents/demos/*/` — 23.
+# The demo corpus, by name. Measured 2026-09-23: `ls -1d dev_docs/agents/demos/*/` — 25.
 #
-# Twenty-three *directories*, twenty-two *documents*: `flow_grain` arrived on 2026-09-22 with no
-# `metadata.edn`, and is the first entry here that is not a saved document at all. This set is the
-# directory listing, which is the population a sibling branch grows, so it holds all 23. Anything
+# Twenty-five *directories*, twenty-four *documents*: `flow_grain` arrived on 2026-09-22 with no
+# `metadata.edn`, and is the only entry here that is not a saved document at all. This set is the
+# directory listing, which is the population a sibling branch grows, so it holds all 25. Anything
 # that asks "is this document verified?" has to filter on `metadata.edn` first — see the note on
 # the entry itself, and `AgentDemoRegistrationTest.demoDocuments`.
 #
@@ -88,6 +88,14 @@ CORPUS = {
     # verified, and by the harness this family cares about; it just is not verified *as a document*.
     "flow_grain",
     "frame_history_reprojection",
+    # Both landed 2026-09-23, the twenty-fourth and twenty-fifth directories, in `948602d5a` and
+    # `7fc49b2ed`: the blank starter and the worked example of the same AI4 function conversation.
+    # Neither ships a `build.yaml`, so the nine below is unchanged. They arrived unregistered in
+    # every name-list that tracks this corpus, and left three guards red on `main` at once — this
+    # one, `test_guard_corpora`, and `checkAgentTranscriptLayouts`. Same gap `marf_demo` left, for
+    # the same reason: none of the three runs on commit.
+    "function_conversation",
+    "function_conversation_example",
     # Promoted 2026-09-22 out of `dev_docs/agents/artifacts/`, the twenty-third directory. Ships no
     # `build.yaml` (so the nine below is unchanged); its transcript
     # `dev_docs/agents/transcripts/gpu_probe_bench.yaml` is registered `COMPILE_ONLY`, because box 1

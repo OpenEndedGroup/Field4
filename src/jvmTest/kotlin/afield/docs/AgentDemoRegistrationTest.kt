@@ -59,9 +59,9 @@ class AgentDemoRegistrationTest {
         const val TRANSCRIPTS = "dev_docs/agents/transcripts"
 
         /**
-         * The twenty-three demo directories this file was measured against, 2026-09-22.
+         * The twenty-five demo directories this file was measured against, 2026-09-23.
          *
-         * Twenty-three directories, twenty-two of them documents; see [demoDocuments] for why the
+         * Twenty-five directories, twenty-four of them documents; see [demoDocuments] for why the
          * two populations came apart and which assertions range over which.
          *
          * Recount with `ls -1 dev_docs/agents/demos`. Adding a demo means adding its name here and
@@ -95,6 +95,13 @@ class AgentDemoRegistrationTest {
             // put there, twice over: it is not a demo document, and it is not unverified.
             "flow_grain",
             "frame_history_reprojection",
+            // Both landed 2026-09-23, the twenty-fourth and twenty-fifth, in `948602d5a` and
+            // `7fc49b2ed`: the blank starter and the worked example of one AI4 function
+            // conversation. They are demo *documents* — both carry a `metadata.edn` — so unlike
+            // `flow_grain` they are inside [everyDemoDocumentIsRegisteredForVerification]'s
+            // population and need a registered transcript or an [UNVERIFIED] entry.
+            "function_conversation",
+            "function_conversation_example",
             // Promoted 2026-09-22 out of `dev_docs/agents/artifacts/`, where its author parked it
             // because this class's sibling `DemoTranscriptExecSmokeTest` was held by a concurrent
             // session that night. That routing was declared at the time and it cost exactly what
@@ -138,8 +145,36 @@ class AgentDemoRegistrationTest {
          * and its transcript was registered `COMPILE_ONLY` in the same commit, so the Kotlin this
          * list would have been excusing is compiled on every build already. The commit's gap was
          * the three name-lists, not the verification.
+         *
+         * **It grew again on 2026-09-23, and this time the prescribed fix is not free.** The two
+         * `function_conversation` documents are demo documents, so the `flow_grain` reasoning does
+         * not reach them: their box Kotlin — a 198-line tools box, byte-identical in both — is
+         * compiled by nothing. Their only driver, `tools/run_function_conversation.py`, sends a
+         * real AI4 model turn, is referenced by no Gradle task and carries no `FIELD_TEST`, so it
+         * can never be the gate. A `COMPILE_ONLY` transcript each is still the right fix and would
+         * compile both bodies without a model. What stops it being a nightly-CI edit is the
+         * cascade: every *top-level* transcript must have a `### name` entry on
+         * `public/docs/agent_transcripts.md` — the index guard holds those equal in both
+         * directions, 146 = 146 — and `EXCLUDE` only suppresses the materialized bundle, not the
+         * entry. So writing them publishes two new starting points in the public gallery for
+         * documents already published a different way, as zip downloads from
+         * `public/docs/function_conversation.md` built by `tools/package_function_conversation.py`.
+         * That is an editorial call about the gallery, not a CI repair, so it is written down here
+         * and left for a person.
          */
-        val UNVERIFIED = emptyMap<String, String>()
+        val UNVERIFIED = mapOf(
+            "function_conversation" to
+                "Landed 2026-09-23 in `948602d5a` with no transcript; its box Kotlin is compiled by " +
+                "nothing. Fix: write `dev_docs/agents/transcripts/function_conversation.yaml` as " +
+                "COMPILE_ONLY (the tools box opens no window and needs no model to compile) and add " +
+                "its `### function_conversation` entry to public/docs/agent_transcripts.md — or " +
+                "decide the gallery should not carry it and say so here instead.",
+            "function_conversation_example" to
+                "Landed 2026-09-23 in `7fc49b2ed`, the worked example beside the blank starter; same " +
+                "byte-identical tools box, same gap. Fix: the same COMPILE_ONLY transcript plus " +
+                "gallery entry, or a recorded decision that the zip download on " +
+                "public/docs/function_conversation.md is how these two ship.",
+        )
     }
 
     /**
