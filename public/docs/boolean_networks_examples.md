@@ -45,7 +45,7 @@ lines(
 
 The left image tells you what depends on what; the right image tells you what that dependency does to every possible state. Here the two coincide: with four states and both nodes reading the other, the whole state space is a single period-4 loop, `00 -> 10 -> 11 -> 01` and back. No hidden basin, no dead branch, and no state that is not on the cycle.
 
-![](assets/boolean_networks_examples/toggle_state_space.png)
+![two panels side by side. The blue-tinted left panel holds two blue discs one above the other with a single line between them. The brown-tinted right panel holds four orange discs at the corners of a diamond, joined by a closed four-step loop drawn as two crossing chords, so every disc has exactly one line in and one out](assets/boolean_networks_examples/toggle_state_space.png)
 
 ## Segment-polarity basins and a real transient
 
@@ -95,7 +95,7 @@ lines(
 
 The left panel is one concrete transient, the middle panel is the whole 16-state transition graph, and the right panel samples the two largest basins as miniature spacetime strips. The transient is what the transition graph leaves you to trace by hand: which of the sixteen states you start from decides which attractor you end on, and how many steps you spend getting there.
 
-![](assets/boolean_networks_examples/segment_basins.png)
+![three panels. The narrow blue-tinted left panel is a tall four-column strip of cream and dark cells, one row per step. The middle panel is sixteen nodes arranged in a ring, alternately blue and orange, with straight chords running across the interior between them. The brown-tinted right panel holds two groups of three small spacetime strips separated by a thin orange rule, the left group visibly busier than the right](assets/boolean_networks_examples/segment_basins.png)
 
 ## Random Kauffman regimes as a plotted sweep
 
@@ -194,7 +194,7 @@ lines(
 
 The plot has no legend, so: blue is the mean number of attractors, orange the mean period, green the mean number of fixed points, each averaged over 18 seeds at `n = 8` for `k` from 1 to 5, and all three share one y scale. All three rise with `k`. Connectivity buys both more attractors and longer ones rather than trading one against the other. Orange overtakes blue around the middle of the sweep and turns down at `k = 5`, and green stays under blue throughout, as it has to: a fixed point is a period-1 attractor and so is counted in both.
 
-![](assets/boolean_networks_examples/kauffman_sweep.png)
+![three five-point polylines with square markers on a faint grid, no axis labels or legend. Blue climbs steadily from low on the left and flattens at the fourth point. Orange starts just below blue, passes it immediately, meets it again at the middle point, then rises to the highest point on the plot at the fourth and falls back at the fifth. Green stays along the bottom, dipping slightly, then rising over the last two points to finish well below both](assets/boolean_networks_examples/kauffman_sweep.png)
 
 ## Boolean attractors as drum grids
 
@@ -268,6 +268,6 @@ lines(
 
 The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a Drift-style sample rack. Nothing here makes a sound. The gating produces a grid of triggers that repeats exactly, and you can read that grid off the page before you commit it to a sampler.
 
-![](assets/boolean_networks_examples/rhythm_cycles.png)
+![three panels. The blue-tinted left panel holds five blue discs in a ring with six lines between them, two of them crossing the middle. The middle panel is a five-lane step grid with orange bar-lines every four steps, each lane in its own colour, and two bars' worth of the same pattern repeated. The brown-tinted right panel is the same five lanes much more sparsely filled, a handful of triggers per lane instead of a dense run](assets/boolean_networks_examples/rhythm_cycles.png)
 
 For the next step, where those grids become `NoteProcess` objects and live Dirt triggers, continue with [Boolean network music examples](boolean_network_music_examples.md). For related work where static structure and measured behavior are plotted together, continue with [Values over time (interpolants, keyframes, correlations & estimation)](interpolants_examples.md) and [Sorting networks examples](sorting_networks_examples.md).
