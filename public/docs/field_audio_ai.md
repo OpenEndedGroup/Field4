@@ -16,10 +16,10 @@ operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_po
 depending on AudioCraft classes.
 
 Running any of it needs that submodule initialized, the analysis and AudioCraft packages
-installed, and weights on disk. A docs build does none of that, so these pages are written
-against a committed, model-free snapshot of the service contract instead. That snapshot
-is the [generated service reference](field_audio_service_reference.md): the current pinned HTTP
-objects, states, and error vocabulary, readable without any of the above.
+installed, and weights on disk. Short of that, what you can still read is a committed,
+model-free snapshot of the service contract: the
+[generated service reference](field_audio_service_reference.md) lists the current pinned HTTP
+objects, states, and error vocabulary, and needs none of the above.
 
 ## What the service does
 
