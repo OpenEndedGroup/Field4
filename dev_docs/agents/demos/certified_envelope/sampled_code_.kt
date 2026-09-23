@@ -14,7 +14,7 @@ val signal = with(Functions) {
 
 // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
 val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
-afield.Box.context.get()!!.displaySignal(viewer, "main",
+displaySignal(viewer, "main",
     SignalViewerOptions(label = "sampled envelope only", viewKey = "certified_envelope:sampled"))
 
 // The same query the plot makes, read back as numbers. Bin 342 holds the glitch.

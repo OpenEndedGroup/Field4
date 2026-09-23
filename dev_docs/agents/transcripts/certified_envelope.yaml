@@ -33,7 +33,7 @@ operations:
 
           // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
           val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
-          afield.Box.context.get()!!.displaySignal(viewer, "main",
+          displaySignal(viewer, "main",
               SignalViewerOptions(label = "sampled envelope only", viewKey = "certified_envelope:sampled"))
 
           // The same query the plot makes, read back as numbers. Bin 342 holds the glitch.
@@ -66,7 +66,7 @@ operations:
                   gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
           }
           val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
-          afield.Box.context.get()!!.displaySignal(viewer, "main",
+          displaySignal(viewer, "main",
               SignalViewerOptions(label = "sampled envelope, with its certified band", viewKey = "certified_envelope:certified"))
 
           // The band, read back: bin 342 is bounded above by the glitch's true height.

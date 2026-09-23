@@ -13,7 +13,7 @@ val signal = with(Functions) {
         gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
 }
 val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
-afield.Box.context.get()!!.displaySignal(viewer, "main",
+displaySignal(viewer, "main",
     SignalViewerOptions(label = "sampled envelope, with its certified band", viewKey = "certified_envelope:certified"))
 
 // The band, read back: bin 342 is bounded above by the glitch's true height.
