@@ -58,12 +58,27 @@ import afield.stdlib.linalg.Matrix4f
  * [GltfSkinning.skin] is then evidence about the shader that actually renders, and not about a
  * second implementation written to pass a test.
  *
+ * ## Two blends, chosen per instance
+ *
+ * Linear blend skinning averages matrices, and under a twist about the bone's own axis that
+ * average stops being a rotation: the fixture's `twist` clip at 180° pinches the joint ring to
+ * nothing, the candy wrapper. [DualQuaternionSkinning] is the CPU fix; this carries it to the
+ * GPU. Each instance's palette is uploaded **twice** — as `mat4`s, and as dual quaternions plus a
+ * residual 3×3 (see [DUAL_VEC4S_PER_JOINT], [packDualPalette]) — and a per-instance method word
+ * says which the shader blends. So one draw call can hold linear-blend and dual-quaternion
+ * characters side by side, which is how the difference is best seen.
+ *
+ * The split `M = T·R·S` stays on the CPU, and it is the oracle's own [DualQuaternionSkinning.split]:
+ * it is `O(instances × bones)`, like the rest of the palette, and reusing it means the GPU adds only
+ * the blend.
+ *
  * ## Push-constant budget
  *
- * The stock glTF block is 176 bytes. This adds three buffer references and three uints, for
- * **212**. Vulkan only guarantees 128, so this is a MoltenVK/desktop-class assumption, not a
+ * The stock glTF block is 176 bytes. This adds five buffer references and three uints, for
+ * **228**. Vulkan only guarantees 128, so this is a MoltenVK/desktop-class assumption, not a
  * portable one; the machine it was measured on reports 4096. If it ever has to shrink, the three
- * uints fold into one packed word and the joint and weight buffers interleave into one.
+ * uints fold into one packed word, the joint and weight buffers interleave into one, and the
+ * method words can ride in the dual palette's unused `w` lanes.
  */
 object GpuSkinning {
 
@@ -77,7 +92,77 @@ object GpuSkinning {
     const val LOCAL_SIZE: Int = 64
 
     /**
-     * The skinning maths, as GLSL: three buffer-reference types and three functions.
+     * `vec4`s per joint in the dual-quaternion palette: `real.xyzw`, `dual.xyzw`, then the
+     * residual 3×3 `S` as three columns in JOML order (`m00 m01 m02`, …) with `w` unused.
+     *
+     * 80 bytes against the matrix palette's 64. Five and not four because the residual can be a
+     * full 3×3: Gram-Schmidt leaves it upper-triangular, six floats, which *would* fit beside the
+     * eight of the dual quaternion — but a degenerate joint (a basis axis scaled to nothing) hands
+     * the whole 3×3 over as its residual, and a packing that could not carry it would be exact only
+     * until the first collapsed bone.
+     */
+    const val DUAL_VEC4S_PER_JOINT: Int = 5
+
+    /** Floats per joint in the dual-quaternion palette: [DUAL_VEC4S_PER_JOINT] × 4. */
+    const val DUAL_FLOATS_PER_JOINT: Int = DUAL_VEC4S_PER_JOINT * 4
+
+    /** Method word 0: linear blend skinning from the `mat4` palette. */
+    const val METHOD_LINEAR: Int = 0
+
+    /** Method word bit 0: dual quaternion blending from the dual palette. */
+    const val METHOD_DUAL_QUATERNION: Int = 1
+
+    /**
+     * Method word bit 1: this instance's palette has at least one non-rigid joint, so the
+     * residual 3×3 must be blended. Only meaningful with [METHOD_DUAL_QUATERNION].
+     *
+     * This is `DualQuaternionSkinning.skin`'s `anyNonRigid`, carried per instance: the oracle skips
+     * the residual accumulation for a palette of pure rigid motions, and so does the shader, so
+     * the two take the same arithmetic path rather than one of them blending identities.
+     */
+    const val METHOD_RESIDUAL_BIT: Int = 2
+
+    /**
+     * Write [palette] into [into] at [offset] in the dual-quaternion layout — [DUAL_FLOATS_PER_JOINT]
+     * floats per joint — and return the method word the shader needs for it.
+     *
+     * The split is [DualQuaternionSkinning.split], the **oracle's own** factorisation, called
+     * here rather than re-derived. So the only arithmetic the GPU adds is the blend, and a
+     * disagreement between the shader and [DualQuaternionSkinning.skin] can only be a
+     * disagreement about blending. Rigid joints get an identity residual, which is what the
+     * oracle's `addScaled3` adds for them when some *other* joint needs the residual path.
+     *
+     * Both [GpuSkinner.uploadPalettes] and `GpuSkinningSmoke` pack through this, so the packing
+     * the smoke grades is the packing the renderer draws.
+     *
+     * @return [METHOD_DUAL_QUATERNION], or'd with [METHOD_RESIDUAL_BIT] when any joint is non-rigid.
+     */
+    fun packDualPalette(palette: List<Matrix4f>, into: FloatArray, offset: Int = 0): Int {
+        var nonRigid = false
+        var o = offset
+        for (m in palette) {
+            val s = DualQuaternionSkinning.split(m)
+            val r = s.dq.real
+            val d = s.dq.dual
+            into[o++] = r.x; into[o++] = r.y; into[o++] = r.z; into[o++] = r.w
+            into[o++] = d.x; into[o++] = d.y; into[o++] = d.z; into[o++] = d.w
+            val res = s.residual
+            if (res == null) {
+                into[o++] = 1f; into[o++] = 0f; into[o++] = 0f; into[o++] = 0f
+                into[o++] = 0f; into[o++] = 1f; into[o++] = 0f; into[o++] = 0f
+                into[o++] = 0f; into[o++] = 0f; into[o++] = 1f; into[o++] = 0f
+            } else {
+                nonRigid = true
+                into[o++] = res.m00; into[o++] = res.m01; into[o++] = res.m02; into[o++] = 0f
+                into[o++] = res.m10; into[o++] = res.m11; into[o++] = res.m12; into[o++] = 0f
+                into[o++] = res.m20; into[o++] = res.m21; into[o++] = res.m22; into[o++] = 0f
+            }
+        }
+        return METHOD_DUAL_QUATERNION or (if (nonRigid) METHOD_RESIDUAL_BIT else 0)
+    }
+
+    /**
+     * The skinning maths, as GLSL: five buffer-reference types and six functions.
      *
      * Place immediately after `#version` — it carries its own `#extension` directive. Written to
      * mirror [GltfSkinning.skin] statement for statement, including the parts that look like
@@ -95,6 +180,26 @@ object GpuSkinning {
      *
      * `mat4 * float` and `mat4 + mat4` are component-wise in GLSL, so `afSkinBlend` is the
      * literal transcription of `GltfSkinning.addScaled`.
+     *
+     * `afSkinBlendDual` is the same for [DualQuaternionSkinning.skin], and the parts of *that*
+     * which look like fussiness are not either:
+     *
+     * - The antipodal pivot is the **highest-weight** influence, the first one on a tie, compared
+     *   with a strict `>` from zero — so at the fixture's 0.5/0.5 ring both sides pick the same
+     *   pivot, and a shader that picked the last one on a tie would flip different signs.
+     * - The residual `S` is blended **without** the sign flip. A shear has no antipode; flipping it
+     *   with the quaternion would negate the mesh at every flipped vertex.
+     * - Normalisation is `DualQuaternionf.normalize` to the letter, including the
+     *   re-orthogonalisation `dual -= dot(real, dual) · real`, which is what keeps a blended dual
+     *   part from carrying a spurious scale into the translation.
+     * - It returns a **matrix**, `[R·S | t]`, so `afSkinPosition` and `afSkinNormal` are shared
+     *   by both methods. That changes nothing about the normal: `R` is orthonormal, so
+     *   `(R·S)⁻ᵀ = R·S⁻ᵀ`, which is the oracle's residual-inverse-transpose-then-rotate.
+     *
+     * `afSkinTransform` picks between the two per instance, from a method word
+     * ([METHOD_LINEAR], [METHOD_DUAL_QUATERNION], [METHOD_RESIDUAL_BIT]). The branch is uniform
+     * within an instance, so it only diverges in a subgroup that straddles two instances of
+     * different methods — which a mixed crowd has, and pays for by running both blends there.
      */
     fun glsl(): String = """
 #extension GL_EXT_buffer_reference : require
@@ -102,6 +207,10 @@ object GpuSkinning {
 layout(std430, buffer_reference) readonly buffer AfSkinJoints  { uvec4 v[]; };
 layout(std430, buffer_reference) readonly buffer AfSkinWeights { vec4  v[]; };
 layout(std430, buffer_reference) readonly buffer AfSkinPalette { mat4  v[]; };
+// $DUAL_VEC4S_PER_JOINT vec4 per (instance, bone): real, dual, then the residual 3x3 by columns.
+layout(std430, buffer_reference) readonly buffer AfSkinDual    { vec4  v[]; };
+// One word per instance: which blend it gets. See afSkinTransform.
+layout(std430, buffer_reference) readonly buffer AfSkinMethods { uint  v[]; };
 
 // The four influences of `vertex`, blended into one matrix. `paletteBase` is where this
 // instance's slice of the palette starts -- instanceIndex * boneCount.
@@ -122,6 +231,94 @@ mat4 afSkinBlend(AfSkinJoints joints, AfSkinWeights weights, AfSkinPalette palet
 
     // An unweighted vertex keeps its bind position rather than collapsing to the origin.
     return contributed ? blended : mat4(1.0);
+}
+
+// Rotate v by the unit quaternion q (xyzw), as q v q*. The same arithmetic as the generated
+// `transformQuaternionVector3` the CPU oracle calls, term for term.
+vec3 afQuatRotate(vec4 q, vec3 v) {
+    vec3 t = 2.0 * cross(q.xyz, v);
+    return v + q.w * t + cross(q.xyz, t);
+}
+
+// Dual quaternion linear blending, transcribed from DualQuaternionSkinning.skin, and returned as
+// the equivalent affine matrix [R * S | t] so afSkinPosition and afSkinNormal serve both methods.
+// That is exact rather than convenient: R is orthonormal, so (R S)^-T = R S^-T, which is what the
+// oracle does to a normal -- inverse transpose of the residual, then the rotation.
+//
+// `residual` is the oracle's `anyNonRigid`: false means every joint of this instance's palette is a
+// pure rigid motion, and S is skipped entirely rather than blended from identities.
+mat4 afSkinBlendDual(AfSkinJoints joints, AfSkinWeights weights, AfSkinDual dual,
+                     uint vertex, uint paletteBase, bool residual) {
+    uvec4 j = joints.v[vertex];
+    vec4  w = weights.v[vertex];
+
+    float sum = w.x + w.y + w.z + w.w;
+    float norm = sum > 0.0 ? 1.0 / sum : 1.0;
+
+    // The pivot is the HIGHEST-weight influence, first one on a tie -- strict '>' from 0, exactly as
+    // the oracle -- so the sign convention does not depend on the order the bones arrived in.
+    int pivot = -1;
+    float best = 0.0;
+    for (int i = 0; i < 4; i++) {
+        if (w[i] > best) { best = w[i]; pivot = i; }
+    }
+    if (pivot < 0) return mat4(1.0);
+    vec4 pivotReal = dual.v[(paletteBase + j[pivot]) * ${DUAL_VEC4S_PER_JOINT}u];
+
+    vec4 real = vec4(0.0);
+    vec4 du   = vec4(0.0);
+    mat3 s    = mat3(0.0);
+    for (int i = 0; i < 4; i++) {
+        if (w[i] == 0.0) continue;
+        float wi = w[i] * norm;
+        uint e = (paletteBase + j[i]) * ${DUAL_VEC4S_PER_JOINT}u;
+        vec4 r = dual.v[e];
+        vec4 d = dual.v[e + 1u];
+        // Antipodality: q and -q are one rotation and opposite dual quaternions. Flip any influence
+        // on the far hemisphere from the pivot, or the joint ring blends toward zero.
+        float sgn = dot(pivotReal, r) < 0.0 ? -1.0 : 1.0;
+        real += r * (wi * sgn);
+        du   += d * (wi * sgn);
+        // S is blended linearly and WITHOUT the sign: a shear has no antipode.
+        if (residual) s += mat3(dual.v[e + 2u].xyz, dual.v[e + 3u].xyz, dual.v[e + 4u].xyz) * wi;
+    }
+
+    // DualQuaternionf.normalize: identity below 1e-6 length, otherwise scale both parts by 1/|real|
+    // and re-orthogonalise the dual part against the real one.
+    float lenSq = dot(real, real);
+    if (lenSq < 1e-12) {
+        real = vec4(0.0, 0.0, 0.0, 1.0);
+        du = vec4(0.0);
+    } else {
+        float inv = 1.0 / sqrt(lenSq);
+        real *= inv;
+        du *= inv;
+        du -= dot(real, du) * real;
+    }
+    if (!residual) s = mat3(1.0);
+
+    // Translation = 2 * (dual * conj(real)).xyz, Hamilton product, as DualQuaternionf.getTranslation.
+    vec3 t = 2.0 * (real.w * du.xyz - du.w * real.xyz + cross(real.xyz, du.xyz));
+
+    // Columns of R are the rotated basis, so R * v == afQuatRotate(real, v) by linearity.
+    mat3 R = mat3(afQuatRotate(real, vec3(1.0, 0.0, 0.0)),
+                  afQuatRotate(real, vec3(0.0, 1.0, 0.0)),
+                  afQuatRotate(real, vec3(0.0, 0.0, 1.0)));
+    mat3 rs = R * s;
+    return mat4(vec4(rs[0], 0.0), vec4(rs[1], 0.0), vec4(rs[2], 0.0), vec4(t, 1.0));
+}
+
+// Whichever blend this instance asked for. `methods.v[instance]`: bit 0 = dual quaternion,
+// bit 1 = this instance's palette has a non-rigid joint (blend the residual 3x3).
+mat4 afSkinTransform(AfSkinJoints joints, AfSkinWeights weights, AfSkinPalette palette,
+                     AfSkinDual dual, AfSkinMethods methods,
+                     uint vertex, uint instance, uint boneCount) {
+    uint m = methods.v[instance];
+    uint base = instance * boneCount;
+    if ((m & ${METHOD_DUAL_QUATERNION}u) != 0u) {
+        return afSkinBlendDual(joints, weights, dual, vertex, base, (m & ${METHOD_RESIDUAL_BIT}u) != 0u);
+    }
+    return afSkinBlend(joints, weights, palette, vertex, base);
 }
 
 vec3 afSkinPosition(mat4 blended, vec3 p) {
@@ -150,6 +347,8 @@ vec3 afSkinNormal(mat4 blended, vec3 n) {
      *   12-float layout every other Field glTF path depends on is unchanged. Two extra buffers
      *   beat a fourteen-float vertex that no other shader could read.
      * - `paletteBuffer`, sliced by `gl_InstanceIndex * boneCount`.
+     * - `dualPaletteBuffer` and `methodBuffer`: the same palette as dual quaternions plus residual,
+     *   and one word per instance choosing which of the two it is skinned by.
      * - `skinEnabled`, so one module can draw a rigged and a rigid mesh. 0 is the stock path,
      *   bit for bit.
      * - `instanceTint`, which multiplies in a hash of the instance index. A crowd where every
@@ -189,6 +388,8 @@ layout(push_constant) uniform PushConstants {
     AfSkinJoints  jointBuffer;
     AfSkinWeights weightBuffer;
     AfSkinPalette paletteBuffer;
+    AfSkinDual    dualPaletteBuffer;
+    AfSkinMethods methodBuffer;
 
     uint boneCount;        // palette entries per instance
     uint skinEnabled;      // 0 = draw the bind pose, exactly as the stock shader does
@@ -242,8 +443,9 @@ void main()
     }
 
     if (pc.skinEnabled != 0u) {
-        uint paletteBase = uint(gl_InstanceIndex) * pc.boneCount;
-        mat4 blended = afSkinBlend(pc.jointBuffer, pc.weightBuffer, pc.paletteBuffer, idx, paletteBase);
+        mat4 blended = afSkinTransform(pc.jointBuffer, pc.weightBuffer, pc.paletteBuffer,
+                                       pc.dualPaletteBuffer, pc.methodBuffer,
+                                       idx, uint(gl_InstanceIndex), pc.boneCount);
         pos = afSkinPosition(blended, pos);
         normal = afSkinNormal(blended, normal);
     }
@@ -318,6 +520,8 @@ layout(push_constant) uniform Push {
     AfSkinJoints  jointBuffer;
     AfSkinWeights weightBuffer;
     AfSkinPalette paletteBuffer;
+    AfSkinDual    dualPaletteBuffer;
+    AfSkinMethods methodBuffer;
     AfSkinBind    bindBuffer;
     AfSkinOut     outBuffer;
     uint boneCount;
@@ -332,8 +536,9 @@ void main() {
     uint inst = gid / pc.vertexCount;
     uint v    = gid - inst * pc.vertexCount;
 
-    mat4 blended = afSkinBlend(pc.jointBuffer, pc.weightBuffer, pc.paletteBuffer,
-                               v, inst * pc.boneCount);
+    mat4 blended = afSkinTransform(pc.jointBuffer, pc.weightBuffer, pc.paletteBuffer,
+                                   pc.dualPaletteBuffer, pc.methodBuffer,
+                                   v, inst, pc.boneCount);
 
     vec3 p = afSkinPosition(blended, pc.bindBuffer.v[v * 2u].xyz);
     vec3 n = afSkinNormal(blended, pc.bindBuffer.v[v * 2u + 1u].xyz);
@@ -357,6 +562,14 @@ void main() {
  *     })                                               // 64 x 7 matrices, not 64 x 50,000 vertices
  *     frame()
  * }
+ * ```
+ *
+ * Linear blend by default. For the twisted joint linear blending cannot do, set
+ * `skinner.method = GltfSkinning.SkinningMethod.DUAL_QUATERNION`, or hand [uploadPalettes] one
+ * method per instance to put both in one draw:
+ *
+ * ```kotlin
+ * skinner.uploadPalettes(palettes, methods = List(64) { i -> if (i % 2 == 0) LINEAR_BLEND else DUAL_QUATERNION })
  * ```
  *
  * The three things easy to get wrong, all of which this handles and none of which announce
@@ -443,6 +656,35 @@ class GpuSkinner(
         storage(); addressable(); hosted(); dest()
     }.toBuffer(renderer)
 
+    /**
+     * The same `instances × boneCount` palette as dual quaternions plus residual —
+     * [GpuSkinning.DUAL_FLOATS_PER_JOINT] floats a joint. Written by [uploadPalettes] only for
+     * the instances that are dual-quaternion skinned; the rest of it is never read.
+     */
+    val dualPaletteBuffer: FrameBufferGroup = buffer(name = "${name}DualPalette") {
+        size = instances.toLong() * boneCount * GpuSkinning.DUAL_FLOATS_PER_JOINT * 4L
+        storage(); addressable(); hosted(); dest()
+    }.toBuffer(renderer)
+
+    /** One `uint` per instance: which blend the shader uses for it. Written by [uploadPalettes]. */
+    val methodBuffer: FrameBufferGroup = buffer(name = "${name}Methods") {
+        size = instances.toLong() * 4L
+        storage(); addressable(); hosted(); dest()
+    }.toBuffer(renderer)
+
+    /**
+     * The blend every instance gets unless [uploadPalettes] is handed a per-instance list.
+     * Linear blend by default, matching [GltfSkinning.SkinningOptions] and every other engine.
+     *
+     * Takes effect at the next [uploadPalettes], because the method word also carries whether that
+     * palette has a non-rigid joint, and only an upload knows.
+     */
+    var method: GltfSkinning.SkinningMethod = GltfSkinning.SkinningMethod.LINEAR_BLEND
+
+    /** Scratch for [uploadPalettes]; sized once. */
+    private val dualScratch = FloatArray(instances * boneCount * GpuSkinning.DUAL_FLOATS_PER_JOINT)
+    private val methodScratch = IntArray(instances)
+
     init {
         val infl = skin.influences
         jointBuffer.get(write = true).mapAndWrite_ints {
@@ -454,6 +696,10 @@ class GpuSkinner(
             for (v in 0 until vertexCount) for (k in 0 until GpuSkinning.MAX_INFLUENCES) {
                 put(infl.weight[v * GpuSkinning.MAX_INFLUENCES + k])
             }
+        }
+        // Every instance linear until told otherwise, rather than whatever the allocation held.
+        methodBuffer.get(write = true).mapAndWrite_ints {
+            for (i in 0 until instances) put(GpuSkinning.METHOD_LINEAR)
         }
     }
 
@@ -472,8 +718,14 @@ class GpuSkinner(
      *
      * The blend is a component-wise matrix lerp, which is what
      * [GltfSkinning.Skeleton.blendedPalette] does and therefore what the CPU oracle does. It is
-     * not a slerp: a matrix lerp of two very different rotations shrinks the joint, and the fix
-     * for that is `SkinningMethod.DUAL_QUATERNION`, not a different blend here.
+     * not a slerp, and it is worth being exact about which problem [method] does and does not
+     * fix. Dual-quaternion *skinning* fixes the blend **between a vertex's influences** — the
+     * candy wrapper at a twisted joint. It does nothing for this blend, which is **between two
+     * clips' matrices for one joint**, and happens before skinning sees the palette: a lerp of
+     * two very different rotations is a matrix that has already shrunk, and
+     * [DualQuaternionSkinning.split] then faithfully carries that shrink as a residual scale. For
+     * clips that disagree by a large rotation, blend the clips' rotations (a slerp per joint)
+     * rather than their matrices; that is not done here.
      */
     fun blendedPalette(
         model: Matrix4f, clipA: String?, aSeconds: Float, clipB: String?, bSeconds: Float, mix: Float,
@@ -493,10 +745,21 @@ class GpuSkinner(
      * entry must have [boneCount] matrices.
      *
      * The whole per-frame CPU cost of an animating crowd.
+     *
+     * @param methods the blend for each instance, `methods[i]` for `palettes[i]`. Defaults to
+     *   [method] for all of them. A dual-quaternion instance additionally costs one
+     *   [DualQuaternionSkinning.split] per bone here — a Gram-Schmidt on a 3×3 — which is still
+     *   `O(instances × bones)` and still nothing next to the vertices.
      */
-    fun uploadPalettes(palettes: List<List<Matrix4f>>) {
+    fun uploadPalettes(
+        palettes: List<List<Matrix4f>>,
+        methods: List<GltfSkinning.SkinningMethod> = List(palettes.size) { method },
+    ) {
         require(palettes.size <= instances) {
             "${palettes.size} palettes for a skinner sized for $instances instances"
+        }
+        require(methods.size == palettes.size) {
+            "${methods.size} methods for ${palettes.size} palettes; give one per instance"
         }
         for ((i, p) in palettes.withIndex()) require(p.size == boneCount) {
             "palette $i has ${p.size} matrices, this skeleton has $boneCount bones"
@@ -506,7 +769,31 @@ class GpuSkinner(
                 for (n in 0 until 16) put(m[n])
             }
         }
+        var anyDual = false
+        for ((i, p) in palettes.withIndex()) {
+            methodScratch[i] = if (methods[i] == GltfSkinning.SkinningMethod.DUAL_QUATERNION) {
+                anyDual = true
+                GpuSkinning.packDualPalette(p, dualScratch, i * boneCount * GpuSkinning.DUAL_FLOATS_PER_JOINT)
+            } else {
+                GpuSkinning.METHOD_LINEAR
+            }
+        }
+        // An all-linear crowd skips the second palette write entirely.
+        if (anyDual) {
+            val floats = palettes.size * boneCount * GpuSkinning.DUAL_FLOATS_PER_JOINT
+            dualPaletteBuffer.get(write = true).mapAndWrite { for (n in 0 until floats) put(dualScratch[n]) }
+        }
+        methodBuffer.get(write = true).mapAndWrite_ints {
+            for (i in palettes.indices) put(methodScratch[i])
+        }
     }
+
+    /**
+     * The method word the shader will see for each of the first `count` instances after the last
+     * [uploadPalettes] — [GpuSkinning.METHOD_LINEAR], or [GpuSkinning.METHOD_DUAL_QUATERNION]
+     * with [GpuSkinning.METHOD_RESIDUAL_BIT] when that palette had a non-rigid joint.
+     */
+    fun methodWords(count: Int = instances): IntArray = methodScratch.copyOf(count)
 
     /** One palette, for the common single-character case. */
     fun uploadPalette(palette: List<Matrix4f>) = uploadPalettes(listOf(palette))
@@ -575,6 +862,8 @@ class GpuSkinner(
         mesh.push.bind("jointBuffer") { jointBuffer }
         mesh.push.bind("weightBuffer") { weightBuffer }
         mesh.push.bind("paletteBuffer") { paletteBuffer }
+        mesh.push.bind("dualPaletteBuffer") { dualPaletteBuffer }
+        mesh.push.bind("methodBuffer") { methodBuffer }
         mesh.push["boneCount"] = boneCount
         mesh.push["skinEnabled"] = 1
         mesh.push["instanceTint"] = if (tint) 1 else 0
