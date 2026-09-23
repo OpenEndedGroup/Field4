@@ -2,13 +2,9 @@ package afield.examples.four
 
 import afield.Box
 import afield.four.Renderer
-import afield.four.buffers.FrameBufferGroup
-import afield.four.buffers.defaultBuffer
-import afield.four.modules.ComputeMesh
-import afield.four.modules.ComputeModule
-import afield.four.modules.Parameters
 import afield.four.modules.ShaderKind
-import afield.four.modules.pointer
+import afield.four.util.GpuProbe
+import afield.four.util.gpuProbe
 import afield.four.util.Options
 import afield.four.util.Window
 import afield.stdlib.FlowMatchOptions
@@ -115,7 +111,7 @@ object NeuralFieldParitySmoke {
      * false, so a comparison that silently skipped every sample would pass. A large finite number
      * fails loudly instead.
      */
-    private const val UNWRITTEN = -98765.0f
+    private const val UNWRITTEN = GpuProbe.SENTINEL
 
     /** Inputs per dispatch. A multiple of the local size, so the shader needs no bounds check. */
     private const val SAMPLES = 4096
@@ -301,55 +297,24 @@ object NeuralFieldParitySmoke {
         val box = Box("neural-field-parity").apply { name = "neural-field-parity" }
         val source = preprocess(box, shaderFor(weights), ShaderKind.COMPUTE_SHADER)
 
-        val inputBuffer = buffer(renderer, "neuralParityIn", samples.size * weights.inputs)
-        val outputBuffer = buffer(renderer, "neuralParityOut", samples.size * weights.outputs)
-        val weightBuffer = buffer(renderer, "neuralParityWeights", weights.parameterCount)
-
-        inputBuffer.get(write = true).mapAndWrite { for (s in samples) put(s) }
-        weightBuffer.get(write = true).mapAndWrite { put(weights.flat) }
-        outputBuffer.get(write = true).mapAndWrite {
-            repeat(samples.size * weights.outputs) { put(UNWRITTEN) }
+        return gpuProbe(renderer, "neural-field-parity", pump = {
+            window.pollEvents(); renderer.render()
+        }) { probe ->
+            val input = probe.fixture("inputs", samples.size * weights.inputs)
+            val output = probe.fixture("outputs", samples.size * weights.outputs)
+            val network = probe.fixture("weights", weights.parameterCount)
+            input.mapAndWrite { for (sample in samples) put(sample) }
+            probe.upload(network, weights.flat)
+            probe.stage("evaluate", source).dispatch(groups = samples.size / LOCAL_SIZE) {
+                bind("samplesIn") { input }
+                bind("samplesOut") { output }
+                bind("weights") { network }
+            }
+            probe.settle(output)
+            check(probe.verdict() == 0) { "Neural parity shader failed" }
+            probe.read(output)
         }
-
-        val module = ComputeModule(
-            Parameters(renderer = renderer, compute = source, name = "neural field parity")
-        ).pointer()
-        val mesh = ComputeMesh(renderer, module).apply {
-            x = samples.size / LOCAL_SIZE
-            y = 1
-            z = 1
-            push.bind("samplesIn") { inputBuffer }
-            push.bind("samplesOut") { outputBuffer }
-            push.bind("weights") { weightBuffer }
-        }
-        module += "dispatch" to mesh
-        renderer += "neuralFieldParity" to module
-
-        // Two frames, not one: the first is where the descriptor set and the buffer uploads are
-        // established, and reading after a single render has read an unwritten buffer before.
-        repeat(2) {
-            window.pollEvents()
-            renderer.render()
-        }
-        renderer.windowContext().computeFences.forEach { it.fenceWait() }
-
-        val out = FloatArray(samples.size * weights.outputs)
-        outputBuffer.get().mapAndRead { get(out) }
-
-        // Each case is its own module; leaving the previous one in the compute list would make
-        // every later case dispatch it too, into a buffer nothing reads.
-        renderer.computeList.modules.remove("neuralFieldParity")
-        return out
     }
-
-    /** A host-visible, host-cached storage buffer of [floats] floats. */
-    private fun buffer(renderer: Renderer, name: String, floats: Int): FrameBufferGroup =
-        defaultBuffer(name = name) {
-            size = floats.floats
-            // Host-cached, per the rule in `field_probes.md`: a buffer the CPU reads back must ask
-            // for HOST_CACHED or it lands in write-combined memory, where reads are pathological.
-            streamReads()
-        }.toBuffer(renderer)
 
     /**
      * The compute shader for [weights]: the generated forward pass, plus the loop that feeds it

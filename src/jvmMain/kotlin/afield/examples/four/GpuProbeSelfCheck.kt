@@ -1,6 +1,7 @@
 package afield.examples.four
 
 import afield.four.Renderer
+import afield.four.buffers.defaultBuffer
 import afield.four.util.GpuProbe
 import afield.four.util.GpuProbeNeverLanded
 import afield.four.util.Options
@@ -245,27 +246,35 @@ void main() { this is not glsl at all; }
 
     private fun checkBrokenShaderIsAFailure(renderer: Renderer, pump: () -> Unit): Int {
         println("--- 3: a shader that does not compile is a verdict failure, not a log line")
+        var configuredErrors = 0
         val verdict = gpuProbe(renderer, "selfcheck-broken", pump) { probe ->
-            val stage = probe.stage("broken", BROKEN)
+            val stage = probe.stage("broken", BROKEN) {
+                errorHandler = { _, _ -> configuredErrors++ }
+            }
             repeat(8) { pump() }
             println("  the broken stage reports valid=${stage.valid}")
             if (stage.valid) probe.fail("a shader containing 'this is not glsl at all' compiled")
-            probe.verdict("broken shader")
+            val result = probe.verdict("broken shader")
+            probe.close() // The surrounding use closes again: teardown must be idempotent.
+            result
         }
-        return if (verdict > 0) {
+        return if (verdict > 0 && configuredErrors > 0) {
             println("  ok: the verdict reports $verdict failure(s)")
             0
         } else {
-            println("  FAIL: a probe whose only shader did not compile returned a clean verdict")
+            println("  FAIL: broken shader verdict=$verdict, configured error callbacks=$configuredErrors")
             1
         }
     }
 
     private fun checkForeignBufferCannotBeArmed(renderer: Renderer, pump: () -> Unit): Int {
         println("--- 4: a buffer the probe did not allocate cannot be armed")
-        // Allocated by a *different* probe, so it is a real, usable FrameBufferGroup that this
-        // probe simply has no size for. A silently skipped witness is a sentinel that cannot fire.
-        val foreign = gpuProbe(renderer, "selfcheck-owner", pump) { it.fixture("owned", 64) }
+        // Exercise the public host-read allocation directly, outside the owning probe.
+        // A silently skipped foreign witness is a sentinel that cannot fire.
+        val foreign = defaultBuffer(name = "selfcheck-foreign-buffer") {
+            size = 64.floats
+            streamReads()
+        }.toBuffer(renderer)
         val thrown = gpuProbe(renderer, "selfcheck-foreign", pump) { probe ->
             try {
                 probe.arm(foreign)

@@ -275,16 +275,24 @@ class GpuProbe(
                 "stage '$stageName' dispatch '$label' has no work to do: " +
                     "$groups x $groupsY x $groupsZ workgroups"
             }
-            val mesh = ComputeMesh(renderer, module).apply {
-                x = groups; y = groupsY; z = groupsZ
-            }
-            Bindings(this, mesh.push, label).bindings()
+            val mesh = mesh(groups, groupsY, groupsZ, label, bindings)
             module += label to (mesh as afield.four.modules.ComputeTask)
             module += "$label.barrier" to computeTask { _, cmd, _ ->
                 computeMemoryBarrier(cmd, null as VulkanBuffer?)
             }
             dispatches++
             return this
+        }
+
+        // The skinning throughput sweep deliberately schedules repeated dispatches without
+        // barriers. Share slot validation, while leaving that benchmark's mesh map under its control.
+        internal fun mesh(
+            groups: Int, groupsY: Int = 1, groupsZ: Int = 1,
+            label: String = "dispatch", bindings: Bindings.() -> Unit,
+        ): ComputeMesh = ComputeMesh(renderer, module).apply {
+            x = groups; y = groupsY; z = groupsZ
+            initializePushConstantsFromModule(module)
+            Bindings(this@Stage, push, label).bindings()
         }
 
         override fun toString() = "Stage($stageName, $dispatches dispatches, valid=$valid)"
@@ -327,9 +335,10 @@ class GpuProbe(
      *
      * A shader that fails to compile reports through [Parameters.errorHandler] into this probe's
      * failure list rather than into the log, so [verdict] cannot come back clean on a probe whose
-     * shader never built.
+     * shader never built. [configure] supplies optional field-probe/stats hooks and descriptor
+     * resolvers; the probe retains its own error recorder alongside any configured handler.
      */
-    fun stage(stageName: String, glsl: String): Stage {
+    fun stage(stageName: String, glsl: String, configure: Parameters.() -> Unit = {}): Stage {
         val key = "$name.$stageName.${stages.size}"
         val module = ComputeModule(
             Parameters(
@@ -340,7 +349,15 @@ class GpuProbe(
                 errorHandler = { desc, t ->
                     fail("stage '$stageName' shader: $desc${t?.let { " (${it.message})" } ?: ""}")
                 },
-            )
+            ).apply {
+                val recordError = errorHandler
+                configure()
+                val configuredHandler = errorHandler
+                errorHandler = { description, error ->
+                    recordError(description, error)
+                    if (configuredHandler !== recordError) configuredHandler(description, error)
+                }
+            }
         ).pointer()
         val stage = Stage(stageName, module, key)
         renderer += key to module
@@ -380,6 +397,7 @@ class GpuProbe(
      * what the middle is for.
      */
     fun arm(vararg outputs: FrameBufferGroup, seconds: Double = DEFAULT_LANDING_SECONDS) {
+        idle()
         witnesses.clear()
         for (b in outputs) {
             val floats = sizes[b] ?: error(
@@ -755,7 +773,12 @@ class GpuProbe(
      * probe is closed, and `FrameBufferGroup` allocations go with the renderer.
      */
     override fun close() {
-        for (s in stages) renderer.computeList.modules.remove(s.key)
+        if (stages.isNotEmpty()) idle()
+        for (s in stages) {
+            renderer.computeList.modules.remove(s.key)
+            s.module.current.cleanup()
+        }
+        stages.clear()
         witnesses.clear()
     }
 }

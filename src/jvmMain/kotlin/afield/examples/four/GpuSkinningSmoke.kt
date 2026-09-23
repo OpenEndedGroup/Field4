@@ -2,17 +2,14 @@ package afield.examples.four
 
 import afield.four.Renderer
 import afield.four.buffers.FrameBufferGroup
-import afield.four.buffers.defaultBuffer
 import afield.four.modules.ComputeMesh
-import afield.four.modules.ComputeModule
 import afield.four.modules.GltfSkinning
 import afield.four.modules.GltfSupport
 import afield.four.modules.GpuSkinner
 import afield.four.modules.GpuSkinning
-import afield.four.modules.Parameters
 import afield.four.modules.RiggedFixture
 import afield.four.modules.StressFixture
-import afield.four.modules.pointer
+import afield.four.util.GpuProbe
 import afield.four.util.Options
 import afield.four.util.Window
 import afield.stdlib.linalg.Matrix4f
@@ -82,7 +79,7 @@ expect:
 object GpuSkinningSmoke {
 
     /** Prefilled into the output buffer, so "never written" cannot read as "agrees". */
-    private const val SENTINEL = -98765.0f
+    private const val SENTINEL = GpuProbe.SENTINEL
 
     /**
      * Positions agree to this, in the fixtures' units (a cylinder about 4 long).
@@ -123,10 +120,12 @@ object GpuSkinningSmoke {
 
             if (failures > 0) {
                 println("gpu skinning tests FAILED ($failures)")
-                exitProcess(1)
+                error("GPU skinning correctness checks failed")
             }
             println("gpu skinning tests PASSED")
         } finally {
+            dispatcher?.close()
+            dispatcher = null
             renderer.cleanup()
             window.cleanup()
         }
@@ -189,7 +188,11 @@ object GpuSkinningSmoke {
         val window: Window,
         maxVertices: Int,
         maxInstances: Int,
-    ) {
+    ) : AutoCloseable {
+        private val probe = GpuProbe(renderer, "gpu-skinning-parity", pump = {
+            window.pollEvents(); renderer.render()
+        })
+
         /** Palette slots reserved per instance. Both committed fixtures are well inside this. */
         val maxBones: Int = 16
 
@@ -197,19 +200,14 @@ object GpuSkinningSmoke {
         var instanceCount: Int = 0
         var boneCount: Int = 0
 
-        val jointBuffer: FrameBufferGroup = floats("gpuSkinParityJoints", maxVertices * 4)
-        val weightBuffer: FrameBufferGroup = floats("gpuSkinParityWeights", maxVertices * 4)
-        val bindBuffer: FrameBufferGroup = floats("gpuSkinParityBind", maxVertices * 8)
-        val paletteBuffer: FrameBufferGroup = floats("gpuSkinParityPalette", maxInstances * maxBones * 16)
-        val outBuffer: FrameBufferGroup = floats("gpuSkinParityOut", maxVertices * maxInstances * 8)
+        val jointBuffer: FrameBufferGroup = probe.fixture("gpuSkinParityJoints", maxVertices * 4)
+        val weightBuffer: FrameBufferGroup = probe.fixture("gpuSkinParityWeights", maxVertices * 4)
+        val bindBuffer: FrameBufferGroup = probe.fixture("gpuSkinParityBind", maxVertices * 8)
+        val paletteBuffer: FrameBufferGroup = probe.fixture("gpuSkinParityPalette", maxInstances * maxBones * 16)
+        val outBuffer: FrameBufferGroup = probe.fixture("gpuSkinParityOut", maxVertices * maxInstances * 8)
 
-        private val module = ComputeModule(
-            Parameters(
-                renderer = renderer,
-                compute = GpuSkinning.verifyComputeShader,
-                name = "gpu-skinning-parity",
-            )
-        ).pointer()
+        private val stage = probe.stage("verify", GpuSkinning.verifyComputeShader)
+        private val module = stage.module
 
         /**
          * [MAX_DISPATCHES] identical dispatches, of which [dispatches] are switched on.
@@ -226,16 +224,15 @@ object GpuSkinningSmoke {
          * get.
          */
         private val meshes: List<ComputeMesh> = (0 until MAX_DISPATCHES).map { i ->
-            ComputeMesh(renderer, module).apply {
-                x = 1; y = 1; z = 1
-                push.bind("jointBuffer") { this@Dispatcher.jointBuffer }
-                push.bind("weightBuffer") { this@Dispatcher.weightBuffer }
-                push.bind("paletteBuffer") { this@Dispatcher.paletteBuffer }
-                push.bind("bindBuffer") { this@Dispatcher.bindBuffer }
-                push.bind("outBuffer") { this@Dispatcher.outBuffer }
-                push.bind("boneCount") { this@Dispatcher.boneCount }
-                push.bind("vertexCount") { this@Dispatcher.vertexCount }
-                push.bind("instanceCount") { this@Dispatcher.instanceCount }
+            stage.mesh(groups = 1, label = "dispatch$i") {
+                bind("jointBuffer") { jointBuffer }
+                bind("weightBuffer") { weightBuffer }
+                bind("paletteBuffer") { paletteBuffer }
+                bind("bindBuffer") { bindBuffer }
+                bind("outBuffer") { outBuffer }
+                bind("boneCount") { boneCount }
+                bind("vertexCount") { vertexCount }
+                bind("instanceCount") { instanceCount }
             }
         }
 
@@ -257,19 +254,11 @@ object GpuSkinningSmoke {
 
         init {
             dispatches = 1
-            renderer += "gpuSkinningParity" to module
         }
-
-        private fun floats(name: String, count: Int): FrameBufferGroup =
-            defaultBuffer(name = name) {
-                size = count.floats
-                // Host-cached: a buffer the CPU reads back must ask for it, or it lands in
-                // write-combined memory where reads are pathological.
-                streamReads()
-            }.toBuffer(renderer)
 
         /** Upload the static half of a rig: joints, weights, and the bind pose. */
         fun loadRig(rig: Rig) {
+            probe.idle()
             vertexCount = rig.vertexCount
             boneCount = rig.boneCount
             require(boneCount <= maxBones) { "${rig.label} has $boneCount bones, sized for $maxBones" }
@@ -296,52 +285,33 @@ object GpuSkinningSmoke {
         }
 
         fun uploadPalettes(palettes: List<List<Matrix4f>>) {
+            probe.idle()
             instanceCount = palettes.size
             paletteBuffer.get(write = true).mapAndWrite {
                 for (p in palettes) for (m in p) for (n in 0 until 16) put(m[n])
             }
         }
 
-        /** Prefill the output with [SENTINEL], dispatch, wait, and read back. */
+        /** Witness every active output slot; leave the throughput sweep free of readback. */
         fun run(readBack: Boolean = true): FloatArray {
             val outFloats = vertexCount * instanceCount * 8
-            if (readBack) {
-                outBuffer.get(write = true).mapAndWrite { repeat(outFloats) { put(SENTINEL) } }
-            }
             val groups = ((vertexCount.toLong() * instanceCount + GpuSkinning.LOCAL_SIZE - 1) /
                 GpuSkinning.LOCAL_SIZE).toInt().coerceAtLeast(1)
-            for (m in meshes) m.x = groups
+            for (mesh in meshes) mesh.x = groups
 
-            frame()
-            renderer.windowContext().computeFences.forEach { it.fenceWait() }
-
-            if (!readBack) return FloatArray(0)
-            val out = FloatArray(outFloats)
-            outBuffer.get().mapAndRead { get(out, 0, outFloats) }
-            return out
-        }
-
-        fun frame() {
-            window.pollEvents()
-            renderer.render()
-        }
-
-        /**
-         * Wait for the shader to actually compile.
-         *
-         * Frames here are about a millisecond, so a frame count is not a wait: this needs wall
-         * clock. Without it the first dispatch is a no-op and the output comes back all sentinel,
-         * which reads as "the GPU computed nothing" rather than "the shader was not ready yet".
-         */
-        fun warmUp(seconds: Double = 3.0) {
-            val deadline = System.nanoTime() + (seconds * 1e9).toLong()
-            var frames = 0
-            while (System.nanoTime() < deadline) {
-                frame(); frames++
-                Thread.sleep(2)
+            if (readBack) {
+                // Fixtures are sized for the largest rig; only this rig's prefix is dispatched.
+                probe.adopt("active skinning outputs", outBuffer, outFloats)
+                probe.settle(outBuffer)
+                check(probe.verdict("skinning dispatch") == 0) { "Skinning shader failed" }
+                return probe.read(outBuffer)
             }
-            println("  warm-up: $frames frames over ${"%.1f".format(seconds)}s")
+            probe.pumpFrames(1)
+            probe.idle()
+            return FloatArray(0)
         }
+
+        override fun close() = probe.close()
     }
 
     private var dispatcher: Dispatcher? = null
@@ -353,7 +323,6 @@ object GpuSkinningSmoke {
             maxInstances = PERF_INSTANCES,
         ).also {
             dispatcher = it
-            it.warmUp()
         }
 
     // ------------------------------------------------------------------------------------------

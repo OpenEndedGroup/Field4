@@ -7,7 +7,7 @@ they were compared against. Usable from `jvmMain` and from a box, with the same 
 
 ---
 
-## Why it exists — the census
+## Why it exists — the original census
 
 The same forty lines are written out longhand every time anyone wants to know whether a compute
 shader is right. Allocate buffers. Upload a `FloatArray`. Build a `ComputeModule` from a GLSL
@@ -16,7 +16,7 @@ renderer. Pump frames — some number of them, chosen by feel. Wait the compute 
 back. Compare against a hand-tuned threshold. `println` a tag. Remember the `finally` that removes
 the module.
 
-**Six files in this repository do exactly that**, each independently:
+**Before the migrations, six files did exactly that**, each independently:
 
 | file | lines | removes its module afterwards? |
 | --- | --- | --- |
@@ -27,8 +27,18 @@ the module.
 | `examples/four/ShaderFieldAutoControlSmokeTest.kt` | 234 | no |
 | `examples/four/FieldStatsSmokeTest.kt` | 156 | no |
 
-The four that do not remove their module get away with it only because they `exitProcess`
-immediately afterwards.
+Four relied on process exit or renderer cleanup rather than removing their own module.
+
+All six now use `GpuProbe`. The neighbour-grid port is documented below; the W5 port covers
+skinning, neural parity, quantile warp, auto-control and field statistics. The original line counts
+above describe the motivation, not the current files.
+
+The migrated field-probe/statistics stages pass their descriptor and instrumentation hooks through
+`stage(..., configure = { ... })`. Configured error callbacks run alongside the harness recorder.
+Skinning retains its barrier-free repeated-dispatch throughput schedule; correctness readbacks use
+a bounded sentinel wait. Field statistics deliberately produces six generations because the expected
+changing mean is 500; this frame count defines its fixture. Auto-control and quantile warp first wait
+for real sample batches, then retain their original measurement windows and numerical assertions.
 
 And **34 of the 82 boxes** in one live workspace document
 (`~/Documents/AFieldWorkspace/light_four`) are the same idiom, by name: `Temporary sensor
@@ -124,7 +134,8 @@ Jacobi iterations are therefore **one** stage and twenty-four dispatches, not tw
    `bindPushConstant` reports a miss, and none of the six hand-rolled probes use it. A typo binds
    nothing and the shader reads a null device pointer. `Bindings.bind` validates against the
    shader's introspected push constants and lists the slots it does have.
-4. **Teardown.** `close()` removes every module the probe registered, and `gpuProbe { }` is
+4. **Teardown.** `close()` waits for outstanding work, removes every module the probe registered,
+   and releases its pipelines. Repeated closes are safe. `gpuProbe { }` is
    `use`-shaped so it happens even when the block throws.
 
 ### Two things deliberately *not* done
