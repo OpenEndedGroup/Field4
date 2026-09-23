@@ -3,8 +3,8 @@
 Field keeps codec tokens visible as compositional data. A `codec.reconstruct` operation produces an
 immutable model-native input, an NPY token tensor, a model-native reconstruction, a 48 kHz audition
 proxy, reconstruction metrics, and full model provenance. The renderer below is the same
-`afield.stdlib.noir.audioai.CodecVisualization` used for service results; this executable example supplies a
-deterministic fixture so the public documentation does not require a GPU worker.
+`afield.stdlib.noir.audioai.CodecVisualization` that draws service results; the fence hands it a
+synthetic fixture, so you can run it and read the display with no GPU worker attached.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" wait="3" capture="box" open-outputs="true" padding="20"}
 :::static
