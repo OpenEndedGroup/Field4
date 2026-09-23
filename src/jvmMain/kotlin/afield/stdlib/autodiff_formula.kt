@@ -390,10 +390,16 @@ object FnFormulas {
      * which is not the same as `!(x < edge)`, and `Math.signum` returns its argument for NaN and ±0.
      */
     private val valueOnlyTable: Map<String, FnExpr> = buildMap {
-        // Functions.step: if (x >= edge) 1.0 else 0.0
+        // Functions.step: if (x >= edge) 1.0 else 0.0. Written as "not below, and neither side NaN"
+        // rather than "above, or equal": the two agree on every double, but only this shape lets an
+        // interval that *starts* at the edge be decided — `edge < x || x == edge` cannot tell, over
+        // [edge, edge + d], that one of the two always holds.
         put(
             "step",
-            FnExpr.IfLt(child("edge"), FnExpr.X, lit(1.0), FnExpr.IfEq(FnExpr.X, child("edge"), lit(1.0), lit(0.0)))
+            FnExpr.IfLt(
+                FnExpr.X, child("edge"), lit(0.0),
+                FnExpr.IfEq(FnExpr.X, FnExpr.X, FnExpr.IfEq(child("edge"), child("edge"), lit(1.0), lit(0.0)), lit(0.0))
+            )
         )
         // Functions.sign: kotlin.math.sign, i.e. Math.signum
         put(

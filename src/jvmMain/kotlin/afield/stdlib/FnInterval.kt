@@ -161,8 +161,8 @@ object FnIntervalRules {
         "Clamp01" to "[clamp(lo), clamp(hi)], exact",
         "CoerceIn" to "monotone in all three; refused when the range may invert, because Fn.eval throws there",
         "IfZero" to "the taken branch when the test is certainly zero or certainly not; the hull of both otherwise",
-        "IfEq" to "the taken branch when the comparison is decided; the hull of both otherwise",
-        "IfLt" to "the taken branch when the comparison is decided; the hull of both otherwise",
+        "IfEq" to "the taken branch when the comparison is decided (a subexpression against itself: equal unless NaN); the hull of both otherwise",
+        "IfLt" to "the taken branch when the comparison is decided (a subexpression against itself: never less); the hull of both otherwise",
         "AtX" to "the body over the enclosure of the moved position",
     )
 }
@@ -417,6 +417,29 @@ object FnRangeMath {
         return FnRange(maxOf(lo, generic.lo), minOf(monotone.hi, generic.hi))
     }
 
+    /**
+     * `u·u·u·(10 + u·(−15 + 6u))`, the quintic smootherstep, evaluated as `Fn.eval` evaluates that
+     * graph, for `u` drawn from [u] — intersected with [generic], the bound the ordinary rules give.
+     *
+     * Why a rule: near `u = 1` the generic bound overshoots 1 by a multiple of `Δu`, and a
+     * crossfade `(1 − m)·p + m` built on it can then never be proven `<= 1` near a hold without
+     * bisecting to `Δu ~ (1 − u)³`. The real quintic is increasing on `[0, 1]` (its derivative is
+     * `30u²(1 − u)²`), so its range is its endpoint values. What is left is the rounding: every
+     * computed value is within a factor `1 ± 28u` of the real one (`10 − 15u + 6u² >= 1` bounds the
+     * one cancellation, `−15 + 6u` never cancels, and the seven roundings are relative), so the
+     * endpoint values widened by 64 ulps — each ulp is more than `u·|v|` — cover it from both sides.
+     * Outside `[0, 1]`, or for a point, the generic bound (or the exact value) is used alone.
+     */
+    fun quinticSmootherstep(u: FnRange, generic: () -> FnRange): FnRange {
+        fun s(v: Double) = v * v * v * (10.0 + v * (-15.0 + 6.0 * v))
+        if (u.isPoint) return FnRange.point(s(u.lo))
+        val g = generic()
+        if (u.isEmpty || u.maybeNaN || u.lo < 0.0 || u.hi > 1.0) return g
+        val monotone = widen(FnRange(s(u.lo), s(u.hi)), 64)
+        val lo = if (s(u.lo) < 1e-290) 0.0 else maxOf(0.0, monotone.lo)
+        return FnRange(maxOf(lo, g.lo), minOf(monotone.hi, g.hi))
+    }
+
     fun min(a: FnRange, b: FnRange): FnRange = binary(a, b) { FnRange(minOf(a.lo, b.lo), minOf(a.hi, b.hi)) }
 
     fun max(a: FnRange, b: FnRange): FnRange = binary(a, b) { FnRange(maxOf(a.lo, b.lo), maxOf(a.hi, b.hi)) }
@@ -502,12 +525,17 @@ fun evalFormulaInterval(
         }
         is FnExpr.IfEq -> {
             val a = walk(expr.a)
-            val b = walk(expr.b)
-            val maybeEqual = !a.isEmpty && !b.isEmpty && a.lo <= b.hi && b.lo <= a.hi
-            val maybeUnequal = a.maybeNaN || b.maybeNaN || !a.isPoint || !b.isPoint || a.lo != b.lo
-            branch(decide(maybeEqual, maybeUnequal), expr.then, expr.otherwise)
+            if (expr.a == expr.b) {
+                // One subexpression compared with itself is one double: equal unless it is NaN.
+                branch(decide(!a.isEmpty, a.maybeNaN), expr.then, expr.otherwise)
+            } else {
+                val b = walk(expr.b)
+                val maybeEqual = !a.isEmpty && !b.isEmpty && a.lo <= b.hi && b.lo <= a.hi
+                val maybeUnequal = a.maybeNaN || b.maybeNaN || !a.isPoint || !b.isPoint || a.lo != b.lo
+                branch(decide(maybeEqual, maybeUnequal), expr.then, expr.otherwise)
+            }
         }
-        is FnExpr.IfLt -> {
+        is FnExpr.IfLt -> if (expr.a == expr.b) walk(expr.otherwise) else {
             val a = walk(expr.a)
             val b = walk(expr.b)
             val maybeLess = !a.isEmpty && !b.isEmpty && a.lo < b.hi
@@ -603,21 +631,79 @@ object FnIntervals {
      * The enclosure of [fn] over the position range [x]. Throws [FnIntervalRefusal] when no honest
      * bound exists; [enclose] is the non-throwing form.
      */
-    fun range(fn: Functions.Fn, x: FnRange): FnRange {
-        val node = fn.graphNode()
-        node.numbers["value"]?.let { return FnRange.point(it) }
-        val formula = FnFormulas.valueOf(node.op)
-            ?: throw FnIntervalRefusal(refusalFor(listOf(node.op)))
-        return evalFormulaInterval(
-            formula,
-            x,
-            alpha = { at -> alphaRange(fn, at) },
-            childRange = { role, at ->
-                val edge = node.children.firstOrNull { it.role == role }
-                    ?: throw FnIntervalRefusal("op ${node.op} is missing its '$role' child")
-                range(edge.fn, at)
-            }
-        )
+    fun range(fn: Functions.Fn, x: FnRange): FnRange = Walk().range(fn, x)
+
+    /**
+     * One enclosure's worth of memo. A graph is a DAG — the workbench rewrite reaches its
+     * background eleven times per channel and each `u` eight times — and a subgraph asked for the
+     * same position range twice gives the same answer, so it is computed once. Keyed by identity,
+     * because `Fn` is a data class whose `equals` would walk the whole graph.
+     */
+    private class Walk {
+        private val ranges = java.util.IdentityHashMap<Functions.Fn, HashMap<FnRange, FnRange>>()
+        private val quintics = java.util.IdentityHashMap<Functions.Fn, Any>()
+        private val none = Any()
+
+        fun range(fn: Functions.Fn, x: FnRange): FnRange {
+            val node = fn.graphNode()
+            node.numbers["value"]?.let { return FnRange.point(it) }
+            val memo = ranges.getOrPut(fn) { HashMap(2) }
+            memo[x]?.let { return it }
+            val formula = FnFormulas.valueOf(node.op)
+                ?: throw FnIntervalRefusal(refusalFor(listOf(node.op)))
+            val r = if (node.op == "multiply") {
+                val left = childOf(fn, "left")
+                // The same Fn on both sides of a product is the same double twice: a square. The
+                // graph-level twin of the Mul(a, a) rule inside a formula.
+                if (left != null && left === childOf(fn, "right")) FnRangeMath.square(range(left, x))
+                else {
+                    val u = quintics.getOrPut(fn) { quinticArgument(fn) ?: none }
+                    if (u is Functions.Fn) FnRangeMath.quinticSmootherstep(range(u, x), generic = { formulaRange(fn, formula, x) })
+                    else formulaRange(fn, formula, x)
+                }
+            } else formulaRange(fn, formula, x)
+            memo[x] = r
+            return r
+        }
+
+        private fun formulaRange(fn: Functions.Fn, formula: FnExpr, x: FnRange): FnRange {
+            val node = fn.graphNode()
+            return evalFormulaInterval(
+                formula,
+                x,
+                alpha = { at -> alphaRange(fn, at) },
+                childRange = { role, at ->
+                    val edge = node.children.firstOrNull { it.role == role }
+                        ?: throw FnIntervalRefusal("op ${node.op} is missing its '$role' child")
+                    range(edge.fn, at)
+                }
+            )
+        }
+    }
+
+    private fun childOf(fn: Functions.Fn, role: String): Functions.Fn? =
+        fn.graphNode().children.firstOrNull { it.role == role }?.fn
+
+    private fun constOf(fn: Functions.Fn?): Double? = fn?.graphNode()?.numbers?.get("value")
+
+    /**
+     * `u` when [fn] is the graph `u·u·u·(10 + u·(−15 + 6u))` — the quintic `smootherstep` the
+     * function workbench writes by hand as `smooth01` — with the *same* `Fn` for every `u`, else null.
+     */
+    private fun quinticArgument(fn: Functions.Fn): Functions.Fn? {
+        fun op(f: Functions.Fn?) = f?.graphNode()?.op
+        val cube = childOf(fn, "left")?.takeIf { op(it) == "multiply" } ?: return null
+        val square = childOf(cube, "left")?.takeIf { op(it) == "multiply" } ?: return null
+        val u = childOf(square, "left") ?: return null
+        if (childOf(square, "right") !== u || childOf(cube, "right") !== u) return null
+        val poly = childOf(fn, "right")?.takeIf { op(it) == "add" } ?: return null
+        if (constOf(childOf(poly, "left")) != 10.0) return null
+        val outer = childOf(poly, "right")?.takeIf { op(it) == "multiply" } ?: return null
+        if (childOf(outer, "left") !== u) return null
+        val inner = childOf(outer, "right")?.takeIf { op(it) == "add" } ?: return null
+        if (constOf(childOf(inner, "left")) != -15.0) return null
+        val six = childOf(inner, "right")?.takeIf { op(it) == "multiply" } ?: return null
+        return if (constOf(childOf(six, "left")) == 6.0 && childOf(six, "right") === u) u else null
     }
 
     /** The certified bound on [fn] over `[a, b]`, or a refusal naming why there is none. */
@@ -746,8 +832,13 @@ private fun searchExtremum(
         queue.poll()
         val mid = midpoint(top.lo, top.hi)
         if (mid <= top.lo || mid >= top.hi) {
-            // Cannot be split further in Double; its bound is final.
-            settledBound = maxOf(settledBound, upper(top.range))
+            // Cannot be split further in Double: the piece holds exactly the doubles `lo` and `hi`,
+            // so its bound is the larger of their point enclosures — which are tight — and final.
+            if (top.lo == top.hi) settledBound = maxOf(settledBound, upper(top.range))
+            else for (end in listOf(top.lo, top.hi)) {
+                settledBound = maxOf(settledBound, upper(FnIntervals.range(fn, FnRange(end, end))))
+                enclosures++
+            }
             continue
         }
         for ((lo, hi) in listOf(top.lo to mid, mid to top.hi)) {
@@ -848,8 +939,18 @@ private fun proveForAll(
             enclosures++
             if (settled(r)) continue
             val mid = midpoint(lo, hi)
+            if (mid <= lo || mid >= hi) {
+                // Two adjacent doubles and nothing between: decide each as a point, which is tight.
+                // (Both were probed when their parents were split or as the interval's ends.)
+                enclosures += 2
+                if (settled(FnIntervals.range(fn, FnRange(lo, lo))) && settled(FnIntervals.range(fn, FnRange(hi, hi)))) continue
+                check(lo)?.let { return it.copy(enclosures = enclosures) }
+                check(hi)?.let { return it.copy(enclosures = enclosures) }
+                return FnVerdict(FnVerdictKind.UNDECIDED, claim, enclosures = enclosures,
+                    refusal = "unsettled at the adjacent doubles $lo and $hi")
+            }
             check(mid)?.let { return it.copy(enclosures = enclosures) }
-            if (enclosures >= maxEnclosures || mid <= lo || mid >= hi) {
+            if (enclosures >= maxEnclosures) {
                 return FnVerdict(FnVerdictKind.UNDECIDED, claim, enclosures = enclosures,
                     refusal = "unsettled near [$lo, $hi] after $enclosures enclosures")
             }
@@ -863,14 +964,14 @@ private fun proveForAll(
 }
 
 /**
- * Certifies that `f(x) <= limit + slack` for every x in `[a, b]` (and never NaN), or refutes
- * `f(x) <= limit` with a witness.
+ * Certifies that `f(x) <= limit + slack` for every x in `[a, b]` (and never NaN), or refutes that
+ * same claim with a witness.
  *
  * [slack] exists because a bound the function *attains* — a crossfade that reaches exactly 1 on a
  * hold — is usually approached tangentially, and an interval bound over any piece touching the
- * tangency sits a little above it however small the piece. Proving `<= 1` exactly there is not
- * possible by bisection; proving `<= 1 + 1e-12` is quick. A refutation is always against [limit]
- * itself, with no slack.
+ * tangency sits a little above it however small the piece. Proving `<= 1` exactly there is often
+ * not possible by bisection; proving `<= 1 + 1e-12` is quick. Ask with `slack = 0.0` to find out
+ * whether the exact claim is *false*: a witness above the limit by an ulp is a refutation.
  */
 fun Functions.Fn.certifiedNeverExceeds(
     limit: Double,
@@ -881,9 +982,9 @@ fun Functions.Fn.certifiedNeverExceeds(
 ): FnVerdict =
     proveForAll(this, a, b, "f(x) <= $limit${if (slack > 0) " (+ $slack)" else ""} on [$a, $b]", maxEnclosures,
         settled = { !it.maybeNaN && (it.isEmpty || it.hi <= limit + slack) },
-        breaks = { it.isNaN() || it > limit })
+        breaks = { it.isNaN() || it > limit + slack })
 
-/** Certifies that `f(x) >= limit - slack` for every x in `[a, b]` (and never NaN), or refutes `f(x) >= limit` with a witness. */
+/** Certifies that `f(x) >= limit - slack` for every x in `[a, b]` (and never NaN), or refutes that claim with a witness. */
 fun Functions.Fn.certifiedNeverBelow(
     limit: Double,
     a: Double,
@@ -893,7 +994,7 @@ fun Functions.Fn.certifiedNeverBelow(
 ): FnVerdict =
     proveForAll(this, a, b, "f(x) >= $limit${if (slack > 0) " (- $slack)" else ""} on [$a, $b]", maxEnclosures,
         settled = { !it.maybeNaN && (it.isEmpty || it.lo >= limit - slack) },
-        breaks = { it.isNaN() || it < limit })
+        breaks = { it.isNaN() || it < limit - slack })
 
 /**
  * Certifies that `f(x) == value` **exactly** for every x in `[a, b]`, or refutes it with a witness.
@@ -990,7 +1091,12 @@ fun Functions.Fn.certifiedEnvelope(
         val seenHi = maxOf(flo, fhi)
         val excess = if (r.isEmpty || seenLo.isNaN() || seenHi.isNaN()) 0.0 else (r.hi - seenHi) + (seenLo - r.lo)
         val mid = midpoint(lo, hi)
-        if (excess <= tolerance || mid <= lo || mid >= hi) return r
+        if (excess <= tolerance) return r
+        if (mid <= lo || mid >= hi) {
+            // Two adjacent doubles: their point enclosures are the tightest honest bound.
+            enclosures += 2
+            return if (lo == hi) r else FnIntervals.range(fn, FnRange(lo, lo)).hull(FnIntervals.range(fn, FnRange(hi, hi)))
+        }
         if (depth >= maxDepth) { unconverged++; return r }
         val fmid = sampled(mid)
         val left = refine(lo, mid, flo, fmid, depth + 1)
