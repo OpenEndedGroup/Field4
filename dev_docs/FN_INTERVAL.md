@@ -108,6 +108,49 @@ whenever one side may be infinite and the other NaN. While there, `pow(−inf, n
 `+inf` or `+0` limit per the `Math.pow` Javadoc, not NaN) was fixed by reading the spec; no test
 had hit it. The lesson is the usual one for a generated population: it only tests where it looks.
 
+## The worked example, certified (second pass, same night)
+
+**What forced `fn { }`.** Reading `final.kt` construct by construct: the phase-modulated carrier is
+`sin` with a phase signal; the integrated-frequency pulse is `cos` of a polynomial in `age`;
+`smooth01` is arithmetic on a `clamp`; the e3/y lag is a polynomial. All formula-bearing already.
+**The one construct that needed a lambda is the piecewise selection** — `events.firstOrNull { … }`
+and the `when` over rise / hold / fall. The ops that express an exact 0/1 selection, `step` and
+`sign`, were formula-less by design (`FnNonDifferentiable`: "honest arithmetic, dishonest gradient").
+
+**Value-only formulas.** `FnFormulas.valueOnlyOps = {step, sign}`: value formulas read by
+`FnFormulas.valueOf` (the `Double` and interval walkers, and `evalByFormula`'s pin), never by
+`FnFormulas.of` (the AD walk). So `FnAutoDiff.differentiableOps` is unchanged at 35 of 127 and no
+prose-guarded count moves. Coverage, derived by `FnIntervalTest`
+(`OpRegistry.knownOps` canonicalised, filtered on `valueOf != null || const/param`):
+**37 of 127 canonical ops enclosable** (33 formula + 2 value-only + const/param), up from 35.
+`step` is shaped "not below the edge, and neither side NaN" — equal to `x >= edge` on every double,
+NaN included (70 raw-bit comparisons) — because the obvious "above, or equal" cannot decide an
+interval that *starts* at the edge.
+
+**The rewrite** (`FnIntervalWorkbenchTest.workbenchFormula`, demo box 5): `[x >= a]` is
+`step(a)`, `[x <= b]` is `1 − step(nextUp(b))`, the lag's `age < 180` is
+`clamp(sign(180 − age), 0, 1)`, and every product and sum follows the lambda's order. Exactly one
+addend is non-zero at any x and the rest are ±0, so the sum is that addend's bits.
+
+| claim (from the page / its StudyChoices) | population | result |
+| --- | --- | --- |
+| the rewrite *is* the worked example | every 0.01 s × 3 channels + each landmark and its neighbouring doubles: 1 080 228 samples | **0 raw-bit mismatches** |
+| each event reaches exactly (1,1,1) for its 30 s plateau | 5 events × 3 channels | **15 of 15 PROVEN** (`certifiedEquals`, one enclosure each) |
+| background = 0.45 ± 0.2 ± 0.04 | 3 channels over the hour | `<= 0.69` and `>= 0.21` PROVEN; x's certified range [0.2100084, 0.6899916] |
+| "all channels stay in [0,1]" | 3 channels over the hour | `>= 0` PROVEN. **`<= 1` REFUTED** at x = 284.999942779541: the worked example's own lambda gives **1.0000000000000009** (checked as raw bits). `<= 1 + 9e-10` PROVEN by `certifiedRange`'s bound (~109 000 enclosures, ~11 s per channel) |
+
+The refutation is real and small: in the last instant of a rise the shoulder's
+`(1 − merge)·pulsed + merge` rounds 4 ulps above 1 before the `when` hands over to the exact hold.
+A sampled check at the 0.02 s viewer grid does not see it (no grid point lands there).
+
+**Walker changes this pass needed** (each argued in its KDoc): `IfEq`/`IfLt` of a subexpression
+against itself are decided; graph-level rules for a `multiply` of one `Fn` with itself (square) and
+for the hand-written quintic `u·u·u·(10 + u·(−15 + 6u))` over one shared `u` (monotone; rounding
+within `1 ± 28u`, covered by 64 ulps); two adjacent doubles are decided as two points rather than
+left unsplittable; a per-enclosure identity memo over the DAG; a slack claim is refuted against
+`limit + slack`. Without the quintic rule, `<= 1 + 1e-9` was UNDECIDED after 200 000 enclosures;
+with it, ~107 000.
+
 ## Viewer hook
 
 `SignalChannel(..., certified: Functions.Fn? = null)`, or `certifiedSignalChannel(name, fn)`. When

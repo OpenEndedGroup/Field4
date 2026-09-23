@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
 ```
 
 ## 1. root
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="root" index="0" -->
 
 ```edn [field-box id="root" role="properties"]
-{"id" "root" "index" 0 "name" "root" "parents" ["metaroot"] "children" ["sampled" "certified" "range" "limits"] "properties" {"children" #{#afield/box "sampled" #afield/box "certified" #afield/box "range" #afield/box "limits"} "parents" #{#afield/box "metaroot"} "name" "root" "nested" #{}} "blockProperties" []}
+{"id" "root" "index" 0 "name" "root" "parents" ["metaroot"] "children" ["sampled" "certified" "range" "limits" "workbench"] "properties" {"children" #{#afield/box "sampled" #afield/box "certified" #afield/box "range" #afield/box "limits" #afield/box "workbench"} "parents" #{#afield/box "metaroot"} "name" "root" "nested" #{}} "blockProperties" []}
 ```
 
 ## 2. 3 - certifiedRange, with witnesses
@@ -92,12 +92,139 @@ display("numbers", Table(listOf("what", "value"), title = "the certified band, a
     .role("value", CellRole.ACCENT))
 ```
 
-## 4. 1 - An hour, and a glitch the plot never sees
+## 4. 5 - The worked example, certified
 
-<!-- field-box id="sampled" index="3" -->
+<!-- field-box id="workbench" index="3" -->
+
+```edn [field-box id="workbench" role="properties"]
+{"id" "workbench" "index" 3 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 116 "characters" 6177 "sha256" "39095701f1e228176c06770da675a5106b5fa6cbb68de9bc1bc1a4cb35d5e3a5"}]}
+```
+
+```kotlin [field-property box="workbench" name="code" path="workbench_code_.kt"]
+import afield.stdlib.Functions
+import afield.stdlib.FnIntervals
+import afield.stdlib.StudyEvent
+import afield.stdlib.certifiedEquals
+import afield.stdlib.certifiedNeverBelow
+import afield.stdlib.certifiedNeverExceeds
+import afield.stdlib.certifiedRange
+import kotlin.math.PI
+
+// The function workbench's worked example (public/docs/assets/function_conversation/final.kt),
+// twice. `lambda` is its channel code, verbatim: one fn { } per channel, which the interval walk
+// refuses. `formula` is the same function from formula-bearing ops. The only construct that needed
+// a lambda was the piecewise event selection; here it is exact 0/1 `step` indicators, with every
+// product and sum in the lambda's order, so the two agree bit for bit.
+val events = listOf(
+    StudyEvent("e1", 185.0, 100.0, 30.0, 100.0), StudyEvent("e2", 785.0, 100.0, 30.0, 100.0),
+    StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0), StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
+    StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0))
+val names = listOf("x", "y", "z")
+
+fun smooth01(value: Double): Double { val u = value.coerceIn(0.0, 1.0); return u * u * u * (10.0 + u * (-15.0 + 6.0 * u)) }
+fun backgroundOf(seconds: Double, channel: Int): Double {
+    val drift = 2.0 * PI / 3.0 * kotlin.math.sin(2.0 * PI * seconds / 100.0)
+    val phase = 2.0 * PI * seconds / 40.0 + (channel - 1) * drift
+    return 0.45 + 0.20 * kotlin.math.sin(phase) + 0.04 * kotlin.math.sin(2.0 * PI * seconds / 230.0)
+}
+fun shoulderOf(base: Double, age: Double, span: Double): Double {
+    val u = (age / span).coerceIn(0.0, 1.0)
+    val cycles = 0.06 * age + 0.5 * (0.80 - 0.06) * age * age / span
+    val pulse = 0.5 - 0.5 * kotlin.math.cos(2.0 * PI * cycles)
+    val strength = smooth01(u)
+    val pulsed = (1.0 - strength) * base + strength * (0.25 + (1.0 - 0.25) * pulse)
+    val merge = smooth01((u - (1.0 - 0.20)) / 0.20)
+    return (1.0 - merge) * pulsed + merge
+}
+fun lambda(index: Int, name: String) = with(Functions) {
+    fn(0.0..3600.0, name) { seconds ->
+        val base = backgroundOf(seconds, index)
+        val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }
+        when {
+            event == null -> base
+            seconds < event.plateauStart -> {
+                val age = seconds - event.start
+                val lag = if (event.id == "e3" && name == "y" && age < 180.0) {
+                    val u = age / 180.0; val v = 1.0 - u; 6.0 * 64.0 * u * u * u * v * v * v
+                } else 0.0
+                shoulderOf(base, age - lag, event.rise)
+            }
+            seconds <= event.plateauEnd -> 1.0
+            else -> shoulderOf(base, event.end - seconds, event.fall)
+        }
+    }
+}
+
+fun formula(index: Int, name: String) = with(Functions) {
+    val all = Functions.Domain.ALL
+    fun k(v: Double) = c(v, all)
+    val t = identity(all)
+    val one = k(1.0)
+    fun sinOf(p: Functions.Fn) = sin(frequency = k(0.0), phase = p) // sin(0*x + p) is sin(p), exactly
+    fun cosOf(p: Functions.Fn) = cos(frequency = k(0.0), phase = p)
+    fun smooth(v: Functions.Fn): Functions.Fn { val u = v.clamp(0.0, 1.0); return u * u * u * (k(10.0) + u * (k(-15.0) + k(6.0) * u)) }
+    val drift = k(2.0 * PI / 3.0) * sinOf(k(2.0 * PI) * t / k(100.0))
+    val base = k(0.45) + k(0.20) * sinOf(k(2.0 * PI) * t / k(40.0) + k((index - 1).toDouble()) * drift) +
+        k(0.04) * sinOf(k(2.0 * PI) * t / k(230.0))
+    fun shoulder(age: Functions.Fn, span: Double): Functions.Fn {
+        val u = (age / k(span)).clamp(0.0, 1.0)
+        val cycles = k(0.06) * age + k(0.5 * (0.80 - 0.06)) * age * age / k(span)
+        val pulse = k(0.5) - k(0.5) * cosOf(k(2.0 * PI) * cycles)
+        val strength = smooth(u)
+        val pulsed = (one - strength) * base + strength * (k(0.25) + k(1.0 - 0.25) * pulse)
+        val merge = smooth((u - k(1.0 - 0.20)) / k(0.20))
+        return (one - merge) * pulsed + merge
+    }
+    fun from(a: Double) = step(a, all) // exactly [x >= a]; [x <= b] is 1 - from(nextUp(b))
+    var sum: Functions.Fn = k(0.0) * t
+    var inside: Functions.Fn = k(0.0)
+    for (e in events) {
+        val age = t - k(e.start)
+        val local = if (e.id == "e3" && name == "y") {
+            val u = age / k(180.0); val v = one - u
+            age - (k(180.0) - age).sign().clamp(0.0, 1.0) * (k(6.0 * 64.0) * u * u * u * v * v * v)
+        } else age
+        sum = sum + ((from(e.start) - from(e.plateauStart)) * shoulder(local, e.rise) +
+            (from(e.plateauStart) - from(Math.nextUp(e.plateauEnd))) * one +
+            (from(Math.nextUp(e.plateauEnd)) - from(Math.nextUp(e.end))) * shoulder(k(e.end) - t, e.fall))
+        inside = inside + (from(e.start) - from(Math.nextUp(e.end)))
+    }
+    sum + (one - inside) * base
+}
+
+val rows = mutableListOf<List<Any?>>()
+for ((i, name) in names.withIndex()) {
+    val l = lambda(i, name)
+    val f = formula(i, name)
+    val grid = (0..72_000).map { it * 0.05 }
+    val mismatches = grid.count { l(it).toRawBits() != f(it).toRawBits() }
+    val holds = events.count { f.certifiedEquals(1.0, it.plateauStart, it.plateauEnd).proven }
+    val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
+    val witness = above.witness!!
+    rows += listOf(name, "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
+        "$mismatches of ${grid.size}", "$holds of ${events.size} PROVEN",
+        f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
+        "${above.kind} at $witness: lambda ${l(witness)}")
+}
+display("claims", Table(listOf("ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"),
+    title = "the worked example's claims, on its formula rewrite")
+    .rows(rows)
+    .role("<= 1", CellRole.WARN))
+
+// How far above 1: certifiedRange's proven bound is the certificate for <= 1 + 1e-9 (x only; ~11 s).
+val xMax = formula(0, "x").certifiedRange(0.0, 3600.0, tolerance = 9e-10).max!!
+display("max", Table(listOf("what", "value"), title = "channel x, the whole hour")
+    .row("max reached", xMax.value.toString()).row("at x", xMax.witness.toString())
+    .row("proven bound", xMax.bound.toString())
+    .row("enclosures", xMax.enclosures).role("value", CellRole.ACCENT))
+```
+
+## 5. 1 - An hour, and a glitch the plot never sees
+
+<!-- field-box id="sampled" index="4" -->
 
 ```edn [field-box id="sampled" role="properties"]
-{"id" "sampled" "index" 3 "name" "1 - An hour, and a glitch the plot never sees" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - An hour, and a glitch the plot never sees" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sampled_code_.kt" "lines" 28 "characters" 1422 "sha256" "111bedb80a3bad4582a25e10c4c9f669a08098c3fefdc7ebac21931c2496733f"}]}
+{"id" "sampled" "index" 4 "name" "1 - An hour, and a glitch the plot never sees" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - An hour, and a glitch the plot never sees" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sampled_code_.kt" "lines" 28 "characters" 1422 "sha256" "111bedb80a3bad4582a25e10c4c9f669a08098c3fefdc7ebac21931c2496733f"}]}
 ```
 
 ```kotlin [field-property box="sampled" name="code" path="sampled_code_.kt"]
@@ -131,12 +258,12 @@ display("numbers", Table(listOf("what", "value"), title = "what the sampled plot
     .role("value", CellRole.ACCENT))
 ```
 
-## 5. 4 - What refuses, and an exact hold
+## 6. 4 - What refuses, and an exact hold
 
-<!-- field-box id="limits" index="4" -->
+<!-- field-box id="limits" index="5" -->
 
 ```edn [field-box id="limits" role="properties"]
-{"id" "limits" "index" 4 "name" "4 - What refuses, and an exact hold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - What refuses, and an exact hold" "_tombstone" false "frame" #afield/rect [60.0 1800.0 340.0 100.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "limits_code_.kt" "lines" 29 "characters" 1511 "sha256" "78e73b8b53a97215111a5d8d67a837dc633b7eb21be681e4cfbcc6ff923d9d8b"}]}
+{"id" "limits" "index" 5 "name" "4 - What refuses, and an exact hold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - What refuses, and an exact hold" "_tombstone" false "frame" #afield/rect [60.0 1800.0 340.0 100.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "limits_code_.kt" "lines" 29 "characters" 1511 "sha256" "78e73b8b53a97215111a5d8d67a837dc633b7eb21be681e4cfbcc6ff923d9d8b"}]}
 ```
 
 ```kotlin [field-property box="limits" name="code" path="limits_code_.kt"]
