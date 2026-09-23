@@ -1,6 +1,11 @@
 # Conversational Functions experiment
 
-The saved Field document is `dev_docs/agents/demos/function_conversation`.
+The recorded experiment is `dev_docs/agents/demos/function_conversation_example`.
+`dev_docs/agents/demos/function_conversation` is now the blank starter, with three
+zero-valued channels and no inherited conversations or revisions. The public
+walkthrough lives in `public/docs/function_conversation.md`. Regenerate its two
+download archives and selected evidence with `uv run python tools/package_function_conversation.py`;
+use `--check` to verify they match their canonical sources.
 It begins from three constant channels and records actual AI4 conversations that
 grow and revise ordinary Kotlin into three `Functions.Fn` values. The transport is
 the existing AI4 general-chat RPC, not a separate agent implementation. The first
@@ -41,10 +46,10 @@ In another terminal, attach and run the document tools:
 ```sh
 uv run --project . --group backdoor python tools/field_session.py call \
   --port 9788 --no-reset --with-playwright --timeout 120 \
-  --command 'open function_conversation --must-exist' --command 'run function_tools'
+  --command 'open function_conversation_example --must-exist' --command 'run function_tools'
 ```
 
-Open `http://localhost:19788/index.html?file=function_conversation`. Select
+Open `http://localhost:19788/index.html?file=function_conversation_example`. Select
 **The function — talk here (AI4)** and open AI4 general chat. The tools box shows
 overview, detail, comparisons and preservation checks. The document guide explains
 the exact source contract, timing policies and limits.
@@ -52,7 +57,7 @@ the exact source contract, timing policies and limits.
 To record another genuine AI4 turn, choose a new label:
 
 ```sh
-uv run --project . --group backdoor python tools/run_function_conversation.py \
+uv run --project . --group backdoor python tools/run_function_conversation.py --document dev_docs/agents/demos/function_conversation_example \
   --port 9788 --label my-next-turn --prompt-file /path/to/request.txt
 ```
 
@@ -217,7 +222,7 @@ verification returned String.file with getter/KDoc in 0.213 seconds cold and
 0.014 seconds warm. A patch with compilation/checks/preview took 1.284 seconds.
 Two real gpt-6-astra conversations used only Inspect -> Patch -> Export, taking
 16.269 and 15.506 seconds in the bridge logs. See
-[the saved replay](agents/demos/function_conversation/conversations/08-loop-improvements.md)
+[the saved replay](agents/demos/function_conversation_example/conversations/08-loop-improvements.md)
 and its adjacent measurements, image and tool-I/O logs.
 
 The user confirmed the earlier missing FunctionStudy.class was an overlapping

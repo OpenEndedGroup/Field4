@@ -24,6 +24,11 @@ than describe.
 
 ![](assets/screenshot_53.png)
 
+For a complete conversation that changes code and inspects its result, try
+[Talking a function into existence](function_conversation.md). It provides a
+blank three-channel signal document, a developed example with saved conversations,
+and editable tools for plotting, checking and exporting the function.
+
 ## Chat at an editor location
 
 Press `command/ctrl-3`, or run **AI Chat in editor**. With a selection, Field

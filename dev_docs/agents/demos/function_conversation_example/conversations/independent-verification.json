@@ -1,0 +1,35 @@
+{
+  "creation" : "3600 seconds, 3 channels, 6 evenly spaced events, 30-second holds",
+  "movePreservedMaxAbs" : 0.0,
+  "stretchPreservedMaxAbs" : 0.0,
+  "lagXZWholeHourMaxAbs" : 0.0,
+  "lagYOutsideEventMaxAbs" : 0.0,
+  "deletionPreservedMaxAbs" : 0.0,
+  "deletedRegionVsActualBackgroundMaxAbs" : 0.0,
+  "warpPreservedMaxAbs" : 0.0,
+  "sampledWarpClockRateBounds" : [ 0.8626159831237601, 1.1373840163741988 ],
+  "warpEndpointRates" : [ 0.9999999997489795, 0.9999999997489795 ],
+  "restoredVsPreWarpWholeHourMaxAbs" : 0.0,
+  "allRevisionHoldMaxErrors" : {
+    "01-create" : 0.0,
+    "02-move" : 0.0,
+    "03-stretch" : 0.0,
+    "04-lag" : 0.0,
+    "05-delete" : 0.0,
+    "06-warp" : 0.0,
+    "07-restore-background" : 0.0
+  },
+  "randomAccessOrderIndependent" : true,
+  "failedCompilationRetainedWorkingRevision" : true,
+  "staleAgentDidNotOverwriteManualEdit" : true,
+  "method" : "Independent compilation of saved model-authored Kotlin; <=11ms comparison grid, exact landmarks, clock finite differences at h=0.1ms. Sampled evidence, not a proof against arbitrary hidden features.",
+  "revisions" : {
+    "01-create" : "r3-66fd67f6fe7c",
+    "02-move" : "r4-f7f9ef4f2f47",
+    "03-stretch" : "r5-2aa6023ddfca",
+    "04-lag" : "r6-deb1b1738cb0",
+    "05-delete" : "r7-ebc54198e3ae",
+    "06-warp" : "r8-e4aea058bc8b",
+    "07-restore-background" : "r9-82456e1e48ac"
+  }
+}

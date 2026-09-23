@@ -34,7 +34,7 @@ def externalize_images(text: str, output: Path) -> str:
 
 
 async def main(args):
-    root = fb.REPO_ROOT / "dev_docs/agents/demos/function_conversation"
+    root = Path(args.document).resolve()
     output = root / "conversations"
     output.mkdir(exist_ok=True)
     target = output / args.label
@@ -47,7 +47,7 @@ async def main(args):
     try:
         await client.ensure_server()
         await client.connect()
-        await client.open_document("function_conversation", scratch=False, must_exist=True, timeout=120)
+        await client.open_document(root.name, scratch=False, must_exist=True, timeout=120)
         # Explicit schema discovery verifies this session is actually offering the tools.
         tools = await client.ai_tools_list(timeout=30)
         names = {x.get("name") for x in tools}
@@ -105,6 +105,8 @@ async def main(args):
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--document", default="dev_docs/agents/demos/function_conversation",
+                        help="Path to the document receiving the turn and its saved evidence")
     parser.add_argument("--port",type=int,default=9788)
     parser.add_argument("--label",required=True)
     parser.add_argument("--prompt-file",required=True)

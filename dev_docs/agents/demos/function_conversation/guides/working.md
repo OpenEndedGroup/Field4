@@ -103,8 +103,7 @@ experiment adds aligned min/max images because a one-hour point plot aliases pul
 ## Time and observation policies
 
 Use integrated frequency for chirps: if f(u)=f0+k*u then cycles=f0*u+k*u*u/2.
-Increasing frequency times time is not the integral. Carrier period and the
-100-second relative-phase timescale are separate parameters. Use an explicit
+Increasing frequency times time is not the integral. Carrier period and relative-phase timescale are separate parameters; ask for or state each artistic assumption. Use an explicit
 constant plateau; fade/widen oscillations into it, then return smoothly to the
 continuing background. Smoothstep/quintic windows avoid abrupt value/velocity joins.
 
@@ -127,8 +126,7 @@ Kotlin runs in Field's existing local compiler/runtime, on a fresh engine per
 candidate. It is trusted document code, not a security sandbox. Source size,
 duration, channel counts and sample budgets are bounded; cancellation prevents
 pending publication and interrupts cooperative sampling. It cannot forcibly stop
-arbitrary non-cooperative Kotlin. AI4's existing generation cancellation is not
-extended here. No stateful audio graph is sampled. Never call it isolated execution.
+arbitrary non-cooperative Kotlin. AI4 progress distinguishes completion, failure and cancellation. No stateful audio graph is sampled. Never call it isolated execution.
 
 Revision sources/plots persist, and selection/referents live in the active session.
 Saved conversation evidence is recorded separately under `conversations/` by the
@@ -136,26 +134,7 @@ demo driver; that driver uses the actual AI4 chat RPC and captures its real outp
 The 20-task context ablation from the brief is a follow-on experiment, not a result
 claimed by this initial demo.
 
-## Resumed experiment: e3 y lag (activated)
 
-- Restart inspection confirmed clean r5-2aa6023ddfca; selected e3. New working revision: **r6-deb1b1738cb0**, parent r5. Event metadata unchanged: e3 support 1425..1755 s, rise 200 s, shared hold 1625..1655 s.
-- Instance-specific e3/y shoulder age is `a - L`, with `L = 6*64*u^3*(1-u)^3`, `u=a/180`, for age 0..180 s; identity thereafter. Peak local-clock lag 6 s at absolute time 1515; recovered by 1605, 20 s before hold. Analytic clock-rate bounds approximately 0.8855..1.1145, endpoint rate 1 and curvature 0: local time strictly advances, while lag grows then shrinks. Pulse phase and shoulder envelopes share the warped age; background stays on absolute time.
-- Existing Wither local-result workaround succeeded. EditFunctionStudy compiled/checked/activated; separate CompileKotlin succeeded with no preamble/intro/attic changes. No compiler/plugin edits.
-- Before/after waveform pixels inspected at 1505..1530 and 1610..1635 s; catch-up overlay inspected at 1590..1615. Only y changes during lag; recovery and plateau overlays coincide. Plateau-window max/RMS difference = 0 for all channels. Hold sampled target error = 0; at 1625 all values = 1, left finite-difference slopes ~5.55e-12, right slopes 0. Source retains explicit constant hold.
-- CompareFunctionStudy r5 -> r6, only y allowed in e3 (1425..1755): x/z each 180001 preserved samples, y 163500, all maxAbs/RMS = 0. Stricter allowed interval 1425..1605 also passes: y 171000 preserved samples, maxAbs/RMS = 0. Whole-hour <=20 ms grid plus declared joins; finite sampling is not proof against arbitrary hidden narrow features. Source confines changes to the stated branch.
-
-## Background passage warp (activated after e4 deletion)
-
-- r7-ebc54198e3ae removed only e4 (1985..2215 s), retaining r6 in history. Compare r6 -> r7: all channels outside that support have maxAbs/RMS 0 across 168500 samples each. Current event IDs remain e1/e2/e3/e5/e6.
-- New working revision **r8-e4aea058bc8b**, parent r7. Selected interval is 1100..1250 s with no event IDs. It lies between e2 end 1015 and e3 start 1425.
-- All background components/channels use T(t)=t-A*64*u^3*(1-u)^3, u=(t-1100)/150, A=6 seconds, only inside that interval; identity elsewhere. Peak delay at 1175. T'=1-(A/150)*192*u^2*(1-u)^2*(1-2u). The absolute polynomial derivative is at most 192/(25*sqrt(5)), so clock rate is approximately 0.862616..1.137384 > 0. First half is slower, second faster; endpoints have T=t, T'=1, T''=0. Strength zero restores the original background; strict monotonicity gives an inverse (negating strength is not claimed to be the exact inverse).
-- Event declarations, lookup clock, holds, and e3 y lag are unchanged. The earlier absolute-time-background policy is overridden only in this event-free passage. r7 remains the undo reference.
-- EditFunctionStudy compiled/checked/activated; separate CompileKotlin passed without setup property changes. Resolved before/after detail inspected at 1125..1150: x peak moved 1138.774 -> 1141.906 s, y peak 1130.190 -> 1132.006 s. Recovery overlay inspected at 1235..1260; curves rejoin the original. Exact endpoint samples at 1100 and 1250 agree with r7 for every channel.
-- CompareFunctionStudy r7 -> r8 allowing x/y/z changes only in 1100..1250: 172500 preserved samples per channel over the whole hour at <=20 ms plus event joins; maxAbs=0 and RMS=0 for each, changedEventIds empty. These are sampled preservation measurements, supported by the explicit identity branch outside the interval.
-
-## Unwarped background restored; event work preserved
-
-- Current working revision **r9-82456e1e48ac**, a new checked child of r8-e4aea058bc8b. Inspected historical r7-ebc54198e3ae and restored its direct `background(seconds, index)` evaluation, removing only the background warp constants/map. Current event declarations and evaluators were retained; historical warp choices are explicitly superseded by the restoration choice. No history was discarded.
-- CompareFunctionStudy against pre-warp r7 with **allowedChannels=[]**: whole-hour 0..3600 evaluation at <=20 ms plus declared joins, 180001 samples per channel, maxAbs=0 and RMS=0 for x/y/z; changedEventIds empty. Executable channel/event source matches r7; added choices record the experiment and restoration. Finite samples alone are not an arbitrary-function equality proof.
-- Compilation/check/activation and separate CompileKotlin succeeded; no preamble/intro/attic changes. Inspected full-hour overview overlaid on r7: exact sampled agreement, five remaining events, wider e3 and background-only e4 gap. All five 30-second holds have sampled target error 0.
-- Preserved: original three-channel background on absolute time; e3 start 1425, rise 200, hold 1625..1655, end 1755; e3-only y peak lag 6 s at 1515, recovered at 1605; e4 remains deleted; e1/e2/e5/e6 unchanged and not renumbered. r8 retains the reversible background-warp experiment; r6 retains e4 before deletion. Selected interval remains 1100..1250 with no event IDs.
+When switching between the starter and the worked example in one Field session,
+rerun the tools box in the document you want to chat with. The most recently
+registered handlers belong to that document.

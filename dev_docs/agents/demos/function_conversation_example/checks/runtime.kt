@@ -6,7 +6,7 @@ import java.io.File
 import java.nio.file.Files
 import kotlin.math.*
 
-val root = File("dev_docs/agents/demos/function_conversation").canonicalFile
+val root = File("dev_docs/agents/demos/function_conversation_example").canonicalFile
 val mapper = jacksonObjectMapper()
 val results = linkedMapOf<String, Any?>()
 fun revisionFor(turn: String): String = mapper.readTree(File(root,"conversations/$turn.json"))["after"]["result"]["revision"].asText()
