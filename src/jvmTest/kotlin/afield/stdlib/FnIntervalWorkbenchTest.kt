@@ -198,14 +198,11 @@ class FnIntervalWorkbenchTest {
     }
 
     /**
-     * The page's claims, certified on the rewrite: every event holds exactly (1, 1, 1) for its
-     * 30-second plateau, and not for longer; the background stays inside the band its own constants
-     * imply; every channel stays in [0, 1].
-     */
-    /**
      * A narrated measurement, not a contract: what the certified band costs on a realistic graph —
      * the worked example's rewrite, ~40 formula nodes per shoulder — against sampling the original
-     * lambda, at the viewer's own bin counts. Asserted only against the route's 12 s timeout.
+     * lambda, at the viewer's own bin counts. Narrated only — nothing about the timing is asserted:
+     * the measured 4.7 s overview is within 2.5x of the route's 12 s timeout, and this machine has
+     * shown 3.5x slowdowns under load, so any ceiling tight enough to mean something would flake.
      */
     @Test
     fun theCertifiedBandOnTheWorkedExampleIsTimedAtTheViewersBinCounts() {
@@ -221,11 +218,18 @@ class FnIntervalWorkbenchTest {
             val w = certified.window(from, to, points)
             println("FN INTERVAL WORKBENCH TIMING [$from, $to] ${w.mode} ${w.lanes[0].certified!!.low.size} bins: " +
                 "sampled ${"%.1f".format(s)} ms, sampled + certified ${"%.1f".format(c)} ms (${"%.1f".format(c / s)}x)")
-            assertTrue(c < 12_000.0, "a certified window took $c ms; the viewer route times out at 12 s")
+            assertTrue(w.lanes[0].certified!!.low.isNotEmpty(), "the certified band was not computed")
         }
         sampled.close(); certified.close()
     }
 
+    /**
+     * The page's claims, checked on the rewrite: every event holds exactly (1, 1, 1) for its
+     * 30-second plateau (PROVEN), the background stays inside the band its own constants imply
+     * (PROVEN), and every channel stays >= 0 (PROVEN). The recorded assumption "all channels stay in
+     * [0, 1]" is **REFUTED**: each channel exceeds 1 by 4 ulps (1.0000000000000009, in the worked
+     * example's own lambda) at the rise-to-hold hand-over; `<= 1 + 9e-10` is PROVEN instead.
+     */
     @Test
     fun theWorkedExamplesClaimsAreCertified() {
         val channels = names.mapIndexed { i, n -> workbenchFormula(i, n) }
