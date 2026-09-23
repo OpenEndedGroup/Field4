@@ -1,6 +1,6 @@
 # Prose detectors for `public/docs`
 
-Thirteen read-only analysers that measure the documentation tree's *voice*: the rhetorical
+The read-only analysers below measure the documentation tree's *voice*: the rhetorical
 moves that make a page read as written-by-a-machine rather than as documentation. They were
 built one at a time by the nightly `documentation-voice-pass`, each one added the night a
 firing found a fault the existing set could not see.
@@ -45,6 +45,9 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `moves.py` | whole-page shapes | one rhetorical move repeated once per section — invisible sentence by sentence |
 | `self_narration.py` | page prose | a page describing its own drafting or reporting on the work of writing it, rather than describing its subject |
 | `test_census.py` | page prose and tables | a page enumerating what its tests assert, which belongs in `dev_docs/<SUBJECT>_MEASUREMENTS.md` |
+| `admon_position.py` | `!!!` admonitions | where an always-open block sits, not just how long it is. One a fifth of the way into a page has made a reader wade |
+| `page_self_vouching.py` | page prose | a page vouching for itself — "every number here is asserted" — which is the narrowest member of the show-your-working family and scores 0 everywhere else |
+| `double_published.py` | capture fences against markdown image lines | a figure the build publishes **twice**, because `embed=true` emits its own image line and the page wrote a second one. Not a voice fault: the reader sees the picture twice |
 | `section_shape.py`, `shape_census.py` | page structure | how much of a page is verification rather than use |
 | `check_anchors.py` | `](#slug)` links | in-page links to headings that no longer exist |
 | `check_links.py` | relative links | targets that do not resolve |
