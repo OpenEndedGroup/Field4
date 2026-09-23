@@ -1491,24 +1491,12 @@ few of them are mid-thought. Where running a lesson as saved does not do what it
 this page says so: the sampler-array count in the multi-texture lesson and the never-firing printf
 guard are both noted above rather than silently corrected.
 
-## Which sections have figures
-
-The images on this page are captures: the docs build runs the box against a live Vulkan renderer
-and screenshots the native window. Sections without a figure are the ones a single box
-cannot produce on its own, and the reason is stated in each:
-
-- **Two-box scenes** — render-to-texture, ping-pong, the blur chain, compute-then-draw particles.
-  The capture harness drives one box per figure; these need a producer and a consumer wired
-  together. The `threebox` and `spin_glass` [agent transcripts](agent_transcripts.md) are runnable
-  versions of that shape.
-- **Environment prerequisites** — Slang needs `slangc`, Lygia needs its shader tree on disk, and
-  the two glTF lessons need a model file the repository does not ship.
-- **Nothing to look at** — the radix sort prints, and the RTT streamer sends its picture to a
-  network receiver.
-- **Not in the Vulkan window** — the texture probe's answer is a readback shown in the box's output
-  area, and the shader `#include` example needs a sibling box to include from.
-- **Wrong timescale** — the DLA aggregate needs longer to become legible than a docs build should
-  spend, in a density band narrower than either default; the DLA section explains both failure modes.
+Every image is a capture: the box is run against a live Vulkan renderer and its native window
+photographed. Sections with no image say why underneath the code, and the reasons are worth
+scanning if you are choosing what to try first — several lessons want two boxes wired together,
+some want a file or a tool the repository does not ship, and a few produce something that is not
+a picture at all. For the two-box shape, the `threebox` and `spin_glass`
+[agent transcripts](agent_transcripts.md) are runnable versions.
 
 ## Fabricate Renderer
 
