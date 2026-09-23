@@ -174,7 +174,7 @@ import java.io.File
 
 // These are deliberately document-defined tools. Edit a handler and rerun this box.
 // The domain layer has no model or transport dependency.
-val owner = afield.Box.context.get() ?: throw IllegalStateException("Run in a Field box")
+val owner = thisBox
 val document = inside
 val documentFiles = FileManager.forSession(document)
 // The saved demo has a fixed UID; a source box made in the UI has a generated UID.
