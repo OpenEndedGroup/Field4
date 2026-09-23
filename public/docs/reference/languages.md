@@ -5711,7 +5711,7 @@ RectSL tracks as differentiable `Fn` graphs — the third backend.
 ### Why there is a third backend at all
 
 The track IR is symbolic rather than a closure, because a closure cannot be printed, compared,
-serialized, rewritten, or emitted as GLSL. [`TrackOp1`](languages.md#rectsl-kt-trackop1), [`TrackOp2`](languages.md#rectsl-kt-trackop2), [`TrackOp3`](languages.md#rectsl-kt-trackop3) and [`TimeWarpKind`](languages.md#rectsl-kt-timewarpkind)
+rewritten, or emitted as GLSL. [`TrackOp1`](languages.md#rectsl-kt-trackop1), [`TrackOp2`](languages.md#rectsl-kt-trackop2), [`TrackOp3`](languages.md#rectsl-kt-trackop3) and [`TimeWarpKind`](languages.md#rectsl-kt-timewarpkind)
 each carry an `eval:` and a `glsl:`; this file is the third column, `fn:`, and it is the one that
 changes what RectSL can *do* rather than where it can run.
 
@@ -6309,6 +6309,9 @@ GLSL emitter's function deduplication has been quietly relying on. This is the g
 and it is the one that needed comparison to exist: half the rules below fire on two subtrees being
 structurally equal.
 
+Serialization is the fifth, and it has not shipped: nothing in `afield.rectsl` writes a track out
+or reads one back. A symbolic IR makes it possible; no one has needed it yet.
+
 ### What it is for
 
 Not speed, primarily. RectSL's array words build per-copy channels by *offsetting* a constant, so a
@@ -6374,8 +6377,8 @@ bit-identity over the corpus already assembled for the differentiable backend is
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">nodeCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L78) | Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">simplify</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L87) | This track with constants folded and the algebraic identities applied, bottom-up. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">nodeCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L81) | Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">simplify</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L90) | This track with constants folded and the algebraic identities applied, bottom-up. |
 
 ## RectSLSoftRaster.kt { #rectslsoftraster-kt }
 
