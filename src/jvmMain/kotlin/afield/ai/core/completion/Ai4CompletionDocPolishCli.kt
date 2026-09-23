@@ -335,7 +335,8 @@ private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> Workspa
             searchWorkspaceSymbols(
                 index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(),
                 rawQuery = query,
-                limit = req.limit
+                limit = req.limit,
+                includeRelatedContext = req.includeRelatedContext
             )
         }
     }

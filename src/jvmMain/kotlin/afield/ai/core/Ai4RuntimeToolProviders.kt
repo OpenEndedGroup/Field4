@@ -268,9 +268,11 @@ internal class Ai4RuntimeToolProviders(
             return true
         }
 
+        // A bounded lookup must not wait for whole-database summary scans. The
+        // snapshot carries its own gathering/staleness message and refreshes in the background.
         when (kind) {
             "summary", "status" -> {
-                val summary = CodeUseTelemetryService.summary()
+                val summary = CodeUseTelemetryService.summarySnapshot()
                 CodeUseQueryResult(
                     success = summary.enabled,
                     kind = "summary",
@@ -291,7 +293,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "failures",
                     message = "Returned ${rows.size} retained compiler/runtime failure row(s).",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     failures = rows
                 )
             }
@@ -304,7 +306,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "snippets",
                     message = "Returned ${rows.size} recent snippet row(s).",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     snippets = rows
                 )
             }
@@ -317,7 +319,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "launches",
                     message = "Returned ${rows.size} launch lifecycle row(s).",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     launches = rows
                 )
             }
@@ -328,7 +330,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "symbols",
                     message = "Returned ${rows.size} symbol row(s). Symbol rows are populated once the analyzer has resolved uses.",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     symbols = rows
                 )
             }
@@ -339,7 +341,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "unresolved",
                     message = "Returned ${rows.size} unresolved analyzer row(s).",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     unresolved = rows
                 )
             }
@@ -358,7 +360,7 @@ internal class Ai4RuntimeToolProviders(
                     } else {
                         "Could not resolve a source symbol for '${req.sourcePath}:${req.line}'."
                     },
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     target = target,
                     callers = rows
                 )
@@ -370,7 +372,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "references-for-code",
                     message = "Returned ${rows.size} likely Field source reference row(s).",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     references = rows
                 )
             }
@@ -386,7 +388,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "related-source-for-code",
                     message = "Returned ${rows.size} related Field source bundle row(s) with excerpts, usage counts, and peer callers.",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     relatedSources = rows
                 )
             }
@@ -405,7 +407,7 @@ internal class Ai4RuntimeToolProviders(
                     success = analysis.success,
                     kind = "semantic-analyze",
                     message = analysis.message,
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     references = analysis.references,
                     relatedSources = analysis.relatedSources,
                     semanticAnalysis = analysis
@@ -418,7 +420,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "hot-symbols",
                     message = "Returned ${rows.size} hot source symbol row(s) for window='${req.window}'. Confidence values are literal: k2-resolved is semantic; source-index values are conservative static matches; textual values are fallback evidence.",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     hotSymbols = rows
                 )
             }
@@ -433,7 +435,7 @@ internal class Ai4RuntimeToolProviders(
                     success = true,
                     kind = "early-document-symbols",
                     message = "Returned ${rows.size} source symbol row(s) used early in a document and rarely afterward.",
-                    summary = CodeUseTelemetryService.summary(),
+                    summary = CodeUseTelemetryService.summarySnapshot(),
                     earlySymbols = rows
                 )
             }
@@ -499,6 +501,6 @@ internal class Ai4RuntimeToolProviders(
 
 
     val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = { req ->
-        searchWorkspaceSymbols(KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(), req.query.trim(), req.limit)
+        searchWorkspaceSymbols(KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(), req.query.trim(), req.limit, req.includeRelatedContext)
     }
 }

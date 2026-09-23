@@ -1,0 +1,159 @@
+{
+  "sourceUid": "6cf7564f-1122-46f0-be58-85a10089dc29",
+  "toolsUid": "d6e391ba-3e36-4cc8-9027-cda10dd6939f",
+  "timings": [
+    {
+      "tool": "WorkspaceSymbolSearch",
+      "seconds": 0.2126
+    },
+    {
+      "tool": "WorkspaceSymbolSearch",
+      "seconds": 0.0144
+    },
+    {
+      "tool": "InspectFunctionStudy",
+      "seconds": 0.032
+    },
+    {
+      "tool": "PatchFunctionStudy",
+      "seconds": 1.2835
+    },
+    {
+      "tool": "ExportFunctionStudy",
+      "seconds": 0.0579
+    },
+    {
+      "tool": "ExportFunctionStudy",
+      "seconds": 0.0861
+    }
+  ],
+  "lookup": {
+    "symbol": "String.file",
+    "kind": "val",
+    "locationHint": "src/jvmMain/kotlin/afield/stdlib/FileManager.kt:465",
+    "filePath": "src/jvmMain/kotlin/afield/stdlib/FileManager.kt",
+    "fileId": null,
+    "line": 465,
+    "definitionLine": "val String.file: File",
+    "definitionBody": "val String.file: File\n    get() = FileManager.current().file(this)",
+    "relatedGuides": [],
+    "relatedExamples": [],
+    "kdoc": "`\"data.csv\".file` \u2014 the terse form of `files.file(this)`, and the idiom worth learning first.\n\nUnderstands everything [FieldFileManager] does \u2014 a home-relative path, a `%document/\u2026` or `%project/\u2026` spec, a\nregistered `%name`, or a recursive glob. Throws on an unmatched glob or an unknown name; see [FieldFileManager.file]."
+  },
+  "patch": {
+    "revision": "r2-5efcf4dbd490",
+    "facts": {
+      "message": "Compiled, checked and activated",
+      "parent": "r1-a22a87b22d88",
+      "sourceHash": "5efcf4dbd4902fc96e2c1101c4662fd832084282aee9e247b98631a045ec86da",
+      "events": [],
+      "description": "Raise amplitude without changing carrier frequencies",
+      "validation": {
+        "compileSuccess": true,
+        "checksPassed": true,
+        "sourceHash": "5efcf4dbd4902fc96e2c1101c4662fd832084282aee9e247b98631a045ec86da",
+        "revision": "r2-5efcf4dbd490",
+        "scope": "complete standalone StudyComposition source"
+      },
+      "checks": "Finite/bounded samples at <=20ms, declared holds, deterministic repeated probes. Observe and compare before judging the edit.",
+      "preview": {
+        "intervalSeconds": [
+          0.0,
+          20.0
+        ],
+        "comparedTo": "r1-a22a87b22d88",
+        "sourceHash": "5efcf4dbd4902fc96e2c1101c4662fd832084282aee9e247b98631a045ec86da",
+        "channels": [
+          "x",
+          "y",
+          "z"
+        ],
+        "events": [],
+        "choices": [],
+        "selectedIds": [],
+        "sampling": {
+          "count": 1281,
+          "maxStepSeconds": 0.015625,
+          "method": "Uniform samples plus exact declared joins; per-pixel min/max for wide views. Finite samples cannot rule out hidden narrow features. Min/max loses ordering within bins."
+        },
+        "extrema": [
+          {
+            "channel": "x",
+            "min": 0.2,
+            "max": 0.8
+          },
+          {
+            "channel": "y",
+            "min": 0.2000013011676084,
+            "max": 0.7999998554257284
+          },
+          {
+            "channel": "z",
+            "min": 0.20000057829694706,
+            "max": 0.7999998554257284
+          }
+        ],
+        "holdChecks": [],
+        "joins": [],
+        "difference": [
+          {
+            "channel": "x",
+            "maxAbs": 0.10000000000000009,
+            "atSeconds": 1.25,
+            "rms": 0.07068307293387494
+          },
+          {
+            "channel": "y",
+            "maxAbs": 0.09999995180857613,
+            "atSeconds": 1.21875,
+            "rms": 0.07003737489005783
+          },
+          {
+            "channel": "z",
+            "maxAbs": 0.09999995180857613,
+            "atSeconds": 5.953125,
+            "rms": 0.07031354595066136
+          }
+        ],
+        "imageFile": "/Users/marc/field4/dev_docs/agents/demos/ai4_loop_verification/revisions/r2-5efcf4dbd490-0.0-20.0-vs-r1-a22a87b22d88.png",
+        "guarantees": "All numerical measurements are sampled estimates. Constant holds and phase/frequency claims require source inspection as well."
+      }
+    }
+  },
+  "export": {
+    "revision": "r2-5efcf4dbd490",
+    "facts": {
+      "message": "Exported and verified CSV files",
+      "sourceHash": "5efcf4dbd4902fc96e2c1101c4662fd832084282aee9e247b98631a045ec86da",
+      "durationSeconds": 60.0,
+      "sampleRateHz": 100.0,
+      "scale": 100.0,
+      "header": false,
+      "endpointIncluded": true,
+      "files": [
+        {
+          "channel": "x",
+          "path": "/Users/marc/field4/dev_docs/agents/demos/ai4_loop_verification/files/a",
+          "rows": 6001,
+          "bytes": 143198,
+          "sha256": "7575283ead0f0c42ec8bc218a3ac53b039f90623ec0115c5570224b55981e9db"
+        },
+        {
+          "channel": "y",
+          "path": "/Users/marc/field4/dev_docs/agents/demos/ai4_loop_verification/files/b",
+          "rows": 6001,
+          "bytes": 143664,
+          "sha256": "7644e978a3032261eb8bcef8e9f0cc933404cf1f7f50e9c047f1b3401d4039c1"
+        },
+        {
+          "channel": "z",
+          "path": "/Users/marc/field4/dev_docs/agents/demos/ai4_loop_verification/files/c",
+          "rows": 6001,
+          "bytes": 143567,
+          "sha256": "77f41759e9aef7d225556599d963a364ba62575a73f3497826c5797ba86961f5"
+        }
+      ]
+    }
+  },
+  "ok": true
+}

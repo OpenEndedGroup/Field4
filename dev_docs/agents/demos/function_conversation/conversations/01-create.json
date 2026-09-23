@@ -1,0 +1,292 @@
+{
+  "label": "01-create",
+  "transport": "Field ai-assist kind=general (AI4 UI path)",
+  "prompt": "We are experimenting with talking a multivariate Functions.kt function into existence. Use the document-defined function study tools. Start by reading guides/working.md with DocumentGuideReadRequest and inspecting InspectFunctionStudy. The source box is function_source. Use EditFunctionStudy for candidate transactions (complete Kotlin source, expected revision and live source hash); this compiles and checks before activation. Do not edit this box via generic edit tools. All tool names and StudyComposition/StudyEvent API contracts are in the guide. Keep the Kotlin readable and self-contained.\n\nI'd like a 3d function that lasts 1 hour. The function is generally smooth, and the dimensions vary in and out of phase smoothly over the order of 100 seconds. Six evenly spaced crescendos and decrescendos interrupt this, consisting of pulses that increase in frequency and amplitude until they remain at (1,1,1) for 30 seconds.\n\nInterpret 3d as three time-dependent channels. Make reversible artistic assumptions, recording them separately from my requirements in StudyChoice. Use stable event IDs e1 through e6. The background continues below events and returns afterward; keep events away from boundaries. Please use integrated instantaneous frequency for the pulses, explicit exact constant holds, and smooth joins. Preserve named parameters so follow-up moves and rise changes are small edits. Inspect actual overview pixels plus a resolved <=25-second rise window and a plateau join. Check holds and join measurements, repair any concrete issue, then explain briefly what you chose. Do not keep optimising after a checked candidate.\n",
+  "elapsedSeconds": 100.057,
+  "before": {
+    "name": "InspectFunctionStudy",
+    "ok": true,
+    "result": {
+      "revision": "r2-8f83d79e35c9",
+      "facts": {
+        "parent": null,
+        "description": "Blank page: three constant channels",
+        "durationSeconds": 3600.0,
+        "channels": [
+          "x",
+          "y",
+          "z"
+        ],
+        "events": [],
+        "choices": [
+          {
+            "statement": "Initial constant background is a disposable starting point",
+            "provenance": "agent assumption"
+          }
+        ],
+        "source": "import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyChoice\n\n// A blank musical page: three constant channels. Ask AI4 to grow this Kotlin.\n// The final expression returns a candidate; the tools box compiles and checks it.\nwith(Functions) {\n    StudyComposition(\n        channels = listOf(\"x\", \"y\", \"z\").map { name -> fn(0.0..3600.0, name) { 0.5 } },\n        choices = listOf(StudyChoice(\"Initial constant background is a disposable starting point\", \"agent assumption\"))\n    )\n}\n",
+        "liveSourceHash": "8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a",
+        "dirty": false,
+        "selectedIds": [],
+        "selectionSeconds": [
+          0.0,
+          3600.0
+        ],
+        "history": [
+          "r1-8f83d79e35c9",
+          "r2-8f83d79e35c9"
+        ],
+        "semantics": "Seconds; pure random access required. Event metadata is declared, not a proof about arbitrary Kotlin. Fn lambdas may be opaque to graph rewrites."
+      }
+    }
+  },
+  "after": {
+    "name": "InspectFunctionStudy",
+    "ok": true,
+    "result": {
+      "revision": "r3-66fd67f6fe7c",
+      "facts": {
+        "parent": "r2-8f83d79e35c9",
+        "description": "One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.",
+        "durationSeconds": 3600.0,
+        "channels": [
+          "x",
+          "y",
+          "z"
+        ],
+        "events": [
+          {
+            "id": "e1",
+            "start": 185.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 415.0,
+            "plateauStart": 285.0,
+            "plateauEnd": 315.0
+          },
+          {
+            "id": "e2",
+            "start": 785.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 1015.0,
+            "plateauStart": 885.0,
+            "plateauEnd": 915.0
+          },
+          {
+            "id": "e3",
+            "start": 1385.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 1615.0,
+            "plateauStart": 1485.0,
+            "plateauEnd": 1515.0
+          },
+          {
+            "id": "e4",
+            "start": 1985.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 2215.0,
+            "plateauStart": 2085.0,
+            "plateauEnd": 2115.0
+          },
+          {
+            "id": "e5",
+            "start": 2585.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 2815.0,
+            "plateauStart": 2685.0,
+            "plateauEnd": 2715.0
+          },
+          {
+            "id": "e6",
+            "start": 3185.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 3415.0,
+            "plateauStart": 3285.0,
+            "plateauEnd": 3315.0
+          }
+        ],
+        "choices": [
+          {
+            "statement": "Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple",
+            "provenance": "agent assumption"
+          }
+        ],
+        "source": "import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    val slowAmplitude = 0.04\n    val slowPeriodSeconds = 230.0\n\n    val firstStartSeconds = 185.0\n    val eventSpacingSeconds = 600.0\n    val riseSeconds = 100.0\n    val holdSeconds = 30.0\n    val fallSeconds = 100.0\n    val lowPulseHz = 0.06\n    val highPulseHz = 0.80\n    val pulseFloor = 0.25\n    val mergeFraction = 0.20\n\n    // Starts are independent of rise durations: changing a rise pins its start.\n    // Stable IDs survive moves and chronological reordering.\n    val events = listOf(\n        StudyEvent(\"e1\", firstStartSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e2\", firstStartSeconds + eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e3\", firstStartSeconds + 2.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e4\", firstStartSeconds + 3.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e5\", firstStartSeconds + 4.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e6\", firstStartSeconds + 5.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds)\n    )\n\n    fun smooth01(value: Double): Double {\n        val u = value.coerceIn(0.0, 1.0)\n        return u * u * u * (10.0 + u * (-15.0 + 6.0 * u))\n    }\n\n    fun background(seconds: Double, channel: Int): Double {\n        val drift = phaseExcursionRadians * kotlin.math.sin(2.0 * PI * seconds / relativePhasePeriodSeconds)\n        val phase = 2.0 * PI * seconds / carrierPeriodSeconds + (channel - 1) * drift\n        return backgroundCenter + backgroundAmplitude * kotlin.math.sin(phase) +\n            slowAmplitude * kotlin.math.sin(2.0 * PI * seconds / slowPeriodSeconds)\n    }\n\n    // age runs from the background edge toward the plateau on either side.\n    // Integral of f(age) = lowPulseHz + (highPulseHz-lowPulseHz)*age/span.\n    // Reversing age on the fall gives a decelerating, shrinking pulse train.\n    fun shoulder(base: Double, age: Double, span: Double): Double {\n        val u = (age / span).coerceIn(0.0, 1.0)\n        val cycles = lowPulseHz * age +\n            0.5 * (highPulseHz - lowPulseHz) * age * age / span\n        val pulse = 0.5 - 0.5 * kotlin.math.cos(2.0 * PI * cycles)\n        val strength = smooth01(u)\n        val pulseTarget = pulseFloor + (1.0 - pulseFloor) * pulse\n        val pulsed = (1.0 - strength) * base + strength * pulseTarget\n        // Fill the troughs during the last 20% rather than abruptly cut pulses.\n        val merge = smooth01((u - (1.0 - mergeFraction)) / mergeFraction)\n        return (1.0 - merge) * pulsed + merge\n    }\n\n    val channels = listOf(\"x\", \"y\", \"z\").mapIndexed { index, name ->\n        fn(0.0..durationSeconds, name) { seconds ->\n            // The background always uses absolute time; events never restart it.\n            val base = background(seconds, index)\n            val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }\n            when {\n                event == null -> base\n                seconds < event.plateauStart -> shoulder(base, seconds - event.start, event.rise)\n                seconds <= event.plateauEnd -> 1.0 // exact closed constant hold\n                else -> shoulder(base, event.end - seconds, event.fall)\n            }\n        }\n    }\n\n    StudyComposition(\n        channels = channels,\n        events = events,\n        duration = durationSeconds,\n        maxFrequencyHz = 2.0,\n        choices = listOf(\n            StudyChoice(\"Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale\", \"user requirement\"),\n            StudyChoice(\"Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries\", \"user requirement\"),\n            StudyChoice(\"Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6\", \"user requirement\"),\n            StudyChoice(\"Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway\", \"agent assumption\"),\n            StudyChoice(\"Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins\", \"agent assumption\"),\n            StudyChoice(\"Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture\", \"agent assumption\"),\n            StudyChoice(\"All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus\", \"agent assumption\"),\n            StudyChoice(\"Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple\", \"agent assumption\")\n        )\n    )\n}\n",
+        "liveSourceHash": "66fd67f6fe7cd2f7ebe0547d6d89386fc1fa418b54c419ea3fd590536ce5de19",
+        "dirty": false,
+        "selectedIds": [],
+        "selectionSeconds": [
+          0.0,
+          3600.0
+        ],
+        "history": [
+          "r1-8f83d79e35c9",
+          "r2-8f83d79e35c9",
+          "r3-66fd67f6fe7c"
+        ],
+        "semantics": "Seconds; pure random access required. Event metadata is declared, not a proof about arbitrary Kotlin. Fn lambdas may be opaque to graph rewrites."
+      }
+    }
+  },
+  "panel": {
+    "uid": "function_source",
+    "property": "outputarea",
+    "channel": "ai-chat",
+    "value": "<<you>>\nWe are experimenting with talking a multivariate Functions.kt function into existence. Use the document-defined function study tools. Start by reading guides/working.md with DocumentGuideReadRequest and inspecting InspectFunctionStudy. The source box is function_source. Use EditFunctionStudy for candidate transactions (complete Kotlin source, expected revision and live source hash); this compiles and checks before activation. Do not edit this box via generic edit tools. All tool names and StudyComposition/StudyEvent API contracts are in the guide. Keep the Kotlin readable and self-contained.\n\nI'd like a 3d function that lasts 1 hour. The function is generally smooth, and the dimensions vary in and out of phase smoothly over the order of 100 seconds. Six evenly spaced crescendos and decrescendos interrupt this, consisting of pulses that increase in frequency and amplitude until they remain at (1,1,1) for 30 seconds.\n\nInterpret 3d as three time-dependent channels. Make reversible artistic assumptions, recording them separately from my requirements in StudyChoice. Use stable event IDs e1 through e6. The background continues below events and returns afterward; keep events away from boundaries. Please use integrated instantaneous frequency for the pulses, explicit exact constant holds, and smooth joins. Preserve named parameters so follow-up moves and rise changes are small edits. Inspect actual overview pixels plus a resolved <=25-second rise window and a plateau join. Check holds and join measurements, repair any concrete issue, then explain briefly what you chose. Do not keep optimising after a checked candidate.\n<<progress>>\nStarting AI conversation\nPreparing context and tools.\n<<progress>>\nPlanning tool use\nNext tool: `DocumentGuideReadRequest`\n<<progress>>\nUsing DocumentGuideReadRequest\n{\"lineCount\":250,\"path\":\"guides/working.md\",\"startLine\":1}\n<<progress>>\nDocumentGuideReadRequest finished\nRead [guides/working.md](field://guide/guides/working.md) lines 1\u201382\n<<progress>>\nPlanning tool use\nNext tool: `InspectFunctionStudy`\n<<progress>>\nUsing InspectFunctionStudy\n{\"revision\":\"\"}\n<<progress>>\nInspectFunctionStudy finished\nkeys=error,tool,message\n<<progress>>\nPlanning tool use\nNext tool: `InspectFunctionStudy`\n<<progress>>\nUsing InspectFunctionStudy\n{\"revision\":\"current\"}\n<<progress>>\nInspectFunctionStudy finished\nr2-8f83d79e35c9 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0\n<<progress>>\nPlanning the pulse amplitude\n**Planning the pulse amplitude**\n\nI'm trying to figure out how to construct a good pulse crescendo amplitude while keeping a close eye on my time budget. It's essential that I hold the right amplitude to ensure everything works harmoniously. I want to make sure the design meets whatever expectations there are while being time-efficient. I need to balance quality and time constraints effectively, which is always a challenge worth tackling! **Designing the pulse envelope**\n\nI'm aiming to create a smooth increase in amplitude until it flattens near a documented plateau. The formula will blend a base and a pulse target with a smooth rise. For the pulse envelope, I'll work with specific values while avoiding bounds. I need to factor in a pulse signal that adjusts as the floor rises and the amplitude reduces towards zero. The final value should reflect a balance between the base and pulse, making sure everything integrates smoothly. I'll also consider frequency adjustments and phase excursions for alignment. **Determining the baseline capture**\n\nI'm thinking about how to choose the right measurement, aiming for a baseline value around 0.45 with some sine wave adjustments. I want to ensure the capture process involves counting actual pixels, which should satisfy any visual requests. It's interesting to note that while the math function prefers using an overview, I should focus on capturing an accurate baseline first. There\u2019s no need to render if it\u2019s unrelated, so I\u2019ll observe the conditions before proceeding with tools.\n\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":3600,\"revision\":\"r2-8f83d79e35c9\",\"startSeconds\":0}\n<<progress>>\nObserveFunctionStudy finished\nr2-8f83d79e35c9 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees images=1\n<<progress>>\nPlanning tool use\nNext tool: `EditFunctionStudy`\n<<progress>>\nUsing EditFunctionStudy\n{\"description\":\"One-hour drifting three-channel background with six evenly spaced, smooth chirp crescendos, exact holds and mirrored decrescendos.\",\"expectedRevision\":\"r2-8f83d79e35c9\",\"expectedSourceHash\":\"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a\",\"source\":\"import afield.stdlib.Functions\\nimport afield.stdlib.StudyComposition\\nimport afield.stdlib.StudyEvent\\nimport afield.stdlib.StudyChoice\\nimport kotlin.math.*\\n\\nwith(Functions) {\\n    val durationSeconds = 3600.0\\n    val carrierPeriodSeconds = 40.0\\n    val relativePhasePeriodSeconds = 100.0\\n    val phaseExcursionRadians = 2.0 * PI / 3.0\\n    val backgroundCenter = 0.45\\n    val backgroundAmplitude = 0.20\\n    ...\n<<progress>>\nEditFunctionStudy finished\nkeys=error,tool,message\n<<progress>>\nPlanning tool use\nNext tool: `InspectFunctionStudy`\n<<progress>>\nUsing InspectFunctionStudy\n{\"revision\":\"current\"}\n<<progress>>\nInspectFunctionStudy finished\nr2-8f83d79e35c9 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0\n<<progress>>\nPlanning tool use\nNext tool: `EditFunctionStudy`\n<<progress>>\nUsing EditFunctionStudy\n{\"description\":\"One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.\",\"expectedRevision\":\"r2-8f83d79e35c9\",\"expectedSourceHash\":\"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a\",\"source\":\"import afield.stdlib.Functions\\nimport afield.stdlib.StudyComposition\\nimport afield.stdlib.StudyEvent\\nimport afield.stdlib.StudyChoice\\nimport kotlin.math.PI\\n\\nwith(Functions) {\\n    val durationSeconds = 3600.0\\n    val carrierPeriodSeconds = 40.0\\n    val relativePhasePeriodSeconds = 100.0\\n    val phaseExcursionRadians = 2.0 * PI / 3.0\\n    val backgroundCenter = 0.45\\n    val backgroundAmplitu...\n<<progress>>\nEditFunctionStudy finished\nr3-66fd67f6fe7c Compiled, checked and activated images=0\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":3600,\"revision\":\"r3-66fd67f6fe7c\",\"startSeconds\":0}\n<<progress>>\nObserveFunctionStudy finished\nr3-66fd67f6fe7c intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees images=1\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":250,\"revision\":\"r3-66fd67f6fe7c\",\"startSeconds\":225}\n<<progress>>\nObserveFunctionStudy finished\nr3-66fd67f6fe7c intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees images=1\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":290,\"revision\":\"r3-66fd67f6fe7c\",\"startSeconds\":265}\n<<progress>>\nObserveFunctionStudy finished\nr3-66fd67f6fe7c intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees images=1\n<<progress>>\nClarifying compilation needs\n**Clarifying compilation needs**\n\nIt seems I don't need any more tools for this task. The user has made it clear they want a specialized and explicit compilation. I should focus on this and avoid any unnecessary generic candidate compilations. Once I finalize, I'll ensure the details are concise and verified \u2014 no extra information needed. I think this approach should meet the user's requirements effectively!\n<<ai>>\n_r2-8f83d79e35c9; 0.0..3600.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/25f7aea905b39abc29fa.png)\n<<ai>>\n_r3-66fd67f6fe7c; 0.0..3600.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/4b01b666948796f5f49f.png)\n<<ai>>\n_r3-66fd67f6fe7c; 225.0..250.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/5206a5fabeba49f58c20.png)\n<<ai>>\n_r3-66fd67f6fe7c; 265.0..290.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/9efe483dfa599e2babf5.png)\n<<ai>>\nImplemented and activated **`r3-66fd67f6fe7c`**.\n\n- **Background:** three smooth channels with a 40-second carrier and relative phases drifting together and apart over 100 seconds.\n- **Six events:** plateau centers at minutes **5, 15, 25, 35, 45, 55**. Each has a 100-second rise, exact **30-second `(1,1,1)` hold**, and 100-second fall.\n- **Pulses:** integrated frequency sweeps from **0.06 to 0.8 Hz**, with growing pulse depth. During the final 20 seconds, troughs smoothly fill into the plateau; the fall reverses this gesture.\n- The background continues underneath and returns without restarting. Named parameters and IDs **e1\u2013e6** remain editable; artistic assumptions are recorded separately in `StudyChoice`.\n\n**Verified:** compilation and admission checks passed. I inspected the hour overview, a resolved 25-second rise, and the plateau transition. All six holds measured **zero target error**; plateau slopes were effectively zero, and boundary slope measurements matched closely. No further tuning applied."
+  },
+  "notices": [
+    "AI4: [info,ai.bridge] Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)",
+    "Initializing AI support v4",
+    "AI4: [info,ai.bridge] Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)",
+    "AI4: [info,ai.bridge] startThread(): fileKey=afield://function_conversation/function_source/code",
+    "AI4: [info,ai.bridge] startThread(): conversationId=conv_6ab30854d6508196aa25bf7bd82ba7510c381c42d1c8df76 localThreadId=3ca0a05f-d390-4d41-bc43-edc4a5eed6c3 (2181ms)",
+    "Initiating AI Conversation",
+    "AI4: [info,ai.chat] chatGeneral(): lang=Kotlin codeChars=521 attachments=1 images=0",
+    "AI4: [info,ai.bridge] convId=conv_6ab30854d6508196aa25bf7bd82ba7510c381c42d1c8df76 fileKey=afield://function_conversation/function_source/code inputChars=18177 maxOutputTokens=10000 attachments=1 images=0",
+    "AI4: [info,ai.toolio] log=/Users/marc/field4/dev_docs/agents/demos/function_conversation/conversations/tool-io/2026-09-22T225934-055210Z-6c9181c3.jsonl",
+    "AI4: [info,ai.bridge] running prompt <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab30856c4cc8196845bc69d381066a8 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] initial response id=resp_0c381c42d1c8df76006ab30856c4cc8196845bc69d381066a8 outputItems=1 <<spinner>>",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=DocumentGuideReadRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 1/24)",
+    "AI4: [info,ai.bridge] tool: name=DocumentGuideReadRequest callId=call_MXswzXuNPFyeLISomTSscFbk {\"lineCount\":250,\"path\":\"guides/working.md\",\"startLine\":1}",
+    "AI4: [info,ai.bridge] tool: result name=DocumentGuideReadRequest Read [guides/working.md](field://guide/guides/working.md) lines 1\u201382",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab30859e4a8819688a83a0f3a8b25dd status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab30859e4a8819688a83a0f3a8b25dd outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=InspectFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 2/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectFunctionStudy callId=call_X6aEjGbCfDDbKXVkSISfP3yZ {\"revision\":\"\"}",
+    "AI4: [error,ai.bridge] tool: ERROR name=InspectFunctionStudy msg=Unknown revision",
+    "AI4: [info,ai.bridge] tool: result name=InspectFunctionStudy keys=error,tool,message",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab3085c9a7c8196a461b70cd4a97c67 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab3085c9a7c8196a461b70cd4a97c67 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=InspectFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 3/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectFunctionStudy callId=call_LnVJdPkebYitykbYpARfzpPQ {\"revision\":\"current\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectFunctionStudy r2-8f83d79e35c9 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab3085fc4088196b3eb06801337a104 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab3085fc4088196b3eb06801337a104 outputItems=3",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 4/24)",
+    "AI4: [info,ai.bridge] tool: name=ObserveFunctionStudy callId=call_L0ShhKx1Cftw2QX0FslLKYWj {\"compareTo\":\"\",\"endSeconds\":3600,\"revision\":\"r2-8f83d79e35c9\",\"startSeconds\":0}",
+    "AI4: [info,ai.bridge] tool: result name=ObserveFunctionStudy r2-8f83d79e35c9 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, gua...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab3086ebb808196913d39a39072f127 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab3086ebb808196913d39a39072f127 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 5/24)",
+    "AI4: [info,ai.bridge] tool: name=EditFunctionStudy callId=call_wO021vNzBHndHMZGSouWJcix {\"description\":\"One-hour drifting three-channel background with six evenly spaced, smooth chirp crescendos, exact holds and mirrored d...",
+    "AI4: [info,ai.bridge] output[1] function_call name=EditFunctionStudy",
+    "AI4: [error,ai.bridge] tool: ERROR name=EditFunctionStudy msg=Candidate must return StudyComposition. Return type mismatch: expected 'Double', actual 'Functions.Fn'. Return type mismatch: expected 'Double', actual 'Function...",
+    "AI4: [info,ai.bridge] tool: result name=EditFunctionStudy keys=error,tool,message",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab3088ee384819687b5fd2af88bbbc0 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab3088ee384819687b5fd2af88bbbc0 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=InspectFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 6/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectFunctionStudy callId=call_rX0NnRIM2xOYiM5wpcNCrgCU {\"revision\":\"current\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectFunctionStudy r2-8f83d79e35c9 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab30892f058819690c3c13d3af3012e status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab30892f058819690c3c13d3af3012e outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=EditFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 7/24)",
+    "AI4: [info,ai.bridge] tool: name=EditFunctionStudy callId=call_Gj9kanPB4sqjrMkD6efL4QeT {\"description\":\"One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qu...",
+    "AI4: [info,ai.bridge] tool: result name=EditFunctionStudy r3-66fd67f6fe7c Compiled, checked and activated images=0",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab308a6cb108196ab7afa805a41970b status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab308a6cb108196ab7afa805a41970b outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=ObserveFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 8/24)",
+    "AI4: [info,ai.bridge] tool: name=ObserveFunctionStudy callId=call_krU6RCkcmEeJVn4XqERC75YL {\"compareTo\":\"\",\"endSeconds\":3600,\"revision\":\"r3-66fd67f6fe7c\",\"startSeconds\":0}",
+    "AI4: [info,ai.bridge] tool: result name=ObserveFunctionStudy r3-66fd67f6fe7c intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, gua...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790118057719>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab308a98b3c8196a5ad7b8909c9d3da status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab308a98b3c8196a5ad7b8909c9d3da outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=ObserveFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 9/24)",
+    "AI4: [info,ai.bridge] tool: name=ObserveFunctionStudy callId=call_ScPSNMHqBCNHCqogw3bYtzP9 {\"compareTo\":\"\",\"endSeconds\":250,\"revision\":\"r3-66fd67f6fe7c\",\"startSeconds\":225}",
+    "AI4: [info,ai.bridge] tool: result name=ObserveFunctionStudy r3-66fd67f6fe7c intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, gua...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab308acd6e48196ad04231a689f427a status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab308acd6e48196ad04231a689f427a outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=ObserveFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 10/24)",
+    "AI4: [info,ai.bridge] tool: name=ObserveFunctionStudy callId=call_WBasOcKgm6cR2yqio6lmJN1k {\"compareTo\":\"\",\"endSeconds\":290,\"revision\":\"r3-66fd67f6fe7c\",\"startSeconds\":265}",
+    "AI4: [info,ai.bridge] tool: result name=ObserveFunctionStudy r3-66fd67f6fe7c intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, gua...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0c381c42d1c8df76006ab308b044348196af593960f88df3c5 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0c381c42d1c8df76006ab308b044348196af593960f88df3c5 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=0 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] no tool calls; finishing",
+    "AI4: [info,ai.bridge] done responseId=resp_0c381c42d1c8df76006ab308b044348196af593960f88df3c5 textChars=1018 commentaryCount=0 (96984ms)",
+    "Finished AI conversation"
+  ],
+  "tokenUsage": "Not surfaced by AI4 SendResult; tool-io logs record model/rounds where available"
+}

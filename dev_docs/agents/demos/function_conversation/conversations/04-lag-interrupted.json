@@ -1,0 +1,22 @@
+{
+  "label": "04-lag-interrupted",
+  "status": "Interrupted by Codex after diagnostic query stalled for over 4 minutes",
+  "prompt": "Let the second dimension lag during that event, then catch up smoothly. Keep the other two channels exactly as they are, keep the 30-second shared all-ones hold, and preserve everything outside e3. Use a smooth, monotonic local-time lag during its rise which returns to zero lag with matching endpoint slopes before the hold; choose and state a modest peak lag. Treat this as an instance-specific override, not a change to all events. Inspect before editing. Use CompareFunctionStudy with only y allowed inside e3, inspect before/after local waveform pixels and the plateau join, and report the actual timing policy and measured preservation.\n",
+  "workingRevision": "r5-2aa6023ddfca",
+  "toolIo": "conversations/tool-io/2026-09-22T230545-570100Z-8b7ed8f5.jsonl",
+  "errors": [
+    "Candidate must return StudyComposition. Kotlin compiler exception: org.jetbrains.kotlin.fir.pipeline.IrGenerationExtensionException: org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl@7c748f8d has no callableId\nCaused by: java.lang.IllegalStateException: org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl@7c748f8d has no callableId",
+    "Candidate must return StudyComposition. Kotlin compiler exception: org.jetbrains.kotlin.fir.pipeline.IrGenerationExtensionException: org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl@74219979 has no callableId\nCaused by: java.lang.IllegalStateException: org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl@74219979 has no callableId"
+  ],
+  "lastToolCall": {
+    "timestamp": "2026-09-22T23:07:31.519878Z",
+    "sessionId": "8b7ed8f5-09c1-4437-bc58-b81f30cbae0b",
+    "event": "tool_call",
+    "round": 6,
+    "toolName": "CodeUseQueryRequest",
+    "callId": "call_HgiP93hnd62qA2IpigxnzZfE",
+    "arguments": "{\"box\":\"function\",\"callersPerSymbol\":0,\"code\":\"\",\"document\":\"\",\"earlyWindowMs\":0,\"kind\":\"failures\",\"limit\":3,\"line\":0,\"sourceName\":\"\",\"sourcePath\":\"\",\"sourceRadiusLines\":0,\"window\":\"day\"}",
+    "argumentSummary": "{\"box\":\"function\",\"callersPerSymbol\":0,\"code\":\"\",\"document\":\"\",\"earlyWindowMs\":0,\"kind\":\"failures\",\"limit\":3,\"line\":0,\"sourceName\":\"\",\"sourcePath\":\"\",\"sourceRadiusLines\":0,\"window\":\"day\"}"
+  },
+  "diagnosis": "Thread dump: CodeUseQueryRequest blocked in CodeUseTelemetryService.summary -> recentK2CatchupBacklog SQLite scan. Existing compiler Wither plugin rejected candidate with has no callableId. No new revision activated."
+}

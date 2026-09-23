@@ -2595,6 +2595,11 @@ object CodeUseTelemetryService {
                 """.trimIndent()
             )
             st.execute("CREATE INDEX IF NOT EXISTS idx_snippets_created ON snippets(created_at DESC)")
+            // Catch-up scans newest snippets and probes resolved uses by snippet, not symbol.
+            // Without these indexes its correlated NOT EXISTS scans symbol_uses per snippet
+            // while ensureSchema holds the lock needed by interactive AI4 source tools.
+            st.execute("CREATE INDEX IF NOT EXISTS idx_snippets_updated ON snippets(updated_at DESC)")
+            st.execute("CREATE INDEX IF NOT EXISTS idx_symbol_uses_snippet_confidence ON symbol_uses(snippet_id, confidence)")
             st.execute("CREATE INDEX IF NOT EXISTS idx_compile_snippet ON compile_events(snippet_id, created_at DESC)")
             st.execute("CREATE INDEX IF NOT EXISTS idx_eval_snippet ON eval_events(snippet_id, created_at DESC)")
             st.execute("CREATE INDEX IF NOT EXISTS idx_launch_snippet ON launch_events(snippet_id, created_at DESC)")

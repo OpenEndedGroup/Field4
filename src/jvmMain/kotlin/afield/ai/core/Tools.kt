@@ -772,8 +772,8 @@ interface CarriesToolImages {
 }
 
 /** Example tool (optional) ------------------------------------------------- */
-@JsonClassDescription("Looks up symbols in the IDE workspace index. Results may include relatedGuides and relatedExamples paths.")
-data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25)
+@JsonClassDescription("Look up symbols, including extension properties such as String.file. Exact names return the exact declaration first, with KDoc and getter/source. Related guides/examples are optional; request them only when needed.")
+data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25, val includeRelatedContext: Boolean = false)
 
 data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
 data class WorkspaceSymbolMatch(
@@ -786,7 +786,8 @@ data class WorkspaceSymbolMatch(
     val definitionLine: String? = null,
     val definitionBody: String? = null,
     val relatedGuides: List<String> = emptyList(),
-    val relatedExamples: List<String> = emptyList()
+    val relatedExamples: List<String> = emptyList(),
+    val kdoc: String? = null
 )
 
 /** CLI example tools -------------------------------------------------------- */

@@ -152,7 +152,7 @@ object StdoutLog : LogSink {
 }
 
 class NotifyLog(
-    private val label: String = "AI",
+    private val label: String = "AI4",
     private val prefix: String = "AI4",
     private val maxLen: Int = 200,
     private val dedupeWindowMs: Long = 1000
@@ -165,7 +165,8 @@ class NotifyLog(
         val now = System.currentTimeMillis()
         val prev = lastNotification.put(key, now)
         if (prev != null && now - prev < dedupeWindowMs) return
-        notify("$prefix: [${event.channel}] $clipped", label)
+        // An empty category disables toast replacement and floods the UI during tool use.
+        notify("$prefix: [${event.channel}] $clipped", label.ifBlank { "AI4" })
     }
 
     companion object {

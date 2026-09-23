@@ -1,0 +1,383 @@
+{
+  "label": "05-delete",
+  "transport": "Field ai-assist kind=general (AI4 UI path)",
+  "prompt": "Delete the fourth interruption and let the continuing background show through. Resolve it to its stable ID from the current event inventory, remove only that event instance, and keep e3's new timing and second-channel lag. Verify preservation outside the deleted event's support with CompareFunctionStudy, inspect the recovered region, and retain the deleted revision in history. Explain the result briefly.\n",
+  "elapsedSeconds": 227.122,
+  "before": {
+    "name": "InspectFunctionStudy",
+    "ok": true,
+    "result": {
+      "revision": "r6-deb1b1738cb0",
+      "facts": {
+        "parent": "r5-2aa6023ddfca",
+        "description": "Instance-specific e3 y shoulder-clock lag: C2 bump peaking at 6 seconds, strictly advancing local time, recovered at 1605 before unchanged shared hold; preserve x/z and all other times.",
+        "durationSeconds": 3600.0,
+        "channels": [
+          "x",
+          "y",
+          "z"
+        ],
+        "events": [
+          {
+            "id": "e1",
+            "start": 185.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 415.0,
+            "plateauStart": 285.0,
+            "plateauEnd": 315.0
+          },
+          {
+            "id": "e2",
+            "start": 785.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 1015.0,
+            "plateauStart": 885.0,
+            "plateauEnd": 915.0
+          },
+          {
+            "id": "e3",
+            "start": 1425.0,
+            "rise": 200.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 1755.0,
+            "plateauStart": 1625.0,
+            "plateauEnd": 1655.0
+          },
+          {
+            "id": "e4",
+            "start": 1985.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 2215.0,
+            "plateauStart": 2085.0,
+            "plateauEnd": 2115.0
+          },
+          {
+            "id": "e5",
+            "start": 2585.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 2815.0,
+            "plateauStart": 2685.0,
+            "plateauEnd": 2715.0
+          },
+          {
+            "id": "e6",
+            "start": 3185.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 3415.0,
+            "plateauStart": 3285.0,
+            "plateauEnd": 3315.0
+          }
+        ],
+        "choices": [
+          {
+            "statement": "Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Move the third event, resolved and selected as e3, 40 seconds later: start 1425, plateau 1525..1555, end 1655 seconds. Preserve its identity and internal timing, every other event, and the continuing background. This supersedes the original even-spacing requirement and nominal timing assumption for e3 only",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Double selected e3's rise from 100 to 200 seconds, pinning its start at 1425. Its hold remains 30 seconds at 1625..1655, followed by the unchanged 100-second fall ending at 1755. The integrated rise frequency ramp now spans 200 seconds with unchanged 0.06/0.80 Hz endpoints. This supersedes e3's prior rise and later join times only; preserve every other event and the absolute-time background without ripple",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "During e3 only, let y lag and catch up smoothly on a strictly monotonic local rise clock; preserve x/z, everything outside e3, and the shared 30-second all-ones hold",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "e3 y shoulder age is a minus 6*64*u^3*(1-u)^3 seconds for a in [0,180], u=a/180; identity thereafter. Peak lag 6 seconds at 1515; recovered at 1605, 20 seconds before the unchanged 1625..1655 hold. Clock rate stays positive (approximately 0.8855..1.1145), with unit endpoint slopes and zero endpoint curvature. Warp pulse phase and shoulder envelopes together, retaining the absolute-time background. This overrides pulse synchronization only for this instance and channel",
+            "provenance": "agent assumption"
+          }
+        ],
+        "source": "import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    val slowAmplitude = 0.04\n    val slowPeriodSeconds = 230.0\n\n    val firstStartSeconds = 185.0\n    val eventSpacingSeconds = 600.0\n    val e3OffsetSeconds = 40.0\n    val riseSeconds = 100.0\n    val e3RiseSeconds = 200.0\n    val holdSeconds = 30.0\n    val fallSeconds = 100.0\n    val lowPulseHz = 0.06\n    val highPulseHz = 0.80\n    val pulseFloor = 0.25\n    val mergeFraction = 0.20\n    val e3YPeakLagSeconds = 6.0\n    val e3YLagSpanSeconds = 180.0\n\n    // Starts are independent of rise durations: changing a rise pins its start.\n    // Stable IDs survive moves and chronological reordering.\n    val events = listOf(\n        StudyEvent(\"e1\", firstStartSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e2\", firstStartSeconds + eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e3\", firstStartSeconds + 2.0 * eventSpacingSeconds + e3OffsetSeconds, e3RiseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e4\", firstStartSeconds + 3.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e5\", firstStartSeconds + 4.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e6\", firstStartSeconds + 5.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds)\n    )\n\n    fun smooth01(value: Double): Double {\n        val u = value.coerceIn(0.0, 1.0)\n        return u * u * u * (10.0 + u * (-15.0 + 6.0 * u))\n    }\n\n    fun background(seconds: Double, channel: Int): Double {\n        val drift = phaseExcursionRadians * kotlin.math.sin(2.0 * PI * seconds / relativePhasePeriodSeconds)\n        val phase = 2.0 * PI * seconds / carrierPeriodSeconds + (channel - 1) * drift\n        return backgroundCenter + backgroundAmplitude * kotlin.math.sin(phase) +\n            slowAmplitude * kotlin.math.sin(2.0 * PI * seconds / slowPeriodSeconds)\n    }\n\n    // age runs from the background edge toward the plateau on either side.\n    // Integral of f(age) = lowPulseHz + (highPulseHz-lowPulseHz)*age/span.\n    // Reversing age on the fall gives a decelerating, shrinking pulse train.\n    fun shoulder(base: Double, age: Double, span: Double): Double {\n        val u = (age / span).coerceIn(0.0, 1.0)\n        val cycles = lowPulseHz * age +\n            0.5 * (highPulseHz - lowPulseHz) * age * age / span\n        val pulse = 0.5 - 0.5 * kotlin.math.cos(2.0 * PI * cycles)\n        val strength = smooth01(u)\n        val pulseTarget = pulseFloor + (1.0 - pulseFloor) * pulse\n        val pulsed = (1.0 - strength) * base + strength * pulseTarget\n        // Fill the troughs during the last 20% rather than abruptly cut pulses.\n        val merge = smooth01((u - (1.0 - mergeFraction)) / mergeFraction)\n        return (1.0 - merge) * pulsed + merge\n    }\n\n    val channels = listOf(\"x\", \"y\", \"z\").mapIndexed { index, name ->\n        fn(0.0..durationSeconds, name) { seconds ->\n            // The background always uses absolute time; events never restart it.\n            val base = background(seconds, index)\n            val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }\n            when {\n                event == null -> base\n                seconds < event.plateauStart -> {\n                    val age = seconds - event.start\n                    // Instance-specific shoulder clock only; never warp the background.\n                    // 64*u^3*(1-u)^3 has peak 1 and zero first/second endpoint derivatives.\n                    val lag = if (event.id == \"e3\" && name == \"y\" && age < e3YLagSpanSeconds) {\n                        val u = age / e3YLagSpanSeconds\n                        val v = 1.0 - u\n                        e3YPeakLagSeconds * 64.0 * u * u * u * v * v * v\n                    } else 0.0\n                    // Clock rate is in [0.885514, 1.114487], so time never reverses.\n                    val localAge = age - lag\n                    // Bind local function result: avoids Wither's brace-tail callableId pitfall.\n                    val result = shoulder(base, localAge, event.rise)\n                    result\n                }\n                seconds <= event.plateauEnd -> 1.0 // exact closed constant hold\n                else -> shoulder(base, event.end - seconds, event.fall)\n            }\n        }\n    }\n\n    StudyComposition(\n        channels = channels,\n        events = events,\n        duration = durationSeconds,\n        maxFrequencyHz = 2.0,\n        choices = listOf(\n            StudyChoice(\"Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale\", \"user requirement\"),\n            StudyChoice(\"Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries\", \"user requirement\"),\n            StudyChoice(\"Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6\", \"user requirement\"),\n            StudyChoice(\"Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway\", \"agent assumption\"),\n            StudyChoice(\"Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins\", \"agent assumption\"),\n            StudyChoice(\"Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture\", \"agent assumption\"),\n            StudyChoice(\"All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus\", \"agent assumption\"),\n            StudyChoice(\"Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple\", \"agent assumption\"),\n            StudyChoice(\"Move the third event, resolved and selected as e3, 40 seconds later: start 1425, plateau 1525..1555, end 1655 seconds. Preserve its identity and internal timing, every other event, and the continuing background. This supersedes the original even-spacing requirement and nominal timing assumption for e3 only\", \"user requirement\"),\n            StudyChoice(\"Double selected e3's rise from 100 to 200 seconds, pinning its start at 1425. Its hold remains 30 seconds at 1625..1655, followed by the unchanged 100-second fall ending at 1755. The integrated rise frequency ramp now spans 200 seconds with unchanged 0.06/0.80 Hz endpoints. This supersedes e3's prior rise and later join times only; preserve every other event and the absolute-time background without ripple\", \"user requirement\"),\n            StudyChoice(\"During e3 only, let y lag and catch up smoothly on a strictly monotonic local rise clock; preserve x/z, everything outside e3, and the shared 30-second all-ones hold\", \"user requirement\"),\n            StudyChoice(\"e3 y shoulder age is a minus 6*64*u^3*(1-u)^3 seconds for a in [0,180], u=a/180; identity thereafter. Peak lag 6 seconds at 1515; recovered at 1605, 20 seconds before the unchanged 1625..1655 hold. Clock rate stays positive (approximately 0.8855..1.1145), with unit endpoint slopes and zero endpoint curvature. Warp pulse phase and shoulder envelopes together, retaining the absolute-time background. This overrides pulse synchronization only for this instance and channel\", \"agent assumption\")\n        )\n    )\n}\n",
+        "liveSourceHash": "deb1b1738cb0f63b77afc786e6487464425871f8f20a264479f8c088ae901698",
+        "dirty": false,
+        "selectedIds": [
+          "e3"
+        ],
+        "selectionSeconds": [
+          1425.0,
+          1755.0
+        ],
+        "history": [
+          "r2-8f83d79e35c9",
+          "r3-66fd67f6fe7c",
+          "r4-f7f9ef4f2f47",
+          "r5-2aa6023ddfca",
+          "r6-deb1b1738cb0"
+        ],
+        "semantics": "Seconds; pure random access required. Event metadata is declared, not a proof about arbitrary Kotlin. Fn lambdas may be opaque to graph rewrites."
+      }
+    }
+  },
+  "after": {
+    "name": "InspectFunctionStudy",
+    "ok": true,
+    "result": {
+      "revision": "r7-ebc54198e3ae",
+      "facts": {
+        "parent": "r6-deb1b1738cb0",
+        "description": "Delete fourth interruption resolved as e4 only, exposing absolute-time background at 1985..2215; retain all other events including e3 timing and y lag, with r6 retained as parent.",
+        "durationSeconds": 3600.0,
+        "channels": [
+          "x",
+          "y",
+          "z"
+        ],
+        "events": [
+          {
+            "id": "e1",
+            "start": 185.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 415.0,
+            "plateauStart": 285.0,
+            "plateauEnd": 315.0
+          },
+          {
+            "id": "e2",
+            "start": 785.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 1015.0,
+            "plateauStart": 885.0,
+            "plateauEnd": 915.0
+          },
+          {
+            "id": "e3",
+            "start": 1425.0,
+            "rise": 200.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 1755.0,
+            "plateauStart": 1625.0,
+            "plateauEnd": 1655.0
+          },
+          {
+            "id": "e5",
+            "start": 2585.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 2815.0,
+            "plateauStart": 2685.0,
+            "plateauEnd": 2715.0
+          },
+          {
+            "id": "e6",
+            "start": 3185.0,
+            "rise": 100.0,
+            "hold": 30.0,
+            "fall": 100.0,
+            "end": 3415.0,
+            "plateauStart": 3285.0,
+            "plateauEnd": 3315.0
+          }
+        ],
+        "choices": [
+          {
+            "statement": "Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Move the third event, resolved and selected as e3, 40 seconds later: start 1425, plateau 1525..1555, end 1655 seconds. Preserve its identity and internal timing, every other event, and the continuing background. This supersedes the original even-spacing requirement and nominal timing assumption for e3 only",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "Double selected e3's rise from 100 to 200 seconds, pinning its start at 1425. Its hold remains 30 seconds at 1625..1655, followed by the unchanged 100-second fall ending at 1755. The integrated rise frequency ramp now spans 200 seconds with unchanged 0.06/0.80 Hz endpoints. This supersedes e3's prior rise and later join times only; preserve every other event and the absolute-time background without ripple",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "During e3 only, let y lag and catch up smoothly on a strictly monotonic local rise clock; preserve x/z, everything outside e3, and the shared 30-second all-ones hold",
+            "provenance": "user requirement"
+          },
+          {
+            "statement": "e3 y shoulder age is a minus 6*64*u^3*(1-u)^3 seconds for a in [0,180], u=a/180; identity thereafter. Peak lag 6 seconds at 1515; recovered at 1605, 20 seconds before the unchanged 1625..1655 hold. Clock rate stays positive (approximately 0.8855..1.1145), with unit endpoint slopes and zero endpoint curvature. Warp pulse phase and shoulder envelopes together, retaining the absolute-time background. This overrides pulse synchronization only for this instance and channel",
+            "provenance": "agent assumption"
+          },
+          {
+            "statement": "Delete the fourth interruption, resolved from the current inventory as e4, formerly 1985..2215 seconds. Reveal the continuing absolute-time background there; preserve e1/e2/e3/e5/e6 without renumbering or ripple, including e3 timing and y lag. This supersedes the original six-event requirement only by removing e4. Retain the pre-deletion revision r6-deb1b1738cb0 in history",
+            "provenance": "user requirement"
+          }
+        ],
+        "source": "import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    val slowAmplitude = 0.04\n    val slowPeriodSeconds = 230.0\n\n    val firstStartSeconds = 185.0\n    val eventSpacingSeconds = 600.0\n    val e3OffsetSeconds = 40.0\n    val riseSeconds = 100.0\n    val e3RiseSeconds = 200.0\n    val holdSeconds = 30.0\n    val fallSeconds = 100.0\n    val lowPulseHz = 0.06\n    val highPulseHz = 0.80\n    val pulseFloor = 0.25\n    val mergeFraction = 0.20\n    val e3YPeakLagSeconds = 6.0\n    val e3YLagSpanSeconds = 180.0\n\n    // Starts are independent of rise durations: changing a rise pins its start.\n    // Stable IDs survive moves and chronological reordering.\n    val events = listOf(\n        StudyEvent(\"e1\", firstStartSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e2\", firstStartSeconds + eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e3\", firstStartSeconds + 2.0 * eventSpacingSeconds + e3OffsetSeconds, e3RiseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e5\", firstStartSeconds + 4.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),\n        StudyEvent(\"e6\", firstStartSeconds + 5.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds)\n    )\n\n    fun smooth01(value: Double): Double {\n        val u = value.coerceIn(0.0, 1.0)\n        return u * u * u * (10.0 + u * (-15.0 + 6.0 * u))\n    }\n\n    fun background(seconds: Double, channel: Int): Double {\n        val drift = phaseExcursionRadians * kotlin.math.sin(2.0 * PI * seconds / relativePhasePeriodSeconds)\n        val phase = 2.0 * PI * seconds / carrierPeriodSeconds + (channel - 1) * drift\n        return backgroundCenter + backgroundAmplitude * kotlin.math.sin(phase) +\n            slowAmplitude * kotlin.math.sin(2.0 * PI * seconds / slowPeriodSeconds)\n    }\n\n    // age runs from the background edge toward the plateau on either side.\n    // Integral of f(age) = lowPulseHz + (highPulseHz-lowPulseHz)*age/span.\n    // Reversing age on the fall gives a decelerating, shrinking pulse train.\n    fun shoulder(base: Double, age: Double, span: Double): Double {\n        val u = (age / span).coerceIn(0.0, 1.0)\n        val cycles = lowPulseHz * age +\n            0.5 * (highPulseHz - lowPulseHz) * age * age / span\n        val pulse = 0.5 - 0.5 * kotlin.math.cos(2.0 * PI * cycles)\n        val strength = smooth01(u)\n        val pulseTarget = pulseFloor + (1.0 - pulseFloor) * pulse\n        val pulsed = (1.0 - strength) * base + strength * pulseTarget\n        // Fill the troughs during the last 20% rather than abruptly cut pulses.\n        val merge = smooth01((u - (1.0 - mergeFraction)) / mergeFraction)\n        return (1.0 - merge) * pulsed + merge\n    }\n\n    val channels = listOf(\"x\", \"y\", \"z\").mapIndexed { index, name ->\n        fn(0.0..durationSeconds, name) { seconds ->\n            // The background always uses absolute time; events never restart it.\n            val base = background(seconds, index)\n            val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }\n            when {\n                event == null -> base\n                seconds < event.plateauStart -> {\n                    val age = seconds - event.start\n                    // Instance-specific shoulder clock only; never warp the background.\n                    // 64*u^3*(1-u)^3 has peak 1 and zero first/second endpoint derivatives.\n                    val lag = if (event.id == \"e3\" && name == \"y\" && age < e3YLagSpanSeconds) {\n                        val u = age / e3YLagSpanSeconds\n                        val v = 1.0 - u\n                        e3YPeakLagSeconds * 64.0 * u * u * u * v * v * v\n                    } else 0.0\n                    // Clock rate is in [0.885514, 1.114487], so time never reverses.\n                    val localAge = age - lag\n                    // Bind local function result: avoids Wither's brace-tail callableId pitfall.\n                    val result = shoulder(base, localAge, event.rise)\n                    result\n                }\n                seconds <= event.plateauEnd -> 1.0 // exact closed constant hold\n                else -> shoulder(base, event.end - seconds, event.fall)\n            }\n        }\n    }\n\n    StudyComposition(\n        channels = channels,\n        events = events,\n        duration = durationSeconds,\n        maxFrequencyHz = 2.0,\n        choices = listOf(\n            StudyChoice(\"Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale\", \"user requirement\"),\n            StudyChoice(\"Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries\", \"user requirement\"),\n            StudyChoice(\"Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6\", \"user requirement\"),\n            StudyChoice(\"Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway\", \"agent assumption\"),\n            StudyChoice(\"Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins\", \"agent assumption\"),\n            StudyChoice(\"Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture\", \"agent assumption\"),\n            StudyChoice(\"All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus\", \"agent assumption\"),\n            StudyChoice(\"Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple\", \"agent assumption\"),\n            StudyChoice(\"Move the third event, resolved and selected as e3, 40 seconds later: start 1425, plateau 1525..1555, end 1655 seconds. Preserve its identity and internal timing, every other event, and the continuing background. This supersedes the original even-spacing requirement and nominal timing assumption for e3 only\", \"user requirement\"),\n            StudyChoice(\"Double selected e3's rise from 100 to 200 seconds, pinning its start at 1425. Its hold remains 30 seconds at 1625..1655, followed by the unchanged 100-second fall ending at 1755. The integrated rise frequency ramp now spans 200 seconds with unchanged 0.06/0.80 Hz endpoints. This supersedes e3's prior rise and later join times only; preserve every other event and the absolute-time background without ripple\", \"user requirement\"),\n            StudyChoice(\"During e3 only, let y lag and catch up smoothly on a strictly monotonic local rise clock; preserve x/z, everything outside e3, and the shared 30-second all-ones hold\", \"user requirement\"),\n            StudyChoice(\"e3 y shoulder age is a minus 6*64*u^3*(1-u)^3 seconds for a in [0,180], u=a/180; identity thereafter. Peak lag 6 seconds at 1515; recovered at 1605, 20 seconds before the unchanged 1625..1655 hold. Clock rate stays positive (approximately 0.8855..1.1145), with unit endpoint slopes and zero endpoint curvature. Warp pulse phase and shoulder envelopes together, retaining the absolute-time background. This overrides pulse synchronization only for this instance and channel\", \"agent assumption\"),\n            StudyChoice(\"Delete the fourth interruption, resolved from the current inventory as e4, formerly 1985..2215 seconds. Reveal the continuing absolute-time background there; preserve e1/e2/e3/e5/e6 without renumbering or ripple, including e3 timing and y lag. This supersedes the original six-event requirement only by removing e4. Retain the pre-deletion revision r6-deb1b1738cb0 in history\", \"user requirement\")\n        )\n    )\n}\n",
+        "liveSourceHash": "ebc54198e3aea15a0ca6ce900be84524d3d9ea946a54fd81939f042ac0616f42",
+        "dirty": false,
+        "selectedIds": [
+          "e4"
+        ],
+        "selectionSeconds": [
+          1985.0,
+          2215.0
+        ],
+        "history": [
+          "r2-8f83d79e35c9",
+          "r3-66fd67f6fe7c",
+          "r4-f7f9ef4f2f47",
+          "r5-2aa6023ddfca",
+          "r6-deb1b1738cb0",
+          "r7-ebc54198e3ae"
+        ],
+        "semantics": "Seconds; pure random access required. Event metadata is declared, not a proof about arbitrary Kotlin. Fn lambdas may be opaque to graph rewrites."
+      }
+    }
+  },
+  "panel": {
+    "uid": "function_source",
+    "property": "outputarea",
+    "channel": "ai-chat",
+    "value": "<<you>>\nWe are resuming the saved function experiment after a runtime restart. The previous attempt was interrupted; neither failed candidate was activated. Working revision is r5-2aa6023ddfca; e3 is the intended event. Read guides/working.md and inspect current state. The CodeUse diagnostic stall is repaired. We identified a Wither compiler-plugin pitfall: a call to a LOCAL function as the last statement of a brace block can produce has no callableId. Verified workaround: use `val result = shoulder(base, localAge, event.rise)` followed by `result` instead of ending that branch with the bare call. Do not change the compiler/plugin. Use the existing function study tools and actual observations; write the candidate yourself.\n\nLet the second dimension lag during that event, then catch up smoothly. Keep the other two channels exactly as they are, keep the 30-second shared all-ones hold, and preserve everything outside e3. Use a smooth, monotonic local-time lag during its rise which returns to zero lag with matching endpoint slopes before the hold; choose and state a modest peak lag. Treat this as an instance-specific override, not a change to all events. Inspect before editing. Use CompareFunctionStudy with only y allowed inside e3, inspect before/after local waveform pixels and the plateau join, and report the actual timing policy and measured preservation.\n<<progress>>\nStarting AI conversation\nPreparing context and tools.\n<<progress>>\nPlanning tool use\nNext tool: `DocumentGuideReadRequest`\n<<progress>>\nUsing DocumentGuideReadRequest\n{\"lineCount\":250,\"path\":\"guides/working.md\",\"startLine\":1}\n<<progress>>\nDocumentGuideReadRequest finished\nRead [guides/working.md](field://guide/guides/working.md) lines 1\u201392\n<<progress>>\nPlanning tool use\nNext tool: `InspectFunctionStudy`\n<<progress>>\nUsing InspectFunctionStudy\n{\"revision\":\"\"}\n<<progress>>\nInspectFunctionStudy finished\nr5-2aa6023ddfca parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0\n<<progress>>\nPlanning tool use\nNext tool: `SelectFunctionStudy`\n<<progress>>\nUsing SelectFunctionStudy\n{\"endSeconds\":1755,\"eventIds\":[\"e3\"],\"startSeconds\":1425}\n<<progress>>\nSelectFunctionStudy finished\nr5-2aa6023ddfca parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":1530,\"revision\":\"r5-2aa6023ddfca\",\"startSeconds\":1505}\n<<progress>>\nObserveFunctionStudy finished\nr5-2aa6023ddfca intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":1635,\"revision\":\"r5-2aa6023ddfca\",\"startSeconds\":1610}\n<<progress>>\nObserveFunctionStudy finished\nr5-2aa6023ddfca intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<progress>>\nPlanning tool use\nNext tool: `EditFunctionStudy`\n<<progress>>\nUsing EditFunctionStudy\n{\"description\":\"Instance-specific e3 y shoulder-clock lag: C2 bump peaking at 6 seconds, strictly advancing local time, recovered at 1605 before unchanged shared hold; preserve x/z and all other times.\",\"expectedRevision\":\"r5-2aa6023ddfca\",\"expectedSourceHash\":\"2aa6023ddfca13fa20c7c678abd282b93b2ccd10d9a1b68f6ac789a127ef91de\",\"source\":\"import afield.stdlib.Functions\\nimport afield.stdlib.StudyComposition\\nimport afield.stdlib.StudyEvent\\nimport afield.stdlib.StudyChoice\\nimport kotlin.math.PI\\n\\nwith(Functions) {\\n    val durationSeconds = 3600.0\\n    val carrierPeriodSeconds = 40.0\\n    val relativePhasePeriodSeconds = 100.0\\n    val phaseExcursionRadians = 2.0 * PI / 3.0\\n    val backgroun...\n<<progress>>\nEditFunctionStudy finished\nr6-deb1b1738cb0 Compiled, checked and activated images=0\n<<progress>>\nPlanning tool use\nNext tool: `CompileKotlinRequest`\n<<progress>>\nUsing CompileKotlinRequest\n{\"file\":\"afield://function_conversation/function_source/code\",\"runSetupBlocks\":false,\"source\":\"\"}\n<<progress>>\nCompileKotlinRequest finished\nsuccess=true diagnostics=0 setupChanges=0\n<<progress>>\nPlanning tool use\nNext tool: `CompareFunctionStudy`\n<<progress>>\nUsing CompareFunctionStudy\n{\"afterRevision\":\"r6-deb1b1738cb0\",\"allowedChannels\":[\"y\"],\"beforeRevision\":\"r5-2aa6023ddfca\",\"changedEndSeconds\":1755,\"changedStartSeconds\":1425}\n<<progress>>\nCompareFunctionStudy finished\nr6-deb1b1738cb0 before, allowedIntervalSeconds, allowedChannels, preservedScope, changedEventIds, method images=0\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"r5-2aa6023ddfca\",\"endSeconds\":1530,\"revision\":\"r6-deb1b1738cb0\",\"startSeconds\":1505}\n<<progress>>\nObserveFunctionStudy finished\nr6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"r5-2aa6023ddfca\",\"endSeconds\":1615,\"revision\":\"r6-deb1b1738cb0\",\"startSeconds\":1590}\n<<progress>>\nObserveFunctionStudy finished\nr6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"r5-2aa6023ddfca\",\"endSeconds\":1635,\"revision\":\"r6-deb1b1738cb0\",\"startSeconds\":1610}\n<<progress>>\nObserveFunctionStudy finished\nr6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<progress>>\nPlanning tool use\nNext tool: `CompareFunctionStudy`\n<<progress>>\nUsing CompareFunctionStudy\n{\"afterRevision\":\"r6-deb1b1738cb0\",\"allowedChannels\":[\"y\"],\"beforeRevision\":\"r5-2aa6023ddfca\",\"changedEndSeconds\":1605,\"changedStartSeconds\":1425}\n<<progress>>\nCompareFunctionStudy finished\nr6-deb1b1738cb0 before, allowedIntervalSeconds, allowedChannels, preservedScope, changedEventIds, method images=0\n<<progress>>\nPlanning tool use\nNext tool: `DocumentGuideAppendRequest`\n<<progress>>\nUsing DocumentGuideAppendRequest\n{\"path\":\"guides/working.md\",\"revision\":\"10694df3cd888ee8ef1985f132d55407f4b059ee97a644dad236303b314ac329\",\"text\":\"\\n## Resumed experiment: e3 y lag (activated)\\n\\n- Restart inspection confirmed clean r5-2aa6023ddfca; selected e3, support 1425..1755 s, rise 200 s, shared hold 1625..1655 s. New working revision: **r6-deb1b1738cb0**, parent r5.\\n- Instance-specific override only for e3/y: shoulder age `a - L`, where `L = 6*64*u^3*(1-u)^3`, `u=a/180`, for age 0..180 s; identity thereafter. Peak local-clock lag 6 s at absolute time 1515; zero lag by 1605, 20 s before hold. Local clock is strictly increasing: analytic rate bounds approximately 0.8855..1.1145, endpoint rate 1 and curvature 0. Lag i...\n<<progress>>\nDocumentGuideAppendRequest finished\nGuide changed or already exists. Read guides/working.md again and reconcile; nothing was overwritten.\n<<progress>>\nPlanning tool use\nNext tool: `DocumentGuideReadRequest`\n<<progress>>\nUsing DocumentGuideReadRequest\n{\"lineCount\":200,\"path\":\"guides/working.md\",\"startLine\":85}\n<<progress>>\nDocumentGuideReadRequest finished\nRead [guides/working.md](field://guide/guides/working.md) lines 85\u201398\n<<progress>>\nPlanning tool use\nNext tool: `DocumentGuideReadRequest`\n<<progress>>\nUsing DocumentGuideReadRequest\n{\"lineCount\":100,\"path\":\"guides/working.md\",\"startLine\":1}\n<<progress>>\nDocumentGuideReadRequest finished\nRead [guides/working.md](field://guide/guides/working.md) lines 1\u201398\n<<progress>>\nPlanning tool use\nNext tool: `DocumentGuideAppendRequest`\n<<progress>>\nUsing DocumentGuideAppendRequest\n{\"path\":\"guides/working.md\",\"revision\":\"5765f50f427d1caea99704e3075839818a5f72329cb89fe9f60dbac9a5db380a\",\"text\":\"\\n## Resumed experiment: e3 y lag (activated)\\n\\n- Restart inspection confirmed clean r5-2aa6023ddfca; selected e3. New working revision: **r6-deb1b1738cb0**, parent r5. Event metadata unchanged: e3 support 1425..1755 s, rise 200 s, shared hold 1625..1655 s.\\n- Instance-specific e3/y shoulder age is `a - L`, with `L = 6*64*u^3*(1-u)^3`, `u=a/180`, for age 0..180 s; identity thereafter. Peak local-clock lag 6 s at absolute time 1515; recovered by 1605, 20 s before hold. Analytic clock-rate bounds approximately 0.8855..1.1145, endpoint rate 1 and curvature 0: local time strictly ad...\n<<progress>>\nDocumentGuideAppendRequest finished\nSaved [guides/working.md](field://guide/guides/working.md)\n<<ai>>\n_r5-2aa6023ddfca; 1505.0..1530.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/e5d65ba2bb41ada8ae87.png)\n<<ai>>\n_r5-2aa6023ddfca; 1610.0..1635.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/7205f90fe2fa6d85549e.png)\n<<ai>>\n_r6-deb1b1738cb0; 1505.0..1530.0 seconds. White=current; dashed grey=r5-2aa6023ddfca. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/0e9fbd818ba14593b2e3.png)\n<<ai>>\n_r6-deb1b1738cb0; 1590.0..1615.0 seconds. White=current; dashed grey=r5-2aa6023ddfca. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/6cbb42939b46a0682f46.png)\n<<ai>>\n_r6-deb1b1738cb0; 1610.0..1635.0 seconds. White=current; dashed grey=r5-2aa6023ddfca. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/8180b0a6aac70a2cc3ea.png)\n<<ai>>\nActivated **r6-deb1b1738cb0**, changing only **e3\u2019s y rise**.\n\n### Timing policy\n- **Peak local-time lag: 6 seconds at 1515 s.**\n- Lag follows \\(6\\cdot64u^3(1-u)^3\\), with \\(u=(t-1425)/180\\).\n- The local clock always advances: its rate stays approximately **0.8855\u20131.1145**.\n- Fully caught up at **1605 s**, with matching slope and curvature\u201420 seconds before the unchanged **1625\u20131655 s shared all-ones hold**.\n- Only the pulse phase and shoulder envelopes use delayed time; the background continues on absolute time.\n\n### Verification\n- Kotlin compiled successfully using the local-result workaround; **no compiler/plugin changes**.\n- Inspected before/after waveform pixels, catch-up, and the plateau join.\n- Whole-hour comparisons at \u226420 ms spacing plus event joins measured **zero maximum and RMS error** for:\n  - **x and z everywhere**\n  - **y outside e3**\n  - Additionally, **y outside the tighter 1425\u20131605 s interval**, preserving the recovered rise, hold, and fall.\n- Hold target error was **0**; plateau-entry slope was numerically zero (~\\(5.6\\times10^{-12}\\)).\n\nThese are sampled measurements, supported by the instance-specific source restriction. Saved the timing policy and evidence in [working notes](field://guide/guides/working.md).\n<<you>>\nDelete the fourth interruption and let the continuing background show through. Resolve it to its stable ID from the current event inventory, remove only that event instance, and keep e3's new timing and second-channel lag. Verify preservation outside the deleted event's support with CompareFunctionStudy, inspect the recovered region, and retain the deleted revision in history. Explain the result briefly.\n<<progress>>\nStarting AI conversation\nPreparing context and tools.\n<<progress>>\nPlanning tool use\nNext tool: `InspectFunctionStudy`\n<<progress>>\nUsing InspectFunctionStudy\n{\"revision\":\"\"}\n<<progress>>\nInspectFunctionStudy finished\nr6-deb1b1738cb0 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0\n<<progress>>\nPlanning tool use\nNext tool: `SelectFunctionStudy`\n<<progress>>\nUsing SelectFunctionStudy\n{\"endSeconds\":2215,\"eventIds\":[\"e4\"],\"startSeconds\":1985}\n<<progress>>\nSelectFunctionStudy finished\nr6-deb1b1738cb0 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"\",\"endSeconds\":2230,\"revision\":\"r6-deb1b1738cb0\",\"startSeconds\":1970}\n<<progress>>\nObserveFunctionStudy finished\nr6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<progress>>\nPlanning tool use\nNext tool: `EditFunctionStudy`\n<<progress>>\nUsing EditFunctionStudy\n{\"description\":\"Delete fourth interruption resolved as e4 only, exposing absolute-time background at 1985..2215; retain all other events including e3 timing and y lag, with r6 retained as parent.\",\"expectedRevision\":\"r6-deb1b1738cb0\",\"expectedSourceHash\":\"deb1b1738cb0f63b77afc786e6487464425871f8f20a264479f8c088ae901698\",\"source\":\"import afield.stdlib.Functions\\nimport afield.stdlib.StudyComposition\\nimport afield.stdlib.StudyEvent\\nimport afield.stdlib.StudyChoice\\nimport kotlin.math.PI\\n\\nwith(Functions) {\\n    val durationSeconds = 3600.0\\n    val carrierPeriodSeconds = 40.0\\n    val relativePhasePeriodSeconds = 100.0\\n    val phaseExcursionRadians = 2.0 * PI / 3.0\\n    val backgroundCente...\n<<progress>>\nEditFunctionStudy finished\nr7-ebc54198e3ae Compiled, checked and activated images=0\n<<progress>>\nPlanning tool use\nNext tool: `CompileKotlinRequest`\n<<progress>>\nUsing CompileKotlinRequest\n{\"file\":\"afield://function_conversation/function_source/code\",\"runSetupBlocks\":false,\"source\":\"\"}\n<<progress>>\nCompileKotlinRequest finished\nsuccess=true diagnostics=0 setupChanges=0\n<<progress>>\nPlanning tool use\nNext tool: `CompareFunctionStudy`\n<<progress>>\nUsing CompareFunctionStudy\n{\"afterRevision\":\"r7-ebc54198e3ae\",\"allowedChannels\":[\"x\",\"y\",\"z\"],\"beforeRevision\":\"r6-deb1b1738cb0\",\"changedEndSeconds\":2215,\"changedStartSeconds\":1985}\n<<progress>>\nCompareFunctionStudy finished\nr7-ebc54198e3ae before, allowedIntervalSeconds, allowedChannels, preservedScope, changedEventIds, method images=0\n<<progress>>\nPlanning tool use\nNext tool: `ObserveFunctionStudy`\n<<progress>>\nUsing ObserveFunctionStudy\n{\"compareTo\":\"r6-deb1b1738cb0\",\"endSeconds\":2230,\"revision\":\"r7-ebc54198e3ae\",\"startSeconds\":1970}\n<<progress>>\nObserveFunctionStudy finished\nr7-ebc54198e3ae intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1\n<<ai>>\n_r6-deb1b1738cb0; 1970.0..2230.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/18247504f395b2b12605.png)\n<<ai>>\n_r7-ebc54198e3ae; 1970.0..2230.0 seconds. White=current; dashed grey=r6-deb1b1738cb0. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes._\n\n![tool image](images/15b598f9e09cd73792f7.png)\n<<ai>>\nDeleted the fourth interruption, **e4 (1985\u20132215 s)**, in activated revision **r7-ebc54198e3ae**.\n\n- Inspected the recovered region: the continuing background now shows through on all three channels, replacing e4\u2019s pulses and hold.\n- **e3\u2019s timing and 6-second peak y lag remain unchanged**, as do all other events.\n- `CompareFunctionStudy` measured **zero maximum and RMS difference outside e4\u2019s support**, across **168,500 samples per channel**.\n- Kotlin compilation passed. The pre-deletion revision **r6-deb1b1738cb0**, containing e4, remains in history."
+  },
+  "notices": [
+    "Initiating AI Conversation",
+    "AI4: [info,ai.chat] chatGeneral(): lang=Kotlin codeChars=7898 attachments=1 images=0",
+    "AI4: [info,ai.bridge] convId=conv_6ab30cdcfb9081909ece37c8501bac0b02a3d1d0915802c5 fileKey=afield://function_conversation/function_source/code inputChars=23445 maxOutputTokens=10000 attachments=1 images=0",
+    "AI4: [info,ai.toolio] log=/Users/marc/field4/dev_docs/agents/demos/function_conversation/conversations/tool-io/2026-09-22T232219-180297Z-e982e803.jsonl",
+    "AI4: [info,ai.bridge] running prompt <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30dac13108190a92f2b90ed676409 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] initial response id=resp_02a3d1d0915802c5006ab30dac13108190a92f2b90ed676409 outputItems=1 <<spinner>>",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=InspectFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 1/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectFunctionStudy callId=call_69w5cwbb5em9LHbpZ3aDDDKN {\"revision\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectFunctionStudy r6-deb1b1738cb0 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30db86e088190b069d54d77da7622 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30db86e088190b069d54d77da7622 outputItems=3",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 2/24)",
+    "AI4: [info,ai.bridge] tool: name=SelectFunctionStudy callId=call_42FBUiq1AseAmdKM1EKz8Jrm {\"endSeconds\":2215,\"eventIds\":[\"e4\"],\"startSeconds\":1985}",
+    "AI4: [info,ai.bridge] tool: result name=SelectFunctionStudy r6-deb1b1738cb0 parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics ...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30dd000a081908b62b642d7cf656a status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30dd000a081908b62b642d7cf656a outputItems=1",
+    "AI4: [info,ai.bridge] output[0] function_call name=ObserveFunctionStudy",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 3/24)",
+    "AI4: [info,ai.bridge] tool: name=ObserveFunctionStudy callId=call_xKt7byZuWouorr5EMFafG16a {\"compareTo\":\"\",\"endSeconds\":2230,\"revision\":\"r6-deb1b1738cb0\",\"startSeconds\":1970}",
+    "AI4: [info,ai.bridge] tool: result name=ObserveFunctionStudy r6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, gua...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30df63f088190b249cde0dc4b259b outputItems=1",
+    "AI4: [info,ai.bridge] output[0] function_call name=EditFunctionStudy",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30df63f088190b249cde0dc4b259b status=completed",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 4/24)",
+    "AI4: [info,ai.bridge] tool: name=EditFunctionStudy callId=call_WoF1v6i9fBgGzw07fS8Up4yd {\"description\":\"Delete fourth interruption resolved as e4 only, exposing absolute-time background at 1985..2215; retain all other even...",
+    "AI4: [info,ai.bridge] tool: result name=EditFunctionStudy r7-ebc54198e3ae Compiled, checked and activated images=0",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790119472880>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30e3b74548190aa4c56bb1b30d122 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30e3b74548190aa4c56bb1b30d122 outputItems=1",
+    "AI4: [info,ai.bridge] output[0] function_call name=CompileKotlinRequest",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 5/24)",
+    "AI4: [info,ai.bridge] tool: name=CompileKotlinRequest callId=call_5mgaUa4fqms3ZDYCNaWTb22m {\"file\":\"afield://function_conversation/function_source/code\",\"runSetupBlocks\":false,\"source\":\"\"}",
+    "Compiling Kotlin for function_source",
+    "Kotlin compiled successfully for function_source; snippets=1",
+    "AI4: [info,ai.bridge] tool: result name=CompileKotlinRequest success=true diagnostics=0 setupChanges=0",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30e4744988190a4b42d505298493b outputItems=1",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30e4744988190a4b42d505298493b status=completed",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CompareFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 6/24)",
+    "AI4: [info,ai.bridge] tool: name=CompareFunctionStudy callId=call_M30pVSTKtBoX190G7MFrpP6m {\"afterRevision\":\"r7-ebc54198e3ae\",\"allowedChannels\":[\"x\",\"y\",\"z\"],\"beforeRevision\":\"r6-deb1b1738cb0\",\"changedEndSeconds\":2215,\"cha...",
+    "AI4: [info,ai.bridge] tool: result name=CompareFunctionStudy r7-ebc54198e3ae before, allowedIntervalSeconds, allowedChannels, preservedScope, changedEventIds, method images=0",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30e6886508190aeb4a7e6c34bd39a status=completed",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30e6886508190aeb4a7e6c34bd39a outputItems=1",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=ObserveFunctionStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 7/24)",
+    "AI4: [info,ai.bridge] tool: name=ObserveFunctionStudy callId=call_k9EV2iYEFkTZU78rnSKcskDw {\"compareTo\":\"r6-deb1b1738cb0\",\"endSeconds\":2230,\"revision\":\"r7-ebc54198e3ae\",\"startSeconds\":1970}",
+    "AI4: [info,ai.bridge] tool: result name=ObserveFunctionStudy r7-ebc54198e3ae intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, gua...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_02a3d1d0915802c5006ab30e86a9a0819086c9ed0e5e6c33a8 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_02a3d1d0915802c5006ab30e86a9a0819086c9ed0e5e6c33a8 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=0 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] no tool calls; finishing",
+    "AI4: [info,ai.bridge] done responseId=resp_02a3d1d0915802c5006ab30e86a9a0819086c9ed0e5e6c33a8 textChars=558 commentaryCount=0 (226615ms)",
+    "Finished AI conversation"
+  ],
+  "tokenUsage": "Not surfaced by AI4 SendResult; tool-io logs record model/rounds where available"
+}

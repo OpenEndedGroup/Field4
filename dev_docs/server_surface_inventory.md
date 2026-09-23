@@ -62,7 +62,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-37 routes, 34 of them with no route-specific guard. `guard` is computed from the handler
+38 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
 body by the same three-name vocabulary the mutating census uses
 (`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
@@ -117,6 +117,7 @@ mutation; it is a different one.
 | `GET /index.html` | `Server.kt` | none |
 | `GET /local/{...}` | `Server.kt` | none |
 | `GET /min/{...}` | `Server.kt` | none |
+| `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
 
 ### The five that serve files off disk, which deserve reading twice

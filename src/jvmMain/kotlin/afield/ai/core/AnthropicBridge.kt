@@ -1,5 +1,6 @@
 package afield.ai.core
 
+import afield.AiChatModelIdentity
 import com.anthropic.client.AnthropicClient
 import com.anthropic.core.JsonValue
 import com.anthropic.errors.AnthropicServiceException
@@ -49,6 +50,7 @@ class AnthropicBridge(
     private val model: String = Ai4ModelDefaults.flagshipModel(),
     private val log: LogSink = StdoutLog
 ) : LlmBridge {
+    override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("anthropic", model)
     private val tools = ToolRegistry()
 
     /** Per-thread message history (stateless API — we resend the full transcript each turn). */
@@ -138,6 +140,7 @@ class AnthropicBridge(
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
 
         var response = createMessage(buildParams(system, messages, toolDefs, maxOutputTokens))
+        onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
         logShape("initial", response)
 
@@ -191,6 +194,7 @@ class AnthropicBridge(
                 if (carried.isNotEmpty()) {
                     conversationAdditions += buildString {
                         appendLine("<<ai>>")
+                        append(modelIdentity.copy(responseModel = response.model().asString()).marker())
                         carried.forEachIndexed { index, image ->
                             if (index > 0) appendLine()
                             if (image.caption.isNotBlank()) {
@@ -223,6 +227,7 @@ class AnthropicBridge(
                 warn("maxToolRounds=$maxToolRounds reached; requesting a final answer without further tools.")
             }
             response = createMessage(buildParams(system, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens))
+            onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
             logShape(if (includeTools) "followup" else "forced_final", response)
             if (!includeTools) break
@@ -243,7 +248,8 @@ class AnthropicBridge(
             rawResponseId = response.id(),
             commentary = commentary.toList(),
             conversationAdditions = conversationAdditions.toList(),
-            toolTranscript = transcript.toList()
+            toolTranscript = transcript.toList(),
+            modelIdentity = modelIdentity.copy(responseModel = response.model().asString())
         )
     }
 

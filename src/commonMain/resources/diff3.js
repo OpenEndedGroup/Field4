@@ -294,7 +294,11 @@ var diff = {
                 }
                 for (i = 0; i < m1.length; i++) { addHunk(m1[i], 0); }
                 for (i = 0; i < m2.length; i++) { addHunk(m2[i], 2); }
-                hunks.sort();
+                // Array.sort() compares stringified tuples: line 10 sorts before line 8.
+                // That invents overlaps (even on one side), discarding remote editor edits.
+                hunks.sort(function (left, right) {
+                        return left[0] - right[0] || left[1] - right[1];
+                });
 
                 var result = [];
                 var commonOffset = 0;

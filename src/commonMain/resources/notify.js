@@ -86,7 +86,6 @@ var notify = (text, cat = "") => {
                 });
         }
 
-        const purgeCategory = cat && cat.startsWith("*");
         const bubblesForCategory = cat
                 ? Array.from(document.getElementsByClassName("bubble")).filter((bubble) => sameNotifyCategory(bubble.cat, cat))
                 : [];
@@ -96,15 +95,14 @@ var notify = (text, cat = "") => {
         } else if (bubblesForCategory.length > 0) {
                 categoryDiv = bubblesForCategory[bubblesForCategory.length - 1];
         }
-        if (purgeCategory) {
-                for (let bubble of bubblesForCategory) {
-                        if (bubble !== categoryDiv) {
-                                if (bubble.parentNode) {
-                                        bubble.parentNode.removeChild(bubble);
-                                }
-                        }
+        // Every named category has one slot, including legacy *category names.
+        for (const bubble of bubblesForCategory) {
+                if (bubble !== categoryDiv) {
+                        clearTimeout(bubble.notifyEnterTimer);
+                        clearTimeout(bubble.notifyStaleTimer);
+                        clearTimeout(bubble.notifyExitTimer);
+                        bubble.remove();
                 }
-                restackBubbles();
         }
         if (lastDiv && sameNotifyCategory(lastDiv.cat, cat) && !document.body.contains(lastDiv)) {
                 lastDiv = null;
@@ -116,7 +114,6 @@ var notify = (text, cat = "") => {
                 newDiv = categoryDiv;
                 lastDiv = newDiv;
                 newDiv.cat = cat;
-                if (newDiv.innerHTML === htmlText) return;
                 updatingExisting = true;
         } else {
                 newDiv = document.createElement("div");
@@ -124,8 +121,15 @@ var notify = (text, cat = "") => {
                 lastDiv.cat = cat;
         }
 
-        newDiv.className = "bubble field-toast";
-        newDiv.innerHTML = htmlText;
+        clearTimeout(newDiv.notifyEnterTimer);
+        clearTimeout(newDiv.notifyStaleTimer);
+        clearTimeout(newDiv.notifyExitTimer);
+        // Preserve visibility during replacement; resetting className replays the entrance fade.
+        newDiv.classList.add("bubble", "field-toast");
+        if (newDiv.notifyHtml !== htmlText) {
+                newDiv.innerHTML = htmlText;
+                newDiv.notifyHtml = htmlText;
+        }
         updateNotifyTimeAgo(newDiv);
         ensureNotifyTimeAgoTimer();
         if (!document.body.contains(newDiv)) {
@@ -133,31 +137,35 @@ var notify = (text, cat = "") => {
         }
         stopNotifySpinnersForCategory(cat, newDiv);
 
-        let q = document.getElementsByClassName("bubble").length;
-        for (let a of document.getElementsByClassName("bubble")) {
+        newDiv.classList.remove("field-toast-stale", "field-toast-exit");
+        const liveBubbles = Array.from(document.getElementsByClassName("bubble"))
+                .filter((node) => !node.classList.contains("field-toast-exit"));
+        let excess = liveBubbles.length - 4;
+        for (const a of liveBubbles) {
                 if (a !== newDiv) {
                         a.classList.add("field-toast-stale");
-                }
-
-                        if (q >= 5) {
+                        if (excess > 0) {
                                 a.classList.add("field-toast-exit");
-                                setTimeout(function () {
-                                if (a.parentNode)
-                                        a.parentNode.removeChild(a)
-                                restackBubbles();
-                        }, 220)
-                        q--;
+                                clearTimeout(a.notifyEnterTimer);
+                                clearTimeout(a.notifyStaleTimer);
+                                a.notifyExitTimer = setTimeout(function () {
+                                        a.remove();
+                                        restackBubbles();
+                                }, 220);
+                                excess--;
+                        }
                 }
         }
 
-        newDiv.classList.remove("field-toast-stale", "field-toast-exit");
         restackBubbles();
-        setTimeout(function () {
+        if (updatingExisting) {
                 newDiv.classList.add("field-toast-visible");
-        }, 20);
-        setTimeout(function () {
-                if (updatingExisting) {
-                        newDiv.classList.add("field-toast-stale");
-                }
+        } else {
+                newDiv.notifyEnterTimer = setTimeout(function () {
+                        newDiv.classList.add("field-toast-visible");
+                }, 20);
+        }
+        newDiv.notifyStaleTimer = setTimeout(function () {
+                newDiv.classList.add("field-toast-stale");
         }, 1000);
 };

@@ -76,7 +76,12 @@ class AstraBridgeContractTest {
             exchange.responseBody.use { it.write(body.toByteArray()) }
         }
         val state = OpenAiIdeCodexBridge.ThreadState("test", "conv_test", "test", previousResponseId = "resp_old")
-        bridge.send(state, "Inspect roof", maxToolRounds = 2)
+        val progress = mutableListOf<OpenAiIdeCodexBridge.ProgressUpdate>()
+        val result = bridge.send(state, "Inspect roof", maxToolRounds = 2, onProgress = { progress += it })
+        assertEquals("gpt-6-astra", result.modelIdentity?.responseModel)
+        assertEquals("openai", result.modelIdentity?.provider)
+        assertTrue(progress.any { it.modelIdentity?.responseModel == "gpt-6-astra" })
+        assertTrue(result.conversationAdditions.single().contains("<<model:"))
         assertEquals(2, requests.size)
         requests.forEach { request ->
             assertEquals("gpt-6-astra", request["model"].asText())
@@ -93,6 +98,21 @@ class AstraBridgeContractTest {
         assertEquals("resp_2", state.previousResponseId)
         bridge.send(state, "Continue", maxToolRounds = 1)
         assertEquals("resp_2", requests[2]["previous_response_id"].asText())
+    }
+
+    @Test
+    fun returnedModelIsPreservedWhenItDiffersFromRequestedModel() = withServer { server, _, bridge ->
+        server.createContext("/v1/responses") { exchange ->
+            val body = finalResponse("resp_reported").replace("gpt-6-astra", "gpt-4o")
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
+            exchange.responseBody.use { it.write(body.toByteArray()) }
+        }
+        val state = OpenAiIdeCodexBridge.ThreadState("identity", "conv_test", "test", previousResponseId = "resp_old")
+        val result = bridge.send(state, "Identify response")
+        assertEquals("gpt-6-astra", result.modelIdentity?.requestedModel)
+        assertEquals("gpt-4o", result.modelIdentity?.responseModel)
+        assertEquals("gpt-4o · OpenAI", result.modelIdentity?.label())
     }
 
     @Test

@@ -3,9 +3,12 @@ package afield.ai
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.FileVisitResult
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.extension
 import kotlin.io.path.invariantSeparatorsPathString
-import kotlin.io.path.isRegularFile
 
 data class RelatedContextHints(
     val guides: List<String> = emptyList(),
@@ -13,27 +16,32 @@ data class RelatedContextHints(
 )
 
 object RelatedContextDiscovery {
-    private const val AI4_CONNECTED_RENDER_EXAMPLE_REF = "afield://ai4-examples/connected-compute-render"
+    private val catalog = RelatedContextCatalog(Paths.get(System.getProperty("user.dir")).normalize())
 
-    private val repoRoot: Path = Paths.get(System.getProperty("user.dir")).normalize()
+    fun forPath(rawPath: String?): RelatedContextHints = catalog.forPath(rawPath)
+}
 
-    @Volatile
-    private var markdownFilesCache: List<String>? = null
+internal class RelatedContextCatalog(private val repoRoot: Path) {
+    private val results = ConcurrentHashMap<String, RelatedContextHints>()
+    private val connectedExample = "afield://ai4-examples/connected-compute-render"
 
-    @Volatile
-    private var exampleFilesCache: List<String>? = null
+    private val candidates: List<String> by lazy { collectFiles() }
 
     fun forPath(rawPath: String?): RelatedContextHints {
         val normalized = rawPath?.trim()?.replace('\\', '/')?.takeIf { it.isNotBlank() } ?: return RelatedContextHints()
         if (normalized.startsWith("afield://")) {
-            return RelatedContextHints(examples = listOf(AI4_CONNECTED_RENDER_EXAMPLE_REF))
+            return RelatedContextHints(examples = listOf(connectedExample))
         }
 
         val sourcePath = normalized.removePrefix("./")
+        return results.computeIfAbsent(sourcePath) { discover(it) }
+    }
+
+    private fun discover(sourcePath: String): RelatedContextHints {
         val tokens = sourceTokens(sourcePath)
         if (tokens.isEmpty()) return RelatedContextHints()
 
-        val guides = markdownFiles()
+        val guides = candidates.filter { it.endsWith(".md", ignoreCase = true) }
             .mapNotNull { candidate ->
                 val score = scoreGuide(sourcePath, tokens, candidate)
                 if (score <= 0) null else score to candidate
@@ -43,7 +51,7 @@ object RelatedContextDiscovery {
             .distinct()
             .take(6)
 
-        val examples = exampleFiles()
+        val examples = candidates.filter { "/examples/" in it && (it.endsWith(".kt") || it.endsWith(".kts")) }
             .mapNotNull { candidate ->
                 val score = scoreExample(sourcePath, tokens, candidate)
                 if (score <= 0) null else score to candidate
@@ -56,29 +64,30 @@ object RelatedContextDiscovery {
         return RelatedContextHints(guides = guides, examples = examples)
     }
 
-    private fun markdownFiles(): List<String> =
-        markdownFilesCache ?: synchronized(this) {
-            markdownFilesCache ?: collectFiles { path ->
-                path.extension.equals("md", ignoreCase = true)
-            }.also { markdownFilesCache = it }
-        }
-
-    private fun exampleFiles(): List<String> =
-        exampleFilesCache ?: synchronized(this) {
-            exampleFilesCache ?: collectFiles { path ->
-                val rel = relativize(path)
-                rel.contains("/examples/") && (path.extension.equals("kt", ignoreCase = true) || path.extension.equals("kts", ignoreCase = true))
-            }.also { exampleFilesCache = it }
-        }
-
-    private fun collectFiles(include: (Path) -> Boolean): List<String> {
-        if (!Files.exists(repoRoot)) return emptyList()
-        return Files.walk(repoRoot).use { stream ->
-            stream.filter { it.isRegularFile() && include(it) }
-                .map { relativize(it) }
-                .sorted()
-                .toList()
-        }
+    // One bounded traversal. Never index nested checkouts, generated assets or dependency trees.
+    private fun collectFiles(): List<String> {
+        if (!Files.isDirectory(repoRoot)) return emptyList()
+        val result = mutableListOf<String>()
+        val excluded = setOf("build", "node_modules", "vendor", "target", "dist", "site", "worktrees")
+        Files.walkFileTree(repoRoot, object : SimpleFileVisitor<Path>() {
+            override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                if (dir == repoRoot) return FileVisitResult.CONTINUE
+                val name = dir.fileName.toString()
+                if (name.startsWith(".") || name in excluded || Files.exists(dir.resolve(".git")))
+                    return FileVisitResult.SKIP_SUBTREE
+                // These are the only canonical documentation/example roots.
+                if (dir.parent == repoRoot && name !in setOf("src", "dev_docs", "public", "docs"))
+                    return FileVisitResult.SKIP_SUBTREE
+                return FileVisitResult.CONTINUE
+            }
+            override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                if (attrs.isRegularFile && (file.extension.equals("md", true) ||
+                    ("/examples/" in relativize(file) && file.extension in setOf("kt", "kts"))))
+                    result += relativize(file)
+                return FileVisitResult.CONTINUE
+            }
+        })
+        return result.sorted()
     }
 
     private fun relativize(path: Path): String =
@@ -87,7 +96,6 @@ object RelatedContextDiscovery {
     private fun scoreGuide(sourcePath: String, tokens: Set<String>, candidate: String): Int {
         val candidateLower = candidate.lowercase()
         val fileName = candidate.substringAfterLast('/')
-        val fileNameLower = fileName.lowercase()
         var score = 0
 
         if (candidate == "src/VULKAN_GRAPHICS_SYSTEM.md" &&
@@ -110,6 +118,8 @@ object RelatedContextDiscovery {
                 }
             }
         }
+
+        if (score == 0 && tokenOverlap(tokens, sourceTokens(candidate)) == 0) return 0
 
         if (fileName.matches(Regex("[A-Z0-9_\\-]+\\.md"))) {
             score += 25
@@ -171,6 +181,6 @@ object RelatedContextDiscovery {
 
     private val ignoredTokens = setOf(
         "src", "main", "jvm", "common", "kotlin", "afield",
-        "readme", "guide", "docs", "dev", "file", "files"
+        "readme", "guide", "docs", "dev", "file", "files", "stdlib", "examples", "public", "assets"
     )
 }

@@ -29,6 +29,7 @@ import afield.python.PythonInterface
 import afield.python.PythonSettingsRequest
 import afield.server.refreshFileProxyBoxes
 import afield.server.installFieldAudioProxyRoutes
+import afield.server.installSignalViewerRoutes
 import afield.server.installDocsAnnotationRoutes
 import afield.server.SEC_FETCH_SITE_HEADER
 import afield.server.docsFlagEnabled
@@ -3628,6 +3629,7 @@ class Server {
                         }
 
                         installFieldAudioProxyRoutes()
+                        installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
 

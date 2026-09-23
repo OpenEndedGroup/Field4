@@ -743,7 +743,7 @@ fun installAi4() {
         }
 
         if (chatBridge == null) {
-            val uiLog = NotifyLog(label = "")
+            val uiLog = NotifyLog()
             try {
                 chatBridge = createIdeBridge(uiLog)
                 chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
@@ -1276,7 +1276,8 @@ fun installAi4() {
             searchWorkspaceSymbols(
                 index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex(),
                 rawQuery = query,
-                limit = req.limit
+                limit = req.limit,
+                includeRelatedContext = req.includeRelatedContext
             )
         }
 
@@ -1561,6 +1562,7 @@ fun installAi4() {
             val progressEntries = mutableListOf<OpenAiIdeCodexBridge.ProgressUpdate>()
             var livePrefix: String? = null
             var lastPush = 0L
+            var turnModel = (if (exec.kind == "general") chatBridge else bridge)?.modelIdentity
 
             fun baseWithoutPendingAi(): String {
                 val prefix = livePrefix ?: streamPrefix ?: ""
@@ -1579,6 +1581,11 @@ fun installAi4() {
                 return buildString {
                     append(base)
                     if (length > 0 && this[length - 1] != '\n') append("\n")
+                    // Keep the requested/reported model visible even while only tool progress exists.
+                    if (aiText.isEmpty() && entries.isNotEmpty()) {
+                        append("<<ai>>\n")
+                        turnModel?.let { append(it.marker()) }
+                    }
                     entries.forEachIndexed { index, progress ->
                         val open = latestProgressOpen && aiText.isBlank() && index == entries.lastIndex
                         append(if (open) "<<progress-open>>\n" else "<<progress>>\n")
@@ -1596,6 +1603,7 @@ fun installAi4() {
                     }
                     if (aiText.isNotEmpty() || (entries.isEmpty() && additions.isBlank())) {
                         append("<<ai>>\n")
+                        turnModel?.let { append(it.marker()) }
                         append(aiText)
                     }
                 }
@@ -1638,8 +1646,7 @@ fun installAi4() {
                 streamPrefix = livePrefix
                 synchronized(liveLock) {
                     progressEntries += OpenAiIdeCodexBridge.ProgressUpdate(
-                        title = title,
-                        body = "Preparing context and tools."
+                        title = title
                     )
                 }
                 streamActive.set(true)
@@ -1649,7 +1656,12 @@ fun installAi4() {
             val progressCallback: (OpenAiIdeCodexBridge.ProgressUpdate) -> Unit = { progress ->
                 if (streamActive.get()) {
                     synchronized(liveLock) {
-                        progressEntries += progress
+                        progress.modelIdentity?.let { turnModel = it }
+                        // One current activity, replaced as work moves from model to tool to result.
+                        if (progress.phase != null && progressEntries.lastOrNull()?.phase in setOf("model", "tool")) {
+                            progressEntries.removeAt(progressEntries.lastIndex)
+                        }
+                        if (progress.title.isNotBlank()) progressEntries += progress
                     }
                     pushLiveConversation(latestProgressOpen = true)
                 }
@@ -1753,8 +1765,7 @@ fun installAi4() {
                         streamActive.set(true)
                         synchronized(liveLock) {
                             progressEntries += OpenAiIdeCodexBridge.ProgressUpdate(
-                                title = "Starting AI conversation",
-                                body = "Preparing context and tools."
+                                title = "Starting AI conversation"
                             )
                         }
                         pushLiveConversation(latestProgressOpen = true)
@@ -1907,20 +1918,22 @@ fun installAi4() {
                     }
                 }
             } catch (e: Exception) {
+                val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
                 if (livePrefix != null) {
                     sendFinalVisibleAiPanel(
-                        "_AI ${exec.kind} failed: ${e.message ?: e::class.java.simpleName}_"
+                        "_AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}_"
                     )
                 }
                 streamActive.set(false)
                 inMain {
-                    notify("AI ${exec.kind} failed: ${e.message ?: e::class.java.simpleName}", "AI4")
+                    notify("AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}", "AI4")
                 }
                 return@launch
             }
 
             inMain {
                 if (chatResult != null) {
+                    chatResult.modelIdentity?.let { turnModel = it }
                     chatThreadByKey[fileKey] = chatResult.threadState
                     val trimmedPrompt = expandedExtraPrompt.trim()
                     val attachmentMarkdown = exec.images.joinToString("\n") { url ->
@@ -2045,7 +2058,7 @@ fun installAi4() {
         val input = Json.decodeFromJsonElement<Chat_input>(message.payload!!)
         
         if (chatBridge == null) {
-            val uiLog = NotifyLog(label = "")
+            val uiLog = NotifyLog()
             chatBridge = createIdeBridge(uiLog)
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }

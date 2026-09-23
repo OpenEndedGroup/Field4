@@ -30,7 +30,8 @@ private val workspaceSearchNoiseTokens = setOf(
 fun searchWorkspaceSymbols(
     index: KotlinSourceIndexDb?,
     rawQuery: String,
-    limit: Int
+    limit: Int,
+    includeRelatedContext: Boolean = false
 ): WorkspaceSymbolSearchResult {
     val query = rawQuery.trim()
     if (query.isEmpty()) return WorkspaceSymbolSearchResult(emptyList())
@@ -45,7 +46,7 @@ fun searchWorkspaceSymbols(
     fun fileLines(path: String): List<String>? {
         return fileCache.getOrPut(path) {
             val direct = Paths.get(path)
-            val resolved = if (Files.exists(direct)) direct else Paths.get(System.getProperty("user.dir")).resolve(path)
+            val resolved = if (direct.isAbsolute) direct else Paths.get(index!!.root).resolve(path)
             if (!Files.exists(resolved)) return@getOrPut emptyList()
             runCatching { Files.readAllLines(resolved, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
         }.takeIf { it.isNotEmpty() }
@@ -58,6 +59,15 @@ fun searchWorkspaceSymbols(
     }
 
     fun functionBody(def: KotlinDefinitionRecord, maxChars: Int = 6000): String? {
+        if (def.kind == "val" || def.kind == "var") {
+            val lines = fileLines(def.filePath) ?: return null
+            val start = def.line.coerceAtMost(lines.size)
+            val end = definitions.asSequence().filter { it.filePath == def.filePath && it.line > def.line }
+                .minOfOrNull { it.line - 1 } ?: lines.size
+            // Include property initializers/accessors, but never the next declaration's KDoc.
+            return lines.subList((start - 1).coerceAtLeast(0), end.coerceIn(start, lines.size))
+                .joinToString("\n").substringBefore("/**").trimEnd().take(maxChars)
+        }
         if (def.kind != "fun") return null
         val lines = fileLines(def.filePath) ?: return null
         val startIdx = (def.line - 1).coerceIn(0, lines.lastIndex)
@@ -105,7 +115,7 @@ fun searchWorkspaceSymbols(
         } else {
             "${def.filePath}:${def.line}"
         }
-        val related = RelatedContextDiscovery.forPath(def.filePath)
+        val related = if (includeRelatedContext) RelatedContextDiscovery.forPath(def.filePath) else RelatedContextHints()
         return WorkspaceSymbolMatch(
             symbol = def.name,
             kind = def.kind,
@@ -116,9 +126,14 @@ fun searchWorkspaceSymbols(
             definitionLine = definitionLineText(def),
             definitionBody = functionBody(def),
             relatedGuides = related.guides,
-            relatedExamples = related.examples
+            relatedExamples = related.examples,
+            kdoc = def.kdoc
         )
     }
+
+    // Avoid reading and scoring every source file for an exact indexed symbol.
+    val exact = definitions.filter { it.name == query || it.name.endsWith(".$query") }
+    if (exact.isNotEmpty()) return WorkspaceSymbolSearchResult(exact.take(limit.coerceIn(1, 100)).map(::toMatch))
 
     val ranked = LinkedHashMap<String, RankedWorkspaceSymbolMatch>()
     definitions.forEachIndexed { definitionIndex, def ->

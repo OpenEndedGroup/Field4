@@ -1,5 +1,6 @@
 package afield.ai.core
 
+import afield.AiChatModelIdentity
 import afield.ai.RelatedContextDiscovery
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
@@ -27,6 +28,17 @@ class OpenAiIdeCodexBridge(
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
     val modelName: String = model
+    val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity(runtimeConfig.provider, modelName)
+    private fun responseIdentity(response: Response): AiChatModelIdentity {
+        val reported = response.model()
+        val name = when {
+            reported.isString() -> reported.asString()
+            reported.isChat() -> reported.asChat().asString()
+            reported.isOnly() -> reported.asOnly().asString()
+            else -> reported._json().orElse(null)?.asString()?.orElse(null)
+        }
+        return modelIdentity.copy(responseModel = name)
+    }
     private val chatModel: ChatModel = ChatModel.of(modelName)
     private val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
     private val tools = ToolRegistry()
@@ -203,6 +215,27 @@ class OpenAiIdeCodexBridge(
             }
         }
 
+        var modelElapsedMs = 0L
+        var toolElapsedMs = 0L
+        var terminalRecorded = false
+        var activePhase = "preparing"
+        var activeToolStarted: Long? = null
+        fun <T> modelRequest(phase: String, action: () -> T): T {
+            activePhase = "model:$phase"
+            toolIo("model_request", mapOf("phase" to phase))
+            onProgress?.invoke(ProgressUpdate("Waiting for model", phase = "model"))
+            val started = System.nanoTime()
+            var succeeded = false
+            try {
+                return action().also { succeeded = true }
+            } finally {
+                val elapsed = (System.nanoTime() - started) / 1_000_000
+                modelElapsedMs += elapsed
+                toolIo("model_request_end", mapOf("phase" to phase, "elapsedMs" to elapsed, "success" to succeeded))
+            }
+        }
+
+        try {
         val promptItems = buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
@@ -231,7 +264,7 @@ class OpenAiIdeCodexBridge(
         }
 
         info("running prompt <<spinner>>")
-        var response: Response = createResponse(paramsBuilder.build(), onTextDelta)
+        var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta) }
         if (onTextDelta != null) {
             info("")
         }
@@ -262,7 +295,7 @@ class OpenAiIdeCodexBridge(
             info("output shape: messages=$msgCount functionCalls=$fnCount other=$otherCount")
             if (resp.error().isPresent) {
                 val e = resp.error().get()
-                error("response.error code=${e.code()} message=${e.message()}")
+                throw IllegalStateException("Model response failed: ${e.code()} ${e.message()}")
             }
             val msgStatuses = out.mapNotNull { it.message().orElse(null)?.status() }
             if (msgStatuses.isNotEmpty()) {
@@ -306,8 +339,8 @@ class OpenAiIdeCodexBridge(
                 )
                 onProgress?.invoke(
                     ProgressUpdate(
-                        title = "Using ${call.name()}",
-                        body = truncate(argumentSummary, 700)
+                        title = "Running ${call.name()}",
+                        phase = "tool"
                     )
                 )
                 trace?.log(
@@ -315,9 +348,13 @@ class OpenAiIdeCodexBridge(
                     "name=${call.name()} callId=${call.callId()}\nargs=${call.arguments()}"
                 )
 
+                activePhase = "tool:${call.name()}"
+                val toolStarted = System.nanoTime()
+                activeToolStarted = toolStarted
                 val toolResult: Any = try {
                     tools.execute(ctx, call)
                 } catch (e: Exception) {
+                    if (isAiTurnCancellation(e)) throw e
                     error("tool: ERROR name=${call.name()} msg=${e.message}")
                     toolIo(
                         "tool_exception",
@@ -338,7 +375,13 @@ class OpenAiIdeCodexBridge(
 
                 val toolResultJson = runCatching { mapper.writeValueAsString(toolResult) }
                     .getOrElse { toolResult.toString() }
+                val toolMs = (System.nanoTime() - toolStarted) / 1_000_000
+                toolElapsedMs += toolMs
+                activeToolStarted = null
                 val toolResultSummary = summarizeToolResult(toolResult)
+                val toolFailed = runCatching { mapper.readTree(toolResultJson).let {
+                    it["success"]?.asBoolean() == false || it["error"]?.asBoolean() == true
+                } }.getOrDefault(false)
                 toolTranscript += ToolTranscriptEntry(
                     name = call.name(),
                     callId = call.callId(),
@@ -362,6 +405,7 @@ class OpenAiIdeCodexBridge(
                         "toolName" to call.name(),
                         "callId" to call.callId(),
                         "summary" to toolResultSummary,
+                        "elapsedMs" to toolMs,
                         "result" to toolResultJson,
                         // The images are @JsonIgnore'd out of `result` on purpose, so without this the
                         // log cannot tell whether the model was shown a picture — which is exactly the
@@ -373,8 +417,9 @@ class OpenAiIdeCodexBridge(
                 )
                 onProgress?.invoke(
                     ProgressUpdate(
-                        title = "${call.name()} finished",
-                        body = toolResultSummary
+                        title = "${call.name()} ${if (toolFailed) "failed" else "finished"} (${toolMs} ms)",
+                        body = if (toolFailed) toolResultSummary else "",
+                        phase = "tool_result"
                     )
                 )
 
@@ -415,6 +460,7 @@ class OpenAiIdeCodexBridge(
                 if (carried.isNotEmpty()) {
                     conversationAdditions += buildString {
                         appendLine("<<ai>>")
+                        append(responseIdentity(response).marker())
                         carried.forEachIndexed { index, image ->
                             if (index > 0) appendLine()
                             if (image.caption.isNotBlank()) {
@@ -466,7 +512,7 @@ class OpenAiIdeCodexBridge(
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
 
-            response = createResponse(followupBuilder.build(), onTextDelta)
+            response = modelRequest("followup") { createResponse(followupBuilder.build(), onTextDelta) }
             if (onTextDelta != null) {
                 info("")
             }
@@ -507,13 +553,13 @@ class OpenAiIdeCodexBridge(
                     "pendingCallIds" to pendingCalls.map { it.callId() }
                 )
             )
-            response = createForcedFinalResponse(
+            response = modelRequest("forced_final") { createForcedFinalResponse(
                 state = state,
                 previousResponse = response,
                 pendingCalls = pendingCalls,
                 maxOutputTokens = maxOutputTokens,
                 onTextDelta = onTextDelta
-            )
+            ) }
             if (onTextDelta != null) {
                 info("")
             }
@@ -532,6 +578,7 @@ class OpenAiIdeCodexBridge(
             logOutputShape(response)
         }
 
+        onProgress?.invoke(ProgressUpdate("", modelIdentity = responseIdentity(response)))
         val text = extractOutputTextWithNewlines(response)
         val reasoningSummaries = extractReasoningSummaries(response)
         trace?.log(
@@ -564,6 +611,7 @@ class OpenAiIdeCodexBridge(
             "done responseId=${response.id()} textChars=${text.length} " +
                 "commentaryCount=${commentaryMessages.size} (${ms}ms)"
         )
+        terminalRecorded = true
         toolIo(
             "session_end",
             mapOf(
@@ -571,9 +619,13 @@ class OpenAiIdeCodexBridge(
                 "textChars" to text.length,
                 "commentaryCount" to commentaryMessages.size,
                 "toolCallCount" to toolTranscript.size,
-                "elapsedMs" to ms
+                "elapsedMs" to ms,
+                "status" to "completed",
+                "modelElapsedMs" to modelElapsedMs,
+                "toolElapsedMs" to toolElapsedMs
             )
         )
+        onProgress?.invoke(ProgressUpdate("Completed", phase = "completed"))
 
         return SendResult(
             threadState = state,
@@ -581,8 +633,26 @@ class OpenAiIdeCodexBridge(
             rawResponseId = response.id(),
             commentary = commentaryMessages.toList(),
             conversationAdditions = conversationAdditions.toList(),
-            toolTranscript = toolTranscript.toList()
+            toolTranscript = toolTranscript.toList(),
+            modelIdentity = responseIdentity(response)
         )
+        } catch (failure: Throwable) {
+            val cancelled = isAiTurnCancellation(failure)
+            activeToolStarted?.let { toolElapsedMs += (System.nanoTime() - it) / 1_000_000 }
+            if (!terminalRecorded) {
+                terminalRecorded = true
+                toolIo(if (cancelled) "session_cancelled" else "session_failed", mapOf(
+                    "status" to if (cancelled) "cancelled" else "failed",
+                    "phase" to activePhase,
+                    "elapsedMs" to (System.nanoTime() - t0) / 1_000_000,
+                    "modelElapsedMs" to modelElapsedMs, "toolElapsedMs" to toolElapsedMs,
+                    "exceptionType" to failure::class.java.name, "message" to (failure.message ?: "")))
+                runCatching { onProgress?.invoke(ProgressUpdate(
+                    if (cancelled) "Cancelled" else "Failed during $activePhase",
+                    phase = if (cancelled) "cancelled" else "failed")) }
+            }
+            throw failure
+        }
     }
 
     fun threadStateToJson(state: ThreadState): String = mapper.writeValueAsString(state)
@@ -594,7 +664,8 @@ class OpenAiIdeCodexBridge(
         val rawResponseId: String,
         val commentary: List<String> = emptyList(),
         val conversationAdditions: List<String> = emptyList(),
-        val toolTranscript: List<ToolTranscriptEntry> = emptyList()
+        val toolTranscript: List<ToolTranscriptEntry> = emptyList(),
+        val modelIdentity: AiChatModelIdentity? = null
     )
 
     data class ToolTranscriptEntry(
@@ -607,7 +678,9 @@ class OpenAiIdeCodexBridge(
 
     data class ProgressUpdate(
         val title: String,
-        val body: String = ""
+        val body: String = "",
+        val modelIdentity: AiChatModelIdentity? = null,
+        val phase: String? = null
     )
 
     data class ThreadState(
@@ -671,6 +744,7 @@ class OpenAiIdeCodexBridge(
 
             acc.response()
         } catch (t: Throwable) {
+            if (isAiTurnCancellation(t)) throw t
             if (rateLimitRetryDelayMs(t) != null) {
                 traceResponseError("streaming", t)
                 throw t
@@ -960,11 +1034,12 @@ class OpenAiIdeCodexBridge(
 
     private fun emitResponseProgress(response: Response, onProgress: ((ProgressUpdate) -> Unit)?) {
         if (onProgress == null) return
+        onProgress(ProgressUpdate("", modelIdentity = responseIdentity(response)))
         val summaries = extractReasoningSummaries(response)
         val calls = response.output()
             .filter { it.isFunctionCall() }
             .mapNotNull { it.functionCall().orElse(null) }
-        if (summaries.isEmpty() && calls.isEmpty()) return
+        if (summaries.isEmpty()) return
 
         val firstSummary = summaries.firstOrNull().orEmpty()
         val title = progressTitle(firstSummary).ifBlank {

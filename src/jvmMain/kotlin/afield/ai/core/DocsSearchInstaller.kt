@@ -38,7 +38,7 @@ fun installDocsSearch() {
         }
         
         if (docsSearchBridge == null) {
-            val uiLog = NotifyLog(label = "")
+            val uiLog = NotifyLog(label = "Docs Search")
             docsSearchBridge = DocsSearchBridge(log = uiLog)
             notify("Initializing Documentation Search", "Docs Search")
         }

@@ -1,5 +1,6 @@
 package afield.ai.core
 
+import afield.AiChatModelIdentity
 import com.openai.models.ReasoningEffort
 
 /**
@@ -49,6 +50,9 @@ fun createLlmBridge(
         )
 
 interface LlmBridge {
+    /** Configured identity while a request is pending; response metadata arrives through progress/results. */
+    val modelIdentity: AiChatModelIdentity? get() = null
+
     fun startThread(
         fileKey: String,
         fileText: String,
@@ -78,6 +82,7 @@ interface LlmBridge {
  */
 class OpenAiLlmBridge(private val inner: OpenAiIdeCodexBridge) : LlmBridge {
     val delegate: OpenAiIdeCodexBridge get() = inner
+    override val modelIdentity: AiChatModelIdentity get() = inner.modelIdentity
 
     override fun startThread(fileKey: String, fileText: String, instructions: String): LlmThreadState =
         if (instructions.isBlank()) inner.startThread(fileKey, fileText)

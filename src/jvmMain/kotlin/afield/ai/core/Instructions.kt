@@ -110,7 +110,7 @@ ${ctx.documentGuides.catalogueContext()}
     }
     if (ctx.editOtherFile != null) toolAds += "- EditFile: update another file by name (e.g., paired shaders)."
     if (ctx.compileKotlin != null) {
-        toolAds += "- CompileKotlin: compile the current Kotlin code or an afield://.../code ref. Mandatory after Kotlin edits before ending the turn. If it fails, fix and rerun. Inspect setupChanges for preamble/intro/attic mutations."
+        toolAds += "- CompileKotlin: compile the current Kotlin code or an afield://.../code ref. Required after ordinary Kotlin edits. A specialized transactional tool may satisfy this itself when it returns compileSuccess=true, checksPassed=true, and the exact activated revision/sourceHash; do not recompile that unchanged source. If it fails, fix and rerun. Inspect setupChanges for preamble/intro/attic mutations."
     }
     if (ctx.reloadShaders != null) {
         toolAds += "- ReloadShaders: reload graphics/compute/mesh/ray shaders for the current box or target ref. Mandatory after shader edits before ending the turn. If it fails, fix and rerun. With visualCheck=true it also attaches a post-reload screenshot."
@@ -120,7 +120,7 @@ ${ctx.documentGuides.catalogueContext()}
     }
     if (ctx.workspaceSymbolSearch != null) {
         toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."
-        toolAds += "  Results include filePath, fileId, line, definitionLine, definitionBody (for fun), and may suggest relatedGuides / relatedExamples."
+        toolAds += "  Results include filePath, fileId, line, definitionLine, definitionBody (including property getters), kdoc, and optionally relatedGuides / relatedExamples when includeRelatedContext=true."
     }
     if (ctx.listMacros != null || ctx.readMacro != null || ctx.runMacro != null || ctx.writeMacro != null) {
         toolAds += "- MacroListRequest / MacroReadRequest: discover and read saved YAML operation-transcript macros before running or editing them."
@@ -145,7 +145,7 @@ ${ctx.documentGuides.catalogueContext()}
     val verificationChecklist = buildString {
         val steps = mutableListOf<String>()
         if (ctx.compileKotlin != null) {
-            steps += "Kotlin edits: call CompileKotlin on the edited `code` ref or pass the edited source directly. Do not finalize on compile errors; fix and rerun until success or explain the blocker. If setupChanges reports preamble, intro, or attic changed, mention it."
+            steps += "Kotlin edits: call CompileKotlin on the edited `code` ref or pass the edited source directly, unless the editing tool already returned compileSuccess=true and checksPassed=true for that exact activated revision/sourceHash. Do not repeat validation of unchanged source. When an edit returns actual preview images, inspect those before requesting another observation; ask for more only if the supplied interval or evidence is insufficient. Do not finalize on compile errors; fix and rerun until success or explain the blocker. If setupChanges reports preamble, intro, or attic changed, mention it."
         }
         if (ctx.reloadShaders != null) {
             steps += "Shader edits: call ReloadShaders on the edited shader ref or target box. Do not finalize on reload errors; fix and rerun until success or explain the blocker."

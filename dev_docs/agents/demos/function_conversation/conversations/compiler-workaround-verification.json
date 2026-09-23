@@ -1,0 +1,220 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "ok": true,
+      "command": "new-box --name CompileProbe",
+      "data": {
+        "documentName": "scratch",
+        "scratch": true,
+        "box": {
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+          "name": "CompileProbe",
+          "frame": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 100.0,
+            "h": 100.0
+          },
+          "preamble": "",
+          "offline": true
+        }
+      },
+      "events": [],
+      "timedOut": false
+    },
+    {
+      "ok": true,
+      "command": "run @last --file /tmp/function-study-compile-probe.kt",
+      "data": {
+        "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+        "property": "code",
+        "codeLength": 243,
+        "running": false
+      },
+      "events": [
+        {
+          "seq": 142,
+          "receivedAt": 1790119056.012554,
+          "messageName": "is-running",
+          "name": "is-running",
+          "originalName": null,
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "isRunning": true,
+            "watermark": 0,
+            "strand": "__fragment__"
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d"
+        },
+        {
+          "seq": 143,
+          "receivedAt": 1790119056.0560582,
+          "messageName": "message-batch",
+          "name": "message-batch",
+          "originalName": null,
+          "payload": {
+            "messages": [
+              {
+                "name": "set-topology",
+                "uid": "message_456",
+                "payload": {
+                  "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+                  "kind": "box_nested",
+                  "value": []
+                }
+              },
+              {
+                "name": "set-boolean",
+                "uid": "message_457",
+                "payload": {
+                  "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+                  "property": "offline",
+                  "number": false
+                }
+              },
+              {
+                "name": "set-string",
+                "uid": "message_458",
+                "payload": {
+                  "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+                  "property": "preamble",
+                  "value": "",
+                  "syncSequence": 1
+                }
+              },
+              {
+                "name": "set-string",
+                "uid": "message_459",
+                "payload": {
+                  "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+                  "property": "code",
+                  "value": "val candidate = afield.stdlib.FunctionStudy.compileStudy(java.io.File(\"/tmp/function-study-lag-compatible.kt\").readText())\nprintln(\"compatible candidate: channels=\" + candidate.channels.size + \" hold=\" + candidate.channels.map { it(1630.0) })\n",
+                  "syncSequence": 1
+                }
+              }
+            ]
+          }
+        },
+        {
+          "seq": 144,
+          "receivedAt": 1790119056.0561202,
+          "messageName": "set-topology",
+          "name": "set-topology",
+          "originalName": null,
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "kind": "box_nested",
+            "value": []
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+          "batchSeq": 143
+        },
+        {
+          "seq": 145,
+          "receivedAt": 1790119056.056149,
+          "messageName": "set-boolean",
+          "name": "set-boolean",
+          "originalName": null,
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "property": "offline",
+            "number": false
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+          "batchSeq": 143
+        },
+        {
+          "seq": 146,
+          "receivedAt": 1790119056.056169,
+          "messageName": "set-string",
+          "name": "set-string",
+          "originalName": null,
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "property": "preamble",
+            "value": "",
+            "syncSequence": 1
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+          "batchSeq": 143
+        },
+        {
+          "seq": 147,
+          "receivedAt": 1790119056.05619,
+          "messageName": "set-string",
+          "name": "set-string",
+          "originalName": null,
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "property": "code",
+            "value": "val candidate = afield.stdlib.FunctionStudy.compileStudy(java.io.File(\"/tmp/function-study-lag-compatible.kt\").readText())\nprintln(\"compatible candidate: channels=\" + candidate.channels.size + \" hold=\" + candidate.channels.map { it(1630.0) })\n",
+            "syncSequence": 1
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+          "batchSeq": 143
+        },
+        {
+          "seq": 148,
+          "receivedAt": 1790119056.6855092,
+          "messageName": "exec_54e07601924b4cf2a860af8bdd986090",
+          "name": "output",
+          "originalName": "output",
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "line": 2,
+            "html": "compatible candidate: channels=3 hold=[1.0, 1.0, 1.0]\n",
+            "kind": "normal",
+            "frame": 108193
+          },
+          "replyContext": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "command": "run"
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+          "kind": "normal"
+        },
+        {
+          "seq": 149,
+          "receivedAt": 1790119056.692714,
+          "messageName": "is-running",
+          "name": "is-running",
+          "originalName": null,
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "isRunning": false,
+            "watermark": 0,
+            "strand": "__fragment__"
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d"
+        },
+        {
+          "seq": 150,
+          "receivedAt": 1790119056.6931908,
+          "messageName": "exec_54e07601924b4cf2a860af8bdd986090",
+          "name": "execution-verdict",
+          "originalName": "execution-verdict",
+          "payload": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "property": "code",
+            "revision": "1af0a8f1083a29ba2712f824e2bcab522050b61cd5858224d75cee4e633b1558",
+            "requestId": "exec_54e07601924b4cf2a860af8bdd986090",
+            "mode": "run",
+            "success": true
+          },
+          "replyContext": {
+            "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
+            "command": "run"
+          },
+          "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d"
+        }
+      ],
+      "timedOut": false
+    }
+  ],
+  "timings": {
+    "reset_doc": 0.002948750014184043,
+    "cmd:new-box": 0.05932212501647882,
+    "cmd:run": 1.0420013330003712
+  }
+}

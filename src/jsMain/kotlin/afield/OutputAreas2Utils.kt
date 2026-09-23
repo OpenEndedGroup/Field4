@@ -299,7 +299,7 @@ private fun renderMarkdown(markdown: String?): String {
     return html.toString()
 }
 
-private data class ChatTurn(val role: String, val content: String)
+private data class ChatTurn(val role: String, val content: String, val model: AiChatModelIdentity? = null)
 
 private fun parseChatHistory(history: String?): List<ChatTurn> {
     val text = (history ?: "").replace("\r\n", "\n")
@@ -336,7 +336,8 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
         val role = currentRole ?: return
         val content = buffer.toString().trim()
         if (content.isNotEmpty()) {
-            turns.add(ChatTurn(role, content))
+            val (model, body) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
+            turns.add(ChatTurn(role, body, model))
         }
         buffer.clear()
     }
@@ -381,13 +382,38 @@ fun aiChatMarkdownToHtml(markdown: String?): String {
 fun aiChatHistoryToHtml(history: String?): String {
     val turns = parseChatHistory(history)
     if (turns.isEmpty()) return ""
-    val html = turns.joinToString("") { turn ->
-        if (turn.role.startsWith("progress")) {
-            renderProgressTurn(turn)
+    val html = StringBuilder()
+    var statusRowOpen = false
+    for (turn in turns) {
+        val progress = turn.role.startsWith("progress")
+        val lines = turn.content.lines()
+        val title = lines.firstOrNull()?.trim().orEmpty()
+        val body = lines.drop(1).joinToString("\n").trim()
+        val statusOnly = progress && (body.isBlank() || body == title)
+        if (statusOnly) {
+            if (!statusRowOpen) {
+                html.append("<div class=\"ai-chat-status-row\" aria-label=\"AI activity\">")
+                statusRowOpen = true
+            }
+            html.append("<span class=\"ai-chat-status\">${escapeHtml(title.ifBlank { "AI activity" })}</span>")
+            continue
+        }
+        if (statusRowOpen) {
+            html.append("</div>")
+            statusRowOpen = false
+        }
+        if (progress) {
+            html.append(renderProgressTurn(turn))
         } else {
-            "<div class=\"ai-chat-turn ${turn.role}\">" + aiChatMarkdownToHtml(turn.content) + "</div>"
+            val badge = if (turn.role == "ai") {
+                val label = turn.model?.label() ?: "Model not recorded"
+                val title = turn.model?.description() ?: "This older chat entry did not record its provider or model."
+                "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
+            } else ""
+            html.append("<div class=\"ai-chat-turn ${turn.role}\">" + badge + aiChatMarkdownToHtml(turn.content) + "</div>")
         }
     }
+    if (statusRowOpen) html.append("</div>")
     return "<div class=\"ai-chat-thread\">$html</div>"
 }
 

@@ -1,0 +1,86 @@
+{
+  "id" : "r3-66fd67f6fe7c",
+  "parent" : "r2-8f83d79e35c9",
+  "description" : "One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.",
+  "events" : [ {
+    "id" : "e1",
+    "start" : 185.0,
+    "rise" : 100.0,
+    "hold" : 30.0,
+    "fall" : 100.0,
+    "end" : 415.0,
+    "plateauStart" : 285.0,
+    "plateauEnd" : 315.0
+  }, {
+    "id" : "e2",
+    "start" : 785.0,
+    "rise" : 100.0,
+    "hold" : 30.0,
+    "fall" : 100.0,
+    "end" : 1015.0,
+    "plateauStart" : 885.0,
+    "plateauEnd" : 915.0
+  }, {
+    "id" : "e3",
+    "start" : 1385.0,
+    "rise" : 100.0,
+    "hold" : 30.0,
+    "fall" : 100.0,
+    "end" : 1615.0,
+    "plateauStart" : 1485.0,
+    "plateauEnd" : 1515.0
+  }, {
+    "id" : "e4",
+    "start" : 1985.0,
+    "rise" : 100.0,
+    "hold" : 30.0,
+    "fall" : 100.0,
+    "end" : 2215.0,
+    "plateauStart" : 2085.0,
+    "plateauEnd" : 2115.0
+  }, {
+    "id" : "e5",
+    "start" : 2585.0,
+    "rise" : 100.0,
+    "hold" : 30.0,
+    "fall" : 100.0,
+    "end" : 2815.0,
+    "plateauStart" : 2685.0,
+    "plateauEnd" : 2715.0
+  }, {
+    "id" : "e6",
+    "start" : 3185.0,
+    "rise" : 100.0,
+    "hold" : 30.0,
+    "fall" : 100.0,
+    "end" : 3415.0,
+    "plateauStart" : 3285.0,
+    "plateauEnd" : 3315.0
+  } ],
+  "choices" : [ {
+    "statement" : "Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale",
+    "provenance" : "user requirement"
+  }, {
+    "statement" : "Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries",
+    "provenance" : "user requirement"
+  }, {
+    "statement" : "Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6",
+    "provenance" : "user requirement"
+  }, {
+    "statement" : "Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway",
+    "provenance" : "agent assumption"
+  }, {
+    "statement" : "Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins",
+    "provenance" : "agent assumption"
+  }, {
+    "statement" : "Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture",
+    "provenance" : "agent assumption"
+  }, {
+    "statement" : "All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus",
+    "provenance" : "agent assumption"
+  }, {
+    "statement" : "Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple",
+    "provenance" : "agent assumption"
+  } ],
+  "seed" : 0
+}

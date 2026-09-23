@@ -1,0 +1,10 @@
+{
+  "jvmTests": {
+    "FunctionStudyTest": 5,
+    "AgentToolExtensionsTest": 20,
+    "failures": 0,
+    "testTreeWriteGuard": "passed"
+  },
+  "diagnosticLookupSeconds": 0.8594259170058649,
+  "currentRevision": "r9-82456e1e48ac"
+}

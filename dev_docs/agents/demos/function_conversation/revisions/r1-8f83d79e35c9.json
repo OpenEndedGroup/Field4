@@ -1,0 +1,11 @@
+{
+  "id" : "r1-8f83d79e35c9",
+  "parent" : null,
+  "description" : "Blank page: three constant channels",
+  "events" : [ ],
+  "choices" : [ {
+    "statement" : "Initial constant background is a disposable starting point",
+    "provenance" : "agent assumption"
+  } ],
+  "seed" : 0
+}

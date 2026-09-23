@@ -502,7 +502,7 @@
     padding: 0;
     min-width: 550px;
     min-height: 0;
-    background: rgba(var(--field-black-rgb), 0.82);
+    background: var(--field-editor-bg);
 }
 
 /* --------------------------------------------------------------------------
@@ -793,6 +793,7 @@ pre code {
 }
 
 .ai-chat-window {
+    background: var(--field-editor-bg);
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -823,9 +824,9 @@ pre code {
 
 .ai-chat-input textarea {
     flex: 1 1 auto;
-    background: var(--field-panel-medium);
+    background: var(--field-editor-bg);
     color: var(--field-fg);
-    border: 1px solid var(--field-accent-border-medium);
+    border: 1px solid var(--field-border-medium);
     border-radius: 6px;
     padding: 6px 8px;
     font-size: 10px;
@@ -840,8 +841,8 @@ pre code {
 }
 
 .ai-chat-input textarea:focus {
-    border-color: var(--field-accent);
-    box-shadow: 0 0 0 1px var(--field-accent-border-soft);
+    border-color: var(--field-border-strong);
+    box-shadow: none;
 }
 
 .ai-chat-input {
@@ -900,6 +901,27 @@ pre code {
     font-size: 10px;
 }
 
+.ai-chat-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    margin: 2px 6px;
+    color: var(--field-fg-muted);
+    font: 10px/1.5 var(--field-font);
+}
+
+.ai-chat-status {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ai-chat-status + .ai-chat-status::before {
+    content: "·";
+    margin-right: 12px;
+    opacity: 0.5;
+}
+
 .ai-chat-progress summary {
     cursor: pointer;
     color: var(--field-fg);
@@ -936,7 +958,7 @@ pre code {
     text-align: left;
 }
 
-.ai-chat-turn.ai::before,
+.ai-chat-model,
 .ai-chat-turn.you::before {
     display: block;
     font-size: 9px;
@@ -944,8 +966,7 @@ pre code {
     margin-bottom: 2px;
 }
 
-.ai-chat-turn.ai::before {
-    content: "GPT-5.5";
+.ai-chat-model {
     text-align: left;
 }
 
@@ -956,7 +977,7 @@ pre code {
 
 .ai-chat-content {
     color: var(--field-fg);
-    background: var(--field-panel);
+    background: var(--field-editor-bg);
 }
 
 .ai-chat {
@@ -970,7 +991,7 @@ pre code {
     max-height: 300px;
     overflow: auto;
     padding: 8px;
-    background: var(--field-panel-medium);
+    background: var(--field-editor-bg);
     border: 1px solid var(--field-border-subtle);
     border-radius: 6px;
 }
@@ -985,7 +1006,7 @@ pre code {
     flex: 1;
     min-height: 80px;
     color: var(--field-fg);
-    background: var(--field-panel-medium);
+    background: var(--field-editor-bg);
     border: 1px solid var(--field-border-strong);
     border-radius: 4px;
     padding: 8px;
