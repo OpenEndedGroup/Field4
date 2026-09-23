@@ -296,7 +296,7 @@ the shader rebuilds a single influence gives back the packed matrix to 1.2e-7 ov
 
 Population: 50,000 vertices × 32 instances, two influences, the 2-bone rig; the verify compute
 shader, not a draw. Measured as a **paired** sweep: three rounds, each timing both methods at 32
-and 128 dispatches, slope from the fastest time per depth. Two runs: DQS cost **1.46×** and
+and 128 dispatches, slope from the fastest time per depth. Three runs: DQS cost **1.46×**, **1.37×** and
 **1.38×** the linear cost per dispatch (0.706 vs 0.482 ms; 0.682 vs 0.494 ms). The first attempt
 ran two full sweeps back to back and reported DQS at **0.47×** linear with a non-monotonic sweep —
 two moments, not two shaders — which is why it is paired now. The palette upload with both layouts
