@@ -184,8 +184,8 @@ the band, an amber spike at 1234 s; without, nothing there.
   fails in a box with *"Smart cast to 'FnExtremum' is impossible, because 'max' is a public API
   property declared in different module"*, while the same code compiles in jvmTest. Bind to a
   local `val` first. (Found running demo box 3; library-green, box-red.)
-  (not a limitation: the quoted text is Kotlin's own diagnostic for cross-module smart casts, shown so
-  the reader recognises it; binding a local `val` is the fix, and demo box 3 does exactly that)
+  The property it refuses is `FnInterval.kt:784#val max: FnExtremum?`, a public nullable `val` in
+  the library module, which Kotlin will not smart-cast from code compiled elsewhere.
 - Inside `with(Functions) { }`, `all` is `Functions.all` (an `FnTransform`), not a `Domain`, and
   `Domain` itself is not in scope unqualified — write `Functions.Domain.ALL`.
 - Tightness numbers depend on the generator's population; the median is dominated by small graphs,

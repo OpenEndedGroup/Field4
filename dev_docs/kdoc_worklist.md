@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8627 of 14672 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8684 of 14781 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**735 undocumented entry points** (types, top-level functions and values) and 4991 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**735 undocumented entry points** (types, top-level functions and values) and 5037 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -31,6 +31,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 7 | 42 | 6% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
+| [SignalViewer.kt](../src/jvmMain/kotlin/afield/stdlib/SignalViewer.kt) | Visualization | visualizers | 4 | 19 | 34% |
 | [FabricateRenderPlan.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt) | Renderers | fabricate_renderer | 4 | 15 | 9% |
 | [MorphoInterface.kt](../src/jvmMain/kotlin/afield/morpho/MorphoInterface.kt) | Languages | morpho_examples | 4 | 4 | 42% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
@@ -136,7 +137,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
 | [KotlinJs.kt](../src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt) | Languages | — | 5 | 7 | 0% |
 | [KratosSession.kt](../src/jvmMain/kotlin/afield/kratos/KratosSession.kt) | Simulation | — | 4 | 44 | 29% |
-| [SignalViewer.kt](../src/jvmMain/kotlin/afield/stdlib/SignalViewer.kt) | Visualization | — | 4 | 19 | 23% |
 | [DatalogAst.kt](../src/jvmMain/kotlin/afield/datalog/DatalogAst.kt) | Languages | — | 4 | 10 | 45% |
 | [DatalogInterface.kt](../src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt) | Languages | — | 4 | 7 | 21% |
 | [PointController.kt](../src/jvmMain/kotlin/afield/four/physics/PointController.kt) | Simulation | — | 3 | 45 | 17% |
@@ -162,6 +162,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatTranscriptionCorpus.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionCorpus.kt) | Patterns | — | 0 | 50 | 35% |
 | [PatTranscription.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscription.kt) | Patterns | — | 0 | 49 | 33% |
 | [Midi.kt](../src/jvmMain/kotlin/afield/four/synth/Midi.kt) | Audio | — | 0 | 46 | 43% |
+| [FnInterval.kt](../src/jvmMain/kotlin/afield/stdlib/FnInterval.kt) | Function | — | 0 | 46 | 49% |
 | [SpeechEmbeddingMds.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpeechEmbeddingMds.kt) | Audio AI | — | 0 | 42 | 22% |
 | [KratosStudy.kt](../src/jvmMain/kotlin/afield/kratos/KratosStudy.kt) | Simulation | — | 0 | 39 | 45% |
 | [FabricatePassChain.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassChain.kt) | Renderers | — | 0 | 30 | 57% |
