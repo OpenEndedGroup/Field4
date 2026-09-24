@@ -420,22 +420,15 @@ From inside Field, `sweepArchiveSummary(archive)` is the one-line version for th
 renders, how they ended, how many left the hull, the widest single weight, the median render time, how
 much of the pool got used, and any lane that was dropped or back-filled.
 
-## Where it is exercised
-
-`keyframeSweep.kt` is a CPU layer and its tests are too: `afield.stdlib.KeyframeSweepTest` recomputes
-`Σ wᵢ·vᵢ` from each manifest and requires it to reproduce the `key.json` beside it, which is the whole
-provenance contract, then pins the reproducibility, the resume, the three lane policies, the failure
-isolation, the disk floor and the sampling distribution.
-
-Every one of those assertions would still hold if applying a blend reached no uniform at all. So the
-claim that the *picture* is a function of the blend is checked on a GPU instead, by
-`tools/run_field_tests.py --id keyframe.sweep.smoke`: it runs a real six-render sweep and requires
-pixel distance to correlate with key distance across every pair of renders, at better than 0.6. What
-it does *not* require is that consecutive renders differ, since two independent draws can land next
-to each other in the space legitimately. The same run also re-applies a saved key and re-renders it;
-on the runs observed so far that has reproduced the sweep's own still exactly, which is more than the
-test asks for, given that the renderer carries a frame of temporal history.
+## Running it, and reading it back
 
 The loadable version of this page is the `keyframe_autosweep` transcript — four boxes, a renderer, the
 rig, the sweep and the morning box — listed with the rest in
-[Agent transcripts](agent_transcripts.md#keyframe_autosweep).
+[Agent transcripts](agent_transcripts.md#keyframe_autosweep). That is the fastest way to get a real
+sweep running against your own scene.
+
+Two suites stand behind it. `afield.stdlib.KeyframeSweepTest` is CPU-only and pins the provenance
+contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
+distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
+GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap
+between them, is in `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`.
