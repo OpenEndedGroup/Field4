@@ -439,10 +439,10 @@ revision sources; the readable versions are here:
 | [Restore the background](assets/function_conversation/07-restore-background.html) | Other event edits survive. |
 
 An [independent replay](assets/function_conversation/independent-verification.json)
-recompiled the saved sources and compared them on a grid no coarser than 11 ms.
-It checked preserved regions, hold values, random-access evaluation order, failed
-compilation, and protection against stale edits. Its zero differences are sampled
-evidence; they are not a proof about every possible input to arbitrary Kotlin.
+recompiled the saved sources and compared them on a grid no coarser than 11 ms,
+finding no difference in the preserved regions, the hold values, or under
+random-access evaluation order. It also exercised failed compilation and the
+stale-edit guard. That is sampling, not proof.
 
 ## The tools are part of the document
 
@@ -495,14 +495,13 @@ existing JVM, so use fast evaluators; this is not a way to sample a stateful aud
 graph or isolate arbitrary blocking code. The tools and checks are visible on
 purpose, so you can adapt the experiment to another kind of function.
 
-??? aside "What the recorded run tells us about speed"
+??? aside "Why the recorded turns are slow"
 
-    The first seven turns used an earlier, more repetitive edit loop and took
-    roughly 52–286 seconds each, including provider backoff. A later
+    The seven recorded turns ran on an earlier, more repetitive edit loop, so
+    their wall-clock times are not what the current one does; a later
     [saved edit-and-export replay](assets/function_conversation/08-loop-improvements.html)
-    used Inspect → Patch → Export on a separate 60-second fixture: 15.506 seconds,
-    of which 13.402 seconds was model requests and 1.541 seconds was tools.
-    That is evidence for a smaller interaction loop, not a general speed guarantee.
-    The historical runs record gpt-6-astra / OpenAI; your provider configuration
-    determines new conversations, and the chat records the identity reported for
-    each response.
+    uses Inspect → Patch → Export instead. Both runs' timings, and why they are
+    not a controlled comparison, are in
+    `dev_docs/FUNCTION_CONVERSATION_EXPERIMENT.md`. Those runs record
+    gpt-6-astra / OpenAI; your provider configuration determines new
+    conversations, and the chat records the identity reported for each response.
