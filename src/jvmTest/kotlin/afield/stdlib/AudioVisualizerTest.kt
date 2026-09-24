@@ -25,31 +25,26 @@ class AudioVisualizerTest {
             ),
         )
 
-        assertContains(html, "data-waveform-url=\"/waveform/example\"")
-        assertContains(html, "data-playhead=\"false\"")
-        assertContains(html, "data-follow-playhead=\"true\"")
-        assertContains(html, "data-position=\"1.250000000\"")
-        assertContains(html, "data-time-sync=\"take-a\"")
-        assertContains(html, "data-time-offset=\"18.000000000\"")
-        assertContains(html, "wheel zoom at playhead · drag pan · click seek")
-        assertContains(html, "start_seconds")
-        assertContains(html, "duration_seconds")
-        assertContains(html, "points")
+        // Rendered by the one time-axis viewer; the options travel in its JSON config.
+        assertContains(html, "class=\"field-signal-viewer fsv-audio field-audio-visualizer\"")
+        assertContains(html, "\"waveformUrl\":\"/waveform/example\"")
+        assertContains(html, "\"showPlayhead\":false")
+        assertContains(html, "\"follow\":true")
+        assertContains(html, "\"initialPosition\":1.25")
+        assertContains(html, "\"initialDuration\":3.0")
+        assertContains(html, "\"syncGroup\":\"take-a\"")
+        assertContains(html, "\"syncOffset\":18.0")
+        assertContains(html, "\"zoomAtPlayhead\":true")
         assertContains(html, "data-afield-intrinsic-width=\"960\"")
         assertContains(html, "width:960px;max-width:100%;box-sizing:border-box")
-        assertContains(html, "observe(stage)")
+        assertContains(html, "<audio controls preload=\"metadata\" src=\"/audio/example.wav\"")
+        // The runtime's contract with Field Audio's waveform endpoint and the time bus.
+        for (needle in listOf("start_seconds", "duration_seconds", "'points'", "resize.observe(stage)",
+            "request timed out after 15 seconds", "field-time-cursor", "field-time-seek", "field-time-window",
+            "field-time-transport", "bus.dispatchEvent", "p > start + span"))
+            assertContains(html, needle)
         assertFalse("observe(canvas)" in html)
-        assertContains(html, "class=\"fav-busy\"")
-        assertContains(html, "animation:fav-spin 760ms linear infinite")
-        assertContains(html, "const anchor=zoomAnchor(fallbackAnchor)")
-        assertContains(html, "setLoading(true)")
-        assertContains(html, "if(playhead>viewStart+viewDuration)")
-        assertContains(html, "request timed out after 15 seconds")
-        assertContains(html, "Promise.race([promise,deadline])")
-        assertContains(html, "field-time-cursor")
-        assertContains(html, "field-time-seek")
-        assertContains(html, "field-time-window")
-        assertContains(html, "timeBus.dispatchEvent")
+        assertFalse("<canvas" in html, "the hand-written canvas renderer is gone")
     }
 
     @Test
@@ -69,7 +64,7 @@ class AudioVisualizerTest {
         )
 
         assertContains(html, "src=\"data:audio/wav;base64,AQIDBA==\"")
-        assertContains(html, "data-inline-waveform-wav=\"UklGR")
+        assertContains(html, "\"inlineWav\":\"UklGR")
         assertFalse("waveform: Unable to decode audio data" in html)
     }
 

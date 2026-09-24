@@ -3212,7 +3212,7 @@ object Functions {
                 "lanes" to listOf(mapOf("name" to safeTitle, "yZoom" to true, "yTitle" to yLabel,
                     "color" to primaryColor, "width" to 2.0)),
             ),
-            widthPx = null,
+            widthPx = 760,
             accent = primaryColor,
             background = background,
             fontFamily = fontFamily,

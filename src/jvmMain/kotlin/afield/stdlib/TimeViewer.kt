@@ -54,6 +54,8 @@ internal object TimeViewerShell {
         background: String = "#000000",
         fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", ui-monospace, monospace",
         showNavigation: Boolean = true,
+        // Compatibility class for callers that style the old component (e.g. field-audio-visualizer).
+        extraClass: String = "",
     ): String {
         val interactive = config["interactive"] != false
         val source = config["source"] as? String ?: "range"
@@ -68,7 +70,7 @@ internal object TimeViewerShell {
         val safeAccent = accent.cssValue()
         val safeBackground = background.cssValue()
         return """
-<div class="field-signal-viewer fsv-$source" data-afield-intrinsic-width="$intrinsic" style="$size;box-sizing:border-box;--fsv-accent:$safeAccent;--fsv-bg:$safeBackground" aria-busy="true">
+<div class="field-signal-viewer fsv-$source${if (extraClass.isBlank()) "" else " " + extraClass.filter { it.isLetterOrDigit() || it == '-' }}" data-afield-intrinsic-width="$intrinsic" style="$size;box-sizing:border-box;--fsv-accent:$safeAccent;--fsv-bg:$safeBackground" aria-busy="true">
 <style>
 .field-signal-viewer{background:var(--fsv-bg);color:rgba(255,255,255,.82);font:12px/1.4 $fontFamily;padding:10px 12px 10px;border-radius:4px}
 .field-signal-viewer .fsv-top{display:flex;align-items:center;gap:8px;min-height:28px;margin-bottom:6px}
@@ -101,8 +103,10 @@ internal object TimeViewerShell {
 .field-signal-viewer .fsv-overview{fill:none;stroke:rgba(255,255,255,.34);stroke-width:1;vector-effect:non-scaling-stroke}
 .field-signal-viewer .fsv-overview.fsv-filled{fill:rgba(255,255,255,.2);stroke:none}
 .field-signal-viewer .fsv-window{position:absolute;top:0;bottom:0;border:1px solid var(--fsv-accent);border-radius:4px;background:rgba(255,255,255,.06);box-sizing:border-box}
-.field-signal-viewer .fsv-navigation.fsv-whole{cursor:default}
-.field-signal-viewer .fsv-navigation.fsv-whole .fsv-window{border-color:rgba(255,255,255,.14);background:none}
+.field-signal-viewer .fsv-navigation.fsv-whole{cursor:default;border-color:rgba(255,255,255,.07)}
+.field-signal-viewer .fsv-navigation.fsv-whole .fsv-window{border-color:rgba(255,255,255,.1);background:none}
+.field-signal-viewer .fsv-navigation.fsv-whole .fsv-overview{stroke:rgba(255,255,255,.16)}
+.field-signal-viewer .fsv-navigation.fsv-whole .fsv-overview.fsv-filled{fill:rgba(255,255,255,.09)}
 .field-signal-viewer audio{width:100%;height:30px;margin-top:6px;display:block}
 </style>
 <div class="fsv-top"><div class="fsv-title"></div><span class="fsv-legend"></span><span class="fsv-status fsv-chip" role="status" aria-live="polite"></span>$tools</div>

@@ -261,27 +261,35 @@
   const plotArea = () => { const s = plot._fullLayout?._size, m = margin(); return s ? {l: s.l, t: s.t, w: s.w, h: s.h} : {l: m.l, t: m.t, w: Math.max(1, stage.clientWidth - m.l - m.r), h: 1}; };
   const lanesOf = () => model?.lanes || (config.lanes || [{name: ''}]).map(l => ({name: l.name, minimum: l.minimum ?? 0, maximum: l.maximum ?? 1, traces: [], probes: [], weight: l.weight || 1, yTitle: l.yTitle}));
   const plotHeight = () => config.plotHeight || (lanesOf().length * (config.laneHeight || 130) + margin().t + margin().b);
+  // A 2px transparent tick pushes labels off the axis (plotly 2.24 has no ticklabelstandoff).
+  const tickGap = {ticks: 'outside', ticklen: 2, tickcolor: 'rgba(0,0,0,0)'};
   const axisFont = {family: '"Iosevka Web", "IBM Plex Mono", ui-monospace, monospace', color: 'rgba(255,255,255,.55)', size: 11};
   const layout = () => {
     const lanes = lanesOf(), count = lanes.length, m = margin(), h = plotHeight(), inner = h - m.t - m.b;
     const gap = count > 1 ? 14 / inner : 0, weights = lanes.reduce((a, l) => a + (l.weight || 1), 0), usable = 1 - gap * (count - 1);
     const l = {width: Math.max(200, stage.clientWidth), height: h, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(255,255,255,.022)',
       font: axisFont, margin: m, dragmode: interactive ? 'pan' : false, hovermode: false, showlegend: false,
-      uirevision: config.viewKey || 'signal', annotations: []};
+      uirevision: config.viewKey || 'signal', annotations: [], shapes: []};
     let top = 1;
     lanes.forEach((lane, i) => {
       const suffix = i ? i + 1 : '', y0 = Math.max(0, top - usable * (lane.weight || 1) / weights), yr = yRanges[i] || [lane.minimum, lane.maximum];
       const secondary = colors.secondary ? colors.secondary : null;
       l['xaxis' + suffix] = {range: [start, start + span], autorange: false, anchor: 'y' + suffix, matches: i ? 'x' : undefined,
-        showticklabels: i === count - 1, gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ticks: '', tickfont: axisFont,
-        zeroline: !!config.zeroLines, zerolinecolor: secondary || 'rgba(255,136,0,.55)', zerolinewidth: 1.25, automargin: false,
+        showticklabels: i === count - 1, gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ...tickGap, tickfont: axisFont,
+        zeroline: false, automargin: false,
         title: i === count - 1 && config.xLabel ? {text: esc(config.xLabel), standoff: 8, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
       l['yaxis' + suffix] = {domain: [y0, top], range: yr, autorange: false, fixedrange: !(interactive && lane.yZoom),
-        gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ticks: '', tickfont: axisFont, automargin: false,
-        zeroline: !!(config.zeroLines || lane.zeroLine), zerolinecolor: config.zeroLines && secondary ? secondary : 'rgba(255,255,255,.22)', zerolinewidth: 1.25,
+        gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ...tickGap, tickfont: axisFont, automargin: false, zeroline: false,
         ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} :
           {tickvals: [lane.minimum, (lane.minimum + lane.maximum) / 2, lane.maximum].map(v => Number(v.toPrecision(4)))}),
         title: lane.yTitle ? {text: esc(lane.yTitle), standoff: 10, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
+      // Zero axes as shapes: Plotly hides a zeroline that lands on the range edge, and x = 0 at the
+      // left edge is exactly the case a function plot starts from.
+      const orange = secondary || 'rgba(255,136,0,.55)';
+      const strict = config.zeroLines === 'inside';
+      if (config.zeroLines && (strict ? 0 > domainStart && 0 < domainEnd : 0 >= domainStart && 0 <= domainEnd)) l.shapes.push({type: 'line', layer: 'below', xref: 'x' + suffix, yref: 'y' + suffix + ' domain', x0: 0, x1: 0, y0: 0, y1: 1, line: {color: orange, width: 1.25}});
+      if (lane.zeroLine || (config.zeroLines && (!strict || (0 > lane.minimum && 0 < lane.maximum)))) l.shapes.push({type: 'line', layer: 'below', xref: 'x' + suffix + ' domain', yref: 'y' + suffix, x0: 0, x1: 1, y0: 0, y1: 0,
+        line: {color: config.zeroLines ? orange : 'rgba(255,255,255,.22)', width: config.zeroLines ? 1.25 : 1}});
       if (count > 1 || config.laneLabels) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',
         xshift: 5, yshift: -3, text: esc(lane.name), showarrow: false, font: {...axisFont, size: 10, color: 'rgba(255,255,255,.62)'},
         bgcolor: 'rgba(5,5,5,.78)', borderpad: 2});

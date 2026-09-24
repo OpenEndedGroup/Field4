@@ -134,7 +134,7 @@ class SignalViewer(
                 "initialStart" to options.initialStart, "initialDuration" to options.initialDuration,
                 "syncGroup" to options.syncGroup, "viewKey" to options.viewKey,
                 "label" to options.label, "comparisonLabel" to options.comparisonLabel,
-                "laneHeight" to options.laneHeight, "xLabel" to "seconds",
+                "laneHeight" to options.laneHeight, "xLabel" to "seconds", "zeroLines" to "inside",
                 "lanes" to channels.map { mapOf("name" to it.name, "minimum" to it.minimum, "maximum" to it.maximum) },
             ),
             widthPx = options.width,
