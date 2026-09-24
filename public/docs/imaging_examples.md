@@ -510,7 +510,7 @@ are in `dev_docs/IMAGING_MEASUREMENTS.md`.
 
 ### Value type
 
-Load, construct and save floating-point images. `Img` holds pixels; `Border` specifies how sampling behaves outside them.
+Load, construct and save floating-point images.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -550,7 +550,7 @@ Change the image extent or sample positions. Use nearest sampling for discrete l
 
 ### Channels / colour
 
-Select channels or change colour representations. Convert between sRGB and linear light explicitly when the calculation depends on intensity.
+Select channels or change colour representations.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -571,7 +571,7 @@ Select channels or change colour representations. Convert between sRGB and linea
 
 ### Statistics
 
-Measure or remap intensity distributions. Threshold helpers produce masks; difference and PSNR measurements compare two images.
+Measure or remap intensity distributions.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -592,7 +592,7 @@ Measure or remap intensity distributions. Threshold helpers produce masks; diffe
 
 ### Filters
 
-Smooth, sharpen or apply a custom kernel. Choose bilateral filtering when preserving edges matters and median filtering for isolated outliers.
+Smooth, sharpen or apply a custom kernel.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -614,7 +614,7 @@ Smooth, sharpen or apply a custom kernel. Choose bilateral filtering when preser
 
 ### Gradients
 
-Measure spatial changes in intensity. First derivatives describe edge direction and strength; Laplacian operators measure second-order change.
+Measure spatial changes in intensity.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -633,7 +633,7 @@ Measure spatial changes in intensity. First derivatives describe edge direction 
 
 ### Multiscale
 
-Build coarse-to-fine image representations. Gaussian pyramids hold smoothed levels; Laplacian pyramids hold differences between levels.
+Build coarse-to-fine image representations.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -671,7 +671,7 @@ Find edge pixels or repeatable corner locations. Use corner responses when you n
 
 ### Lines / blobs
 
-Group local evidence into shapes. Hough transforms detect lines and circles; morphology cleans masks before component labelling or contour tracing.
+Group local evidence into shapes. The morphology here runs on a mask before you label components or trace contours, not after.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -717,7 +717,7 @@ Align images or measure motion between frames. Use RANSAC when correspondences i
 
 ### Field integration
 
-Turn analysis results into Field geometry or output panels. Compose images with overlays or stacks before displaying them.
+Turn analysis results into Field geometry or output panels.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
