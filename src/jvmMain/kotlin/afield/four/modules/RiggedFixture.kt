@@ -149,7 +149,8 @@ object RiggedFixture {
         // `twist` rotates about the BONE'S OWN AXIS, which is the one case linear blend skinning
         // cannot do. The bones run up +y, so this is a +y rotation, and 180 degrees is where it is
         // worst: at the joint ring the two influences are near 0.5/0.5, and averaging a matrix with
-        // its own 180-degree rotation gives a matrix that has collapsed the cross-section to a line.
+        // its own 180-degree rotation gives diag(0, 1, 0), which sends every vertex of that ring to
+        // one point on the axis (SkinnedVolumeTest asserts it).
         // That is the "candy wrapper", and it is why `twist` exists rather than a third bend.
         fun yQuat(degrees: Double): FloatArray {
             val half = Math.toRadians(degrees) / 2.0

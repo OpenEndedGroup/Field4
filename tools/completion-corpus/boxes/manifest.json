@@ -411,6 +411,8 @@
   {"doc": "skinned_characters", "box": "rig_facts", "codeSha256": "c722854114e00ccf", "codeLines": 60, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "skinned_characters", "box": "skin_renderer", "codeSha256": "589f3a13d6133d8d", "codeLines": 24, "receivers": ["afield.Box"], "preamble": "skinned_characters__skin_renderer.preamble.kt"},
   {"doc": "skinned_characters", "box": "twist_compare", "codeSha256": "634cfaf0612ecbf5", "codeLines": 62, "receivers": ["afield.Box"], "preamble": "skinned_characters__twist_compare.preamble.kt"},
+  {"doc": "skinned_volume_path_trace", "box": "chain_renderer", "codeSha256": "a58c801cfc33d7a1", "codeLines": 9, "receivers": ["afield.Box"], "preamble": "skinned_volume_path_trace__chain_renderer.preamble.kt"},
+  {"doc": "skinned_volume_path_trace", "box": "skinned_volume_trace", "codeSha256": "fe0ed9c2d6c7c163", "codeLines": 86, "receivers": ["afield.Box"], "preamble": "skinned_volume_path_trace__skinned_volume_trace.preamble.kt"},
   {"doc": "solidsl_inverse", "box": "gradient", "codeSha256": "22a11ff50fd54050", "codeLines": 72, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_inverse", "box": "inverse", "codeSha256": "3838ed4d36311d04", "codeLines": 71, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_inverse", "box": "refusals", "codeSha256": "cbaac5f3d6b072a3", "codeLines": 60, "receivers": ["afield.Box"], "preamble": ""},

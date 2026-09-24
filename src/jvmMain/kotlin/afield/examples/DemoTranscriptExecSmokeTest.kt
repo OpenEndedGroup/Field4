@@ -418,6 +418,7 @@ object DemoTranscriptExecSmokeTest {
         "pattern_particles",
         "life3d_manifold_path_trace",
         "rectsl_spacetime_path_trace",
+        "skinned_volume_path_trace",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",

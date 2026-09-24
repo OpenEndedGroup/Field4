@@ -340,9 +340,12 @@ person with a working GPU capture path should re-run them before anyone leans on
   narrower than this page implied — it is the per-frame *vertex re-upload*, not any per-frame
   buffer write. Box 6 rewrites a 128-matrix palette every frame and photographs fine.
 - **No morph targets.** `require(mesh.mNumAnimMeshes()==0)` is still in the path tracer.
-- **No dual quaternion skinning.** Linear blend skinning collapses a limb at 90°; the clip blend in
-  `Skeleton.blendedPalette` is componentwise for exactly the same reason, so the two are at least
-  consistently wrong in the same way.
+- ~~**No dual quaternion skinning.**~~ **Done:** `SkinningMethod.DUAL_QUATERNION` →
+  `DualQuaternionSkinning.skin`. (This line used to say linear blending "collapses a limb at 90°";
+  the collapse is at a **180°** twist about the bone, where the 50/50 ring goes to a point — at 90° it
+  keeps cos 45° ≈ 0.71 of its radius. As a volume, see `public/docs/chain_skinned_volume.md`: the
+  capped tube keeps exactly 2/3.) The clip blend in `Skeleton.blendedPalette` is still componentwise,
+  so it is wrong under twist in the same way linear blending is.
 - **Rigid node animation is still not evaluated by the path tracer.** Skin deformation is; a node
   that merely moves is not.
 
