@@ -131,7 +131,7 @@
       probes.push({label: s.label, unit: s.unit, x: s.times_seconds, y: s.values, digits: s.unit === 'bpm' ? 1 : 2});
     });
     const [lo, hi] = opts.range || padded(boundsOf(traces.flatMap(t => t.y), [0, 1]), .06);
-    return {name, minimum: lo, maximum: hi, weight: opts.weight || 1, traces, probes, ticks: opts.ticks};
+    return {name, minimum: lo, maximum: hi, weight: opts.weight || 1, traces, probes, ticks: opts.ticks, autoTicks: true};
   };
   const noteTraces = (notes, colorOf, alphaOf, laneHeightPx, lo, hi) => {
     // One path per colour/alpha bucket: thousands of notes stay a handful of SVG paths, not shapes.
@@ -141,8 +141,11 @@
       let b = buckets.get(key); if (!b) buckets.set(key, b = {x: [], y: []});
       b.x.push(n.start_seconds, Math.max(n.end_seconds, n.start_seconds + 1e-3), null); b.y.push(n.midi, n.midi, null);
     }
+    // Plotly splits an SVG line at every null, so N notes are N <path>s: past ~2,000 notes a pan
+    // costs 150-340 ms (measured at 20,000). WebGL draws each bucket in one call.
+    const type = notes.length > 2000 ? 'scattergl' : 'scatter';
     return [...buckets].map(([key, b]) => { const [color, alpha] = key.split('|');
-      return {type: 'scatter', mode: 'lines', name: 'notes', x: b.x, y: b.y, connectgaps: false, opacity: Math.max(.25, Number(alpha) || .25),
+      return {type, mode: 'lines', name: 'notes', x: b.x, y: b.y, connectgaps: false, opacity: Math.max(.25, Number(alpha) || .25),
         line: {color, width, simplify: false}}; });
   };
   const fromPreview = data => {
@@ -300,7 +303,8 @@
         title: i === count - 1 && config.xLabel ? {text: esc(config.xLabel), standoff: 8, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
       l['yaxis' + suffix] = {domain: [y0, top], range: yr, autorange: false, fixedrange: !(interactive && lane.yZoom),
         gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ...tickGap, tickfont: axisFont, automargin: false, zeroline: false,
-        ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} :
+        // Padded analysis ranges get round auto ticks; a signal lane's own bounds are labelled exactly.
+        ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} : lane.autoTicks ? {nticks: 4} :
           {tickvals: [lane.minimum, (lane.minimum + lane.maximum) / 2, lane.maximum].map(v => Number(v.toPrecision(4)))}),
         title: lane.yTitle ? {text: esc(lane.yTitle), standoff: 10, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
       if (count > 1 || config.laneLabels) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',
@@ -431,9 +435,11 @@
       const up = p.high.map((v, i) => xs(p.edges[i]) + ',' + ys(v)), down = p.low.map((v, i) => xs(p.edges[i]) + ',' + ys(v)).reverse();
       d = 'M' + up.join('L') + 'L' + down.join('L') + 'Z';
     } else if (p?.x) {
-      const step = Math.max(1, Math.floor(p.x.length / 800)); let open = false;
-      for (let i = 0; i < p.x.length; i += step) { const v = p.y[i]; if (v == null || !Number.isFinite(v)) { open = false; continue; }
-        d += (open ? 'L' : 'M') + xs(p.x[i]) + ',' + ys(v); open = true; }
+      // Draw what the lane plots (e.g. F0 in MIDI), not the probe's raw readout units (Hz).
+      const t = lane.traces.find(t => t.name !== 'beats' && t.name !== 'notes') || {x: p.x, y: p.y};
+      const step = Math.max(1, Math.floor(t.x.length / 800)); let open = false;
+      for (let i = 0; i < t.x.length; i += step) { const v = t.y[i]; if (v == null || !Number.isFinite(v)) { open = false; continue; }
+        d += (open ? 'L' : 'M') + xs(t.x[i]) + ',' + ys(v); open = true; }
     } else if (m.notes?.length) {
       const [a, b] = boundsOf(m.notes.map(n => n.midi), [0, 1]);
       for (const n of m.notes.slice(0, 4000)) d += 'M' + xs(n.start_seconds) + ',' + (H - 1 - (n.midi - a) / ((b - a) || 1) * (H - 2)).toFixed(1) + 'H' + xs(n.end_seconds);
