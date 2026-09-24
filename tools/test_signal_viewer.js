@@ -48,7 +48,9 @@
   try {
     key('+'); await sleep(150); key('-'); await ready(); await sleep(600);
     const current = view();
-    const points = Math.max(16, Math.min(4096, Math.round(rect.width - 64)));
+    // The viewer asks for one bin per DEVICE pixel of the plot area (stage width minus 52+12 margins).
+    const stageWidth = root.querySelector('.fsv-stage').clientWidth;
+    const points = Math.max(16, Math.min(4096, Math.round((stageWidth - 64) * Math.min(3, win.devicePixelRatio || 1))));
     assert(Math.abs(Number(root.dataset.spacing) - (current.end - current.start) / (points * 2)) < 1e-8, 'Late response replaced the current window');
   } finally { win.fetch = originalFetch; }
   const endpoint = new URL(config.url, win.document.baseURI);
