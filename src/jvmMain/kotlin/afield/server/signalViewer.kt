@@ -1,7 +1,6 @@
 package afield.server
 
 import afield.stdlib.SignalViewer
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
@@ -15,7 +14,6 @@ import kotlin.coroutines.coroutineContext
 
 /** Read-only, opaque source IDs; never accepts or compiles code from a browser request. */
 fun Route.installSignalViewerRoutes() {
-    val mapper = jacksonObjectMapper()
     val sampling = Dispatchers.Default.limitedParallelism(2)
     get("/signal-viewer/{id}") {
         val source = SignalViewer.find(call.parameters["id"].orEmpty())
@@ -35,7 +33,7 @@ fun Route.installSignalViewerRoutes() {
                 }
             }
             call.response.headers.append("Cache-Control", "no-store")
-            call.respondText(mapper.writeValueAsString(result), ContentType.Application.Json)
+            call.respondText(result.toJson(), ContentType.Application.Json)
         } catch (e: IllegalArgumentException) {
             call.respondText(e.message ?: "Invalid signal window", status = HttpStatusCode.BadRequest)
         }

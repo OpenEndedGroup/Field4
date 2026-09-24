@@ -3,7 +3,6 @@
 package afield.stdlib
 
 import afield.Box
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.lang.ref.WeakReference
 import java.util.UUID
 import kotlin.math.*
@@ -47,7 +46,15 @@ data class SignalLaneWindow(val name: String, val minimum: Double, val maximum: 
     /** Per-bin certified bounds over the same bins as [current] (one per sample interval in waveform mode). */
     val certified: SignalTrace? = null, val certifiedRefusal: String? = null)
 data class SignalWindow(val start: Double, val end: Double, val mode: String,
-    val sampleSpacing: Double, val lanes: List<SignalLaneWindow>)
+    val sampleSpacing: Double, val lanes: List<SignalLaneWindow>) {
+    /** The wire form: JSON with every non-finite value (an empty or gap bin) written as `null`. */
+    fun toJson(): String {
+        fun trace(t: SignalTrace?) = t?.let { mapOf("low" to it.low.map { v -> v.takeIf { v.isFinite() } }, "high" to it.high.map { v -> v.takeIf { v.isFinite() } }) }
+        return TimeViewerShell.scriptJson(mapOf("start" to start, "end" to end, "mode" to mode, "sampleSpacing" to sampleSpacing,
+            "lanes" to lanes.map { mapOf("name" to it.name, "minimum" to it.minimum, "maximum" to it.maximum, "current" to trace(it.current),
+                "comparison" to trace(it.comparison), "certified" to trace(it.certified), "certifiedRefusal" to it.certifiedRefusal) }))
+    }
+}
 
 /**
  * A range-query source for the frontend signal viewer. Like AudioVisualizer, it sends only the
@@ -61,6 +68,11 @@ class SignalViewer(
     val end: Double,
     /** Largest requested sampling interval. A query is capped at 500,000 intervals per lane. */
     val sampleStep: Double = 0.02,
+    /**
+     * Treat non-finite values as gaps instead of refusing the query. A bin with no finite value is
+     * sent as `null`, which the viewer draws as a break; `Fn.plot` uses this for functions with holes.
+     */
+    val gaps: Boolean = false,
 ) : AutoCloseable {
     val channels = channels.toList()
     val id: String = UUID.randomUUID().toString()
@@ -93,7 +105,7 @@ class SignalViewer(
                 if (i % 1024 == 0) checkActive()
                 val t = if (i == intervals) to else from + span * i / intervals
                 val v = f(t)
-                require(v.isFinite()) { "Non-finite signal value at $t seconds" }
+                if (!v.isFinite()) { require(gaps) { "Non-finite signal value at $t seconds" }; continue }
                 val bin = if (envelope) min(bins - 1, (i.toLong() * bins / intervals).toInt()) else i
                 low[bin] = min(low[bin], v); high[bin] = max(high[bin], v)
             }
@@ -116,55 +128,37 @@ class SignalViewer(
         require(options.width >= 240 && options.laneHeight in 60..500)
         require(options.initialStart == null || options.initialStart.isFinite())
         require(options.initialDuration == null || (options.initialDuration.isFinite() && options.initialDuration > 0))
-        val config = mapper.writeValueAsString(mapOf(
-            "url" to "/signal-viewer/$id", "start" to start, "end" to end,
-            "initialStart" to options.initialStart, "initialDuration" to options.initialDuration,
-            "syncGroup" to options.syncGroup, "viewKey" to options.viewKey,
-            "label" to options.label, "comparisonLabel" to options.comparisonLabel,
-            "laneHeight" to options.laneHeight, "lanes" to channels.map { it.name },
-        )).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-        return """
-            <div class="field-signal-viewer" data-afield-intrinsic-width="${options.width}" style="width:${options.width}px;max-width:100%;box-sizing:border-box" aria-busy="true">
-            <style>
-            .field-signal-viewer{background:#080808;color:#ddd;font:12px/1.5 Iosevka,monospace;padding:12px;border:1px solid #333}
-            .field-signal-viewer .fsv-title{margin-bottom:8px;overflow-wrap:anywhere}
-            .field-signal-viewer .fsv-stage{position:relative;touch-action:none;user-select:none}
-            .field-signal-viewer canvas{width:100%;display:block;cursor:crosshair;outline-offset:2px}
-            .field-signal-viewer .fsv-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
-            .field-signal-viewer button{background:#111;color:#ddd;border:1px solid #555;font:inherit;padding:2px 10px;cursor:pointer}
-            .field-signal-viewer button:hover{border-color:#ddd}
-            .field-signal-viewer :focus-visible{outline:1px solid #fff}
-            .field-signal-viewer .fsv-range{flex:1}
-            .field-signal-viewer .fsv-status,.field-signal-viewer .fsv-help{color:#999;font-size:11px}
-            .field-signal-viewer .fsv-readout{min-height:18px;white-space:pre-wrap}
-            </style>
-            <div class="fsv-title"></div>
-            <div class="fsv-stage"><canvas tabindex="0" role="img" aria-label="Signal waveforms. Wheel to zoom, drag to pan. Plus and minus zoom, arrows pan, Home shows all."></canvas></div>
-            <div class="fsv-toolbar"><button data-action="in" aria-label="Zoom in">+</button><button data-action="out" aria-label="Zoom out">−</button><button data-action="all">all</button><span class="fsv-range"></span><span class="fsv-status" role="status" aria-live="polite"></span></div>
-            <div class="fsv-readout"></div><div class="fsv-help">wheel / pinch to zoom · drag / shift-wheel to pan · double-click to show all</div>
-            <script type="application/json" class="fsv-config">$config</script>
-            <script>$runtime</script></div>
-        """.trimIndent()
+        return TimeViewerShell.render(
+            config = mapOf(
+                "source" to "range", "url" to "/signal-viewer/$id", "start" to start, "end" to end,
+                "initialStart" to options.initialStart, "initialDuration" to options.initialDuration,
+                "syncGroup" to options.syncGroup, "viewKey" to options.viewKey,
+                "label" to options.label, "comparisonLabel" to options.comparisonLabel,
+                "laneHeight" to options.laneHeight, "xLabel" to "seconds",
+                "lanes" to channels.map { mapOf("name" to it.name, "minimum" to it.minimum, "maximum" to it.maximum) },
+            ),
+            widthPx = options.width,
+        )
     }
 
     companion object {
         private val sources = mutableMapOf<String, WeakReference<SignalViewer>>()
-        private val mapper = jacksonObjectMapper()
-        private val runtime: String get() {
-            return checkNotNull(SignalViewer::class.java.getResourceAsStream("/signal-viewer.js"))
-                .bufferedReader().use { it.readText() }
-        }
         fun find(id: String): SignalViewer? = synchronized(sources) { sources[id]?.get() }
     }
 }
 
 /** Replace a box output, releasing its previous signal's evaluator references. */
 fun Box.displaySignal(viewer: SignalViewer, channel: String = "signal", options: SignalViewerOptions = SignalViewerOptions()): String {
-    val key = "_signalViewer:$channel"
     val html = viewer.renderHtml(options)
+    retainSignal(channel, viewer)
+    display(channel, html)
+    return html
+}
+
+/** Keep [viewer] alive for this box's output [channel], closing the source it replaces. */
+internal fun Box.retainSignal(channel: String, viewer: SignalViewer) {
+    val key = "_signalViewer:$channel"
     val previous = getPropertyRaw(key, null) as? SignalViewer
     setPropertyRaw(key, viewer)
-    display(channel, html)
     if (previous !== viewer) previous?.close()
-    return html
 }
