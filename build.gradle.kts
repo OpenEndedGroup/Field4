@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.imageio.ImageIO
 import javax.net.ssl.*
 
-val lwjglVersion = "3.4.2-SNAPSHOT"
+val lwjglVersion = "3.4.3"
 
 val osName = System.getProperty("os.name")!!
 val osArch = System.getProperty("os.arch")!!

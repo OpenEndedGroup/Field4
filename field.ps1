@@ -82,7 +82,8 @@ function Start-SemanticSidecar {
     Write-Host "Sidecar log: $logFile" -ForegroundColor DarkCyan
 
     $workspaceArg = $scriptDir.Replace('"', '\"')
-    $command = ".\gradlew.bat -p tools/code-use-semantic-sidecar run --args=`"--port $Port --workspace `"$workspaceArg`"`" >> `"$logFile`" 2>&1"
+    $offline = (Get-GradleOfflineArgs) -join " "
+    $command = ".\gradlew.bat $offline -p tools/code-use-semantic-sidecar run --args=`"--port $Port --workspace `"$workspaceArg`"`" >> `"$logFile`" 2>&1"
     Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $command) -WorkingDirectory $scriptDir -WindowStyle Minimized | Out-Null
 }
 
@@ -117,6 +118,19 @@ function Ensure-SemanticSidecar {
     Start-SemanticSidecar $port
 }
 
+# `--offline` (or AFIELD_OFFLINE=1) passes Gradle's --offline: build from the dependency cache and
+# never touch the network. See the note beside decide_offline in field.sh; announced once.
+$script:gradleOfflineArgs = $null
+function Get-GradleOfflineArgs {
+    if ($null -ne $script:gradleOfflineArgs) { return $script:gradleOfflineArgs }
+    $script:gradleOfflineArgs = @()
+    if ($env:AFIELD_OFFLINE -eq "1") {
+        Write-Host "field: offline - Gradle will build from cached dependencies only" -ForegroundColor DarkCyan
+        $script:gradleOfflineArgs = @("--offline")
+    }
+    return $script:gradleOfflineArgs
+}
+
 function Build-Field {
     # Always build before launching so a fresh clone (and every edit-and-relaunch) runs current code.
     # jvmJar compiles Kotlin/JVM, runs the JS webpack, and bundles afield.mjs into the served static/;
@@ -127,9 +141,13 @@ function Build-Field {
         return $true
     }
     Write-Host "field: building (JVM + JS; the first run compiles everything, a few minutes)..." -ForegroundColor DarkCyan
-    & .\gradlew.bat jvmJar dumpFieldLaunch
+    $offline = @(Get-GradleOfflineArgs)
+    & .\gradlew.bat @offline jvmJar dumpFieldLaunch
     if ($LASTEXITCODE -ne 0) {
         Write-Host "field: BUILD FAILED - fix the errors above, then re-run .\field.ps1" -ForegroundColor Red
+        if ($offline.Count -gt 0) {
+            Write-Host "field: (built --offline: a dependency that was never downloaded cannot be resolved until you are back online)" -ForegroundColor Red
+        }
         return $false
     }
     return $true
@@ -260,6 +278,8 @@ Builds Field, then launches the backend and the Electron window together.
                            welcome page, and instead of whatever was open last
   --document=<name>        the same again
   --read-only              open documents without writing back to them
+  --offline                build from Gradle's cached dependencies without
+                           touching the network (also AFIELD_OFFLINE=1)
   --print-workspace        print the workspace this launch would use, then exit
   -h, --help               show this message
 
@@ -383,6 +403,9 @@ while ($argIndex -lt $args.Count) {
         # resolves it. field.sh's own arm has a third reason with no counterpart here: it has to
         # survive run_in_terminal's re-exec, and this launcher has no relaunch path.
         $readOnlyRequested = $true
+    } elseif ($arg -eq "--offline") {
+        # A launcher flag, not a backend one: it changes how Gradle is invoked (Get-GradleOfflineArgs).
+        $env:AFIELD_OFFLINE = "1"
     } elseif ($arg.StartsWith("-")) {
         $backendArgs += $arg
         $passthroughSeen = $true

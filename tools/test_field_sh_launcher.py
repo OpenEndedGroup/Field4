@@ -105,6 +105,7 @@ COVERED_OPTIONS = {
     "-d|--document",
     "--document=*",
     "--read-only",
+    "--offline",
     "-*",
     "*",
 }
@@ -776,6 +777,58 @@ class FieldShLauncherTests(unittest.TestCase):
                     ["--workspace", str(sandbox.workspace), "--read-only"],
                     result.stderr,
                 )
+
+    # --- the offline flag -----------------------------------------------------------------------
+    #
+    # `--offline` is for Gradle, not the backend; these cases pin that it reaches the one and not
+    # the other.
+
+    def test_offline_reaches_gradle_and_not_the_backend(self) -> None:
+        """Consumed like --read-only (so a bare workspace after it is still the workspace), and
+        put on the build's gradlew command line. The stub gradlew echoes its argv to stdout."""
+        sandbox = self.sandbox
+        workspace = str(sandbox.workspace)
+        building = {"AFIELD_SKIP_BUILD": "0"}
+        for shell_name, shell in _resolved_shells().items():
+            for label, arguments in {
+                "before a bare workspace": ["--offline", workspace],
+                "after a bare workspace": [workspace, "--offline"],
+            }.items():
+                with self.subTest(shell=shell_name, case=label):
+                    result = sandbox.run(shell, *arguments, extra_env=building)
+                    self.assertEqual(sandbox.backend_argv(), ["--workspace", workspace], result.stderr)
+                    self.assertIn("stub gradlew --offline jvmJar dumpFieldLaunch", result.stdout)
+                    self.assertIn("field: offline", result.stderr)
+
+    def test_without_the_flag_gradle_is_not_offline(self) -> None:
+        """Offline is opt-in only: no flag, no --offline, and nothing said about it."""
+        sandbox = self.sandbox
+        env = {"AFIELD_SKIP_BUILD": "0"}
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(shell, str(sandbox.workspace), extra_env=env)
+                self.assertIn("stub gradlew jvmJar dumpFieldLaunch", result.stdout)
+                self.assertNotIn("offline", result.stderr)
+
+    def test_offline_survives_the_terminal_relaunch(self) -> None:
+        """The re-exec rebuilds its command line from WORKSPACE_RELAUNCH_ARGS, and AFIELD_OFFLINE
+        set by the flag is a shell variable, not an exported one — so the flag has to be in there."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(
+                    shell,
+                    str(sandbox.workspace),
+                    "--offline",
+                    no_terminal=False,
+                    terminal_on_path=True,
+                )
+                self.assertIn(
+                    f"./field.sh --workspace '{sandbox.workspace}' --offline",
+                    sandbox.relaunch_command(),
+                    result.stderr,
+                )
+                self.assertEqual(sandbox.backend_argv(), ["--workspace", str(sandbox.workspace)])
 
     # --- what reaches the backend ---------------------------------------------------------------
 

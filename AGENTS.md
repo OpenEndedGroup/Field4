@@ -16,6 +16,10 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
     (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CODEX_SANDBOX*`) and runs in the foreground for those.
     That sensing is best-effort — if it ever misses your agent and pops a terminal window instead,
     set `AFIELD_FIELD_SH_NO_TERMINAL=1` explicitly.
+  - `./field.sh --offline` (or `AFIELD_OFFLINE=1`) builds with Gradle `--offline`, from the
+    dependency cache. Keep dependencies off SNAPSHOT and dynamic versions: Gradle re-checks those
+    daily, and offline that check fails or stalls — which is why `field.sh` used to hang without a
+    network while LWJGL was `3.4.2-SNAPSHOT`.
 - Open in browser: `https://localhost:9092/index.html?file=firstDocument`
 - Change workspace directory (documents root):
   - CLI arg parsed by `option(...)`: `--workspace <path>`

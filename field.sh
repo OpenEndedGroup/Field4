@@ -38,6 +38,8 @@ Builds Field, then launches the backend and the Electron window together.
                            welcome page, and instead of whatever was open last
   --document=<name>        the same again
   --read-only              open documents without writing back to them
+  --offline                build from Gradle's cached dependencies without
+                           touching the network (also AFIELD_OFFLINE=1)
   --print-workspace        print the workspace this launch would use, then exit
   -h, --help               show this message
 
@@ -173,6 +175,10 @@ while [ "$consumed" -lt "$argc" ]; do
             # say so, because a Field that silently refuses to save is alarming if unannounced.
             READ_ONLY_REQUESTED=1
             ;;
+        --offline)
+            # A launcher flag, not a backend one: it changes how Gradle is invoked, below.
+            AFIELD_OFFLINE=1
+            ;;
         -*)
             set -- "$@" "$arg"
             passthrough_seen=1
@@ -295,6 +301,9 @@ fi
 if [ "$READ_ONLY_REQUESTED" = 1 ]; then
     WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --read-only"
 fi
+if [ "${AFIELD_OFFLINE:-}" = 1 ]; then
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --offline"
+fi
 
 python_cmd() {
     if command -v python3 >/dev/null 2>&1; then
@@ -405,6 +414,40 @@ ensure_gradle_jvm() {
 # ensure_graalvm_toolchain), so record the flag here and have every gradlew invocation pass it. Stays
 # empty when provisioning is skipped, in which case the calls below fall back to plain gradlew.
 FIELD_TOOLCHAIN_ARG=""
+
+# `--offline` (or AFIELD_OFFLINE=1) passes Gradle's --offline, which builds from the dependency cache
+# and never touches the network. With every dependency pinned to a fixed version a plain build needs
+# no network either once the cache is warm; this is the explicit guarantee for when it matters. It
+# used to matter daily: while LWJGL was a SNAPSHOT, Gradle re-checked it every 24 hours, and offline
+# that check failed — or, on a network that only looks up, spent minutes in connect timeouts.
+# Keep dependencies off SNAPSHOT and dynamic versions, or that comes back.
+FIELD_OFFLINE_ARG=""
+FIELD_OFFLINE_DECIDED=0
+
+# Called by field_gradlew. The backgrounded sidecar call runs in a subshell, so that caller decides
+# first; otherwise the announcement would land in the sidecar's log instead of the terminal.
+decide_offline() {
+    [ "$FIELD_OFFLINE_DECIDED" = 1 ] && return 0
+    FIELD_OFFLINE_DECIDED=1
+    if [ "${AFIELD_OFFLINE:-}" = 1 ]; then
+        FIELD_OFFLINE_ARG="--offline"
+        echo "field: offline — Gradle will build from cached dependencies only" >&2
+    fi
+}
+
+# Every build-time gradlew call goes through here, so each one gets the toolchain and offline flags.
+# A leading `--nohup` runs it under nohup, for the backgrounded sidecar.
+field_gradlew() {
+    FIELD_GRADLEW_NOHUP=""
+    if [ "$1" = "--nohup" ]; then
+        FIELD_GRADLEW_NOHUP=nohup
+        shift
+    fi
+    decide_offline
+    if [ -n "$FIELD_TOOLCHAIN_ARG" ]; then set -- "$FIELD_TOOLCHAIN_ARG" "$@"; fi
+    if [ -n "$FIELD_OFFLINE_ARG" ]; then set -- "$FIELD_OFFLINE_ARG" "$@"; fi
+    $FIELD_GRADLEW_NOHUP ./gradlew "$@"
+}
 
 note_toolchain() {
     # $1 is a .../bin/java; Gradle wants the JDK home, which is that path minus the /bin/java tail
@@ -533,11 +576,8 @@ ensure_semantic_sidecar() {
     mkdir -p "$LOG_DIR"
     echo "Starting code-use semantic sidecar at $URL for $DIR"
     echo "Sidecar log: $LOG_FILE"
-    if [ -n "$FIELD_TOOLCHAIN_ARG" ]; then
-        nohup ./gradlew "$FIELD_TOOLCHAIN_ARG" -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
-    else
-        nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
-    fi
+    decide_offline
+    field_gradlew --nohup -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
 }
 
 build_field() {
@@ -553,13 +593,12 @@ build_field() {
     fi
     echo "field: building (JVM + JS; the first run compiles everything and can take a few minutes)…" >&2
     BUILD_OK=0
-    if [ -n "$FIELD_TOOLCHAIN_ARG" ]; then
-        ./gradlew "$FIELD_TOOLCHAIN_ARG" jvmJar dumpFieldLaunch || BUILD_OK=1
-    else
-        ./gradlew jvmJar dumpFieldLaunch || BUILD_OK=1
-    fi
+    field_gradlew jvmJar dumpFieldLaunch || BUILD_OK=1
     if [ "$BUILD_OK" != "0" ]; then
         echo "field: BUILD FAILED — fix the errors above, then re-run ./field.sh" >&2
+        if [ -n "$FIELD_OFFLINE_ARG" ]; then
+            echo "field: (built --offline: a dependency that was never downloaded cannot be resolved until you are back online)" >&2
+        fi
         return 1
     fi
 }
