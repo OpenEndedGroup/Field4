@@ -30,9 +30,9 @@ Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 | a solid back to triangles | [`toTriMesh`](reference/graphics.md) | positions, indices, optionally split normals | any correspondence with the triangles that went in. A Boolean retriangulates |
 | triangles to a scene | [`importTriMesh`](reference/renderers.md#pathtracetrimesh-kt-functions) | positions, normals, a material per triangle | zero-area triangles, which are counted and skipped |
 
-The first row is why the picture above is possible and the second row is why it has to happen before
-any Boolean. `triangulate` returns a `TriangulatedGeometry`, and `sourceFace(t)` on it names the
-polygon triangle `t` was cut from, so the material selector is a lineage lookup with nothing in
+Provenance crosses the first hop and stops at the second, so a per-face material has to be assigned
+before any Boolean. `triangulate` returns a `TriangulatedGeometry`, and `sourceFace(t)` on it names
+the polygon triangle `t` was cut from, so the material selector is a lineage lookup with nothing in
 between:
 
 ```diffstatic {data-lang=kotlin}
