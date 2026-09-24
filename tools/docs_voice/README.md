@@ -1,6 +1,6 @@
 # Prose detectors for `public/docs`
 
-Fourteen read-only analysers that measure the documentation tree's *voice*: the rhetorical
+The read-only analysers in this directory measure the documentation tree's *voice*: the rhetorical
 moves that make a page read as written-by-a-machine rather than as documentation. They were
 built one at a time by the nightly `documentation-voice-pass`, each one added the night a
 firing found a fault the existing set could not see.
@@ -53,6 +53,7 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `check_links.py` | relative links | targets that do not resolve |
 | `check_fences.py` | Kotlin `diffstatic` fences | that no fence moved between two revisions. `tools/completion-corpus/rank-carets.tsv` indexes them **by ordinal** |
 | `check_kdoc_mirror.py` | generated reference pages | that a page still matches the KDoc it mirrors |
+| `build_machinery.py` | page openers, `##` headings, whole sections | the docs build, the capture harness and the docs runner explained to a reader who has none. Skips provenance tables, collapsed asides, fences, and the pages whose subject *is* the pipeline |
 
 ## Running them
 

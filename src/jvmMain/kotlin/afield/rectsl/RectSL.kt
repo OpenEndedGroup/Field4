@@ -407,7 +407,7 @@ internal fun Double.glslFloat(): String = when {
  *
  * Tracks used to carry bare `(Double) -> Double` closures. That is perfectly
  * good on the JVM and completely opaque to everything else: you cannot print a
- * closure, serialize it, rewrite it, or emit it as GLSL. Naming the ops keeps
+ * closure, compare two of them, rewrite one, or emit it as GLSL. Naming the ops keeps
  * the CPU behaviour identical while turning the track IR into a symbolic graph,
  * so each op owns both halves — how it evaluates, and how it spells itself in a
  * shader.

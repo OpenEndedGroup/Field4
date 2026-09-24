@@ -1,7 +1,9 @@
 # AI tool-use history
 
-Field records structured traces of its OpenAI-side AI bridge so recent tool
-failures and unproductive call patterns can be reviewed.
+When AI4 calls a tool and the call fails, or the same unproductive call comes
+round again, or a conversation runs out of tool rounds, there is already a
+record of it on disk. Field can read the recent ones back and ask a model for a
+source change grounded in what they show.
 
 ## What is logged
 

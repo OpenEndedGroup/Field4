@@ -10,7 +10,7 @@ import kotlin.math.abs
  * # Why there is a third backend at all
  *
  * The track IR is symbolic rather than a closure, because a closure cannot be printed, compared,
- * serialized, rewritten, or emitted as GLSL. [TrackOp1], [TrackOp2], [TrackOp3] and [TimeWarpKind]
+ * rewritten, or emitted as GLSL. [TrackOp1], [TrackOp2], [TrackOp3] and [TimeWarpKind]
  * each carry an `eval:` and a `glsl:`; this file is the third column, `fn:`, and it is the one that
  * changes what RectSL can *do* rather than where it can run.
  *

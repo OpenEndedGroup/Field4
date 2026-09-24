@@ -14,6 +14,9 @@ import kotlin.math.abs
  * and it is the one that needed comparison to exist: half the rules below fire on two subtrees being
  * structurally equal.
  *
+ * Serialization is the fifth, and it has not shipped: nothing in `afield.rectsl` writes a track out
+ * or reads one back. A symbolic IR makes it possible; no one has needed it yet.
+ *
  * # What it is for
  *
  * Not speed, primarily. RectSL's array words build per-copy channels by *offsetting* a constant, so a

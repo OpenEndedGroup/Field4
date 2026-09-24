@@ -15,10 +15,11 @@ while its architecture moves. The Field-side API is in `afield.stdlib.noir.audio
 operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`, rather than
 depending on AudioCraft classes.
 
-Field's public docs consume a committed, model-free snapshot of the service contract. A normal
-docs build does not initialize the submodule, install analysis or AudioCraft packages, or download
-weights. See the [generated service reference](field_audio_service_reference.md) for the
-current pinned HTTP objects, states, and error vocabulary.
+Running any of it needs that submodule initialized, the analysis and AudioCraft packages
+installed, and weights on disk. Short of that, what you can still read is a committed,
+model-free snapshot of the service contract: the
+[generated service reference](field_audio_service_reference.md) lists the current pinned HTTP
+objects, states, and error vocabulary, and needs none of the above.
 
 ## What the service does
 

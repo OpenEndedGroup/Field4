@@ -47,7 +47,7 @@ Kotlin and an updated **overview**. A plot without a source update is not a
 completed edit. AI4 also receives a local plot and numerical checks before it
 explains the result.
 
-## Look at a useful timescale
+## Zooming the viewer
 
 An hour of a 0.2 Hz signal contains about 720 cycles. At that scale the viewer
 shows a band of sampled minima and maxima. Zoom into roughly 25 seconds to see
@@ -60,8 +60,8 @@ can appear in dashed grey.
 
 Zooming requests finer samples from the actual functions. A wide envelope shows
 the range within each bin; it does not preserve the order of the oscillations
-inside that bin. Neither Plotly nor a finite sample grid can guarantee detection
-of an arbitrarily narrow feature.
+inside that bin, and a feature narrower than a bin can fall between samples
+entirely. Zoom in before you judge a detail.
 
 ## A worked conversation
 
@@ -128,11 +128,11 @@ named-parameter code built from ordinary [`Functions.Fn`](functions_examples.md)
 values. The channels are collected into a `StudyComposition`; event metadata
 describes the evaluator's timings so the tools know where to inspect.
 
-## Follow the evidence
+## The saved conversations
 
-These are saved model conversations, including tool results and failed attempts,
-rather than a script pretending to be a chat. The archive contains the complete
-JSON records, images and revision sources. Readable transcripts are linked here:
+Each request above has its transcript, with the tool results and the failed
+attempts still in it. The archive carries the complete JSON records, images and
+revision sources; the readable versions are here:
 
 | Request | Result |
 | --- | --- |
@@ -179,6 +179,12 @@ as Field's `"a".file`; no `.csv` suffix is added. The export includes the exact
 endpoint and verifies the written rows. A 3,600-second composition produces
 360,001 rows per channel with those settings.
 
+The current study checks three pure, deterministic channels against `[0, 1]`.
+It is suited to functions you can sample in any order. Kotlin runs in Field's
+existing JVM, so use fast evaluators; this is not a way to sample a stateful audio
+graph or isolate arbitrary blocking code. The tools and checks are visible on
+purpose, so you can adapt the experiment to another kind of function.
+
 ??? aside "What the recorded run tells us about speed"
 
     The first seven turns used an earlier, more repetitive edit loop and took
@@ -190,9 +196,3 @@ endpoint and verifies the written rows. A 3,600-second composition produces
     The historical runs record gpt-6-astra / OpenAI; your provider configuration
     determines new conversations, and the chat records the identity reported for
     each response.
-
-The current study checks three pure, deterministic channels against `[0, 1]`.
-It is suited to functions you can sample in any order. Kotlin runs in Field's
-existing JVM, so use fast evaluators; this is not a way to sample a stateful audio
-graph or isolate arbitrary blocking code. The tools and checks are deliberately
-visible so you can adapt the experiment to another kind of function.
