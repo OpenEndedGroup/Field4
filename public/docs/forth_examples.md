@@ -103,7 +103,7 @@ stroke-ribbon
 
 This example is close to SVG path construction. `moveto`, `lineto`, and `cubicto` build the geometry. The later `fline-*` words mutate style properties on the same object and push it back so the chain can continue.
 
-## Vec2 helpers make path code less repetitive
+## Vec2 helpers: geometry that arrives as points
 
 The vector helpers are useful when geometry is already arriving as points rather than loose coordinates.
 
@@ -139,9 +139,9 @@ expect:
 zig
 ```
 
-`fline-node-color` styles the current node rather than the whole line. It is a good debugging affordance for marking a control point, an endpoint, or the last place a computation landed.
+`fline-node-color` styles the current node rather than the whole line. Use it to mark a control point, an endpoint, or the last place a computation landed.
 
-## Reflection can build geometry too
+## Reflection: reaching a JVM class by name
 
 The reflection bridge resolves a class by name, constructs it, and calls methods without leaving ForthField, which is how ForthField reaches anything the `fline-*` words do not already cover.
 

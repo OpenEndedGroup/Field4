@@ -97,8 +97,8 @@ fifth more than the wall rather than cropping the answer.
 ## The three backends
 
 RectSL's track IR is **symbolic**: every scalar op in it names itself rather than hiding in a Kotlin
-closure. A closure cannot be printed, compared, serialized, rewritten, or emitted as GLSL; a named op
-can be all five. Each one owns three columns:
+closure. A closure cannot be printed, compared, rewritten, or emitted as GLSL. A named op can be
+each of those. Each one owns three columns:
 
 | column | what it is | where it runs |
 | --- | --- | --- |

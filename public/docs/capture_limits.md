@@ -21,7 +21,7 @@ subject of this page.
 
 ---
 
-## A former silent failure: a capture that reports success
+## Silent: a capture that reported success and showed nothing
 
 `screenshot-box` used to return a picture of nothing with `ok: true`. Captures requesting open
 outputs now reject missing content and unsettled layout. These two historical captures show the
@@ -110,7 +110,7 @@ is the one field that separates a good capture from a plausible one.
 
 ---
 
-## The other silent one: the right size, the wrong frame
+## Silent: the right size, the wrong frame
 
 A capture can be correctly sized, correctly timed, and still of the wrong thing.
 
@@ -127,7 +127,7 @@ A capture can be correctly sized, correctly timed, and still of the wrong thing.
 
 ---
 
-## The quiet one: the native window times out
+## Quiet: the native window times out
 
 The `afield.four` graphics window is photographed by a different mechanism: the renderer copies its
 own swapchain, as a Vulkan transfer-source, straight to a file. No screen recording permission, no
@@ -166,7 +166,7 @@ and every evidence renderer is a `main`, that is the environment most likely to 
 
 ---
 
-## The structural ones: pictures that cannot exist
+## Pictures that cannot be taken at all
 
 **There is no moving picture of the native window that an agent can take.** The backdoor's
 `record-window`, `record-editor` and `record-box` all record the *browser*, through the page. A

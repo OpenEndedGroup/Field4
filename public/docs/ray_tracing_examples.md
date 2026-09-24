@@ -2,15 +2,18 @@
 
 Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`. The four examples below run from a raygen shader writing straight into a storage image to procedural spheres reflecting a traced floor, and between them they cover image binding, acceleration structures, shader groups, dispatch, and GLSL.
 
-!!! warning "The four figures on this page are placeholder cards"
+The four figures below are placeholder cards reading "Ray Tracing / Not Available" rather than
+renders, because Field never enables ray tracing on macOS and macOS is where these docs are built.
+A real capture needs a Linux device with the extension; until one lands, read the code rather than
+the pictures.
 
-    Each one reads "Ray Tracing / Not Available". Field never enables ray tracing on macOS:
+??? aside "Why the figures say Not Available"
+
     `enableRayTracing` ands in `!Options.isMac`, so the machine that publishes these docs stops
     short of the extension probe — MoltenVK exposes no `VK_KHR_ray_tracing_pipeline` either way.
     Every render method in `RayTracingDocsHarness` refuses in that case rather than writing a
     stand-in, and the four cards on disk predate that refusal; `tools/check_doc_assets.py` names
-    them so they cannot become permanent. A real capture needs a Linux device with the extension.
-    Until one lands, read the code rather than the pictures.
+    them so they cannot become permanent.
 
 The shape of a Field ray tracing example is:
 

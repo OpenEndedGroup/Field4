@@ -1,11 +1,15 @@
 
 # Code Diff Player
 
-The diff player assets are included site-wide by the docs build, so you only need the markup. The player is styled to match the dark theme gutter and line numbers.
+A code block on a docs page can be two versions of the same code with a play control between them.
+Press it and the block animates from the first version to the second, one insertion or deletion at
+a time, so a reader watches the edit happen rather than comparing two listings. That is the diff
+player, and you get one by writing a fence.
 
 ## Quick start
 - Use the `diff` fence for animated before/after, and `diffstatic` for a single snippet.
 - The fence-upgrade script rewrites these into the player markup automatically, then `CodeDiffPlayer.mountAll()` binds them.
+- Nothing else is needed on the page: the docs build ships the player site-wide, styled to match the dark theme's gutter and line numbers.
 
 Example animated fence:
 
@@ -111,7 +115,7 @@ val greet = { name: String ->
 greet("Field4")
 ```
 
-## What the upgrade does to your markup
+## What the fence turns into
 - Set `data-language` to any highlight.js language key (e.g., `python`, `javascript`).
 - For static blocks use only a `data-state="before"` block (or `data-state="single"`) to reuse the same styling without animation; the play control hides automatically.
 - Multiple players on one page are supported; `mountAll()` binds everything with the `code-diff-player` class.
