@@ -25,6 +25,7 @@ own four pages stay near zero and it is green today, but wiring a *content* thre
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -65,6 +66,91 @@ recomputed unless the file carries them. A file with no faces loads as a point c
 Pass `weld = false` to keep duplicate vertices, which matters when the source encodes a
 crease by splitting a vertex rather than by marking an edge.
 """
+
+
+# Boards that need something other than a docs root on the command line. Every board is
+# run; none is skipped. A skip list is how a board goes dark, which is the whole subject
+# of BoardsSurviveTheTree below.
+BOARD_ARGV = {
+    "check_fences": ["HEAD", "HEAD"],
+    "check_kdoc_mirror": ["--sweep"],
+}
+
+# Boards known to die on this base, each with where the fix already is. Enforced in BOTH
+# directions, like `expected_test_failures.json`: an unregistered failure is an ordinary
+# failure, and a registered board that starts passing fails too -- so an entry cannot
+# outlive its bug the way a sentence in a commit message can.
+KNOWN_RED = {
+    "alt_text": (
+        "`ValueError: No closing quotation` out of shlex, on any tree containing a fence "
+        "whose alt= describes braced Kotlin (petri_nets.md:143). Already fixed by "
+        "9e8d7fd7c on the unlanded branch docs/voice-2026-09-23e, which also fixes the "
+        "same regex in double_published.py and tools/check_doc_assets.py. Delete this "
+        "entry when that branch lands; this test will tell you to."
+    ),
+}
+
+
+class BoardsSurviveTheTree(unittest.TestCase):
+    """Every board runs over the real `public/docs` without dying.
+
+    Importing and passing `live_fire()` is not the same as surviving 618 real files, and
+    the gap is not hypothetical. `alt_text.py` imported cleanly, passed its live fire, and
+    raised on page 137 of 140 for a full day in September 2026 -- reporting nothing at all
+    about the other 139, with a traceback nobody read, because a board is not gated and a
+    board that dies looks exactly like a board that is clean. The same broken expression
+    made `double_published.py` drop a fence silently and `check_doc_assets.py` report a
+    visible figure as an orphan.
+
+    So: exit 0, and print a count. Twelve seconds for all eighteen.
+    """
+
+    def boards(self):
+        return sorted(p for p in DETECTORS.glob("*.py") if not p.name.startswith("_"))
+
+    _ran = {}
+
+    def run_board(self, path):
+        """One sweep, shared by both assertions: eighteen subprocesses, not thirty-six."""
+        if path.stem not in self._ran:
+            argv = BOARD_ARGV.get(path.stem, ["public/docs"])
+            self._ran[path.stem] = subprocess.run(
+                [sys.executable, str(path), *argv],
+                cwd=DETECTORS.parent.parent,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+        return self._ran[path.stem]
+
+    def test_every_board_exits_zero_on_the_real_tree(self):
+        self.assertTrue(self.boards(), f"no boards found under {DETECTORS}")
+        for path in self.boards():
+            with self.subTest(board=path.name):
+                done = self.run_board(path)
+                if path.stem in KNOWN_RED:
+                    self.assertNotEqual(
+                        done.returncode, 0,
+                        f"{path.name} passes now, so its KNOWN_RED entry is stale and "
+                        f"must be deleted. It said: {KNOWN_RED[path.stem]}")
+                    continue
+                self.assertEqual(
+                    done.returncode, 0,
+                    f"{path.name} died on the real tree, so it is reporting nothing "
+                    f"about any page.\n{done.stderr[-2000:]}")
+
+    def test_every_board_prints_a_count(self):
+        """A board that exits 0 and prints nothing is as invisible as one that crashes."""
+        for path in self.boards():
+            if path.stem in KNOWN_RED:
+                continue
+            with self.subTest(board=path.name):
+                out = self.run_board(path).stdout
+                self.assertTrue(out.strip(), f"{path.name} printed nothing at all")
+                self.assertTrue(
+                    any(c.isdigit() for c in out),
+                    f"{path.name} printed no number, so a reader cannot tell a clean "
+                    f"board from one that scanned zero files:\n{out[-500:]}")
 
 
 class DetectorsImport(unittest.TestCase):
