@@ -1034,6 +1034,8 @@ The result of matching a pattern: metavariable bindings plus the matched node.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt` — [read the source](source/jvmMain/afield/stdlib/FunctionStudy/)
 
+**Used in:** [Talking a function into existence](../function_conversation.md)
+
 ### StudyEvent { #functionstudy-kt-studyevent }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StudyEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">rise</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">hold</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">fall</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudy/#L28)
