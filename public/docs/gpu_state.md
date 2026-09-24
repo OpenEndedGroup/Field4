@@ -56,13 +56,17 @@ far.
 It is enough right up until you have four buffers instead of two, and they are not alike. Inside the
 block you can say what this particular buffer is *for*, and the vocabulary is small:
 
+<div data-code-lang="kotlin" markdown>
+
 | you write | what it means | what you are saying about the access pattern |
-|---|---|---|
+| --- | --- | --- |
 | nothing | host-visible | the CPU and the GPU both touch this, repeatedly |
 | `writeOnce()` | device-local, staged upload | written once from Kotlin, read by every invocation of every frame |
 | `zeroInit()` | device-local, zeroed by the device | never uploaded at all; the shader owns it from the first frame |
 | `streamReads()` | host-visible **and** host-cached | the CPU reads this back regularly, so it must not be write-combined |
 | `debugReads()` | device-local with a readback staging path | the CPU reads it occasionally, when you are looking |
+
+</div>
 
 All five are members of the buffer block, in the order above:
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:93#fun hosted`,

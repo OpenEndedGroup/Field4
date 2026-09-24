@@ -6,11 +6,15 @@ This page is generated from the typed algebra model that emits Field's heap, fra
 
 ## One algebra, three storage forms
 
+<div data-code-lang="kotlin" markdown>
+
 | Storage | Types | Lifetime and use |
 | --- | --- | --- |
 | Heap | `Vector2f`, `Vector3f`, `Vector4f` | Ordinary mutable values; persistent state and the normal case |
 | Frame arena | `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` | Temporary values inside `frameScratch` or an explicit `FrameArena` scope |
 | Segment view | `SegmentVec2f`, `SegmentVec3f`, `SegmentVec4f` | Non-owning views into packed, aligned, direct, foreign, or mapped memory |
+
+</div>
 
 All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.
 
@@ -24,31 +28,35 @@ Components: `x`, `y`.
 
 In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `val value: Vec2 = [0, 1]` uses the generated collection-literal constructor. The frame-arena (`ArenaVec2f`) and segment (`SegmentVec2f`) forms carry the same operation surface.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector2fc)` | Adds another vector component by component. |
-| `sub(other: Vector2fc)` | Subtracts another vector component by component. |
-| `mul(other: Vector2fc)` | Multiplies corresponding components. |
-| `div(other: Vector2fc)` | Divides corresponding components. |
-| `add(scalar: Float)` | Adds a scalar to each component. |
-| `sub(scalar: Float)` | Subtracts a scalar from each component. |
-| `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Float)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector2fc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector2fc)` | Selects the larger value independently in each component. |
-| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector2fc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Float, other: Vector2fc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector2fc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector2fc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector2fc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `add(other: Vector2fc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector2fc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector2fc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector2fc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Float)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Float)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Float)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Float)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector2fc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector2fc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector2fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Float, other: Vector2fc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector2fc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector2fc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector2fc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Vector3f
 
@@ -58,32 +66,36 @@ Components: `x`, `y`, `z`.
 
 In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context, `val value: Vec3 = [0, 1, 2]` uses the generated collection-literal constructor. The frame-arena (`ArenaVec3f`) and segment (`SegmentVec3f`) forms carry the same operation surface.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector3fc)` | Adds another vector component by component. |
-| `sub(other: Vector3fc)` | Subtracts another vector component by component. |
-| `mul(other: Vector3fc)` | Multiplies corresponding components. |
-| `div(other: Vector3fc)` | Divides corresponding components. |
-| `add(scalar: Float)` | Adds a scalar to each component. |
-| `sub(scalar: Float)` | Subtracts a scalar from each component. |
-| `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Float)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector3fc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector3fc)` | Selects the larger value independently in each component. |
-| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector3fc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Float, other: Vector3fc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector3fc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector3fc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector3fc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
-| `cross(other: Vector3fc)` | Returns a vector perpendicular to this vector and another 3D vector. The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero. |
+| `add(other: Vector3fc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector3fc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector3fc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector3fc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Float)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Float)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Float)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Float)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector3fc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector3fc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector3fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Float, other: Vector3fc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector3fc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector3fc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector3fc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `cross(other: Vector3fc)`<br>`value.cross(other)` | Returns a vector perpendicular to this vector and another 3D vector. The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Vector4f
 
@@ -93,31 +105,35 @@ Components: `x`, `y`, `z`, `w`.
 
 In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed context, `val value: Vec4 = [0, 1, 2, 3]` uses the generated collection-literal constructor. The frame-arena (`ArenaVec4f`) and segment (`SegmentVec4f`) forms carry the same operation surface.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector4fc)` | Adds another vector component by component. |
-| `sub(other: Vector4fc)` | Subtracts another vector component by component. |
-| `mul(other: Vector4fc)` | Multiplies corresponding components. |
-| `div(other: Vector4fc)` | Divides corresponding components. |
-| `add(scalar: Float)` | Adds a scalar to each component. |
-| `sub(scalar: Float)` | Subtracts a scalar from each component. |
-| `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Float)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector4fc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector4fc)` | Selects the larger value independently in each component. |
-| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector4fc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Float, other: Vector4fc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector4fc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector4fc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector4fc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `add(other: Vector4fc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector4fc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector4fc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector4fc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Float)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Float)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Float)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Float)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector4fc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector4fc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector4fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Float, other: Vector4fc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector4fc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector4fc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector4fc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Vector2d
 
@@ -127,31 +143,35 @@ Components: `x`, `y`.
 
 The double-precision, heap-only sibling of `Vector2f`; the arena, segment, and bulk forms are single-precision only.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector2dc)` | Adds another vector component by component. |
-| `sub(other: Vector2dc)` | Subtracts another vector component by component. |
-| `mul(other: Vector2dc)` | Multiplies corresponding components. |
-| `div(other: Vector2dc)` | Divides corresponding components. |
-| `add(scalar: Double)` | Adds a scalar to each component. |
-| `sub(scalar: Double)` | Subtracts a scalar from each component. |
-| `mul(scalar: Double)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Double)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector2dc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector2dc)` | Selects the larger value independently in each component. |
-| `min(scalar: Double)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Double)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector2dc, t: Double)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Double, other: Vector2dc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector2dc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector2dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector2dc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `add(other: Vector2dc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector2dc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector2dc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector2dc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Double)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Double)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Double)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Double)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector2dc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector2dc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Double)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Double)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector2dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Double, other: Vector2dc)`<br>`value.fma(0.1, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector2dc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector2dc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector2dc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Vector3d
 
@@ -161,32 +181,36 @@ Components: `x`, `y`, `z`.
 
 The double-precision, heap-only sibling of `Vector3f`; the arena, segment, and bulk forms are single-precision only.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector3dc)` | Adds another vector component by component. |
-| `sub(other: Vector3dc)` | Subtracts another vector component by component. |
-| `mul(other: Vector3dc)` | Multiplies corresponding components. |
-| `div(other: Vector3dc)` | Divides corresponding components. |
-| `add(scalar: Double)` | Adds a scalar to each component. |
-| `sub(scalar: Double)` | Subtracts a scalar from each component. |
-| `mul(scalar: Double)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Double)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector3dc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector3dc)` | Selects the larger value independently in each component. |
-| `min(scalar: Double)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Double)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector3dc, t: Double)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Double, other: Vector3dc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector3dc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector3dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector3dc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
-| `cross(other: Vector3dc)` | Returns a vector perpendicular to this vector and another 3D vector. The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero. |
+| `add(other: Vector3dc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector3dc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector3dc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector3dc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Double)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Double)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Double)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Double)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector3dc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector3dc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Double)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Double)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector3dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Double, other: Vector3dc)`<br>`value.fma(0.1, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector3dc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector3dc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector3dc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `cross(other: Vector3dc)`<br>`value.cross(other)` | Returns a vector perpendicular to this vector and another 3D vector. The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Vector4d
 
@@ -196,31 +220,35 @@ Components: `x`, `y`, `z`, `w`.
 
 The double-precision, heap-only sibling of `Vector4f`; the arena, segment, and bulk forms are single-precision only.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector4dc)` | Adds another vector component by component. |
-| `sub(other: Vector4dc)` | Subtracts another vector component by component. |
-| `mul(other: Vector4dc)` | Multiplies corresponding components. |
-| `div(other: Vector4dc)` | Divides corresponding components. |
-| `add(scalar: Double)` | Adds a scalar to each component. |
-| `sub(scalar: Double)` | Subtracts a scalar from each component. |
-| `mul(scalar: Double)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Double)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector4dc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector4dc)` | Selects the larger value independently in each component. |
-| `min(scalar: Double)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Double)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector4dc, t: Double)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Double, other: Vector4dc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector4dc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector4dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector4dc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `add(other: Vector4dc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector4dc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector4dc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector4dc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Double)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Double)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Double)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Double)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector4dc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector4dc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Double)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Double)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector4dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Double, other: Vector4dc)`<br>`value.fma(0.1, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector4dc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector4dc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector4dc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Vector8h
 
@@ -230,31 +258,35 @@ Components: `x`, `y`, `z`, `w`, `a`, `b`, `c`, `d`.
 
 The half-precision (IEEE-754 binary16), heap-only vector. Its eight lanes pack into 16 bytes — one GLSL `vec4` — through `get(index, buffer)`, so a push-constant block holds twice as many as the equivalent `Vector4f` pair would. Arithmetic is evaluated in `Float`; every result is stored back as binary16, so component reads return the rounded value.
 
-| Operation | Meaning |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation and example | Meaning |
 | --- | --- |
-| `add(other: Vector8hc)` | Adds another vector component by component. |
-| `sub(other: Vector8hc)` | Subtracts another vector component by component. |
-| `mul(other: Vector8hc)` | Multiplies corresponding components. |
-| `div(other: Vector8hc)` | Divides corresponding components. |
-| `add(scalar: Float)` | Adds a scalar to each component. |
-| `sub(scalar: Float)` | Subtracts a scalar from each component. |
-| `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
-| `div(scalar: Float)` | Divides every component by a scalar. |
-| `negate()` | Reverses the vector by negating every component. |
-| `absolute()` | Replaces every component with its absolute value. |
-| `min(other: Vector8hc)` | Selects the smaller value independently in each component. |
-| `max(other: Vector8hc)` | Selects the larger value independently in each component. |
-| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
-| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
-| `lerp(other: Vector8hc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
-| `fma(scalar: Float, other: Vector8hc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
-| `dot(other: Vector8hc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
-| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
-| `distanceSquared(other: Vector8hc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
-| `length()` | Returns this vector's Euclidean length (magnitude). |
-| `distance(other: Vector8hc)` | Returns the straight-line distance to another vector. |
-| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `add(other: Vector8hc)`<br>`value.add(other)` | Adds another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(other: Vector8hc)`<br>`value.sub(other)` | Subtracts another vector component by component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(other: Vector8hc)`<br>`value.mul(other)` | Multiplies corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(other: Vector8hc)`<br>`value.div(other)` | Divides corresponding components. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `add(scalar: Float)`<br>`value.add(scalar)` | Adds a scalar to each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `sub(scalar: Float)`<br>`value.sub(scalar)` | Subtracts a scalar from each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `mul(scalar: Float)`<br>`value.mul(scalar)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `div(scalar: Float)`<br>`value.div(scalar)` | Divides every component by a scalar. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `negate()`<br>`value.negate()` | Reverses the vector by negating every component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `absolute()`<br>`value.absolute()` | Replaces every component with its absolute value. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(other: Vector8hc)`<br>`value.min(other)` | Selects the smaller value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(other: Vector8hc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector8hc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `fma(scalar: Float, other: Vector8hc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `dot(other: Vector8hc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector8hc)`<br>`value.distanceSquared(other)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()`<br>`value.length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector8hc)`<br>`value.distance(other)` | Returns the straight-line distance to another vector. |
+| `normalize()`<br>`value.normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `isFinite()` | Reports whether every component is finite. |
+
+</div>
 
 ## Swizzles
 
@@ -269,6 +301,8 @@ Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the modeled
 
 The float heap vectors also carry a small generated operator surface for live coding:
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | Operator | Meaning |
 | --- | --- |
 | `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |
@@ -277,16 +311,22 @@ The float heap vectors also carry a small generated operator surface for live co
 | `a %= b` | In-place assignment: copies b's components into a. |
 | `v len 10` | Returns a copy rescaled to the given length, keeping direction. |
 
+</div>
+
 ## Rotations and matrices
 
 Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.
 
+<div data-code-lang="kotlin" markdown>
+
 | Type | Purpose | Key operations |
 | --- | --- | --- |
-| `Quaternionf` | 3D rotation | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |
-| `Matrix3f` | linear and normal transforms | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |
-| `Matrix3d` | double-precision 3x3 for numerically sensitive code | `mul`, `invert`, `transpose`, `determinant` |
-| `Matrix4f` | affine, camera, and projection transforms | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |
+| `Quaternionf` | Represents a 3D rotation. Compose rotations with `mul` or interpolate orientations with `slerp` and `nlerp`. | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |
+| `Matrix3f` | Represents a linear transform in three dimensions. Use the inverse transpose of a position transform's linear part to transform surface normals. | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |
+| `Matrix3d` | Provides a double-precision 3×3 transform for numerically sensitive calculations. Its extra precision is useful when single-precision rounding is significant. | `mul`, `invert`, `transpose`, `determinant` |
+| `Matrix4f` | Represents affine and projective transforms, including cameras. Distinguish positions from directions so translation is applied only where intended. | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |
+
+</div>
 
 ## Storage layouts
 

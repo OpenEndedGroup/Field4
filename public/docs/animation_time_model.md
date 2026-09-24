@@ -152,12 +152,16 @@ check(figure.deviations.isEmpty()) { "a builder no longer advances one frame per
 All four advance exactly one frame per pump: the last column is `7` in every row. What differs is
 *when the body runs relative to the boundary*:
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | builder | contract |
 | --- | --- |
 | `frames { }` | The body runs once and is responsible for calling `frame()` itself. Everything else is built on it. |
 | `eachFrame { }` | `frames { while (frame()) { block() } }` — advance, *then* run the body. `animate { }` is this. |
 | `loop { }` | Run the body, *then* advance — but only if the body did not advance already. |
 | `forever { }` | `loop { }`, except the body returns a `Boolean` and returning `false` ends it. |
+
+</div>
 
 `eachFrame`'s body runs from pump 2; `loop`'s from pump 1. That one pump is the difference between
 "advance, then run" and "run, then advance", for a body that does not advance itself.
@@ -167,12 +171,16 @@ before every body call, so a body that also calls `frame()` or `delay(ms)` costs
 and runs half as often. `loop` does not bolt a
 second advance onto a pass that already advanced. Over eight pumps:
 
-| | body calls | frames |
+<div data-code-lang="kotlin" markdown>
+
+| Builder | body calls | frames |
 | --- | --- | --- |
 | `animate { }` | 7 | 7 |
 | `loop { }` | 8 | 7 |
 | `animate { …; frame() }` | 4 | 7 |
 | `loop { …; frame() }` | 8 | 7 |
+
+</div>
 
 One frame per pump throughout: the frame *rate* is the Runloop's, never the builder's. So reach for
 `loop` when the body paces itself, and for `animate` when it does not.
@@ -222,6 +230,8 @@ suspend fun frame(): Boolean {
 
 <div class="field-data-table" markdown>
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | how it stops | what actually happens |
 | --- | --- |
 | **You re-run the box.** | The launch bumps `runGeneration[strand]`. The old `Frames`'s `shouldend` closes over the *old* generation, sees the mismatch at the top of its next `frame()`, and cancels. This is the everyday one. |
@@ -231,6 +241,8 @@ suspend fun frame(): Boolean {
 | **`forever { }` returns `false`.** | Normal completion, same as above. |
 | **The body throws.** | Caught by the launcher, logged, and reported on the box as an error. |
 | **A stale launch epoch.** | If a stop landed between preparing the launch and dispatching it, `registerLaunchJob` refuses and the body never runs at all. |
+
+</div>
 
 </div>
 
@@ -838,6 +850,8 @@ directions, so a name on one side and not the other is a build failure.
 
 **The types**
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | Name | What it is |
 | --- | --- |
 | `type Frames` | A frame-based animation: a suspend `body`, a `frameNumber`, and the hooks a launcher installs on it. |
@@ -846,7 +860,11 @@ directions, so a name on one side and not the other is a build failure.
 | `type GeneratorScope` | The receiver inside `generator { }` — it exists to provide `yield`. |
 | `type Generator` | A pull-driven coroutine: `start()`, then `next(input)` per step. |
 
+</div>
+
 **`Frames` — the members in scope inside a frame body**
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Name | What it is |
 | --- | --- |
@@ -861,7 +879,11 @@ directions, so a name on one side and not the other is a build failure.
 | `Frames.shouldend` | Polled at the top of every `frame()`. This is where a launcher installs its generation fence. |
 | `Frames.toString()` | `"(frames)"` — what a box shows when you evaluate one without returning it. |
 
+</div>
+
 **The builders**
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Name | What it is |
 | --- | --- |
@@ -874,7 +896,11 @@ directions, so a name on one side and not the other is a build failure.
 | `Box.launchFrames` | Launch a `Frames` on the Runloop against a box, without returning it. Two overloads. |
 | `then` | Sequence two plain suspend lambdas into one. |
 
+</div>
+
 **The generator layer**
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Name | What it is |
 | --- | --- |
@@ -891,12 +917,18 @@ directions, so a name on one side and not the other is a build failure.
 | `Generator.map` | Transform the output values. |
 | `Generator.Companion.isMain` | Set by `Framer.frame()` while it drains, so code can tell it is on the Runloop thread. |
 
+</div>
+
 **The dispatcher**
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Name | What it is |
 | --- | --- |
 | `Framer.dispatch()` | `CoroutineDispatcher`'s hook — queue the runnable for the next frame. |
 | `Framer.frame()` | Swap the queue and run everything in it. One call is one frame. |
+
+</div>
 
 <!-- /phased-surface -->
 

@@ -1048,6 +1048,8 @@ that same vocabulary, so a ramp named in one place is the same ramp in another.
 
 `src/jvmMain/kotlin/afield/visualization/Colormaps.kt` — [read the source](source/jvmMain/afield/visualization/Colormaps/)
 
+**Used in:** [Imaging and computer vision](../imaging_examples.md)
+
 ### Color4 { #colormaps-kt-color4 }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Color4</span><span class="p">(</span><span class="k">val</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">g</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/Colormaps/#L28)

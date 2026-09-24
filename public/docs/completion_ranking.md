@@ -269,7 +269,7 @@ Four things can decide an order, and they rank against each other in a fixed pre
 > **recency > the author's prior > the category bucket > alphabetical.**
 
 
-| | decided by | beats | because |
+| Priority | decided by | beats | because |
 |---|---|---|---|
 | 1 | **recency** — what you have actually accepted | everything below | what a person demonstrably does beats anybody's guess about what they will do |
 | 2 | **the author's prior** — `@CommonMembers` | bucket, alphabetical | the person who wrote the class knows its first page |

@@ -26,7 +26,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt` — [read the source](source/jvmMain/afield/stdlib/StandardDrawing/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 
@@ -1410,7 +1410,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_field/)
 
-**Used in:** [Geometry from disk](../geometry_from_disk.md), [Field's 3D output](../three_output.md), [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Field's 3D output](../three_output.md)
 
 ### Top-level functions { #mesh-field-kt-functions }
 
@@ -1809,7 +1809,7 @@ Two families of damage need the repairs in this file:
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_repair.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_repair/)
 
-**Used in:** [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md)
+**Used in:** [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md)
 
 ### Top-level functions { #mesh-repair-kt-functions }
 

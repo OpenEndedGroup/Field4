@@ -434,7 +434,7 @@ display("tsne", panel(tsne.coordinates, "t-SNE, perplexity 30: the same ratio re
 
 The two panels show the same data and disagree about the most obvious thing in it.
 
-| | between-centre ratio 0–2 : 0–1 | 10-nearest-neighbour recall |
+| Embedding | between-centre ratio 0–2 : 0–1 | 10-nearest-neighbour recall |
 |---|---|---|
 | truth, in twelve dimensions | **3.8485** | 1.0 by definition |
 | MDS | **3.8489** | 0.2922 |

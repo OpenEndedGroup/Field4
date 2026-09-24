@@ -443,7 +443,7 @@ and its distance. `dev_docs/MARF_DEMO.md` is the note that goes with it.
 
 ## Where the pieces are
 
-| | |
+| Topic | Source |
 | --- | --- |
 | The layer | [`Marf.kt`](reference/patterns.md#marf-kt) |
 | Spaces for the linalg vectors | [`MarfVectors.kt`](reference/patterns.md#marfvectors-kt) |

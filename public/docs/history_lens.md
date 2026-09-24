@@ -46,7 +46,7 @@ The **`history()` visualizer** (`m.history(value)`) draws a live chart of the la
 
 <div class="field-data-table" markdown>
 
-| | History Lens | `history()` visualizer |
+| Property | History Lens | `history()` visualizer |
 | --- | --- | --- |
 | What it tracks | your source code across saved versions | a numeric value across runtime iterations |
 | Backed by | saved document backups | a rolling in-memory buffer |

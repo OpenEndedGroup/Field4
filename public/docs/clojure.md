@@ -127,16 +127,20 @@ a static method on a class named after a *file*, and a default argument, which i
 all from outside Kotlin, so every parameter has to be passed. `field.core` wraps exactly those, and is
 referred into every box, so there is nothing to require:
 
+<div class="field-reference" data-code-lang="clojure" markdown>
+
 | form | what it does |
-|---|---|
-| `(box)` | the `Box` this code is running in |
-| `(display v)`, `(display channel v)` | show a value in an output panel, rendered by Field's own value renderer |
-| `(lines ls :w 700 :h 350 :fit true)` | draw `FLine`s into an output channel |
-| `(polyline [[x y] …])` | an `FLine` through a sequence of points |
-| `(color line r g b a)`, `(thickness line w)` | style a line, returning it, so `->` threads |
-| `(animate f)` | a per-frame animation; **return** it to launch it |
-| `(frame)`, `(end)` | the frame number inside an animation, and "stop now" |
-| `(prop "name")`, `(prop! "name" v)` | read and write a property of this box |
+| --- | --- |
+| `(box)` | Returns the `Box` currently executing the code. Use it for Field operations that need an explicit box receiver. |
+| `(display v)`, `(display channel v)` | Renders a value in a box output panel using Field’s value renderer. Supply a channel name to update that output independently. |
+| `(lines ls :w 700 :h 350 :fit true)` | Draws the supplied `FLine` collection in a 700 × 350 output. `:fit true` fits the drawing to the view. |
+| `(polyline [[x y] …])` | Builds an `FLine` through the points in sequence. Pass the resulting line to `lines` to draw it. |
+| `(color line r g b a)`, `(thickness line w)` | Sets line colour or stroke thickness and returns the line. The returned value makes these helpers compose with `->`. |
+| `(animate f)` | Builds a per-frame animation around `f`. Return the animation from the box to launch it. |
+| `(frame)`, `(end)` | Reads the current frame number or stops the running animation. These helpers are used inside the animation body. |
+| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property on the current box. Use the same property name to exchange values with other Field code. |
+
+</div>
 
 Properties are the box's own storage, and they outlive a run:
 

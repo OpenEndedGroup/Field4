@@ -39,16 +39,32 @@ in the package reads a tree built from these.
 
 <div class="field-data-table" markdown>
 
-| | |
-|---|---|
-| **solids** | `sphere(r)`, `cuboid(x, y, z)`, `cuboid(size)`, `cylinder(h, r, rTop)`, `cone(h, r)`, `torus(major, minor)`, `gyroid(scale, thickness)` |
-| **profiles** | `Profile.circle(r)`, `Profile.rect(x, y)`, `Profile.star(n, outer, inner)`, `Profile.polygon(points)` |
-| **profile edits** | `.offset(d)`, `.translated(x, y)`, `.turned(degrees)`, `.sized(…)`, and `+` `-` `and` between profiles |
-| **sweeps** | `profile.extruded(height, twistDegrees)`, `profile.revolved(degrees)` |
-| **place and scale** | `.at(x, y, z)`, `.turned(x, y, z)` in degrees, `.sized(f)`, `.sized(x, y, z)`, `.mirrored(x, y, z)` |
-| **thicken** | `.rounded(r)`, `.shelled(thickness)` |
-| **combine** | `a + b`, `a - b`, `a and b`, and the n-ary `unionOf`, `differenceOf`, `intersectionOf` |
-| **blend** | `smoothUnion(a, b, k)`, `smoothDifference(a, b, k)` |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Example | Behavior |
+| --- | --- |
+| `sphere(1.0)` | Constructs a sphere centred on the origin. Its radius uses the same coordinate units as the rest of the expression. |
+| `cuboid(2.0, 1.0, 0.5)` / `cuboid(1.0)` | Constructs an origin-centred box from full extents, or a cube from one side length. Dimensions are not half-extents. |
+| `cylinder(2.0, 0.5, 0.25)` / `cone(2.0, 0.5)` | Builds a cylinder or frustum along z, centred on the origin. The cone is the zero-top-radius case, with its tip at positive half-height. |
+| `torus(1.0, 0.2)` | Revolves a circular tube around the z axis, with the ring in the XY plane. The major radius is the ring radius and the minor radius is the tube radius. |
+| `gyroid(3.0, 0.2)` | Defines an unbounded gyroid sheet field. Intersect it with a finite shape before expecting a bounded object. |
+| `Profile.circle(0.5)` / `Profile.rect(1.0, 0.5)` | Builds a two-dimensional circular or rectangular profile. Extrude or revolve it to create a solid. |
+| `Profile.star(5, 1.0, 0.4)` / `Profile.polygon(points)` | Builds a star from alternating radii or a polygon from supplied points. The profile can then enter the same sweep and Boolean operations. |
+| `profile.offset(0.1)` | Offsets the profile boundary before a sweep. Use a profile offset when the two-dimensional cross-section is what should grow. |
+| `profile.translated(1.0, 0.0).turned(30.0)` | Moves and rotates the profile in its plane. Rotation is in degrees. |
+| `profile.sized(2.0)` | Scales a profile before extrusion or revolution. This changes the cross-section rather than the later solid’s height. |
+| `profile.extruded(2.0, twistDegrees = 45.0)` | Sweeps the profile through the given height with optional twist in degrees. The result is a three-dimensional expression. |
+| `profile.revolved(360.0)` | Revolves a profile through the supplied angle in degrees. A full turn closes the revolution around its axis. |
+| `shape.at(1.0, 0.0, 0.0)` | Translates a solid expression by the given displacement. The source expression is retained as a child of the transform. |
+| `shape.turned(0.0, 0.0, 45.0)` | Rotates about the origin using Euler angles in degrees, applied x then y then z. Translation order therefore matters. |
+| `shape.sized(2.0)` / `shape.sized(2.0, 1.0, 0.5)` | Scales uniformly or separately along each axis. Use the uniform form when proportions should remain unchanged. |
+| `shape.mirrored(1.0, 0.0, 0.0)` | Reflects across the plane specified by its normal. This reverses the side of the shape along that normal. |
+| `shape.rounded(0.1)` / `shape.shelled(0.1)` | Rounds the field boundary outward by `0.1`, or creates a shell with wall thickness `0.2` (twice the argument). These field operations require sampled lowering when the exact backend cannot represent them. |
+| `a + b` / `a - b` / `a and b` | Forms union, ordered subtraction or intersection. The same Boolean spellings apply to profiles; subtraction removes b from a. |
+| `unionOf(listOf(a, b, c))` / `differenceOf(listOf(a, b, c))` / `intersectionOf(listOf(a, b, c))` | Combines more than two solids in one expression. Difference preserves the first shape and removes the later shapes. |
+| `smoothUnion(a, b, 0.2)` / `smoothDifference(a, b, 0.2)` | Blends field boundaries with the supplied smoothing scale. Use sampled lowering for these smooth combinations. |
+
+</div>
 
 </div>
 
@@ -96,7 +112,7 @@ Neither is a superset of the other, so which one you want depends on what you ar
 
 <div class="field-data-table" markdown>
 
-| | `toScalarField()` | `exactSolid()` |
+| Property | `toScalarField()` | `exactSolid()` |
 |---|---|---|
 | what the shape becomes | a distance field, sampled on a grid | a CSG tree, evaluated exactly |
 | how a surface appears | marching cubes, `O(h²)` | it **is** the surface |

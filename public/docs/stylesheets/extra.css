@@ -6,7 +6,7 @@
    instead of a mechanical oblique — at 300 as well as 400, because headings are
    weight 300 and five pages put emphasis inside a heading (the homepage h1 among
    them). 700 roman and italic are here because bold markdown and the
-   definition-table term cells resolve to 700, and a handful of pages nest the
+   table headings resolve to 700, and a handful of pages nest the
    two; without them all of that was faux-bold. */
 @import url("fonts.css");
 
@@ -19,9 +19,6 @@
     --mono-accent: rgba(255, 255, 255, 0.6);
     --mono-border: rgba(255, 255, 255, 0.12);
     --mono-border-soft: rgba(255, 255, 255, 0.08);
-    --mono-code-table-bg: rgba(255, 255, 255, 0.022);
-    --mono-code-table-cell: rgba(255, 255, 255, 0.06);
-    --mono-code-table-text: rgba(236, 238, 241, 0.82);
     --nav-font-size: 0.64rem;
     --nav-line-height: 1.22;
     --nav-item-gap: 0.075rem;
@@ -38,7 +35,7 @@
 }
 
 html {
-    background: radial-gradient(circle at center, #0e0e0e 40%, #000 100%);
+    background: var(--mono-bg);
     background-attachment: fixed;
 }
 
@@ -413,32 +410,14 @@ code {
     }
 }
 
-/* Generated codebase reference (public/docs/reference/*.md).
-   The seven per-category pages are two-column tables of `signature` + summary,
-   so they pick up the site's code-table skin below (header hidden, signature as
-   the term, prose underneath). Only three things differ here: the terms are full
-   Kotlin signatures rather than single words and must wrap instead of
-   overflowing; the summary column should run the full width under them rather
-   than being capped at the narrower `body` measure; and a reference page earns a
-   wider grid than a prose page.
-
-   `reference/index.md` is different — its two summary tables are five and six
-   columns wide, so they fall to the wide-table opt-out further down rather than
-   to the skin. */
-.md-typeset .codebase-reference table:has(td code) td:first-child,
-.md-typeset .codebase-reference table:has(td code) td:first-child code {
-    overflow-wrap: anywhere;
-    word-break: normal;
-}
-
-.md-typeset .codebase-reference table:has(td code) tr:has(td:nth-child(2):last-child)
-    td:nth-child(2) {
-    max-width: 52rem;
+/* Generated declarations keep their syntax colours and wrap within their column. */
+.md-typeset .codebase-reference table td:first-child {
+    width: 58%;
 }
 
 /* The signature is emitted as pre-highlighted Pygments spans, so the theme's code
-   palette already differentiates keyword / type / parameter / literal. The skin's
-   blanket bold-and-tint for a term would flatten all of that back out.
+   palette already differentiates keyword / type / parameter / literal. Keep the
+   surrounding code weight neutral so those tokens remain legible.
 
    Only the `code` element is reset, never the spans inside it: a `color` on the
    spans — even `inherit` — outranks `.highlight .k` and silently undoes every
@@ -602,319 +581,137 @@ code {
     background: transparent;
 }
 
+/* Reference and comparison tables share a compact, honest column layout.
+   Code in a cell never changes the meaning or layout of the surrounding table.
+   Keep headers visible, and scroll only the table when a narrow screen needs it. */
+.md-typeset .md-typeset__scrollwrap {
+    margin: 1rem 0 1.4rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+.md-typeset .md-typeset__table {
+    display: block;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
 .md-typeset table:not(.highlighttable) {
-    border: 1px solid var(--mono-border);
+    display: table;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-collapse: collapse;
     background: var(--mono-panel);
+    box-shadow: none;
+    font-size: 0.72rem;
+    line-height: 1.55;
+    text-align: left;
 }
 
 .md-typeset table:not(.highlighttable) th,
 .md-typeset table:not(.highlighttable) td {
+    padding: 0.65rem 0.75rem;
+    border: 0;
     border-bottom: 1px solid var(--mono-border);
-}
-
-.md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td code),
-.md-typeset .md-typeset__table:has(table:not(.highlighttable) td code) {
-    display: block;
-    margin: 0.4rem 0 1rem 1.35rem;
-    padding: 0;
-    overflow: visible;
-    background: transparent !important;
-}
-
-.md-typeset table:not(.highlighttable):has(td code),
-.md-typeset table:not([class]):has(td code) {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    overflow: visible;
-    border: 0 !important;
-    background: transparent !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) thead {
-    display: none;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) tbody {
-    display: grid;
-    gap: 0;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) tr {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    grid-template-areas:
-        "term meta"
-        "body body";
-    column-gap: 0.85rem;
-    row-gap: 0.44rem;
-    padding: 0.68rem 0 0.74rem;
-    border: 0;
-    background: transparent;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) tr::after {
-    content: "";
-    grid-column: 1 / -1;
-    grid-row: 1;
-    align-self: end;
-    transform: translateY(0.22rem);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.md-typeset table:not(.highlighttable):has(td code) tr:has(td:nth-child(2):last-child) {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-        "term"
-        "body";
-}
-
-.md-typeset table:not(.highlighttable):has(td code) tbody tr:nth-child(even) {
-    background: transparent;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td {
-    display: block;
-    padding: 0 !important;
-    border: 0 !important;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.68rem;
-    line-height: 1.46;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) th {
-    padding: 0 !important;
-    border: 0 !important;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td:first-child {
-    grid-area: term;
-    align-self: baseline;
-    padding-left: 0.42rem !important;
-    color: rgba(255, 255, 255, 0.94);
-    font-size: 0.94rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td:nth-child(2) {
-    grid-area: meta;
-    justify-self: end;
-    align-self: start;
-    max-width: 22rem;
-    color: rgba(255, 255, 255, 0.58);
-    font-size: 0.61rem;
-    line-height: 1.28;
-    text-align: right;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td:nth-child(3) {
-    grid-area: body;
-    max-width: 44rem;
-    padding-left: 0.42rem !important;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) tr:has(td:nth-child(2):last-child) td:nth-child(2) {
-    grid-area: body;
-    justify-self: stretch;
-    max-width: 44rem;
-    padding-left: 0.42rem !important;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.68rem;
-    line-height: 1.46;
-    text-align: left;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td code,
-.md-typeset table:not(.highlighttable):has(td code) th code {
-    display: inline;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0.02rem 0.16rem 0.03rem;
-    white-space: normal;
-    overflow-wrap: break-word;
-    word-break: normal;
-    border: 0;
-    border-radius: 3px;
-    background: var(--mono-code-table-cell);
-    color: #adf;
-    font-size: 0.61rem;
-    line-height: inherit;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td:first-child code,
-.md-typeset table:not(.highlighttable):has(td code) th:first-child code {
-    padding: 0;
-    background: transparent;
-    color: #adf;
-    font-size: 0.82rem;
-    font-weight: 700;
-}
-
-.md-typeset table:not(.highlighttable):has(td code) td:nth-child(2) code {
-    color: #adf;
-}
-
-@media screen and (min-width: 76.234375em) {
-    .md-grid:has(.md-typeset table:not(.highlighttable) td code) {
-        max-width: 64rem;
-    }
-}
-
-/* ── data tables opt out of the code-table skin ───────────────────────────
-   The skin above is a term/meta/body grid: it assigns grid areas to the first
-   three cells only. Any table with a fourth column leaves cells 4..n at
-   `grid-area: auto`, so they auto-place into the implicit grid, blow the row
-   far past the content measure, and push the later columns off-screen — while
-   the `max-content` term column collapses to one character per line.
-
-   A table wide enough to need four columns is a data table, not a term list,
-   so hand it back to normal table layout. Keyed off `td:nth-child(4)` rather
-   than a class so it protects any future page, not just the reference.
-
-   Two or three columns can be a data table too, and there the column count
-   cannot tell: the skin fires and silently restyles the table as a term list.
-   `morpho_examples.md` was the case that made this worth an escape hatch — a
-   `piece | file | lines` cost table came out as eleven headings with a
-   right-floated filename and the line count on its own line underneath, which
-   reads as a definition list of things that are not definitions. There is no
-   way to distinguish it from the outside, because the two are structurally
-   identical and differ only in what the first column *means*: a term the row
-   defines, or a value in a series. So it is declared, by wrapping the table in
-   `<div class="field-data-table" markdown>`.
-
-   The class sits on a wrapper rather than on the table because `attr_list`
-   cannot attach attributes to a Markdown table; `md_in_html` is on, and the
-   wrapper-div idiom is already how `codebase-reference` and `stacksl-reference`
-   are applied. Each rule below therefore carries a second selector with the
-   `:has(td:nth-child(4))` test swapped for a `.field-data-table` ancestor,
-   sharing one set of declarations so the two paths cannot drift.
-
-   The `@media` bleed at the end of this block is deliberately *not* paired: it
-   spends the reading rail's side slack so a six-column table fits, and a
-   three-column one that took it would sit wider than the prose beside it.
-
-   The `:not(.highlighttable)` in every selector is not redundant: it matches the
-   skin's own class count so that these rules, coming later in the file, actually
-   win the cascade over the skin's per-column `nth-child` rules. Without it the
-   skin's right-aligned, small-caps `td:nth-child(2)` leaks through. */
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)),
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) {
-    display: table;
-    table-layout: auto;
-    border: 1px solid var(--mono-border) !important;
-    background: var(--mono-panel) !important;
-}
-
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) thead,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) thead {
-    display: table-header-group;
-}
-
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tbody,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) tbody {
-    display: table-row-group;
-}
-
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) tr {
-    display: table-row;
-}
-
-/* The skin draws each row's rule with a grid-placed ::after; cells own it here. */
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr::after,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) tr::after {
-    content: none;
-}
-
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th,
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td,
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(2),
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(3),
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) th,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) td,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:nth-child(2),
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:nth-child(3) {
-    display: table-cell;
-    grid-area: auto;
-    justify-self: auto;
-    max-width: none;
-    padding: 0.42rem 0.6rem !important;
-    border-bottom: 1px solid var(--mono-border) !important;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.66rem;
-    font-weight: normal;
-    line-height: 1.46;
-    text-align: left;
     vertical-align: top;
+    text-align: left;
+    min-width: 0;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) th {
-    color: rgba(255, 255, 255, 0.58);
-    font-size: 0.61rem;
-    white-space: nowrap;
+.md-typeset table:not(.highlighttable) th {
+    background: #171717;
+    color: #eee;
+    font-family: var(--md-code-font);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:first-child {
-    color: rgba(255, 255, 255, 0.94);
+.md-typeset table:not(.highlighttable) td {
+    color: var(--mono-text);
+}
+
+.md-typeset table:not(.highlighttable) td code,
+.md-typeset table:not(.highlighttable) th code {
+    padding: 0;
+    margin: 0;
+    background: transparent;
     font-size: 0.7rem;
-}
-
-/* Auto table layout hands the first column whatever the prose columns leave —
-   about 100px here, which breaks every filename mid-word. Keeping the column's
-   words unbreakable makes its min-content width the longest identifier, which
-   auto layout then honours. A fixed `min-width` would do it too, but it would
-   over-allocate on tables whose first column holds a short label. */
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th:first-child,
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) th:first-child,
-.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:first-child {
-    overflow-wrap: normal;
+    line-height: inherit;
+    white-space: normal;
+    overflow-wrap: anywhere;
     word-break: normal;
+    font-weight: 400;
 }
 
-/* The skin indents the term list to hang off the prose and turns off scrolling,
-   since a term list reflows. A wide table does not reflow, so give the wrapper
-   its scrollbar back — otherwise the table stretches the whole page sideways on
-   a narrow viewport — and drop the hanging indent.
+/* Opt-in reference entries pair readable code with an explanation. A long
+   signature can wrap, while the explanation retains enough room to be prose. */
+.md-typeset .field-reference table {
+    table-layout: fixed;
+}
+.md-typeset .field-reference th:first-child {
+    width: 45%;
+}
+.md-typeset .field-reference td code {
+    color: #d7dce2;
+}
+.md-typeset .field-reference td strong {
+    color: #eee;
+    font-weight: 500;
+}
 
-   Note the inner selector is a plain descendant, `table:not(...) td:nth-child(4)`,
-   not the `table:has(...)` used above: `:has()` may not be nested inside
-   `:has()`, and a rule that tries to is dropped whole. */
-.md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)),
-.md-typeset .field-data-table .md-typeset__scrollwrap {
-    margin-left: 0;
+/* Three-column call comparisons need room for the function name as well as its
+   explanation. Keep a readable width and scroll locally on narrow screens. */
+.md-typeset .field-call-table {
     overflow-x: auto;
 }
-
-.md-typeset .md-typeset__table:has(table:not(.highlighttable) td:nth-child(4)),
-.md-typeset .field-data-table .md-typeset__table {
-    display: inline-block;
-    min-width: 100%;
-    margin-left: 0;
+.md-typeset .field-call-table table {
+    table-layout: fixed;
+    min-width: 34rem;
+}
+.md-typeset .field-call-table th:first-child {
+    width: 20%;
+}
+.md-typeset .field-call-table th:nth-child(2) {
+    width: 42%;
 }
 
-/* Six columns do not fit the 34rem prose measure, and the reading rail's layout
-   means the `.md-grid` max-width rules above cannot widen it — `.md-content__inner`
-   caps at `--field-reading-width` regardless. So let a wide table (and only a
-   wide table) spend the slack the reading rail leaves either side of the prose:
-   the measure is centred in the 52rem content column, so there is
-   `(52rem - reading)/2` free per side. Prose still wraps at the reading measure.
-   Scoped to the same breakpoint that establishes that geometry. */
-@media screen and (min-width: 76.234375em) {
-    .md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)) {
-        --field-wide-table-bleed: calc((52rem - var(--field-reading-width)) / 2);
-
-        width: calc(100% + 2 * var(--field-wide-table-bleed));
-        margin-inline: calc(-1 * var(--field-wide-table-bleed));
+@media screen and (max-width: 44.984375em) {
+    .md-typeset table:not(.highlighttable) th,
+    .md-typeset table:not(.highlighttable) td {
+        padding: 0.55rem 0.6rem;
+    }
+    /* An example and its explanation should be read together on a phone.
+       Only this explicitly authored two-column reference reflows; comparisons
+       retain their columns and local horizontal scrolling. Headers remain in
+       the accessibility tree even when their visual columns no longer exist. */
+    .md-typeset .field-reference table,
+    .md-typeset .field-reference tbody,
+    .md-typeset .field-reference tr,
+    .md-typeset .field-reference td {
+        display: block;
+        width: 100%;
+    }
+    .md-typeset .field-reference thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .md-typeset .field-reference tbody tr {
+        padding: 0.8rem 0.65rem;
+        border-bottom: 1px solid var(--mono-border);
+    }
+    .md-typeset .field-reference table:not(.highlighttable) td {
+        padding: 0;
+        border: 0;
+    }
+    .md-typeset .field-reference table:not(.highlighttable) td + td {
+        margin-top: 0.45rem;
     }
 }
 

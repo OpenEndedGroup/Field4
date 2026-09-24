@@ -448,7 +448,7 @@ Cost is per *neighbour*, not per particle, and the learned rule pays a `psi` for
 one. Once cohesion has gathered the flock, a boid can have a hundred or more neighbours inside its
 radius. At 12,000 boids a flock:
 
-| | frames per second |
+| Configuration | frames per second |
 |---|---|
 | the written rule alone | 116 |
 | a `16x16` `psi`, message width 6 | 17.6 |
@@ -488,32 +488,44 @@ compares only the rules. No retraining is needed to add or change it.
 
 `NeuralParticleSettings` — tier one:
 
-| | default | |
-|---|---|---|
-| `particleCount` | 200,000 | a few hundred thousand is comfortable |
-| `stepsPerCycle` | 150 | integrator steps *and* animation speed at once; below ~60 the target visibly loses its corners |
-| `dwellCycles` | 3 | how long a particle rests on the target, as a multiple of travel time — see section 1 |
-| `phaseSpread` | 1 | 1 is a standing stream with no dead moment; 0 is a single object morphing |
-| `arrivalBias` | 0.8 | biases colour and intensity toward arrived particles |
-| `sourceJitter` | 0.02 | spread around each source point |
-| `randomSeed` | 1 | which source points particles are assigned, and their phases |
-| `viewScale`, `viewCenter` | 2.6, origin | framing |
-| `flipY` | true | glyph contours come in y-down |
-| `pointSize`, `sourceColor`, `targetColor`, `intensity` | | appearance |
+<div data-code-lang="kotlin" markdown>
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `particleCount` | 200,000 | Sets the allocation and dispatch size at construction; it cannot be increased on a live system. A few hundred thousand particles is a useful starting scale. |
+| `stepsPerCycle` | 150 | Sets frames per source-to-target journey, coupling integrator accuracy to animation speed. Below roughly 60 steps, the target can visibly lose corners. |
+| `dwellCycles` | 3 | Holds particles at the target for this multiple of travel time. At three, particles spend three quarters of their cycle on the target. |
+| `phaseSpread` | 1 | Spreads initial phases over this fraction of a cycle: one gives a continuous stream and zero a synchronized morph. Call `reset()` after changing it. |
+| `arrivalBias` | 0.8 | Weights brightness toward the end of the journey, from zero to one. Raise it to emphasize the learned target over travelling particles. |
+| `sourceJitter` | 0.02 | Adds spread around each source point during reset. Call `reset()` after changing it; excessive jitter blurs the source correspondence. |
+| `randomSeed` | 1 | Controls initial source assignments and particle phases. Reset with the same seed to repeat the initialization. |
+| `viewScale`, `viewCenter` | 2.6, origin | Frame the cloud in normalized training coordinates. Scale controls the visible extent and centre controls the point the view is centred on. |
+| `flipY` | true | Flips the displayed vertical axis. The default accommodates glyph contours, whose y coordinate increases downward. |
+| `pointSize` | `1.5f` | Sets the drawn point size in pixels. This changes the appearance without changing the simulated positions. |
+| `sourceColor`, `targetColor` | `(0.15, 0.45, 1, 1)`, `(1, 0.62, 0.22, 1)` | Sets RGBA colours at the beginning and end of each journey. The shader blends between them as the particle travels. |
+| `intensity` | `0.5f` | Scales brightness under additive blending. Use it as exposure when overlapping particles make the cloud too bright. |
+
+</div>
 
 `BoidSettings` — tier two. `radius` must not exceed the grid's `cellSize`:
 
-| | default | |
-|---|---|---|
-| `radius` | 0.06 | interaction radius; **bounded by the grid's cell size** |
-| `separation`, `alignment`, `cohesion` | 0.02, 1.2, 0.8 | the three Reynolds weights — the textbook values, which **do not flock** at a realistic density; see section 5 |
-| `separationRadiusFraction` | 1 | shrink separation's reach relative to `radius` for smaller clumps |
-| `minSeparationFraction` | 0.05 | floor on the separation denominator, so a coincident pair is finite |
-| `maxSpeed` | 0.35 | speed limit |
-| `dt` | 1/60 | fixed step |
-| `containment`, `containmentRadius`, `containmentCenter` | 0, 0.8, origin | a soft wall, applied after the rule |
-| `driverStrength`, `driverRadius` | 0, 0.25 | see section 7; negative flees |
-| `pointSize`, `slowColor`, `fastColor`, `intensity` | | appearance; colour tracks speed |
+<div data-code-lang="kotlin" markdown>
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `radius` | 0.06 | Sets the neighbour interaction radius in simulation coordinates. It must not exceed the spatial grid’s cell size, or the query would miss neighbours. |
+| `separation`, `alignment`, `cohesion` | 0.02, 1.2, 0.8 | Weights repulsion, velocity matching and attraction to neighbours’ centre respectively. Their balance depends on density; the defaults alone need not produce distinct flocks. |
+| `separationRadiusFraction` | 1 | Sets separation’s reach as a fraction of `radius`. Values below one let longer-range cohesion gather clumps without equally long-range repulsion. |
+| `minSeparationFraction` | 0.05 | Floors pair distance in the separation denominator at this fraction of `radius`. This keeps coincident or nearly coincident neighbours from producing unbounded force. |
+| `maxSpeed` | 0.35 | Caps speed after acceleration is applied. This keeps one strong interaction from sending a particle arbitrarily far in the next step. |
+| `dt` | 1/60 | Sets the fixed integration time step. Set zero to calculate accelerations without moving the particles. |
+| `containment`, `containmentRadius`, `containmentCenter` | 0, 0.8, origin | Adds a soft restoring force outside a circle centred on `containmentCenter`. Strength zero disables it; the radius sets where the force begins. |
+| `driverStrength`, `driverRadius` | 0, 0.25 | Controls the moving driver’s force and influence radius. Positive strength attracts and negative strength repels; zero disables the driver. |
+| `pointSize` | `2f` | Sets the drawn point size in pixels. This changes the appearance without changing the simulated positions. |
+| `slowColor`, `fastColor` | `(0.16, 0.40, 0.95, 1)`, `(1, 0.75, 0.25, 1)` | Sets the RGBA colours at the low and high ends of the speed tint. This lets the drawing reveal velocity changes without a CPU readback. |
+| `intensity` | `0.9f` | Scales brightness under additive blending. Use it as exposure when overlapping particles make the cloud too bright. |
+
+</div>
 
 ---
 

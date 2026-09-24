@@ -70,12 +70,16 @@ have their own dimension.
 sample states it propagates through your nonlinear functions to estimate the new
 mean and covariance:
 
+<div data-code-lang="kotlin" markdown>
+
 | field | default | what it does |
-|-------|---------|--------------|
+| --- | --- | --- |
 | `alpha` | `0.5` | spread of the sigma points around the mean. Small `alpha` clusters them tight (good for mild nonlinearity); larger `alpha` spreads them out. Must be `> 0`. |
 | `beta` | `2.0` | folds prior knowledge of the distribution into the covariance weight. `2.0` is optimal for Gaussians and is almost always the right choice. |
 | `kappa` | `0.0` | secondary scaling. Usually left at `0`; raise it if the sigma-point scale `n + λ` would otherwise go non-positive. |
 | `jitter` | `1e-9` | tiny diagonal added when a covariance is not quite positive-definite, so the internal Cholesky step stays numerically safe. Must be `> 0`. |
+
+</div>
 
 `alpha` is the knob you actually reach for. The examples below use `alpha = 0.55`
 and `alpha = 0.9`; if you ever see *"n + lambda must be positive"*, nudge `alpha`

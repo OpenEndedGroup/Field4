@@ -46,14 +46,18 @@ img |> hostCall "index" (1, 0, 0)
 
 The arguments are a tuple, and a tuple is spread, so `(1, 0, 0)` is three arguments. A list written in place is spread the same way, `()` is no arguments at all, and anything else is one argument. That last rule is the only place to be careful: to pass a single *list* as one argument, use `hostCall1`, which never spreads.
 
+<div class="field-reference" data-code-lang="fieldml" markdown>
+
 | Form | Arguments |
 | --- | --- |
-| `hostCall "m" () t` | none |
-| `hostCall0 "m" t` | none |
-| `hostCall1 "m" x t` | exactly one, whatever `x` is |
-| `hostCall "m" (a, b, c) t` | three |
-| `hostCall "m" [a, b, c] t` | three |
-| `hostCall1 "m" [a, b, c] t` | one, a list |
+| `hostCall "m" () t` | Calls `m` on target `t` with no arguments. Unit `()` is the empty argument bundle. |
+| `hostCall0 "m" t` | Calls the same zero-argument method without an explicit bundle. Use this form when there is no value to spread. |
+| `hostCall1 "m" x t` | Passes exactly one argument, preserving `x` even when it is a list, tuple or record. Use it when the method expects a collection. |
+| `hostCall "m" (a, b, c) t` | Spreads the tuple into three positional arguments in order. The method’s result is returned through the host bridge. |
+| `hostCall "m" [a, b, c] t` | Spreads the list into three positional arguments. This differs from passing a single list value. |
+| `hostCall1 "m" [a, b, c] t` | Passes one list argument without spreading it. Choose this when the JVM method accepts a list. |
+
+</div>
 
 `hostNew arguments class` and `hostNew0 class` are the same for constructors, and `hostStaticCall name arguments class` is the same for statics. `hostExt class name arguments` is a static called with the piped value in front of the written arguments. That is how a Kotlin extension function compiles, and most of Field's API is extension functions.
 
@@ -170,11 +174,15 @@ That last line is `var Box.speed by Inheritance<Double>()` plus its `Once` twin 
 
 Two shapes, because the macros come in two kinds:
 
+<div class="field-reference" data-code-lang="fieldml" markdown>
+
 | Name | For |
 | --- | --- |
 | `hostMacroExpand "name" args` | any registered macro. Runs the expansion against this box, side effects and all, and hands the rewrite back as a record: `.call`, `.here`, `.declarations`, `.preamble` |
 | `hostMacro "name" args values` | the macros that rewrite a call. Expands, then calls the `Box` extension it rewrote to, with `values` as the arguments |
 | `prop` `propOr` `setProp` `rootProp` `setRootProp` `once` | the macros that generate a *declaration*. No expansion involved: these read and write the same box slot the generated delegate would have |
+
+</div>
 
 A macro's arguments are **source text**, because that is what a macro consumes: `hostMacroExpand "prop" ("<Double>", "(speed)")` is the `prop<Double>(speed)` call site, one string per piece. `hostMacro` takes those *and* the values for the rewritten call, because only the first can be text in an interpreter. Those values can be a record, which makes it a named call: `_fieldStatsHere` declares a default for every one of its seven parameters, so naming one is the difference between changing one number and writing all seven.
 
@@ -230,12 +238,16 @@ let img = hostNew {width = 2, height = 2, channels = 3, data = [0.0, 0.0, 0.0, 0
 
 The rule is the same at every call shape (`hostCall`, `hostStaticCall`, `hostExt`, `hostNew`), and it is the rule those names already had: a tuple spreads positionally, a list spreads positionally, `Unit` is no arguments, and now a record spreads by name. `hostCall1`, which never spreads, is still how you pass one of something.
 
+<div class="field-reference" data-code-lang="fieldml" markdown>
+
 | Written | Means |
 | --- | --- |
-| `hostNew (w, []) Renderer` | positional, every parameter spelled |
-| `hostNew {mainWindow = w} Renderer` | named; `additionalWindows` is Kotlin's default |
-| `img \|> hostExt Imaging "colormap" {name = "magma"}` | `lo` and `hi` are computed from the image, as the Kotlin default says |
-| `hostCall1 "m" {a = 1} t` | one argument, which happens to be a record |
+| `hostNew (w, []) Renderer` | Calls the constructor positionally with both arguments present. The empty list explicitly supplies `additionalWindows`. |
+| `hostNew {mainWindow = w} Renderer` | Matches constructor parameters by name. Omitting `additionalWindows` uses its Kotlin default. |
+| `img \|> hostExt Imaging "colormap" {name = "magma"}` | Calls the extension with a named palette. Omitted `lo` and `hi` use Kotlin’s defaults, computed from the image. |
+| `hostCall1 "m" {a = 1} t` | Passes the record as one value. It does not use the record’s fields as named JVM arguments. |
+
+</div>
 
 A name reflection does not know is a compile error where it is written, and it says what you gave it. Two overloads that both accept the names you gave are refused rather than guessed, with the candidates listed and a `?` on each parameter that has a default.
 

@@ -506,7 +506,7 @@ markdown("numbers", """
 
 The measured numbers, from the run above:
 
-| | before the change | after it settles |
+| Measure | before the change | after it settles |
 |---|---|---|
 | rolling dCor | 0.215 | **0.574** |
 | rolling xi | −0.034 | **0.731** |

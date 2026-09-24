@@ -1431,7 +1431,7 @@ and `len` operators are absent here: they are generated for every float vector i
 
 `src/jvmMain/kotlin/afield/stdlib/linalg.kt` — [read the source](source/jvmMain/afield/stdlib/linalg/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Datalog in a box](../datalog.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Meshes and 3D geometry](../mesh_examples.md), [Datalog in a box](../datalog.md)
 
 ### Top-level functions { #linalg-kt-functions }
 

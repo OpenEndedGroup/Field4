@@ -371,7 +371,7 @@ opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
 
 <div class="field-data-table" markdown>
 
-| | Measured | |
+| Operation | Measured | Relative speed |
 |---|---|---|
 | **A playing voice, end to end** | 60.4µs per 128-frame block against a 2667µs budget | **44× realtime** |
 | **The `compute` call alone** | 7.6µs per block | 353× realtime |
@@ -404,7 +404,7 @@ Field vendors the Faust compiler as WebAssembly: `src/jvmMain/resources/faust/`,
 unmodified, with its licence and provenance recorded alongside. WebAssembly is platform-independent,
 so those are the *same bytes* on every platform Field runs on:
 
-| | Needs |
+| Platform | Needs |
 |---|---|
 | macOS (x86_64, aarch64) | nothing |
 | Linux (x86_64, aarch64) | nothing |
@@ -424,28 +424,32 @@ a live-coding environment: a slow first compile is a warm-up, whereas a missing 
 
 ## Reference
 
-| | |
-|---|---|
-| `Box.faust(source, …)` | compile and play a `#faust` region; returns a `FaustLaunch` |
-| `Box.faustCompile(source)` | compile without playing, to inspect the interface or the diagram |
-| `Box.faustControls(launch)` | build the control group by hand, if you passed `controls = false` |
-| `Box.faustDiagram(program)` | show the block diagram by hand |
-| `Box.faustWaveform(program)` | render offline and plot it — needs no audio device |
-| `Box.faustPoly(source, voices)` | compile and play polyphonically; returns a `FaustPolyLaunch` |
-| `FaustPolyLaunch.play(pattern, …)` | feed it from a `Pat` pattern, with `automate` for shared controls |
-| `FaustPolyLaunch.chord(midis)` | strike a chord from code, every note on the same frame |
-| `Box.showFaustPattern(source, pattern)` | render a pattern offline into a player and a waveform |
-| `faustPatternRender(…)` | the same, as data |
-| `faustParamAutomation(values, control, …)` | a numeric pattern as shared-parameter changes |
-| `faustOnsets` / `faustSilentGaps` | attack frames, and the check that there *are* attacks |
-| `faustFundamentalHz` / `faustSpectrumPeaks` | pitch by autocorrelation; partials by FFT |
-| `FaustLaunch["label"] = v` | set a control by label, address or qualified name |
-| `FaustLaunch.press(label)` | momentary trigger for a `button` |
-| `FaustLaunch.meter(label)` | read a `bargraph` |
-| `FaustEngine.compile(name, src)` | the compiler directly: wasm bytes plus metadata |
-| `FaustEngine.blockDiagram(…)` | the SVG set for a program |
-| `FaustEngine.warmInBackground()` | pay the cold start early |
-| `FaustEngine.libfaustVersion()` | which compiler is actually loaded |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Call | Behavior |
+| --- | --- |
+| `Box.faust(source, …)` | Compiles the source and starts playback, returning a `FaustLaunch`. Keep the launch to change controls or inspect meters while it plays. |
+| `Box.faustCompile(source)` | Compiles without starting playback. Inspect the resulting program’s interface or diagram before creating a live node. |
+| `Box.faustControls(launch)` | Builds the control group for an existing launch. Use it when automatic controls were disabled with `controls = false`. |
+| `Box.faustDiagram(program)` | Displays the compiled program’s block diagram. This reads the program structure without playing it. |
+| `Box.faustWaveform(program)` | Renders the program offline and plots the result. No audio output device is needed. |
+| `Box.faustPoly(source, voices)` | Compiles a polyphonic instrument and returns a `FaustPolyLaunch`. `voices` limits how many simultaneous note instances the bank can run. |
+| `FaustPolyLaunch.play(pattern, …)` | Schedules a Pat pattern into the voice bank. Supply `automate` to vary controls shared by the instrument. |
+| `FaustPolyLaunch.chord(midis)` | Starts all supplied MIDI notes on the same audio frame. Use it when simultaneity matters more than a pattern’s sequential rhythm. |
+| `Box.showFaustPattern(source, pattern)` | Renders a finite pattern offline and displays a player plus waveform. Use it to inspect an instrument without live playback. |
+| `faustPatternRender(…)` | Returns the offline pattern render as data. Choose it when you need samples for analysis or writing a file rather than a display. |
+| `faustParamAutomation(values, control, …)` | Turns a numeric pattern into timed changes for a shared control. The control changes apply across the voice bank. |
+| `faustOnsets` / `faustSilentGaps` | Finds attack frames and silent gaps in rendered audio. These measurements check whether a scheduled pattern produced distinct notes. |
+| `faustFundamentalHz` / `faustSpectrumPeaks` | Estimates the fundamental by autocorrelation and spectral partials by FFT. Compare both when a strong harmonic could be mistaken for the played pitch. |
+| `FaustLaunch["label"] = v` | Sets a running control by label, address or qualified name. Use a qualified name when several controls share the same label. |
+| `FaustLaunch.press(label)` | Pulses a Faust button control. This is a momentary trigger rather than a persistent slider value. |
+| `FaustLaunch.meter(label)` | Reads the current value of a Faust bargraph. Use meters to observe DSP state without changing it. |
+| `FaustEngine.compile(name, src)` | Invokes the compiler directly and returns WebAssembly bytes with interface metadata. Playback is a separate step. |
+| `FaustEngine.blockDiagram(…)` | Returns the program’s SVG diagram set. Use it for a custom display or export. |
+| `FaustEngine.warmInBackground()` | Starts compiler warm-up in the background. Call it ahead of a performance to move the cold-start delay out of the first edit. |
+| `FaustEngine.libfaustVersion()` | Reports the version of the loaded compiler. Record it with a compiler diagnostic when comparing environments. |
+
+</div>
 
 Field's Faust smokes assert the vendored compiler's behaviour as well as Field's own, so a version
 bump that changes either cannot pass unnoticed. Which smoke covers what — the compiler and its

@@ -343,7 +343,7 @@ solid.close()
 
 Measured on this machine, a unit sphere at `edgeLength = 0.04` (465k samples, 40536 triangles out):
 
-| | wall clock | threads that entered the JVM |
+| Configuration | wall clock | threads that entered the JVM |
 |---|---|---|
 | `parallel = true` | 82 ms | 10 |
 | `parallel = false` | 151 ms | 1 |
@@ -459,7 +459,7 @@ coming **out** narrows Manifold's internal doubles to precisely the precision `T
 `toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
 because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:
 
-| | vertices | `isWatertight()` | `signedVolume()` |
+| Conversion | vertices | `isWatertight()` | `signedVolume()` |
 |---|---|---|---|
 | `cube.toTriMesh()` | 8 | `true` | `8.0` |
 | `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
@@ -501,7 +501,7 @@ FFM over JNI, because the alternative needs a compiled shim per platform and thi
 
 <div class="field-data-table" markdown>
 
-| | Ceres, the other native solver here | Manifold |
+| Property | Ceres, the other native solver here | Manifold |
 |---|---|---|
 | upstream API | C++ templates only | C++ **and** a C ABI |
 | so Field needs | a hand-written C++ wrapper (`native/ken-ceres`) | nothing |

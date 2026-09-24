@@ -101,6 +101,8 @@ data class ApiDocumentation(
     val details: List<String> = emptyList(),
     val parameters: Map<String, String> = emptyMap(),
     val returns: String? = null,
+    val example: String? = null,
+    val heapUsage: String? = null,
 )
 
 sealed interface ValueSource {
@@ -180,7 +182,7 @@ private object VectorDocumentation {
 private object OperationDocumentation {
     fun forOperation(operation: Operation): ApiDocumentation {
         val vectorArgument = operation.vectorParameters.isNotEmpty()
-        return when (operation.name) {
+        val documentation = when (operation.name) {
             "add" -> doc(
                 if (vectorArgument) "Adds another vector component by component." else "Adds a scalar to each component.",
                 params = common("other" to "the vector to add", "scalar" to "the value to add"),
@@ -263,13 +265,29 @@ private object OperationDocumentation {
             )
             else -> error("No documentation for vector operation ${operation.name}")
         }
+        val arguments = when (operation.name) {
+            "fma" -> "0.1f, direction"
+            "lerp", "lerpBroadcast" -> "other, 0.5f"
+            else -> (operation.vectorParameters.map { it.name } + operation.scalarParameters.map { it.name }).joinToString()
+        }
+        return documentation.copy(
+            example = "value.${operation.name}($arguments)",
+            heapUsage = if (operation.result == OperationResult.Destination && !operation.bulkOnly)
+                "Overloads without dest update this vector; pass a distinct destination to preserve the receiver."
+            else null,
+        )
     }
 
     private fun doc(
         summary: String,
         details: List<String> = emptyList(),
         params: Map<String, String> = common(),
-    ) = ApiDocumentation(summary, details, params, "the destination vector")
+    ) = ApiDocumentation(
+        summary,
+        details,
+        params,
+        "the destination vector",
+    )
 
     private fun common(vararg entries: Pair<String, String>): Map<String, String> = buildMap {
         putAll(entries)

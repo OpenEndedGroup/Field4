@@ -524,27 +524,31 @@ fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 <div class="field-data-table" markdown>
 
-| you want | the call |
-|---|---|
-| a shape from an equation | `marchingCubes(field, boundsAround(radius = r), resolution)` |
-| is this mesh usable? | `println(mesh.summary())` |
-| a mesh from a photo or a heightfield | `img.toHeightfieldMesh(scale = 0.25)` or `heightfieldMesh(nx, nz) { x, z -> h }` |
-| a lathed profile | `revolveMesh(profile, segments)` |
-| a swept tube along a path | `tubeMesh(fline, radius, sides, samples)` |
-| smooth without shrinking | `taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)` |
-| more detail | `loopSubdivide(2)` |
-| less detail, bounded error | `decimate(target)` then `maxDeviation(original, small)` |
-| hard edges for a renderer | `flatShaded()`, or `shadedNormals(creaseAngleDegrees = 35.0)` |
-| soft edges | `withVertexNormals()` |
-| a mesh that came in broken | `repaired(1e-6)` (weld, drop degenerates, fix winding) |
-| just the biggest piece | `largestComponent()` |
-| draw it in Field | `lines(mesh.toFLines(MeshLines.CREASES))` |
-| colour it by a per-vertex number | `coloredByScalar(values, "coolwarm")` |
-| an outline, not a solid | `toFLines(MeshLines.BOUNDARY)` |
-| hand it to another program | `mesh.saveObj(File("out.obj"))` |
-| point-in-solid, many times | `val tree = mesh.bvh()` then `tree.contains(p)` |
-| the mesh's own distance field | `mesh.bvh().asSdf()` |
-| a normalised mesh for a thumbnail | `mesh.normalized(1.0)` |
+<div data-code-lang="kotlin" markdown>
+
+| Task | Call | What to expect |
+| --- | --- | --- |
+| a shape from an equation | `marchingCubes(field, boundsAround(radius = r), resolution)` | Extracts the zero surface of a scalar field within the supplied bounds. Increase resolution to resolve finer geometry, at greater sampling cost. |
+| is this mesh usable? | `println(mesh.summary())` | Reports mesh counts, extent and topology measurements. Inspect it before treating imported geometry as a closed solid. |
+| a mesh from a photo or a heightfield | `img.toHeightfieldMesh(scale = 0.25)` or `heightfieldMesh(nx, nz) { x, z -> h }` | Builds a sampled height surface from image values or a function. The result is a heightfield rather than a closed volume. |
+| a lathed profile | `revolveMesh(profile, segments)` | Revolves a profile around an axis. Segment count controls angular tessellation. |
+| a swept tube along a path | `tubeMesh(fline, radius, sides, samples)` | Sweeps a polygonal cross-section along the path. Radius sets thickness, sides sets the cross-section detail and samples sets path resolution. |
+| smooth without shrinking | `taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)` | Alternates smoothing passes to reduce shrinkage. Compare the result with the original when feature preservation matters. |
+| more detail | `loopSubdivide(2)` | Subdivides triangle connectivity twice. This adds mesh detail and changes the surface; it does not recover detail absent from the source. |
+| less detail, bounded error | `decimate(target)` then `maxDeviation(original, small)` | Reduces the mesh toward the requested target, then measures deviation from the original. Treat the measurement as a check on the chosen simplification. |
+| hard edges for a renderer | `flatShaded()`, or `shadedNormals(creaseAngleDegrees = 35.0)` | Creates flat face normals or splits shading at the chosen crease angle in degrees. This controls visible hard edges separately from topology repair. |
+| soft edges | `withVertexNormals()` | Computes shared vertex normals for smooth shading. It does not weld disconnected vertices or close holes. |
+| a mesh that came in broken | `repaired(1e-6)` (weld, drop degenerates, fix winding) | Welds nearby vertices, removes degenerate triangles and repairs winding. Check topology afterwards; repair is not proof that an arbitrary input became a valid solid. |
+| just the biggest piece | `largestComponent()` | Keeps the largest connected component. Smaller disconnected pieces are removed. |
+| draw it in Field | `lines(mesh.toFLines(MeshLines.CREASES))` | Extracts crease edges as line geometry for a Field drawing. This emphasizes sharp changes in surface direction. |
+| colour it by a per-vertex number | `coloredByScalar(values, "coolwarm")` | Maps one scalar per vertex through the chosen palette. Keep the value array aligned with the mesh’s vertex indices. |
+| an outline, not a solid | `toFLines(MeshLines.BOUNDARY)` | Extracts open boundary edges. A watertight mesh has no such boundary outline. |
+| hand it to another program | `mesh.saveObj(File("out.obj"))` | Writes the mesh as OBJ. Choose a format according to which normals, colours and material data need to survive. |
+| point-in-solid, many times | `val tree = mesh.bvh()` then `tree.contains(p)` | Builds an acceleration structure once for repeated inside tests. Reuse it while the mesh geometry is unchanged. |
+| the mesh's own distance field | `mesh.bvh().asSdf()` | Turns mesh distance queries into a scalar field. This lets a mesh participate in field-based modelling. |
+| a normalised mesh for a thumbnail | `mesh.normalized(1.0)` | Rescales and centres a mesh for display. Use this on a copy when the original dimensions have physical meaning. |
+
+</div>
 
 </div>
 
@@ -579,16 +583,245 @@ smoothing parameter or an SDF expression, re-run the box, and watch it update. S
 
 ## Reference
 
-| | |
-|---|---|
-| **value type** | `TriMesh`, `TriMeshBuilder`, `triMesh { }`, `position`, `triangle`, `faceNormal`, `triangleArea`, `vertices`, `withColor`, `coloredBy`, `transformed`, `translated`, `scaled`, `rotated`, `flipped`, `filterTriangles`, `plus` |
-| **topology** | `MeshTopology`, `topology`, `isWatertight`, `isManifold`, `isConsistentlyOriented`, `eulerCharacteristic`, `genus`, `boundaryLoops`, `components`, `weld`, `fixWinding`, `removeDegenerateTriangles`, `removeUnusedVertices`, `repaired`, `largestComponent` |
-| **generators** | `boxMesh`, `cubeMesh`, `planeMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, `tetrahedronMesh`, `octahedronMesh`, `icosahedronMesh`, `dodecahedronMesh`, `triangulatePolygon`, `polygonMesh`, `extrudeMesh`, `revolveMesh`, `heightfieldMesh`, `Img.toHeightfieldMesh` |
-| **fields / marching cubes** | `ScalarField3D`, `boundsOf`, `boundsAround`, `bounds`, `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`, `sdfCapsule`, `sdfGyroid`, `sdfMetaballs`, `sdfUnion`, `sdfIntersect`, `sdfSubtract`, `sdfInvert`, `sdfSmoothUnion`, `sdfSmoothIntersect`, `sdfSmoothSubtract`, `sdfExpUnion`, `shell`, `rounded`, `translated`, `scaled`, `rotated`, `repeated`, `twisted`, `displaced`, `gradient`, `normalAt`, `marchingCubes`, `march`, `Img.asHeightSdf` |
-| **processing** | `withVertexNormals`, `flatShaded`, `shadedNormals`, `loopSubdivide`, `laplacianSmooth`, `taubinSmooth`, `decimate`, `quality`, `MeshQuality` |
-| **measure / query** | `surfaceArea`, `signedVolume`, `volume`, `centroid`, `solidCentroid`, `mixedVertexAreas`, `gaussianCurvature`, `meanCurvature`, `MeshBvh`, `bvh`, `raycast`, `raycastAll`, `closestPoint`, `contains`, `signedDistance`, `asSdf`, `RayHit`, `SurfacePoint`, `convexHullMesh`, `convexHull`, `deviationFrom`, `maxDeviation`, `isContainedIn`, `samplePoints`, `angleBetweenDegrees` |
-| **I/O** | `toObj`, `objToTriMesh`, `saveObj`, `triMeshFromObj`, `toStlAscii`, `toStlBinary`, `stlToTriMesh`, `saveStl`, `meshFromFile` — and, for PLY / glTF / GLB, [`meshFromAnyFile`](geometry_from_disk.md) |
-| **Field integration** | `MeshLines`, `toFLines`, `tubeMesh`, `VoronoiCell3.toTriMesh`, `VoronoiLattice.toTriMesh`, `toCapturedMesh`, `coloredByScalar`, `MeshView`, `renderPng`, `renderPixels`, `toFigureHtml`, `showMesh`, `showMeshGrid`, `showMeshTurntable`, `summary`, `longestEdge`, `meanEdgeLength`, `normalized` |
+<div data-code-lang="kotlin" markdown>
+
+### Value type
+
+Construct indexed triangle meshes and transform or colour them. These operations work on mesh values without requiring a renderer.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `TriMesh` | An indexed triangle mesh: `vertexCount * 3` position floats, `triangleCount * 3` indices, and optional matching normal / uv / colour arrays. [API](reference/graphics.md#mesh-kt). |
+| `TriMeshBuilder` | The accumulator every generator in this family is written against: append vertices, append triangles that reference them, `build`. [API](reference/graphics.md#mesh-kt). |
+| `inline fun triMesh(block: TriMeshBuilder.() -> Unit): TriMesh` | Run `block` against a fresh [`TriMeshBuilder`](reference/graphics.md#mesh-kt-trimeshbuilder) and `TriMeshBuilder.build` the result. [API](reference/graphics.md#mesh-kt). |
+| `fun position(i: Int): Vec3` | A **fresh** `Vec3` holding vertex `i`'s position — mutating it does not touch the mesh. [API](reference/graphics.md#mesh-kt). |
+| `val triangle: Int` | Index of the triangle that was hit. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun faceNormal(t: Int): Vec3` | Triangle `t`'s geometric normal from its winding — `normalize((b-a) x (c-a))`. [API](reference/graphics.md#mesh-kt). |
+| `fun triangleArea(t: Int): Double` | Triangle `t`'s area — half the length of the cross product, in double precision. [API](reference/graphics.md#mesh-kt). |
+| `fun vertices(): List<Vec3>` | All vertex positions as fresh vectors — convenient, but allocates one per vertex. [API](reference/graphics.md#mesh-kt). |
+| `fun withColor(r: Number, g: Number, b: Number): TriMesh` | This mesh painted a single flat colour — the fast way to make a preview readable. [API](reference/graphics.md#mesh-kt). |
+| `fun coloredBy(f: (Vec3) -> Vec3): TriMesh` | This mesh with per-vertex colours from a function of position. [API](reference/graphics.md#mesh-kt). |
+| `fun transformed(f: (Vec3) -> Vec3): TriMesh` | Every vertex position through `f`, indices unchanged. [API](reference/graphics.md#mesh-kt). |
+| `fun translated(d: Vec3): TriMesh` | Translated by a vector. [API](reference/graphics.md#mesh-kt). |
+| `fun scaled(s: Number): TriMesh` | Uniformly scaled about the origin. [API](reference/graphics.md#mesh-kt). |
+| `fun rotated(q: Quat): TriMesh` | Rotated by a [`Quat`](reference/math.md#linalg-kt-quat). Rigid, so the normals are rotated with the positions rather than dropped. [API](reference/graphics.md#mesh-kt). |
+| `fun flipped(): TriMesh` | Every triangle wound the other way, and every normal negated — an inside-out copy. [API](reference/graphics.md#mesh-kt). |
+| `fun filterTriangles(keep: (Int) -> Boolean): TriMesh` | A mesh made of the triangles `keep` accepts, with the now-unused vertices removed and the indices renumbered. Attributes follow their vertices. [API](reference/graphics.md#mesh-kt). |
+| `operator fun plus(other: TriMesh): TriMesh` | Two meshes as one, `other`'s indices shifted past this one's vertices. [API](reference/graphics.md#mesh-kt). |
+
+</div>
+
+### Topology
+
+Inspect connectivity before treating a mesh as a solid. Welding and winding repair address different defects; check the resulting topology after repair.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `MeshTopology` | Cached connectivity for one [`TriMesh`](reference/graphics.md#mesh-kt-trimesh). [API](reference/graphics.md#mesh-topology-kt). |
+| `val topology: MeshTopology` | The topology this diagnosis reads. Shared, so ask it your own questions rather than rebuilding. [API](reference/graphics.md#mesh-repair-kt). |
+| `val isWatertight: Boolean` | True when the mesh is manifold and has no boundary — a closed surface enclosing a volume. [API](reference/graphics.md#mesh-topology-kt). |
+| `val isManifold: Boolean` | True when every edge has one or two triangles and every vertex star is a single fan. [API](reference/graphics.md#mesh-topology-kt). |
+| `val isConsistentlyOriented: Boolean by lazy` | True when neighbouring triangles agree about which side is out: every interior edge is traversed in **opposite** directions by its two triangles. [API](reference/graphics.md#mesh-topology-kt). |
+| `val eulerCharacteristic: Int` | `V - E + F` over the vertices triangles actually use. [API](reference/graphics.md#mesh-topology-kt). |
+| `val genus: Int?` | Genus from `χ = 2c - 2g - b` — the number of handles, `1` for a torus, `2` for a two-holed solid — where `c` is `componentCount` and `b` the number of `boundaryLoops`. [API](reference/graphics.md#mesh-topology-kt). |
+| `val boundaryLoops: List<BoundaryLoopInfo>` | Every open boundary loop, measured — see [`BoundaryLoopInfo`](reference/graphics.md#mesh-repair-kt-boundaryloopinfo). Largest first. [API](reference/graphics.md#mesh-repair-kt). |
+| `val components: List<MeshComponentInfo>` | Each connected piece, measured — see [`MeshComponentInfo`](reference/graphics.md#mesh-repair-kt-meshcomponentinfo). Largest first. [API](reference/graphics.md#mesh-repair-kt). |
+| `fun TriMesh.weld(tolerance: Double = 1e-6): TriMesh` | Merge vertices closer together than `tolerance` and renumber the triangles onto the survivors. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.fixWinding(): TriMesh` | Make the winding consistent across the whole mesh, then make it point **outward**. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.removeDegenerateTriangles(areaEpsilon: Double = 1e-14): TriMesh` | Drop triangles with no area — a repeated index, or three collinear corners — and any vertex that leaves unreferenced. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.removeUnusedVertices(): TriMesh` | Drop vertices no triangle references, renumbering the rest. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.repaired(tolerance: Double = 1e-6): TriMesh` | Weld, drop degenerate triangles, drop unused vertices and fix the winding — the one call to make before trusting a mesh that came from a file, a scanner, or a per-cell generator. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.largestComponent(): TriMesh` | The largest connected component, by triangle count — the usual way to throw away the specks a noisy iso-surface leaves around the shape you wanted. [API](reference/graphics.md#mesh-topology-kt). |
+
+</div>
+
+### Generators
+
+Build a starting shape from primitives, profiles or a height field. Resolution controls the number of triangles produced.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun boxMesh(sizeX: Number = 1.0, sizeY: Number = 1.0, sizeZ: Number = 1.0): TriMesh` | An axis-aligned box centred on the origin, 8 vertices and 12 triangles — the minimal watertight cube. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun cubeMesh(size: Number = 1.0): TriMesh` | A cube: `boxMesh` with all three extents equal to `size`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun planeMesh(nx: Int = 1, ny: Int = 1, width: Number = 1.0, height: Number = 1.0): TriMesh` | A rectangular grid of quads in the `xy` plane at `z = 0`, facing `+z`, with normals and uvs. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun uvSphereMesh(segments: Int = 32, rings: Int = 16, radius: Number = 1.0): TriMesh` | A latitude/longitude sphere: two pole vertices and `rings - 1` rows of `segments`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun icosphereMesh(subdivisions: Int = 2, radius: Number = 1.0): TriMesh` | A geodesic sphere: an icosahedron with each triangle split into four `subdivisions` times, every vertex pushed out to `radius`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun torusMesh(majorSegments: Int = 48, minorSegments: Int = 24, majorRadius: Number = 1.0, minorRadius: Number = 0.35): TriMesh` | A torus in the `xz` plane: `majorRadius` out to the centre of the tube, `minorRadius` the tube itself. Watertight, smooth normals, and the family's canonical **genus 1** shape — `χ = 0`, `MeshTopology.genus` `1`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun cylinderMesh(segments: Int = 32, radius: Number = 0.5, height: Number = 1.0, caps: Boolean = true): TriMesh` | A cylinder along `y`, centred on the origin. Watertight with `caps` (`χ = 2`); an open tube without them (`χ = 0`, two boundary loops). [API](reference/graphics.md#mesh-generate-kt). |
+| `fun coneMesh(segments: Int = 32, radius: Number = 0.5, height: Number = 1.0, cap: Boolean = true): TriMesh` | A cone along `y` with its apex at `+height/2` and its base at `-height/2`. Watertight with `cap` (`χ = 2`). No normals — the apex is a genuine singularity. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun capsuleMesh(segments: Int = 32, rings: Int = 8, radius: Number = 0.4, height: Number = 1.0): TriMesh` | A capsule (cylinder with hemispherical ends) along `y`: total length `height + 2 * radius`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun tetrahedronMesh(radius: Number = 1.0): TriMesh` | A regular tetrahedron with its vertices on a sphere of `radius`. 4 vertices, 4 triangles, `χ = 2`. No normals — every face is a crease. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun octahedronMesh(radius: Number = 1.0): TriMesh` | A regular octahedron with its 6 vertices on a sphere of `radius`. 8 triangles, `χ = 2`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun icosahedronMesh(radius: Number = 1.0): TriMesh` | A regular icosahedron with its 12 vertices on a sphere of `radius`. 20 triangles, `χ = 2`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun dodecahedronMesh(radius: Number = 1.0): TriMesh` | A regular dodecahedron with its 20 vertices on a sphere of `radius`, as 12 pentagons fanned from their own centres — 32 vertices, 60 triangles, `χ = 2`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun triangulatePolygon(polygon: List<Vec2>): List<Int>` | Ear-clipping triangulation of a simple (non-self-intersecting) polygon. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun polygonMesh(polygon: List<Vec2>): TriMesh` | A flat, triangulated polygon in the `xy` plane at `z = 0`, facing `+z`. Concave polygons are handled (`triangulatePolygon`). A disc: `χ = 1`, one boundary loop. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun extrudeMesh(polygon: List<Vec2>, height: Number = 1.0, caps: Boolean = true): TriMesh` | A prism: `polygon` in the `xy` plane swept along `+z` by `height`. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun revolveMesh(profile: List<Vec2>, segments: Int = 48, turns: Double = 1.0): TriMesh` | A lathe: a 2D `profile` of `(radius, y)` points swept around the **`y` axis**. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun heightfieldMesh(nx: Int = 64, nz: Int = 64, width: Number = 2.0, depth: Number = 2.0, height: (Float, Float) -> Float): TriMesh` | A landscape: a grid in the `xz` plane whose `y` comes from `height`, with computed normals and uvs. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun Img.toHeightfieldMesh(scale: Number = 0.25, width: Number = 2.0, depth: Number? = null, step: Int = 1): TriMesh` | A heightfield sampled from an [`Img`](reference/imaging.md#imaging-kt-img) — one grid vertex per pixel by default, with the image's luminance (or its single channel) as `y`. [API](reference/graphics.md#mesh-generate-kt). |
+
+</div>
+
+### Fields / marching cubes
+
+Define a solid by a scalar field and extract its surface with marching cubes. Bounds and sampling resolution control the region and detail captured.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `ScalarField3D` | A scalar function of x, y and z. Negative values represent the inside when it is used as a signed-distance field; marching cubes extracts an iso-surface from it. |
+| `fun boundsOf(a: Vec3, b: Vec3): AxisAlignedBoundingBox3D` | An [`AxisAlignedBoundingBox3D`](reference/math.md#linalg-kt-axisalignedboundingbox3d) from two corners, sorted so `min <= max` on every axis. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun boundsAround(center: Vec3 = Vec3(0f, 0f, 0f), radius: Number = 1.0): AxisAlignedBoundingBox3D` | A cube of side `2 * radius` centred on `center` — the usual march window for a centred shape. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun bounds(): AxisAlignedBoundingBox3D` | Bounds of the whole hierarchy — the mesh's AABB, for free. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun sdfSphere(radius: Number = 1.0, center: Vec3 = Vec3(0f, 0f, 0f)): ScalarField3D` | A sphere of `radius` centred on `center`. Exact signed distance. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfBox(size: Vec3 = Vec3(1f, 1f, 1f), center: Vec3 = Vec3(0f, 0f, 0f)): ScalarField3D` | An axis-aligned box of full extents `size` centred on `center`. Exact signed distance (the standard `length(max(q,0)) + min(max(q.x,q.y,q.z),0)` form, correct outside *and* inside). [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfRoundBox(size: Vec3 = Vec3(1f, 1f, 1f), radius: Number = 0.1, center: Vec3 = Vec3(0f, 0f, 0f)): ScalarField3D` | A box with its edges and corners rounded off by `radius` — `sdfBox` shrunk then offset. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfTorus(majorRadius: Number = 1.0, minorRadius: Number = 0.3, center: Vec3 = Vec3(0f, 0f, 0f)): ScalarField3D` | A torus in the `xz` plane: `majorRadius` to the tube centre, `minorRadius` the tube. Exact. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfPlane(normal: Vec3 = Vec3(0f, 1f, 0f), offset: Number = 0.0): ScalarField3D` | A half-space: the signed distance to the plane through `normal * offset` with that `normal`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfCylinder(radius: Number = 0.5, height: Number = 1.0, center: Vec3 = Vec3(0f, 0f, 0f)): ScalarField3D` | A finite cylinder along `y`: `radius` across, `height` tall, centred on `center`. Exact. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfCapsule(a: Vec3, b: Vec3, radius: Number = 0.25): ScalarField3D` | A capsule: the `radius`-thick tube around the segment from `a` to `b`. Exact. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfGyroid(scale: Number = 3.0, thickness: Number = 0.2): ScalarField3D` | The gyroid, `sin x cos y + sin y cos z + sin z cos x`, thresholded to a sheet of `thickness`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfMetaballs(centers: List<Vec3>, radius: Number = 0.5, iso: Number = 1.0): ScalarField3D` | A sum of smooth radial blobs — the classic metaball field, `iso` at the surface. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfUnion(vararg fields: ScalarField3D): ScalarField3D` | Everything inside any of `fields` — pointwise `min`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfIntersect(vararg fields: ScalarField3D): ScalarField3D` | Everything inside all of `fields` — pointwise `max`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfSubtract(a: ScalarField3D, b: ScalarField3D): ScalarField3D` | `a` with `b` drilled out of it — `max(a, -b)`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfInvert(f: ScalarField3D): ScalarField3D` | Inside and outside swapped. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfSmoothUnion(a: ScalarField3D, b: ScalarField3D, k: Number = 0.2): ScalarField3D` | A union with a fillet of radius roughly `k` where the two surfaces meet — the polynomial smooth minimum, the operator that makes SDF modelling feel like clay rather than CSG. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfSmoothIntersect(a: ScalarField3D, b: ScalarField3D, k: Number = 0.2): ScalarField3D` | `sdfSmoothUnion`'s counterpart for intersection: a filleted `max`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfSmoothSubtract(a: ScalarField3D, b: ScalarField3D, k: Number = 0.2): ScalarField3D` | `sdfSubtract` with a fillet, for a drilled hole whose rim is not a knife edge. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun sdfExpUnion(fields: List<ScalarField3D>, k: Number = 8.0): ScalarField3D` | The exponential smooth minimum — smoother than `sdfSmoothUnion` and, unlike it, associative, so blending many shapes at once gives the same answer whatever order you fold them in. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.shell(thickness: Number = 0.05): ScalarField3D` | A hollow shell of wall thickness `2 * thickness` around this field's surface. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.rounded(radius: Number = 0.05): ScalarField3D` | This shape grown outward by `radius`, which rounds off every convex edge it has. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.translated(offset: Vec3): ScalarField3D` | This field moved by `offset`. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.scaled(factor: Number): ScalarField3D` | This field uniformly scaled about the origin. Distances are rescaled too, so it stays an SDF. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.rotated(q: Quat): ScalarField3D` | This field rotated by `q`. Rigid, so it stays an SDF. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.repeated(period: Vec3): ScalarField3D` | This shape tiled infinitely on a lattice of `period` — one primitive, unlimited copies, at no extra cost per copy. Zero on an axis leaves that axis untiled. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.twisted(turnsPerUnit: Number = 0.25): ScalarField3D` | This shape twisted about `y` by `turnsPerUnit` full turns per unit of height. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.displaced(amplitude: Number = 0.05, frequency: Number = 6.0): ScalarField3D` | This shape's surface pushed in and out by a sine lattice of amplitude `amplitude` and spatial `frequency` — the cheapest interesting texture, and no longer a true distance function (which the marcher does not mind). [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.gradient(p: Vec3, h: Number = 1e-3): Vec3` | Central-difference gradient of this field at `p`, step `h`. Six evaluations. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.normalAt(p: Vec3, h: Number = 1e-3): Vec3` | The unit outward normal of this field's iso-surface at `p` — `gradient`, normalised. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun marchingCubes(field: ScalarField3D, bounds: AxisAlignedBoundingBox3D, nx: Int, ny: Int, nz: Int, iso: Double = 0.0, positiveOutside: Boolean = true, vertexNormals: Boolean = true): TriMesh` | `marchingCubes` with the cell count given per axis, when the shape wants an anisotropic grid. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun ScalarField3D.march(bounds: AxisAlignedBoundingBox3D = boundsAround(), resolution: Int = 48, iso: Double = 0.0, positiveOutside: Boolean = true): TriMesh` | `marchingCubes` as a method on the field, for `sdfSphere(1.0).march(...)`-style chains. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun Img.asHeightSdf(scale: Number = 0.25, bounds: AxisAlignedBoundingBox3D = boundsAround()): ScalarField3D` | An [`Img`](reference/imaging.md#imaging-kt-img) as a 3D field, one z-slice per… no — this is the *2D* bridge: the image's value at `(x, z)`, independent of `y`, minus `y`. Marching it gives the same surface `Img.toHeightfieldMesh` builds directly, which is a useful cross-check and occasionally a useful modelling primitive (you can subtract a heightfield from a solid). [API](reference/graphics.md#mesh-sdf-kt). |
+
+</div>
+
+### Processing
+
+Change surface normals, density or smoothness. Subdivision adds detail to the mesh structure; decimation reduces triangles and should be followed by a quality check.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun TriMesh.withVertexNormals(areaWeighted: Boolean = true): TriMesh` | Per-vertex normals from the incident triangles, each weighted by its area. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.flatShaded(): TriMesh` | One normal per **triangle**: every triangle gets its own three vertices, so every edge is hard. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.shadedNormals(creaseAngleDegrees: Double = 35.0): TriMesh` | Crease-aware normals: smooth across edges where the two faces are within `creaseAngleDegrees` of each other, hard where they are not. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.loopSubdivide(times: Int = 1): TriMesh` | Loop subdivision, `times` rounds: every triangle becomes four, and every old vertex moves toward the average of its neighbours by the Loop weights. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.laplacianSmooth(iterations: Int = 1, lambda: Double = 0.5, cotangent: Boolean = false, preserveBoundary: Boolean = true): TriMesh` | Laplacian smoothing: each vertex moved `lambda` of the way toward the weighted average of its neighbours, `iterations` times. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.taubinSmooth(iterations: Int = 10, lambda: Double = 0.5, mu: Double = -0.53, cotangent: Boolean = false, preserveBoundary: Boolean = true): TriMesh` | Taubin λ/μ smoothing: a shrinking pass at `+λ` followed by an inflating pass at `-μ`, `iterations` times. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.decimate(targetTriangles: Int, maxError: Double? = null): TriMesh` | Simplify to at most `targetTriangles` by quadric-error-metric edge collapse. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.quality(): MeshQuality` | Measure this mesh's triangle shapes — see [`MeshQuality`](reference/graphics.md#mesh-process-kt-meshquality). [API](reference/graphics.md#mesh-process-kt). |
+| `MeshQuality` | How well-shaped a mesh's triangles are — the number to look at before and after a remesh, a decimation or a marching pass. [API](reference/graphics.md#mesh-process-kt). |
+
+</div>
+
+### Measure / query
+
+Measure a surface or query where points and rays meet it. Build a BVH when repeated spatial queries justify an acceleration structure.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun TriMesh.surfaceArea(): Double` | Total area of every triangle, in double precision. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.signedVolume(): Double` | Volume enclosed, as the signed sum of the tetrahedra from the origin to each triangle. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.volume(): Double` | `signedVolume`'s magnitude — the volume whichever way the mesh is wound. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.centroid(): Vec3` | The **area-weighted centroid of the surface** — where a hollow shell of this shape would balance. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.solidCentroid(): Vec3` | The centre of mass of the **enclosed solid**, assuming uniform density — the volume-weighted sum of the same tetrahedra `signedVolume` uses. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.mixedVertexAreas(): DoubleArray` | Per-vertex **mixed Voronoi area** — the area each vertex "owns", the denominator both curvatures need. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.gaussianCurvature(): DoubleArray` | Discrete Gaussian curvature per vertex: the angle deficit `2π - Σθ` divided by the vertex's mixed area. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.meanCurvature(): DoubleArray` | Discrete mean curvature per vertex, signed against the surface normal: half the magnitude of the cotangent Laplacian, divided by the mixed area. [API](reference/graphics.md#mesh-measure-kt). |
+| `MeshBvh` | A bounding-volume hierarchy over a mesh's triangles: build once, query many times. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.bvh(leafSize: Int = 8): MeshBvh` | Build a [`MeshBvh`](reference/graphics.md#mesh-measure-kt-meshbvh) over this mesh. Hold on to it — building is the expensive part. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.raycast(origin: Vec3, direction: Vec3): RayHit?` | One-shot ray query. Builds a BVH, so use `bvh` directly for more than a handful of rays. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun raycastAll(origin: Vec3, direction: Vec3, maxDistance: Double = Double.MAX_VALUE): List<RayHit>` | Every triangle the ray meets, nearest first — what a "cut this solid with a line" query wants. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun closestPoint(query: Vec3): SurfacePoint?` | The nearest point of the mesh's surface to `query`, or `null` for an empty mesh. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun contains(query: Vec3): Boolean` | Is `query` inside the mesh? [API](reference/graphics.md#mesh-measure-kt). |
+| `fun signedDistance(query: Vec3): Double` | Distance to the surface, negative inside — the mesh as a [`ScalarField3D`](reference/graphics.md#mesh-sdf-kt-scalarfield3d). [API](reference/graphics.md#mesh-measure-kt). |
+| `fun asSdf(): ScalarField3D` | This mesh as a signed-distance [`ScalarField3D`](reference/graphics.md#mesh-sdf-kt-scalarfield3d), for composing with the `sdf…` combinators. [API](reference/graphics.md#mesh-measure-kt). |
+| `RayHit` | What a ray hit: the triangle, the distance along the ray, and the point and normal there. [API](reference/graphics.md#mesh-measure-kt). |
+| `SurfacePoint` | The nearest point on a mesh to a query point. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun convexHullMesh(points: List<Vec3>, tolerance: Double = 1e-7): TriMesh` | The convex hull of a point cloud, as a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) — incremental construction, no dependencies. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.convexHull(): TriMesh` | The convex hull of this mesh's own vertices — see `convexHullMesh`. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.deviationFrom(other: TriMesh): Double` | How far apart two meshes are, sampled: the largest distance from a vertex of `other` to the surface of this mesh (a one-sided, vertex-sampled Hausdorff distance). [API](reference/graphics.md#mesh-measure-kt). |
+| `fun maxDeviation(a: TriMesh, b: TriMesh): Double` | The larger of the two one-sided `deviationFrom` distances — symmetric, still vertex-sampled. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.isContainedIn(hullCandidate: TriMesh, tolerance: Double = 1e-4): Boolean` | The solid angle-free, purely combinatorial check that this mesh's vertices all lie on or inside `hullCandidate` — used by the convex-hull tests, and occasionally useful on its own. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.samplePoints(count: Int, seed: Long = 1L): List<Vec3>` | Uniform-ish points on this mesh's surface, chosen by area so a finely triangulated region is not over-sampled — the sampler a Monte-Carlo volume check or a point-cloud export wants. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun angleBetweenDegrees(a: Vec3, b: Vec3): Double` | The angle between two vectors in degrees, `0..180`, or `0` if either has no length. [API](reference/graphics.md#mesh-measure-kt). |
+
+</div>
+
+### I/o
+
+Read or write mesh files. OBJ and STL use the direct helpers; the broader loader also accepts PLY and scene formats such as glTF.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun TriMesh.toObj(name: String = "mesh", decimals: Int = 6): String` | This mesh as Wavefront OBJ text: `v` positions, then `vn` normals and `vt` uvs if present, then `f` faces with 1-based indices. [API](reference/graphics.md#mesh-io-kt). |
+| `fun objToTriMesh(text: String): TriMesh` | Parse Wavefront OBJ text into a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh). [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.saveObj(file: File, name: String = file.nameWithoutExtension)` | Write this mesh to `file` as OBJ. Creates parent directories. [API](reference/graphics.md#mesh-io-kt). |
+| `fun triMeshFromObj(file: File): TriMesh` | Read an OBJ file — see `objToTriMesh` for what survives. [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.toStlAscii(name: String = "mesh"): String` | This mesh as ASCII STL. One `facet` per triangle with its face normal, no vertex sharing (the format has none). [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.toStlBinary(header: String = "Field afield.stdlib mesh_io.kt"): ByteArray` | This mesh as binary STL: an 80-byte header, the triangle count, then 50 bytes per triangle (little-endian float normal, three float positions, a zero attribute short). [API](reference/graphics.md#mesh-io-kt). |
+| `fun stlToTriMesh(bytes: ByteArray): TriMesh` | Parse STL, ASCII or binary — the format is sniffed, not declared. [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.saveStl(file: File)` | Write binary STL to `file`. Creates parent directories. [API](reference/graphics.md#mesh-io-kt). |
+| `fun meshFromFile(path: String): TriMesh` | Load a mesh from a path, choosing the reader by extension (`.obj`, `.stl`). [API](reference/graphics.md#mesh-io-kt). |
+| `meshFromAnyFile(path)` | Loads OBJ, STL, PLY or an Assimp-supported scene into a CPU `TriMesh`. Scene parts are baked through their transforms; unreadable paths throw instead of returning an empty mesh. |
+
+</div>
+
+### Field integration
+
+Convert a mesh for display, renderer upload or further Field drawing. Choose a still image, an interactive view or a turntable according to the inspection you need.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `MeshLines` | Which lines `TriMesh.toFLines` should produce. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.toFLines(mode: MeshLines = MeshLines.EDGES, creaseAngleDegrees: Double = 25.0, normalLength: Double = 0.03): List<FLine>` | This mesh as drawable `FLine`s — the fastest way to see a mesh in a Field document without involving a renderer. [API](reference/graphics.md#mesh-field-kt). |
+| `fun tubeMesh(path: List<Vec3>, radius: Number = 0.1, sides: Int = 12, closed: Boolean = false, caps: Boolean = true): TriMesh` | A round tube swept along a 3D polyline — the mesh you want for a drawn stroke, a trajectory or a graph edge in 3D. [API](reference/graphics.md#mesh-generate-kt). |
+| `fun VoronoiCell3.toTriMesh(shrink: Double = 1.0, fanFromCentroid: Boolean = true, healToConvexHull: Boolean = true): TriMesh` | One 3D Voronoi cell's polygonal faces, triangulated into a closed [`TriMesh`](reference/graphics.md#mesh-kt-trimesh). [API](reference/graphics.md#mesh-field-kt). |
+| `fun VoronoiLattice.toTriMesh(shrink: Double = 0.92, boundedOnly: Boolean = false): TriMesh` | Every cell of a 3D Voronoi lattice as one [`TriMesh`](reference/graphics.md#mesh-kt-trimesh), one connected component per cell. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.toCapturedMesh(label: String = "TriMesh", creaseAngleDegrees: Double = 35.0): VisionGeometryPreview.CapturedMesh` | Pack this mesh into the 16-float-per-vertex layout `VisionGeometryPreview`'s rasterizer consumes, so the whole shaded / depth-buffered / wireframed renderer applies to a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) for free. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.coloredByScalar(values: DoubleArray, colormap: String = "viridis", low: Double? = null, high: Double? = null, percentile: Double = 0.02): TriMesh` | Per-vertex colours from a per-vertex scalar, through the same [`afield.Colormaps`](reference/visualization.md#colormaps-kt-colormaps) tables RectSL's charts and `Img.colormap` use — so a curvature field, a distance field and a bar chart in the same document are coloured by one source of truth. [API](reference/graphics.md#mesh-field-kt). |
+| `MeshView` | How to draw a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) in a preview: where the camera stands and what the frame looks like. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.renderPng(view: MeshView = MeshView(), caption: String? = null, title: String? = null): ByteArray` | This mesh rasterised to PNG bytes: perspective, z-buffer, two-light lambert shading over the per-vertex colours, and a depth-tested wireframe. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.renderPixels(view: MeshView = MeshView()): VisionGeometryPreview.Raster` | This mesh's raster as ARGB ints plus its size — for compositing several meshes into one figure. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.toFigureHtml(view: MeshView = MeshView(), caption: String? = null, title: String? = null): String` | A complete `<figure>` — this mesh rendered as an inline PNG plus its measurements as a caption — for `display(…)` in a box output or for the value visualizer. [API](reference/graphics.md#mesh-field-kt). |
+| `fun Box.showMesh(mesh: TriMesh, channel: String = "main", view: MeshView = MeshView(), caption: String? = null, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU, height: Int = 430)` | Push a rendered view of `mesh` to one of this box's output channels, with its measurements as a caption. [API](reference/graphics.md#mesh-field-kt). |
+| `fun Box.showMeshGrid(vararg panels: Pair<String, TriMesh>, channel: String = "main", columns: Int = 2, cellWidth: Int = 380, view: MeshView = MeshView(), renderer: MeshRenderer = MeshRenderer.GPU)` | Several meshes side by side, each rendered and captioned — the fastest way to see a whole pipeline (generated / subdivided / smoothed / decimated) side by side. [API](reference/graphics.md#mesh-field-kt). |
+| `fun Box.showMeshTurntable(mesh: TriMesh, channel: String = "main", views: List<MeshView> = MeshView.turntable(4), cellWidth: Int = 260, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU)` | A turntable contact sheet of one mesh: the same shape from `views`, laid out in a row. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.summary(): String` | A one-line factual summary of a mesh: counts, extent, topology and volume — the thing to `print` when you want the numbers rather than the picture. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.longestEdge(): Double` | Longest edge in the mesh — a useful scale for choosing a weld tolerance or a march resolution. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.meanEdgeLength(): Double` | Mean edge length over the mesh's unique edges. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.normalized(size: Number = 1.0): TriMesh` | This mesh recentred on its own bounding box and scaled so its longest axis is `size`. [API](reference/graphics.md#mesh-field-kt). |
+
+</div>
+
+
+</div>
 
 Source: `src/jvmMain/kotlin/afield/stdlib/mesh.kt`, `mesh_topology.kt`, `mesh_generate.kt`,
 `mesh_sdf.kt`, `mesh_process.kt`, `mesh_measure.kt`, `mesh_io.kt`, `mesh_field.kt`. Developer notes,

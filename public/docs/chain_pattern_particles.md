@@ -23,7 +23,7 @@ and that plot is the signal it is following.
 
 Three parts, split by where they run:
 
-| | where it runs | what it does |
+| Component | where it runs | what it does |
 | --- | --- | --- |
 | `PatSynthFeeder` | a daemon thread | queries the pattern a cycle at a time and turns events into notes stamped with the absolute frame they start on |
 | `PatSynthBank` | the audio thread | starts a note on the frame it was given, and synthesises |

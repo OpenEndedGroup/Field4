@@ -143,14 +143,18 @@ positions. Nothing so far has an opinion about what a kick drum sounds like.
 one-pole lowpass, one exponential-decay envelope**, per event. Pitch comes from the event's
 value when it parses as a MIDI number, and otherwise from a drum map with five entries in it:
 
-| token | what `patVoice` plays |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Pattern example | What the stand-in plays |
 | --- | --- |
-| `bd`, `kick` | 62 Hz sine |
-| `sd`, `snare` | 190 Hz noise |
-| `cp`, `clap` | 900 Hz noise |
-| `hh`, `hat` | 6200 Hz noise |
-| `oh` | 4200 Hz noise |
-| anything else | `baseHz`, the voice's own default |
+| `pat("bd ~ kick ~")` | Both names select a 62 Hz sine voice. This is a deterministic kick stand-in, not a recording from a sample library. |
+| `pat("~ sd ~ snare")` | Both names select the 190 Hz noise voice. Use it to check snare timing before choosing a real sample. |
+| `pat("cp ~ clap ~")` | Both names select the 900 Hz noise voice. The higher noise setting distinguishes claps from the snare stand-in. |
+| `pat("hh*8")` | `hh` and `hat` select the 6200 Hz noise voice. Repetition tests the timing and density of a hi-hat part. |
+| `pat("~ oh ~ oh")` | Selects the 4200 Hz noise voice. It gives the open-hat token a different sound from `hh`. |
+| `pat("custom ~")` | An unrecognised token uses the voice’s `baseHz`. Use Dirt rendering when a token is meant to name an actual sample. |
+
+</div>
 
 `showPatAudio(pattern)` renders through it and drops an audio player into the box's output.
 Here is the beat:

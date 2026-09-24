@@ -17,11 +17,15 @@ val rows = "data.csv".file.readLines()
 `"data.csv".file` is a `java.io.File`. Two more extensions run the same resolution and hand back a
 different type:
 
+<div data-code-lang="kotlin" markdown>
+
 | Spelling | You get | Reach for it when |
 | --- | --- | --- |
-| `"data.csv".file` | `java.io.File` | almost always |
-| `"data.csv".path` | `java.nio.file.Path` | you are going on to use `java.nio.file` |
-| `"data.csv".absolutePath` | `String`, absolute and normalised | you are handing a path to a subprocess |
+| `"data.csv".file` | `java.io.File` | Returns a `java.io.File` after searching the document and its projects. Use it for ordinary reads and writes. |
+| `"data.csv".path` | `java.nio.file.Path` | Returns the same resolved location as a `java.nio.file.Path`. Choose it when calling `Files` or another NIO API. |
+| `"data.csv".absolutePath` | `String`, absolute and normalised | Returns the resolved, absolute, normalised path as a string. Pass it to a subprocess that needs a filename. |
+
+</div>
 
 There is a spelled-out form too, for when the name is in a variable rather than a literal:
 
@@ -122,15 +126,19 @@ says what it is looking for.
 
 ## When resolution fails
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | Spec | What happens |
 | --- | --- |
-| a blank name | throws |
-| `"**/*.ply"` matching nothing | throws, naming the roots it walked |
-| `"%textures/x.png"` with nothing registered as `textures` | throws |
-| `"%project/x.csv"` in a document in no project | throws |
-| `"%project/x.csv"` in a document in two projects, file in neither | throws as ambiguous |
-| `"%document/../../elsewhere"` | throws: the spec climbs out of its root |
-| any of the above from a plain unit test or a bare thread | throws: no session to be relative to |
+| a blank name | Resolution throws because there is no filename to resolve. Supply a relative name or an explicit root path. |
+| `"**/*.ply"` matching nothing | Throws and lists the searched roots. Check the pattern or use a plain filename when creating a new file. |
+| `"%textures/x.png"` with nothing registered as `textures` | Throws because the root is unknown. Register `textures` with `FileManager.add` before resolving the path. |
+| `"%project/x.csv"` in a document in no project | Throws because no project can supply the root. Add the document to a project or choose `%document`. |
+| `"%project/x.csv"` in a document in two projects, file in neither | Throws because the intended project is ambiguous. Use a registered root to select the destination explicitly. |
+| `"%document/../../elsewhere"` | Throws because the path escapes the named root. Register the external directory as its own root instead. |
+| any of the above from a plain unit test or a bare thread | Throws because there is no live session to resolve against. Resolve in an active box and pass the resulting absolute path to the worker. |
+
+</div>
 
 That last row follows from the first paragraph of this page. The resolver answers "where is
 `data.csv`" with respect to a specific open document, so it needs a live session or an active box

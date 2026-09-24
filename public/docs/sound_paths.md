@@ -103,11 +103,15 @@ call `renderSamples(output, frames)` with a reusable direct stereo `ShortBuffer`
 nothing else, advances playback — so the output is deterministic, and it needs the bundled OpenAL
 Soft library rather than an output device. A test or a docs build can use it.
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | member | what it is for |
 | --- | --- |
-| `hrtfEnabled`, `hrtfStatus` | what the device actually did. Asking for HRTF is not proof of getting it |
-| `sourceCount`, `bufferCount` | live object counts, for checking that an owner cleaned up after itself |
-| the scalar `setListener` overload | position and orientation without allocating a vector per update |
+| `hrtfEnabled`, `hrtfStatus` | Report whether the device actually enabled HRTF and the resulting status. Inspect these after creation; requesting HRTF does not guarantee availability. |
+| `sourceCount`, `bufferCount` | Count live sources and buffers owned by the engine. Compare them before and after stopping a sound to check resource cleanup. |
+| the scalar `setListener` overload | Updates listener position and orientation from scalar components. Use it in frequent tracking updates to avoid allocating vectors on every call. |
+
+</div>
 
 The `audio.spatial.loopback` smoke drives both modes through the real mixer;
 `dev_docs/SOUND_PATH_MAP_AGREEMENT.md` lists what it asserts and to what tolerance.

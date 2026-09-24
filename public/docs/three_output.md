@@ -30,17 +30,21 @@ The block is a scene description, not a sequence of draw calls, and `three` retu
 `ThreeGeometryViewState`, so the scene stays drivable after it is on screen, exactly as
 `threeLines(...)` does.
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | in the block | what it does |
-|---|---|
-| `mesh(m, label, wireframe, cullBackFaces, flatShading, opacity, panel)` | add a solid |
-| `lines(…)` — a `Collection<FLine>` or a vararg | add FLines, with every behaviour they have in `threeLines`: picking, hover, fills, click callbacks |
-| `camera(yaw, pitch, distance, fieldOfView)` | where the camera starts. Setting it turns auto-framing off — you picked an angle, keep it |
-| `camera(view: MeshView)` | the same, from a `MeshView` you already have. The migration path for an existing figure |
-| `panel(title, caption, facts, camera, bounds)` | one titled viewport. Call it once per panel, in order |
-| `columns(n)` | panels per row |
-| `title(text)` / `caption(text)` | shorthand for a one-panel scene |
-| `background(css)` | scene background as a CSS colour |
-| `helpers(on)` | the reference grid and the axis tripod |
+| --- | --- |
+| `mesh(m, label, wireframe, cullBackFaces, flatShading, opacity, panel)` | Adds a solid to the scene. The options control its label, surface drawing, visibility and panel placement. |
+| `lines(…)` — a `Collection<FLine>` or a vararg | Adds line geometry with the picking, hover, fill and click behavior supported by `threeLines`. Use it to annotate a solid in the same view. |
+| `camera(yaw, pitch, distance, fieldOfView)` | Sets the initial view and disables automatic framing. This preserves the angle you chose rather than recomputing it from the geometry. |
+| `camera(view: MeshView)` | Uses an existing `MeshView` as the initial camera. This is the convenient migration path for a figure that already defines its view. |
+| `panel(title, caption, facts, camera, bounds)` | Adds a titled viewport with its own annotations and framing. Calls establish panel order. |
+| `columns(n)` | Sets the number of panels in each row. Use fewer columns when individual subjects need a larger view. |
+| `title(text)` / `caption(text)` | Labels a one-panel scene without constructing a separate panel description. The caption can explain what the reader should inspect. |
+| `background(css)` | Sets the scene background using a CSS colour. Choose a colour that keeps both mesh edges and annotations visible. |
+| `helpers(on)` | Shows or hides the reference grid and axis tripod. Leave them visible when position and orientation are part of the comparison. |
+
+</div>
 
 `helpers` is the one default that depends on what is in the scene: the grid and the tripod are **on
 for an FLine-only scene** and **off as soon as there is a mesh**. Both are a fixed world size, a
@@ -216,14 +220,18 @@ Two details make the turntable cheap and stable, and both are the opposite of wh
 
 Every entry in the `showMesh` family takes a `renderer`, and the default is the Three.js viewer.
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | you call | you get |
-|---|---|
-| `showMesh(mesh)` | `three(subject = mesh)` — the Three.js viewer, orbitable |
-| `showMesh(mesh, renderer = MeshRenderer.CPU)` | a static rasterized figure at a fixed camera |
-| `showMeshGrid(…)` | `threeGrid(…)` |
-| `showMeshTurntable(…)` | `threeTurntable(…)` |
-| `showMeshDiagnosis(mesh)` | **always** the CPU rasterizer — it has no `renderer` parameter |
-| `mesh` as the last expression in a box (the inline card) | **always** the CPU rasterizer |
+| --- | --- |
+| `showMesh(mesh)` | Opens the orbitable Three.js viewer, equivalent to `three(subject = mesh)`. This is the default for mesh display. |
+| `showMesh(mesh, renderer = MeshRenderer.CPU)` | Produces a static CPU-rasterized figure at a fixed camera. Use it when you need a deterministic image without WebGL. |
+| `showMeshGrid(…)` | Delegates to `threeGrid` to compare meshes in interactive viewports. Each subject retains a distinct panel. |
+| `showMeshTurntable(…)` | Delegates to `threeTurntable` for views around a subject. It helps reveal shape hidden from a single angle. |
+| `showMeshDiagnosis(mesh)` | Always uses the CPU rasterizer for its diagnostic figure. It has no renderer-selection parameter. |
+| `mesh` as the last expression in a box (the inline card) | Uses the CPU rasterizer for the inline value card. Call `showMesh` explicitly when you want an orbitable view. |
+
+</div>
 
 Two size knobs that are easy to confuse:
 

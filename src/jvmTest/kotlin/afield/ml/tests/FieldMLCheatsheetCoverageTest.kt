@@ -15,10 +15,10 @@ import kotlin.test.assertTrue
 class FieldMLCheatsheetCoverageTest {
     private val cheatsheetPath = Path.of("public/docs/fieldml_cheatsheet.md")
 
-    /** Rows of the `| `name` | `type` |` tables, which is how the page lists the prelude. */
+    /** Prelude entries pair a name and type in one cell with an explanation in the next. */
     private fun signatureRows(): Map<String, String> {
         val text = cheatsheetPath.toFile().readText()
-        val row = Regex("""(?m)^\|\s*`([A-Za-z][A-Za-z0-9]*)`\s*\|\s*`([^`]+)`\s*\|\s*$""")
+        val row = Regex("""(?m)^\|\s*`([A-Za-z][A-Za-z0-9]*)`\s*<br>\s*`([^`]+)`\s*\|""")
         val rows = linkedMapOf<String, String>()
         row.findAll(text).forEach { match ->
             val name = match.groupValues[1]

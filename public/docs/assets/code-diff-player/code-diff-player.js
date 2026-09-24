@@ -619,6 +619,81 @@
     registerClojureLanguage();
     registerRectSLLanguage();
     registerGlslLanguage();
+    registerFieldMLLanguage();
+    registerReferenceLanguages();
+  }
+
+  function registerReferenceLanguages() {
+    if (!window.hljs) return;
+    // Keep Kotlin's string/comment handling; add lexical call and type tokens for
+    // short signatures, where the standard grammar otherwise colours almost nothing.
+    if (!hljs.getLanguage("kotlin-reference")) {
+      hljs.registerLanguage("kotlin-reference", function(hljs) {
+        const kotlin = hljs.getLanguage("kotlin").rawDefinition();
+        return {
+          ...kotlin,
+          name: "Kotlin reference",
+          contains: [...kotlin.contains,
+            { className: "title.function", match: /\b(?!if\b|when\b|for\b|while\b|catch\b)[A-Za-z_]\w*(?=\s*\()/ },
+            { className: "type", match: /\b[A-Z][A-Za-z0-9_]*/ },
+            { className: "punctuation", match: /[().,{}\[\]:;]/ }
+          ]
+        };
+      });
+    }
+    if (!hljs.getLanguage("petri")) {
+      hljs.registerLanguage("petri", function(hljs) {
+        return {
+          name: "Petri notation",
+          keywords: { keyword: "step event timed order priority round-robin random carry black swap stack cat fastcat rev palindrome degrade fast2 slow2 sum inc count" },
+          contains: [hljs.C_LINE_COMMENT_MODE, hljs.QUOTE_STRING_MODE, hljs.APOS_STRING_MODE,
+            { className: "meta", match: /#petri\b|!(?:timing|grid|conflict|seed)\b/ },
+            { className: "attr", match: /\b(?:delay|pri|w)(?==)/ },
+            { className: "number", match: /#?-?\b\d+(?:\.\d+)?(?:\/\d+)?/ },
+            { className: "operator", match: /-\[|\]->|=>|[@:^+*~&=,]/ }
+          ]
+        };
+      });
+    }
+    if (!hljs.getLanguage("fnrewrite")) {
+      hljs.registerLanguage("fnrewrite", function(hljs) {
+        return {
+          name: "Function rewrite",
+          contains: [hljs.C_LINE_COMMENT_MODE, hljs.HASH_COMMENT_MODE,
+            { begin: /@\{|\$\{/, end: /\}/, subLanguage: "kotlin",
+              contains: [{ begin: /\{/, end: /\}/, contains: ["self"] }] },
+            hljs.QUOTE_STRING_MODE, hljs.C_NUMBER_MODE,
+            { className: "variable", match: /\?[A-Za-z_]\w*/ },
+            { className: "operator", match: /=>|->|==|!=|>=|<=|[>|&!*=+\/-]/ },
+            { className: "title.function", match: /\b[A-Za-z_]\w*(?=\s*\()/ }
+          ]
+        };
+      });
+    }
+  }
+
+  // Match FieldML's tokenizer, including nested (* ... *) comments. OCaml's
+  // grammar is not a substitute: FieldML also has // comments and its own types.
+  function registerFieldMLLanguage() {
+    if (!window.hljs || hljs.getLanguage("fieldml")) return;
+    hljs.registerLanguage("fieldml", function(hljs) {
+      return {
+        name: "FieldML",
+        keywords: {
+          keyword: "let in fun if then else type match with",
+          literal: "true false",
+          type: "Int Float Bool String Unit Vec2 Vec3 Vec4 FLine Host"
+        },
+        contains: [
+          hljs.C_LINE_COMMENT_MODE,
+          hljs.COMMENT(/\(\*/, /\*\)/, { contains: ["self"] }),
+          hljs.QUOTE_STRING_MODE,
+          { className: "number", match: /\b\d+(?:\.\d+)?/ },
+          { className: "type", match: /'[a-z][\w']*|\b[A-Z][\w']*/ },
+          { className: "operator", match: /\|>|->|==|!=|<=|>=|&&|\|\||\+\+|::|[=+*\/<>-]/ }
+        ]
+      };
+    });
   }
 
   function ensureHighlight() {
@@ -1408,6 +1483,23 @@
   function mountAll() {
     const nodes = document.querySelectorAll(".code-diff-player:not([data-code-diff-bound])");
     nodes.forEach((node) => mountOne(node));
+    highlightReferences();
+  }
+
+  async function highlightReferences() {
+    const references = document.querySelectorAll("[data-code-lang] td code:not(.highlight):not([data-reference-highlighted])");
+    if (!references.length) return;
+    await ensureHighlight();
+    if (!window.hljs) return;
+    references.forEach((code) => {
+      // Language is an author choice, never guessed from a short identifier.
+      const declared = code.closest("[data-code-lang]").dataset.codeLang;
+      const language = resolveLanguage(declared === "kotlin" ? "kotlin-reference" : declared);
+      if (!language) return;
+      code.innerHTML = hljs.highlight(code.textContent, { language, ignoreIllegals: true }).value;
+      code.classList.add("hljs");
+      code.dataset.referenceHighlighted = "true";
+    });
   }
 
   function mountOne(node, opts) {

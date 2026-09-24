@@ -1203,29 +1203,33 @@ bridge does its own repair.
 
 <div class="field-data-table" markdown>
 
-| you want | the call |
-|---|---|
-| the Voronoi cells of some points | `vec2VoronoiDiagram(points).toFLines()` |
-| the Delaunay triangulation | `vec2DelaunayGraph(points).toFLine(points)` |
-| its faces, not its edges | `delaunayTrianglesToFLine(points, vec2DelaunayTriangles(points))` |
-| the outline of a point set | `polylineFrom(vec2ConvexHull(points).hullPoints, closed = true)` |
-| Voronoi with sites of different importance | `CircularDirichlet.build(sites).toFLines(clip = box)` |
-| …one cell of it, as arcs you can inspect | `diagram[i].pieces.map { it.support }` |
-| soft, rounded Voronoi cells | contour `d₂ − d₁` at a *positive* iso level (zero finds nothing) |
-| the level set of any 2D function | `generateIsoContours(field, xMin, xMax, yMin, yMax, nx, ny, iso)` |
-| …by cell size instead of cell count | `generateIsoContoursWithStep(field, …, spatialStep, iso)` |
-| a smooth outline around an `FLine` | `generateSmoothIsoContours(line, radius, spatialStep)` |
-| …that tapers | set `here.isoWeight` as you build, then pass `pointWeight = line.isoWeights()` |
-| …tapered by something other than a node property | pass any `pointWeight = { nodeIndex, p -> … }` |
-| is this contour a loop or does it run off the edge? | `isoContourClosed(contour, xMin, xMax, yMin, yMax, eps)` |
-| contours of an image | `img.luma().isoContourFLines(iso)` — see [Imaging](imaging_examples.md) |
-| clusters, without committing to *k* | `vec2Agglomerative(points)` then `partition(k)` |
-| clusters whose centres are real samples | `vec2KMedoids(points, k, KMedoidsOptions(randomSeed = 1L))` |
-| clusters robust to an outlier | `vec2KMedians(points, k, …)` |
-| the whole *k* ladder in one 3D drawing | `tree.visualizeVec2(2..6)` |
-| a cluster assignment drawn flat | `layer.toFLines(points, centers)` |
-| 3D Voronoi cells | `voronoi3d(sites)`, then `toTriMesh` from [mesh_examples](mesh_examples.md) |
-| any of it, side by side with captions | `showPlaneGrid("title\ncaption" to lines, …)` |
+<div data-code-lang="kotlin" markdown>
+
+| Task | Call | What to expect |
+| --- | --- | --- |
+| the Voronoi cells of some points | `vec2VoronoiDiagram(points).toFLines()` | Partitions the plane by nearest site and converts the cell boundaries to line geometry. |
+| the Delaunay triangulation | `vec2DelaunayGraph(points).toFLine(points)` | Builds Delaunay adjacency and draws its edges. Use the triangle helper when the faces themselves matter. |
+| its faces, not its edges | `delaunayTrianglesToFLine(points, vec2DelaunayTriangles(points))` | Converts triangulation faces into line geometry. The input points remain the coordinate source for the indexed triangles. |
+| the outline of a point set | `polylineFrom(vec2ConvexHull(points).hullPoints, closed = true)` | Finds the convex envelope and closes it as a polyline. Concavities in the original point set are not retained. |
+| Voronoi with sites of different importance | `CircularDirichlet.build(sites).toFLines(clip = box)` | Builds multiplicatively weighted cells with curved boundaries. A clip box makes unbounded cells drawable. |
+| …one cell of it, as arcs you can inspect | `diagram[i].pieces.map { it.support }` | Exposes the supporting circle or line for each boundary piece. This preserves analytic geometry before tessellation. |
+| soft, rounded Voronoi cells | contour `d₂ − d₁` at a *positive* iso level (zero finds nothing) | Contours the gap between the two nearest-site distances. A positive level gives rounded inset cells; zero has no interior band to extract. |
+| the level set of any 2D function | `generateIsoContours(field, xMin, xMax, yMin, yMax, nx, ny, iso)` | Samples a scalar field on an nx by ny grid and extracts the chosen level. Bounds and sample density determine the visible region and detail. |
+| …by cell size instead of cell count | `generateIsoContoursWithStep(field, …, spatialStep, iso)` | Sets contour resolution by world-space sample spacing. Smaller steps cost more field evaluations. |
+| a smooth outline around an `FLine` | `generateSmoothIsoContours(line, radius, spatialStep)` | Builds a smooth influence field around a line and contours it. Radius controls the outline’s reach and spatial step controls sampling. |
+| …that tapers | set `here.isoWeight` as you build, then pass `pointWeight = line.isoWeights()` | Uses node weights to vary the contour’s local influence. Store them while authoring the line so the weight callback can recover them. |
+| …tapered by something other than a node property | pass any `pointWeight = { nodeIndex, p -> … }` | Supplies an arbitrary per-node weighting rule. Use it when the width comes from a computation rather than a stored property. |
+| is this contour a loop or does it run off the edge? | `isoContourClosed(contour, xMin, xMax, yMin, yMax, eps)` | Checks whether a contour closes away from the sampled domain boundary. Use the epsilon in the same coordinate units as the contour. |
+| contours of an image | `img.luma().isoContourFLines(iso)` — see [Imaging](imaging_examples.md) | Extracts a brightness level from an image. Convert colour images to luma when one scalar field is intended. |
+| clusters, without committing to *k* | `vec2Agglomerative(points)` then `partition(k)` | Builds a hierarchy once, then cuts it into k groups. Reuse the hierarchy to compare several cluster counts. |
+| clusters whose centres are real samples | `vec2KMedoids(points, k, KMedoidsOptions(randomSeed = 1L))` | Uses actual observations as cluster representatives. Set the seed to reproduce a stochastic initialization. |
+| clusters robust to an outlier | `vec2KMedians(points, k, …)` | Uses coordinate-wise medians as cluster centres. This reduces sensitivity to a few extreme observations compared with means. |
+| the whole *k* ladder in one 3D drawing | `tree.visualizeVec2(2..6)` | Draws several cuts of a clustering hierarchy in one 3D view. The requested range selects which cluster counts appear. |
+| a cluster assignment drawn flat | `layer.toFLines(points, centers)` | Converts assignments and optional centres into a planar drawing. Keep the assignments aligned with the supplied point list. |
+| 3D Voronoi cells | `voronoi3d(sites)`, then `toTriMesh` from [mesh_examples](mesh_examples.md) | Builds volumetric cells around the sites. Convert cell surfaces to meshes only when surface drawing or mesh processing is the next step. |
+| any of it, side by side with captions | `showPlaneGrid("title\ncaption" to lines, …)` | Displays several planar drawings with captions. Use the captions to explain what differs between cases. |
+
+</div>
 
 </div>
 
@@ -1245,14 +1249,173 @@ Field box, and the numbers they carry are asserted in
 
 ## Reference
 
-| | |
-|---|---|
-| **2D Delaunay / Voronoi / hull** | `vec2DelaunayGraph`, `vec2DelaunayTriangles`, `vec2VoronoiDiagram`, `vec2VoronoiDualGraph`, `VoronoiDiagram`, `VoronoiCell`, `cellForSite`, `vec2ConvexHull`, `vec2ConvexHullGraph`, `ConvexHull2D`, `PointGraph`, `GraphEdge`, `neighbors`, `degree` |
-| **weighted 2D (Apollonius)** | `CircularDirichlet`, `build`, `Diagram`, `CellBoundary`, `EdgePiece`, `ArcPiece`, `LinePiece`, `SupportingCurve`, `SupportCircle`, `SupportLine`, `Aabb`, `samplePoint`, `toPolyline`, `toPolylines`, `pointAt`, `parameterOf` |
-| **3D Voronoi** | `voronoi3d`, `Voronoi3d`, `VoronoiLattice`, `VoronoiCell3`, `VoronoiFace`, `Plane3`, `Aabb3`, `CircularDirichlet3d`, `CircularDirichletDiagram3`, `CircularDirichletCell3`, `WeightedSite3`, `SupportSphere3`, `SupportPlane3`, `SpherePatch3`, `PlanePatch3` |
-| **marching squares** | `ScalarField2D`, `generateIsoContours`, `generateIsoContoursWithStep`, `smoothIsoContours`, `generateSmoothIsoContours`, `pointEdgeScalarField2D`, `isoContourClosed`, `Img.asScalarField2D`, `Img.isoContourFLines` |
-| **clustering** | `AgglomerativeLinkage`, `floatAgglomerative`, `vec2Agglomerative`, `vec3Agglomerative`, `vec4Agglomerative`, `AgglomerativeClustering`, `partition`, `partitionByHeight`, `layers`, `defaultLayers`, `tree`, `heights`, `MedoidDistance`, `KMedoidsOptions`, `KMedoidsResult`, `floatKMedoids`, `vec2KMedoids`, `vec3KMedoids`, `vec4KMedoids`, `KMediansOptions`, `KMediansResult`, `floatKMedians`, `vec2KMedians`, `vec3KMedians`, `vec4KMedians`, `ClusterLayer`, `asLayer`, `indices`, `clusterCount` |
-| **Field integration** | `pointCloudFLine`, `PointGraph.toFLine`, `delaunayTrianglesToFLine`, `VoronoiDiagram.toFLines`, `CircularDirichlet.Diagram.toFLines`, `CircularDirichlet.CellBoundary.toFLines`, `ClusterLayer.toFLines`, `planeFigureHtml`, `showPlane`, `showPlaneGrid`, `visualizeVec2ClusterLayers3D`, `visualizeVec3ClusterLayers3D`, `visualizeFloatClusterLayers3D`, `ClusterLayerVizOptions` |
+<div data-code-lang="kotlin" markdown>
+
+### 2d delaunay / voronoi / hull
+
+Connect unweighted sites or partition the plane by nearest site. Delaunay supplies neighbour relations; Voronoi supplies cells; the hull encloses the point set.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun vec2DelaunayGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a full Delaunay triangulation for 2D points using JTS. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun vec2DelaunayTriangles(points: List<Vec2>): List<Triple<Int, Int, Int>>` | Compute triangles from Delaunay triangulation. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun vec2VoronoiDiagram(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): VoronoiDiagram` | Compute a Voronoi diagram for 2D points using JTS. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun vec2VoronoiDualGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute the dual graph of a Voronoi diagram (equivalent to Delaunay triangulation). [API](reference/graphics.md#graph-connectivity-kt). |
+| `VoronoiDiagram` | Represents a Voronoi diagram computed from a set of points. [API](reference/graphics.md#graph-connectivity-kt). |
+| `VoronoiCell` | Represents a Voronoi cell in the Voronoi diagram. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun cellForSite(siteIndex: Int): VoronoiCell?` | Get the Voronoi cell for a specific site point. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun vec2ConvexHull(points: List<Vec2>): ConvexHull2D` | Compute the convex hull of 2D points using JTS. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun vec2ConvexHullGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a graph connecting convex hull points in order. [API](reference/graphics.md#graph-connectivity-kt). |
+| `ConvexHull2D` | Represents a convex hull of a point set. [API](reference/graphics.md#graph-connectivity-kt). |
+| `PointGraph` | Represents a graph computed from a set of points. [API](reference/graphics.md#graph-connectivity-kt). |
+| `GraphEdge` | Represents an edge between two points in a graph. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun neighbors(pointIndex: Int): List<Int>` | Get all neighbors of a point. [API](reference/graphics.md#graph-connectivity-kt). |
+| `fun degree(pointIndex: Int): Int` | Get the degree (number of neighbors) of a point. [API](reference/graphics.md#graph-connectivity-kt). |
+
+</div>
+
+### Weighted 2d (apollonius)
+
+Partition the plane using weighted sites. Boundaries can be circular arcs, so sample them to polylines when a drawing or downstream algorithm needs straight segments.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `CircularDirichlet` | Builds a multiplicatively weighted planar Voronoi diagram. Unequal weights produce circular-arc boundaries rather than only straight edges. |
+| `CircularDirichlet.build(sites)` | Constructs the diagram from weighted sites. Inspect individual cell boundary pieces before sampling them for drawing. |
+| `CircularDirichlet.Diagram` | Holds the computed cell boundaries in `cells`. Each cell identifies its site and carries the pieces surrounding that site. |
+| `CircularDirichlet.CellBoundary` | Holds the boundary pieces surrounding one site’s cell. The pieces may be arcs or straight lines, including unbounded pieces. |
+| `CircularDirichlet.EdgePiece` | Describes one boundary segment, its supporting curve and neighbouring site. A missing corner denotes a naturally unbounded edge or a full circle. |
+| `CircularDirichlet.ArcPiece` | Restricts a supporting circle to a counter-clockwise angular interval in radians. Tessellate with a positive chord-error bound when a polyline is required. |
+| `CircularDirichlet.LinePiece` | Restricts a supporting line to the cell’s boundary interval. Supply a clip box when converting unbounded geometry to a finite drawing. |
+| `CircularDirichlet.SupportingCurve` | Provides a continuous curve beneath a boundary piece. Use `pointAt` and `parameterOf` to move between geometric points and curve parameters. |
+| `CircularDirichlet.SupportCircle` | Represents a circle by centre and radius. Its parameter is angle in radians and `pointAt` evaluates that angle. |
+| `CircularDirichlet.SupportLine` | Represents an infinite line with a point, unit direction and line equation. Its parameter measures displacement along the direction. |
+| `CircularDirichlet.Aabb` | Defines an axis-aligned clipping box for boundary sampling. Use it to make infinite pieces finite before drawing. |
+| `piece.samplePoint()` | Returns a representative point on the boundary piece. It is useful for inspecting which supporting curve a piece belongs to. |
+| `piece.toPolyline(maxChordError, clip)` | Samples one boundary piece with bounded chord error. For a clipped arc that splits into several disconnected parts, use `toPolylines` instead. |
+| `arc.toPolylines(maxChordError, clip)` | Returns all disconnected polyline parts created by clipping an arc. The chord-error bound must be positive. |
+| `support.pointAt(parameter)` | Evaluates the supporting circle or line. Circle parameters are radians; line parameters are distance along its unit direction. |
+| `support.parameterOf(point)` | Maps a point to the supporting curve’s parameter. Circles use wrapped angle and lines use projection onto their direction. |
+
+</div>
+
+### 3d voronoi
+
+Partition space into volumetric cells. Keep the cell and face structure when inspecting neighbours, and convert to a mesh only for surface operations or display.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun voronoi3d(l: List<Vec3>): VoronoiLattice` | The 3D Voronoi diagram of `l`, with the default tolerance and a generous clip box. [API](reference/graphics.md#voronoi-kt). |
+| `Voronoi3d` | The unweighted 3-D clipper, with its knobs exposed — `voronoi3d` is this with the defaults. [API](reference/graphics.md#voronoi-kt). |
+| `VoronoiLattice` | One cell per input site, in input order, plus the box they were all clipped against. [API](reference/graphics.md#voronoi-kt). |
+| `VoronoiCell3` | The convex polyhedron of points nearer to `site` than to any other site, intersected with the lattice's clip box. [API](reference/graphics.md#voronoi-kt). |
+| `VoronoiFace` | One face of a [`VoronoiCell3`](reference/graphics.md#voronoi-kt-voronoicell3): the plane it lies in, and the cell's corners that lie on it. [API](reference/graphics.md#voronoi-kt). |
+| `Plane3` | The plane `normal · x = d`. [API](reference/graphics.md#voronoi-kt). |
+| `Aabb3` | An axis-aligned box; by convention `min` is componentwise `<=` `max`. The clipper's own window. [API](reference/graphics.md#voronoi-kt). |
+| `CircularDirichlet3d` | The multiplicatively weighted diagram, by sampling and contouring rather than by exact construction. [API](reference/graphics.md#voronoi-kt). |
+| `CircularDirichletDiagram3` | One weighted cell per input site, in input order, plus the box they were all clipped against. [API](reference/graphics.md#voronoi-kt). |
+| `CircularDirichletCell3` | One weighted cell, as the collection of boundary patches that fence it in. [API](reference/graphics.md#voronoi-kt). |
+| `WeightedSite3` | A site with an influence radius: distance to it is measured as `|x − position| / weight`. [API](reference/graphics.md#voronoi-kt). |
+| `SupportSphere3` | An Apollonius sphere: the locus where two differently-weighted sites are equidistant. [API](reference/graphics.md#voronoi-kt). |
+| `SupportPlane3` | The ordinary perpendicular bisector plane, which is what a weighted bisector degenerates to when the two weights are equal (within the build tolerance). [API](reference/graphics.md#voronoi-kt). |
+| `SpherePatch3` | A patch of an Apollonius sphere. [API](reference/graphics.md#voronoi-kt). |
+| `PlanePatch3` | A patch of an ordinary bisector plane, between two equally-weighted sites. [API](reference/graphics.md#voronoi-kt). |
+
+</div>
+
+### Marching squares
+
+Extract level curves from a two-dimensional scalar field. Sampling step controls detail; smoothing changes the resulting contours after extraction.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `ScalarField2D` | A scalar function of x and y sampled by the contour routines. Choose an iso value to extract its level curves. |
+| `fun generateIsoContours(field: ScalarField2D, xMin: Double, xMax: Double, yMin: Double, yMax: Double, nx: Int, ny: Int, iso: Double): List<List<Vec2>>` | Generate iso-contours for a scalar field using marching squares. [API](reference/graphics.md#contours-kt). |
+| `fun generateIsoContoursWithStep(field: ScalarField2D, xMin: Double, xMax: Double, yMin: Double, yMax: Double, spatialStep: Double, value: Double): List<List<Vec2>>` | Convenience overload taking approximate spatial resolution instead of nx, ny. [API](reference/graphics.md#contours-kt). |
+| `fun smoothIsoContours(contours: List<List<Vec2>>, xMin: Double, xMax: Double, yMin: Double, yMax: Double, tension: Float = 1f, boundaryEpsilon: Double = 1e-6): List<FLine>` | Smooth marching-squares polylines into cubic curves. [API](reference/graphics.md#contours-kt). |
+| `fun generateSmoothIsoContours(line: FLine, pointRadius: Double, edgeRadius: Double, spatialStep: Double, iso: Double = 0.0, padding: Double? = null, samplesPerCubic: Int = 24, pointWeight: FLinePointWeight? = null, tension: Float = 1f, boundaryEpsilon: Double = spatialStep * 0.75): List<FLine>` | The whole `FLine` in, smooth outline out path. See [`FLinePointWeight`](reference/graphics.md#contours-kt-flinepointweight) and `FLine.isoWeights` to taper it. [API](reference/graphics.md#contours-kt). |
+| `fun pointEdgeScalarField2D(line: FLine, pointRadius: Double, edgeRadius: Double, samplesPerCubic: Int = 24, pointWeight: FLinePointWeight? = null): ScalarField2D` | Flatten a 2D `FLine` into a point/edge graph and build the union-of-discs-and-capsules field around it. See [`FLinePointWeight`](reference/graphics.md#contours-kt-flinepointweight) and `FLine.isoWeights` for the taper. [API](reference/graphics.md#contours-kt). |
+| `fun isoContourClosed(contour: List<Vec2>, xMin: Double, xMax: Double, yMin: Double, yMax: Double, boundaryEpsilon: Double = 1e-6): Boolean` | Does this marching-squares contour close on itself, or does it run out of the sampling window? [API](reference/graphics.md#contours-kt). |
+| `fun Img.asScalarField2D(border: Border = Border.CLAMP): ScalarField2D` | Adapt this 1-channel image to the `ScalarField2D` that `contours.kt` marches — the image becomes a bilinearly-interpolated continuous field over `[0, width-1] x [0, height-1]`. [API](reference/imaging.md#imaging-field-kt). |
+| `fun Img.isoContourFLines(iso: Double, cells: Int = max(width, height), z: Number = 0): List<FLine>` | Extract smooth iso-contours at `iso` through Field's existing marching-squares extractor and return them as `FLine`s. Unlike `toContourFLines` (which traces the pixel boundary of a binary mask) this interpolates between samples, so the contour is sub-pixel smooth — the right tool for a distance transform, a blurred response or a height field. [API](reference/imaging.md#imaging-field-kt). |
+
+</div>
+
+### Clustering
+
+Partition observations into groups. Hierarchical linkage gives nested cuts; medoids choose representative observations; medians fit coordinate-wise centres.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `AgglomerativeLinkage` | How the distance between two *clusters* is defined, which is the whole content of a hierarchical clustering — the point distances are the same either way. [API](reference/data.md#clustering-kt). |
+| `fun floatAgglomerative(values: List<Float>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` | Hierarchical clustering of one-dimensional values: build the whole merge tree now, choose where to cut later. [API](reference/data.md#clustering-kt). |
+| `fun vec2Agglomerative(points: List<Vec2>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` | Hierarchical clustering of 2-D points: build the whole merge tree now, choose where to cut later. [API](reference/data.md#clustering-kt). |
+| `fun vec3Agglomerative(points: List<Vec3>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` | Hierarchical clustering of 3-D points: build the whole merge tree now, choose where to cut later. [API](reference/data.md#clustering-kt). |
+| `fun vec4Agglomerative(points: List<Vec4>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` | Hierarchical clustering of 4-D points: build the whole merge tree now, choose where to cut later. [API](reference/data.md#clustering-kt). |
+| `AgglomerativeClustering` | A whole merge hierarchy, not one clustering — the answer the `…Agglomerative` functions return. [API](reference/data.md#clustering-kt). |
+| `fun partition(k: Int, name: String = "k=$k"): ClusterLayer` | Cut the hierarchy into exactly `k` clusters. `k` must be within `1..sampleCount`. [API](reference/data.md#clustering-kt). |
+| `fun partitionByHeight(height: Double, name: String = "h=$height"): ClusterLayer` | Cut every branch taller than `height`, letting the data decide how many clusters that is. [API](reference/data.md#clustering-kt). |
+| `fun layers(kValues: Iterable<Int>): List<ClusterLayer>` | One [`ClusterLayer`](reference/data.md#clustering-kt-clusterlayer) per requested `k`, ready to stack in a `visualize…` call. [API](reference/data.md#clustering-kt). |
+| `fun defaultLayers(maxK: Int = 6): List<ClusterLayer>` | Cuts at `2..maxK`, clamped to what the data can support — a sensible stack with no arguments. [API](reference/data.md#clustering-kt). |
+| `val tree: Array<IntArray>` | The merge tree, one `[left, right]` pair per merge in merge order. [API](reference/data.md#clustering-kt). |
+| `val heights: DoubleArray` | The dissimilarity at which each merge happened, parallel to `tree` — the y-axis of a dendrogram and the scale `partitionByHeight` cuts on. [API](reference/data.md#clustering-kt). |
+| `MedoidDistance` | The metric the `…KMedoids` family assigns and re-medoids with. [API](reference/data.md#clustering-kt). |
+| `KMedoidsOptions` | How the `…KMedoids` functions run. [API](reference/data.md#clustering-kt). |
+| `KMedoidsResult` | What a `…KMedoids` call found: the labels, the medoids themselves, and enough to judge whether to believe them. [API](reference/data.md#clustering-kt). |
+| `fun floatKMedoids(values: List<Float>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Float>` | Partition one-dimensional values into `k` clusters, each summarised by one of your own samples. [API](reference/data.md#clustering-kt). |
+| `fun vec2KMedoids(points: List<Vec2>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Vec2>` | Partition 2-D points into `k` clusters, each summarised by one of your own samples. [API](reference/data.md#clustering-kt). |
+| `fun vec3KMedoids(points: List<Vec3>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Vec3>` | Partition 3-D points into `k` clusters, each summarised by one of your own samples. [API](reference/data.md#clustering-kt). |
+| `fun vec4KMedoids(points: List<Vec4>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Vec4>` | Partition 4-D points into `k` clusters, each summarised by one of your own samples. [API](reference/data.md#clustering-kt). |
+| `KMediansOptions` | How the `…KMedians` functions run. [API](reference/data.md#clustering-kt). |
+| `KMediansResult` | What a `…KMedians` call found. [API](reference/data.md#clustering-kt). |
+| `fun floatKMedians(values: List<Float>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Float>` | Partition one-dimensional values into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
+| `fun vec2KMedians(points: List<Vec2>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec2>` | Partition 2-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
+| `fun vec3KMedians(points: List<Vec3>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec3>` | Partition 3-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
+| `fun vec4KMedians(points: List<Vec4>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec4>` | Partition 4-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
+| `ClusterLayer` | One clustering of one dataset: a label per sample, and a name to draw it under. [API](reference/data.md#clustering-kt). |
+| `fun asLayer(name: String = "kmedoids(k=$k)"): ClusterLayer` | This result as a [`ClusterLayer`](reference/data.md#clustering-kt-clusterlayer), so it can be stacked and drawn beside other cuts. [API](reference/data.md#clustering-kt). |
+| `fun indices(cluster: Int): IntArray` | Which samples landed in `cluster`, as indices into the original list. Empty for a cluster nothing was assigned to. [API](reference/data.md#clustering-kt). |
+| `val clusterCount: Int` | Highest label plus one — so an unused index in the middle still counts, and this is the length a palette needs rather than the number of non-empty clusters. [API](reference/data.md#clustering-kt). |
+
+</div>
+
+### Field integration
+
+Convert graphs, cells or clusters into Field drawings and interactive views. Use the geometry helpers first, then choose the display adapter for the result.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun pointCloudFLine(points: List<Vec2>, color: Vec4 = vec(1.0, 1.0, 1.0, 0.85), pointSize: Double = 1.2, z: Number = 0): FLine` | The points themselves as one dot-drawn `FLine` — the layer every other figure here sits on top of. [API](reference/graphics.md#spatial-field-kt). |
+| `fun PointGraph.toFLine(points: List<Vec2>, color: Vec4 = vec(0.55, 0.68, 0.82, 0.55), thickness: Double = 1.4, z: Number = 0): FLine` | Every edge of this graph as one `FLine`, with `points` supplying the positions. [API](reference/graphics.md#spatial-field-kt). |
+| `fun delaunayTrianglesToFLine(points: List<Vec2>, triangles: List<Triple<Int, Int, Int>>, color: Vec4 = vec(0.62, 0.74, 0.88, 0.45), thickness: Double = 1.2, filled: Boolean = false, z: Number = 0): FLine` | The triangles of a triangulation as one `FLine` of closed triangle outlines. [API](reference/graphics.md#spatial-field-kt). |
+| `fun VoronoiDiagram.toFLines(color: Vec4 = vec(0.72, 0.82, 0.95, 0.7), palette: List<Vec4>? = null, thickness: Double = 1.3, filled: Boolean = false, z: Number = 0): List<FLine>` | One closed `FLine` per Voronoi cell, in cell order. [API](reference/graphics.md#spatial-field-kt). |
+| `fun VoronoiDiagram.toFLines(color: Vec4 = vec(0.72, 0.82, 0.95, 0.7), palette: List<Vec4>? = null, thickness: Double = 1.3, filled: Boolean = false, z: Number = 0): List<FLine>` | One closed `FLine` per Voronoi cell, in cell order. [API](reference/graphics.md#spatial-field-kt). |
+| `fun CircularDirichlet.CellBoundary.toFLines(clip: CircularDirichlet.Aabb? = null, maxChordError: Float = 0.02f, color: Vec4 = vec(0.8, 0.86, 0.98, 0.8), thickness: Double = 1.4, z: Number = 0): List<FLine>` | The boundary of one multiplicatively-weighted Voronoi cell, tessellated into `FLine`s. [API](reference/graphics.md#spatial-field-kt). |
+| `fun ClusterLayer.toFLines(points: List<Vec2>, centers: List<Vec2>? = null, palette: List<Vec4> = okhslSet(maxOf(1, clusterCount), saturation = 0.78, lightness = 0.62), pointSize: Double = 1.3, centerSize: Double = 3.0, drawSpokes: Boolean = true, spokeAlpha: Float = 0.18f, z: Number = 0): List<FLine>` | A cluster assignment drawn over the points it labels: one dot layer per cluster, plus optional spokes from each sample to its cluster's centre. [API](reference/graphics.md#spatial-field-kt). |
+| `fun planeFigureHtml(lines: List<FLine>, title: String? = null, caption: String? = null, width: Int = 640, height: Int = 460, padding: Double = 14.0, window: Rect? = null, interactive: Boolean = false): String` | The markup for one titled figure: `lines` fitted into a `width` × `height` frame, rasterised to inline SVG, on the same dark card the rest of Field's inline figures use. [API](reference/graphics.md#spatial-field-kt). |
+| `fun Box.showPlane(lines: List<FLine>, channel: String = "main", title: String? = null, caption: String? = null, width: Int = 720, height: Int = 520, padding: Double = 14.0, window: Rect? = null, interactive: Boolean = true)` | Push one plane figure to a box output channel. [API](reference/graphics.md#spatial-field-kt). |
+| `fun Box.showPlaneGrid(vararg panels: Pair<String, List<FLine>>, channel: String = "main", columns: Int = 2, cellWidth: Int = 420, cellHeight: Int = -1, padding: Double = 12.0, window: Rect? = null)` | Several plane figures side by side, each titled — the 2D twin of `Box.showMeshGrid`, and the fastest way to see a whole pipeline (sites → triangulation → dual → clipped) side by side. [API](reference/graphics.md#spatial-field-kt). |
+| `fun visualizeVec2ClusterLayers3D(points: List<Vec2>, layers: List<ClusterLayer>, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` | Draw a stack of clusterings of the same 2-D point cloud, one layer per z-plane. [API](reference/data.md#clustering-kt). |
+| `fun visualizeVec3ClusterLayers3D(points: List<Vec3>, layers: List<ClusterLayer>, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` | Draw a stack of clusterings of the same 3-D point cloud as `FLine`s. [API](reference/data.md#clustering-kt). |
+| `fun visualizeFloatClusterLayers3D(values: List<Float>, layers: List<ClusterLayer>, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` | Draw a stack of clusterings of the same one-dimensional data. [API](reference/data.md#clustering-kt). |
+| `ClusterLayerVizOptions` | How a stack of [`ClusterLayer`](reference/data.md#clustering-kt-clusterlayer)s is laid out and drawn. [API](reference/data.md#clustering-kt). |
+
+</div>
+
+
+</div>
 
 Source: `src/jvmMain/kotlin/afield/stdlib/contours.kt`, `dirichlet.kt`, `voronoi.kt`,
 `clustering.kt`, `spatial_field.kt`, and the JTS-backed corner of `graph_connectivity.kt`.

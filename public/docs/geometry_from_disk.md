@@ -20,14 +20,18 @@ were built for different reasons, and only some of them can show you the result.
 
 ## What reads what
 
+<div data-code-lang="kotlin" markdown>
+
 | you have | the call | what you get back | works headless |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `.obj` | `meshFromFile(path)` | `TriMesh`, index-for-index with the file | yes |
 | `.stl` (ASCII or binary) | `meshFromFile(path)` | `TriMesh`, triangle soup — see [below](#what-each-format-loses) | yes |
 | `.ply` (ASCII, binary, either endianness) | `meshFromAnyFile(path)` | `TriMesh` with the file's per-vertex colours | yes |
 | `.glb`, `.gltf`, `.fbx`, `.dae`, `.3ds`, … | `meshFromAnyFile(path)` | `TriMesh`, all parts baked through their node transforms | yes |
 | any of the above, textured, with PBR materials | `gltfModelHere("…")` / the [Fabricate renderer](fabricate_renderer.md) | GPU buffers, materials, textures, a live scene | no — needs a renderer |
 | `.step`, `.iges`, `.brep` | **nothing** | — | — |
+
+</div>
 
 `meshFromAnyFile` handles everything `meshFromFile` does and more, so if you are unsure, use it. The
 narrower one exists because it is dependency-free (pure Kotlin, no LWJGL, no native library), which
@@ -224,7 +228,7 @@ The pictures differ, and each difference is a format telling you what it cannot 
 Measured on `icosphereMesh(3, 1.0).withColor(0.3, 0.7, 1.0)`, which is 642 vertices, 1280 triangles,
 area 12.506493 and volume 4.152741:
 
-| | verts | tris | normals | uvs | colours | χ | closed | area | volume |
+| Representation | verts | tris | normals | uvs | colours | χ | closed | area | volume |
 |---|---|---|---|---|---|---|---|---|---|
 | **source** | 642 | 1280 | yes | — | yes | 2 | watertight | 12.506493 | 4.152741 |
 | **via `.obj`** | 642 | 1280 | **yes** | yes¹ | **no** | 2 | watertight | 12.506493 | 4.152741 |
@@ -250,7 +254,7 @@ reason.
 
 File size for the same 1280 triangles, with binary STL's exactly `84 + 50n` bytes as the floor:
 
-| | bytes |
+| Format | bytes |
 |---|---|
 | binary `.stl` | 64,084 |
 | `.obj` | 75,625 |
@@ -278,7 +282,7 @@ dropped the number; no geometry was lost. `genus 0` is correct too, and it is no
 An unexpected vertex count is usually shading rather than the file. Writing and reading are
 faithful, so look upstream at what shaded the mesh:
 
-| | vertices |
+| Construction | vertices |
 |---|---|
 | `boxMesh()` | 8 |
 | `boxMesh().shadedNormals(35.0)` | 24 |
@@ -533,7 +537,7 @@ are split at the repeats first, so each real hole gets its own cap.
 **No local property of a hole distinguishes "this end should be a flat cap" from "the model continued
 here."** Two measured cases settle it, and they point opposite ways:
 
-| | rim | cap | cap share of surface | result |
+| Input surface | rim | cap | cap share of surface | result |
 |---|---|---|---|---|
 | uncapped cylinder | flat | clean ear clip | 16.5% | volume error **0.00000** — exactly right |
 | torus with its tube severed | flat | clean ear clip | 2.7% | volume error **4.2%**, and **genus 1 becomes 0** |
@@ -640,7 +644,7 @@ network.
 Reading a mesh off disk is cheap enough to do in a live box on every re-run. Measured on an M-series
 laptop, five reads after two warm-up reads:
 
-| | file | triangles | time | rate |
+| Loader and input | file | triangles | time | rate |
 |---|---|---|---|---|
 | `ToyCar.glb` via Assimp | 5.4 MB binary | 108,936 | **83 ms** | 1310 k tri/s |
 | `big.obj` via `meshFromFile` | 9.4 MB text | 132,488 | **337 ms** | 393 k tri/s |
@@ -656,7 +660,7 @@ hundreds of OBJs in a loop, `assimpToTriMesh` on them directly is the faster cal
 
 Looking at it costs more than reading it, and not where you would guess:
 
-| | on 108,936 triangles |
+| Rendering operation | on 108,936 triangles |
 |---|---|
 | `renderPng(560×420, wireframe = false)` | 51 ms |
 | `renderPng(560×420, wireframe = true)` | 114 ms |
@@ -720,16 +724,133 @@ as a picture.
 
 ## Reference
 
-| | |
-|---|---|
-| **read, any format** | `meshFromAnyFile`, `showMesh(path)`, `assimpToTriMesh`, `PlyModel.toTriMesh` — `afield/four/modules/MeshFromDisk.kt` |
-| **read, no dependencies** | `meshFromFile`, `triMeshFromObj`, `objToTriMesh`, `triMeshFromStl`, `stlToTriMesh` — `afield/stdlib/mesh_io.kt` |
-| **write** | `toObj`, `saveObj`, `toStlAscii`, `toStlBinary`, `saveStl` — same file |
-| **look at it** | `showMesh`, `showMeshGrid`, `showMeshTurntable`, `MeshView`, `summary` — `afield/stdlib/mesh_field.kt`; `three`, `threeGrid`, `threeTurntable` — `afield/graphics/Three.kt` |
-| **look at it without a GPU** | `renderPng`, `renderPixels`, `toFigureHtml`, and `showMesh(renderer = MeshRenderer.CPU)` — `afield/stdlib/mesh_field.kt` |
-| **repair what you read** | `weld`, `fixWinding`, `removeDegenerateTriangles`, `repaired`, `largestComponent`, `shadedNormals`, `normalized` |
-| **on the GPU instead** | `plyModelHere`, `plyPointCloudHere`, `gltfModelHere`, `modelWithTextureHere` — `simplePLYSupport.kt`, `simpleGLTFSupport.kt` |
-| **let the AI read it** | `GeometryAgentTools.addSearchRoot`, `.register` — `afield/four/modules/GeometryAgentTools.kt` |
+### Read, any format
+
+Load a mesh through the format-dispatching entry point; convert imported scene or PLY data when you need a `TriMesh`.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `meshFromAnyFile(path)` | Loads OBJ, STL, PLY or an Assimp-supported scene into a CPU `TriMesh`. Scene parts are baked through their transforms; unreadable paths throw instead of returning an empty mesh. |
+| `fun Box.showMesh(mesh: TriMesh, channel: String = "main", view: MeshView = MeshView(), caption: String? = null, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU, height: Int = 430)` | Push a rendered view of `mesh` to one of this box's output channels, with its measurements as a caption. [API](reference/graphics.md#mesh-field-kt). |
+| `assimpToTriMesh(path, keepColors = true)` | Flattens a supported scene file into a `TriMesh`, applying node transforms. Retain per-vertex colours when present; textured materials require the renderer path. |
+| `fun VoronoiLattice.toTriMesh(shrink: Double = 0.92, boundedOnly: Boolean = false): TriMesh` | Every cell of a 3D Voronoi lattice as one [`TriMesh`](reference/graphics.md#mesh-kt-trimesh), one connected component per cell. [API](reference/graphics.md#mesh-field-kt). |
+
+</div>
+
+### Read, no dependencies
+
+Read OBJ or STL through the direct readers when no native scene importer is needed.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun meshFromFile(path: String): TriMesh` | Load a mesh from a path, choosing the reader by extension (`.obj`, `.stl`). [API](reference/graphics.md#mesh-io-kt). |
+| `fun triMeshFromObj(file: File): TriMesh` | Read an OBJ file — see `objToTriMesh` for what survives. [API](reference/graphics.md#mesh-io-kt). |
+| `fun objToTriMesh(text: String): TriMesh` | Parse Wavefront OBJ text into a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh). [API](reference/graphics.md#mesh-io-kt). |
+| `fun triMeshFromStl(file: File): TriMesh` | Read an STL file, ASCII or binary — see `stlToTriMesh`. [API](reference/graphics.md#mesh-io-kt). |
+| `fun stlToTriMesh(bytes: ByteArray): TriMesh` | Parse STL, ASCII or binary — the format is sniffed, not declared. [API](reference/graphics.md#mesh-io-kt). |
+
+</div>
+
+### Write
+
+Write OBJ or STL files for other tools. Check the format comparison above before relying on preserved normals or colours.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun TriMesh.toObj(name: String = "mesh", decimals: Int = 6): String` | This mesh as Wavefront OBJ text: `v` positions, then `vn` normals and `vt` uvs if present, then `f` faces with 1-based indices. [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.saveObj(file: File, name: String = file.nameWithoutExtension)` | Write this mesh to `file` as OBJ. Creates parent directories. [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.toStlAscii(name: String = "mesh"): String` | This mesh as ASCII STL. One `facet` per triangle with its face normal, no vertex sharing (the format has none). [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.toStlBinary(header: String = "Field afield.stdlib mesh_io.kt"): ByteArray` | This mesh as binary STL: an 80-byte header, the triangle count, then 50 bytes per triangle (little-endian float normal, three float positions, a zero attribute short). [API](reference/graphics.md#mesh-io-kt). |
+| `fun TriMesh.saveStl(file: File)` | Write binary STL to `file`. Creates parent directories. [API](reference/graphics.md#mesh-io-kt). |
+
+</div>
+
+### Look at it
+
+Inspect shape and appearance in an output panel. Choose a grid for comparisons and a turntable for views from several angles.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun Box.showMesh(mesh: TriMesh, channel: String = "main", view: MeshView = MeshView(), caption: String? = null, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU, height: Int = 430)` | Push a rendered view of `mesh` to one of this box's output channels, with its measurements as a caption. [API](reference/graphics.md#mesh-field-kt). |
+| `fun Box.showMeshGrid(vararg panels: Pair<String, TriMesh>, channel: String = "main", columns: Int = 2, cellWidth: Int = 380, view: MeshView = MeshView(), renderer: MeshRenderer = MeshRenderer.GPU)` | Several meshes side by side, each rendered and captioned — the fastest way to see a whole pipeline (generated / subdivided / smoothed / decimated) side by side. [API](reference/graphics.md#mesh-field-kt). |
+| `fun Box.showMeshTurntable(mesh: TriMesh, channel: String = "main", views: List<MeshView> = MeshView.turntable(4), cellWidth: Int = 260, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU)` | A turntable contact sheet of one mesh: the same shape from `views`, laid out in a row. [API](reference/graphics.md#mesh-field-kt). |
+| `MeshView` | How to draw a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) in a preview: where the camera stands and what the frame looks like. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.summary(): String` | A one-line factual summary of a mesh: counts, extent, topology and volume — the thing to `print` when you want the numbers rather than the picture. [API](reference/graphics.md#mesh-field-kt). |
+| `three(subject = mesh)` | Opens an orbitable Three.js view of a mesh. Use a scene block to combine solids and line annotations. |
+| `threeGrid(…)` | Displays several subjects as titled viewports. Use it for side-by-side geometry comparisons. |
+| `threeTurntable(…)` | Displays a subject from a sequence of viewing directions. Use it to inspect shape beyond one fixed camera. |
+
+</div>
+
+### Look at it without a gpu
+
+Render a still or an interactive figure using the CPU path when a native GPU renderer is unavailable.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun TriMesh.renderPng(view: MeshView = MeshView(), caption: String? = null, title: String? = null): ByteArray` | This mesh rasterised to PNG bytes: perspective, z-buffer, two-light lambert shading over the per-vertex colours, and a depth-tested wireframe. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.renderPixels(view: MeshView = MeshView()): VisionGeometryPreview.Raster` | This mesh's raster as ARGB ints plus its size — for compositing several meshes into one figure. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.toFigureHtml(view: MeshView = MeshView(), caption: String? = null, title: String? = null): String` | A complete `<figure>` — this mesh rendered as an inline PNG plus its measurements as a caption — for `display(…)` in a box output or for the value visualizer. [API](reference/graphics.md#mesh-field-kt). |
+| `fun Box.showMesh(mesh: TriMesh, channel: String = "main", view: MeshView = MeshView(), caption: String? = null, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU, height: Int = 430)` | Push a rendered view of `mesh` to one of this box's output channels, with its measurements as a caption. [API](reference/graphics.md#mesh-field-kt). |
+
+</div>
+
+### Repair what you read
+
+Repair connectivity before solid operations. Normal generation and normalization affect shading or scale, so choose them separately from topology repair.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `fun TriMesh.weld(tolerance: Double = 1e-6): TriMesh` | Merge vertices closer together than `tolerance` and renumber the triangles onto the survivors. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.fixWinding(): TriMesh` | Make the winding consistent across the whole mesh, then make it point **outward**. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.removeDegenerateTriangles(areaEpsilon: Double = 1e-14): TriMesh` | Drop triangles with no area — a repeated index, or three collinear corners — and any vertex that leaves unreferenced. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.repaired(tolerance: Double = 1e-6): TriMesh` | Weld, drop degenerate triangles, drop unused vertices and fix the winding — the one call to make before trusting a mesh that came from a file, a scanner, or a per-cell generator. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.largestComponent(): TriMesh` | The largest connected component, by triangle count — the usual way to throw away the specks a noisy iso-surface leaves around the shape you wanted. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.shadedNormals(creaseAngleDegrees: Double = 35.0): TriMesh` | Crease-aware normals: smooth across edges where the two faces are within `creaseAngleDegrees` of each other, hard where they are not. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.normalized(size: Number = 1.0): TriMesh` | This mesh recentred on its own bounding box and scaled so its longest axis is `size`. [API](reference/graphics.md#mesh-field-kt). |
+
+</div>
+
+### On the gpu instead
+
+Load an asset directly into a native renderer when drawing is the next step rather than CPU mesh processing.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `plyModelHere("model.ply")` | Loads a PLY model into the current renderer’s module context. Choose this path for GPU drawing rather than CPU mesh processing. |
+| `plyPointCloudHere("scan.ply")` | Loads PLY data for point-cloud drawing in the current renderer. Use it when samples should remain points instead of forming a triangle surface. |
+| `gltfModelHere("model.glb")` | Loads glTF geometry, materials and textures into the renderer. This requires a live renderer and preserves rendering data a flattened CPU mesh does not. |
+| `modelWithTextureHere(…)` | Loads geometry with a texture for a renderer module. Use the material-aware scene path when appearance matters alongside vertex positions. |
+
+</div>
+
+### Let the ai read it
+
+Register geometry locations with Field’s AI tools so it can resolve and inspect those assets.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Entry point | Behavior |
+| --- | --- |
+| `GeometryAgentTools.addSearchRoot(directory)` | Registers a directory to search when an AI geometry tool resolves assets. The argument is a `File` naming the directory. |
+| `GeometryAgentTools.register()` | Registers the geometry inspection tools with Field’s AI tool registry. Add asset search roots so those tools can find the intended files. |
+
+</div>
+
 
 ## Letting Field's AI look at your geometry
 

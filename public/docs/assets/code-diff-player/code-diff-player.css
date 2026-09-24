@@ -200,22 +200,29 @@
 .code-diff-pre.flash-delete { box-shadow: 0 0 0 2px rgba(255, 90, 95, 0.35); }
 
 /* docs syntax colours */
-.code-diff-pre .hljs,
-.code-diff-pre .hljs * {
+:is(.code-diff-pre, [data-code-lang]) .hljs,
+:is(.code-diff-pre, [data-code-lang]) .hljs * {
   color: #d7dce2;
   font-weight: 300 !important;
 }
-.code-diff-pre .hljs-keyword,
-.code-diff-pre .hljs-built_in,
-.code-diff-pre .hljs-selector-tag { color: #7aa2f7; }
-.code-diff-pre .hljs-string,
-.code-diff-pre .hljs-attr { color: #8ccf7e; }
-.code-diff-pre .hljs-number,
-.code-diff-pre .hljs-literal { color: #ff6b6b; }
-.code-diff-pre .hljs-attribute,
-.code-diff-pre .hljs-title,
-.code-diff-pre .hljs-variable { color: #d7dce2; }
-.code-diff-pre .hljs-comment { color: #7b8491; opacity: 0.9; }
+:is(.code-diff-pre, [data-code-lang]) .hljs-keyword,
+:is(.code-diff-pre, [data-code-lang]) .hljs-built_in,
+:is(.code-diff-pre, [data-code-lang]) .hljs-selector-tag { color: #7aa2f7; }
+:is(.code-diff-pre, [data-code-lang]) .hljs-string,
+:is(.code-diff-pre, [data-code-lang]) .hljs-attr { color: #8ccf7e; }
+:is(.code-diff-pre, [data-code-lang]) .hljs-number,
+:is(.code-diff-pre, [data-code-lang]) .hljs-literal { color: #ff6b6b; }
+:is(.code-diff-pre, [data-code-lang]) .hljs-attribute,
+:is(.code-diff-pre, [data-code-lang]) .hljs-title,
+:is(.code-diff-pre, [data-code-lang]) .hljs-variable { color: #d7dce2; }
+:is(.code-diff-pre, [data-code-lang]) .hljs-comment { color: #7b8491; opacity: 0.9; }
+
+/* Types and operators also carry meaning in the compact reference examples. */
+:is(.code-diff-pre, [data-code-lang]) .hljs-type { color: #b5a6df; }
+:is(.code-diff-pre, [data-code-lang]) .hljs-operator { color: #a9b9cc; }
+[data-code-lang] .hljs-title.function_ { color: #e0c087; }
+[data-code-lang] .hljs-punctuation { color: #8d99a8; }
+[data-code-lang] .hljs-meta { color: #7aa2f7; }
 
 .code-diff-line {
   display: grid;

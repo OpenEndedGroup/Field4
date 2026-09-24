@@ -1018,11 +1018,14 @@ These are the everyday tools for reusing a shape without rebuilding it: `copy()`
 
 ### `copy()` and `transform(...)`
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.copy(): FLine
-fun FLine.transform(by: (Vec3) -> Vec3): FLine
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.copy(): FLine` | Returns a new line with copied nodes and properties. Edit the copy when the original shape should remain available. |
+| `fun FLine.transform(by: (Vec3) -> Vec3): FLine` | Returns a new line by applying `by` to every stored point, including Bézier control points. The original geometry is unchanged and drawing properties are copied. |
+
+</div>
 
 `copy()` duplicates the geometry. `transform` maps every control point through a function (translate, scale, warp, …).
 
@@ -1397,14 +1400,17 @@ These are convenience transforms specialized for “2D shapes living in the XY p
 
 ### Rotate / scale / reflect / shear
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.byRotating2D(angle: Float, center: Vec2 = vec(0f, 0f)): FLine
-fun FLine.byScaling2D(scale: Float, center: Vec2 = vec(0f, 0f)): FLine
-fun FLine.byScaling2D(scaleX: Float, scaleY: Float, center: Vec2 = vec(0f, 0f)): FLine
-fun FLine.byReflecting2D(linePoint1: Vec2, linePoint2: Vec2): FLine
-fun FLine.byShearing2D(shearX: Float, shearY: Float): FLine
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.byRotating2D(angle: Float, center: Vec2 = vec(0f, 0f)): FLine` | Rotates the XY geometry around `center` by an angle in radians, preserving Z. The default center is the origin; the result is a new line. |
+| `fun FLine.byScaling2D(scale: Float, center: Vec2 = vec(0f, 0f)): FLine` | Scales XY positions about `center`, leaving Z unchanged. Use the scalar overload for uniform scaling or separate X and Y factors to stretch the shape. |
+| `fun FLine.byScaling2D(scaleX: Float, scaleY: Float, center: Vec2 = vec(0f, 0f)): FLine` | Scales XY positions about `center`, leaving Z unchanged. Use the scalar overload for uniform scaling or separate X and Y factors to stretch the shape. |
+| `fun FLine.byReflecting2D(linePoint1: Vec2, linePoint2: Vec2): FLine` | Mirrors XY positions across the infinite line through two distinct points. It preserves Z and returns a new line. |
+| `fun FLine.byShearing2D(shearX: Float, shearY: Float): FLine` | Adds `shearX * y` to X and `shearY * x` to Y, preserving Z. This skews the shape about the origin without changing the input line. |
+
+</div>
 
 These are “2D-plane” transforms (as opposed to the generic point-wise `transform`). They’re convenient for design-y operations.
 
@@ -1437,21 +1443,15 @@ lines(listOf(base, rot, shear), w = 420.0, h = 260.0, fitToSize = true)
 
 ### 3D transforms and projections
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.byRotating3D(angle: Float, axis: Vec3, center: Vec3 = vec(0f, 0f, 0f)): FLine
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
-fun FLine.byPerspectiveProjecting(
-    cameraPos: Vec3,
-    planePoint: Vec3 = vec(0f, 0f, 0f),
-    planeNormal: Vec3 = vec(0f, 0f, 1f)
-): FLine
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.byRotating3D(angle: Float, axis: Vec3, center: Vec3 = vec(0f, 0f, 0f)): FLine ` | Rotates the geometry about the chosen axis through `center`, using radians. Returns a new line so the source can be drawn alongside the rotated result. |
+| `fun FLine.byPerspectiveProjecting(cameraPos: Vec3, planePoint: Vec3 = vec(0f, 0f, 0f), planeNormal: Vec3 = vec(0f, 0f, 1f)): FLine ` | Projects points along rays from `cameraPos` onto the plane defined by a point and normal. Points whose intersection is behind the camera are kept at their original positions. |
+| `fun FLine.byOrthographicProjecting(planePoint: Vec3 = vec(0f, 0f, 0f), planeNormal: Vec3 = vec(0f, 0f, 1f)): FLine` | Projects every point onto the plane along its normal. The default plane is Z = 0, and the result is a new line. |
 
-fun FLine.byOrthographicProjecting(
-    planePoint: Vec3 = vec(0f, 0f, 0f),
-    planeNormal: Vec3 = vec(0f, 0f, 1f)
-): FLine
-```
+</div>
 
 Field’s `FLine` nodes are 3D, so you can do “real” 3D transforms and then project down into 2D for drawing.
 
@@ -1972,11 +1972,14 @@ This is the same sweep idea as the 2D version, but the source curve itself bends
 
 ### Offsetting / parallel curves
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine
-fun FLine.byCreatingParallelCurves(distance: Float, samples: Int = 50): Pair<FLine, FLine>
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine` | Samples the path and displaces each point along its XY normal by `distance`, returning a polyline. Increase `samples` for finer sampling of curved segments. |
+| `fun FLine.byCreatingParallelCurves(distance: Float, samples: Int = 50): Pair<FLine, FLine>` | Returns two offsets, first at `-distance` and then at `+distance`. Use the pair as the two sides of a stroke or ribbon. |
+
+</div>
 
 Offsetting creates a curve “parallel” to the original at a given distance. This is useful for stroke outlines and “tubing”.
 
@@ -2286,12 +2289,15 @@ These are higher-level operations that treat an `FLine` as something you can edi
 
 ### Reverse / blend / extract
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.byReversing(): FLine
-fun FLine.byBlendingWith(other: FLine, t: Float): FLine
-fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.byReversing(): FLine` | Reverses each subpath while preserving its closed or open status. Use it to change traversal direction without resampling the curve. |
+| `fun FLine.byBlendingWith(other: FLine, t: Float): FLine` | Samples both curves and linearly blends corresponding positions into a polyline: `t = 0` selects the first curve and `t = 1` the second. Use `FLineInterpolator` below when contour matching and preserved structure matter. |
+| `fun FLine.byExtracting(tStart: Float, tEnd: Float): FLine` | Returns the portion between two cursor parameters. These use segment coordinates, not a normalized fraction of total arc length; a start beyond the curve returns an empty line. |
+
+</div>
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/reverse_blend_extract.png" embed=true}
 :::static
@@ -2558,13 +2564,16 @@ This is the same base demo, but with `spatialSpinAngle = 1f` in the interpolator
 
 ### Circle fitting + subdivision
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float>
-fun FLine.bySubdividing(levels: Int = 1): FLine
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
-`fitCircle` gives you an approximate circle for a curve segment (center/radius + an error estimate). `bySubdividing` increases resolution (more control points) for a smoother-looking polyline approximation.
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.fitCircle(samples: Int = 20): Triple<Vec2, Float, Float>` | Fits a circle to samples of the XY curve and returns its center, radius and fitting error. This is an approximation rather than an exact recognition of circular arcs. |
+| `fun FLine.bySubdividing(levels: Int = 1): FLine` | Splits each line or cubic segment in half for every level, while retaining subpath boundaries and closure. Cubics use De Casteljau subdivision, preserving the curve rather than replacing it with a polyline. |
+
+</div>
+
+Use fitting to summarize a shape, and subdivision when later editing needs more segments without changing its geometry.
 
 ## Advanced / experimental curves (FLineGeometry)
 
@@ -2769,13 +2778,16 @@ Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens 
 
 ## Boolean ops (2D)
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.byUnionWith(other: FLine): FLine
-fun FLine.byDifferenceWith(other: FLine): FLine
-fun FLine.byIntersectionWith(other: FLine): FLine
-fun FLine.byExclusiveOrWith(other: FLine): FLine
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.byUnionWith(other: FLine): FLine` | Returns the union of the two filled XY regions using Java2D Area. The resulting boundary includes all regions covered by either input. |
+| `fun FLine.byDifferenceWith(other: FLine): FLine` | Subtracts the other filled XY region from this one, returning a new boundary. Swapping the two inputs changes which region is cut away. |
+| `fun FLine.byIntersectionWith(other: FLine): FLine` | Returns the filled XY region shared by both inputs. Disjoint regions produce an empty result. |
+| `fun FLine.byExclusiveOrWith(other: FLine): FLine` | Returns the XY regions covered by exactly one input. Overlap is removed from the result. |
+
+</div>
 
 These use Java2D `Area` under the hood (via `FLinesAndJavaShapes`) to do 2D polygon boolean operations. Best results when your shapes are closed and reasonably well-behaved.
 
@@ -2810,10 +2822,13 @@ These don’t change geometry — they help you *measure* it. Use them for picki
 
 ### Closest point
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float>
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float>` | Returns the closest position on the curve and its cursor parameter. The parameter uses segment coordinates, so it is not a normalized arc-length fraction. |
+
+</div>
 
 Finds the closest point on the curve to a query position. Returns `(closestPoint, t)` where `t` is in the cursor’s parameterization.
 
@@ -2842,14 +2857,17 @@ lines(listOf(curve, marker), w = 420.0, h = 260.0, fitToSize = true)
 
 ### Containment and area
 
-```diffstatic {data-lang=kotlin}
-:::static
-fun FLine.contains(point: Vec2): Boolean
-fun FLine.signedArea2D(): Float
-fun FLine.centroid2D(): Vec2
-```
+<div class="field-reference" data-code-lang="kotlin" markdown>
 
-These treat the path as a 2D polygon (winding-based). `signedArea2D` is positive/negative depending on orientation.
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.contains(point: Vec2): Boolean` | Tests for a nonzero winding number around an XY point. Each open subpath is implicitly closed for this test; jumps between subpaths do not form edges. |
+| `fun FLine.signedArea2D(): Float` | Calculates signed area from node endpoints, positive for counter-clockwise XY order and negative for clockwise order. Use a single polygonal contour: this does not integrate Bézier curvature or sum separate subpaths independently. |
+| `fun FLine.centroid2D(): Vec2` | Computes the centroid using the same endpoint polygon as `signedArea2D`. Near zero area it returns the average endpoint position, or the origin for an empty line. |
+
+</div>
+
+Containment respects separate subpaths. Area and centroid use an endpoint polygon, so sample curved geometry and handle separate contours explicitly before relying on those measurements.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/containment_and_area.png" embed=true}
 :::static

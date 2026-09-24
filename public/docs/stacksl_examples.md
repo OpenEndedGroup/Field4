@@ -427,12 +427,16 @@ saturate
 
 The input vector is usually read as:
 
+<div class="field-reference" data-code-lang="stacksl" markdown>
+
 | Component | Meaning |
 | --- | --- |
-| `input.x` | x / u coordinate |
-| `input.y` | y / v coordinate |
-| `input.z` | z coordinate, hash, seed, or auxiliary state |
-| `input.w` | time, frame, or phase |
+| `input.x` | Carries x, usually the normalized horizontal texture coordinate u. Words such as `uv` derive their first component from it. |
+| `input.y` | Carries y, usually the normalized vertical texture coordinate v. Together x and y locate the sample in the image. |
+| `input.z` | Carries the third coordinate or a host-provided hash, seed or auxiliary value. Its interpretation depends on the shader that calls StackSL. |
+| `input.w` | Carries the host’s time, frame or phase value. StackSL’s `time` word reads this channel, so its units follow the host convention. |
+
+</div>
 
 The stack starts with `input` already on it. You can also push explicit views:
 
@@ -1003,6 +1007,8 @@ is handy when the surrounding GLSL, not only the StackSL, is what you are editin
 
 ## Volumetric noise
 
+The [volumetric word reference](stacksl_cheatsheet.md#volumetric-noise) records arities, defaults and output channels. The examples here show how those channels behave in a volume.
+
 `noise` and `fbm` are two-dimensional. `noise` lowers to
 `_noise(input.xy + input.zw * 0.07)` and `fbm` to `_fbm` of the same expression, so a
 `vec4` carrying a position and a time is squashed into a plane, and z arrives at one
@@ -1026,6 +1032,8 @@ bright knots, no holes: that is what divergence-free looks like. It matters for
 particles. A force field with sources and sinks collects your particles into the sinks
 and empties the sources; a solenoidal one moves them around forever.
 
+<div data-code-lang="stacksl" markdown>
+
 | Word | Stack | What it does |
 | --- | --- | --- |
 | `noise3` | `coord -- s` | 3D value noise over `coord.xyz`, exactly `0..1`. |
@@ -1036,6 +1044,8 @@ and empties the sources; a solenoidal one moves them around forever.
 | `worley3`, `voronoi3` | `coord -- vec` | cellular: `.x` F1, `.y` F2, `.z` F2-F1 (cell walls), `.w` a per-cell constant. |
 | `fbmd3` | `coord epsilon octaves -- vec` | `.x` is `fbm3`, `.yzw` its gradient — a surface normal in one word. |
 | `warp3` | `coord strength octaves -- s` | domain-warped `fbm3`: filaments and folds instead of clouds. |
+
+</div>
 
 Three things this family does that the 2D words do not.
 

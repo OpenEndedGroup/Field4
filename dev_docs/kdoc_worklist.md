@@ -58,7 +58,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Topology.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt) | Polytopes | polytope_examples | 0 | 27 | 68% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | autodiff_examples, functions_examples, pattern_language | 0 | 26 | 53% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
-| [mesh_repair.kt](../src/jvmMain/kotlin/afield/stdlib/mesh_repair.kt) | Graphics | manifold, geometry_from_disk, tetgen | 0 | 26 | 58% |
+| [mesh_repair.kt](../src/jvmMain/kotlin/afield/stdlib/mesh_repair.kt) | Graphics | manifold, geometry_from_disk, mesh_examples | 0 | 26 | 58% |
 | [FaustEngine.kt](../src/jvmMain/kotlin/afield/four/synth/FaustEngine.kt) | Synthesis | faust | 0 | 25 | 45% |
 | [SonicPiPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiPatterns.kt) | Audio | sonic_pi | 0 | 25 | 68% |
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
@@ -74,6 +74,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
 | [PathTraceScene.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceScene.kt) | Renderers | path_tracing, chain_polytope_render | 0 | 17 | 26% |
 | [DoughDsp.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDsp.kt) | Synthesis | dough_dsp_sound | 0 | 17 | 70% |
+| [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | imaging_examples | 0 | 17 | 19% |
 | [MusicTranscription.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/MusicTranscription.kt) | Audio AI | audio_ai_muscriptor | 0 | 15 | 25% |
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
 | [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
@@ -89,7 +90,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers, agent_transcripts | 0 | 10 | 77% |
 | [movement.kt](../src/jvmMain/kotlin/afield/stdlib/movement.kt) | Simulation | movement_examples | 0 | 10 | 75% |
 | [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt) | Patterns | sound, pattern_language | 0 | 9 | 70% |
-| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, datalog, kotlin_overview | 0 | 9 | 89% |
+| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, mesh_examples, datalog | 0 | 9 | 89% |
 | [FieldAdapters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt) | Polytopes | polytope_examples, chain_polytope_render, agent_transcripts | 0 | 9 | 70% |
 | [RectSLSdfLook.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLSdfLook.kt) | Languages | rectsl_cheatsheet, rectsl_examples | 0 | 8 | 74% |
 | [HeadTrackedSpatial.kt](../src/jvmMain/kotlin/afield/four/synth/HeadTrackedSpatial.kt) | Patterns | pat_spatial | 0 | 7 | 66% |
@@ -177,7 +178,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SimdVerletWind.kt](../src/jvmMain/kotlin/afield/four/physics/SimdVerletWind.kt) | Simulation | — | 0 | 17 | 46% |
 | [MidiDevices.kt](../src/jvmMain/kotlin/afield/four/synth/MidiDevices.kt) | Audio | — | 0 | 17 | 64% |
 | [MorphoGenerator.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGenerator.kt) | Languages | — | 0 | 17 | 39% |
-| [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
 | [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt) | Visualization | — | 0 | 16 | 75% |
 | [MorphoNetlist.kt](../src/jvmMain/kotlin/afield/morpho/MorphoNetlist.kt) | Languages | — | 0 | 15 | 48% |
 | [Asta.kt](../src/jvmMain/kotlin/afield/remotejs/Asta.kt) | Languages | — | 0 | 15 | 6% |

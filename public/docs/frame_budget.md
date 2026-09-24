@@ -14,7 +14,7 @@ named line of your own box source.
 
 ## The three instruments
 
-| | `CPUSpan` | one coroutine resume | a JFR sample |
+| Property | `CPUSpan` | one coroutine resume | a JFR sample |
 |---|---|---|---|
 | what it measures | wall time of a named renderer span | wall time, thread CPU time and thread allocated bytes for one scheduled continuation | that a thread was here, or allocated here |
 | clock | `System.nanoTime()` — wall only | wall, plus `ThreadMXBean` CPU and allocation counters | the JFR event clock, realigned to the capture |

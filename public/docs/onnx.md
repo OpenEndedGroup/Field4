@@ -155,11 +155,15 @@ background. So `DepthAnything` tracks the window with an exponential moving aver
 against the smoothed version. `infer` returns a `DepthStats` reporting both, so a box can watch that
 decision instead of guessing at it:
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | field | what it is |
-|---|---|
-| `rawMin` / `rawMax` | the range this frame's output actually contained |
-| `windowMin` / `windowMax` | the smoothed window that was mapped to `0.0` and `1.0` |
-| `settled` | true once the smoothed window has *caught up* with the raw range |
+| --- | --- |
+| `rawMin` / `rawMax` | Report the smallest and largest depth values in this frame, in the model’s arbitrary inverse-depth units. Compare them with the smoothed window to see how much the scene has changed. |
+| `windowMin` / `windowMax` | Report the smoothed bounds mapped to `0.0` and `1.0` in the output texture. Smoothing keeps a changing raw range from rescaling the image abruptly. |
+| `settled` | Reports whether the smoothed window has caught up with the raw range. It is true on the first frame, whose range seeds the window, and can become false after a scene change. |
+
+</div>
 
 `settled` is the **arrived** state, not the chasing one — true on the first frame after
 construction or `resetAdaptation()`, because the window is seeded from that frame's own range, and
@@ -466,28 +470,32 @@ meet the call in old box code.
 
 ## Reference
 
-| | |
-|---|---|
-| `OnnxRuntime.session(spec)` | the cached session for a `SessionSpec`, built on first request |
-| `OnnxRuntime.evict(spec)` / `.closeAll()` | drop and close; for a changed file or a cold measurement |
-| `OnnxRuntime.liveSessionCount` | how many sessions are cached; how tests prove reuse |
-| `OnnxModel.ensureLocal()` | the local file, downloading and sha256-checking it if absent |
-| `OnnxModel.isPresent` / `.localPath` | is it already on disk, and where |
-| `OnnxModel.cacheRoot` | `~/.afield/onnx/models` unless overridden |
-| `DepthAnything(w, h, …)` | one frame at a time; `w`/`h` must be multiples of 14 |
-| `DepthAnything.sizeFor(w, h, longestSide)` | nearest legal input size, aspect preserved |
-| `DepthAnything.forSource(w, h, …)` | the same, as a constructed estimator |
-| `.infer(rgba, srcW, srcH)` | run one frame; returns `DepthStats` |
-| `.depthRaw` / `.depthFp16` | model units, and `[0,1]` fp16 ready for `R16_SFLOAT` |
-| `.resetAdaptation()` | forget the normalisation window |
-| `DepthAnythingWorker(…)` | the same on its own thread; `submit` / `consume` |
-| `ClipText.encode(text)` / `clipEncode(text)` | one prompt to a unit 512-vector |
-| `ClipText.encodeAll(texts)` | several, sharing the loaded model |
-| `ClipImage().encode(rgba, w, h)` | one frame to a unit 512-vector |
-| `ClipVector.cosine` / `.dot` / `.project` | similarity, inner product, scalar projection |
-| `a axisTo b` | the unit direction from `a` towards `b` — a semantic axis |
-| `.classify(candidates)` / `.best(…)` | softmax over labelled candidates, most likely first |
-| `.toBase64()` / `ClipVector.fromBase64(s)` | persist an embedding exactly |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Call or property | Behavior |
+| --- | --- |
+| `OnnxRuntime.session(spec)` | Returns the session cached under this `SessionSpec`, constructing it on first request. Reuse the same spec to avoid repeated model initialization. |
+| `OnnxRuntime.evict(spec)` / `.closeAll()` | Closes one cached session or all cached sessions. Evict after changing a model file or before measuring a cold start; existing users must stop using the closed session. |
+| `OnnxRuntime.liveSessionCount` | Counts currently cached sessions. Check it to confirm that repeated inference is reusing a session. |
+| `OnnxModel.ensureLocal()` | Returns the local model file, downloading and verifying its SHA-256 when absent. Call it before timing inference so downloading is outside the measurement. |
+| `OnnxModel.isPresent` / `.localPath` | Checks whether the model is already available and reports its cache location. Reading these does not substitute for `ensureLocal()` when a download is required. |
+| `OnnxModel.cacheRoot` | Names the model cache directory, normally `~/.afield/onnx/models`. Use it to inspect where downloaded weights are stored. |
+| `DepthAnything(w, h, …)` | Creates an estimator for one frame at a time. Both input dimensions must be multiples of 14; choose them with `sizeFor` for arbitrary sources. |
+| `DepthAnything.sizeFor(w, h, longestSide)` | Computes a legal model input size while preserving the source aspect as closely as the grid permits. `longestSide` controls inference resolution and cost. |
+| `DepthAnything.forSource(w, h, …)` | Chooses a legal input size and constructs the estimator for that source shape. Use it instead of calculating rounded dimensions yourself. |
+| `.infer(rgba, srcW, srcH)` | Runs inference on one RGBA frame and returns `DepthStats`. The estimator’s depth buffers hold the corresponding output. |
+| `.depthRaw` / `.depthFp16` | Expose depth in model units and adapted `[0,1]` half-float values respectively. Use the latter for an `R16_SFLOAT` texture and the former when you need unnormalised output. |
+| `.resetAdaptation()` | Forgets the running normalization window. Reset after a scene change when the old range would distort the new depth contrast. |
+| `DepthAnythingWorker(…)` | Runs depth inference on a worker thread. Submit frames and consume completed results so the rendering loop need not wait for inference. |
+| `ClipText.encode(text)` / `clipEncode(text)` | Encodes one prompt as a unit 512-dimensional vector. Cache prompt vectors when comparing many frames against the same labels. |
+| `ClipText.encodeAll(texts)` | Encodes several prompts using the loaded text model. The returned labelled vectors can be reused for classification. |
+| `ClipImage().encode(rgba, w, h)` | Encodes an RGBA image as a unit 512-dimensional vector. Compare it against several prompt vectors to interpret relative similarity. |
+| `ClipVector.cosine` / `.dot` / `.project` | Measures cosine similarity, inner product or scalar projection onto an axis. Relative rankings are more useful than a universal threshold across text and image modalities. |
+| `a axisTo b` | Builds the unit direction from embedding `a` toward `b`. Project image embeddings onto it to turn a semantic contrast into a continuous control. |
+| `.classify(candidates)` / `.best(…)` | Ranks labelled candidates using softmax, or returns the best candidate. Scores describe competition within that candidate set rather than a calibrated real-world probability. |
+| `.toBase64()` / `ClipVector.fromBase64(s)` | Serializes and restores an embedding without changing its values. Use it to save a prompt or image reference without re-encoding. |
+
+</div>
 
 ### Where to go next
 

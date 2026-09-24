@@ -81,7 +81,9 @@ class StackSLVocabularyCoverageTest {
         cheatsheetFile.readText().lines()
             .filter { it.trimStart().startsWith("|") }
             .flatMap { line ->
-                val firstColumn = line.split("|").getOrElse(1) { "" }
+                // Examples follow the word names on a new line; they are complete
+                // programs, not additional vocabulary entries.
+                val firstColumn = line.split("|").getOrElse(1) { "" }.substringBefore("<br>")
                 Regex("`([^`]+)`").findAll(firstColumn).map { it.groupValues[1].trim().lowercase() }
             }
             .filter { it.isNotEmpty() }

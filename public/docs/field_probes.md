@@ -11,7 +11,7 @@ a shader and a buffer to watch a distribution of values as it is computed. They
 share a philosophy (add one line to a shader, read a live summary back in the
 front end) but sit at opposite ends of a trade-off:
 
-| | **`fieldProbe`** — CPU read-back probe | **`fieldStats`** — GPU stats probe |
+| Property | **`fieldProbe`** — CPU read-back probe | **`fieldStats`** — GPU stats probe |
 |---|---|---|
 | Where stats are computed | exact aggregates on the GPU; histogram / mean / percentiles on the **CPU** from a sample | **entirely on the GPU** (parallel reduction) |
 | What comes back to the CPU | a reservoir sample of raw values + exact min/max/counts | a handful of scalars per channel (optional) |

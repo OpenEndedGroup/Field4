@@ -581,6 +581,8 @@ build a shaping chain once, name it, and apply it everywhere.
 
 ### The operators
 
+<div data-code-lang="kotlin" markdown>
+
 | Operator | Shape | Meaning |
 | --- | --- | --- |
 | `source through t` | `Fn through FnTransform → Fn` | Apply transform `t` to the source. |
@@ -592,6 +594,8 @@ build a shaping chain once, name it, and apply it everywhere.
 | `source stretch (a..b)` | `Fn stretch ClosedRange → Fn` | Remap the source's domain across `a..b` (replays the whole source over the new interval). |
 | `a then b` | `Fn then Fn → Fn` | Concatenate two functions end-to-end on a timeline. |
 | `a overlapping n with b` | `Fn overlapping Number with Fn → Fn` | Join `a` and `b` with an `n`-wide crossfade. |
+
+</div>
 
 Two overloads share a name. `then` composes *transforms* when both sides are `FnTransform`
 (`gain(0.6) then lowPass(0.08)`), and *concatenates functions* when both sides are `Fn`
@@ -3011,14 +3015,18 @@ with(Functions) {
 
 For hand-driven procedural loops, cursors also provide:
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | Method | Meaning |
 | --- | --- |
-| `peek()` | sample at the current coordinate without advancing |
-| `nextWithX()` | return the coordinate and value, then advance |
-| `skip(count)` | move without evaluating |
-| `seek(x)` | move to an absolute coordinate |
-| `reset()` | return to the function domain start |
-| `copy()` | branch cursor state while sharing the immutable `Fn` |
+| `peek()` | Samples the current coordinate without advancing the cursor. Repeated peeks therefore read the same position. |
+| `nextWithX()` | Returns both the coordinate and its sampled value, then advances. Use it when the sample needs its position attached. |
+| `skip(count)` | Moves forward by the requested number of cursor steps without evaluating the function. It changes position without producing samples. |
+| `seek(x)` | Moves the cursor to an absolute coordinate. The next sample comes from that position. |
+| `reset()` | Returns the cursor to the start of the function’s domain. Use it to replay a finite sequence. |
+| `copy()` | Copies the current cursor position while sharing the immutable function. The two cursors can then advance independently. |
+
+</div>
 
 These operations make a cursor useful as a tiny transport without turning `Fn` itself stateful. The function remains a value; the cursor owns position.
 
@@ -3577,21 +3585,25 @@ That reads as "a node connected through the `frequency` role on or under a `sin`
 
 Useful term forms:
 
+<div class="field-reference" data-code-lang="fnrewrite" markdown>
+
 | Term | Matches |
 | --- | --- |
-| `sin` | current node op, incoming role, or tag named `sin` |
-| `number` | node tagged as numeric metadata |
-| `const` / `param` / `opaque` | common node classes |
-| `op=saw` | current node operation |
-| `role=frequency` | incoming edge role |
-| `edge=frequency` | alias for `role` |
-| `param=frequency` | alias for `role` |
-| `parameter=frequency` | alias for `role` |
-| `parent=sin` | parent operation |
-| `under=sin` | alias for `parent` |
-| `name=lead` | public `Fn.name` |
-| `tag=number` | graph tag |
-| `depth=2` | depth from the graph root |
+| `sin` | Matches an operation, incoming role or tag named `sin`. Use `op=sin` when only the operation should count. |
+| `number` | Matches a node tagged as numeric metadata. Numeric actions apply only when it also has a `value` entry. |
+| `const` / `param` / `opaque` | Matches common node classes by their tags. Constants and parameters normally expose numeric metadata; an opaque node hides its internal construction. |
+| `op=saw` | Matches the current node’s operation exactly. It does not select an incoming parameter merely named `saw`. |
+| `role=frequency` | Matches a node reached through a frequency parameter edge. This selects the use of a node within its parent. |
+| `edge=frequency` | Selects the incoming frequency edge. `edge` is an alias for `role`. |
+| `param=frequency` | Selects the incoming frequency parameter. `param` is an alias for `role`, not the `param` node class. |
+| `parameter=frequency` | Selects the same edge as `role=frequency`. Use whichever spelling makes the rule easier to read. |
+| `parent=sin` | Matches when the immediate parent operation is `sin`. Use a path with `**` to match more distant ancestry. |
+| `under=sin` | Uses the same immediate-parent check as `parent=sin`. It does not mean any ancestor at any depth. |
+| `name=lead` | Matches the function’s public `name`. Give a function a name when it needs a stable target independent of its operation. |
+| `tag=number` | Requires membership in the node’s tag set. This avoids the broader operation-or-role interpretation of a bare term. |
+| `depth=2` | Matches occurrences two edges below the root. The root is depth zero. |
+
+</div>
 
 ### Path selectors
 
@@ -3606,13 +3618,17 @@ sin/**/saw
 
 The matched node is always the current node being considered for rewrite. An unanchored path can match any suffix of the current root-to-node occurrence path. A leading `/` anchors the match at the graph root.
 
-| Path piece | Meaning |
+<div class="field-reference" data-code-lang="fnrewrite" markdown>
+
+| Example | What it matches |
 | --- | --- |
-| `foo` | one node whose op, role, or tag matches `foo` |
-| `*` | exactly one node |
-| `**` | zero or more nodes |
-| `/` prefix | anchor at the graph root |
-| `[predicate]` | filter the current path segment |
+| `sin/saw` | Matches a saw occurrence directly below a sin occurrence. An unanchored path can match a suffix of the root-to-node path. |
+| `sin/*/saw` | Matches a saw with exactly one intermediate node below sin. `*` consumes one node in the path. |
+| `sin/**/saw` | Matches a saw at any depth below sin, including an immediate child. `**` consumes zero or more intermediate nodes. |
+| `/multiply/**/saw` | Requires multiply at the graph root, then finds descendant saw occurrences. The leading slash prevents a match from starting deeper in the graph. |
+| `**/[tag=number][value>0.2]` | Filters the current path segment by both predicates. Here it selects numeric-tagged nodes whose value exceeds 0.2. |
+
+</div>
 
 Examples:
 
@@ -3649,16 +3665,20 @@ Predicates live inside path segments:
 
 Supported predicate keys:
 
-| Key | Value source |
+<div class="field-reference" data-code-lang="fnrewrite" markdown>
+
+| Predicate example | Value being tested |
 | --- | --- |
-| `op` | graph operation name |
-| `role`, `edge`, `param`, `parameter` | incoming edge role |
-| `tag` | graph tag set |
-| `name` | public function name |
-| `depth` | path depth from root |
-| `index` | child index within the parent |
-| `value` | common numeric metadata value |
-| other names | `numbers`, `strings`, `booleans`, or `longs` metadata on the graph node |
+| `**/[op=const]` | Tests the graph operation name. This selects constant operations wherever they occur. |
+| `**/[role=frequency]` | Tests the incoming edge role; `edge`, `param` and `parameter` are aliases. The root has no incoming edge. |
+| `**/[tag=number]` | Tests membership in the graph tag set. Tags describe capabilities or categories beyond the operation name. |
+| `**/[name=lead]` | Tests the function’s public name. Unnamed nodes do not match a named target. |
+| `**/[depth>=2]` | Tests the number of edges from the root. Here only grandchildren and deeper occurrences match. |
+| `**/[index=0]` | Tests the child’s index within its parent. Zero selects the first child occurrence. |
+| `**/[value>0.2]` | Tests the node’s numeric `value` metadata. Numeric comparisons apply when both operands parse as numbers. |
+| `**/[seed=7]` | Other keys look in the node’s numeric, string, boolean or long metadata maps. Use only a key carried by the selected operation; an unknown key may simply match nothing. |
+
+</div>
 
 Supported comparisons are `=`, `!=`, `>`, `<`, `>=`, and `<=`. Numeric comparisons are used when both sides can be parsed as numbers; otherwise equality is case-insensitive string equality.
 
@@ -3666,20 +3686,24 @@ Supported comparisons are `=`, `!=`, `>`, `<`, `>=`, and `<=`. Numeric compariso
 
 Actions rebuild or relabel the matched copied node:
 
+<div class="field-reference" data-code-lang="fnrewrite" markdown>
+
 | Action | Effect |
 | --- | --- |
-| `drop`, `prune`, `zero` | replace with `zero(copy.domain)` |
-| `op=sin` | rebuild this node as another known operation, if possible |
-| `replace=triangle` | alias for `op=triangle` |
-| `name=lead` | set the copied function name |
-| `domain=all` | set `Domain.ALL` |
-| `domain=default` | set `Domain.DEFAULT` |
-| `domain=0.0..1.0` | set a concrete domain |
-| `= 0.5` | replace a numeric node's `value` |
-| `*= 2.0` | multiply a numeric node's `value` |
-| `/= 2.0` | divide a numeric node's `value` |
-| `+= 0.1` | add to a numeric node's `value` |
-| `-= 0.1` | subtract from a numeric node's `value` |
+| `drop`, `prune`, `zero` | Replaces the matched node with a zero function on the copied node’s domain. All three spellings have the same effect. |
+| `op=sin` | Rebuilds the node as a sine operation using available role-addressed children and metadata. An impossible reconstruction is left unchanged and reported by preview. |
+| `replace=triangle` | Rebuilds the node as a triangle operation. This is an alias for `op=triangle`. |
+| `name=lead` | Sets the copied function’s public name. Later selectors can target it with `name=lead`. |
+| `domain=all` | Sets the copied node’s domain to `Domain.ALL`. This changes domain metadata rather than sampling new values. |
+| `domain=default` | Sets the copied node’s domain to `Domain.DEFAULT`. Use it to restore the standard domain label. |
+| `domain=0.0..1.0` | Sets an explicit domain interval on the copied function. The interval belongs to this matched node. |
+| `= 0.5` | Replaces the node’s numeric `value` with 0.5. Nodes without numeric value metadata are unchanged. |
+| `*= 2.0` | Doubles the current numeric value. Actions run left to right, so a following addition sees the doubled value. |
+| `/= 2.0` | Halves the current numeric value. It affects the matched numeric parameter rather than scaling the entire output graph. |
+| `+= 0.1` | Adds 0.1 to the current numeric value. Use a role selector to target a particular parameter. |
+| `-= 0.1` | Subtracts 0.1 from the current numeric value. A nonnumeric match is reported as a no-op rather than failing the whole rewrite. |
+
+</div>
 
 Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. That usually means constants and parameter nodes. If a numeric action lands on a non-numeric node, it is ignored rather than failing the whole rewrite.
 
@@ -3702,24 +3726,28 @@ Use `@{ ... }` for Kotlin expressions in numeric actions. The code inside is com
 
 Available names inside `@{...}`:
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | Name | Meaning |
 | --- | --- |
-| `value` | current numeric value |
-| `it` | alias for `value` |
-| `op` | current node operation |
-| `role` | incoming edge role |
-| `parameter` | alias for `role` |
-| `parentOp` | parent node operation, if any |
-| `depth` | depth from root |
-| `path` | list of child indices from root |
-| `ancestors` | root-to-parent path elements |
-| `occurrence` | root-to-current path elements |
-| `name` | public function name, if any |
-| `domain` | current function domain |
-| `numbers` | numeric metadata map |
-| `strings` | string metadata map |
-| `booleans` | boolean metadata map |
-| `longs` | long metadata map |
+| `value` | `current` under the name a snippet actually writes, as in `*= @{value * 1.1}`. |
+| `it` | `current` again, so a snippet can read like a lambda: `= @{it * 2}`. A plain property, not a real lambda parameter — nothing is shadowing it, and `it` inside a nested lambda wins as usual. |
+| `op` | The op name of the matched node, from `OpRegistry`'s vocabulary. |
+| `role` | The role of the edge this node was reached by (`"frequency"`, `"amplitude"`, …), or null at the root. |
+| `parameter` | Alias for `role`, for rules that read better as "which parameter am I". |
+| `parentOp` | The immediate parent's op, or null at the root — "am I inside an fbm?" in one property. |
+| `depth` | How many edges below the root this occurrence sits; the root itself is `0`. |
+| `path` | Child indices from the root down to this node — the same path a preview reports. |
+| `ancestors` | The path elements from the root down to this node's parent, root first. Empty at the root. |
+| `occurrence` | `ancestors` plus this node — the whole root-to-here path, which is what a path selector matches against. Rebuilt on every read, so bind it to a local rather than indexing it repeatedly. |
+| `name` | The matched function's own name, if it was given one. Null for the great majority of nodes. |
+| `domain` | The matched function's own domain, which can be narrower than the root's. |
+| `numbers` | This node's numeric metadata — its own parameters, keyed by name. A constant carries `value`. |
+| `strings` | This node's string metadata, for the ops that carry names or modes rather than numbers. |
+| `booleans` | This node's boolean metadata — flags such as a wrap or clamp mode. |
+| `longs` | This node's long metadata, typically seeds and counts. |
+
+</div>
 
 Kotlin RHS snippets can be multi-line. The last expression is returned:
 

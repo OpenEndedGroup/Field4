@@ -316,7 +316,7 @@ On the two-point walk, the difference is categorical: with `rExit = 0.16` the ed
 and survives the move out to `d = 0.13`; with `rExit = rEnter` it forms and then dies. On the wobbling
 cloud it is quantitative, and larger than the pictures suggest:
 
-|  | edges created | edges lost | standing at frame 150 |
+| Configuration | edges created | edges lost | standing at frame 150 |
 | --- | --- | --- | --- |
 | `rExit = 0.075` (hysteresis) | 553 | **81** | **472** |
 | `rExit = 0.055` (control arm) | 996 | **637** | 359 |

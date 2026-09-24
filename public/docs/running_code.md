@@ -123,11 +123,15 @@ once.renderer {                       // cached after the first non-null result
 
 Box properties are, underneath, an untyped `name → value` bag per box. Three delegates turn that bag into typed Kotlin properties, differing in **where they read from**:
 
-| Delegate | Read | Write |
-|---|---|---|
-| `Delegation<T>` | this box only (with optional lazy default) | this box |
-| `Inheritance<T>` | this box, else breadth-first **up the parent graph** | this box (shadows the parent) |
-| `InheritanceFromContext<T>` | like `Inheritance`, but also checks live REPL variables; used by `@exported` | this box |
+<div data-code-lang="kotlin" markdown>
+
+| Declaration example | Read behavior | Write behavior |
+| --- | --- | --- |
+| `var Box.level by Delegation<Float>()` | Reads this box’s own slot. A supplied lazy default initializes it locally. | Writes this box’s slot. |
+| `var Box.level by Inheritance<Float>()` | Reads locally first, then searches parents breadth-first. Use it when children should inherit a parent’s setting. | Writes locally, shadowing the inherited value. |
+| `var Box.level by InheritanceFromContext<Float>()` | Also consults live REPL variables while resolving the inherited value. This is the mechanism used by `@exported`. | Writes this box’s slot. |
+
+</div>
 
 By convention the underscore-prefixed shader properties (`_vertex`, `_fragment`, …) are box-local `Delegation`; the user-facing ones (`vertex`, `fragment`, …) are `Inheritance`, so a child that doesn't set its own `vertex` transparently inherits the parent's.
 

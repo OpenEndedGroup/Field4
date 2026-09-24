@@ -1197,7 +1197,7 @@ of what grain is left changes from seed to seed. One panel cannot show that.
 
 Two numbers, because they measure different things and only one of them is the headline:
 
-| | ensemble anisotropy | per-output median | 
+| Model | ensemble anisotropy | per-output median |
 | --- | --- | --- |
 | `3 × 3` as learned | **8.1×** | 14.6× |
 | `3 × 3` closed under D4 | **1.4×** | 1.9× |

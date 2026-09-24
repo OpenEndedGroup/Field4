@@ -64,20 +64,24 @@ those twelve in detail.
 
 <div class="field-data-table" markdown>
 
-| What it does | Where | Anchor |
-|---|---|---|
-| current normal for following vertices | `VisionMetalKotlinJs.kt:67` | `fun normal(` |
-| current colour for following vertices | `VisionMetalKotlinJs.kt:73` | `fun color(` |
-| current texture coordinate | `VisionMetalKotlinJs.kt:79` | `fun uv(` |
-| the two free per-vertex channels | `VisionMetalKotlinJs.kt:85` | `fun extra(` |
-| append a vertex, return its index | `VisionMetalKotlinJs.kt:91` | `fun vertex(x: Double, y: Double, z: Double): Int` |
-| one face from three indices | `VisionMetalKotlinJs.kt:126` | `fun triangle(` |
-| two faces from four indices | `VisionMetalKotlinJs.kt:132` | `fun quad(` |
-| drop what was appended, keep the state | `VisionMetalKotlinJs.kt:139` | `fun clear(` |
-| axis-aligned cube, optional face tinting | `VisionMetalKotlinJs.kt:151` | `fun cube(` |
-| quad lattice on XY facing `+z` | `VisionMetalKotlinJs.kt:192` | `fun plane(` |
-| UV sphere with shared normals | `VisionMetalKotlinJs.kt:220` | `fun sphere(` |
-| sweep a polygon along a polyline | `VisionMetalKotlinJs.kt:260` | `fun tube(` |
+<div data-code-lang="kotlin" markdown>
+
+| Builder example | Behavior | Source |
+| --- | --- | --- |
+| `normal(0.0, 0.0, 1.0)` | Sets the normal copied into every following vertex. This affects later appends and returns the builder for chaining. | `VisionMetalKotlinJs.kt:67#fun normal(` |
+| `color(0.9, 0.3, 0.2, 1.0)` | Sets the RGBA colour for subsequent vertices. Earlier vertices retain their stored colours. | `VisionMetalKotlinJs.kt:73#fun color(` |
+| `uv(0.0, 1.0)` | Sets the texture coordinate copied by following vertex calls. It occupies `v.uv.xy` in the shader. | `VisionMetalKotlinJs.kt:79#fun uv(` |
+| `extra(0.5, 1.0)` | Sets two free per-vertex values stored in `v.uv.zw`. Choose their interpretation in your own shader. | `VisionMetalKotlinJs.kt:85#fun extra(` |
+| `val a = vertex(x, y, z)` | Appends a vertex with the current normal, colour, UV and extra state. Returns its index for later triangle or quad calls. | `VisionMetalKotlinJs.kt:91#fun vertex(x: Double, y: Double, z: Double): Int` |
+| `triangle(a, b, c)` | Adds one face from three existing vertex indices. Counter-clockwise winding faces the viewer; back faces are culled. | `VisionMetalKotlinJs.kt:126#fun triangle(` |
+| `quad(a, b, c, d)` | Adds triangles `(a,b,c)` and `(a,c,d)`. The four indices therefore determine both winding and the diagonal. | `VisionMetalKotlinJs.kt:132#fun quad(` |
+| `clear()` | Drops all appended vertices and indices while retaining builder state. Use it before rebuilding geometry for another frame. | `VisionMetalKotlinJs.kt:139#fun clear(` |
+| `cube(half = 0.2, tintFaces = true)` | Appends an axis-aligned cube with edge length twice `half`. Separate face vertices preserve facet normals; optional tinting distinguishes the faces. | `VisionMetalKotlinJs.kt:151#fun cube(` |
+| `plane(width = 1.0, height = 0.5, cols = 8, rows = 4)` | Appends an XY quad lattice facing positive z. Column and row counts set the tessellation density. | `VisionMetalKotlinJs.kt:192#fun plane(` |
+| `sphere(radius = 0.2, segments = 24, rings = 16)` | Appends a UV sphere with smooth shared normal directions. Segments and rings control angular tessellation. | `VisionMetalKotlinJs.kt:220#fun sphere(` |
+| `tube(points, radius = 0.02, sides = 8)` | Sweeps a polygon along a polyline to give it thickness. Fewer than two points appends nothing. | `VisionMetalKotlinJs.kt:260#fun tube(` |
+
+</div>
 
 </div>
 
@@ -133,13 +137,17 @@ log("built $vertexCount vertices, ${indexCount / 3} triangles")
 
 Each vertex carries four `float4`s, and the shader sees them as `FieldVertex`:
 
+<div data-code-lang="kotlin" markdown>
+
 | Builder call | MSL | Notes |
-|---|---|---|
-| `vertex(x, y, z)` | `v.position` | `.w` is 1, supplied for you |
-| `normal(x, y, z)` | `v.normal` | `.w` is 0 |
-| `color(r, g, b, a)` | `v.color` | linear RGBA |
-| `uv(u, v)` | `v.uv.xy` | texture coordinate |
-| `extra(first, second)` | `v.uv.zw` | two free channels — anything you like |
+| --- | --- | --- |
+| `vertex(x, y, z)` | `v.position` | Writes the position with homogeneous `.w = 1`. The appended vertex receives the current values of every other channel. |
+| `normal(x, y, z)` | `v.normal` | Sets the normal for subsequent vertices with `.w = 0`. The shader can transform it as a direction. |
+| `color(r, g, b, a)` | `v.color` | Sets linear RGBA colour for subsequent vertices. Alpha is available to the fragment shader alongside RGB. |
+| `uv(u, v)` | `v.uv.xy` | Sets the two texture coordinates for subsequent vertices. Their mapping to a texture is chosen by the shader. |
+| `extra(first, second)` | `v.uv.zw` | Sets two additional scalar channels. Use them for per-vertex phase, weight or another shader-specific value. |
+
+</div>
 
 `extra()` is the escape hatch. There is no way to add a *new* attribute to the vertex layout from a
 box, so when you need to get one more number per vertex into the shader (a band index, an age, a

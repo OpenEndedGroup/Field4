@@ -70,18 +70,18 @@ share the same time window.
 
 ## Renderers
 
-<div class="field-data-table" markdown>
+<div class="field-data-table field-call-table" data-code-lang="kotlin" markdown>
 
 | Source in Field | Finite-file entry point | Execution |
 | --- | --- | --- |
-| Pat's deterministic voice | `renderPatWav(path, pattern, cycles, cps)` | offline, synchronous |
-| Pat through Dirt samples | `renderDirtWav(path, pattern, cycles, cps)` | offline, synchronous; reports matched samples |
-| Dough mono signal | `renderDoughWav(path, signal, seconds)` | offline, synchronous |
-| Dough stereo node | `renderDoughStereoWav(path, node, seconds)` | offline, synchronous; preserves L/R |
-| compiled Faust program | `renderFaustWav(path, program, seconds)` | offline, synchronous |
-| Faust source text | `renderFaustWavAsync(path, name, source, seconds)` | background future; avoids blocking on compiler warm-up |
-| Sonic Pi source text | `recordSonicPiWav(sonicPi(), path, source, seconds)` | background future; real-time recording |
-| any existing Field WAV | `RenderedAudioFile.existing(path, generator, provenance)` | no rendering assumption |
+| Pat's deterministic voice | `renderPatWav(path, pattern, cycles, cps)` | Renders offline and returns the completed file synchronously. `cycles` sets the pattern span; `cps` sets cycles per second. |
+| Pat through Dirt samples | `renderDirtWav(path, pattern, cycles, cps)` | Renders offline using the available Dirt samples and returns synchronously. The render provenance records which samples matched. |
+| Dough mono signal | `renderDoughWav(path, signal, seconds)` | Evaluates a mono signal for the requested duration and returns the completed WAV synchronously. Use it for a finite study of a continuous signal. |
+| Dough stereo node | `renderDoughStereoWav(path, node, seconds)` | Renders a stereo node offline for the requested duration. Left and right channels remain separate in the returned file. |
+| compiled Faust program | `renderFaustWav(path, program, seconds)` | Renders an already compiled program offline and returns synchronously. Reuse the compiled program when varying render parameters. |
+| Faust source text | `renderFaustWavAsync(path, name, source, seconds)` | Compiles and renders in the background, returning a future for the completed file. Chain analysis with `thenCompose` to avoid blocking on compiler warm-up. |
+| Sonic Pi source text | `recordSonicPiWav(sonicPi(), path, source, seconds)` | Records a real-time performance and returns a future. Completion waits for recording to stop and the WAV to stabilize. |
+| any existing Field WAV | `RenderedAudioFile.existing(path, generator, provenance)` | Wraps an existing WAV with its generator name and provenance. It performs no synthesis; use it to send an earlier render through the same analysis pipeline. |
 
 </div>
 

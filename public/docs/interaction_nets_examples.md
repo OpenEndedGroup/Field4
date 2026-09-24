@@ -426,53 +426,69 @@ println("interaction multi-step ready: 1 + $rest reactions, ${subject.nodes.size
 
 Building and wiring, inside `net { }`:
 
-| | |
-|---|---|
-| `net { … }` | builds a `Net`; everything below is available inside the block |
-| `node(type, id, at, state, impulse)` | one agent at an **absolute** position; `id` is generated if you omit it |
-| `a.principal to b.principal` | wires two ports. Two principals wired together is an active pair |
-| `node.aux(i)` | the `i`th auxiliary port, counting from 0 |
-| `NodeState(energy, phase, hue, age, scalars)` | what a node carries. `energy` drives radius and pair ranking, `hue` drives colour, `phase` and `scalars` are yours |
-| `Lambda.APP` / `.LAM` / `.DUP` | the agents with two auxiliaries each |
-| `Lambda.ERASE` / `.VAR` / `.ROOT` / `.CONST` | the atoms, no auxiliaries |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Construction | Behavior |
+| --- | --- |
+| `net { … }` | Builds a `Net` using the construction DSL. Create nodes and connect their ports inside the block. |
+| `node(type, id, at, state, impulse)` | Creates one agent at an absolute position. Omit `id` to generate an identifier; use an explicit one when a test or layout needs stable names. |
+| `a.principal to b.principal` | Connects two ports. A principal-to-principal connection creates an active pair that the reducer may match against a rule. |
+| `node.aux(i)` | Selects an auxiliary port by zero-based index. The node’s type determines how many auxiliaries it has. |
+| `NodeState(energy, phase, hue, age, scalars)` | Stores the state carried by a node. Energy affects drawing radius and energy-based pair ordering; hue affects colour, while phase and extra scalars are available to rules. |
+| `Lambda.APP` / `.LAM` / `.DUP` | Selects application, abstraction or duplication agents, each with two auxiliary ports. Connect those auxiliaries to represent arguments, bodies and shared uses. |
+| `Lambda.ERASE` / `.VAR` / `.ROOT` / `.CONST` | Selects an atomic agent with no auxiliary ports. These represent erasure, variables, the term root and constants. |
+
+</div>
 
 Reducing:
 
-| | |
-|---|---|
-| `Reducer(rules, order)` | a reducer over a rule book, picking pairs by an `ActivationOrder` |
-| `ActivationOrder` | `FIRST_FOUND`, `LEFTMOST_BY_ID`, `RIGHTMOST_BY_ID`, `RANDOM`, `HIGHEST_PAIR_ENERGY`, `LOWEST_PAIR_ENERGY` |
-| `.step(net)` | fires one reaction; `false` means nothing could fire |
-| `.stepDetailed(net)` | the same, returning the rule name, the ids removed and created, and any emitted events — or `null` |
-| `Lambda.rules()` | the rule book used on this page |
-| `rules { autoRule(name, a, b) { … } }` | your own, in the same shape |
-| `net.activePairs()` | every pair that could fire right now |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Reduction | Behavior |
+| --- | --- |
+| `Reducer(rules, order)` | Creates a reducer over a rule book and activation policy. The policy chooses which matching active pair is tried next. |
+| `ActivationOrder` | Chooses first-found, leftmost/rightmost by identifier, random, or highest/lowest pair energy. Changing it changes scheduling, so keep it explicit when comparing runs. |
+| `.step(net)` | Applies one available reaction to the net. Returns false when no reaction could fire, which is the condition for ending a reduction loop. |
+| `.stepDetailed(net)` | Applies one reaction and reports its rule, removed and created identifiers, and emitted events. Returns null when nothing can fire. |
+| `Lambda.rules()` | Returns the lambda-calculus rule book used in the examples. Use it with `Reducer` when reducing a compiled lambda term. |
+| `rules { autoRule(name, a, b) { … } }` | Builds a custom rule book. Each automatic rule names the reacting pair and the construction that replaces it. |
+| `net.activePairs()` | Lists the currently connected principal-port pairs. A pair still needs a matching rule before it can reduce. |
+
+</div>
 
 Looking at it:
 
-| | |
-|---|---|
-| `net.relax(iterations, config)` | runs the force-directed layout; `LayoutConfig` holds the springs, repulsion and damping |
-| `net.toFLines(…)` | the net as `FLine`s, for a Field box or a canvas |
-| `net.summaryHtml(title, maxNodes)` | one HTML card: counts, energies, and the first `maxNodes` nodes |
-| `showInteractionOverview(graphicLines, cards, …)` | a row of cards over one shared drawing, as a single output |
-| `net.toSvg(width, height, padding)` | a standalone SVG, for outside Field |
-| `net.totalEnergy()` / `.averageAge()` | the two aggregates the cards quote |
-| `net.incrementAges(dt)` | advances `age` on whatever clock you choose |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Layout and display | Behavior |
+| --- | --- |
+| `net.relax(iterations, config)` | Runs the force-directed layout for the requested number of iterations. `LayoutConfig` controls spring forces, repulsion and damping; layout changes positions, not the reduction rules. |
+| `net.toFLines(…)` | Converts the current graph layout into `FLine` geometry. Draw those lines in a Field output or combine them with other geometry. |
+| `net.summaryHtml(title, maxNodes)` | Builds an HTML summary of counts, energy and the first `maxNodes` nodes. Limit the node list to keep large nets inspectable. |
+| `showInteractionOverview(graphicLines, cards, …)` | Displays summary cards above one shared graph drawing. Use it to compare states in a single output panel. |
+| `net.toSvg(width, height, padding)` | Exports the current layout as a standalone SVG. Width, height and padding control the exported view. |
+| `net.totalEnergy()` / `.averageAge()` | Returns aggregate energy or mean node age. These are the same quantities shown in the summary cards. |
+| `net.incrementAges(dt)` | Adds `dt` to node ages. Call it on the simulation clock whose units you want age to represent. |
+
+</div>
 
 λ-terms:
 
-| | |
-|---|---|
-| `LambdaTerms.parse(source)` | reads `\x. x x` or `λx. x x`; `\x y. e` is sugar, application associates left |
-| `LambdaTerms.format(term)` | the printer, with the fewest parentheses that parse back to the same term |
-| `LambdaTerms.compile(term)` | a `CompiledTerm`: a net with one `ROOT`, a fan tree per multiply-used variable, an `ERASE` per unused binder |
-| `LambdaTerms.readback(compiled)` | a reduced net back to a term, carrying a stack of fan choices |
-| `LambdaTerms.normalise(term, order, maxSteps, relaxIterations)` | the whole pipeline; `relaxIterations` defaults to 0 |
-| `LambdaTerms.referenceNormalOrder(term)` | the oracle — normal-order reduction by substitution, no nets, no sharing |
-| `LambdaTerms.alphaEquivalent(a, b)` / `.deBruijnKey(term)` | how to compare two terms, and what to print when they differ |
-| `LambdaTerms.corpus()` | the 25 named closed terms the smoke test asserts against the oracle |
-| `Lambda.fan(label)` / `Lambda.fanLabelOf(node)` | a labelled `DUP`, and its label; an unlabelled one reads as 0 |
-| `Reducer(rules, order, layout, relaxIterations)` | `relaxIterations = 0` skips the `O(n²)` layout for a headless run |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Lambda terms | Behavior |
+| --- | --- |
+| `LambdaTerms.parse(source)` | Parses `\x. x x` or `λx. x x` into a lambda term. Multiple binders are shorthand and application associates to the left. |
+| `LambdaTerms.format(term)` | Prints a term with only the parentheses required to parse back to the same structure. Use it to make reduced terms readable. |
+| `LambdaTerms.compile(term)` | Builds a `CompiledTerm` containing a net with one root. Multiply used variables get fan trees; unused binders get erasure agents. |
+| `LambdaTerms.readback(compiled)` | Reconstructs a lambda term from a compiled net. Fan choices are tracked during traversal so shared structure can be read back. |
+| `LambdaTerms.normalise(term, order, maxSteps, relaxIterations)` | Compiles, reduces and reads back a term with a step limit. Layout is disabled by the default `relaxIterations = 0` for headless computation. |
+| `LambdaTerms.referenceNormalOrder(term)` | Reduces by ordinary substitution with normal order. Use this independent oracle to check the interaction-net result. |
+| `LambdaTerms.alphaEquivalent(a, b)` / `.deBruijnKey(term)` | Compares terms while ignoring bound-variable names, or produces the canonical key used for that comparison. Use the key to inspect a disagreement. |
+| `LambdaTerms.corpus()` | Returns the 25 named closed test terms. They are the shared input set used to compare the reducer with the substitution oracle. |
+| `Lambda.fan(label)` / `Lambda.fanLabelOf(node)` | Constructs a labelled duplication agent or reads its label. An unlabelled duplication agent has label zero. |
+| `Reducer(rules, order, layout, relaxIterations)` | Configures reduction and optional force-directed layout together. Set `relaxIterations = 0` to avoid quadratic layout work in a headless run. |
+
+</div>
 
 Starting points: `Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` are the nets behind the third and fourth examples above, and `dev_docs/agents/demos/interaction_nets_lambda` is a loadable document that normalises a term, draws a reduction and runs the whole corpus against the oracle.

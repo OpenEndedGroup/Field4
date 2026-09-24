@@ -63,7 +63,7 @@ the snap.
 
 <div class="field-data-table" markdown>
 
-| | guide is drawn within | box jumps within |
+| Alignment | guide is drawn within | box jumps within |
 | --- | --- | --- |
 | edge and center alignment | 20 px | 10 px |
 | even spacing | 30 px | 30 px |

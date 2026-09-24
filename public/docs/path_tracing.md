@@ -106,11 +106,15 @@ tracer.focusDistance = null // follow the target
 // Camera, antialiasing and depth of field in a live Field scene.
 ```
 
+<div data-code-lang="kotlin" markdown>
+
 | Control | Default | Meaning |
 | --- | --- | --- |
 | `pixelJitter` | `1f` | Samples the full pixel footprint for antialiasing. `0f` samples its centre; values between zero and one narrow the footprint. |
 | `apertureRadius` | `0f` | Circular lens radius in world units. Zero disables depth of field; larger values increase defocus blur. |
 | `focusDistance` | `null` | Tracks the camera target. Set a positive distance in world units to hold focus independently of the target. |
+
+</div>
 
 ```diffstatic {data-lang=kotlin}
 tracer.focusDistance = 5f // focus plane five world units along camera.forward
@@ -321,12 +325,16 @@ frames {
 }
 ```
 
+<div data-code-lang="kotlin" markdown>
+
 | Control | Default | Meaning |
 | --- | --- | --- |
 | `fogDensity` | `0f` | Nonnegative density per world unit. Zero disables fog. |
 | `fogStartDistance` | `0f` | Nonnegative clear distance before fog begins. |
 | `fogColor` | `Vector3f(0.5f, 0.5f, 0.5f)` | Linear HDR colour, before exposure and display tone mapping. Assign a new vector to change it; the getter returns a copy. |
 | `fogBackground` | `true` | Treat primary-ray misses as infinitely distant. Set false to preserve the camera-visible environment or background colour. |
+
+</div>
 
 At distance `d`, the surface contribution is multiplied by
 `exp(-fogDensity * max(d - fogStartDistance, 0))`; the remaining weight comes from
@@ -354,7 +362,7 @@ thing, and enabling both attenuates whatever the camera sees first twice over.
 `mediumDensity` puts a real, homogeneous participating medium in the scene. It is a
 different mechanism from `fogDensity` above, not a better-tuned version of it:
 
-| | `fogDensity` | `mediumDensity` |
+| Property | `fogDensity` | `mediumDensity` |
 | --- | --- | --- |
 | what it does | blends the finished radiance of a sample toward `fogColor` | samples a collision distance along every ray segment |
 | what it knows | the primary hit distance | the whole path, and every light connection along it |
@@ -393,12 +401,16 @@ tracer.mediumAnisotropy = 0.4f                         // forward-scattering, in
 tracer.maxBounces = 8                                  // a collision spends one of these
 ```
 
+<div data-code-lang="kotlin" markdown>
+
 | Control | Default | Meaning |
 | --- | --- | --- |
 | `mediumDensity` | `0f` | Extinction — scattering plus absorption — per world unit. Zero disables the medium. Achromatic, so a distance sample stays one decision; colour comes from the albedo. |
 | `mediumAlbedo` | `Vector3f(1f, 1f, 1f)` | The fraction of extinction that scatters rather than absorbs, per channel. One conserves energy exactly; zero is pure Beer–Lambert absorption with no glow at all. The getter returns a copy. |
 | `mediumAnisotropy` | `0f` | Henyey–Greenstein `g`, in (-1, 1). Zero is isotropic, positive forward-scatters into a halo, negative throws light back toward the camera. |
 | `mediumBounds` | `null` | The axis-aligned box the medium fills, as `low to high`. `null` fills all space, with the consequence above. |
+
+</div>
 
 Changing any of them resets accumulation.
 
@@ -756,11 +768,15 @@ tracer.temporalRoughnessSensitivity = 0f
 tracer.temporalMaxBlurRadius = 2f
 ```
 
+<div data-code-lang="kotlin" markdown>
+
 | Control | Default | Effect |
 | --- | --- | --- |
 | `temporalMotionSensitivity` | `1f` | Range `0..1`. Zero removes the camera-angle penalty; one applies the original conservative penalty and rejection. Intermediate values blend the two weights. |
 | `temporalRoughnessSensitivity` | `1f` | Range `0..1`. Zero permits glossy surfaces and mirrors at full history weight. One applies the `0.25` roughness cutoff and roughness-squared weight. Intermediate values lower the cutoff and soften the weight reduction. |
 | `temporalMaxBlurRadius` | `0.5f` | Nonnegative defocus radius in pixels. Raise it to permit more out-of-focus surface history. |
+
+</div>
 
 With both sensitivities at zero, matching pixels can carry the full
 `temporalMaxSamples` weight while moving, including on the demo's red and gold

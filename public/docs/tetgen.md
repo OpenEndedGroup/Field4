@@ -130,7 +130,7 @@ mistake in this subsystem, so both have their own call.
 
 <div class="field-data-table" markdown>
 
-| | what it is | what it tells you |
+| Measure | what it is | what it tells you |
 |---|---|---|
 | `radiusEdgeRatios()` | circumradius ÷ shortest edge | whether TetGen honoured the bound you asked for |
 | `qualities()` | radius ratio, `3 r_in / r_circ` | whether your solver is going to be ill-conditioned |
@@ -490,7 +490,7 @@ narrows every coordinate on the way in:
 
 <div class="field-data-table" markdown>
 
-| | volume of the bracket |
+| Representation | volume of the bracket |
 |---|---|
 | Manifold, in double | `76958.9090888672` |
 | its `TriMesh`, after narrowing to float32 | `76958.90896392896` |
@@ -571,7 +571,7 @@ you have measured your own case. On the bracket at `targetEdgeLength = 3.0`:
 
 <div class="field-data-table" markdown>
 
-| | nodes | elements | worst radius ratio | slivers |
+| Configuration | nodes | elements | worst radius ratio | slivers |
 |---|---|---|---|---|
 | `preserveSurface = false` | 14,011 | 66,489 | 0.0362 | 4 |
 | `preserveSurface = true` | 306 | 509 | **0.00001** | **285** |

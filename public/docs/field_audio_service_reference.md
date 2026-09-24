@@ -8,76 +8,110 @@ weights, and performs no inference.
 
 ## HTTP operations
 
-| Method | Path | Request | Response |
-| --- | --- | --- | --- |
-| `GET` | `/health` | `-` | `-` |
-| `GET` | `/v1/analysis-results/{result_id}` | `-` | `AnalysisResult` |
-| `GET` | `/v1/analysis-results/{result_id}/corpus` | `-` | `CorpusPreview` |
-| `GET` | `/v1/analysis-results/{result_id}/preview` | `-` | `-` |
-| `POST` | `/v1/assets/import` | `Body` | `AudioAsset` |
-| `GET` | `/v1/assets/lookup` | `-` | `AudioAsset` |
-| `GET` | `/v1/assets/search` | `-` | `list[AudioAsset]` |
-| `GET` | `/v1/assets/{asset_id}` | `-` | `AudioAsset` |
-| `GET` | `/v1/candidate-sets/{candidate_set_id}` | `-` | `CandidateSet` |
-| `PUT` | `/v1/candidate-sets/{candidate_set_id}/candidates/{index}` | `CandidateJudgement` | `-` |
-| `GET` | `/v1/codec-results/{result_id}` | `-` | `CodecReconstructionResult` |
-| `POST` | `/v1/gesture-boards/compile` | `GestureCompileRequest` | `GestureCompilation` |
-| `GET` | `/v1/jobs` | `-` | `list[JobSummary]` |
-| `GET` | `/v1/jobs/{job_id}` | `-` | `JobRecord` |
-| `POST` | `/v1/jobs/{job_id}/cancel` | `-` | `JobRecord` |
-| `GET` | `/v1/models` | `-` | `-` |
-| `POST` | `/v1/operations` | `OperationRequest` | `JobAccepted` |
-| `GET` | `/v1/representations/{representation_id}/content` | `-` | `-` |
-| `GET` | `/v1/representations/{representation_id}/waveform` | `-` | `WaveformSummary` |
+| Method and path | Purpose | Request → response |
+| --- | --- | --- |
+| `GET /health` | Reports service health, version and project root. This does not load a worker model. | `-` → `-` |
+| `GET /v1/analysis-results/{result_id}` | Returns the durable analysis result and its full-data representation. Use preview endpoints when a compact visualization is sufficient. | `-` → `AnalysisResult` |
+| `GET /v1/analysis-results/{result_id}/corpus` | Builds a corpus view for segmentation, embedding or neighbour search. Other analysis operations are rejected with HTTP 422. | `-` → `CorpusPreview` |
+| `GET /v1/analysis-results/{result_id}/preview` | Builds a compact preview of analysis data, with a bounded point count. The preview supports display while the original representation retains the full result. | `-` → `-` |
+| `POST /v1/assets/import` | Imports raw bytes as an immutable content-addressed asset. Filename, role and optional derivation metadata describe the bytes without changing their identity. | `Body` → `AudioAsset` |
+| `GET /v1/assets/lookup` | Finds an asset by its recorded filename and preferred representation role. Returns 404 when no matching filename is known. | `-` → `AudioAsset` |
+| `GET /v1/assets/search` | Searches recorded filenames using a pattern and preferred role. Returns a list of matching assets for browsing or batch selection. | `-` → `list[AudioAsset]` |
+| `GET /v1/assets/{asset_id}` | Returns metadata and representations for an asset id. Download a representation through its binary URL to obtain the content. | `-` → `AudioAsset` |
+| `GET /v1/candidate-sets/{candidate_set_id}` | Returns the generated alternatives for a completed operation. Each candidate includes seed, audio representations and any user judgement. | `-` → `CandidateSet` |
+| `PUT /v1/candidate-sets/{candidate_set_id}/candidates/{index}` | Stores a candidate rating, selection and annotation by zero-based index. The update changes review metadata rather than regenerating audio. | `CandidateJudgement` → `-` |
+| `GET /v1/codec-results/{result_id}` | Returns a codec round trip with source, tokens, reconstructions and comparison metrics. Download its representations to inspect the encoded or reconstructed data. | `-` → `CodecReconstructionResult` |
+| `POST /v1/gesture-boards/compile` | Compiles a gesture board into an effective prompt, parameters and delivery bindings. This prepares the request without running model inference. | `GestureCompileRequest` → `GestureCompilation` |
+| `GET /v1/jobs` | Lists recent jobs, optionally filtered by state. Limit controls the number returned, from 1 to 500. | `-` → `list[JobSummary]` |
+| `GET /v1/jobs/{job_id}` | Returns the durable job state, progress, error and result ids. Use the result id corresponding to the completed operation. | `-` → `JobRecord` |
+| `POST /v1/jobs/{job_id}/cancel` | Requests cancellation and returns the resulting job record. The outcome can be cancellation, unsupported cancellation or completion before the request took effect. | `-` → `JobRecord` |
+| `GET /v1/models` | Lists registered backend capabilities and availability. Check supported operations, audio constraints and unavailable reasons before submitting work. | `-` → `-` |
+| `POST /v1/operations` | Accepts an operation and returns a job acknowledgement with HTTP 202. Follow its job id for progress and the eventual result; acceptance alone does not mean the operation is complete. | `OperationRequest` → `JobAccepted` |
+| `GET /v1/representations/{representation_id}/content` | Downloads the bytes of one stored representation. Returns 404 when the representation id is unknown. | `-` → `-` |
+| `GET /v1/representations/{representation_id}/waveform` | Summarizes a positive time window as per-channel minimum and maximum envelopes. The requested point count is bounded to 16–4096. | `-` → `WaveformSummary` |
 
 Jobs also stream `ProgressEvent` objects over
 `WS /v1/events/{job_id}` until a terminal state is reached.
 
 ## Typed objects
 
-| Object | Required fields |
-| --- | --- |
-| `AnalysisResult` | `id`, `operation_id`, `request_hash`, `source`, `data`, `created_at` |
-| `AssetRegion` | `start_seconds`, `duration_seconds`, `asset_id` |
-| `AssetRepresentation` | `id`, `asset_id`, `role`, `media_type`, `binary_url` |
-| `AudioAsset` | `id`, `byte_size`, `created_at`, `representations` |
-| `Candidate` | `asset`, `operation_id`, `index`, `seed`, `native_representation_id`, `proxy_representation_id` |
-| `CandidateJudgement` | - |
-| `CandidateSet` | `id`, `operation_id`, `request_hash`, `candidates`, `created_at` |
-| `CodecReconstructionResult` | `id`, `operation_id`, `request_hash`, `source`, `model_input`, `tokens`, `reconstruction_native`, `reconstruction_proxy`, `metrics`, `codec`, `created_at` |
-| `CorpusNeighbour` | `segment`, `distance`, `audio` |
-| `CorpusPreview` | `operation`, `query` |
-| `CorpusSegment` | `id`, `asset_id`, `start_seconds`, `duration_seconds`, `scale_seconds` |
-| `ErrorCode` | - |
-| `GestureBinding` | `name`, `kind`, `delivery`, `target`, `explanation` |
-| `GestureBoard` | `duration_seconds` |
-| `GestureCompilation` | `board`, `operation`, `effective_prompt`, `parameters`, `bindings` |
-| `GestureCompileRequest` | `board` |
-| `GestureCurve` | `name`, `kind`, `points` |
-| `GestureCurveKind` | - |
-| `GestureDelivery` | - |
-| `GestureEvaluation` | `overall_score` |
-| `GestureEvent` | `time_seconds`, `label` |
-| `GesturePoint` | `time_seconds`, `value` |
-| `GesturePromptRegion` | `start_seconds`, `duration_seconds`, `text` |
-| `HTTPValidationError` | - |
-| `JobAccepted` | `job_id`, `state`, `request_hash`, `resolved_backend` |
-| `JobRecord` | `id`, `operation_id`, `request_hash`, `state`, `resolved_backend`, `progress`, `created_at`, `updated_at` |
-| `JobState` | - |
-| `JobSummary` | `id`, `operation_id`, `request_hash`, `state`, `resolved_backend`, `progress`, `created_at`, `updated_at`, `operation` |
-| `OperationRequest` | `operation` |
-| `ReconstructionMetrics` | `rmse` |
-| `StructuredError` | `code`, `message` |
-| `ValidationError` | `loc`, `msg`, `type` |
-| `WaveformSummary` | `representation_id`, `start_seconds`, `duration_seconds`, `sample_rate`, `channels`, `point_count`, `minimum`, `maximum` |
+| Object | Purpose | Required fields |
+| --- | --- | --- |
+| `AnalysisResult` | A durable analysis result for one source region and request hash. The data representation contains the full result; artifacts, summary and analysis metadata support display and provenance. | `id`, `operation_id`, `request_hash`, `source`, `data`, `created_at` |
+| `AssetRegion` | Selects a timed region of a content-addressed audio asset. The start must be nonnegative and the duration positive. | `start_seconds`, `duration_seconds`, `asset_id` |
+| `AssetRepresentation` | Describes one stored representation of an asset, including its role, media type and download URL. Audio representations also report sample rate, channel count and duration when known. | `id`, `asset_id`, `role`, `media_type`, `binary_url` |
+| `AudioAsset` | An immutable asset identified by the SHA-256 of its bytes. Its representations describe the available originals, proxies or derived formats. | `id`, `byte_size`, `created_at`, `representations` |
+| `Candidate` | One generated alternative, retaining its seed, native and proxy audio, optional splice preview and evaluation. User rating, selection and annotation are stored alongside it. | `asset`, `operation_id`, `index`, `seed`, `native_representation_id`, `proxy_representation_id` |
+| `CandidateJudgement` | Updates a candidate's user rating, selection and annotation. This records an audition judgement without changing its audio bytes. | - |
+| `CandidateSet` | The alternatives produced by one operation and request hash. Each candidate carries the seed and representations needed to audition or recover that result. | `id`, `operation_id`, `request_hash`, `candidates`, `created_at` |
+| `CodecReconstructionResult` | Keeps the selected source, actual model input, encoded tokens and native and proxy reconstructions together. Metrics and codec metadata make the round trip inspectable. | `id`, `operation_id`, `request_hash`, `source`, `model_input`, `tokens`, `reconstruction_native`, `reconstruction_proxy`, `metrics`, `codec`, `created_at` |
+| `CorpusNeighbour` | A matching corpus segment with total distance, per-group distances and auditionable audio. An optional splice preview places the candidate back into the query context. | `segment`, `distance`, `audio` |
+| `CorpusPreview` | A display-oriented view of segmentation, embedding or neighbour search. It includes the query, indexed count, feature weights and any resulting segments or neighbours. | `operation`, `query` |
+| `CorpusSegment` | A timed segment in a corpus with scale and optional links to adjacent segments and descriptors. Times and scale are expressed in seconds. | `id`, `asset_id`, `start_seconds`, `duration_seconds`, `scale_seconds` |
+| `ErrorCode` | A stable category for a structured job failure. Read the message and details for the specific cause, and retry only when retryable allows it. | - |
+| `GestureBinding` | Records how one gesture lane maps to an operation target. The explanation makes the chosen delivery mechanism inspectable. | `name`, `kind`, `delivery`, `target`, `explanation` |
+| `GestureBoard` | Collects timed prompts, events and curves over one declared duration. Every element must fit within the board, and curve names must be unique. | `duration_seconds` |
+| `GestureCompilation` | The compiled prompt, parameters and per-lane bindings for a board. Inspect it to see which instructions are compiled into conditioning and which are evaluated afterwards. | `board`, `operation`, `effective_prompt`, `parameters`, `bindings` |
+| `GestureCompileRequest` | Supplies a gesture board, target operation and operation parameters. Compilation resolves how the board will be delivered without submitting an inference job. | `board` |
+| `GestureCurve` | A named, weighted curve with at least two points at unique increasing times. Version 1 uses curves for evaluation rather than direct model conditioning. | `name`, `kind`, `points` |
+| `GestureCurveKind` | The perceptual quantity a gesture curve measures: density, activity, register or brightness. The kind determines how evaluation interprets its normalized values. | - |
+| `GestureDelivery` | How a gesture reaches an operation: direct, compiled, evaluative or transformative. Protocol version 1 currently accepts compiled prompt regions and evaluative events and curves. | - |
+| `GestureEvaluation` | A normalized overall score with per-lane scores and measured features. Use the lane scores to inspect which part of the requested gesture a candidate matched. | `overall_score` |
+| `GestureEvent` | A weighted event at a nonnegative time in seconds, with a label and normalized strength. Version 1 evaluates events against generated audio. | `time_seconds`, `label` |
+| `GesturePoint` | One sample of a gesture curve at a time in seconds. Values lie between zero and one. | `time_seconds`, `value` |
+| `GesturePromptRegion` | A text prompt assigned to a positive time window. Version 1 compiles these regions into the effective prompt. | `start_seconds`, `duration_seconds`, `text` |
+| `HTTPValidationError` | An HTTP request failed schema validation. The detail list identifies the invalid fields and their individual errors. | - |
+| `JobAccepted` | Acknowledges a submitted operation with a job id, request hash and resolved backend. A cache hit can reuse earlier work; inspect the job state before fetching a result. | `job_id`, `state`, `request_hash`, `resolved_backend` |
+| `JobRecord` | The durable status of a submitted operation, including progress between zero and one. On completion follow the appropriate result id; on failure inspect the structured error. | `id`, `operation_id`, `request_hash`, `state`, `resolved_backend`, `progress`, `created_at`, `updated_at` |
+| `JobState` | The current processing stage or cancellation outcome. Only complete, cancelled, completed_before_cancellation and failed are terminal states. | - |
+| `JobSummary` | A job record augmented with the operation name and requesting client. The list endpoint returns these for monitoring and filtering. | `id`, `operation_id`, `request_hash`, `state`, `resolved_backend`, `progress`, `created_at`, `updated_at`, `operation` |
+| `OperationRequest` | Submits a named operation with optional source regions, parameters and candidate seeds. Candidate count is 1–64; an explicit seed list must contain exactly that many entries. | `operation` |
+| `ReconstructionMetrics` | Measures a codec reconstruction with root-mean-square error and optional SNR in decibels and spectral convergence. Compare these alongside listening rather than treating one number as perceptual quality. | `rmse` |
+| `StructuredError` | A machine-readable failure with a human explanation. The retryable flag distinguishes a possible retry from a request or environment that must be repaired first. | `code`, `message` |
+| `ValidationError` | One invalid field or request location, with its error type and message. Use loc to identify the value to correct. | `loc`, `msg`, `type` |
+| `WaveformSummary` | Per-channel minimum and maximum envelopes for a requested time window. Use the point count and time range to align the waveform with analysis views. | `representation_id`, `start_seconds`, `duration_seconds`, `sample_rate`, `channels`, `point_count`, `minimum`, `maximum` |
 
 ## Job states
 
-`queued`, `loading_model`, `preparing_audio`, `encoding_source`, `analysing`, `decoding`, `generating`, `evaluating_gestures`, `writing_assets`, `making_proxies`, `complete`, `cancel_requested`, `cancelled`, `cancel_unsupported`, `completed_before_cancellation`, `failed`
+| State | Meaning | Terminal |
+| --- | --- | --- |
+| `queued` | Accepted and waiting to run. Keep the job id and follow its progress. | no |
+| `loading_model` | The worker is preparing model weights and runtime state. Cold starts can spend longer here than later requests. | no |
+| `preparing_audio` | The selected source region is being prepared for the operation, including any required audio conversion. | no |
+| `encoding_source` | The source is being encoded into the model's representation. No reconstructed or generated output is ready yet. | no |
+| `analysing` | The worker is measuring or extracting features from the selected audio. Fetch the analysis result only after completion. | no |
+| `decoding` | The worker is converting the model representation back to audio. | no |
+| `generating` | The model is producing candidate audio. Progress can include the candidate currently being processed. | no |
+| `evaluating_gestures` | Generated audio is being scored against the requested gesture board. These scores describe how candidates match its lanes. | no |
+| `writing_assets` | Result bytes and their metadata are being persisted. Wait for completion before following the result ids. | no |
+| `making_proxies` | Playback or preview representations are being prepared from the result audio. | no |
+| `complete` | The operation finished successfully. Follow the candidate, codec or analysis result id in the job record. | yes |
+| `cancel_requested` | Cancellation has been requested but is not yet confirmed. Continue following the job until its outcome is known. | no |
+| `cancelled` | The job stopped in response to cancellation. Do not assume a completed result exists. | yes |
+| `cancel_unsupported` | The backend cannot cancel this work at its current stage. The job can continue to a later terminal outcome. | no |
+| `completed_before_cancellation` | The work completed before cancellation took effect. Its completed result can still be inspected. | yes |
+| `failed` | The operation ended with an error. Read the structured error's code, message, details and retryable flag. | yes |
 
 ## Structured error codes
 
-`ASSET_NOT_FOUND`, `INVALID_TIME_RANGE`, `UNSUPPORTED_OPERATION`, `MODEL_NOT_AVAILABLE`, `MODEL_LOAD_FAILED`, `MODEL_OUT_OF_MEMORY`, `GENERATION_FAILED`, `ENCODING_FAILED`, `DECODING_FAILED`, `ANALYSIS_FAILED`, `GESTURE_COMPILATION_FAILED`, `RESAMPLING_FAILED`, `JOB_CANCELLED`, `WORKER_UNAVAILABLE`, `PROTOCOL_VERSION_MISMATCH`, `CACHE_CORRUPTION`
+| Code | Meaning and next step |
+| --- | --- |
+| `ASSET_NOT_FOUND` | A referenced asset is unavailable. Check its id or import the source before submitting the operation. |
+| `INVALID_TIME_RANGE` | The requested source interval is invalid. Check nonnegative start, positive duration and the available recording length. |
+| `UNSUPPORTED_OPERATION` | The backend does not support the named operation. Inspect model capabilities and choose a supported operation. |
+| `MODEL_NOT_AVAILABLE` | The requested model is unavailable in this service. Inspect its advertised unavailable reason before retrying. |
+| `MODEL_LOAD_FAILED` | The worker could not initialize the model. Read the diagnostic details for missing files or runtime requirements. |
+| `MODEL_OUT_OF_MEMORY` | The model exceeded available memory. Reduce the workload or free worker memory before another attempt. |
+| `GENERATION_FAILED` | Audio generation failed. Inspect the backend diagnostic and retain the request parameters and seed when reproducing it. |
+| `ENCODING_FAILED` | The source could not be encoded. Check source audio and the model's supported input constraints. |
+| `DECODING_FAILED` | The model representation could not be decoded. Inspect the worker diagnostic before reusing that encoded result. |
+| `ANALYSIS_FAILED` | The analysis worker failed. Check its diagnostic, selected region and operation parameters. |
+| `GESTURE_COMPILATION_FAILED` | The gesture board could not be compiled for the operation. Check lane delivery, timing and operation compatibility. |
+| `RESAMPLING_FAILED` | Audio conversion failed. Inspect source encoding and requested sample-rate information. |
+| `JOB_CANCELLED` | The operation was cancelled. Submit a new request if the work is still wanted. |
+| `WORKER_UNAVAILABLE` | The required worker cannot accept the operation. Restore that worker or select an available backend. |
+| `PROTOCOL_VERSION_MISMATCH` | Client and service disagree on the protocol version. Use compatible revisions before resubmitting. |
+| `CACHE_CORRUPTION` | Stored cached data failed validation. Inspect the reported entry and repair the cache before trusting its result. |
 
 ## Verification lanes
 

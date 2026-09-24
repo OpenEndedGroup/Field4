@@ -62,13 +62,17 @@ does not match this rule and is left untouched.
 A metavariable's declared type names its **kind** — what syntax it is allowed to
 bind:
 
-| Kind      | Binds                                    |
-|-----------|------------------------------------------|
-| `Expr`    | any expression (the common case)         |
-| `Ident`   | a bare name reference                    |
-| `Stmt`    | a statement-position element             |
-| `TypeRef` | a type reference                         |
-| `Vararg`  | a *run* of call arguments (see below)    |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Declaration | What it captures |
+| --- | --- |
+| `x: Expr` | Binds any expression, including a call or arithmetic subtree. Splicing it into a new context adds parentheses when needed to preserve precedence. |
+| `name: Ident` | Binds a bare name reference. Use it when the replacement must insert an identifier rather than an arbitrary expression. |
+| `body: Stmt` | Binds a statement-position syntax element. This constrains the hole to the statement surface of the parsed source. |
+| `t: TypeRef` | Binds a type reference in the source tree. It matches written syntax without resolving the referenced type. |
+| `args: Vararg` | Binds a consecutive run of call arguments. Reuse the capture to forward the argument sequence into another call. |
+
+</div>
 
 Holes are matched structurally and modulo redundant parentheses, so `x + y`
 matches `(a) + (b)`. A repeated hole must bind structurally equal subtrees:
@@ -405,8 +409,10 @@ unrewritten source would give. The `nested pattern` box of the
 
 ### The combinators
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | Strategy | Effect |
-|----------|--------|
+| --- | --- |
 | `"name"` | Fire rule `name` wherever it applies. |
 | `once("name")` | Fire at the single first (outermost) site — at most once. |
 | `topdown("name")` | Fire at the single outermost (shallowest) match. |
@@ -415,6 +421,8 @@ unrewritten source would give. The `nested pattern` box of the
 | `repeat(s)` / `repeat(s, n)` | Iterate `s` to a fixpoint / at most `n` times. Never fails. |
 | `a then b`, `seq(a, b, …)` | Sequence, threading the result; fail-fast. |
 | `choice(a, b, …)` | First alternative that succeeds; fail only if none do. |
+
+</div>
 
 `once("r")` and `topdown("r")` coincide on the single-outermost case and are
 offered as two spellings of the same intent. (`try` would be the usual name for

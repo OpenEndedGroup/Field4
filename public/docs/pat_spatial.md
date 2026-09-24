@@ -21,7 +21,7 @@ collapses to something close to ordinary panning, and everything below stops bei
 
 ## Whether this is the path you want
 
-| | |
+| Decision | Guidance |
 | --- | --- |
 | **Use it when** | you want a rhythm or a line to come from *somewhere* — a direction, a distance, a thing you can walk around — and you want the placement written in the pattern rather than driven from outside it |
 | **Use it when** | you want dough's synth vocabulary: `s`, `note`, `lpf`, `room`, `crush`, `fmi` and the rest of superdough's parameters, which this path forwards untouched |
@@ -44,14 +44,18 @@ A pattern's named parameters ride on `PatEvent.annotations`, and `with` writes a
 that map. So the pattern language needed no extension to describe where a sound is. Six keys are read
 by this path; **every other key is forwarded to dough untouched.**
 
-| tag | means | default |
+<div data-code-lang="kotlin" markdown>
+
+| Pattern example | Effect | Default |
 | --- | --- | --- |
-| `spat` | which spatial source — i.e. which dough engine — the event plays on | `"0"` |
-| `az` | azimuth in degrees; 0 ahead, +90 to the right | 0 |
-| `elev` | elevation in degrees; +90 overhead | 0 |
-| `dist` | distance in metres | 1.5 |
-| `occl` | occlusion, 0 clear to 1 fully blocked | 0 |
-| `air` | 1 to apply air absorption over distance, 0 for none | 1 |
+| `pat("bd") with param("spat", "1")` | Routes the event to spatial group 1. Each group owns a Dough engine, so adding groups also adds memory and startup cost. | `"0"` |
+| `pat("bd") with param("az", "90")` | Places the source 90 degrees to the right. Zero is directly ahead; values are degrees. | `0` |
+| `pat("bd") with param("elev", "90")` | Places the source overhead. Zero elevation lies in the horizontal plane. | `0` |
+| `pat("bd") with param("dist", "2")` | Places the source two metres from the listener. Distance participates in the spatial rendering. | `1.5` |
+| `pat("bd") with param("occl", "0.5")` | Sets partial occlusion. The range is zero for clear to one for fully blocked. | `0` |
+| `pat("bd") with param("air", "0")` | Disables distance-dependent air absorption for this event. Set one to apply it. | `1` |
+
+</div>
 
 ```diffstatic {data-lang=kotlin}
 patSpatial(
@@ -238,14 +242,18 @@ Two things follow, and both are in the code rather than in advice:
 
 Everything below is a field on the launch or the room, readable from the box while it plays:
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | what to read | what it means |
 | --- | --- |
-| `launch.underruns` | frames the audio thread asked for and the ring could not supply. **Zero is the whole point** |
-| `launch.room.ring.fill` / `.minFill` | how full the ring is, and how close it has ever come to empty |
-| `launch.room.worstBlockMs` | the longest single block the render thread has taken |
-| `launch.room.lateSourceBoots` | engines booted after the ring was already feeding an audio thread |
-| `launch.room.busyMsTotal` | milliseconds of real work, to compare against elapsed time |
-| `launch.sources[i].peakVoices` | the most voices ever sounding at once in that group's engine |
+| `launch.underruns` | Counts audio frames requested when the ring had no samples available. A growing count means the producer is falling behind; the target is zero. |
+| `launch.room.ring.fill` / `.minFill` | Reports the ring’s current fill and its lowest observed fill. A falling minimum warns that the audio thread is approaching starvation. |
+| `launch.room.worstBlockMs` | Reports the longest render-thread block in milliseconds. Compare this peak with the available buffering when diagnosing dropouts. |
+| `launch.room.lateSourceBoots` | Counts engines booted after audio playback began. Pre-create the spatial groups when startup during playback causes gaps. |
+| `launch.room.busyMsTotal` | Accumulates milliseconds spent doing render work. Compare it with elapsed time to estimate how much producer capacity is in use. |
+| `launch.sources[i].peakVoices` | Reports the greatest number of simultaneous voices in group `i`. Use it to locate a group whose polyphony is driving rendering cost. |
+
+</div>
 
 Latency costs nothing musically. The pattern is queried ahead, so notes stay in time with each other;
 what the ring delays is only how soon a *start* or a *stop* is heard.

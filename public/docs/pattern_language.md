@@ -585,11 +585,15 @@ When two patterns meet, the rhythm has to come from somewhere. There are exactly
 answers, and Field spells them the way Tidal does; the bar marks the side the structure
 comes from.
 
+<div data-code-lang="kotlin" markdown>
+
 | operator | structure | `pat("0 1")` against `pat("10 20 30")` |
 | --- | --- | --- |
-| `` `|+|` `` | both | 4 events — every intersection |
-| `` `|+` `` | left | 2 events — exactly the left's |
-| `` `+|` `` | right | 3 events — exactly the right's |
+| `` `|+|` `` | both | Produces four intersection events. Both rhythms contribute boundaries, so neither side alone determines the structure. |
+| `` `|+` `` | left | Produces two events with the left pattern’s structure. Use it when the left side should keep its rhythm. |
+| `` `+|` `` | right | Produces three events with the right pattern’s structure. Use it when the right side should keep its rhythm. |
+
+</div>
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/structure-choice.png" wait="2" capture="box" open-outputs="true" name="pat-doc-structure"}
 :::static
@@ -860,14 +864,18 @@ A pattern schedules *events*. Sometimes what you want from those events is not a
 blend of the kernels around it. The kernel is chosen per atom, and its numbers are written
 in the atom itself:
 
-| atom | shape |
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Pattern atom example | Shape and parameters |
 | --- | --- |
-| `g:(value,sigma)` | a Gaussian bump |
-| `tent:(value,radius)` | a linear tent |
-| `box:(value,radius)` | a rectangle |
-| `wendland:(value,radius)` `spline:(value,radius)` | compactly-supported smooth bumps |
-| `env:(value,attack,release)` | an attack/release envelope |
-| `adsr:(value,attack,decay,sustain,release)` | a full ADSR |
+| `pat("g:(1,0.12)")` | Places value 1 under a Gaussian influence kernel with spread 0.12 in the function’s time coordinate. Overlapping atoms contribute to a weighted average. |
+| `pat("tent:(1,0.08)")` | Uses a linearly falling tent kernel of radius 0.08 around the event. Outside the radius it contributes no weight. |
+| `pat("box:(1,0.08)")` | Uses a constant-weight box kernel of radius 0.08. Its boundary is abrupt rather than smoothly tapered. |
+| `pat("wendland:(1,0.08) spline:(0,0.08)")` | Uses compactly supported smooth kernels around the events. Radius controls how far each event influences the weighted curve. |
+| `pat("env:(1,0.01,0.2)")` | Uses an attack/release envelope for value 1. Attack and release control the rising and falling influence around the event. |
+| `pat("adsr:(1,0.01,0.08,0.4,0.2)")` | Uses attack, decay, sustain and release parameters in that order. Sustain is a level; the other parameters describe envelope timing. |
+
+</div>
 
 So `patFn("g:(0.9,0.18) g:(0.1,0.18)")` is a two-bump gesture that repeats every cycle, and a
 `Functions.Fn` like any other, which means the whole `Functions` library applies to it.

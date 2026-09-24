@@ -1915,7 +1915,7 @@ to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chai
 actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
 form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
 read what it says. Every assertion prints the measured value beside the floor it is compared
-against. The library is `afield/four/util/GpuProbe.kt` and the note on it is `dev_docs/GPU_PROBE.md`.
+against. The library is `afield/four/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
 
 Registered `COMPILE_ONLY` — box 1 opens a window — so what CI holds is that all four box bodies
 still compile against Field's real K2 import set. The numbers are asserted separately, by the

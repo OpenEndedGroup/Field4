@@ -7,7 +7,7 @@ The `#petri` notation is the terse surface. Everything it can express, the Kotli
 express, and the DSL can do more, because it can take a lambda. What the notation buys is that a
 whole net fits on screen and one arc is one line, so you can edit it while it plays.
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=petri}
 #petri
 !grid 1/16
 
@@ -23,48 +23,60 @@ Every operator in the tables below has a worked example on the examples page or 
 
 Settings for the whole net. One per line, anywhere in the source.
 
-| written | means |
+<div class="field-reference" data-code-lang="petri" markdown>
+
+| Example | What it means |
 | --- | --- |
-| `!timing` | which firing semantics: `step`, `event` or `timed` |
-| `!grid` | the tick, as a rational number of cycles — `!grid 1/16` |
-| `!conflict` | how competitors for one token are resolved |
-| `!seed` | the seed for `!conflict random`, so the same net plays the same way twice |
-| `step` | maximal step: everything enabled fires on each grid tick. The default |
-| `event` | one transition per tick, the first in conflict order |
-| `timed` | firing takes time — a transition holds its tokens for its duration |
-| `order` | resolve conflicts in declaration order |
-| `priority` | highest `pri=` first. The default |
-| `round-robin` | rotate the order each step so nobody starves |
-| `random` | a deterministic weighted shuffle from `!seed` |
+| `!timing step` | Chooses maximal-step firing: every enabled, non-conflicting transition can fire on a grid tick. This is the default timing mode. |
+| `!grid 1/16` | Sets the tick to one sixteenth of a cycle. Durations and delays use cycles, so changing playback speed changes their duration in seconds. |
+| `!conflict priority` | Chooses which transition wins when enabled transitions compete for the same tokens. Priority ordering is the default. |
+| `!seed 7` | Seeds the random conflict order. Use the same seed and net to reproduce a trajectory. |
+| `!timing step` | Allows a maximal set of compatible firings at each tick. Competing firings still follow the chosen conflict policy. |
+| `!timing event` | Fires one enabled transition per tick, taking the first in conflict order. Use it to hear a net’s interleaving one step at a time. |
+| `!timing timed` | Holds consumed tokens for the transition’s duration before completing the firing. Choose this when simultaneous work must occupy resources. |
+| `!conflict order` | Resolves competition in declaration order. Moving a transition earlier can change the resulting rhythm. |
+| `!conflict priority` | Tries larger `pri=` values first. Use priorities to make an accented transition win over a competing ordinary hit. |
+| `!conflict round-robin` | Rotates the ordering from step to step. This prevents a permanently early declaration from always winning a shared token. |
+| `!conflict random` | Uses a seeded weighted shuffle to order competing transitions. Set each transition’s `w=` for relative weight and `!seed` for repeatability. |
+
+</div>
 
 ## Places
 
 A place is created the first time anything mentions it, so you only declare one to give it a
 marking, a capacity or a colour.
 
-| written | means |
+<div class="field-reference" data-code-lang="petri" markdown>
+
+| Example | What it means |
 | --- | --- |
-| `:` | separates a place's name from what it holds |
-| `2` | that many black tokens — any bare whole number |
-| `^` | a capacity: `dst : 0 ^4` never holds more than four |
-| `"…"` | **one** token whose colour is that pattern — a section |
-| `'…'` | one token coloured with that literal string |
-| `#` | one token coloured with that number — `notes : #60, #64` |
-| `,` | separates several tokens in one declaration |
+| `kick : 1` | Declares `kick` with one black token. A place mentioned only by an arc starts empty. |
+| `hats : 2` | Places two black tokens in `hats`. Bare whole numbers are token counts, rather than numeric token colours. |
+| `dst : 0 ^4` | Creates an empty place with capacity four. Firings must respect the destination’s capacity. |
+| `verse : "bd ~ sd ~"` | Stores one pattern-valued token containing a whole rhythm. Quoted patterns are not expanded into several tokens at declaration time. |
+| `label : 'lead'` | Stores one literal string colour. Single quotes distinguish a label from a double-quoted musical pattern. |
+| `notes : #60` | Stores one token whose numeric colour is 60. Use `#` when the number is a value to transform, rather than a token count. |
+| `notes : #60, #64, #67` | Stores three separately coloured tokens in one place. Commas separate tokens; the marking is three, not their numeric sum. |
+
+</div>
 
 The double-quote form is the asymmetry: a quoted string is a *pattern*, so one token can carry a
 whole rhythm, and a place can hold a section of a song rather than a single hit.
 
 ## Arcs
 
-| written | means |
+<div class="field-reference" data-code-lang="petri" markdown>
+
+| Example | What it means |
 | --- | --- |
-| `-[` | opens a transition — `pre -[ name ]-> post` |
-| `]->` | closes it |
-| `+` | joins several places on either side |
-| `*` | an arc weight: `2*hats` needs two tokens |
-| `~` | inhibitor arc: enabled only while that place is **empty** |
-| `&` | read arc: needs a token there, consumes none |
+| `pre -[ hit ]-> post` | Declares transition `hit`, consuming from `pre` and producing into `post`. Its name can be reused on another line to add more arcs. |
+| `pool -[ sink ]->` | Closes the transition with no output place, making a drain. Conversely, `-[ spawn ]-> pool` is a source. |
+| `kick + clock -[ hit ]-> hats` | Requires tokens from both input places in one firing. Use `+` on the output side to produce into several places. |
+| `2*hats -[ roll ]-> fill` | Consumes two tokens from `hats` for each firing. Arc weights apply independently to each named place. |
+| `~armed -[ fill ]-> hats` | Enables `fill` only while `armed` is empty. The inhibitor tests absence and consumes nothing. |
+| `&clock -[ tick ]-> bar` | Requires a token in `clock` but leaves it there. A read arc lets several transitions observe the same condition. |
+
+</div>
 
 Either side may be empty: `-[ spawn ]-> pool` is a source and `pool -[ sink ]->` is a drain. A
 transition may be named on several lines, which is how one with several inputs stays readable.
@@ -73,14 +85,18 @@ transition may be named on several lines, which is how one with several inputs s
 
 Written after the name, inside the brackets, in any order.
 
-| written | means |
+<div class="field-reference" data-code-lang="petri" markdown>
+
+| Example | What it means |
 | --- | --- |
-| `@` | how long the firing's event lasts — `@1/16`. Under `timed` it also holds the tokens |
-| `delay=` | shifts the emitted event without touching the net's logic — how you nudge a hit late |
-| `pri=` | higher fires first when two transitions want the same token |
-| `w=` | relative likelihood under `!conflict random` |
-| `:` | what the firing sounds — a bare word, a `"quoted string"` or a `#number` |
-| `=>` | a colour combinator for the tokens this transition produces |
+| `pre -[ hit @1/16 : bd ]-> post` | Gives the emitted event a duration of one sixteenth of a cycle. Under timed semantics, the transition also holds its tokens for this duration. |
+| `pre -[ hit delay=1/32 : bd ]-> post` | Shifts the audible event later by one thirty-second of a cycle. The net’s enabling and token movement stay on their original schedule. |
+| `pre -[ hit pri=2 : bd ]-> post` | Gives this transition priority two. Larger values win when the conflict policy is `priority`. |
+| `pre -[ hit w=2 : bd ]-> post` | Assigns relative weight two in random conflict ordering. The weight matters only under `!conflict random`. |
+| `pre -[ hit : bd ]-> post` | Emits the sound token `bd` when the transition fires. A quoted string or `#number` can be emitted instead. |
+| `pre -[ move => rev ]-> post` | Transforms consumed colours before producing output tokens. Here the first consumed pattern is reversed. |
+
+</div>
 
 ## Combinators
 
@@ -88,31 +104,37 @@ What `=>` can name. Each takes the tokens a firing consumed and returns the colo
 produces. The vocabulary is closed: these words and no others. For anything else, use the Kotlin
 DSL, where an output arc takes a lambda.
 
-| written | means |
+<div class="field-reference" data-code-lang="petri" markdown>
+
+| Example | What it means |
 | --- | --- |
-| `carry` | the first consumed colour, unchanged — the default |
-| `black` | no colour: produce a plain black token |
-| `swap` | the second consumed colour, falling back to the first |
-| `stack` | all consumed patterns layered on top of each other |
-| `cat` | all consumed patterns, one per cycle |
-| `fastcat` | all consumed patterns squeezed side by side into one cycle |
-| `rev` | the first consumed pattern, reversed |
-| `palindrome` | the first consumed pattern, then its reverse |
-| `degrade` | the first consumed pattern with half its events dropped |
-| `fast2` | the first consumed pattern at double speed |
-| `slow2` | the first consumed pattern at half speed |
-| `sum` | the numeric consumed colours added together |
-| `inc` | the first numeric consumed colour plus one |
-| `count` | how many tokens were consumed |
+| `pre -[ move => carry ]-> post` | Passes the first consumed colour through unchanged. This is the default when no combinator is written. |
+| `pre -[ move => black ]-> post` | Produces an uncoloured black token. Use it when the next place needs occupancy rather than the incoming payload. |
+| `pre -[ move => swap ]-> post` | Selects the second consumed colour, falling back to the first when there is only one. Input ordering therefore matters. |
+| `pre -[ move => stack ]-> post` | Layers all consumed patterns simultaneously. Their events share the output pattern’s cycle. |
+| `pre -[ move => cat ]-> post` | Plays the consumed patterns one per cycle. This preserves each section’s full cycle length. |
+| `pre -[ move => fastcat ]-> post` | Fits all consumed patterns side by side into one cycle. More inputs make each section occupy a smaller fraction of that cycle. |
+| `pre -[ move => rev ]-> post` | Reverses the first consumed pattern. Use it to alternate a section with its backward version. |
+| `pre -[ move => palindrome ]-> post` | Alternates the first consumed pattern with its reverse. The output carries both directions as a pattern. |
+| `pre -[ move => degrade ]-> post` | Drops half the first consumed pattern’s events probabilistically. This thins a section without changing the net’s token logic. |
+| `pre -[ move => fast2 ]-> post` | Plays the first consumed pattern at double speed. Its material repeats twice over the original span. |
+| `pre -[ move => slow2 ]-> post` | Plays the first consumed pattern at half speed. Its material stretches across twice the original span. |
+| `pre -[ move => sum ]-> post` | Adds the numeric colours of the consumed tokens. Use numeric tokens such as `#60` for arithmetic payloads. |
+| `pre -[ move => inc ]-> post` | Adds one to the first consumed numeric colour. A loop through this transition can carry a counter. |
+| `pre -[ move => count ]-> post` | Produces the number of tokens consumed by this firing. This measures the firing’s inputs rather than the total marking of the net. |
+
+</div>
 
 ## Kotlin entry points
 
 Not notation — the API around it.
 
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
 | call | gives you |
 | --- | --- |
-| `petri("…")` | a `PetriNet` from the notation, throwing on the first error |
-| `petriParse("…")` | the same, plus every diagnostic, and a net even when there are errors |
+| `petri("…")` | Parses the notation into a `PetriNet` and throws when parsing fails. Use `petriParse` when you need to display diagnostics instead. |
+| `petriParse("…")` | Returns collected diagnostics and a nullable parsed net. Check `ok` before treating the result as valid. |
 | `petri { … }` | a `PetriNet` from the Kotlin DSL, where arcs can take lambdas |
 | `petriRing(name, pulses, steps)` | a Euclidean token ring — the drum primitive |
 | `petriSong("verse" to (pat("…") to 8), …)` | a linear form whose sections are pattern-valued tokens |
@@ -149,3 +171,5 @@ Not notation — the API around it.
 | `box.showPetriNet(net, layout = …)` | `AUTO` (the default), `RING`, `FORCE`, `LAYERED`, `TALA` |
 | `PetriLayout.TALA` | d2's diagram engine, via the optional `native/field-d2-layout`; draws with `FORCE` when it is absent |
 | `clearPetriLayoutCache()` | re-solve, after building that helper under a running Field |
+
+</div>
