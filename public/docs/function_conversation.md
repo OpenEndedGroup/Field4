@@ -119,9 +119,9 @@ the saved chat and viewer does not make a model call.
 
 This is Field's chat panel, restored from the recorded run. Here the chat is
 scrolled back to the move-and-stretch exchange; the viewer shows the final saved
-revision. The starter is still blank; the developed example carries this history. The older turns predate model
-badges, so their UI correctly says **Model not recorded**; the run's provider and
-model are documented in the accompanying archive.
+revision. The starter is still blank; the developed example carries this history.
+The older turns predate model badges, so they show **Model not recorded**; the
+archive names the run's provider and model.
 
 ### From constants to a composition
 
@@ -438,11 +438,13 @@ revision sources; the readable versions are here:
 | [Warp a background passage](assets/function_conversation/06-warp.html) | A reversible local time experiment. |
 | [Restore the background](assets/function_conversation/07-restore-background.html) | Other event edits survive. |
 
-An [independent replay](assets/function_conversation/independent-verification.json)
-recompiled the saved sources and compared them on a grid no coarser than 11 ms.
-It checked preserved regions, hold values, random-access evaluation order, failed
-compilation, and protection against stale edits. Its zero differences are sampled
-evidence; they are not a proof about every possible input to arbitrary Kotlin.
+??? aside "How the saved sources were rechecked"
+
+    An [independent replay](assets/function_conversation/independent-verification.json)
+    recompiled every saved source and compared them on a grid no coarser than 11 ms,
+    covering preserved regions, hold values, random-access evaluation order, failed
+    compilation, and protection against stale edits. It found no differences — which is
+    sampled evidence about these nine revisions, not a proof about arbitrary Kotlin.
 
 ## The tools are part of the document
 
