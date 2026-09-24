@@ -91,8 +91,10 @@
         } else {
           const x = uniformX(w.start, w.end, n, true), last = a => [...a, a[n - 1]];
           // Continuous filled extrema bands avoid a comb of separately rasterized vertical strokes.
-          traces.push({type: 'scatter', mode: 'lines', name, x, y: last(v.low), line: {color, width: .6, shape: 'hv', dash: previous ? 'dash' : 'solid'}});
-          traces.push({type: 'scatter', mode: 'lines', name, x, y: last(v.high), line: {color, width: .6, shape: 'hv', dash: previous ? 'dash' : 'solid'},
+          // Audio envelopes are dense enough to read as a contour; function bins stay stepped (hv).
+          const shape = cfg.shape || 'hv', ex = shape === 'hv' ? x : x.slice(0, n).map((t, i) => (t + x[i + 1]) / 2), ey = a => shape === 'hv' ? last(a) : a;
+          traces.push({type: 'scatter', mode: 'lines', name, x: ex, y: ey(v.low), line: {color, width: .6, shape, dash: previous ? 'dash' : 'solid'}});
+          traces.push({type: 'scatter', mode: 'lines', name, x: ex, y: ey(v.high), line: {color, width: .6, shape, dash: previous ? 'dash' : 'solid'},
             fill: 'tonexty', fillcolor: previous ? 'rgba(150,150,150,.12)' : (cfg.fill || 'rgba(235,235,235,.42)')});
           probes.push({label: name, edges: x, low: v.low, high: v.high});
         }
@@ -219,8 +221,8 @@
   const envelopeWindow = (e, s, d) => ({start: s, end: s + d, mode: 'envelope', sampleSpacing: 1 / (e.sample_rate || 1),
     lanes: Array.from({length: Math.max(1, e.channels || e.minimum.length)}, (_, ch) => ({name: (e.channels || e.minimum.length) > 1 ? 'ch ' + (ch + 1) : 'audio',
       minimum: -1, maximum: 1, current: {low: (e.minimum[ch] || e.minimum[0]).map(Number), high: (e.maximum[ch] || e.maximum[0]).map(Number)}}))});
-  const audioLanes = n => Array.from({length: n}, (_, ch) => ({color: ch % 2 ? '#d6a85f' : (colors.primary || '#63c7dc'),
-    fill: ch % 2 ? 'rgba(214,168,95,.55)' : (colors.fill || 'rgba(99,199,220,.55)'), zeroLine: true}));
+  const audioLanes = n => Array.from({length: n}, (_, ch) => ({color: ch % 2 ? '#d6a85f' : (colors.primary || '#63c7dc'), shape: 'linear',
+    fill: ch % 2 ? 'rgba(214,168,95,.82)' : (colors.fill || 'rgba(99,199,220,.82)'), zeroLine: true}));
   const fetchAudio = async (s, d, points, signal) => {
     if (config.audio?.waveformUrl) {
       const url = new URL(config.audio.waveformUrl, document.baseURI);
@@ -357,7 +359,7 @@
         } else next = await fetchRange(start, Math.min(domainEnd, start + span), pointsWanted(), controller.signal);
         if (disposed || token !== generation) return;
         model = next; loadedOnce = true; await draw(token); if (disposed || token !== generation) return;
-        describe();
+        describe(); if (!overviewModel) loadOverview();
       } catch (error) {
         if (disposed || token !== generation) return;
         if (source === 'embedded') { liveExpired = true; model = embedded; loadedOnce = true; await draw(token); describe(); }
@@ -375,6 +377,15 @@
   };
 
   // ---- overview strip ---------------------------------------------------------------------
+  let overviewRequested = false;
+  // One coarse whole-domain query, only when the first view was already zoomed in.
+  const loadOverview = async () => {
+    if (overviewRequested || !navShape || !(total > 0)) return; overviewRequested = true;
+    try {
+      overviewModel = source === 'audio' ? await fetchAudio(domainStart, total, 400) : await fetchRange(domainStart, domainEnd, 400);
+      if (!disposed) drawOverview();
+    } catch (_) { /* the strip stays an outline; the main view reports its own errors */ }
+  };
   function drawOverview() {
     if (!navShape || !model) return;
     if (!overviewModel && (span >= total * .999 || model.kind === 'preview' || model === embedded)) overviewModel = model;

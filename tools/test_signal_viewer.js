@@ -59,9 +59,12 @@
   // Leave the output at a useful local scale for inspection and a subsequent replacement test.
   for (let i = 0; i < 7; i++) key('+');
   await ready();
-  win.Plotly.Fx.hover(canvas, {xval:(view().start+view().end)/2}, ['xy']);
-  await sleep(100);
-  assert(canvas.querySelector('.hoverlayer')?.textContent.includes('s'), 'Plotly hover values missing');
+  // Hover is the viewer's own readout plus a DOM cursor line, not Plotly hover labels.
+  const r2 = canvas.getBoundingClientRect();
+  canvas.dispatchEvent(new win.PointerEvent('pointermove', {clientX: r2.left + 52 + (r2.width - 64) / 2, clientY: r2.top + 40, bubbles: true}));
+  const readout = root.querySelector('.fsv-readout').textContent;
+  assert(/ s /.test(readout) && readout.includes(config.lanes[0].name), 'Hover readout missing: ' + readout);
+  assert(root.querySelector('.fsv-cursor').style.display === 'block', 'Hover cursor line missing');
   return {ok: true, pointerAnchoredZoom: true, pan: true, fineResampling: true, staleReplyRejected: true,
     bounds: true, invalidQueryRejected: true, view: view(), detail, mode: root.dataset.mode,
     status: root.querySelector('.fsv-status').textContent};
