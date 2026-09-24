@@ -295,7 +295,11 @@
       uirevision: config.viewKey || 'signal', annotations: [], shapes: []};
     let top = 1;
     lanes.forEach((lane, i) => {
-      const suffix = i ? i + 1 : '', y0 = Math.max(0, top - usable * (lane.weight || 1) / weights), yr = yRanges[i] || [lane.minimum, lane.maximum];
+      const suffix = i ? i + 1 : '', y0 = Math.max(0, top - usable * (lane.weight || 1) / weights);
+      // A labelled lane gets a 17 px band of headroom above its data, so the label sits over empty
+      // plot rather than across the curve (Marc, analysis-board review).
+      const labelled = count > 1 || config.laneLabels, head = labelled ? Math.min(.45, 17 / Math.max(1, inner * (top - y0))) : 0;
+      const [r0, r1] = yRanges[i] || [lane.minimum, lane.maximum], yr = [r0, r1 + (r1 - r0) * head / (1 - head)];
       const secondary = colors.secondary ? colors.secondary : null;
       l['xaxis' + suffix] = {range: [start, start + span], autorange: false, anchor: 'y' + suffix, matches: i ? 'x' : undefined,
         showticklabels: i === count - 1, gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ...tickGap, tickfont: axisFont,
@@ -304,12 +308,12 @@
       l['yaxis' + suffix] = {domain: [y0, top], range: yr, autorange: false, fixedrange: !(interactive && lane.yZoom),
         gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ...tickGap, tickfont: axisFont, automargin: false, zeroline: false,
         // Padded analysis ranges get round auto ticks; a signal lane's own bounds are labelled exactly.
-        ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} : lane.autoTicks ? {nticks: clamp(Math.floor(inner * (top - y0) / 26), 2, 5)} :
+        ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} : lane.autoTicks ? {nticks: clamp(Math.floor(inner * (top - y0) / 26), 3, 5)} :
           {tickvals: [lane.minimum, (lane.minimum + lane.maximum) / 2, lane.maximum].map(v => Number(v.toPrecision(4)))}),
         title: lane.yTitle ? {text: esc(lane.yTitle), standoff: 10, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
-      if (count > 1 || config.laneLabels) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',
-        xshift: 5, yshift: -3, text: esc(lane.name), showarrow: false, font: {...axisFont, size: 10, color: 'rgba(255,255,255,.62)'},
-        bgcolor: 'rgba(5,5,5,.78)', borderpad: 2});
+      if (labelled) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',
+        xshift: 6, yshift: -2, text: esc(lane.name), showarrow: false, font: {...axisFont, size: 10, color: 'rgba(255,255,255,.7)'},
+        bgcolor: 'rgba(5,5,5,.28)', borderpad: 1});
       top = y0 - gap;
     });
     l.shapes = zeroShapes(lanes);
