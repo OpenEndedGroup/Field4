@@ -22,11 +22,11 @@ with(Functions) {
 }
 ```
 
-### What a sampled envelope cannot say
+### Why an enclosure, not a sampled envelope
 
 `SignalViewer` bins a function by evaluating it on a grid and keeping each bin's min and max. A
 feature narrower than the grid spacing can sit between two samples and never be drawn, and nothing
-in the picture says so. `public/docs/function_conversation.md` states that limit in as many words.
+in the picture says so — a limit `public/docs/function_conversation.md` states about its own plots.
 An enclosure is a different kind of object: `[lo, hi]` such that **every** value the function
 takes on the interval lies inside, whether or not any sample landed near it. A spike 10 ms wide
 in an hour-long signal cannot hide from it, because nothing is sampled.
@@ -111,7 +111,7 @@ A set of `Double` values: every number in `[lo, hi]`, plus NaN when `maybeNaN`. 
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">FnIntervalRefusal</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FnInterval/#L125)
 
-Thrown inside a walk when a bound cannot honestly be given — an op with no formula, an unbounded shape domain, a `clamp` whose range may invert (which throws in `Fn.eval` itself). Caught by `FnIntervals.enclose` and reported as `FnEnclosure.refusal`.
+Thrown inside a walk when no sound bound exists — an op with no formula, an unbounded shape domain, a `clamp` whose range may invert (which throws in `Fn.eval` itself). Caught by `FnIntervals.enclose` and reported as `FnEnclosure.refusal`.
 
 ### FnIntervalRules { #fninterval-kt-fnintervalrules }
 
@@ -187,7 +187,7 @@ The interval walk over an `Fn` graph: support checks and the one-shot enclosure.
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">unsupportedOps</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/FnInterval/#L615) | The distinct ops in `fn` that have no formula, in first-seen order — exactly the ops an enclosure refuses. A node carrying `numbers["value"]` is a constant and always supported. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">supports</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/FnInterval/#L628) | True when every node of `fn` has a formula or is a constant. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">range</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">FnRange</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRange</span></code>](source/jvmMain/afield/stdlib/FnInterval/#L634) | The enclosure of `fn` over the position range `x`. Throws [`FnIntervalRefusal`](function.md#fninterval-kt-fnintervalrefusal) when no honest bound exists; `enclose` is the non-throwing form. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">range</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">FnRange</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRange</span></code>](source/jvmMain/afield/stdlib/FnInterval/#L634) | The enclosure of `fn` over the position range `x`. Throws [`FnIntervalRefusal`](function.md#fninterval-kt-fnintervalrefusal) when no sound bound exists; `enclose` is the non-throwing form. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">enclose</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnEnclosure</span></code>](source/jvmMain/afield/stdlib/FnInterval/#L710) | The certified bound on `fn` over `[a, b]`, or a refusal naming why there is none. |
 
 ### FnExtremum { #fninterval-kt-fnextremum }
