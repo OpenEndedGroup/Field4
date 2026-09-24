@@ -14,6 +14,7 @@ import io
 import json
 from pathlib import Path
 import re
+import textwrap
 import zipfile
 
 from function_conversation_pages import CSS, TITLES, reader
@@ -40,6 +41,79 @@ RECORDED_TURNS = (
     "06-warp",
     "07-restore-background",
 )
+
+
+def source_blocks() -> dict[str, str]:
+    """Listings and edit views come from the saved Kotlin, not parallel examples."""
+    example = DEMOS / "function_conversation_example"
+    revisions = example / "revisions"
+
+    def revision(name: str) -> str:
+        return (revisions / (name + ".kt")).read_text()
+
+    def excerpt(source: str, start: str, end: str) -> str:
+        return textwrap.dedent(source[source.index(start) : source.index(end)]).strip()
+
+    def listing(source: str) -> str:
+        return "```diffstatic {data-lang=kotlin}\n" + source.rstrip() + "\n```"
+
+    created = revision("r3-66fd67f6fe7c")
+    stretched = revision("r5-2aa6023ddfca")
+    lagged = revision("r6-deb1b1738cb0")
+    final = (example / "function_source_code_.kt").read_text()
+    assert final == revision("r9-82456e1e48ac")
+    timing = lambda source: excerpt(
+        source, "    val firstStartSeconds", "    val lowPulseHz"
+    )
+    return {
+        "starter": listing(
+            (DEMOS / "function_conversation/function_source_code_.kt").read_text()
+        ),
+        "recorded-start": listing(revision("r2-8f83d79e35c9")),
+        "background": listing(
+            excerpt(created, "    fun background", "    // age runs")
+        ),
+        "channels": listing(
+            excerpt(created, "    val channels = listOf", "    StudyComposition(")
+        ),
+        "timing": "```diff {data-lang=kotlin}\n:::before\n"
+        + timing(created)
+        + "\n:::after\n"
+        + timing(stretched)
+        + "\n```",
+        "lag": listing(
+            excerpt(
+                lagged,
+                "                    val lag = if",
+                "\n                }\n                seconds <= event.plateauEnd",
+            )
+        ),
+        "final": '???+ example "Complete final source · r9-82456e1e48ac"\n\n'
+        + textwrap.indent(listing(final), "    "),
+    }
+
+
+def sync_source_blocks(check: bool) -> None:
+    page = ROOT / "public/docs/function_conversation.md"
+    original = text = page.read_text()
+    for name, source in source_blocks().items():
+        opening = f"<!-- function-study-source:{name} -->"
+        closing = f"<!-- /function-study-source:{name} -->"
+        pattern = re.escape(opening) + r".*?" + re.escape(closing)
+        text, count = re.subn(
+            pattern,
+            lambda _: opening + "\n" + source + "\n" + closing,
+            text,
+            flags=re.DOTALL,
+        )
+        assert count == 1, f"Expected one {name} source block in the walkthrough"
+    if check:
+        if text != original:
+            raise SystemExit(
+                "Walkthrough Kotlin differs from its saved source; rerun this packager"
+            )
+    elif text != original:
+        page.write_text(text)
 
 
 def recorded_chat() -> bytes:
@@ -128,6 +202,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
+    sync_source_blocks(args.check)
     chat = DEMOS / "function_conversation_example" / CHAT_FILE
     if args.check:
         if not chat.is_file() or chat.read_bytes() != recorded_chat():
