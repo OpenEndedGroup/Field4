@@ -72,15 +72,15 @@ internal object TimeViewerShell {
         return """
 <div class="field-signal-viewer fsv-$source${if (extraClass.isBlank()) "" else " " + extraClass.filter { it.isLetterOrDigit() || it == '-' }}" data-afield-intrinsic-width="$intrinsic" style="$size;box-sizing:border-box;--fsv-accent:$safeAccent;--fsv-bg:$safeBackground" aria-busy="true">
 <style>
-.field-signal-viewer{background:var(--fsv-bg);color:rgba(255,255,255,.82);font:12px/1.4 $fontFamily;padding:10px 12px 10px;border-radius:4px}
+.field-signal-viewer{background:var(--fsv-bg);color:rgba(255,255,255,.82);font:10px/1.4 $fontFamily;padding:10px 12px 10px;border-radius:4px}
 .field-signal-viewer .fsv-top{display:flex;align-items:center;gap:8px;min-height:28px;margin-bottom:6px}
-.field-signal-viewer .fsv-title{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:rgba(255,255,255,.92);font-size:13px;font-weight:600}
-.field-signal-viewer .fsv-legend{color:rgba(255,255,255,.5);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
-.field-signal-viewer .fsv-chip{color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.13);border-radius:6px;padding:3px 7px;font-size:11px;line-height:16px;white-space:nowrap;background:rgba(255,255,255,.035)}
+.field-signal-viewer .fsv-title{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:rgba(255,255,255,.92);font-size:11px;font-weight:600}
+.field-signal-viewer .fsv-legend{color:rgba(255,255,255,.5);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
+.field-signal-viewer .fsv-chip{color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.13);border-radius:6px;padding:3px 7px;font-size:9px;line-height:14px;white-space:nowrap;background:rgba(255,255,255,.035)}
 .field-signal-viewer .fsv-chip:empty{display:none}
 .field-signal-viewer .fsv-error{color:#e99a9a}
 .field-signal-viewer .fsv-tools{display:flex;gap:4px}
-.field-signal-viewer button{min-width:26px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:rgba(255,255,255,.78);font:13px/20px $fontFamily;cursor:pointer;padding:0 6px}
+.field-signal-viewer button{min-width:26px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:rgba(255,255,255,.78);font:11px/20px $fontFamily;cursor:pointer;padding:0 6px}
 .field-signal-viewer button:hover{border-color:var(--fsv-accent);color:#fff}
 .field-signal-viewer :focus-visible{outline:1px solid var(--fsv-accent);outline-offset:1px}
 .field-signal-viewer .fsv-frame{border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#050505;overflow:hidden}
@@ -91,11 +91,11 @@ internal object TimeViewerShell {
 .field-signal-viewer .fsv-line{position:absolute;left:0;width:0;display:none;border-left:1px solid rgba(255,255,255,.5);will-change:transform}
 .field-signal-viewer .fsv-line[data-kind=playhead]{border-left:1.5px solid #ffdf73}
 .field-signal-viewer .fsv-cursor[data-kind=hover]{border-left-color:rgba(99,199,220,.85)}
-.field-signal-viewer .fsv-busy{position:absolute;top:8px;right:10px;display:flex;align-items:center;gap:6px;padding:3px 8px;color:rgba(255,255,255,.62);background:rgba(10,10,10,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;font-size:10px;opacity:0;transition:opacity 90ms ease;pointer-events:none}
+.field-signal-viewer .fsv-busy{position:absolute;top:8px;right:10px;display:flex;align-items:center;gap:6px;padding:3px 8px;color:rgba(255,255,255,.62);background:rgba(10,10,10,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;font-size:8px;opacity:0;transition:opacity 90ms ease;pointer-events:none}
 .field-signal-viewer.fsv-loading .fsv-busy{opacity:1}
 .field-signal-viewer .fsv-spinner{width:11px;height:11px;box-sizing:border-box;border:1px solid rgba(255,255,255,.25);border-top-color:var(--fsv-accent);border-radius:50%;animation:fsv-spin 760ms linear infinite}
 @keyframes fsv-spin{to{transform:rotate(360deg)}}
-.field-signal-viewer .fsv-foot{display:flex;gap:12px;align-items:baseline;margin-top:6px;min-height:17px;font-size:11px}
+.field-signal-viewer .fsv-foot{display:flex;gap:12px;align-items:baseline;margin-top:6px;min-height:15px;font-size:9px}
 .field-signal-viewer .fsv-readout{flex:1;min-width:0;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .field-signal-viewer .fsv-range{color:rgba(255,255,255,.45);white-space:nowrap}
 .field-signal-viewer .fsv-navigation{position:relative;height:20px;margin-top:6px;border:1px solid rgba(255,255,255,.1);border-radius:5px;background:#050505;cursor:pointer;overflow:hidden}

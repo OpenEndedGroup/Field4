@@ -286,10 +286,10 @@
   const plotHeight = () => config.plotHeight || (lanesOf().length * (config.laneHeight || 130) + margin().t + margin().b);
   // A 2px transparent tick pushes labels off the axis (plotly 2.24 has no ticklabelstandoff).
   const tickGap = {ticks: 'outside', ticklen: 2, tickcolor: 'rgba(0,0,0,0)'};
-  const axisFont = {family: '"Iosevka Web", "IBM Plex Mono", ui-monospace, monospace', color: 'rgba(255,255,255,.55)', size: 11};
+  const axisFont = {family: '"Iosevka Web", "IBM Plex Mono", ui-monospace, monospace', color: 'rgba(255,255,255,.55)', size: 9};
   const layout = () => {
     const lanes = lanesOf(), count = lanes.length, m = margin(), h = plotHeight(), inner = h - m.t - m.b;
-    const gap = count > 1 ? 14 / inner : 0, weights = lanes.reduce((a, l) => a + (l.weight || 1), 0), usable = 1 - gap * (count - 1);
+    const gap = count > 1 ? 16 / inner : 0, weights = lanes.reduce((a, l) => a + (l.weight || 1), 0), usable = 1 - gap * (count - 1);
     const l = {width: Math.max(200, stage.clientWidth), height: h, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(255,255,255,.022)',
       font: axisFont, margin: m, dragmode: interactive ? 'pan' : false, hovermode: false, showlegend: false,
       uirevision: config.viewKey || 'signal', annotations: [], shapes: []};
@@ -312,7 +312,7 @@
           {tickvals: [lane.minimum, (lane.minimum + lane.maximum) / 2, lane.maximum].map(v => Number(v.toPrecision(4)))}),
         title: lane.yTitle ? {text: esc(lane.yTitle), standoff: 10, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
       if (labelled) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',
-        xshift: 6, yshift: -2, text: esc(lane.name), showarrow: false, font: {...axisFont, size: 10, color: 'rgba(255,255,255,.7)'},
+        xshift: 6, yshift: -2, text: esc(lane.name), showarrow: false, font: {...axisFont, size: 8, color: 'rgba(255,255,255,.7)'},
         bgcolor: 'rgba(5,5,5,.28)', borderpad: 1});
       top = y0 - gap;
     });
