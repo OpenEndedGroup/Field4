@@ -136,3 +136,8 @@ it into the activation lane on a private scale.
   drag, wheel and overview-strip navigation.
 - The demo in `public/docs/visualizers.md` ("One viewer for functions, sounds and signals")
   puts all three sources on one `syncGroup`.
+- Type sizes (5da6efc2f): ticks and axis titles 9 px, lane labels 8 px, panel titles 11 px,
+  chips, legend and footer 9 px; stacked lanes are 16 px apart. The 101 Fn.plot figures, the
+  recorded-audio figure and the one-viewer demo were captured before this change and are owed a
+  recapture. synchronized_analysis.png is current.
+
