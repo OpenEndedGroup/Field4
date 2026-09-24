@@ -80,6 +80,15 @@ each at its own phase of its own blend of two clips, are one mesh, one draw call
 of 128 matrices per frame. Nothing re-uploads a vertex after setup. **Run box 0 first**; box 6 is
 connected beneath it. **Edit `count` at the top and re-run.**
 
+**7 — The candy wrapper on the GPU, linear and dual quaternion in one draw.** Box 5 on the GPU. Two
+instances of the tube in one draw call, both running the `twist` clip (0° → 180° → 0°, three
+seconds a cycle): the left one linear blend skinned, the right one dual quaternion skinned. The
+difference is one method word per instance that `GpuSkinner.uploadPalettes(palettes, methods)`
+writes; the mesh, the palette and the shader are shared. Every 45 frames it prints both waists as a
+percentage of the rest radius, from the CPU oracles on the same palette. **Run box 0 first, and stop
+box 6** — both draw into box 0's window. **Edit `methods` at the top and re-run**: two
+`LINEAR_BLEND`s both pinch, two `DUAL_QUATERNION`s neither does.
+
 ## The rig
 
 `dev_docs/agents/fixtures/skinning/bending_cylinder.gltf` — two bones, 60 vertices, 96 triangles,
@@ -133,6 +142,20 @@ box 6  frame 0 .. 960: 64 instances, 128 matrices uploaded, one draw call
 Box 6's native window capture is `dev_docs/agents/evidence/gpu_skinning/demo_box6_live.png`, and
 `demo_all_boxes_live.png` is the whole document running at once — box 6's tinted crowd with boxes
 4 and 5's normal-shaded tubes standing in the middle of it.
+
+Box 7 was added on 2026-09-23 and run through `tools/field_backdoor.py --port 8472` on a copy of
+this document, after launching box 0: `launch gpu_twist` returned no error, and it printed
+
+```
+t = 0.00 s   waist, % of rest radius:   LINEAR_BLEND 100.0%   |   DUAL_QUATERNION 100.0%
+t = 0.50 s   waist, % of rest radius:   LINEAR_BLEND 70.7%   |   DUAL_QUATERNION 100.0%
+t = 1.00 s   waist, % of rest radius:   LINEAR_BLEND 0.0%   |   DUAL_QUATERNION 100.0%
+t = 1.50 s   waist, % of rest radius:   LINEAR_BLEND 70.7%   |   DUAL_QUATERNION 100.0%
+```
+
+Its native window capture near 180° is `dev_docs/agents/evidence/gpu_skinning/demo_box7_live.png`.
+The committed `document.md`/`metadata.edn` were then written by the transcript `save:` op from that
+session, so they are Field's own serialisation, not hand edits.
 
 **One trap this retires.** Backlog Z7 says the native window capture times out against a per-frame
 `applyToMesh`, which is why box 4 poses once instead of animating. Box 6 animates *and*

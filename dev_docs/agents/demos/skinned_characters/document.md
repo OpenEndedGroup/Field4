@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
 ```
 
 ## 1. 0 - A window and a renderer, which box 4 needs
@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="f5e60137-f514-4c01-865c-5af02f1d8eee" index="0" -->
 
 ```edn [field-box id="f5e60137-f514-4c01-865c-5af02f1d8eee" role="properties"]
-{"id" "f5e60137-f514-4c01-865c-5af02f1d8eee" "index" 0 "name" "0 - A window and a renderer, which box 4 needs" "parents" ["root"] "children" ["gpu_skin" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "gpu_crowd"] "properties" {"children" #{#afield/box "gpu_skin" #afield/box "c82c404d-a15d-4f51-a06f-66dfc2a00364" #afield/box "gpu_crowd"} "parents" #{#afield/box "root"} "name" "0 - A window and a renderer, which box 4 needs" "frame" #afield/rect [0.0 0.0 100.0 100.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"} {"name" "code" "language" "kotlin" "path" "f5e60137-f514-4c01-865c-5af02f1d8eee_code_.kt" "lines" 24 "characters" 1123 "sha256" "1e06ad6ba8e1133419854e02d9044a74d3b7bfd6d62fddc77a22e0e6de432cb9"}]}
+{"id" "f5e60137-f514-4c01-865c-5af02f1d8eee" "index" 0 "name" "0 - A window and a renderer, which box 4 needs" "parents" ["root"] "children" ["gpu_skin" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "gpu_crowd" "gpu_twist"] "properties" {"children" #{#afield/box "gpu_skin" #afield/box "c82c404d-a15d-4f51-a06f-66dfc2a00364" #afield/box "gpu_crowd" #afield/box "gpu_twist"} "parents" #{#afield/box "root"} "name" "0 - A window and a renderer, which box 4 needs" "frame" #afield/rect [0.0 0.0 100.0 100.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "89f6a77619abdeabad9f89f3e7257ad06dd1da86a31cca48e470573a8d07d803"} {"name" "code" "language" "kotlin" "path" "f5e60137-f514-4c01-865c-5af02f1d8eee_code_.kt" "lines" 24 "characters" 1123 "sha256" "1e06ad6ba8e1133419854e02d9044a74d3b7bfd6d62fddc77a22e0e6de432cb9"}]}
 ```
 
 ```text [field-property box="f5e60137-f514-4c01-865c-5af02f1d8eee" name="preamble"]
-import afield.four.Renderer
 import afield.four.util.Window
+import afield.four.Renderer
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -467,12 +467,112 @@ showMeshGrid(
 )
 ```
 
-## 5. 2 - Drag `time` and watch it bend
+## 5. 7 - The candy wrapper on the GPU, linear and dual quaternion in one draw
 
-<!-- field-box id="drag_time" index="4" -->
+<!-- field-box id="gpu_twist" index="4" -->
+
+```edn [field-box id="gpu_twist" role="properties"]
+{"id" "gpu_twist" "index" 4 "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [700.0 540.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 80 "characters" 3330 "sha256" "d645bb396aa5ff9a503512ccbd8bb668dbf7279af6e4db8763c6c92c1538f2c6"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
+```
+
+```kotlin [field-property box="gpu_twist" name="code" path="gpu_twist_code_.kt"]
+import afield.four.modules.DualQuaternionSkinning
+import afield.four.modules.GltfSkinning.SkinningMethod
+import afield.four.modules.GltfSkinning.SkinningOptions
+import afield.four.modules.GltfSkinning
+import afield.four.modules.GltfSupport
+import afield.four.modules.GpuSkinner
+import afield.four.modules.GpuSkinning
+import afield.four.modules.RiggedFixture
+import afield.stdlib.linalg.Matrix4f
+
+// Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
+// draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
+// right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
+// the only difference between them is one word per instance saying which blend to run.
+//
+// RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's window.
+//
+// EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
+// neither does.
+val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
+
+val model = GltfSupport.loadGltfBasic(
+    RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
+)
+val inst = model.meshes.first { it.skin != null }
+
+val module = Module(
+    Parameters(
+        renderer = renderer,
+        vertex = GpuSkinning.skinnedVertexShader,
+        fragment = GpuSkinning.skinnedFragmentShader,
+        name = "gpu twist, lbs vs dqs"
+    )
+).pointer()
+
+val m = Mesh(renderer, module)
+module += "twist" to m
+renderer += "gpu twist, lbs vs dqs" to module
+
+val camera = Camera(renderer)
+camera.p.orthoness = 0.3
+camera.p.matchDepth = 2.0
+camera.target = vec(0, 2, 0)
+camera.at = vec(0, 2.4, -5.2)
+camera.p()
+
+val skinner = GpuSkinner(inst, instances = 2, renderer = renderer, name = "twist")
+skinner.bindTo(m, camera, instanceCount = 2, tint = true)
+
+// Seen from this camera +x is on the LEFT, so instance 0 goes to +1.3.
+val places = listOf(Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0)))
+val sk = skinner.skin.skeleton
+val twist = sk.clip("twist")!!
+
+// The waist as a number, from the CPU oracles on the same palette: the smallest distance from the
+// bone axis of any vertex on the y = 2 ring. Printed so the picture is not the only evidence.
+val restRadius = RiggedFixture.RADIUS
+fun waist(method: SkinningMethod, palette: List<Matrix4f>): Float {
+    val bind = FloatArray(skinner.vertexCount * 3) { skinner.bindPositions[it] }
+    val out = GltfSkinning.skin(bind, null, inst.skin!!.influences, palette, SkinningOptions(method = method))
+    return DualQuaternionSkinning.candyWrapperRadius(out.position, RiggedFixture.UPPER_JOINT_Y)
+}
+
+var n = 0
+loop {
+    // 0 -> 180 -> 0 degrees of twist, three seconds a cycle at 60 fps, on a loop.
+    val seconds = (n / 90f) % twist.durationSeconds
+    skinner.uploadPalettes(places.map { skinner.placedPalette(it, "twist", seconds) }, methods)
+    skinner.updateCamera(m, camera)
+    if (n % 45 == 0) {
+        val rest = sk.palette(twist, seconds)
+        println("t = %.2f s   waist, %% of rest radius:   %s %.1f%%   |   %s %.1f%%".format(
+            seconds,
+            methods[0], 100 * waist(methods[0], rest) / restRadius,
+            methods[1], 100 * waist(methods[1], rest) / restRadius,
+        ))
+    }
+    n++
+    frame()
+}
+```
+
+```text [field-property box="gpu_twist" name="preamble"]
+import afield.four.Renderer
+import afield.four.util.Window
+var Box.window by Inheritance<Window>() /**/
+val Once.window by Onceing<Window>() /**/
+var Box.renderer by Inheritance<Renderer>() /**/
+val Once.renderer by Onceing<Renderer>() /**/
+```
+
+## 6. 2 - Drag `time` and watch it bend
+
+<!-- field-box id="drag_time" index="5" -->
 
 ```edn [field-box id="drag_time" role="properties"]
-{"id" "drag_time" "index" 4 "name" "2 - Drag `time` and watch it bend" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Drag `time` and watch it bend" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drag_time_code_.kt" "lines" 46 "characters" 2129 "sha256" "5939fd7fe3408b3abea772c5b2e032b83f17468ddaf1529dd002a1ec339e2cae"}]}
+{"id" "drag_time" "index" 5 "name" "2 - Drag `time` and watch it bend" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Drag `time` and watch it bend" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drag_time_code_.kt" "lines" 46 "characters" 2129 "sha256" "5939fd7fe3408b3abea772c5b2e032b83f17468ddaf1529dd002a1ec339e2cae"}]}
 ```
 
 ```kotlin [field-property box="drag_time" name="code" path="drag_time_code_.kt"]
@@ -524,12 +624,12 @@ println("Drag `time` (0 to 2 s) in the controls above, or on /controllers.")
 println("At time 0 and 2 the tube is straight; the extreme is at time 1.")
 ```
 
-## 6. 4 - The same deformation on the GPU, no shader change
+## 7. 4 - The same deformation on the GPU, no shader change
 
-<!-- field-box id="gpu_skin" index="5" -->
+<!-- field-box id="gpu_skin" index="6" -->
 
 ```edn [field-box id="gpu_skin" role="properties"]
-{"id" "gpu_skin" "index" 5 "name" "4 - The same deformation on the GPU, no shader change" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "4 - The same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [700.0 226.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 71 "characters" 3462 "sha256" "c9a99cc156372dbb50677daaff60bed6f82ad220cdfe1136e00bd0a310f5b19b"} {"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "f06f1a765abc44dfe220c15003c7e0867955b0f2736e2ccbbfb5d9309ffaf8f5"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "gpu_skin" "index" 6 "name" "4 - The same deformation on the GPU, no shader change" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "4 - The same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [700.0 226.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 71 "characters" 3462 "sha256" "c9a99cc156372dbb50677daaff60bed6f82ad220cdfe1136e00bd0a310f5b19b"} {"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "f06f1a765abc44dfe220c15003c7e0867955b0f2736e2ccbbfb5d9309ffaf8f5"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
@@ -783,12 +883,12 @@ void main()
 }
 ```
 
-## 7. 3 - The refusal PathTraceGltf used to make
+## 8. 3 - The refusal PathTraceGltf used to make
 
-<!-- field-box id="path_trace" index="6" -->
+<!-- field-box id="path_trace" index="7" -->
 
 ```edn [field-box id="path_trace" role="properties"]
-{"id" "path_trace" "index" 6 "name" "3 - The refusal PathTraceGltf used to make" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - The refusal PathTraceGltf used to make" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_code_.kt" "lines" 45 "characters" 2332 "sha256" "e6692a43dbb12aa44bf1f0729580fc719ca5d49b72cd42dd9828eb83ea546358"}]}
+{"id" "path_trace" "index" 7 "name" "3 - The refusal PathTraceGltf used to make" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - The refusal PathTraceGltf used to make" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_code_.kt" "lines" 45 "characters" 2332 "sha256" "e6692a43dbb12aa44bf1f0729580fc719ca5d49b72cd42dd9828eb83ea546358"}]}
 ```
 
 ```kotlin [field-property box="path_trace" name="code" path="path_trace_code_.kt"]

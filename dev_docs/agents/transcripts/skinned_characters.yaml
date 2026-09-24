@@ -6,7 +6,7 @@ description: |
   mention of a bone in the whole of `src/jvmMain` + `src/commonMain` was `PathTraceGltf.kt`
   *refusing* to render one — the codebase naming a missing capability in its own error message.
 
-  Box 0 (`skin_renderer`) is the window and renderer the three GPU boxes are connected beneath.
+  Box 0 (`skin_renderer`) is the window and renderer the four GPU boxes are connected beneath.
   `rig_facts` prints what the loader now reads out of the rig — the node tree, the bones, the
   clips, the worst weight-sum error over all 60 vertices, and the bind-pose bit-identity count —
   then draws four poses side by side. `drag_time` is the demo: two sliders driving a live re-skin,
@@ -17,7 +17,9 @@ description: |
   the waist shut to 0.0% of rest where dual quaternions keep it at 100.0%. `gpu_crowd` moves the
   deformation into the vertex shader — a joint stream, a palette sliced by `gl_InstanceIndex`, and
   `Mesh.instanceCount` — so 64 characters are one mesh, one draw call and one upload of 128
-  matrices per frame.
+  matrices per frame. `gpu_twist` (added 2026-09-23) is the candy wrapper again, on the GPU: two
+  instances in one draw call, the left linear blend and the right dual quaternion, chosen by one
+  method word per instance, printing both waists as a percentage of the rest radius.
 
   **Why this transcript exists, which is not the same as why the demo does.** From 2026-09-19 until
   2026-09-20 `twist_compare` **did not compile**: the rewrite from two meshes to one left four
@@ -26,10 +28,10 @@ description: |
   the whole time, because box code is compiled by the K2 REPL against a different import set from
   `jvmMain` and no Gradle task ever sees it. It was found by a human launching every box of the
   document one at a time. This file is that sweep, as CI: seven Kotlin box bodies that nothing in
-  the tree compiled until now.
+  the tree compiled until then, and an eighth since.
 
   **Why `COMPILE_ONLY` and not `EXECUTE`.** Box 0 opens a GLFW window and a Vulkan renderer and
-  three boxes draw into it; `drag_time` also builds a `controlGroup`. So the graph is assembled
+  four boxes draw into it; `drag_time` also builds a `controlGroup`. So the graph is assembled
   through the real apply path and each box's Kotlin goes through the real K2 compiler with the
   terminal evaluation skipped, exactly as the rest of the tracer and renderer group. The numbers
   the boxes print are checked far more sharply elsewhere — `GltfSkinningTest` asserts bind-pose
@@ -467,9 +469,96 @@ operations:
               n++
               frame()
           }
+  - create:
+      box: gpu_twist
+      name: 7 - the candy wrapper on the GPU, linear and dual quaternion in one draw
+      frame: { x: 680.0, y: 520.0, w: 600.0, h: 136.0 }
+      properties:
+        code: |
+          import afield.four.modules.DualQuaternionSkinning
+          import afield.four.modules.GltfSkinning.SkinningMethod
+          import afield.four.modules.GltfSkinning.SkinningOptions
+          import afield.four.modules.GltfSkinning
+          import afield.four.modules.GltfSupport
+          import afield.four.modules.GpuSkinner
+          import afield.four.modules.GpuSkinning
+          import afield.four.modules.RiggedFixture
+          import afield.stdlib.linalg.Matrix4f
+
+          // Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
+          // draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
+          // right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
+          // the only difference between them is one word per instance saying which blend to run.
+          //
+          // RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's window.
+          //
+          // EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
+          // neither does.
+          val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
+
+          val model = GltfSupport.loadGltfBasic(
+              RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
+          )
+          val inst = model.meshes.first { it.skin != null }
+
+          val module = Module(
+              Parameters(
+                  renderer = renderer,
+                  vertex = GpuSkinning.skinnedVertexShader,
+                  fragment = GpuSkinning.skinnedFragmentShader,
+                  name = "gpu twist, lbs vs dqs"
+              )
+          ).pointer()
+
+          val m = Mesh(renderer, module)
+          module += "twist" to m
+          renderer += "gpu twist, lbs vs dqs" to module
+
+          val camera = Camera(renderer)
+          camera.p.orthoness = 0.3
+          camera.p.matchDepth = 2.0
+          camera.target = vec(0, 2, 0)
+          camera.at = vec(0, 2.4, -5.2)
+          camera.p()
+
+          val skinner = GpuSkinner(inst, instances = 2, renderer = renderer, name = "twist")
+          skinner.bindTo(m, camera, instanceCount = 2, tint = true)
+
+          // Seen from this camera +x is on the LEFT, so instance 0 goes to +1.3.
+          val places = listOf(Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0)))
+          val sk = skinner.skin.skeleton
+          val twist = sk.clip("twist")!!
+
+          // The waist as a number, from the CPU oracles on the same palette: the smallest distance from the
+          // bone axis of any vertex on the y = 2 ring. Printed so the picture is not the only evidence.
+          val restRadius = RiggedFixture.RADIUS
+          fun waist(method: SkinningMethod, palette: List<Matrix4f>): Float {
+              val bind = FloatArray(skinner.vertexCount * 3) { skinner.bindPositions[it] }
+              val out = GltfSkinning.skin(bind, null, inst.skin!!.influences, palette, SkinningOptions(method = method))
+              return DualQuaternionSkinning.candyWrapperRadius(out.position, RiggedFixture.UPPER_JOINT_Y)
+          }
+
+          var n = 0
+          loop {
+              // 0 -> 180 -> 0 degrees of twist, three seconds a cycle at 60 fps, on a loop.
+              val seconds = (n / 90f) % twist.durationSeconds
+              skinner.uploadPalettes(places.map { skinner.placedPalette(it, "twist", seconds) }, methods)
+              skinner.updateCamera(m, camera)
+              if (n % 45 == 0) {
+                  val rest = sk.palette(twist, seconds)
+                  println("t = %.2f s   waist, %% of rest radius:   %s %.1f%%   |   %s %.1f%%".format(
+                      seconds,
+                      methods[0], 100 * waist(methods[0], rest) / restRadius,
+                      methods[1], 100 * waist(methods[1], rest) / restRadius,
+                  ))
+              }
+              n++
+              frame()
+          }
   - connect: { parent: skin_renderer, child: gpu_skin }
   - connect: { parent: skin_renderer, child: twist_compare }
   - connect: { parent: skin_renderer, child: gpu_crowd }
+  - connect: { parent: skin_renderer, child: gpu_twist }
   - launch: { box: skin_renderer, property: code, strand: renderer }
   - await: {}
   - execute: { box: rig_facts, property: code }
@@ -483,4 +572,6 @@ operations:
   - execute: { box: twist_compare, property: code }
   - await: {}
   - execute: { box: gpu_crowd, property: code }
+  - await: {}
+  - execute: { box: gpu_twist, property: code }
   - await: {}

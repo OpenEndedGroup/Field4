@@ -188,7 +188,7 @@ A-B pixel comparison above possible.
 characters no matter what you tint them, and "the crowd is varied" becomes unfalsifiable.
 `GpuSkinning.skinnedFragmentShader` exists for that reason.
 
-**Push constants are now 212 bytes.** The stock glTF block is 176; this adds three buffer
+**Push constants are now 228 bytes** (212 before the dual-quaternion buffers). The stock glTF block is 176; this adds five buffer
 references and three uints. Vulkan only guarantees 128, so this is a desktop-class assumption —
 the machine here reports 4096. If it ever has to shrink, the three uints fold into one packed word
 and the joint and weight buffers interleave into one.
@@ -202,13 +202,128 @@ both ways on 2026-09-20 — and the corpus already contains both (`alife_walls` 
 `document.md`, `path_tracing_medium` does not). So after running a demo to check it, `git
 checkout --` the two files rather than committing the churn, and do not read the diff as damage.
 
+## Dual quaternion skinning on the GPU (2026-09-23)
+
+Until this date `SkinningMethod.DUAL_QUATERNION` was CPU-only: the shared GLSL had one palette
+type (`mat4`) and a weighted matrix sum. It now has a second blend, `afSkinBlendDual`, in the
+**same** `GpuSkinning.glsl()` both entry points include, chosen **per instance**.
+
+### What moved and what did not
+
+| | where |
+|---|---|
+| the split `M = T·R·S` (Gram-Schmidt) | **CPU**, and it is the oracle's own `DualQuaternionSkinning.split`, called from `GpuSkinning.packDualPalette` |
+| antipodal pivot, sign flip, weighted sum of dual quaternions and residuals, normalise, apply | **GPU** |
+
+So the only arithmetic the GPU adds is the blend, and a disagreement with
+`DualQuaternionSkinning.skin` can only be a disagreement about blending.
+
+### Layout
+
+- `AfSkinDual { vec4 v[]; }` — **5 `vec4` per (instance, bone)**, 80 bytes, slice base
+  `(instance·boneCount + bone)·5`: `real.xyzw`, `dual.xyzw`, then the residual 3×3 `S` as three
+  columns in JOML order (`m00 m01 m02 _`, `m10 m11 m12 _`, `m20 m21 m22 _`). Rigid joints get the
+  identity. Five and not four because a degenerate joint (an axis scaled to nothing) hands its
+  whole 3×3 over as the residual; the upper-triangular Gram-Schmidt residual alone would fit in 14
+  floats, the degenerate one does not.
+- `AfSkinMethods { uint v[]; }` — one word per instance: `0` linear, bit 0 dual quaternion, bit 1
+  "this palette has a non-rigid joint, blend `S`". Bit 1 is the oracle's `anyNonRigid`, per
+  instance, so a rigid rig skips the residual exactly as the CPU does.
+- Push constants: two more buffer references, **212 → 228 bytes** on the draw shader.
+- API: `GpuSkinner.method` for every instance, or `uploadPalettes(palettes, methods)` per
+  instance; `GpuSkinner.methodWords()` reports what the shader will see.
+
+`afSkinBlendDual` returns the equivalent matrix `[R·S | t]` so `afSkinPosition`/`afSkinNormal` are
+shared. That is exact, not convenient: `R` is orthonormal, so `(R·S)⁻ᵀ = R·S⁻ᵀ`, which is the
+oracle's residual-inverse-transpose-then-rotate. The conventions transcribed from the oracle, each
+of which a test below would catch if changed: pivot = highest weight with a strict `>` (first wins
+a tie, which the fixture's 0.5/0.5 ring is), sign by the real-part dot, `S` blended **without** the
+sign, `DualQuaternionf.normalize` including `dual -= dot(real, dual)·real` and its identity
+fallback, translation `2·(dual·conj(real)).xyz` (Hamilton), rotation `q v q*` as the generated
+`transformQuaternionVector3`.
+
+### Verification — `GpuSkinningSmoke`, through the production shader
+
+All numbers from `tools/run_field_tests.py --id four.gpu-skinning.smoke --port 8472`, three passing
+runs on 2026-09-23 (Apple silicon, MoltenVK); correctness numbers identical in all three.
+
+| case | population | worst \|Δpos\| | worst \|Δnormal\| |
+|---|---|---|---|
+| DQ, bending cylinder, rest + 3 clips × 5 times | 16 poses × 60 vertices, 2 bones | 9.5e-7 | 2.0e-7 |
+| DQ, shear-and-cap, rest + 5 times (4 took the residual path) | 6 poses × 7 vertices, 7 bones | 2.4e-7 | 6.0e-8 |
+| mixed crowd, `twist`, even LBS / odd DQS, one dispatch, read from a `GpuSkinner`'s own buffers | 64 instances × 60 vertices | 2.9e-6 | 3.9e-7 |
+| synthetic rig, 1–4 influences, ±170° twins, scale + shear | 3 poses × 480 vertices, 5 joints | 4.8e-7 | 4.2e-7 |
+
+Tolerances unchanged: 1e-5 and 1e-4. The controls, each a floor on a measured number so a shader
+quietly doing linear blending under the DQ word cannot pass:
+
+| control | measured | floor |
+|---|---|---|
+| candy wrapper off the GPU, `twist` 180°, y = 2 ring | LBS min radius **0.0%**, DQS **100.0%** of rest | LBS < 5%, DQS within 5% |
+| worst \|LBS − DQS\| at 180°, 60 vertices | 0.500 | ≥ 0.15 |
+| largest \|DQS coordinate\| (readback is the tube, not zeros) | 4.0 | ≥ 1.0 |
+| shear rig, residual bit cleared on the 4 non-rigid poses: shader must be *wrong* | 2.71 | ≥ 0.01 |
+| mixed crowd: DQ half vs the linear oracle / linear half vs the DQ oracle | 0.490 / 0.489 | ≥ 0.15 each |
+| synthetic rig: oracle antipodal flips / non-rigid joints per pose | 158 / 2 | > 0 each |
+
+**Which test catches what, measured by mutation.** Replacing the antipodal sign with `1.0` in the
+shader left every committed-fixture check green — the cylinder's two joints never sit on opposite
+hemispheres, and the shear rig's multi-influence vertices move by translations only, for which DQ
+and LBS coincide — and failed only the synthetic rig at its 170° pose (`worst |dpos| 4.25`). That
+is why the synthetic rig exists; do not delete it as redundant with the fixtures. (The tie-break
+convention was not mutation-tested.)
+
+`GpuDualPalettePackingTest` (jvmTest, no GPU) holds the packing: each packed joint rebuilt the way
+the shader rebuilds a single influence gives back the packed matrix to 1.2e-7 over six cases
+(identity, translated rotation, 180°, scale on a rotation, shear, reflection).
+
+### Pixels — `./gradlew runGpuSkinningEvidence` (or `--args=--twist-only`)
+
+- `gpu_dq_twist_t100.png` vs `cpu_dq_twist_t100.png` — GPU DQ against a `CpuSkinner` running the DQ
+  oracle, same pipeline: **bit-identical**, mean 0.0000 levels, max 0.
+- control: the GPU *linear* frame of the same pose against the GPU DQ frame: **1.30 mean levels,
+  max 250** (floor 0.1). So the zero is not a stuck frame or an ignored method word.
+- `twist_lbs_vs_dqs_t067.png` / `_t100.png` — two instances, one draw call, left linear (pinched
+  to a point at 180°), right DQ (keeps its radius). Looked at; it is the candy wrapper.
+- The full evidence run was redone as well: every previously committed frame came back
+  byte-identical.
+- Trap met on the way: a `CpuSkinner` snapshots its bind pose from `instance.buffers` **at
+  construction**, and the linear `CpuSkinner` had left its last pose there. The DQ `CpuSkinner`
+  built after it skinned an already-posed mesh — 5.67 mean levels of "GPU/CPU disagreement" that
+  was the CPU being wrong. `twist()` resets the linear one first.
+
+### Throughput — narrated, not asserted
+
+Population: 50,000 vertices × 32 instances, two influences, the 2-bone rig; the verify compute
+shader, not a draw. Measured as a **paired** sweep: three rounds, each timing both methods at 32
+and 128 dispatches, slope from the fastest time per depth. Three runs: DQS cost **1.46×**, **1.37×** and
+**1.38×** the linear cost per dispatch (0.706 vs 0.482 ms; 0.682 vs 0.494 ms). The first attempt
+ran two full sweeps back to back and reported DQS at **0.47×** linear with a non-monotonic sweep —
+two moments, not two shaders — which is why it is paired now. The palette upload with both layouts
+and the CPU split measured 0.065–0.098 ms per frame for 32 × 2 joints, against 0.044–0.048 ms
+linear-only. Printed by the smoke, asserted by nothing.
+
+### What GPU DQS does not carry
+
+- **Clip blending is still a matrix lerp.** `blendedPalette` lerps each joint's matrices before
+  skinning sees them, so DQ skinning cannot undo it: `GpuDualPalettePackingTest` measures `twist`
+  180° lerped 50/50 with rest and DQ-skinned at a tip ring radius of **0.0000** (rest 0.5),
+  against 0.5000 for the unblended twist. The fix is on the clip side — blend joint rotations
+  (slerp, or `DualQuaternionf.sclerp`) rather than matrices — and it is not done.
+- **Four influences**, as for linear blending.
+- **The residual is blended linearly**, as in the oracle. A shear on a twisting joint gets DQ's
+  rotation and LBS's shear; the GPU matches the oracle's choice rather than improving on it.
+- **Bulge.** DQS trades LBS's shrink for a bulge (the oracle's mean edge ratio 1.051 against 0.950
+  over the cylinder's 288 edges under twist); it is the faceted waist in the frames above.
+
+Three.js parity (from memory, not checked tonight): core `SkinnedMesh` is linear blend only, so
+this path does something a Three.js port of the demo would have to write itself.
+
 ## What this does not do
 
-- **No dual-quaternion skinning on the GPU.** `GltfSkinning.SkinningMethod.DUAL_QUATERNION` is CPU
-  only; `GpuSkinning.glsl()` is linear blend. The candy-wrapper collapse a twisted joint suffers
-  under linear blending is therefore still a CPU-only fix, and box 5 of the demo is still the
-  place to see it. The oracle for a GPU DQS already exists, which is the whole reason this one
-  was verifiable in a night.
+- **Dual-quaternion skinning on the GPU exists as of 2026-09-23** — see the section above for what
+  it does not carry. Box 5 of the demo is the CPU candy wrapper; box 7 is the same twist on the
+  GPU, both methods in one draw.
 - **No GPU palette evaluation.** See the table above: it is the cheap half.
 - **`standardRenderer.kt` still has no skinned path.** The skinned vertex shader is a `Module` you
   build yourself, as the demo box does. Wiring it into Fabricate's g-buffer is a separate job.

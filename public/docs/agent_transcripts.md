@@ -2499,15 +2499,16 @@ a time, and linear blend skinning into a deformed surface. Before it landed, the
 bone anywhere in `src/jvmMain` + `src/commonMain` was `PathTraceGltf.kt` *refusing* to render one —
 the codebase naming a missing capability in its own error message.
 
-Seven boxes. A window and renderer the three GPU boxes hang beneath; a box that prints what the
+Eight boxes. A window and renderer the four GPU boxes hang beneath; a box that prints what the
 loader now reads out of the rig (nodes, bones, clips, the worst weight-sum error over all 60
 vertices, and 60 of 60 vertices bit-identical to the unskinned mesh at the bind pose) and draws four
 poses side by side; two sliders driving a live re-skin, printing the tip's `x` so the pose is a
 number and not only a picture; the path tracer on the *deformed* mesh, cross-checked against the CPU
 bridge to 0.0000000; the same deformation on the GPU with no shader change; the candy wrapper, where
 linear blending pinches the waist to **0.0%** of rest and dual quaternions hold it at **100.0%**;
-and the vertex-shader version, where 64 characters at their own phases are one mesh, one draw call
-and one upload of 128 matrices per frame.
+the vertex-shader version, where 64 characters at their own phases are one mesh, one draw call
+and one upload of 128 matrices per frame; and the candy wrapper again on the GPU, a linear-blend
+and a dual-quaternion tube side by side in one draw call, chosen by one word per instance.
 
 This transcript exists for a reason separate from the scene. From 19 to 20 September the candy
 wrapper box **did not compile**: a two-mesh-to-one-mesh rewrite left four `println`s naming the old

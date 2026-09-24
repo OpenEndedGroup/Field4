@@ -406,6 +406,7 @@
   {"doc": "skinned_characters", "box": "drag_time", "codeSha256": "48a896dba0a2c3f8", "codeLines": 46, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "skinned_characters", "box": "gpu_crowd", "codeSha256": "f6db24526a2ccf87", "codeLines": 76, "receivers": ["afield.Box"], "preamble": "skinned_characters__gpu_crowd.preamble.kt"},
   {"doc": "skinned_characters", "box": "gpu_skin", "codeSha256": "1df79885a355351b", "codeLines": 71, "receivers": ["afield.Box"], "preamble": "skinned_characters__gpu_skin.preamble.kt"},
+  {"doc": "skinned_characters", "box": "gpu_twist", "codeSha256": "5b62d7940d76b350", "codeLines": 80, "receivers": ["afield.Box"], "preamble": "skinned_characters__gpu_twist.preamble.kt"},
   {"doc": "skinned_characters", "box": "path_trace", "codeSha256": "ffbc7121402aafdc", "codeLines": 45, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "skinned_characters", "box": "rig_facts", "codeSha256": "c722854114e00ccf", "codeLines": 60, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "skinned_characters", "box": "skin_renderer", "codeSha256": "589f3a13d6133d8d", "codeLines": 24, "receivers": ["afield.Box"], "preamble": "skinned_characters__skin_renderer.preamble.kt"},
