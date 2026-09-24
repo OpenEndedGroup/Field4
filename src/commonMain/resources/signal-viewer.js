@@ -304,7 +304,7 @@
       l['yaxis' + suffix] = {domain: [y0, top], range: yr, autorange: false, fixedrange: !(interactive && lane.yZoom),
         gridcolor: 'rgba(255,255,255,.075)', linecolor: 'rgba(255,255,255,.14)', ...tickGap, tickfont: axisFont, automargin: false, zeroline: false,
         // Padded analysis ranges get round auto ticks; a signal lane's own bounds are labelled exactly.
-        ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} : lane.autoTicks ? {nticks: 4} :
+        ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} : lane.autoTicks ? {nticks: clamp(Math.floor(inner * (top - y0) / 26), 2, 5)} :
           {tickvals: [lane.minimum, (lane.minimum + lane.maximum) / 2, lane.maximum].map(v => Number(v.toPrecision(4)))}),
         title: lane.yTitle ? {text: esc(lane.yTitle), standoff: 10, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
       if (count > 1 || config.laneLabels) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',

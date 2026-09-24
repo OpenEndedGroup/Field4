@@ -117,7 +117,7 @@ private fun analysisDashboardShell(panels: List<String>, width: Int): String = "
 <section class="field-analysis-dashboard" data-afield-intrinsic-width="$width">
   <style>
     .field-analysis-dashboard { width:${width}px;max-width:100%;display:grid;gap:12px }
-    .field-analysis-dashboard > header { color:#aabac8;font:12px/1.4 system-ui,sans-serif;
+    .field-analysis-dashboard > header { color:#aabac8;font:12px/1.4 "Iosevka Web","IBM Plex Mono",ui-monospace,monospace;
       display:flex;justify-content:space-between;padding:0 2px }
   </style>
   <header><b>analysis board</b><span>shared playhead/cursor · click seek · wheel zoom · drag pan</span></header>

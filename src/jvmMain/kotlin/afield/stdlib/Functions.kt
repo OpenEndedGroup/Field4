@@ -3146,7 +3146,9 @@ object Functions {
      * same component as [afield.stdlib.SignalViewer] and the audio player; wheel
      * zooms x at the pointer, drag pans, alt-wheel zooms y, and ↕ fits y to the
      * visible window. `Box.plot` and `Fn.plot` additionally resample the function
-     * live as you zoom in; this bare HTML zooms into its embedded samples only.
+     * live as you zoom in; this bare HTML zooms into its embedded samples only. A non-empty
+     * [syncGroup] links the view window, cursor and click-to-seek with other time viewers
+     * (`displaySignal`, `displayAudio*`, the analysis views) in the same group; x is then read as seconds.
      */
     fun Fn.plotHtml(
         sampleDomain: Domain? = null,
@@ -3161,9 +3163,10 @@ object Functions {
         background: String = "#000000",
         primaryColor: String = "#0af",
         secondaryColor: String = "#f80",
-        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
+        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+        syncGroup: String = ""
     ): String = plotViewerHtml(sampleDomain, samples, heightPx, title, xLabel, yLabel, yDomain, edge, outside,
-        background, primaryColor, secondaryColor, fontFamily, live = null)
+        background, primaryColor, secondaryColor, fontFamily, syncGroup, live = null)
 
     /** The evaluator a plot samples: non-finite values and throws become gaps (NaN). */
     private fun Fn.plotEvaluator(edge: EdgeMode, outside: Double): (Double) -> Double = { x ->
@@ -3173,7 +3176,7 @@ object Functions {
     private fun Fn.plotViewerHtml(
         sampleDomain: Domain?, samples: Int, heightPx: Int, title: String, xLabel: String, yLabel: String,
         yDomain: Domain?, edge: EdgeMode, outside: Double, background: String, primaryColor: String,
-        secondaryColor: String, fontFamily: String,
+        secondaryColor: String, fontFamily: String, syncGroup: String,
         // Keeps a range-query source for this plot; null for self-contained HTML.
         live: ((SignalViewer) -> Unit)?,
     ): String {
@@ -3203,7 +3206,7 @@ object Functions {
                 "window" to TimeViewerShell.embeddedWindow(plotDomain.min, plotDomain.max,
                     listOf(safeTitle to values), valueDomain.min, valueDomain.max),
                 "start" to plotDomain.min, "end" to plotDomain.max,
-                "label" to safeTitle, "xLabel" to xLabel, "xUnit" to "", "xName" to xLabel, "yName" to yLabel,
+                "label" to safeTitle, "syncGroup" to syncGroup, "xLabel" to xLabel, "xUnit" to "", "xName" to xLabel, "yName" to yLabel,
                 "readoutIdle" to "$xLabel –   $yLabel –",
                 "samplesChip" to "$finiteCount/$count samples",
                 "plotHeight" to heightPx.coerceAtLeast(220), "zeroLines" to true,
@@ -3237,7 +3240,8 @@ object Functions {
         background: String = "#000000",
         primaryColor: String = "#0af",
         secondaryColor: String = "#f80",
-        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
+        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+        syncGroup: String = ""
     ): String =
         plotHtml(
             sampleDomain = sampleDomain.toDomain() as Domain?,
@@ -3252,7 +3256,8 @@ object Functions {
             background = background,
             primaryColor = primaryColor,
             secondaryColor = secondaryColor,
-            fontFamily = fontFamily
+            fontFamily = fontFamily,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3272,7 +3277,8 @@ object Functions {
         background: String = "#000000",
         primaryColor: String = "#0af",
         secondaryColor: String = "#f80",
-        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
+        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+        syncGroup: String = ""
     ): String =
         plotHtml(
             sampleDomain = sampleDomain.toDomain() as Domain?,
@@ -3287,7 +3293,8 @@ object Functions {
             background = background,
             primaryColor = primaryColor,
             secondaryColor = secondaryColor,
-            fontFamily = fontFamily
+            fontFamily = fontFamily,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3310,7 +3317,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn {
         val box = Box.context.get()
             ?: throw IllegalStateException("Fn.plot requires an active Box context")
@@ -3325,7 +3333,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
     }
 
@@ -3344,7 +3353,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             channel = channel,
@@ -3356,7 +3366,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3374,7 +3385,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: ClosedRange<*>,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             channel = channel,
@@ -3386,7 +3398,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain.toDomain() as Domain?,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3406,13 +3419,14 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn {
         // Same pixels as plotHtml, plus a live source kept on this box: zooming in resamples.
         val html = fn.plotViewerHtml(sampleDomain, samples, heightPx, title, xLabel, yLabel, yDomain, edge, outside,
             background = "#000000", primaryColor = "#0af", secondaryColor = "#f80",
             fontFamily = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
-            live = { retainSignal(channel, it) })
+            syncGroup = syncGroup, live = { retainSignal(channel, it) })
         display(channel, html)
         return fn
     }
@@ -3429,7 +3443,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3442,7 +3457,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /** Draws [fn] into this box over explicit x *and* y ranges, returning [fn] unchanged. Needs no ambient box context. */
@@ -3457,7 +3473,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: ClosedRange<*>,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3470,7 +3487,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain.toDomain() as Domain?,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3489,7 +3507,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn = fn.plot(
         channel = channel,
         sampleDomain = sampleDomain,
@@ -3500,7 +3519,8 @@ object Functions {
         yLabel = yLabel,
         yDomain = yDomain,
         edge = edge,
-        outside = outside
+        outside = outside,
+        syncGroup = syncGroup
     )
 
     /**
@@ -3518,7 +3538,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3531,7 +3552,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3549,7 +3571,8 @@ object Functions {
         yLabel: String = "f(x)",
         yDomain: ClosedRange<*>,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3562,7 +3585,8 @@ object Functions {
             yLabel = yLabel,
             yDomain = yDomain.toDomain() as Domain?,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     // Streaming helpers
