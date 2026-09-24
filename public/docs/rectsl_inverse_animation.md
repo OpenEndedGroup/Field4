@@ -326,7 +326,7 @@ shape over a **mask**: only the named parameters ever move. Everything under the
 The gradient is `Fn.gradientAt`, one backward sweep through the same `FnFormulas` table `Fn.eval` is
 pinned against.
 
-## One primitive, and every hard edge in the language
+## The exact step that lowers every hard edge
 
 Five different things could stop a track from lowering, and four of them come down to a single
 primitive: `Fn.floor`, a first-class node that is also differentiable. The derivative of a staircase
@@ -429,8 +429,10 @@ difference's own truncation error rather than the gradient's.
 The residual tables, the corpus's two halves and what each half is evidence of are in
 `dev_docs/RECTSL_FN_BACKEND_MEASUREMENTS.md`.
 
-The figure at the top of this page is a CPU raster rather than a GPU capture. Its rectangles are
-sampled from the tracks at the instants shown, but they are not the shader's own answer.
+??? aside "The opening figure is a CPU raster, not a GPU capture"
+
+    Its rectangles are sampled from the tracks at the instants shown, so they are the `eval:`
+    column's answer and not the shader's.
 
 ## Printing, comparison and rewriting
 
