@@ -85,7 +85,9 @@
         const n = v.low.length, color = previous ? '#8a8a8a' : primary, name = lane.name + (previous ? ' · ' + (config.comparisonLabel || 'previous') : '');
         if (w.mode === 'waveform') {
           const x = uniformX(w.start, w.end, n, false);
-          traces.push({type: 'scatter', mode: 'lines', name, x, y: v.low, connectgaps: false,
+          // Dots mark samples only at extreme zoom (more than ~6 px per sample).
+          const dots = cfg.markers && !previous && n * 6 < plotWidthNow();
+          traces.push({type: 'scatter', mode: dots ? 'lines+markers' : 'lines', name, x, y: v.low, connectgaps: false, marker: {size: 3.5, color},
             line: {color, width: previous ? 1 : (cfg.width || 1.6), dash: previous ? 'dash' : 'solid', simplify: false}});
           probes.push({label: name, x, y: v.low});
         } else {
@@ -191,7 +193,12 @@
   };
 
   // ---- sources ----------------------------------------------------------------------------
-  const pointsWanted = () => clamp(Math.round(plotArea().w), 16, 4096);
+  // One min/max bin per DEVICE pixel: at CSS-pixel bins a 20-sample bin spans a whole chirp cycle
+  // and the envelope flattens into a blob (Marc, 2026-09-23 audio review).
+  // Measured from the stage now, not from Plotly's last layout, which is stale right after a resize
+  // (a first draw while the output was still closed lays out at 200 px).
+  const plotWidthNow = () => Math.max(1, stage.clientWidth - margin().l - margin().r);
+  const pointsWanted = () => clamp(Math.round(plotWidthNow() * Math.min(3, window.devicePixelRatio || 1)), 16, 4096);
   let decoded = null, decoderPromise = null;
   const decodeAudio = () => decoderPromise || (decoderPromise = (async () => {
     const inline = audio.getAttribute('src') || '', encoded = config.audio?.inlineWav ||
@@ -218,12 +225,14 @@
     try { return await context.decodeAudioData((await (await fetch(audio.currentSrc || audio.src)).arrayBuffer()).slice(0)); }
     finally { context.close(); }
   })());
-  const envelopeWindow = (e, s, d) => ({start: s, end: s + d, mode: 'envelope', sampleSpacing: 1 / (e.sample_rate || 1),
+  const envelopeWindow = (e, s, d) => ({start: s, end: s + d, sampleSpacing: 1 / (e.sample_rate || 1),
+    // A service that answers a close zoom with one sample per point sends min == max: that is the waveform.
+    mode: e.minimum.every((lo, ch) => lo.every((v, i) => v === e.maximum[ch][i])) ? 'waveform' : 'envelope',
     lanes: Array.from({length: Math.max(1, e.channels || e.minimum.length)}, (_, ch) => ({name: (e.channels || e.minimum.length) > 1 ? 'ch ' + (ch + 1) : 'audio',
       minimum: -1, maximum: 1, current: {low: (e.minimum[ch] || e.minimum[0]).map(Number), high: (e.maximum[ch] || e.maximum[0]).map(Number)}}))});
-  const audioLanes = n => Array.from({length: n}, (_, ch) => ({color: ch % 2 ? '#d6a85f' : (colors.primary || '#63c7dc'), shape: 'linear',
+  const audioLanes = n => Array.from({length: n}, (_, ch) => ({color: ch % 2 ? '#d6a85f' : (colors.primary || '#63c7dc'), shape: 'linear', width: 1.3, markers: true,
     fill: ch % 2 ? 'rgba(214,168,95,.82)' : (colors.fill || 'rgba(99,199,220,.82)'), zeroLine: true}));
-  const fetchAudio = async (s, d, points, signal) => {
+  const fetchAudio = async (s, d, points, signal, overview = false) => {
     if (config.audio?.waveformUrl) {
       const url = new URL(config.audio.waveformUrl, document.baseURI);
       url.searchParams.set('start_seconds', s.toFixed(9)); url.searchParams.set('duration_seconds', d.toFixed(9)); url.searchParams.set('points', String(points));
@@ -232,8 +241,17 @@
     }
     decoded = decoded || await decodeAudio();
     if (!(total > 0)) { domainEnd = domainStart + decoded.duration; total = decoded.duration; normalize(); s = start; d = span; }
-    const rate = decoded.sampleRate, begin = Math.floor(s * rate), end = Math.min(decoded.length, Math.ceil((s + d) * rate));
-    const frames = Math.max(1, end - begin), count = Math.min(points, frames), minimum = [], maximum = [];
+    const rate = decoded.sampleRate, begin = Math.max(0, Math.floor(s * rate)), end = Math.min(decoded.length, Math.ceil((s + d) * rate) + 1);
+    const frames = Math.max(1, end - begin), dpr = Math.min(3, window.devicePixelRatio || 1);
+    if (!overview) root.dataset.samplesPerPixel = String(frames / Math.max(1, plotWidthNow() * dpr));
+    if (frames <= points * 1.5) {
+      // Close enough to see samples: draw the waveform itself, a line through every sample.
+      const lanes = Array.from({length: decoded.numberOfChannels}, (_, ch) => { const v = Array.from(decoded.getChannelData(ch).subarray(begin, end));
+        return {name: decoded.numberOfChannels > 1 ? 'ch ' + (ch + 1) : 'audio', minimum: -1, maximum: 1, current: {low: v, high: v}}; });
+      return fromWindow({start: begin / rate, end: (end - 1) / rate, mode: 'waveform', sampleSpacing: 1 / rate, lanes}, audioLanes(decoded.numberOfChannels));
+    }
+    // A true min/max per bin: bins partition [begin, end) with no gaps, so no sample is skipped.
+    const count = points, minimum = [], maximum = [];
     for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
       const data = decoded.getChannelData(ch), lo = new Array(count), hi = new Array(count);
       for (let x = 0; x < count; x++) {
@@ -347,6 +365,8 @@
       describe(); return;
     }
     if (!(total > 0) && config.audio?.waveformUrl) return;
+    // A closed output has no width: wait for the ResizeObserver rather than fetch 16 bins.
+    if (stage.clientWidth < 2) { setBusy(true); return; }
     setBusy(true, source === 'audio' ? 'loading waveform' : 'sampling');
     timer = setTimeout(async () => {
       const controller = new AbortController(); request = controller;
@@ -382,7 +402,7 @@
   const loadOverview = async () => {
     if (overviewRequested || !navShape || !(total > 0)) return; overviewRequested = true;
     try {
-      overviewModel = source === 'audio' ? await fetchAudio(domainStart, total, 400) : await fetchRange(domainStart, domainEnd, 400);
+      overviewModel = source === 'audio' ? await fetchAudio(domainStart, total, 400, undefined, true) : await fetchRange(domainStart, domainEnd, 400);
       if (!disposed) drawOverview();
     } catch (_) { /* the strip stays an outline; the main view reports its own errors */ }
   };
