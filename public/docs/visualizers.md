@@ -1100,7 +1100,7 @@ server query per visible window. Give them one `syncGroup` and they share a time
 and the others follow, hover shows a cursor in all three, and a click in any of them seeks the
 audio.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-one-viewer.png" wait="2" capture="box" open-outputs="true" padding="12" w="1200" embed=true name="one-viewer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-one-viewer.png" alt="Three stacked output panes headed envelope, audio and signal, all spanning 0 to 2 seconds. The envelope pane plots exp(-2.5 t) as a blue curve falling from 1 to near zero, its header chip reading 1024/1024 samples. The audio pane draws the decaying 220 Hz ping as a cyan waveform above a browser transport parked at 0:00 of 0:02, its chip reading click seek, wheel zoom at playhead, drag pan. The signal pane draws the same ping evaluated per window in white, its chip reading envelope and a delta t of 1.25e-4 s" wait="2" capture="box" open-outputs="true" padding="12" w="1200" embed=true name="one-viewer"}
 :::static
 import afield.stdlib.*
 import kotlin.math.*
@@ -1121,8 +1121,6 @@ displayAudioSamples(FloatArray(2 * rate) { ping(it / rate.toDouble()).toFloat() 
 displaySignal(SignalViewer(listOf(SignalChannel("ping", ping, -1.0, 1.0)), 0.0, 2.0, sampleStep = 1.0 / rate),
     "signal", SignalViewerOptions(width = 760, label = "the ping, evaluated per window", syncGroup = sync, viewKey = "one-viewer:signal"))
 ```
-
-![A function plot of exp(-2.5 t), an audio player showing a decaying 220 Hz ping, and a signal viewer showing the same ping evaluated per window, stacked, all over 0 to 2 seconds](assets/visualizers-one-viewer.png)
 
 The chip in each header says what you are looking at. For the function it is `1024/1024 samples`
 until you zoom inside the domain, and then `live · Δx …`, because `Fn.plot` resamples the function
@@ -1320,8 +1318,6 @@ The endpoint returns one min/max envelope per channel:
 Each channel array must contain `point_count` values. The tiny two-value arrays above are only
 abbreviated for readability. Keep the response cacheable: the component aborts stale requests while
 the user pans and asks for a fresh, pixel-sized envelope after zooming or resizing.
-
-![Zoomable recorded-audio player with a vertical playhead](assets/visualizers-recorded-audio.png)
 
 ## Signal and synth visualizers
 
