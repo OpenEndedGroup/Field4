@@ -20,13 +20,10 @@ or an entry filed under a section whose claim about CI does not match how CI che
 are written by hand, one per transcript, because the useful thing to say about a scene is which
 number it prints and why that number matters, and no generator over the yaml can write that.
 
-Figures are captures of the code running, taken by the docs capture pipeline: most for the
-walkthrough page linked beside the entry, and some — the path tracers, the browser-on-a-texture
-scenes, `gpu_state`, `threebox`, the triangle at the foot of the page — driven from the transcript
-file itself. About half the entries carry one. The rest have none:
-nothing in the tree captures that scene, because it publishes to a headset, wants a camera or an
-external service, or opens a window the pipeline has never been pointed at. Those entries say what
-to run instead. Nothing on this page is hand-drawn, mocked up or synthesized.
+About half the entries carry a figure, and every figure is that scene's own code running — nothing
+here is hand-drawn, mocked up or synthesized. The rest have none: nothing in the tree captures that
+scene, because it publishes to a headset, wants a camera or an external service, or opens a window
+the pipeline has never been pointed at. Those entries say what to run instead.
 
 ## Running one
 
