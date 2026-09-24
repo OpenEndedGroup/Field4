@@ -400,12 +400,13 @@ half seconds (a little over three generations per displayed frame) from the same
 lattices are 96 cells rather than the figure's 200, drawn **three pixels to a cell**: at one pixel per cell
 a rotating spiral core is about four pixels of video and reads as flicker.
 
-That 96 is where page weight decided a number. A cyclic CA re-colours essentially every cell of both
-lattices on every frame, so consecutive frames share almost nothing and the encoder has nothing to
-predict from; this is the heaviest clip on the page at 5.1 MB. The cost is very nearly proportional to
-cells × frames rather than to pixels, so magnifying a small lattice with nearest-neighbour blocks is
-close to free and shrinking the *lattice* is what pays: 96 cells at three pixels each rather than 128 at
-two.
+??? aside "Why 96 cells and not 128"
+    Page weight decided that number. A cyclic CA re-colours essentially every cell of both lattices
+    on every frame, so consecutive frames share almost nothing and the encoder has nothing to
+    predict from; this is the heaviest clip on the page at 5.1 MB. The cost is very nearly
+    proportional to cells × frames rather than to pixels, so magnifying a small lattice with
+    nearest-neighbour blocks is close to free and shrinking the *lattice* is what pays: 96 cells at
+    three pixels each rather than 128 at two.
 
 The left panel is the sequence the figure above samples at generations 0, 40 and 400, without the gaps.
 Watch for the transition, because it is sharp and it has a name: the soup is **locally** advancing
@@ -703,12 +704,14 @@ into a field of ring-shaped cells that maintain themselves and then keep rearran
 growing or dying, with the mean field settling into a band and staying there, while the other loses more
 than it gains and runs down to nothing. Same code, same seed, one number.
 
-So this clip is ramped like Gray–Scott's, and for the same reason: the blob breaks up inside the first
-forty of the two hundred and forty steps. `ramp = 25` puts the mid-point of the clip at step 40 instead of
-step 120, which gives the whole of the interesting decision half the clip and the long self-maintaining
-phase (the *claim*, but not the event) the other half. Half the change then arrives at 38 % of the clip
-rather than 10 %. Even so, 45 % of frames show essentially nothing, and that is a floor rather than a
-failure: one of the two panels really does die, and a dead field is *supposed* to sit still.
+??? aside "This clip is ramped like Gray–Scott's"
+    And for the same reason: the blob breaks up inside the first forty of the two hundred and forty
+    steps. `ramp = 25` puts the mid-point of the clip at step 40 instead of step 120, which gives
+    the whole of the interesting decision half the clip and the long self-maintaining phase (the
+    *claim*, but not the event) the other half. Half the change then arrives at 38 % of the clip
+    rather than 10 %. Even so, 45 % of frames show essentially nothing, and that is a floor rather
+    than a failure: one of the two panels really does die, and a dead field is *supposed* to sit
+    still.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields from the same seed under different growth-window centres: one breaks into self-maintaining ring cells, the other runs down to nothing"}
 :::static
