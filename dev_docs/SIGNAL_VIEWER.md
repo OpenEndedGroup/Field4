@@ -82,9 +82,9 @@ callers that style it.
 - `analysis.pitch_poly`: a Basic Pitch piano roll, activation and active-pitch lanes.
 - `analysis.transcribe_music`: an instrument-coloured roll, active-note and onset lanes.
 
-Piano-roll notes are one SVG path per colour/alpha bucket, drawn as thick line segments.
-A roll of thousands of notes is therefore a handful of paths, not thousands of shapes
-(measurement below). The active-pitch count now has its own lane. The old canvas squeezed
+Piano-roll notes are one trace per colour/alpha bucket, drawn as thick line segments separated
+by gaps. That is not a handful of SVG paths: Plotly splits a line at every gap, so large rolls
+switch to WebGL (measurement below). The active-pitch count now has its own lane. The old canvas squeezed
 it into the activation lane on a private scale.
 
 ## Kept separate, on purpose
