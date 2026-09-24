@@ -68,7 +68,7 @@ val spacetime = sampledField3D(grid, nx, ny, nt, bounds)
 
 ## What happens where the volume meets the window
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rectsl_spacetime/readout.png" wait="12" capture="box" open-outputs="true" w="1120" h="340" padding="18" timeout="240" name="chain-rectsl-readout" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rectsl_spacetime/readout.png" wait="12" capture="box" open-outputs="true" w="1120" h="340" padding="18" timeout="240" name="chain-rectsl-readout" embed=true alt="A table: one RectSL scene with both rects lowered and zero channel disagreement; then four rows showing marching cubes leaving the unpadded volume open with two boundary loops while the level set closes it, and both closing the padded volume; and one component"}
 :::static
 import afield.manifold.Solid
 import afield.rectsl.compileRectSL
@@ -159,7 +159,6 @@ closedSolid.close()
 :::endfold
 ```
 
-![A table: one RectSL scene with both rects lowered and zero channel disagreement; then four rows showing marching cubes leaving the unpadded volume open with two boundary loops while the level set closes it, and both closing the padded volume; and one component](assets/chain_rectsl_spacetime/readout.png)
 
 The animation is solid at `t = 0` and at `t = duration`, so the volume's surface has nowhere to go at
 those two walls. `marchingCubes` leaves it open there, and says so: the mesh is not watertight and

@@ -18,7 +18,7 @@ change.
 two, which is 2³. It reduces in twenty-six reactions, eight of which are β and the rest of which
 are the fan-and-eraser bookkeeping that makes sharing correct.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term"}
 :::static
 import afield.four.synth.LambdaSoundDocs
 import afield.stdlib.ActivationOrder
@@ -51,7 +51,6 @@ markdown("readout", """
 :::endfold
 ```
 
-![A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term](assets/chain_lambda_sound/one_reduction.png)
 
 The lower trace is how many reactions were *available* at each moment — how much choice the
 scheduler had — and it is never zero until the end and never large. A
@@ -73,7 +72,7 @@ different number of reactions. Over the front end's whole 25-term corpus under f
 100 reductions, 912 reactions — it does not. Not the count, and not even the mix: every schedule
 fires *the same multiset of rules*, in a different order.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests"}
 :::static
 import afield.four.synth.LambdaSoundDocs
 
@@ -109,7 +108,6 @@ $rows
 :::endfold
 ```
 
-![A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests](assets/chain_lambda_sound/sweep.png)
 
 That is a stronger statement than "the answer does not depend on the scheduler", which
 `stdlib.lambda-terms.property` already established over 17 200 checks. The *route* does not either,
@@ -139,7 +137,7 @@ Same reactions, same count, different *order* — so the β-steps land in differ
 `patCondense` returns a different string. Nine of the twenty-five corpus terms condense to more than
 one notation across the four schedulers. Here is one of them, four ways.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places: FIRST_FOUND ends with four strikes packed against the right edge, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs across the middle, and RIGHTMOST_BY_ID spreads its last four out singly. Below, a table giving all four schedulers the same twenty-six reactions and eight betas against four different condensed notations and compressions of 0.43, 0.61, 0.57 and 0.65, all four signed for by the search"}
 :::static
 import afield.four.synth.LambdaSoundDocs
 
@@ -173,7 +171,6 @@ $rows
 :::endfold
 ```
 
-![Four coloured piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places: FIRST_FOUND ends with four strikes packed against the right edge, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs across the middle, and RIGHTMOST_BY_ID spreads its last four out singly. Below, a table giving all four schedulers the same twenty-six reactions and eight betas against four different condensed notations and compressions of 0.43, 0.61, 0.57 and 0.65, all four signed for by the search](assets/chain_lambda_sound/four_schedules.png)
 
 FIRST_FOUND lands its last four β-steps against the end of the bar and the notation says so: a long
 rest and then `x!4`. RIGHTMOST_BY_ID spreads the same eight out far enough that the condenser finds

@@ -252,7 +252,7 @@ match Some (Some 42) with
 
 FieldML has a small prelude for common Field interop. The `fline` factory creates an `FLine`, and path/style helpers return the same line so they compose naturally with pipes.
 
-```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/lines_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-lines-interop" w="760" h="240"}
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/lines_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-lines-interop" w="760" h="240" alt="An output channel labelled main: one orange unfilled stroke on black, running from the upper left, angling gently down, dropping through a smooth cubic valley across the middle, and climbing back to the upper right."}
 let lines channel =
   hostTap "afield.graphics.lines" { channel = channel, w = 120.0, h = 80.0 }
 
@@ -310,7 +310,7 @@ ring 6 10.0 |> length
 
 `draw "channel" line` sends an FLine to one of the box's output channels and returns the same line, so it drops into a pipe like the styling helpers. Combined with `range`, `map` and `fold`, geometry can be generated rather than typed out.
 
-```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/generated_spiral.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-generated-spiral" w="760" h="320"}
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/generated_spiral.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-generated-spiral" w="760" h="320" alt="An output channel labelled main: a thin cyan spiral of three turns on black, wound from a tight centre out to a wide outer arc whose end stops in mid-air on the right rather than closing."}
 let spiral turns count =
   range 0 count
     |> map (fun i ->
@@ -375,7 +375,7 @@ Use `hostTap` for JVM calls that are effects in the middle of a pipe. It runs th
 
 The same wrapper can expose a different part of the Kotlin function without changing the FieldML call shape. Here the wrapper keeps the piped `FLine` implicit, but opts into Field's `fitToSize` behavior:
 
-```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/lines_fit_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="fit" capture="box" embed=true name="fieldml-lines-fit-interop" w="760" h="240"}
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/lines_fit_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="fit" capture="box" embed=true name="fieldml-lines-fit-interop" w="760" h="240" alt="An output channel labelled fit: a thin cyan line on black climbing from the left edge to a sharp peak a fifth of the way across, falling into a rounded trough, rising to a broad low crest, and dropping again at the right edge."}
 let fitLines channel =
   hostTap "afield.graphics.lines" { channel = channel, w = 180.0, h = 90.0, fitToSize = true }
 
@@ -390,7 +390,7 @@ fline
 
 `hostTap` is not limited to graphics. FieldML records, lists, strings, numbers, and host values can all cross the boundary. This example sends a structured FieldML record into Field's JVM value visualizer:
 
-```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/viz_record_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="model" capture="box" embed=true name="fieldml-viz-record-interop" w="760" h="260"}
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/viz_record_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="model" capture="box" embed=true name="fieldml-viz-record-interop" w="760" h="260" alt="An output channel labelled model showing Field's value visualizer over the FieldML record: label maps to run 17, samples to a list beginning 3, 5, 8, 13, with a small cyan sparkline of those values beneath it, and a state row beginning ok maps to true. The capture is clipped and cuts every line off at the right edge."}
 let viz channel =
   hostTap "afield.viz" { channel = channel }
 

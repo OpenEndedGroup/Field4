@@ -24,7 +24,7 @@ Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 
 No renderer needed: everything up to the trace is CPU work.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/readout.png" wait="10" capture="box" open-outputs="true" w="1100" h="320" padding="18" timeout="180" name="chain-life3d-readout" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/readout.png" wait="10" capture="box" open-outputs="true" w="1100" h="320" padding="18" timeout="180" name="chain-life3d-readout" embed=true alt="Tables: live cells per generation falling from 1852 to 164; Field's marching cubes reporting 10688 triangles, watertight, genus 0 against Manifold's level set reporting 5374 triangles and genus minus 47; a cluster census whose 48 volumes sum exactly to the whole solid's; and a sweep showing both the cluster count and the volume changing with the sampling spacing"}
 :::static
 import afield.manifold.Solid
 import afield.stdlib.*
@@ -110,7 +110,6 @@ markdown("spacing", "#### The same field at three spacings each way\n\n" + sweep
 :::endfold
 ```
 
-![Tables: live cells per generation falling from 1852 to 164; Field's marching cubes reporting 10688 triangles, watertight, genus 0 against Manifold's level set reporting 5374 triangles and genus minus 47; a cluster census whose 48 volumes sum exactly to the whole solid's; and a sweep showing both the cluster count and the volume changing with the sampling spacing](assets/chain_life3d_render/readout.png)
 
 ## Why the two marchers disagree about genus
 
