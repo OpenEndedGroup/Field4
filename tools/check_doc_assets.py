@@ -300,7 +300,13 @@ def stale_placeholder_exceptions(root: Path) -> list[str]:
     return stale
 
 
-DIFFSTATIC_FENCE = re.compile(r"```diffstatic_runner \{([^}]*)\}")
+# The attribute block runs to the LAST `}` on the opener line, so `.*` with `$` rather
+# than `[^}]*`. An alt string describing Kotlin code contains braces --
+# `petri_nets.md:143` describes `.every(4) { it.fast(2) }` -- and cutting at the first
+# `}` dropped `embed=true` off the end, which reported a perfectly good embedded figure
+# as an orphaned capture fence. `docs_hooks` never had the bug: it splits the opener on
+# the fence name and flattens every brace to a space.
+DIFFSTATIC_FENCE = re.compile(r"```diffstatic_runner \{(.*)\}\s*$", re.M)
 FENCE_ASSET = re.compile(r'(?:screenshot|video|audio)="([^"]+)"')
 
 
