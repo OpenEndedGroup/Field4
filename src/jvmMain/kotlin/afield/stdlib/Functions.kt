@@ -3223,7 +3223,7 @@ object Functions {
     }
 
     /**
-     * Renders an interactive plot of this function as a self-contained HTML iframe, sampling over the given
+     * Renders an interactive plot of this function as self-contained HTML (samples embedded), sampling over the given
      * range. Non-finite samples — including anything that throws while being evaluated, which is caught and
      * turned into a gap — are drawn as breaks in the curve rather than spikes.
      */
@@ -3261,7 +3261,7 @@ object Functions {
         )
 
     /**
-     * Renders an interactive plot of this function as a self-contained HTML iframe over the given x range,
+     * Renders an interactive plot of this function as self-contained HTML (samples embedded) over the given x range,
      * with an explicit y range instead of one fitted to the data. Non-finite samples are drawn as gaps.
      */
     fun Fn.plotHtml(

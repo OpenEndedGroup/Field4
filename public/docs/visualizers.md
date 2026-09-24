@@ -1251,7 +1251,7 @@ binary artifact → temporal pooling → three Field Smile spaces → bidirectio
 
 ### Instrument-labelled transcription
 
-The same `analysisVisualizationHtml` canvas recognizes `analysis.transcribe_music` results as a
+The same `analysisVisualizationHtml` viewer recognizes `analysis.transcribe_music` results as a
 MuScriptor piano roll. Note colour follows the recovered instrument group; the lower lane compares
 active polyphony with onset count. It uses the same `syncGroup` time bus as the waveform, beat,
 pitch, speech-space, and spectral-space views, so playback, hover, seek, zoom, and pan stay aligned.

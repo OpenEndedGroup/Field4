@@ -60,7 +60,7 @@ data class AudioVisualizerSource(
 data class AudioVisualizerOptions(
     /** Maximum width in CSS pixels; the component is fluid below it. Must be positive. */
     val width: Int = 960,
-    /** Height of the waveform canvas in CSS pixels. At least 48, and channels share it as lanes. */
+    /** Height of the waveform plot area in CSS pixels. At least 48, and channels share it as lanes. */
     val waveformHeight: Int = 150,
     /** Draw the moving playhead while the audio plays. */
     val showPlayhead: Boolean = true,
