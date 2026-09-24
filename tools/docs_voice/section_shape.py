@@ -69,10 +69,43 @@ from pathlib import Path
 
 # Words that make a heading a verification heading. Kept deliberately narrow: these are
 # the ones that mean "here is how I know", not the ones that mean "here is a number".
-# `measured`/`measurement` yes; `performance`/`cost`/`budget` NO — a reader acts on those.
+# `performance`/`cost`/`budget` NO — a reader acts on those.
+#
+# `measur\w*` was here until 2026-09-24 and was the single biggest source of noise on this
+# board. Censused hit by hit over every `##`-`######` heading in public/docs: **12 of 13
+# were false**, because in this tree "measure" overwhelmingly names the *subject* rather
+# than the checking of it. `manifold.md` "Measuring a solid", `mesh_examples.md`
+# "Measuring and querying", `three_output.md` "Measuring and sectioning a solid" and
+# `fline_examples.md` "Measuring" are API sections; `output_panel_sizing.md` "Height is
+# measured from the content edge" and "Why the fallback measures outwards" are mechanism;
+# `keyframe_autosweep.md` "Extrapolation is measured in hull-crossings" is a units idiom;
+# `audio_ai_corpus_microscope.md` "What each window is measured by", `tetgen.md` "The two
+# quality measures" and `statistics_examples.md` "Measuring the null yourself" are the
+# page's own topic. The one true hit, `chain_polytope_render.md` "The same surface,
+# measured by two implementations that share no code", is still caught -- by
+# `share\s+no\s+code`, which is the part of it that actually means cross-verification.
+#
+# The cost of the false positives was not just noise in a column. On 2026-09-24 the board
+# ranked `output_panel_sizing` at 24.1% and `audio_ai_corpus_microscope` at 29.8% and sent
+# a firing to read both; both are excellent pages and neither had a verification section at
+# all. Meanwhile `keyframe_autosweep.md`'s real one, `## Where it is exercised`, scored
+# nothing -- see `exercis\w*` below.
 VERIFY_WORDS = re.compile(
     r"\b("
-    r"measur\w*|verif\w*|check\w*|checked|cross-check\w*|agree\w*|agreement"
+    r"verif\w*|check\w*|checked|cross-check\w*|agree\w*|agreement"
+    # `exercis\w*`: "Where it is exercised" is this tree's idiom for "which suites cover
+    # this", and the board could not see it. Added 2026-09-24 with exactly one recorded
+    # instance (`keyframe_autosweep.md:423`, disposed of the same night to
+    # `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`), so it currently matches NOTHING. That is
+    # intended: it is here for the next one, not to score a backlog.
+    r"|exercis\w*"
+    # `regression suite`, not bare `regression`: this tree documents statistics, and
+    # `statistics_examples.md` is one page away from a heading about fitting a regression.
+    # Censused 2026-09-24 -- one heading in public/docs contains `regression`
+    # (`output_panel_sizing.md:295`) and it is a true hit; bare `pin`/`pinned` is 1 true of
+    # 3 (`dataframe.md` "the version pin", `three_output.md` "The pinned console"), so the
+    # suite is what is matched and the verb is not.
+    r"|regression\s+suite"
     r"|provenance|proof|proven|prove[sd]?|assert\w*|guard\w*|guarantee[sd]?"
     # NOT bare `reproduc\w*`: "Reproduction with modification" is this tree's standard
     # heading for "here is the code behind the figure, go edit it" — a teaching section,
@@ -255,5 +288,55 @@ def main() -> int:
     return 0
 
 
+def live_fire():
+    """Pin the 2026-09-24 `measur\\w*` census in both directions.
+
+    The narrowing that made this board usable is also the shape most easily
+    over-applied, so each case below pins a false positive *staying* dead AND the true
+    sense staying reachable. Every must-not-fire string is a real heading from
+    `public/docs` on that date, quoted with its page.
+    """
+    must_not_fire = [
+        "## Measuring a solid",                                   # manifold.md:30, API
+        "## Measuring and querying",                              # mesh_examples.md:463
+        "## Measuring and sectioning a solid",                    # three_output.md:389
+        "#### Measuring",                                         # fline_examples.md:252
+        "## Height is measured from the content edge",            # output_panel_sizing.md:210
+        "## Why the fallback measures outwards",                  # output_panel_sizing.md:131
+        "## Extrapolation is measured in hull-crossings",         # keyframe_autosweep.md:303
+        "## What each window is measured by",                     # audio_ai_corpus_microscope.md:10
+        "## The two quality measures",                            # tetgen.md:126
+        "## Measuring the null yourself",                         # statistics_examples.md:313
+        "## One mesh to measure, another to draw",                # chain_polytope_render.md:193
+        "## Example: recovering an unmeasured velocity",          # state_estimation_examples.md:196
+    ]
+    must_fire = [
+        # The one true hit in that census. It survives `measur\w*`'s removal because the
+        # part of it that means cross-verification is `share no code`, which is its own
+        # alternative -- delete that and this case goes red, which is the point.
+        "#### The same surface, measured by two implementations that share no code",
+        "## Where it is exercised",          # keyframe_autosweep.md:423, the idiom the board could not see
+        "## Running the tests",              # building_and_testing.md:171
+        "## Verification lanes",             # field_audio_service_reference.md
+        "## Testing the head",               # ar_reference.md:160
+        "## What the regression suite pins",  # output_panel_sizing.md:295
+    ]
+    bad = 0
+    for h in must_not_fire:
+        if VERIFY_WORDS.search(h):
+            print(f"live-fire FAIL: should be silent, fired: {h!r}")
+            bad += 1
+    for h in must_fire:
+        if not VERIFY_WORDS.search(h):
+            print(f"live-fire FAIL: should fire, silent: {h!r}")
+            bad += 1
+    if not bad:
+        print(f"live fire OK: {len(must_fire)} must-fire, {len(must_not_fire)} must-not-fire, "
+              "all correct")
+    return 1 if bad else 0
+
+
 if __name__ == "__main__":
+    if "--live-fire" in sys.argv:
+        sys.exit(live_fire())
     sys.exit(main())

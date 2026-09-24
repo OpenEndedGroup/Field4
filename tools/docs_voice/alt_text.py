@@ -66,6 +66,15 @@ fence syntax allows bare values: `afield_four_graphics.md` writes `embed=true`
 unquoted, and an `embed="true"` regex silently misses 238 of the 339 embedding
 fences.
 
+The *block* those attributes are cut from runs to the LAST `}` on the line, not the
+first. An alt string describing Kotlin code contains braces -- `petri_nets.md:143`
+describes `.every(4) { it.fast(2) }` -- and a first-`}` match severs `alt="` from its
+closing quote, which made `shlex.split` raise `No closing quotation` and returned
+nothing at all for the whole tree. `docs_hooks` has never had the bug because it uses
+no regex: it splits the opener on the fence name and flattens every brace to a space.
+`double_published.py` carried the same expression and failed the other way, dropping
+the fence silently. Both are pinned in `--live-fire`.
+
 Surfaces match score_voice: default / --generated / --assets, same filters.
 Self-test: `--live-fire` puts Marc's own 2026-09-13 quotes in an alt string and
 asserts they fire, and pins each of the four coverage cases above. A detector that
@@ -82,7 +91,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import score_voice as sv  # noqa: E402
 
 # A fence opener with a brace-delimited attribute block: ```diffstatic_runner {...}
-OPENER = re.compile(r"^\s*(?:```|~~~)[a-z_]*\s*\{(?P<attrs>[^}]*)\}")
+#
+# `attrs` runs to the LAST `}` on the line, not the first. A non-greedy `[^}]*` was
+# what this used to say, and an alt string describing a Kotlin lambda -- petri_nets.md
+# `.every(4) { it.fast(2) }` -- truncated the block mid-quoted-value, which made
+# `shlex.split` raise `No closing quotation` and take down the whole board. The real
+# parser has never had this problem because it does not use a regex at all:
+# `docs_hooks.parse_runner_options` takes `open_line.split(runner_name, 1)[1]`, i.e.
+# everything after the fence name, and `parse_attrs` then flattens every brace to a
+# space. Matching to the last `}` plus that same flattening reproduces it.
+OPENER = re.compile(r"^\s*(?:```|~~~)[a-z_]*\s*\{(?P<attrs>.*)\}\s*$")
 ALT = re.compile(r'\balt="(?P<text>[^"]*)"')
 SCREENSHOT = re.compile(r"\bscreenshot=")
 # A published figure the page author wrote by hand, rather than one the fence embeds.
@@ -93,10 +111,20 @@ TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
 def parse_attrs(raw):
-    """A copy of `docs_hooks.parse_attrs`, so bare `embed=true` parses like it does."""
+    """A copy of `docs_hooks.parse_attrs`, so bare `embed=true` parses like it does.
+
+    One deliberate divergence: an attribute block whose quotes do not balance is
+    reported as unparseable rather than raising. `docs_hooks` raising is right --
+    the docs build should refuse a malformed fence -- but a read-only board that
+    dies on the first bad page reports nothing about the other 139.
+    """
     flattened = raw.replace("{", " ").replace("}", " ")
     attrs = {}
-    for token in shlex.split(flattened):
+    try:
+        tokens = shlex.split(flattened)
+    except ValueError:
+        return None
+    for token in tokens:
         if token.startswith(".") or token.startswith("#"):
             continue
         if "=" in token:
@@ -168,6 +196,8 @@ def coverage(text):
     published = covered = 0
     for _lineno, attrs in openers(text):
         parsed = parse_attrs(attrs)
+        if parsed is None:
+            continue
         if "screenshot" not in parsed:
             continue
         if parsed.get("embed", "").lower() not in TRUE_VALUES:
@@ -248,6 +278,31 @@ def live_fire():
     assert got == (6, 2), f"coverage miscounted the publishing surfaces: {got}"
     print("live-fire coverage: 6 published, 2 covered; embed-less fences and "
           "in-fence samples both excluded")
+
+    # An alt string describing Kotlin code contains braces, and the whole board used
+    # to die on one: `[^}]*` cut the block at the inner `}`, severing `alt="` from its
+    # closing quote, and `shlex.split` raised `No closing quotation` for the entire
+    # tree. petri_nets.md:143 is the real line this is taken from.
+    braced = "\n".join([
+        '```diffstatic_runner {data-lang=kotlin screenshot="k.png" embed=true '
+        'alt="a figure of eight in which .every(4) { it.fast(2) } doubles the left ring"}',
+        "// body",
+        "```",
+    ])
+    got = coverage(braced)
+    assert got == (1, 1), f"a brace inside an alt string broke the attribute block: {got}"
+    (_lineno, attrs), = openers(braced)
+    parsed = parse_attrs(attrs)
+    assert parsed is not None, "a braced attribute block was reported unparseable"
+    assert parsed["alt"].endswith("doubles the left ring"), parsed["alt"]
+    assert parsed["embed"] == "true", "embed= fell off the end of a braced block"
+    print("live-fire braces: an alt string containing `{ }` parses whole")
+
+    # A genuinely unbalanced quote is an authoring error the docs build should reject,
+    # but a read-only board must still report on the other 139 pages.
+    malformed = braced.replace('embed=true', 'embed=true stray="')
+    assert coverage(malformed) == (0, 0), "an unparseable opener was not skipped"
+    print("live-fire malformed: an unbalanced quote is skipped, not raised")
     return 0
 
 
