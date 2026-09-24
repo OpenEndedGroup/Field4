@@ -99,16 +99,40 @@ it into the activation lane on a private scale.
 - `pianoRollSvg` (`four/synth/Sequencing.kt`) is a static, non-interactive `toHTML()`
   for pattern values. It has no time bus.
 
+## Bins, readiness, and the piano roll
+
+- Bins are requested per **device** pixel: (stage width − margins) × devicePixelRatio, with a cap
+  of 4096. The width is measured from the stage at request time, not from Plotly's last layout.
+  An output first laid out while closed has a 200 px layout, and trusting it once gave 296 bins
+  for 1944 device px.
+- Audio switches from a min/max contour to its waveform (a 1.3 px line through every sample) at
+  ≤ 1.5 samples per device pixel, with dots past 6 px per sample. A service answer with min ==
+  max everywhere is drawn the same way. `data-samples-per-pixel` records the ratio.
+- `aria-busy` on the root is true until the current view's final-resolution draw. A closed
+  output stays busy and does not fetch until it has width. Field's box-screenshot prep already
+  blocks on a visible `[aria-busy="true"]`, so docs captures wait for it.
+- Zero-axis shapes are emitted only inside the current view. A clipped shape far outside
+  still has a bounding box, and box screenshots union the rects of every SVG node, which once
+  produced seven 4000-px-tall captures.
+- Lane labels sit in a 17 px band of headroom at the top of each labelled lane.
+- Piano roll: Plotly splits an SVG line at every null, so N notes become N `<path>`s. Measured
+  on 20,000 notes: 146–341 ms per pan in SVG against 5–12 ms as `scattergl` (80 paths). Rolls
+  over 2,000 notes use WebGL. Every docs fixture (19–34 notes) stays SVG.
+
 ## Verification
 
-- `TimeViewerTest`: the embedded payload's gap set equals the set where the function is
-  non-finite or throws; gaps travel as `null`; `Box.plot` registers and then releases its
-  live source; min/max bins keep a single-sample spike that decimating the same grid to
-  one sample per bin drops (the counterfactual is asserted, not assumed); every caller
-  inlines the same runtime.
-- `SignalViewerTest`, `AudioVisualizerTest`, `AnalysisVisualizationTest`,
-  `OscillatorDomainGuardTest`, `FnInterval*`.
+- `TimeViewerTest`:
+  - the embedded payload's gap set equals the set where the function is non-finite or throws;
+  - gaps travel as `null`;
+  - `Box.plot` registers and then releases its live source;
+  - min/max bins keep a single-sample spike that decimating the same grid to one sample per
+    bin drops (the counterfactual is asserted, not assumed);
+  - every caller inlines the same runtime.
+- Also green: `SignalViewerTest`, `AudioVisualizerTest`, `AnalysisVisualizationTest`,
+  `AnalysisOperationsTest`, `OscillatorDomainGuardTest`, `FnInterval*`, `FunctionStudyTest`,
+  `InfixCompletionTest`, `CodecVisualizationTest`, `RenderedAudio*`.
 - Browser: `tools/test_signal_viewer.js` (page-eval) and `tools/test_signal_viewer_gestures.kt`
-  (real Playwright drag, wheel and overview-strip navigation) against a three-lane
-  SignalViewer. See `NIGHTLY` notes in the branch history for the Fn.plot / audio / analysis
-  probes.
+  run against a three-lane 0..3600 s SignalViewer. The gestures script uses real Playwright
+  drag, wheel and overview-strip navigation.
+- The demo in `public/docs/visualizers.md` ("One viewer for functions, sounds and signals")
+  puts all three sources on one `syncGroup`.
