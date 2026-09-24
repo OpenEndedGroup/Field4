@@ -3091,41 +3091,6 @@ object Functions {
 
     private data class PlotSample(val x: Double, val y: Double?)
 
-    private fun Double.jsonNumber(): String =
-        if (isFinite()) toString() else "null"
-
-    private fun jsString(value: String): String = buildString {
-        append('"')
-        for (ch in value) {
-            when (ch) {
-                '\\' -> append("\\\\")
-                '"' -> append("\\\"")
-                '\n' -> append("\\n")
-                '\r' -> append("\\r")
-                '\t' -> append("\\t")
-                else -> {
-                    val code = ch.code
-                    if (code < 32) append("\\u").append(code.toString(16).padStart(4, '0'))
-                    else append(ch)
-                }
-            }
-        }
-        append('"')
-    }
-
-    private fun htmlAttribute(value: String): String = buildString {
-        for (ch in value) {
-            when (ch) {
-                '&' -> append("&amp;")
-                '<' -> append("&lt;")
-                '>' -> append("&gt;")
-                '"' -> append("&quot;")
-                '\'' -> append("&#39;")
-                else -> append(ch)
-            }
-        }
-    }
-
     private fun Domain.plotSafe(default: Domain = Domain.DEFAULT): Domain {
         if (!isFinite) return default
         return when {
@@ -3175,9 +3140,15 @@ object Functions {
      *
      * The plot samples the whole finite [domain] by default. Infinite functions
      * need a finite [sampleDomain], or they fall back to a small 0..1 preview.
-     * The returned iframe is self-contained so it can be displayed in Field,
-     * reused in docs, or embedded in a scratch output without registering a
-     * frontend route.
+     * The samples travel inside the returned HTML, so the plot needs no server
+     * route: it draws the same after a Field restart, in a scratch output or in a
+     * docs capture. It is drawn by Field's one time-axis viewer (Plotly), the
+     * same component as [afield.stdlib.SignalViewer] and the audio player; wheel
+     * zooms x at the pointer, drag pans, alt-wheel zooms y, and ↕ fits y to the
+     * visible window. `Box.plot` and `Fn.plot` additionally resample the function
+     * live as you zoom in; this bare HTML zooms into its embedded samples only. A non-empty
+     * [syncGroup] links the view window, cursor and click-to-seek with other time viewers
+     * (`displaySignal`, `displayAudio*`, the analysis views) in the same group; x is then read as seconds.
      */
     fun Fn.plotHtml(
         sampleDomain: Domain? = null,
@@ -3192,483 +3163,67 @@ object Functions {
         background: String = "#000000",
         primaryColor: String = "#0af",
         secondaryColor: String = "#f80",
-        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
+        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+        syncGroup: String = ""
+    ): String = plotViewerHtml(sampleDomain, samples, heightPx, title, xLabel, yLabel, yDomain, edge, outside,
+        background, primaryColor, secondaryColor, fontFamily, syncGroup, live = null)
+
+    /** The evaluator a plot samples: non-finite values and throws become gaps (NaN). */
+    private fun Fn.plotEvaluator(edge: EdgeMode, outside: Double): (Double) -> Double = { x ->
+        runCatching { evalSafe(x, outside = outside, edge = edge) }.getOrElse { Double.NaN }
+    }
+
+    private fun Fn.plotViewerHtml(
+        sampleDomain: Domain?, samples: Int, heightPx: Int, title: String, xLabel: String, yLabel: String,
+        yDomain: Domain?, edge: EdgeMode, outside: Double, background: String, primaryColor: String,
+        secondaryColor: String, fontFamily: String, syncGroup: String,
+        // Keeps a range-query source for this plot; null for self-contained HTML.
+        live: ((SignalViewer) -> Unit)?,
     ): String {
         val plotDomain = (sampleDomain ?: domain).plotSafe()
         val count = samples.coerceIn(2, 32768)
         val step = plotDomain.length / (count - 1).toDouble()
+        val evaluate = plotEvaluator(edge, outside)
         val plotSamples = List(count) { i ->
             val x = plotDomain.min + step * i.toDouble()
-            val y = runCatching { evalSafe(x, outside = outside, edge = edge) }
-                .getOrElse { Double.NaN }
-                .takeIf { it.isFinite() }
-            PlotSample(x, y)
+            PlotSample(x, evaluate(x).takeIf { it.isFinite() })
         }
         val valueDomain = yPlotDomain(plotSamples, yDomain)
-        val sampleJson = plotSamples.joinToString(",", "[", "]") { sample ->
-            "[${sample.x.jsonNumber()},${sample.y?.jsonNumber() ?: "null"}]"
-        }
         val finiteCount = plotSamples.count { it.y != null }
-        val frameHeight = heightPx.coerceAtLeast(220) + 76
         val safeTitle = title.ifBlank { name ?: "Fn" }
-
-        val srcdoc = """
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    background: $background;
-    color: rgba(255,255,255,0.82);
-    font-family: $fontFamily;
-    overflow: hidden;
-}
-.fn-plot {
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 320px;
-    height: ${frameHeight}px;
-    padding: 10px 12px 12px;
-    background: $background;
-}
-.fn-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 28px;
-    margin-bottom: 6px;
-}
-.fn-title {
-    flex: 1;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: rgba(255,255,255,0.92);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0;
-}
-.fn-chip, .fn-readout {
-    color: rgba(255,255,255,0.58);
-    border: 1px solid rgba(255,255,255,0.13);
-    border-radius: 6px;
-    padding: 3px 7px;
-    font-size: 11px;
-    line-height: 16px;
-    white-space: nowrap;
-    background: rgba(255,255,255,0.035);
-}
-.fn-tools {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-button {
-    width: 26px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.16);
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.78);
-    font-family: $fontFamily;
-    font-size: 13px;
-    line-height: 20px;
-    cursor: pointer;
-}
-button:hover {
-    border-color: $primaryColor;
-    color: white;
-}
-.fn-canvas-wrap {
-    position: relative;
-    height: ${heightPx.coerceAtLeast(220)}px;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 8px;
-    background: #050505;
-    overflow: hidden;
-}
-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-    cursor: crosshair;
-}
-</style>
-</head>
-<body>
-<div class="fn-plot">
-    <div class="fn-top">
-        <div class="fn-title" title="${htmlAttribute(safeTitle)}">${htmlAttribute(safeTitle)}</div>
-        <div class="fn-chip">${finiteCount}/${count} samples</div>
-        <div class="fn-readout" id="readout">x -- y --</div>
-        <div class="fn-tools">
-            <button type="button" id="reset" title="Reset view" aria-label="Reset view">&#8634;</button>
-            <button type="button" id="fitY" title="Fit value range" aria-label="Fit value range">&#8597;</button>
-        </div>
-    </div>
-    <div class="fn-canvas-wrap">
-        <canvas id="plot"></canvas>
-    </div>
-</div>
-<script>
-(function () {
-    const payload = {
-        samples: $sampleJson,
-        xRange: [${plotDomain.min.jsonNumber()}, ${plotDomain.max.jsonNumber()}],
-        yRange: [${valueDomain.min.jsonNumber()}, ${valueDomain.max.jsonNumber()}],
-        xLabel: ${jsString(xLabel)},
-        yLabel: ${jsString(yLabel)},
-        primary: ${jsString(primaryColor)},
-        secondary: ${jsString(secondaryColor)}
-    };
-    const canvas = document.getElementById("plot");
-    const ctx = canvas.getContext("2d");
-    const readout = document.getElementById("readout");
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const margin = { left: 58, right: 18, top: 26, bottom: 42 };
-    const state = {
-        xMin: payload.xRange[0],
-        xMax: payload.xRange[1],
-        yMin: payload.yRange[0],
-        yMax: payload.yRange[1],
-        pointer: null,
-        dragging: null
-    };
-
-    function finite(value) {
-        return typeof value === "number" && Number.isFinite(value);
-    }
-
-    function format(value) {
-        if (!finite(value)) return "--";
-        const a = Math.abs(value);
-        if (a !== 0 && (a >= 10000 || a < 0.001)) return value.toExponential(2);
-        if (a >= 100) return value.toFixed(1);
-        if (a >= 10) return value.toFixed(2);
-        return value.toFixed(3);
-    }
-
-    function plotRect() {
-        return {
-            x: margin.left,
-            y: margin.top,
-            w: Math.max(20, canvas.clientWidth - margin.left - margin.right),
-            h: Math.max(20, canvas.clientHeight - margin.top - margin.bottom)
-        };
-    }
-
-    function xToPx(x) {
-        const r = plotRect();
-        return r.x + ((x - state.xMin) / (state.xMax - state.xMin)) * r.w;
-    }
-
-    function yToPx(y) {
-        const r = plotRect();
-        return r.y + r.h - ((y - state.yMin) / (state.yMax - state.yMin)) * r.h;
-    }
-
-    function pxToX(px) {
-        const r = plotRect();
-        return state.xMin + ((px - r.x) / r.w) * (state.xMax - state.xMin);
-    }
-
-    function pxToY(py) {
-        const r = plotRect();
-        return state.yMin + (1 - (py - r.y) / r.h) * (state.yMax - state.yMin);
-    }
-
-    function niceStep(span, target) {
-        const raw = Math.abs(span) / Math.max(1, target);
-        if (!finite(raw) || raw === 0) return 1;
-        const power = Math.pow(10, Math.floor(Math.log10(raw)));
-        const unit = raw / power;
-        const nice = unit <= 1 ? 1 : unit <= 2 ? 2 : unit <= 5 ? 5 : 10;
-        return nice * power;
-    }
-
-    function ticks(min, max, target) {
-        const step = niceStep(max - min, target);
-        const first = Math.ceil(min / step) * step;
-        const out = [];
-        for (let v = first; v <= max + step * 0.5 && out.length < 80; v += step) {
-            if (v >= min - step * 0.5) out.push(v);
+        val values = DoubleArray(count) { plotSamples[it].y ?: Double.NaN }
+        val url = live?.let { retain ->
+            val viewer = SignalViewer(
+                listOf(SignalChannel(safeTitle, evaluate, valueDomain.min, valueDomain.max)),
+                plotDomain.min, plotDomain.max, sampleStep = step, gaps = true,
+            )
+            retain(viewer)
+            "/signal-viewer/${viewer.id}"
         }
-        return out;
-    }
-
-    function resetView() {
-        state.xMin = payload.xRange[0];
-        state.xMax = payload.xRange[1];
-        state.yMin = payload.yRange[0];
-        state.yMax = payload.yRange[1];
-        draw();
-    }
-
-    function setYRange(min, max) {
-        if (!finite(min) || !finite(max)) return;
-        if (min === max) {
-            const pad = Math.max(1, Math.abs(min) * 0.1);
-            min -= pad;
-            max += pad;
-        }
-        const pad = (max - min) * 0.08;
-        state.yMin = min - pad;
-        state.yMax = max + pad;
-    }
-
-    function fitVisibleY() {
-        let lo = Infinity;
-        let hi = -Infinity;
-        for (const p of payload.samples) {
-            const x = p[0], y = p[1];
-            if (!finite(x) || !finite(y)) continue;
-            if (x < state.xMin || x > state.xMax) continue;
-            lo = Math.min(lo, y);
-            hi = Math.max(hi, y);
-        }
-        if (finite(lo) && finite(hi)) setYRange(lo, hi);
-        draw();
-    }
-
-    function resize() {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = Math.max(1, Math.round(rect.width * dpr));
-        canvas.height = Math.max(1, Math.round(rect.height * dpr));
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        draw();
-    }
-
-    function line(x1, y1, x2, y2, color, width) {
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.stroke();
-    }
-
-    function drawGrid() {
-        const r = plotRect();
-        ctx.fillStyle = "#050505";
-        ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-        ctx.fillStyle = "rgba(255,255,255,0.025)";
-        ctx.fillRect(r.x, r.y, r.w, r.h);
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(r.x, r.y, r.w, r.h);
-        ctx.clip();
-        for (const x of ticks(state.xMin, state.xMax, 8)) {
-            const px = xToPx(x);
-            line(px, r.y, px, r.y + r.h, "rgba(255,255,255,0.075)", 1);
-        }
-        for (const y of ticks(state.yMin, state.yMax, 6)) {
-            const py = yToPx(y);
-            line(r.x, py, r.x + r.w, py, "rgba(255,255,255,0.075)", 1);
-        }
-        if (state.xMin <= 0 && state.xMax >= 0) {
-            const px = xToPx(0);
-            line(px, r.y, px, r.y + r.h, "rgba(255,136,0,0.55)", 1.25);
-        }
-        if (state.yMin <= 0 && state.yMax >= 0) {
-            const py = yToPx(0);
-            line(r.x, py, r.x + r.w, py, "rgba(255,136,0,0.55)", 1.25);
-        }
-        ctx.restore();
-
-        ctx.fillStyle = "rgba(255,255,255,0.52)";
-        ctx.font = "11px Iosevka Web, IBM Plex Mono, monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        for (const x of ticks(state.xMin, state.xMax, 8)) {
-            const px = xToPx(x);
-            if (px >= r.x - 1 && px <= r.x + r.w + 1) ctx.fillText(format(x), px, r.y + r.h + 7);
-        }
-        ctx.textAlign = "right";
-        ctx.textBaseline = "middle";
-        for (const y of ticks(state.yMin, state.yMax, 6)) {
-            const py = yToPx(y);
-            if (py >= r.y - 1 && py <= r.y + r.h + 1) ctx.fillText(format(y), r.x - 8, py);
-        }
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.fillText(payload.xLabel, r.x + r.w * 0.5, canvas.clientHeight - 5);
-        ctx.save();
-        ctx.translate(12, r.y + r.h * 0.5);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(payload.yLabel, 0, 0);
-        ctx.restore();
-    }
-
-    function drawCurve() {
-        const r = plotRect();
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(r.x, r.y, r.w, r.h);
-        ctx.clip();
-        ctx.beginPath();
-        let open = false;
-        for (const p of payload.samples) {
-            const x = p[0], y = p[1];
-            if (!finite(x) || !finite(y)) {
-                open = false;
-                continue;
-            }
-            const px = xToPx(x);
-            const py = yToPx(y);
-            if (px < r.x - r.w || px > r.x + r.w * 2 || py < r.y - r.h || py > r.y + r.h * 2) {
-                if (!open) continue;
-            }
-            if (!open) {
-                ctx.moveTo(px, py);
-                open = true;
-            } else {
-                ctx.lineTo(px, py);
-            }
-        }
-        ctx.strokeStyle = payload.primary;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "rgba(255,255,255,0.35)";
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    function drawPointer() {
-        const p = state.pointer;
-        if (!p) return;
-        const r = plotRect();
-        if (p.x < r.x || p.x > r.x + r.w || p.y < r.y || p.y > r.y + r.h) return;
-        line(p.x, r.y, p.x, r.y + r.h, "rgba(255,255,255,0.18)", 1);
-        line(r.x, p.y, r.x + r.w, p.y, "rgba(255,255,255,0.18)", 1);
-    }
-
-    function draw() {
-        if (!ctx) return;
-        drawGrid();
-        drawCurve();
-        drawPointer();
-        if (state.pointer) {
-            readout.textContent = "x " + format(pxToX(state.pointer.x)) + "   y " + format(pxToY(state.pointer.y));
-        }
-    }
-
-    function pointer(event) {
-        const rect = canvas.getBoundingClientRect();
-        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    }
-
-    canvas.addEventListener("pointerdown", function (event) {
-        event.preventDefault();
-        const p = pointer(event);
-        state.dragging = {
-            id: event.pointerId,
-            x: p.x,
-            y: p.y,
-            xMin: state.xMin,
-            xMax: state.xMax,
-            yMin: state.yMin,
-            yMax: state.yMax
-        };
-        canvas.setPointerCapture(event.pointerId);
-        canvas.style.cursor = "grabbing";
-    });
-
-    canvas.addEventListener("pointermove", function (event) {
-        const p = pointer(event);
-        state.pointer = p;
-        if (state.dragging) {
-            const r = plotRect();
-            const dx = (p.x - state.dragging.x) / Math.max(1, r.w);
-            const dy = (p.y - state.dragging.y) / Math.max(1, r.h);
-            const xs = state.dragging.xMax - state.dragging.xMin;
-            const ys = state.dragging.yMax - state.dragging.yMin;
-            state.xMin = state.dragging.xMin - dx * xs;
-            state.xMax = state.dragging.xMax - dx * xs;
-            state.yMin = state.dragging.yMin + dy * ys;
-            state.yMax = state.dragging.yMax + dy * ys;
-        }
-        draw();
-    });
-
-    canvas.addEventListener("pointerup", function (event) {
-        if (state.dragging && state.dragging.id === event.pointerId) {
-            state.dragging = null;
-            canvas.style.cursor = "crosshair";
-        }
-    });
-
-    canvas.addEventListener("pointerleave", function () {
-        if (!state.dragging) {
-            state.pointer = null;
-            readout.textContent = "x -- y --";
-            draw();
-        }
-    });
-
-    canvas.addEventListener("dblclick", function (event) {
-        event.preventDefault();
-        resetView();
-    });
-
-    canvas.addEventListener("wheel", function (event) {
-        event.preventDefault();
-        const r = plotRect();
-        const p = pointer(event);
-        const xAnchor = pxToX(p.x);
-        const yAnchor = pxToY(p.y);
-        const xs = state.xMax - state.xMin;
-        const ys = state.yMax - state.yMin;
-        if (event.ctrlKey || event.metaKey) {
-            const factor = Math.exp(event.deltaY * 0.0015);
-            const ax = (xAnchor - state.xMin) / xs;
-            const newXs = Math.max(1e-12, xs * factor);
-            state.xMin = xAnchor - ax * newXs;
-            state.xMax = xAnchor + (1 - ax) * newXs;
-            if (event.shiftKey) {
-                const ay = (yAnchor - state.yMin) / ys;
-                const newYs = Math.max(1e-12, ys * factor);
-                state.yMin = yAnchor - ay * newYs;
-                state.yMax = yAnchor + (1 - ay) * newYs;
-            }
-        } else {
-            state.xMin += (event.deltaX / Math.max(1, r.w)) * xs;
-            state.xMax += (event.deltaX / Math.max(1, r.w)) * xs;
-            state.yMin -= (event.deltaY / Math.max(1, r.h)) * ys;
-            state.yMax -= (event.deltaY / Math.max(1, r.h)) * ys;
-        }
-        draw();
-    }, { passive: false });
-
-    document.getElementById("reset").addEventListener("click", resetView);
-    document.getElementById("fitY").addEventListener("click", fitVisibleY);
-    window.addEventListener("resize", resize);
-    resize();
-})();
-</script>
-</body>
-</html>
-""".trimIndent()
-
-        return """
-<iframe
-    class="field-fn-plot-frame"
-    title="${htmlAttribute(safeTitle)}"
-    srcdoc="${htmlAttribute(srcdoc)}"
-    data-afield-intrinsic-width="760"
-    data-afield-intrinsic-height="$frameHeight"
-    style="border:none;padding:0;margin:0;display:block;width:100%;height:${frameHeight}px;background:$background;"
-></iframe>
-""".trimIndent()
+        return TimeViewerShell.render(
+            config = mapOf(
+                "source" to "embedded", "url" to url,
+                "window" to TimeViewerShell.embeddedWindow(plotDomain.min, plotDomain.max,
+                    listOf(safeTitle to values), valueDomain.min, valueDomain.max),
+                "start" to plotDomain.min, "end" to plotDomain.max,
+                "label" to safeTitle, "syncGroup" to syncGroup, "xLabel" to xLabel, "xUnit" to "", "xName" to xLabel, "yName" to yLabel,
+                "readoutIdle" to "$xLabel –   $yLabel –",
+                "samplesChip" to "$finiteCount/$count samples",
+                "plotHeight" to heightPx.coerceAtLeast(220), "zeroLines" to true,
+                "margin" to mapOf("l" to 66, "r" to 18, "t" to 14),
+                "colors" to mapOf("primary" to primaryColor, "secondary" to secondaryColor),
+                "lanes" to listOf(mapOf("name" to safeTitle, "yZoom" to true, "yTitle" to yLabel,
+                    "color" to primaryColor, "width" to 2.0)),
+            ),
+            widthPx = 760,
+            accent = primaryColor,
+            background = background,
+            fontFamily = fontFamily,
+        )
     }
 
     /**
-     * Renders an interactive plot of this function as a self-contained HTML iframe, sampling over the given
+     * Renders an interactive plot of this function as self-contained HTML (samples embedded), sampling over the given
      * range. Non-finite samples — including anything that throws while being evaluated, which is caught and
      * turned into a gap — are drawn as breaks in the curve rather than spikes.
      */
@@ -3685,7 +3240,8 @@ canvas {
         background: String = "#000000",
         primaryColor: String = "#0af",
         secondaryColor: String = "#f80",
-        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
+        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+        syncGroup: String = ""
     ): String =
         plotHtml(
             sampleDomain = sampleDomain.toDomain() as Domain?,
@@ -3700,11 +3256,12 @@ canvas {
             background = background,
             primaryColor = primaryColor,
             secondaryColor = secondaryColor,
-            fontFamily = fontFamily
+            fontFamily = fontFamily,
+            syncGroup = syncGroup
         )
 
     /**
-     * Renders an interactive plot of this function as a self-contained HTML iframe over the given x range,
+     * Renders an interactive plot of this function as self-contained HTML (samples embedded) over the given x range,
      * with an explicit y range instead of one fitted to the data. Non-finite samples are drawn as gaps.
      */
     fun Fn.plotHtml(
@@ -3720,7 +3277,8 @@ canvas {
         background: String = "#000000",
         primaryColor: String = "#0af",
         secondaryColor: String = "#f80",
-        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
+        fontFamily: String = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+        syncGroup: String = ""
     ): String =
         plotHtml(
             sampleDomain = sampleDomain.toDomain() as Domain?,
@@ -3735,7 +3293,8 @@ canvas {
             background = background,
             primaryColor = primaryColor,
             secondaryColor = secondaryColor,
-            fontFamily = fontFamily
+            fontFamily = fontFamily,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3758,25 +3317,25 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn {
         val box = Box.context.get()
             ?: throw IllegalStateException("Fn.plot requires an active Box context")
-        box.display(
-            channel,
-            plotHtml(
-                sampleDomain = sampleDomain,
-                samples = samples,
-                heightPx = heightPx,
-                title = title,
-                xLabel = xLabel,
-                yLabel = yLabel,
-                yDomain = yDomain,
-                edge = edge,
-                outside = outside
-            )
+        return box.plot(
+            fn = this,
+            channel = channel,
+            sampleDomain = sampleDomain,
+            samples = samples,
+            heightPx = heightPx,
+            title = title,
+            xLabel = xLabel,
+            yLabel = yLabel,
+            yDomain = yDomain,
+            edge = edge,
+            outside = outside,
+            syncGroup = syncGroup
         )
-        return this
     }
 
     /**
@@ -3794,7 +3353,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             channel = channel,
@@ -3806,7 +3366,8 @@ canvas {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3824,7 +3385,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: ClosedRange<*>,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             channel = channel,
@@ -3836,7 +3398,8 @@ canvas {
             yLabel = yLabel,
             yDomain = yDomain.toDomain() as Domain?,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3856,22 +3419,15 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn {
-        display(
-            channel,
-            fn.plotHtml(
-                sampleDomain = sampleDomain,
-                samples = samples,
-                heightPx = heightPx,
-                title = title,
-                xLabel = xLabel,
-                yLabel = yLabel,
-                yDomain = yDomain,
-                edge = edge,
-                outside = outside
-            )
-        )
+        // Same pixels as plotHtml, plus a live source kept on this box: zooming in resamples.
+        val html = fn.plotViewerHtml(sampleDomain, samples, heightPx, title, xLabel, yLabel, yDomain, edge, outside,
+            background = "#000000", primaryColor = "#0af", secondaryColor = "#f80",
+            fontFamily = "\"Iosevka Web\", \"IBM Plex Mono\", monospace",
+            syncGroup = syncGroup, live = { retainSignal(channel, it) })
+        display(channel, html)
         return fn
     }
 
@@ -3887,7 +3443,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3900,7 +3457,8 @@ canvas {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /** Draws [fn] into this box over explicit x *and* y ranges, returning [fn] unchanged. Needs no ambient box context. */
@@ -3915,7 +3473,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: ClosedRange<*>,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3928,7 +3487,8 @@ canvas {
             yLabel = yLabel,
             yDomain = yDomain.toDomain() as Domain?,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -3947,7 +3507,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn = fn.plot(
         channel = channel,
         sampleDomain = sampleDomain,
@@ -3958,7 +3519,8 @@ canvas {
         yLabel = yLabel,
         yDomain = yDomain,
         edge = edge,
-        outside = outside
+        outside = outside,
+        syncGroup = syncGroup
     )
 
     /**
@@ -3976,7 +3538,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: Domain? = null,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -3989,7 +3552,8 @@ canvas {
             yLabel = yLabel,
             yDomain = yDomain,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     /**
@@ -4007,7 +3571,8 @@ canvas {
         yLabel: String = "f(x)",
         yDomain: ClosedRange<*>,
         edge: EdgeMode = EdgeMode.ZERO,
-        outside: Double = Double.NaN
+        outside: Double = Double.NaN,
+        syncGroup: String = ""
     ): Fn =
         plot(
             fn = fn,
@@ -4020,7 +3585,8 @@ canvas {
             yLabel = yLabel,
             yDomain = yDomain.toDomain() as Domain?,
             edge = edge,
-            outside = outside
+            outside = outside,
+            syncGroup = syncGroup
         )
 
     // Streaming helpers

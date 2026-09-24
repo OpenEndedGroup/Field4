@@ -1092,6 +1092,46 @@ bus.dispatchEvent(new bus.CustomEvent("field-time-seek", {
 `play` / `pause`. Receivers ignore their own `source`, so callbacks can adapt or republish events
 without a feedback loop.
 
+### One viewer for functions, sounds and signals
+
+`Fn.plot`, the audio player, `displaySignal` and the analysis views are the same component. They
+differ in where the data comes from: samples embedded in the page, an audio envelope, or a
+server query per visible window. Give them one `syncGroup` and they share a timeline. Zoom one
+and the others follow, hover shows a cursor in all three, and a click in any of them seeks the
+audio.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-one-viewer.png" wait="2" capture="box" open-outputs="true" padding="12" w="1200" embed=true name="one-viewer"}
+:::static
+import afield.stdlib.*
+import kotlin.math.*
+
+// One viewer, three sources, one timeline: a decaying 220 Hz ping.
+val sync = "one-viewer"
+val rate = 8_000
+val ping = { t: Double -> sin(2 * PI * 220 * t) * exp(-2.5 * t) }
+
+// 1. Fn.plot: the envelope, samples embedded in the page (resampled live when you zoom in).
+with(Functions) { fn(0.0..2.0, "envelope  exp(-2.5 t)") { t -> exp(-2.5 * t) }.plot("envelope", syncGroup = sync, xLabel = "seconds") }
+
+// 2. displayAudioSamples: the ping itself, playable; click to seek.
+displayAudioSamples(FloatArray(2 * rate) { ping(it / rate.toDouble()).toFloat() }, rate,
+    channel = "audio", label = "the ping, as audio", options = AudioVisualizerOptions(width = 760, syncGroup = sync))
+
+// 3. displaySignal: the same ping evaluated per visible window on the server.
+displaySignal(SignalViewer(listOf(SignalChannel("ping", ping, -1.0, 1.0)), 0.0, 2.0, sampleStep = 1.0 / rate),
+    "signal", SignalViewerOptions(width = 760, label = "the ping, evaluated per window", syncGroup = sync, viewKey = "one-viewer:signal"))
+```
+
+![A function plot of exp(-2.5 t), an audio player showing a decaying 220 Hz ping, and a signal viewer showing the same ping evaluated per window, stacked, all over 0 to 2 seconds](assets/visualizers-one-viewer.png)
+
+The chip in each header says what you are looking at. For the function it is `1024/1024 samples`
+until you zoom inside the domain, and then `live · Δx …`, because `Fn.plot` resamples the function
+as you zoom. For the signal it is the sampling grid, `envelope · Δt …` or `waveform · Δt …`. The
+strip under each plot is the whole domain. It stays dim until you zoom, then marks the visible
+window; click or drag it to move. The ripple in the white band is the signal's sampling grid
+showing through: at this zoom each bin holds about ten samples, roughly a third of a 220 Hz cycle,
+so a bin's min and max rarely land on a peak. Zoom in and it becomes the waveform.
+
 ### Beat and pitch analysis views
 
 The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
@@ -1211,9 +1251,9 @@ binary artifact → temporal pooling → three Field Smile spaces → bidirectio
 
 ### Instrument-labelled transcription
 
-The same `analysisVisualizationHtml` canvas recognizes `analysis.transcribe_music` results as a
-MuScriptor piano roll. Note colour follows the recovered instrument group; the lower lane compares
-active polyphony with onset count. It uses the same `syncGroup` time bus as the waveform, beat,
+The same `analysisVisualizationHtml` viewer recognizes `analysis.transcribe_music` results as a
+MuScriptor piano roll. Note colour follows the recovered instrument group; the two lower lanes show
+active polyphony and onset count. It uses the same `syncGroup` time bus as the waveform, beat,
 pitch, speech-space, and spectral-space views, so playback, hover, seek, zoom, and pan stay aligned.
 
 ```diffstatic {data-lang=kotlin}

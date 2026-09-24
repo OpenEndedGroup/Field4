@@ -48,7 +48,9 @@
   try {
     key('+'); await sleep(150); key('-'); await ready(); await sleep(600);
     const current = view();
-    const points = Math.max(16, Math.min(4096, Math.round(rect.width - 64)));
+    // The viewer asks for one bin per DEVICE pixel of the plot area (stage width minus 52+12 margins).
+    const stageWidth = root.querySelector('.fsv-stage').clientWidth;
+    const points = Math.max(16, Math.min(4096, Math.round((stageWidth - 64) * Math.min(3, win.devicePixelRatio || 1))));
     assert(Math.abs(Number(root.dataset.spacing) - (current.end - current.start) / (points * 2)) < 1e-8, 'Late response replaced the current window');
   } finally { win.fetch = originalFetch; }
   const endpoint = new URL(config.url, win.document.baseURI);
@@ -59,9 +61,12 @@
   // Leave the output at a useful local scale for inspection and a subsequent replacement test.
   for (let i = 0; i < 7; i++) key('+');
   await ready();
-  win.Plotly.Fx.hover(canvas, {xval:(view().start+view().end)/2}, ['xy']);
-  await sleep(100);
-  assert(canvas.querySelector('.hoverlayer')?.textContent.includes('s'), 'Plotly hover values missing');
+  // Hover is the viewer's own readout plus a DOM cursor line, not Plotly hover labels.
+  const r2 = canvas.getBoundingClientRect();
+  canvas.dispatchEvent(new win.PointerEvent('pointermove', {clientX: r2.left + 52 + (r2.width - 64) / 2, clientY: r2.top + 40, bubbles: true}));
+  const readout = root.querySelector('.fsv-readout').textContent;
+  assert(/ s /.test(readout) && readout.includes(config.lanes[0].name), 'Hover readout missing: ' + readout);
+  assert(root.querySelector('.fsv-cursor').style.display === 'block', 'Hover cursor line missing');
   return {ok: true, pointerAnchoredZoom: true, pan: true, fineResampling: true, staleReplyRejected: true,
     bounds: true, invalidQueryRejected: true, view: view(), detail, mode: root.dataset.mode,
     status: root.querySelector('.fsv-status').textContent};

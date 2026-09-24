@@ -3,6 +3,7 @@ package afield.stdlib.noir.audioai
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 class AnalysisVisualizationTest {
     private fun series(name: String, label: String = name) = AnalysisSeries(
@@ -29,17 +30,17 @@ class AnalysisVisualizationTest {
             preview, width = 900, syncGroup = "cue-a", timeOffsetSeconds = 18.0,
         )
 
-        assertContains(html, "analysis-preview-data")
+        assertContains(html, "class=\"fsv-preview\"")
+        assertFalse("\"analysisUrl\":\"" in html, "an embedded preview makes no service fetch")
         assertContains(html, "local tempo")
         assertContains(html, "tempo confidence")
-        assertContains(html, "field-analysis-window")
         assertContains(html, "wheel to zoom")
         assertContains(html, "data-afield-intrinsic-width=\"900\"")
-        assertContains(html, "data-sync=\"cue-a\"")
-        assertContains(html, "data-time-offset=\"18.0\"")
+        assertContains(html, "\"syncGroup\":\"cue-a\"")
+        assertContains(html, "\"syncOffset\":18.0")
         assertContains(html, "field-time-cursor")
         assertContains(html, "field-time-seek")
-        assertContains(html, "timeBus.dispatchEvent")
+        assertContains(html, "bus.dispatchEvent")
     }
 
     @Test
@@ -60,7 +61,7 @@ class AnalysisVisualizationTest {
         assertContains(html, "shared playhead/cursor")
         assertContains(html, "pYIN pitch")
         assertContains(html, "Basic Pitch piano roll")
-        assertContains(html, "data-sync=\"explicit-group\"")
+        assertContains(html, "\"syncGroup\":\"explicit-group\"")
     }
 
     @Test
@@ -78,8 +79,9 @@ class AnalysisVisualizationTest {
         val html = analysisPreviewVisualizationHtml(preview, syncGroup = "score-a")
 
         assertContains(html, "MuScriptor instrument piano roll")
-        assertContains(html, "active notes / onsets")
-        assertContains(html, "instrument||'unassigned'")
+        assertContains(html, "'active notes'")
+        assertContains(html, "'onsets'")
+        assertContains(html, "n.instrument || 'unassigned'")
         assertContains(html, "field-time-seek")
         assertContains(html, "\"instrument\":\"cello\"")
     }
