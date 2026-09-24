@@ -221,7 +221,13 @@ replacing classes used by the live user JVM. Browser and real in-document tool
 verification returned String.file with getter/KDoc in 0.213 seconds cold and
 0.014 seconds warm. A patch with compilation/checks/preview took 1.284 seconds.
 Two real gpt-6-astra conversations used only Inspect -> Patch -> Export, taking
-16.269 and 15.506 seconds in the bridge logs. See
+16.269 and 15.506 seconds in the bridge logs; of the 15.506, 13.402 seconds was
+model requests and 1.541 seconds was tools. For scale, the seven turns of the
+original recorded run, on the earlier and more repetitive loop, took roughly 52
+to 286 seconds each including provider backoff. That is a different fixture as
+well as a different loop -- the replay edits a 60-second study, the recorded run
+an hour-long one -- so it is not a controlled comparison and should not be
+quoted as a speedup. See
 [the saved replay](agents/demos/function_conversation_example/conversations/08-loop-improvements.md)
 and its adjacent measurements, image and tool-I/O logs.
 

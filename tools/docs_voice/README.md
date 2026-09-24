@@ -5,7 +5,12 @@ moves that make a page read as written-by-a-machine rather than as documentation
 built one at a time by the nightly `documentation-voice-pass`, each one added the night a
 firing found a fault the existing set could not see.
 
-None of them changes a file. Every one prints a board and exits 0.
+None of them changes a file. Every one prints a board and exits 0 — and since 2026-09-24 that
+sentence is a test rather than a hope: `BoardsSurviveTheTree` in
+`tools/test_docs_voice_detectors.py` runs every script here over the real `public/docs` and
+requires exit 0 and a printed count. It exists because `alt_text.py` imported cleanly, passed
+its own live fire, and raised on one page of 140 for a day, reporting nothing about the other
+139 while looking exactly like a clean board.
 
 ## The one decision that is still open
 
@@ -14,8 +19,13 @@ in the repo could run them. Committing them here fixes that much: they are now v
 controlled, reviewable, and `tools/test_docs_voice_detectors.py` runs their self-tests inside
 `checkPythonTools`, which `docsGates` and `check` already depend on.
 
-What that test gates is **capability, not content** — that each detector still fires on the
-faults it was built for. It does not assert anything about any page's score.
+What that test gates is **capability, not content** — that each detector still imports, still
+fires on the faults it was built for, and still survives the real tree. It does not assert
+anything about any page's score.
+
+One board is currently registered as red in that test's `KNOWN_RED`, with the commit that
+already fixes it. The register is enforced in both directions, so the entry fails the moment the
+board starts passing and cannot outlive its bug.
 
 The open question is whether a *content* threshold should block a commit, and it is a real
 question rather than an oversight:

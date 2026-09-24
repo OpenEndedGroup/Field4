@@ -18,11 +18,11 @@ import java.util.PriorityQueue
  * }
  * ```
  *
- * ## What a sampled envelope cannot say
+ * ## Why an enclosure, not a sampled envelope
  *
  * `SignalViewer` bins a function by evaluating it on a grid and keeping each bin's min and max. A
  * feature narrower than the grid spacing can sit between two samples and never be drawn, and nothing
- * in the picture says so. `public/docs/function_conversation.md` states that limit in as many words.
+ * in the picture says so — a limit `public/docs/function_conversation.md` states about its own plots.
  * An enclosure is a different kind of object: `[lo, hi]` such that **every** value the function
  * takes on the interval lies inside, whether or not any sample landed near it. A spike 10 ms wide
  * in an hour-long signal cannot hide from it, because nothing is sampled.
@@ -118,7 +118,7 @@ data class FnRange(val lo: Double, val hi: Double, val maybeNaN: Boolean = false
 }
 
 /**
- * Thrown inside a walk when a bound cannot honestly be given — an op with no formula, an unbounded
+ * Thrown inside a walk when no sound bound exists — an op with no formula, an unbounded
  * shape domain, a `clamp` whose range may invert (which throws in `Fn.eval` itself). Caught by
  * [FnIntervals.enclose] and reported as [FnEnclosure.refusal].
  */
@@ -628,7 +628,7 @@ object FnIntervals {
     fun supports(fn: Functions.Fn): Boolean = unsupportedOps(fn).isEmpty()
 
     /**
-     * The enclosure of [fn] over the position range [x]. Throws [FnIntervalRefusal] when no honest
+     * The enclosure of [fn] over the position range [x]. Throws [FnIntervalRefusal] when no sound
      * bound exists; [enclose] is the non-throwing form.
      */
     fun range(fn: Functions.Fn, x: FnRange): FnRange = Walk().range(fn, x)

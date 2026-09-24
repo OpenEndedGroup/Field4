@@ -78,7 +78,7 @@ Thirteen poses, fifteen degrees apart. Under linear blending the volume falls at
 dual quaternions it goes slightly *up*. Those are the two artefacts `DualQuaternionSkinningTest`
 already measures as edge lengths, a pinch and a bulge, and now they show up as volume too.
 
-## The numbers each hop owes the next
+## Four poses, weighed twice
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="330" padding="18" timeout="180" requires="manifold" name="chain-skinned-volume-readout" embed=true}
 :::static

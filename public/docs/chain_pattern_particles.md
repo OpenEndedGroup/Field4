@@ -95,7 +95,7 @@ offbeats, and sixteen hats:
 each. Nothing about it is new DSP: it is the same `Biquad` a box would put in a signal chain, with
 its input pointed at a buffer instead of at an oscillator.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_pattern_particles/bands.png" wait="8" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="120" name="chain-pattern-bands" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_pattern_particles/bands.png" alt="A line plot titled 'four bands of one bar, the numbers the shader reads', four traces over two seconds against a legend of 70 Hz, 340 Hz, 1.6 kHz and 8 kHz. The 70 Hz trace spikes sixteen times, to about 0.32; the 340 Hz trace spikes with it at about two thirds the height; the 1.6 kHz and 8 kHz traces stay busier and flatter, hovering around 0.05 and 0.1" wait="8" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="120" name="chain-pattern-bands" embed=true}
 :::static
 import afield.four.synth.PatSynthDocs
 import afield.four.synth.logBands
@@ -121,8 +121,6 @@ showSignals(
 )
 :::endfold
 ```
-
-![Four traces over two seconds: a 70 Hz trace spiking sixteen times, a 340 Hz trace spiking with it at about two thirds the height, and 1.6 kHz and 8 kHz traces that stay busier and flatter](assets/chain_pattern_particles/bands.png)
 
 Sixteen kicks in two seconds in the lowest band, which is `bd*4` at two cycles per second. The 340 Hz
 band spikes with them rather than with the offbeat stabs, because a kick's attack is broadband and

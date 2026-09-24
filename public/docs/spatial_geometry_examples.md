@@ -1233,13 +1233,10 @@ bridge does its own repair.
 
 </div>
 
-## Where the pictures come from
+??? aside "How these figures are captured"
+    The numbers the figures above carry are asserted in
+    `src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`.
 
-Every figure on this page is the output of the `diffstatic_runner` fence above it, executed inside a
-Field box, and the numbers they carry are asserted in
-`src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`.
-
-??? aside "What decides whether a fence is re-run"
     A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of
     date, and that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in
     `public/docs_hooks.py`) which covers the runner's own machinery and no stdlib source at all. So
