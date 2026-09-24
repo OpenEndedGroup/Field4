@@ -4,9 +4,16 @@ Start with three flat lines. Describe how they should move. Look at the result,
 zoom into a passage, and ask for a change. Each accepted change becomes ordinary
 Kotlin in a Field box, with a saved revision you can inspect or return to.
 
-This example uses AI4 chat to build a one-hour, three-channel signal. The source,
-the tools that observe it, and the conversation all belong to the document.
-You can edit the Kotlin directly, or edit the tools themselves and rerun their box.
+This example uses AI4 chat to build a one-hour, three-channel signal. It also
+shows how to **extend AI4 from inside Field**. One box holds the function. The
+other defines the tools AI4 uses to edit it, plot it, and check what changed.
+Those tools are ordinary Kotlin in the document: edit a handler, rerun its box,
+and the next tool call uses the new implementation. There is no Field rebuild.
+
+There is something Emacs-like about this: the working document can extend the
+environment you are working in. Here it can also teach the assistant a new way
+to observe and act. The conversation, editable function, and observation tools
+stay together.
 
 ## Start from a blank document
 
@@ -21,6 +28,12 @@ The starter has two boxes:
 | --- | --- |
 | **Observation tools — run first** | Run it to register the tools and open the signal viewer. |
 | **function_source** | Select it and press **command/ctrl-4** to open AI4 chat. |
+
+![The two-box starter in Field: the editable function and its live observation tools](assets/function_conversation/two-boxes.png)
+
+The left box is the thing you are making; the right box teaches AI4 how to work
+on it. Running the right box installs the document's tools into AI4's live tool
+registry. Opening chat in the left box then gives the model those capabilities.
 
 If you switch between the starter and the worked example in the same Field
 session, rerun the tools box in the document you want to chat with. This selects
@@ -53,7 +66,7 @@ An hour of a 0.2 Hz signal contains about 720 cycles. At that scale the viewer
 shows a band of sampled minima and maxima. Zoom into roughly 25 seconds to see
 about five cycles and judge their relative phase.
 
-The Plotly viewer shares one time axis across all channels. Wheel or pinch to
+The signal viewer shares one time axis across all channels. Wheel or pinch to
 zoom, drag to pan, and use **all** to return to the whole duration. Hover to read
 sampled values. Your time window survives accepted edits, and a previous revision
 can appear in dashed grey.
@@ -69,7 +82,19 @@ entirely. Zoom in before you judge a detail.
 to open **function_conversation_example**. It contains the finished source, the
 same tools, all nine saved revisions, and the actual conversations and plots.
 Run its tools box to restore the checked composition and explore the viewer.
-Opening and observing it does not require another model call.
+Then select **The function — talk here (AI4)** and press **command/ctrl-4**.
+The seven recorded turns are already in that box's chat, with their original
+prompts, replies, tool traces and plot images. Scroll back to watch the function
+grow, or send a new message to continue from the finished example. Simply opening
+the saved chat and viewer does not make a model call.
+
+![An actual saved AI4 exchange inside the worked example's source-box chat](assets/function_conversation/saved-chat.png)
+
+This is Field's chat panel, restored from the recorded run. Here the chat is
+scrolled back to the move-and-stretch exchange; the viewer shows the final saved
+revision. The starter is still blank; the developed example carries this history. The older turns predate model
+badges, so their UI correctly says **Model not recorded**; the run's provider and
+model are documented in the accompanying archive.
 
 The original request was for smooth channels drifting in and out of phase, with
 six evenly spaced pulse crescendos and decrescendos. Each event should reach
@@ -154,7 +179,23 @@ evidence; they are not a proof about every possible input to arbitrary Kotlin.
 
 The [tools box source](assets/function_conversation/function_tools.kt) registers
 eight tools through [AI4's tool interface](aiFeatures.md#give-the-ai-a-tool-of-your-own).
-Rerun the box after changing a handler.
+Rerun the box after changing a handler. For example, these are the request and
+handler for sampling specific times, taken from the tools box:
+
+```diffstatic {data-lang=kotlin}
+data class SampleFunctionStudy(val revision: String, val timesSeconds: List<Double>)
+
+AgentToolExtensions.register(SampleFunctionStudy::class.java, available) { _, request ->
+    studio.sample(request.revision, request.timesSeconds)
+}
+```
+
+The request class supplies the tool's input schema; the handler runs against the
+study held by that box. `available` scopes the tool to this document. You can
+change a measurement, add a plot, or register another request class here, then
+rerun the box and keep chatting. The observation tools return both numerical
+evidence and actual image inputs to AI4, so the assistant can inspect what its
+Kotlin does before making the next edit.
 
 | Tool | Purpose |
 | --- | --- |

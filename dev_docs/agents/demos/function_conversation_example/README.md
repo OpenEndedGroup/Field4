@@ -8,7 +8,14 @@ classes and handlers are defined in the document, where they can be edited live.
 Open the function_conversation_example folder as a Field document. For a fresh
 conversation, use the separate blank function_conversation starter.
 
-Select **The function — talk here (AI4)** and open AI4 general chat to continue.
+Select **The function — talk here (AI4)** and press **command/ctrl-4**. Its chat
+already contains the seven real recorded turns, including plots and tool traces.
+Scroll back to follow the edits, or send a new message to continue. The transcript
+is stored in `function_source_ai4_chat_history_.md` and travels with this document.
+It is assembled from the untouched `conversations/01-create.md` through
+`07-restore-background.md` records; image sidecars are embedded for portability.
+These older transcripts did not record per-response model badges, so the UI labels
+them “Model not recorded.” The archive records the run configuration below.
 On a fresh Field launch, first run **Observation tools — run first**. It restores
 checked source history, registers the tools, and draws the overview. The last
 working revision is **r9-82456e1e48ac**. Manual source edits are reported as dirty
