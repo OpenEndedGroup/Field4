@@ -16,7 +16,7 @@ command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
 
-![](assets/screenshot_47.png)
+![an AI Chat output area opened beneath a box named Texture. The reader's question, right-aligned in italics, is "how does Camera work in this code?"; under a GPT-5.2 label the answer runs as headed prose with copyable code blocks, quoting the box's own three lines back, then the push-constant block from the vertex shader, then the opening of `Camera.kt` with its file path named](assets/screenshot_47.png)
 
 The conversation belongs to the box. Field saves it with the document, including model
 labels, tool results and images. Reopen **AI Chat (panel)** after a reload or restart to
@@ -35,7 +35,7 @@ You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
 
-![](assets/screenshot_53.png)
+![two boxes on the canvas, window joined to Texture by a cyan cable, with the Texture box's AI Chat area open below them. The question is "what do you see in this image?", and above it sits the pasted attachment itself: a screenshot of these same two boxes. The answer describes a dark node-based canvas with a smaller node labelled window and a larger one labelled Texture, a curved cable between them, and a panel labelled AI Chat. An empty input reading "Ask about this box..." is at the bottom](assets/screenshot_53.png)
 
 For a complete conversation that changes code and inspects its result, try
 [Talking a function into existence](function_conversation.md). It provides a
@@ -48,18 +48,18 @@ Press `command/ctrl-3`, or run **AI Chat in editor**. With a selection, Field
 marks that range as the requested rewrite; without a selection, it marks the
 cursor position. The request also identifies the current box property and line.
 
-![](assets/screenshot_46.png)
+![three lines of a Kotlin box, the first reading `var v = listOf<Vec2>()`, with a single-line request field opened inline between lines 3 and 4 and holding the typed text "give me 100 random Vec2's"](assets/screenshot_46.png)
 
 An edit can arrive as a *provisional* value rather than immediately replacing
 the saved property:
 
-![](assets/screenshot_48.png)
+![a box named Untitled on the left, ringed in a dashed orange outline with a small orange `code` chip on its corner. On the right the editor holds the list construction on line 4 and, below it, a three-line `v.map { ... }` block on a green background with a green bar down the right-hand gutter; line 6 beneath it is on a dark red background with a red gutter bar](assets/screenshot_48.png)
 
 Monaco shows additions and deletions. Use the editor controls or the command
 palette actions **Accept All Provisional** / **Reject All Provisional**, either
 for the current editor or everywhere, to resolve them.
 
-![](assets/screenshot_49.png)
+![the command palette open over the editor with `>ac` typed. "Accept All Provisional (Everywhere)" is selected at the top and marked "recently used"; "AI Chat (panel)" follows with its command-4 shortcut, then a rule, then "Accept All Provisional (This Editor)" under the heading "other commands", and the Add Cursor entries with their shortcuts below that](assets/screenshot_49.png)
 
 ## Ask AI about a displayed error
 
@@ -67,9 +67,9 @@ for the current editor or everywhere, to resolve them.
 Field's last displayed error. Any resulting code change follows the same
 provisional-edit path, so it remains reviewable before acceptance.
 
-![](assets/screenshot_51.png)
+![the command palette open with `>ai` typed, listing AI Chat (panel), AI Chat in editor, Apply Intelligence, and "Apply Intelligence to Error message", which is the selected row, with the shift-option-0 shortcut beside it. Behind the palette, line 10 of the box reads `Math.cost(a)` with a red dot under the typo, and a red-bordered banner directly beneath it reads "Unresolved reference: cost"](assets/screenshot_51.png)
 
-![](assets/screenshot_52.png)
+![the same box after the request. Its canvas tile now carries a small red mark instead of a green one. In the editor, line 10 with `Math.cost(a)` is on a dark red background above the "Unresolved reference: cost" banner, and below the banner a two-line block on a green background offers the same expression spelled `Math.cos(a)`](assets/screenshot_52.png)
 
 ## AI-assisted completion
 
@@ -118,7 +118,7 @@ the box's `attic` property. Later expansions reuse it only while the function
 signature and prompt still match; changing either causes Field to generate a
 replacement.
 
-![](assets/screenshot_56.png)
+![a box named wiggle with its `lines` output area open below it, holding a white jagged path that doubles back on itself several times. In the editor beside it, `fun randomWiggle(radius : Double, center : Vec3) : FLine` has a single-line body, `ai("makes an FLine that wiggles around center")`, and line 7 calls it, with a small `ok` chip at the end of that line](assets/screenshot_56.png)
 
 ## Give the AI a tool of your own
 

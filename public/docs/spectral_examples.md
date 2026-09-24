@@ -59,7 +59,7 @@ showSignals(
 println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
 ```
 
-![](assets/spectral_examples/one_spectrum.png)
+![a cyan magnitude curve on a dark plot, frequency in Hz along the bottom out to 4000 and magnitude up the side to 400. A very narrow spike just under 700 Hz reaches almost the top of the frame; a broad low hump peaks around 70 near 1700 Hz, with a second narrow spike at about 1800 Hz standing on its right shoulder at roughly three-fifths the tall spike's height. Two dashed yellow verticals cross the whole plot, labelled in the legend as the centroid at 1621 Hz and the 85% rolloff at 2172 Hz, and both sit to the right of the tall spike](assets/spectral_examples/one_spectrum.png)
 
 The one-sided magnitude curve carries dashed reference lines at the spectral centroid and the 85%
 rolloff, with the tone/chirp structure laid out across 0 Hz → Nyquist.
@@ -112,7 +112,7 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.
     transpose = true, flipY = true, overlay = trace, overlayThickness = 3)
 ```
 
-![](assets/spectral_examples/spectrogram.png)
+![a dark time-by-frequency heatmap with low frequency at the bottom. One orange band with a cyan halo runs straight from the bottom-left corner to the top-right; two more lie flat across the full width, the lower about a third of the way up and the other near the middle. A thin white line climbs from the left edge, follows the diagonal for a while, and kinks downward in the last tenth of the frame](assets/spectral_examples/spectrogram.png)
 
 The diagonal ridge is the chirp, the two flat lines are the 700 Hz and 1800 Hz tones, and the thin
 trace is the centroid climbing with the sweep. The STFT produces the `[frame][bin]` magnitudes; one
@@ -162,7 +162,7 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
     transpose = true, flipY = true)
 ```
 
-![](assets/spectral_examples/mel_spectrogram.png)
+![a dark time-by-mel-band heatmap holding two orange bands with cyan halos that cross in a wide X near the middle of the frame. Both are noticeably curved rather than straight, and both are widest where they cross, because the mel bands are broad at the top and narrow at the bottom](assets/spectral_examples/mel_spectrogram.png)
 
 ## A resonator bank — frequency analysis without a transform
 
@@ -224,7 +224,7 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
     transpose = true, flipY = true)
 ```
 
-![](assets/spectral_examples/resonator_bank.png)
+![a time-by-resonator heatmap that is bright cyan almost everywhere, with an orange band rising steeply out of the bottom-left corner and flattening off across the top right, and two more orange bands lying flat across the full width close together near the top. Dark vertical streaks hang down through the lower half](assets/spectral_examples/resonator_bank.png)
 
 Same chirp ridge and two tone lines as the STFT view, but now on a **log-frequency** axis (the tones
 sit closer together up top) and with each band carrying its own time constant instead of one shared
@@ -277,10 +277,13 @@ showSignals(
 println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}")
 ```
 
-![](assets/spectral_examples/streaming_features.png)
+![three normalized traces against sample number on a dark plot. The blue centroid climbs as a staircase from zero to about 0.7 over the first two-thirds, dips, and then steps up to the top of the frame at the right-hand edge. The orange flux sits flat on zero for the first thousand samples, jumps to about 0.92, and stays within a few percent of that for the rest of the run. The green RMS starts at the top, falls at once to about 0.87, and stays there, wobbling slightly](assets/spectral_examples/streaming_features.png)
 
-The smoothed centroid climbs with the chirp, the flux spikes at the two onsets, and the RMS tracks
-the overall level. `SpectralCentroidFilter`, `SpectralRolloffFilter`, `SpectralFluxFilter`, and
+The smoothed centroid climbs with the chirp and the RMS tracks the overall level. The flux steps up
+as soon as its first window fills and then holds near the top of its range: each injected onset is a
+step of a percent or two above that plateau, not a spike, because all three traces are normalized to
+`0 … 1` for comparison and the flux never returns to its floor once the signal starts.
+`SpectralCentroidFilter`, `SpectralRolloffFilter`, `SpectralFluxFilter`, and
 `RmsFilter` all maintain their own ring buffer and recompute on each hop, so they behave like any
 other per-sample filter in the toolkit.
 

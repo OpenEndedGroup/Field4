@@ -47,7 +47,7 @@ lines(
 
 The top panel runs to almost twice the width of the bottom one, and that is the comparison: the difference in cost is readable off the two diagrams before a single input goes through either.
 
-![](assets/sorting_networks_examples/topology_compare.png)
+![two wire diagrams stacked in tinted panels, twelve horizontal wires each, comparators drawn as coloured vertical bars with a dot at either end. The blue upper panel's comparators fill its whole width and form a long descending staircase of nested triangles. The orange lower panel's comparators are packed into a little over half the width, in tight columns of near-full-height bars, and the rest of its panel is empty](assets/sorting_networks_examples/topology_compare.png)
 
 ## Disorder collapse across layers
 
@@ -165,7 +165,7 @@ Faint lines are single permutations, bright lines the mean over 180 of them, and
 
 Odd-even merge front-loads. Its first layer is the steepest segment of either mean, where bubble's first layer barely moves its own; bubble then sags through a long middle and clears the last inversions only in its final layers.
 
-![](assets/sorting_networks_examples/disorder_decay.png)
+![two bright mean curves with square markers falling from the top left to zero at the right-hand edge, over a spray of faint single-run curves in the same two colours. The orange curve drops sharply at its first step, sags through a long shallow middle, and clears the last of its height at the right. The blue curve barely moves at first, then falls steeply through the middle, and the two cross about four-fifths of the way across. The blue markers are packed much closer together than the orange ones](assets/sorting_networks_examples/disorder_decay.png)
 
 ## One annealing run
 
@@ -248,7 +248,7 @@ lines(
 
 Left is the `bubble(8)` seed, right is the network the run came back with, and the two panels below are the best-so-far comparator count and depth. On this seed both step down twice inside the first third of the run and are flat for the rest of it: the search finds what it is going to find early and spends most of its 8000 iterations confirming it.
 
-![](assets/sorting_networks_examples/anneal_search.png)
+![two eight-wire comparator diagrams across the top, the left one visibly denser and wider than the right. Below them two wide panels, one cyan and one green, each holding a single trace that starts flat at the top left, steps down twice inside the first third, and then runs dead flat to the right-hand edge](assets/sorting_networks_examples/anneal_search.png)
 
 ## Twenty-seven annealing runs
 
@@ -419,6 +419,6 @@ Two thirds of the traces in the top two panels are flat lines, and the reason is
 
 The scatter puts comparator count across the page and depth up it. Across the whole grid the seed topology separates the results almost perfectly by colour, and the temperature schedule barely registers.
 
-![](assets/sorting_networks_examples/anneal_regimes.png)
+![three stacked panels. The top two each hold twenty-seven traces, most of them dead-flat horizontal lines, with a bundle of blue ones wandering and stepping down through the first half before flattening; a green line lies flat along the bottom of both. The third panel is a scatter: one green square alone at the far left on the floor, four orange squares stepping rightward along the same floor, and five blue squares higher and further right, the highest of them near the top right](assets/sorting_networks_examples/anneal_regimes.png)
 
 For more fixed structure with plotted behaviour, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).

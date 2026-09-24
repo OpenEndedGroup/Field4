@@ -74,7 +74,7 @@ lines(
 
 Same geometry, same query point, same drawing code; only the question changes.
 
-![](assets/smile_neighbors_examples/query_edges.png)
+![a scatter of a few hundred pale dots on black with one large yellow query dot near the middle. A dozen dark amber radius edges fan out to whatever happens to lie inside the radius; the exact-neighbour edges sit over them in pale blue, thicker and shorter; and the approximate edges are dim enough that only one of them reads at all, the one that leaves the group entirely and runs across the frame to a point far to the lower left](assets/smile_neighbors_examples/query_edges.png)
 
 The exact set is the reference answer and the approximate set is the real-time
 compromise against it, so where a thin green edge leaves the thick blue ones and
@@ -128,7 +128,7 @@ lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fit
 The diff keeps the query, point cloud, and drawing identical. Only the LSH build
 options change.
 
-![](assets/smile_neighbors_examples/lsh_tuning.png)
+![the same pale point cloud with only the green LSH edges drawn: a tight burst of about a dozen short edges around the query point, none of them reaching beyond the immediate neighbourhood](assets/smile_neighbors_examples/lsh_tuning.png)
 
 These options decide which geometric relationships the next layer ever sees, so
 if a neighborhood feels unstable, fix the index before building clustering,
@@ -199,7 +199,7 @@ The scene stays fixed while the graph family changes. One `graphLine(...)`
 helper defined in the fence draws all five, taking the colour and thickness for
 each as arguments.
 
-![](assets/graph_connectivity_examples/geometric_families.png)
+![one point cloud with five graph families drawn over it at once, separated by thickness as much as by colour: a faint blue-grey haze of the densest family reaching everywhere, warmer and progressively sparser edges through the interior, and the spanning tree on top in bright thick green, reading as a single connected chain around the outside of the cloud with a few spurs inward. Only the extremes of the ordering are separable by eye](assets/graph_connectivity_examples/geometric_families.png)
 
 The drawing encodes that ordering as weight. Delaunay is drawn thinnest and
 faintest, at thickness 1.0 and alpha 0.25, and each successive family is thicker
@@ -268,7 +268,7 @@ scaffolding. The faint 4-NN graph gives the permissive local neighborhood,
 Gabriel shows the cleaner mid-density structure, and the spanning tree leaves only
 the bare backbone.
 
-![](assets/graph_connectivity_examples/three_graph_families.png)
+![a coiled space curve in the Three.js viewer, the cloud spiralling in on itself from a narrow tail to a wide open loop. A bright green spanning tree follows the coil; orange Gabriel edges cross between neighbouring turns like the rungs of a twisted ladder; the 4-NN edges are faint enough to read only as haze. The viewer's counter reads 769 lines, 0 triangles, 170 points](assets/graph_connectivity_examples/three_graph_families.png)
 
 There is no 3D Urquhart picture here because there is no 3D Urquhart graph:
 `vec3UrquhartGraph(...)` is one line, `return vec3MinimumSpanningTree(points,
@@ -344,7 +344,7 @@ This example builds a modest k-nearest-neighbor graph, then asks for two differe
 answers: a cover that spreads outward from one anchor, and an A* path to a chosen
 goal. The faded base graph stays in the background.
 
-![](assets/graph_connectivity_examples/path_cover_astar.png)
+![a nearest-neighbour graph whose every edge is coloured, twelve hues cycling through the cover's paths so the whole graph reads as a stained-glass tangle, with the faint blue-grey base edges almost invisible beneath them. One thick bright yellow route runs across the upper half of the frame from left of centre to the right, stepping between points and crossing edges of several different colours on its way](assets/graph_connectivity_examples/path_cover_astar.png)
 
 The two answers read differently off the same edges. `graphAnchoredGreedyThenDiameterCover`
 covers *edges*, not points: it repeatedly walks from the anchor to the nearest
