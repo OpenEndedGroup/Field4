@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Let one channel fall behind · Field AI4</title><link rel="stylesheet" href="conversation.css"></head>
+<body><main><nav class="top" aria-label="Document"><a href="../../function_conversation/">← Talking a function into existence</a><a href="04-lag.txt">Raw transcript</a></nav>
+<header><div class="eyebrow">Field · AI4 / saved conversation 04</div><h1>Let one channel fall behind</h1>
+<p>The original exchange, including tool results and plot images. Expand tool activity to inspect the steps; open a plot to see it full size.</p>
+<nav class="chapters" aria-label="Saved conversations"><a href="01-create.html" title="Create the composition" aria-label="1: Create the composition">01</a><a href="02-move.html" title="Move the third event" aria-label="2: Move the third event">02</a><a href="03-stretch.html" title="Give the event a longer rise" aria-label="3: Give the event a longer rise">03</a><a href="04-lag.html" title="Let one channel fall behind" aria-label="4: Let one channel fall behind" aria-current="page">04</a><a href="05-delete.html" title="Delete an event" aria-label="5: Delete an event">05</a><a href="06-warp.html" title="Warp a background passage" aria-label="6: Warp a background passage">06</a><a href="07-restore-background.html" title="Restore the background" aria-label="7: Restore the background">07</a><a href="08-loop-improvements.html" title="A shorter edit-and-export loop" aria-label="8: A shorter edit-and-export loop">08</a></nav></header>
+<section class="turn you" aria-label="You"><div class="role">You</div><p>We are resuming the saved function experiment after a runtime restart. The previous attempt was interrupted; neither failed candidate was activated. Working revision is r5-2aa6023ddfca; e3 is the intended event. Read guides/working.md and inspect current state. The CodeUse diagnostic stall is repaired. We identified a Wither compiler-plugin pitfall: a call to a LOCAL function as the last statement of a brace block can produce has no callableId. Verified workaround: use <code>val result = shoulder(base, localAge, event.rise)</code> followed by <code>result</code> instead of ending that branch with the bare call. Do not change the compiler/plugin. Use the existing function study tools and actual observations; write the candidate yourself.</p>
+<p>Let the second dimension lag during that event, then catch up smoothly. Keep the other two channels exactly as they are, keep the 30-second shared all-ones hold, and preserve everything outside e3. Use a smooth, monotonic local-time lag during its rise which returns to zero lag with matching endpoint slopes before the hold; choose and state a modest peak lag. Treat this as an instance-specific override, not a change to all events. Inspect before editing. Use CompareFunctionStudy with only y allowed inside e3, inspect before/after local waveform pixels and the plateau join, and report the actual timing policy and measured preservation.</p></section><details class="tool-run"><summary>Tool activity · 49 steps</summary><ol><li><details><summary>Starting AI conversation</summary><div class="body"><p>Preparing context and tools.</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>DocumentGuideReadRequest</code></p></div></details></li><li><details><summary>Using DocumentGuideReadRequest</summary><div class="body"><pre><code>{
+  &quot;lineCount&quot;: 250,
+  &quot;path&quot;: &quot;guides/working.md&quot;,
+  &quot;startLine&quot;: 1
+}</code></pre></div></details></li><li><details><summary>DocumentGuideReadRequest finished</summary><div class="body"><p>Read <a href="field://guide/guides/working.md">guides/working.md</a> lines 1–92</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>InspectFunctionStudy</code></p></div></details></li><li><details><summary>Using InspectFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;revision&quot;: &quot;&quot;
+}</code></pre></div></details></li><li><details><summary>InspectFunctionStudy finished</summary><div class="body"><p>r5-2aa6023ddfca parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>SelectFunctionStudy</code></p></div></details></li><li><details><summary>Using SelectFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;endSeconds&quot;: 1755,
+  &quot;eventIds&quot;: [
+    &quot;e3&quot;
+  ],
+  &quot;startSeconds&quot;: 1425
+}</code></pre></div></details></li><li><details><summary>SelectFunctionStudy finished</summary><div class="body"><p>r5-2aa6023ddfca parent, description, durationSeconds, channels, events, choices, source, liveSourceHash, dirty, selectedIds, selectionSeconds, history, semantics images=0</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>ObserveFunctionStudy</code></p></div></details></li><li><details><summary>Using ObserveFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;compareTo&quot;: &quot;&quot;,
+  &quot;endSeconds&quot;: 1530,
+  &quot;revision&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;startSeconds&quot;: 1505
+}</code></pre></div></details></li><li><details><summary>ObserveFunctionStudy finished</summary><div class="body"><p>r5-2aa6023ddfca intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>ObserveFunctionStudy</code></p></div></details></li><li><details><summary>Using ObserveFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;compareTo&quot;: &quot;&quot;,
+  &quot;endSeconds&quot;: 1635,
+  &quot;revision&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;startSeconds&quot;: 1610
+}</code></pre></div></details></li><li><details><summary>ObserveFunctionStudy finished</summary><div class="body"><p>r5-2aa6023ddfca intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>EditFunctionStudy</code></p></div></details></li><li><details><summary>Using EditFunctionStudy</summary><div class="body"><p>{"description":"Instance-specific e3 y shoulder-clock lag: C2 bump peaking at 6 seconds, strictly advancing local time, recovered at 1605 before unchanged shared hold; preserve x/z and all other times.","expectedRevision":"r5-2aa6023ddfca","expectedSourceHash":"2aa6023ddfca13fa20c7c678abd282b93b2ccd10d9a1b68f6ac789a127ef91de","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroun...</p></div></details></li><li><details><summary>EditFunctionStudy finished</summary><div class="body"><p>r6-deb1b1738cb0 Compiled, checked and activated images=0</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>CompileKotlinRequest</code></p></div></details></li><li><details><summary>Using CompileKotlinRequest</summary><div class="body"><pre><code>{
+  &quot;file&quot;: &quot;afield://function_conversation/function_source/code&quot;,
+  &quot;runSetupBlocks&quot;: false,
+  &quot;source&quot;: &quot;&quot;
+}</code></pre></div></details></li><li><details><summary>CompileKotlinRequest finished</summary><div class="body"><p>success=true diagnostics=0 setupChanges=0</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>CompareFunctionStudy</code></p></div></details></li><li><details><summary>Using CompareFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;afterRevision&quot;: &quot;r6-deb1b1738cb0&quot;,
+  &quot;allowedChannels&quot;: [
+    &quot;y&quot;
+  ],
+  &quot;beforeRevision&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;changedEndSeconds&quot;: 1755,
+  &quot;changedStartSeconds&quot;: 1425
+}</code></pre></div></details></li><li><details><summary>CompareFunctionStudy finished</summary><div class="body"><p>r6-deb1b1738cb0 before, allowedIntervalSeconds, allowedChannels, preservedScope, changedEventIds, method images=0</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>ObserveFunctionStudy</code></p></div></details></li><li><details><summary>Using ObserveFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;compareTo&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;endSeconds&quot;: 1530,
+  &quot;revision&quot;: &quot;r6-deb1b1738cb0&quot;,
+  &quot;startSeconds&quot;: 1505
+}</code></pre></div></details></li><li><details><summary>ObserveFunctionStudy finished</summary><div class="body"><p>r6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>ObserveFunctionStudy</code></p></div></details></li><li><details><summary>Using ObserveFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;compareTo&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;endSeconds&quot;: 1615,
+  &quot;revision&quot;: &quot;r6-deb1b1738cb0&quot;,
+  &quot;startSeconds&quot;: 1590
+}</code></pre></div></details></li><li><details><summary>ObserveFunctionStudy finished</summary><div class="body"><p>r6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>ObserveFunctionStudy</code></p></div></details></li><li><details><summary>Using ObserveFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;compareTo&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;endSeconds&quot;: 1635,
+  &quot;revision&quot;: &quot;r6-deb1b1738cb0&quot;,
+  &quot;startSeconds&quot;: 1610
+}</code></pre></div></details></li><li><details><summary>ObserveFunctionStudy finished</summary><div class="body"><p>r6-deb1b1738cb0 intervalSeconds, comparedTo, sourceHash, channels, events, choices, selectedIds, sampling, extrema, holdChecks, joins, difference, imageFile, guarantees, localPeaks images=1</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>CompareFunctionStudy</code></p></div></details></li><li><details><summary>Using CompareFunctionStudy</summary><div class="body"><pre><code>{
+  &quot;afterRevision&quot;: &quot;r6-deb1b1738cb0&quot;,
+  &quot;allowedChannels&quot;: [
+    &quot;y&quot;
+  ],
+  &quot;beforeRevision&quot;: &quot;r5-2aa6023ddfca&quot;,
+  &quot;changedEndSeconds&quot;: 1605,
+  &quot;changedStartSeconds&quot;: 1425
+}</code></pre></div></details></li><li><details><summary>CompareFunctionStudy finished</summary><div class="body"><p>r6-deb1b1738cb0 before, allowedIntervalSeconds, allowedChannels, preservedScope, changedEventIds, method images=0</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>DocumentGuideAppendRequest</code></p></div></details></li><li><details><summary>Using DocumentGuideAppendRequest</summary><div class="body"><p>{"path":"guides/working.md","revision":"10694df3cd888ee8ef1985f132d55407f4b059ee97a644dad236303b314ac329","text":"\n## Resumed experiment: e3 y lag (activated)\n\n- Restart inspection confirmed clean r5-2aa6023ddfca; selected e3, support 1425..1755 s, rise 200 s, shared hold 1625..1655 s. New working revision: <strong>r6-deb1b1738cb0</strong>, parent r5.\n- Instance-specific override only for e3/y: shoulder age <code>a - L</code>, where <code>L = 6*64*u^3*(1-u)^3</code>, <code>u=a/180</code>, for age 0..180 s; identity thereafter. Peak local-clock lag 6 s at absolute time 1515; zero lag by 1605, 20 s before hold. Local clock is strictly increasing: analytic rate bounds approximately 0.8855..1.1145, endpoint rate 1 and curvature 0. Lag i...</p></div></details></li><li><details><summary>DocumentGuideAppendRequest finished</summary><div class="body"><p>Guide changed or already exists. Read guides/working.md again and reconcile; nothing was overwritten.</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>DocumentGuideReadRequest</code></p></div></details></li><li><details><summary>Using DocumentGuideReadRequest</summary><div class="body"><pre><code>{
+  &quot;lineCount&quot;: 200,
+  &quot;path&quot;: &quot;guides/working.md&quot;,
+  &quot;startLine&quot;: 85
+}</code></pre></div></details></li><li><details><summary>DocumentGuideReadRequest finished</summary><div class="body"><p>Read <a href="field://guide/guides/working.md">guides/working.md</a> lines 85–98</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>DocumentGuideReadRequest</code></p></div></details></li><li><details><summary>Using DocumentGuideReadRequest</summary><div class="body"><pre><code>{
+  &quot;lineCount&quot;: 100,
+  &quot;path&quot;: &quot;guides/working.md&quot;,
+  &quot;startLine&quot;: 1
+}</code></pre></div></details></li><li><details><summary>DocumentGuideReadRequest finished</summary><div class="body"><p>Read <a href="field://guide/guides/working.md">guides/working.md</a> lines 1–98</p></div></details></li><li><details><summary>Planning tool use</summary><div class="body"><p>Next tool: <code>DocumentGuideAppendRequest</code></p></div></details></li><li><details><summary>Using DocumentGuideAppendRequest</summary><div class="body"><p>{"path":"guides/working.md","revision":"5765f50f427d1caea99704e3075839818a5f72329cb89fe9f60dbac9a5db380a","text":"\n## Resumed experiment: e3 y lag (activated)\n\n- Restart inspection confirmed clean r5-2aa6023ddfca; selected e3. New working revision: <strong>r6-deb1b1738cb0</strong>, parent r5. Event metadata unchanged: e3 support 1425..1755 s, rise 200 s, shared hold 1625..1655 s.\n- Instance-specific e3/y shoulder age is <code>a - L</code>, with <code>L = 6*64*u^3*(1-u)^3</code>, <code>u=a/180</code>, for age 0..180 s; identity thereafter. Peak local-clock lag 6 s at absolute time 1515; recovered by 1605, 20 s before hold. Analytic clock-rate bounds approximately 0.8855..1.1145, endpoint rate 1 and curvature 0: local time strictly ad...</p></div></details></li><li><details><summary>DocumentGuideAppendRequest finished</summary><div class="body"><p>Saved <a href="field://guide/guides/working.md">guides/working.md</a></p></div></details></li></ol></details><section class="turn ai" aria-label="AI4"><div class="role">AI4</div><p><em>r5-2aa6023ddfca; 1505.0..1530.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes.</em></p>
+<p><a href="images/e5d65ba2bb41ada8ae87.png" title="Open full-size plot"><img alt="tool image" src="images/e5d65ba2bb41ada8ae87.png" /></a></p></section><section class="turn ai" aria-label="AI4"><div class="role">AI4</div><p><em>r5-2aa6023ddfca; 1610.0..1635.0 seconds. White=current; dashed grey=none. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes.</em></p>
+<p><a href="images/7205f90fe2fa6d85549e.png" title="Open full-size plot"><img alt="tool image" src="images/7205f90fe2fa6d85549e.png" /></a></p></section><section class="turn ai" aria-label="AI4"><div class="role">AI4</div><p><em>r6-deb1b1738cb0; 1505.0..1530.0 seconds. White=current; dashed grey=r5-2aa6023ddfca. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes.</em></p>
+<p><a href="images/0e9fbd818ba14593b2e3.png" title="Open full-size plot"><img alt="tool image" src="images/0e9fbd818ba14593b2e3.png" /></a></p></section><section class="turn ai" aria-label="AI4"><div class="role">AI4</div><p><em>r6-deb1b1738cb0; 1590.0..1615.0 seconds. White=current; dashed grey=r5-2aa6023ddfca. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes.</em></p>
+<p><a href="images/6cbb42939b46a0682f46.png" title="Open full-size plot"><img alt="tool image" src="images/6cbb42939b46a0682f46.png" /></a></p></section><section class="turn ai" aria-label="AI4"><div class="role">AI4</div><p><em>r6-deb1b1738cb0; 1610.0..1635.0 seconds. White=current; dashed grey=r5-2aa6023ddfca. Inspect local waveforms before judging pulse rate; wide views are min/max envelopes.</em></p>
+<p><a href="images/8180b0a6aac70a2cc3ea.png" title="Open full-size plot"><img alt="tool image" src="images/8180b0a6aac70a2cc3ea.png" /></a></p></section><section class="turn ai" aria-label="AI4"><div class="role">AI4</div><p>Activated <strong>r6-deb1b1738cb0</strong>, changing only <strong>e3’s y rise</strong>.</p>
+<h3>Timing policy</h3>
+<ul>
+<li><strong>Peak local-time lag: 6 seconds at 1515 s.</strong></li>
+<li>Lag follows (6\cdot64u^3(1-u)^3), with (u=(t-1425)/180).</li>
+<li>The local clock always advances: its rate stays approximately <strong>0.8855–1.1145</strong>.</li>
+<li>Fully caught up at <strong>1605 s</strong>, with matching slope and curvature—20 seconds before the unchanged <strong>1625–1655 s shared all-ones hold</strong>.</li>
+<li>Only the pulse phase and shoulder envelopes use delayed time; the background continues on absolute time.</li>
+</ul>
+<h3>Verification</h3>
+<ul>
+<li>Kotlin compiled successfully using the local-result workaround; <strong>no compiler/plugin changes</strong>.</li>
+<li>Inspected before/after waveform pixels, catch-up, and the plateau join.</li>
+<li>Whole-hour comparisons at ≤20 ms spacing plus event joins measured <strong>zero maximum and RMS error</strong> for:</li>
+<li><strong>x and z everywhere</strong></li>
+<li><strong>y outside e3</strong></li>
+<li>Additionally, <strong>y outside the tighter 1425–1605 s interval</strong>, preserving the recovered rise, hold, and fall.</li>
+<li>Hold target error was <strong>0</strong>; plateau-entry slope was numerically zero (~(5.6\times10^{-12})).</li>
+</ul>
+<p>These are sampled measurements, supported by the instance-specific source restriction. Saved the timing policy and evidence in <a href="field://guide/guides/working.md">working notes</a>.</p></section><footer><a rel="prev" href="03-stretch.html">← Give the event a longer rise</a><a rel="next" href="05-delete.html">Delete an event →</a></footer></main></body></html>

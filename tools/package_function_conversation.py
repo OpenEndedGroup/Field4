@@ -3,6 +3,7 @@
 
 Run with --check to verify the committed downloads without rewriting them.
 Only document inputs and recorded evidence are included, never live backups or caches.
+Use: uv run --group docs python tools/package_function_conversation.py [--check]
 """
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ import json
 from pathlib import Path
 import re
 import zipfile
+
+from function_conversation_pages import CSS, TITLES, reader
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMOS = ROOT / "dev_docs/agents/demos"
@@ -109,19 +112,15 @@ def assets() -> dict[str, bytes]:
         "independent-verification.json": "conversations/independent-verification.json",
     }.items():
         result[name] = (example / source).read_bytes()
-    for name in (
-        "01-create",
-        "02-move",
-        "03-stretch",
-        "04-lag",
-        "05-delete",
-        "06-warp",
-        "07-restore-background",
-        "08-loop-improvements",
-    ):
-        result[name + ".txt"] = (
-            example / "conversations" / (name + ".md")
-        ).read_bytes()
+    result["conversation.css"] = CSS.encode()
+    for name in TITLES:
+        transcript = (example / "conversations" / (name + ".md")).read_bytes()
+        result[name + ".txt"] = transcript
+        result[name + ".html"] = reader(name, transcript.decode())
+        for image in re.findall(r"\]\((images/[^)]+\.png)\)", transcript.decode()):
+            path = (example / "conversations" / image).resolve()
+            assert path.is_relative_to((example / "conversations/images").resolve())
+            result[image] = path.read_bytes()
     return result
 
 
@@ -150,6 +149,7 @@ def main() -> None:
     else:
         OUTPUT.mkdir(parents=True, exist_ok=True)
         for name, data in expected.items():
+            (OUTPUT / name).parent.mkdir(parents=True, exist_ok=True)
             (OUTPUT / name).write_bytes(data)
         print(f"Packaged {len(expected)} function conversation assets.")
 

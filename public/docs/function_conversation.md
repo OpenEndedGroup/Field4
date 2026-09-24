@@ -161,13 +161,13 @@ revision sources; the readable versions are here:
 
 | Request | Result |
 | --- | --- |
-| [Create the composition](assets/function_conversation/01-create.txt) | Six events over a continuing background. |
-| [Move e3](assets/function_conversation/02-move.txt) | Only its location changes. |
-| [Double its rise](assets/function_conversation/03-stretch.txt) | Start pinned; hold duration retained. |
-| [Lag y](assets/function_conversation/04-lag.txt) | Channel-specific delay and recovery. |
-| [Delete e4](assets/function_conversation/05-delete.txt) | Background revealed; stable IDs retained. |
-| [Warp a background passage](assets/function_conversation/06-warp.txt) | A reversible local time experiment. |
-| [Restore the background](assets/function_conversation/07-restore-background.txt) | Other event edits survive. |
+| [Create the composition](assets/function_conversation/01-create.html) | Six events over a continuing background. |
+| [Move e3](assets/function_conversation/02-move.html) | Only its location changes. |
+| [Double its rise](assets/function_conversation/03-stretch.html) | Start pinned; hold duration retained. |
+| [Lag y](assets/function_conversation/04-lag.html) | Channel-specific delay and recovery. |
+| [Delete e4](assets/function_conversation/05-delete.html) | Background revealed; stable IDs retained. |
+| [Warp a background passage](assets/function_conversation/06-warp.html) | A reversible local time experiment. |
+| [Restore the background](assets/function_conversation/07-restore-background.html) | Other event edits survive. |
 
 An [independent replay](assets/function_conversation/independent-verification.json)
 recompiled the saved sources and compared them on a grid no coarser than 11 ms.
@@ -230,7 +230,7 @@ purpose, so you can adapt the experiment to another kind of function.
 
     The first seven turns used an earlier, more repetitive edit loop and took
     roughly 52–286 seconds each, including provider backoff. A later
-    [saved edit-and-export replay](assets/function_conversation/08-loop-improvements.txt)
+    [saved edit-and-export replay](assets/function_conversation/08-loop-improvements.html)
     used Inspect → Patch → Export on a separate 60-second fixture: 15.506 seconds,
     of which 13.402 seconds was model requests and 1.541 seconds was tools.
     That is evidence for a smaller interaction loop, not a general speed guarantee.
