@@ -2,18 +2,19 @@
 
 Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`. The four examples below run from a raygen shader writing straight into a storage image to procedural spheres reflecting a traced floor, and between them they cover image binding, acceleration structures, shader groups, dispatch, and GLSL.
 
-The four figures below are placeholder cards reading "Ray Tracing / Not Available" rather than
-renders, because Field never enables ray tracing on macOS and macOS is where these docs are built.
-A real capture needs a Linux device with the extension; until one lands, read the code rather than
-the pictures.
+These are real 512 × 512 captures from Field on Linux with an RTX 4090. The examples
+require an enabled `VK_KHR_ray_tracing_pipeline`; Field checks device features, independently
+of the operating system or GPU brand. The [path tracer](path_tracing.md) also has a compute
+BVH backend for devices without hardware ray tracing.
 
-??? aside "Why the figures say Not Available"
+??? aside "Capture and test provenance"
 
-    `enableRayTracing` ands in `!Options.isMac`, so the machine that publishes these docs stops
-    short of the extension probe — MoltenVK exposes no `VK_KHR_ray_tracing_pipeline` either way.
-    Every render method in `RayTracingDocsHarness` refuses in that case rather than writing a
-    stand-in, and the four cards on disk predate that refusal; `tools/check_doc_assets.py` names
-    them so they cannot become permanent.
+    Regenerated on 24 September 2026, NVIDIA driver 610.43.02. The old “Not Available” cards
+    have been removed, along with their placeholder-check exceptions. `RayTracingGpuAudit`
+    exercises these four captures with GPU pixel assertions, alongside the path tracer's two
+    backends. It reports unsupported pipeline captures as skipped; pass `--require-pipeline`
+    to require them. The capture harness throws on unavailable hardware or shader failure.
+    Reproduction commands and results are in `dev_docs/RAY_TRACING_AUDIT.md`.
 
 The shape of a Field ray tracing example is:
 
@@ -84,39 +85,13 @@ void main() {
 
 `RayTracingDocsHarness.renderUvGradient` runs exactly this, at 512 by 512, and reads the storage image back to a PNG.
 
-<!--
-FIELD_TEST
-id: docs.raytracing.uv-gradient
-runner: backdoor-box
-graphicsContext: true
-# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
-# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
-# darwin: nothing on this machine can run this, and the docs build cannot stand in for
-# it either. Linux CI has the extension and runs these normally.
-skipOn: [darwin]
-tags: [docs, raytracing, graphics, uv, gradient]
-timeoutSec: 120
-withPlaywright: true
-execution: launch
-waitSec: 12.0
-expect:
-  allowMissingOutput: true
-  allowExecutionErrors: true
-  # The "ready" println runs inside the async start(captureScene) coroutine, which
-  # the backdoor does not surface as a collectable output event or on stdout. The
-  # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran. Visual correctness is owned by nothing while this figure's committed asset is
-  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
-  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
-  screenshot:
-    kind: box
-    padding: 16
--->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-uv-gradient.png" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-uv-gradient.png" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
 import afield.four.fabricated.RayTracingDocsHarness
+import afield.four.modules.fromContext
 
+val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
-    val image = RayTracingDocsHarness.renderUvGradient("/tmp/docs-rt-uv-gradient.png")
+    val image = RayTracingDocsHarness.renderUvGradient("/tmp/docs-rt-uv-gradient.png", renderer)
     display("render", RayTracingDocsHarness.htmlForImage(image, "UV gradient: raygen writes UV directly to a storage image"))
     println("ray tracing example ready")
 }
@@ -205,10 +180,8 @@ void main() {
     ivec2 px = ivec2(gl_LaunchIDEXT.xy);
     vec2 uv = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
 
-    vec3 origin = vec3(0.0, 2.0, -2.0);
-    vec3 dir = normalize(vec3(uv.x * 2.0 - 1.0,
-                              -(uv.y * 2.0 - 1.0) - 0.75,
-                               1.0));
+    vec3 origin = vec3(0.0, 0.0, -1.25);
+    vec3 dir = normalize(vec3((uv * 2.0 - 1.0) * vec2(0.7, -0.7), 1.0));
 
     payload = vec3(0.05, 0.05, 0.12);
     traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0,
@@ -219,39 +192,13 @@ void main() {
 
 `renderTriangleScene` builds that BLAS and TLAS and dispatches over them.
 
-<!--
-FIELD_TEST
-id: docs.raytracing.triangle-scene
-runner: backdoor-box
-graphicsContext: true
-# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
-# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
-# darwin: nothing on this machine can run this, and the docs build cannot stand in for
-# it either. Linux CI has the extension and runs these normally.
-skipOn: [darwin]
-tags: [docs, raytracing, graphics, triangle, blas, tlas]
-timeoutSec: 180
-withPlaywright: true
-execution: launch
-waitSec: 20.0
-expect:
-  allowMissingOutput: true
-  allowExecutionErrors: true
-  # The "ready" println runs inside the async start(captureScene) coroutine, which
-  # the backdoor does not surface as a collectable output event or on stdout. The
-  # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran. Visual correctness is owned by nothing while this figure's committed asset is
-  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
-  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
-  screenshot:
-    kind: box
-    padding: 16
--->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-triangle-scene.png" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-triangle-scene.png" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
 import afield.four.fabricated.RayTracingDocsHarness
+import afield.four.modules.fromContext
 
+val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
-    val image = RayTracingDocsHarness.renderTriangleScene("/tmp/docs-rt-triangle.png")
+    val image = RayTracingDocsHarness.renderTriangleScene("/tmp/docs-rt-triangle.png", renderer)
     display("render", RayTracingDocsHarness.htmlForImage(image, "Triangle scene: barycentric coordinates as RGB"))
     println("ray tracing example ready")
 }
@@ -322,39 +269,13 @@ void main() {
 
 `renderShaderTileScene` traces the one quad; the checkerboard is entirely shader-side.
 
-<!--
-FIELD_TEST
-id: docs.raytracing.shader-tiles
-runner: backdoor-box
-graphicsContext: true
-# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
-# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
-# darwin: nothing on this machine can run this, and the docs build cannot stand in for
-# it either. Linux CI has the extension and runs these normally.
-skipOn: [darwin]
-tags: [docs, raytracing, graphics, shader, tiles, checker]
-timeoutSec: 180
-withPlaywright: true
-execution: launch
-waitSec: 20.0
-expect:
-  allowMissingOutput: true
-  allowExecutionErrors: true
-  # The "ready" println runs inside the async start(captureScene) coroutine, which
-  # the backdoor does not surface as a collectable output event or on stdout. The
-  # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran. Visual correctness is owned by nothing while this figure's committed asset is
-  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
-  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
-  screenshot:
-    kind: box
-    padding: 16
--->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-shader-tiles.png" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-shader-tiles.png" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
 import afield.four.fabricated.RayTracingDocsHarness
+import afield.four.modules.fromContext
 
+val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
-    val image = RayTracingDocsHarness.renderShaderTileScene("/tmp/docs-rt-shader-tiles.png")
+    val image = RayTracingDocsHarness.renderShaderTileScene("/tmp/docs-rt-shader-tiles.png", renderer)
     display("render", RayTracingDocsHarness.htmlForImage(image, "Shader-generated checker tiles on a traced quad"))
     println("ray tracing example ready")
 }
@@ -505,41 +426,41 @@ void main() {
 
 `renderMirrorBallsScene` puts all of it together: the triangle floor hit group, the procedural sphere hit group, and two reflected bounces. It is also the only example here that drives its camera from a uniform rather than a literal, via `seedRayCameraUniforms`.
 
-<!--
-FIELD_TEST
-id: docs.raytracing.mirror-balls
-runner: backdoor-box
-graphicsContext: true
-# Field ands !Options.isMac into enableRayTracing (Device.kt), so ray tracing is never
-# available on darwin and every RayTracingDocsHarness method refuses there. Skip on
-# darwin: nothing on this machine can run this, and the docs build cannot stand in for
-# it either. Linux CI has the extension and runs these normally.
-skipOn: [darwin]
-tags: [docs, raytracing, graphics, spheres, reflection, intersection, sbt]
-timeoutSec: 180
-withPlaywright: true
-execution: launch
-waitSec: 20.0
-expect:
-  allowMissingOutput: true
-  allowExecutionErrors: true
-  # The "ready" println runs inside the async start(captureScene) coroutine, which
-  # the backdoor does not surface as a collectable output event or on stdout. The
-  # box screenshot (graphics-context capture) is the reliable signal that the render
-  # ran. Visual correctness is owned by nothing while this figure's committed asset is
-  # still the harness's "Ray Tracing / Not Available" card -- see KNOWN_PLACEHOLDERS in
-  # tools/check_doc_assets.py, which tracks that debt and fails once it is paid.
-  screenshot:
-    kind: box
-    padding: 16
--->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-mirror-balls.png" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-mirror-balls.png" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
 import afield.four.fabricated.RayTracingDocsHarness
+import afield.four.modules.fromContext
 
+val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
-    val image = RayTracingDocsHarness.renderMirrorBallsScene("/tmp/docs-rt-mirror-balls.png")
+    val image = RayTracingDocsHarness.renderMirrorBallsScene("/tmp/docs-rt-mirror-balls.png", renderer)
     display("render", RayTracingDocsHarness.htmlForImage(image, "Three reflective procedural spheres over a traced checker floor"))
     println("ray tracing example ready")
 }
 start(captureScene)
 ```
+
+## Keep the mirrors live
+
+In a box connected to a running renderer, install the scene once under a name, then edit its
+instances or animate them. Re-evaluating the installation replaces that named scene safely.
+
+```diffstatic {data-lang=kotlin}
+import afield.four.fabricated.RayTracingDocsHarness
+import afield.four.modules.fromContext
+import kotlin.math.sin
+
+val renderer: Renderer = fromContext()
+prop<RayTracingDocsHarness.LiveMirrorBallsScene>(mirrors)
+mirrors = RayTracingDocsHarness.installMirrorBallsSceneInWindow(
+    renderer, name = "mirror-study", width = 768, height = 512
+)
+val rest = mirrors.sphere(1)
+mirrors.animate { seconds, scene ->
+    scene.setSphere(1, rest.x, rest.y + 0.3f * sin(seconds * 2.0).toFloat(), rest.z)
+}
+```
+
+`mirrors.clearAnimation()` holds the current pose. `mirrors.setSphere(index, x, y, z, scale)`
+edits a sphere; `mirrors.useCamera(camera)` connects your camera. `mirrors.cleanup()` retires the
+scene. Changed instance transforms build a fresh small TLAS while retaining the static BLASes;
+old GPU resources remain alive until earlier frames finish. This example does not deform geometry.

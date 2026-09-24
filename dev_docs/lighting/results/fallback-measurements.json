@@ -1,0 +1,18 @@
+{
+  "visibilityShadingGpuMs": {
+    "min": 0.02256,
+    "max": 0.027616,
+    "count": 100,
+    "p50": 0.024544,
+    "p95": 0.026592
+  },
+  "width": 256,
+  "workingBytes": 1572864,
+  "ensemble": {
+    "standardError": 5.752265330577542E-6,
+    "lowMean": 0.09909455016002221,
+    "referenceMean": 0.09909921969181752
+  },
+  "samples": 32,
+  "height": 192
+}

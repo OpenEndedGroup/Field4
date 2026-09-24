@@ -1,0 +1,35 @@
+AUDIT START emitters
+== emitter backend COMPUTE_BVH
+PASS emitter sampling is inert with no emitters: 48x32 identical at 96 samples
+emitter pdf against the environment sampler at 16384 samples, one bounce: 6912 px: global 0.00001, worst of 24 tiles 0.00011 (tile 5,1), per-pixel median 0.00068, p95 0.00206; white-furnace mean 0.99811 emissive vs 0.99810 environment
+PASS emitter pdf is right in absolute terms: 96x72, 6912 pixels, 16384 samples, emissive enclosure matches a constant environment map
+emitter MIS composition at 16384 samples, on at two bounces against off at three, six coloured faces: 6912 px: global 0.00004, worst of 24 tiles 0.00054 (tile 2,1), per-pixel median 0.00028, p95 0.00358
+PASS emitter arms compose without double counting: 96x72, 6912 pixels, 16384 samples each, on and off agree
+lamp-box bias at 65536 samples: 6746 px: global 0.00071, worst of 24 tiles 0.01066 (tile 5,1), per-pixel median 0.02444, p95 0.13310
+lamp-box bias at 4096 samples: 6746 px: global 0.00015, worst of 24 tiles 0.04639 (tile 0,0), per-pixel median 0.13428, p95 0.74506
+lamp-box residual decay 5.49375 for a 4.00000 budget ratio: noise decays, bias does not
+PASS lamp-box residual is reference noise, not bias: 6746 lit pixels of 96x72, 4096 -> 65536 samples shrank it 5.49375x
+lamp-box variance at 256 samples over 6746 lit pixels: RMSE 0.13590 off, 0.00385 on, ratio 35.28581
+PASS emitter sampling reduces error: RMSE ratio 35.28581 at 256 samples per pixel, 6746 lit pixels of 96x72, two lamps, black environment, three bounces
+lamp-box reference noise: references differ by 0.00359 RMS, and off's own standard error at 65536 samples predicts 0.00849 (ratio 0.42248)
+PASS lamp-box bias is below the reference's own resolution: 0.00359 against 0.00849 over 6746 lit pixels
+PASS emitter captures at 480x360: /home/marc/Field4/build/raytracing-audit/full/emitters/compute_bvh/emitter_{off,on}_256spp.png and emitter_reference_4096spp.png
+PASS emitter backend COMPUTE_BVH
+== emitter backend RAY_QUERY
+PASS emitter sampling is inert with no emitters: 48x32 identical at 96 samples
+emitter pdf against the environment sampler at 16384 samples, one bounce: 6912 px: global 0.00001, worst of 24 tiles 0.00011 (tile 5,1), per-pixel median 0.00068, p95 0.00206; white-furnace mean 0.99811 emissive vs 0.99810 environment
+PASS emitter pdf is right in absolute terms: 96x72, 6912 pixels, 16384 samples, emissive enclosure matches a constant environment map
+emitter MIS composition at 16384 samples, on at two bounces against off at three, six coloured faces: 6912 px: global 0.00004, worst of 24 tiles 0.00054 (tile 2,1), per-pixel median 0.00028, p95 0.00358
+PASS emitter arms compose without double counting: 96x72, 6912 pixels, 16384 samples each, on and off agree
+lamp-box bias at 65536 samples: 6746 px: global 0.00071, worst of 24 tiles 0.01066 (tile 5,1), per-pixel median 0.02446, p95 0.13310
+lamp-box bias at 4096 samples: 6746 px: global 0.00015, worst of 24 tiles 0.04639 (tile 0,0), per-pixel median 0.13428, p95 0.74506
+lamp-box residual decay 5.49079 for a 4.00000 budget ratio: noise decays, bias does not
+PASS lamp-box residual is reference noise, not bias: 6746 lit pixels of 96x72, 4096 -> 65536 samples shrank it 5.49079x
+lamp-box variance at 256 samples over 6746 lit pixels: RMSE 0.13590 off, 0.00385 on, ratio 35.28580
+PASS emitter sampling reduces error: RMSE ratio 35.28580 at 256 samples per pixel, 6746 lit pixels of 96x72, two lamps, black environment, three bounces
+lamp-box reference noise: references differ by 0.00359 RMS, and off's own standard error at 65536 samples predicts 0.00849 (ratio 0.42254)
+PASS lamp-box bias is below the reference's own resolution: 0.00359 against 0.00849 over 6746 lit pixels
+PASS emitter captures at 480x360: /home/marc/Field4/build/raytracing-audit/full/emitters/ray_query/emitter_{off,on}_256spp.png and emitter_reference_4096spp.png
+PASS emitter backend RAY_QUERY
+PASS path-tracing emitter GPU smoke on COMPUTE_BVH, RAY_QUERY
+AUDIT PASS emitters

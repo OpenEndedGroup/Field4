@@ -99,14 +99,14 @@ class RayTracingDocsContractTests(unittest.TestCase):
     def test_published_excerpts_and_numbers_match_harness(self):
         check_contract(self.page, self.source)
 
-    def test_original_camera_regression_is_rejected(self):
-        stale = self.page.replace("vec3(0.0, 2.0, -2.0)", "vec3(0.0, 0.0, -2.0)")
+    def test_published_camera_mutation_is_rejected(self):
+        stale = self.page.replace("vec3(0.0, 0.0, -1.25)", "vec3(0.0, 0.0, -2.0)")
         self.assertNotEqual(stale, self.page)
         with self.assertRaisesRegex(AssertionError, "TRIANGLE_RAYGEN"):
             check_contract(stale, self.source)
 
     def test_changed_harness_camera_is_rejected(self):
-        stale = self.source.replace("vec3(0.0, 2.0, -2.0)", "vec3(0.0, 3.0, -2.0)")
+        stale = self.source.replace("vec3(0.0, 0.0, -1.25)", "vec3(0.0, 1.0, -1.25)")
         self.assertNotEqual(stale, self.source)
         with self.assertRaisesRegex(AssertionError, "TRIANGLE_RAYGEN"):
             check_contract(self.page, stale)

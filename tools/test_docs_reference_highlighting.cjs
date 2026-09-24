@@ -25,7 +25,7 @@ const samples = [
 ];
 const languages = samples.map((_, i) => i < 6 ? 'fieldml' : i < 10 ? 'kotlin' : i < 12 ? 'petri' : 'fnrewrite');
 const nodes = samples.map((textContent, i) => ({textContent,innerHTML:'',dataset:{},classList:{add(){}},closest(){return {dataset:{codeLang:languages[i]}}}}));
-const context = {console,document:{readyState:'loading',addEventListener(){},querySelectorAll(selector){return selector.startsWith('[data-code-lang]') ? nodes : []}}};
+const context = {console,URL,location:{href:'https://example.test/field4/reference/math/'},document:{currentScript:{src:'https://example.test/field4/assets/code-diff-player/code-diff-player.js'},readyState:'loading',addEventListener(){},querySelectorAll(selector){return selector.startsWith('[data-code-lang]') ? nodes : []}}};
 context.window=context;
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(libraryPath,'utf8'), context);

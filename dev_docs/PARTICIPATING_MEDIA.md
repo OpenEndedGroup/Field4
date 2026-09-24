@@ -67,9 +67,19 @@ which is assertable and is the first thing the harness asserts.
 
 ## How to run the verification
 
-`PathTraceMediumGpuSmoke` carries no `FIELD_TEST` annotation; like
-`PathTraceEmitterGpuSmoke`, it is driven by a transcript, because it needs a live
-renderer and a GPU.
+`RayTracingGpuAudit` can run the complete medium suite through the standard JVM launcher:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9730 --timeout 3900 \
+  --command 'run-jvm-main afield.four.fabricated.RayTracingGpuAudit --arg=--stage=medium --timeout 3800'
+```
+
+It writes `build/raytracing-audit/gpu/medium/<backend>/` and an audit verdict. Add
+`--arg=--require-ray-query` when the hardware backend must run. The default catalog audit covers
+the shorter core, camera, temporal and ray-pipeline checks; `--all` adds the longer statistical
+emitter and medium checks plus benchmarks. [NVIDIA verification](RAY_TRACING_AUDIT.md) records the
+current results. The original live-document transcript remains available:
+
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py \

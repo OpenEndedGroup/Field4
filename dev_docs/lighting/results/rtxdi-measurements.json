@@ -1,0 +1,387 @@
+{
+  "historyRejectionMovingCamera": 0.11110275877621589,
+  "width": 256,
+  "workingBytes": 14944832,
+  "historyRejectionStatic": 0.01932602821975383,
+  "historyResets": 109,
+  "program": {
+    "schema": 1,
+    "sourceSha256": "74e4b65a06fe13c9cbb66b5ba63a6570e6e9363148f13cffd5eb9b99efcd2409",
+    "license": "/home/marc/Field4/build/lighting-experiment/upstream/RTXDI/Libraries/Rtxdi/LICENSE.txt",
+    "sdkCommit": "f12037fa8e97ebc08e9e3edfd2de528ed1772a4b",
+    "dxcFiles": {
+      "bin/dxc": "25927f0c2eb2eb22ebdf72ecf4798345a53b997ef1b05fea0280410d220427bb",
+      "lib/libdxil.so": "51f6a6eb5c77391a86c03b82a79affdb7fa5ea9a3a67be37f5f573ca112ad931",
+      "lib/libdxcompiler.so": "72832c39c5dfdf537586ca6500de94ef28cbf69d148ab3abe573da6ea209bad0"
+    },
+    "spirv": "build/lighting-experiment/rtxdi-shaders/ff37a5dca288d26b2bc3417b187933eb6103861b10d3663e898b28f00c30164f/lighting.spv",
+    "spirvSha256": "592e3c24a83e6377fc99b9b5632a6cfa14d4b8dc843107964a239df1022524a2",
+    "dxcUrl": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2505.1/linux_dxc_2025_07_14.x86_64.tar.gz",
+    "command": [
+      "/home/marc/Field4/build/lighting-experiment/upstream/RTXDI/External/dxc/bin/dxc",
+      "-spirv",
+      "-T",
+      "cs_6_6",
+      "-E",
+      "main",
+      "-fspv-target-env=vulkan1.3",
+      "-fvk-use-scalar-layout",
+      "-I",
+      "/home/marc/Field4/build/lighting-experiment/upstream/RTXDI/Libraries/Rtxdi/Include",
+      "-Fo",
+      "/home/marc/Field4/build/lighting-experiment/rtxdi-shaders/ff37a5dca288d26b2bc3417b187933eb6103861b10d3663e898b28f00c30164f/lighting.pending.spv",
+      "/home/marc/Field4/src/jvmMain/resources/afield/four/lighting/rtxdi/lighting.hlsl"
+    ],
+    "dxcVersion": "libdxcompiler.so: 1.9(dev;4950-b106a961); libdxil.so: 1.9",
+    "dxcSha256": "25927f0c2eb2eb22ebdf72ecf4798345a53b997ef1b05fea0280410d220427bb"
+  },
+  "gpu": {
+    "rgb32fAccelerationVertices": true,
+    "queueTimestampValidBits": [
+      64,
+      64,
+      64,
+      32,
+      32,
+      64
+    ],
+    "enabled": {
+      "extensions": [
+        "VK_EXT_dynamic_rendering_unused_attachments",
+        "VK_EXT_extended_dynamic_state",
+        "VK_EXT_extended_dynamic_state3",
+        "VK_EXT_external_memory_dma_buf",
+        "VK_EXT_image_drm_format_modifier",
+        "VK_EXT_present_timing",
+        "VK_EXT_queue_family_foreign",
+        "VK_KHR_16bit_storage",
+        "VK_KHR_acceleration_structure",
+        "VK_KHR_calibrated_timestamps",
+        "VK_KHR_create_renderpass2",
+        "VK_KHR_deferred_host_operations",
+        "VK_KHR_depth_stencil_resolve",
+        "VK_KHR_dynamic_rendering",
+        "VK_KHR_external_memory",
+        "VK_KHR_external_memory_fd",
+        "VK_KHR_maintenance7",
+        "VK_KHR_multiview",
+        "VK_KHR_present_id2",
+        "VK_KHR_push_descriptor",
+        "VK_KHR_ray_query",
+        "VK_KHR_ray_tracing_pipeline",
+        "VK_KHR_separate_depth_stencil_layouts",
+        "VK_KHR_shader_float_controls",
+        "VK_KHR_shader_non_semantic_info",
+        "VK_KHR_spirv_1_4",
+        "VK_KHR_swapchain"
+      ],
+      "accelerationStructure": true,
+      "rayQuery": true,
+      "rayTracingPipeline": true,
+      "bufferDeviceAddress": true
+    },
+    "driverInfo": "610.43.02",
+    "apiVersion": "1.4.341",
+    "java": "25.0.2+10-jvmci-b01",
+    "driver": "NVIDIA",
+    "maxStorageBufferRange": 4294967295,
+    "maxPushConstantsSize": 256,
+    "timestampPeriodNs": 1,
+    "device": "NVIDIA GeForce RTX 4090",
+    "limits": {
+      "maxPerStageAccelerationStructures": 1048576,
+      "maxDescriptorSetAccelerationStructures": 1048576,
+      "maxInstanceCount": 16777215,
+      "maxGeometryCount": 16777215,
+      "scratchAlignment": 128,
+      "maxPrimitiveCount": 536870911
+    },
+    "supported": {
+      "deferredHostOperations": true,
+      "accelerationStructure": true,
+      "rayQuery": true,
+      "rayTracingPipeline": true,
+      "bufferDeviceAddress": true
+    }
+  },
+  "lights": 16,
+  "sweeps": [
+    {
+      "candidates": 1,
+      "gpuMs": {
+        "temporalReuse": {
+          "min": 0.051712,
+          "max": 0.060768,
+          "count": 96,
+          "p50": 0.055904,
+          "p95": 0.05968
+        },
+        "surfaceSnapshot": {
+          "min": 0.018016,
+          "max": 0.021152,
+          "count": 96,
+          "p50": 0.0192,
+          "p95": 0.020512
+        },
+        "visibilityShading": {
+          "min": 0.019392,
+          "max": 0.023648,
+          "count": 96,
+          "p50": 0.022176,
+          "p95": 0.023136
+        },
+        "initialCandidates": {
+          "min": 0.01728,
+          "max": 0.021632,
+          "count": 96,
+          "p50": 0.019968,
+          "p95": 0.021248
+        },
+        "spatialReuse": {
+          "min": 0.045856,
+          "max": 0.050944,
+          "count": 96,
+          "p50": 0.04816,
+          "p95": 0.050016
+        }
+      },
+      "lights": 1
+    },
+    {
+      "candidates": 8,
+      "gpuMs": {
+        "temporalReuse": {
+          "min": 0.052,
+          "max": 0.05984,
+          "count": 96,
+          "p50": 0.055744,
+          "p95": 0.059232
+        },
+        "surfaceSnapshot": {
+          "min": 0.01808,
+          "max": 0.025024,
+          "count": 96,
+          "p50": 0.019296,
+          "p95": 0.021056
+        },
+        "visibilityShading": {
+          "min": 0.020352,
+          "max": 0.023808,
+          "count": 96,
+          "p50": 0.022144,
+          "p95": 0.02336
+        },
+        "initialCandidates": {
+          "min": 0.022496,
+          "max": 0.026112,
+          "count": 96,
+          "p50": 0.023968,
+          "p95": 0.025248
+        },
+        "spatialReuse": {
+          "min": 0.04576,
+          "max": 0.051392,
+          "count": 96,
+          "p50": 0.048032,
+          "p95": 0.050016
+        }
+      },
+      "lights": 1
+    },
+    {
+      "candidates": 1,
+      "gpuMs": {
+        "temporalReuse": {
+          "min": 0.053056,
+          "max": 0.060192,
+          "count": 96,
+          "p50": 0.056224,
+          "p95": 0.058592
+        },
+        "surfaceSnapshot": {
+          "min": 0.018144,
+          "max": 0.02432,
+          "count": 96,
+          "p50": 0.019552,
+          "p95": 0.022688
+        },
+        "visibilityShading": {
+          "min": 0.02048,
+          "max": 0.023872,
+          "count": 96,
+          "p50": 0.02272,
+          "p95": 0.023584
+        },
+        "initialCandidates": {
+          "min": 0.0176,
+          "max": 0.031584,
+          "count": 96,
+          "p50": 0.019968,
+          "p95": 0.025536
+        },
+        "spatialReuse": {
+          "min": 0.046208,
+          "max": 0.051584,
+          "count": 96,
+          "p50": 0.048416,
+          "p95": 0.050144
+        }
+      },
+      "lights": 16
+    },
+    {
+      "candidates": 8,
+      "gpuMs": {
+        "temporalReuse": {
+          "min": 0.053248,
+          "max": 0.060512,
+          "count": 96,
+          "p50": 0.056096,
+          "p95": 0.058912
+        },
+        "surfaceSnapshot": {
+          "min": 0.018368,
+          "max": 0.02576,
+          "count": 96,
+          "p50": 0.01952,
+          "p95": 0.02352
+        },
+        "visibilityShading": {
+          "min": 0.020576,
+          "max": 0.023904,
+          "count": 96,
+          "p50": 0.022624,
+          "p95": 0.023488
+        },
+        "initialCandidates": {
+          "min": 0.023296,
+          "max": 0.029952,
+          "count": 96,
+          "p50": 0.025056,
+          "p95": 0.026432
+        },
+        "spatialReuse": {
+          "min": 0.045568,
+          "max": 0.050592,
+          "count": 96,
+          "p50": 0.048256,
+          "p95": 0.04976
+        }
+      },
+      "lights": 16
+    },
+    {
+      "candidates": 1,
+      "gpuMs": {
+        "temporalReuse": {
+          "min": 0.054624,
+          "max": 0.061184,
+          "count": 96,
+          "p50": 0.057152,
+          "p95": 0.059936
+        },
+        "surfaceSnapshot": {
+          "min": 0.017984,
+          "max": 0.025504,
+          "count": 96,
+          "p50": 0.019296,
+          "p95": 0.02288
+        },
+        "visibilityShading": {
+          "min": 0.020032,
+          "max": 0.024736,
+          "count": 96,
+          "p50": 0.023136,
+          "p95": 0.024256
+        },
+        "initialCandidates": {
+          "min": 0.019168,
+          "max": 0.030592,
+          "count": 96,
+          "p50": 0.020704,
+          "p95": 0.022048
+        },
+        "spatialReuse": {
+          "min": 0.046976,
+          "max": 0.050976,
+          "count": 96,
+          "p50": 0.048672,
+          "p95": 0.050304
+        }
+      },
+      "lights": 128
+    },
+    {
+      "candidates": 8,
+      "gpuMs": {
+        "temporalReuse": {
+          "min": 0.055264,
+          "max": 0.06096,
+          "count": 96,
+          "p50": 0.057408,
+          "p95": 0.059488
+        },
+        "surfaceSnapshot": {
+          "min": 0.01792,
+          "max": 0.02592,
+          "count": 96,
+          "p50": 0.019552,
+          "p95": 0.02304
+        },
+        "visibilityShading": {
+          "min": 0.0208,
+          "max": 0.024352,
+          "count": 96,
+          "p50": 0.023104,
+          "p95": 0.024192
+        },
+        "initialCandidates": {
+          "min": 0.028992,
+          "max": 0.033056,
+          "count": 96,
+          "p50": 0.030688,
+          "p95": 0.032352
+        },
+        "spatialReuse": {
+          "min": 0.046432,
+          "max": 0.050976,
+          "count": 96,
+          "p50": 0.048544,
+          "p95": 0.050048
+        }
+      },
+      "lights": 128
+    }
+  ],
+  "height": 192,
+  "ensembles": {
+    "reference": {
+      "variance": 8.922915892801402E-10,
+      "mean": 0.12271563786899818
+    },
+    "initial": {
+      "standardError": 7.969205758171539E-5,
+      "variance": 1.0072089307643894E-7,
+      "mean": 0.12274172149687702,
+      "difference": 2.608362787884233E-5
+    },
+    "spatial": {
+      "standardError": 8.457774493359475E-5,
+      "variance": 1.1356202741955524E-7,
+      "mean": 0.12275450469043538,
+      "difference": 3.8866821437194554E-5
+    },
+    "temporal": {
+      "standardError": 2.4348876551565542E-5,
+      "variance": 8.593593039893912E-9,
+      "mean": 0.12276516825451776,
+      "difference": 4.9530385519580555E-5
+    },
+    "full": {
+      "standardError": 6.276259156386851E-5,
+      "variance": 6.21339948077275E-8,
+      "mean": 0.1227024852157857,
+      "difference": 1.3152653212486487E-5
+    }
+  }
+}

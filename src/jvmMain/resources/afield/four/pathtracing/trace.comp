@@ -149,6 +149,34 @@ vec3 shadingNormal(Triangle t,Material m,vec2 bary,vec3 rd,vec3 geometric) {
     return n;
 }
 struct Hit { float t; int triangle; vec2 bary; };
+#ifndef HARDWARE_QUERY
+// Ray-aligned edge functions: neighbouring triangles evaluate their shared edge with
+// opposite signs using the same products. Independent Moller-Trumbore u/v tests left
+// cracks on NVIDIA (and rejected temporal history along an otherwise continuous quad).
+// `precise` forbids contraction/reassociation that would break that shared-edge agreement.
+// See https://pbr-book.org/4ed/Shapes/Triangle_Meshes#RayTriangleIntersection .
+// Float arithmetic throughout; the fallback does not require shaderFloat64.
+bool triangleHit(vec3 ro, vec3 rd, Triangle triangle, out float distance, out vec2 bary) {
+    int z=0;
+    if (abs(rd.y)>abs(rd[z])) z=1;
+    if (abs(rd.z)>abs(rd[z])) z=2;
+    int x=(z+1)%3, y=(x+1)%3;
+    vec3 a=triangle.a.xyz-ro, b=triangle.b.xyz-ro, c=triangle.c.xyz-ro;
+    vec2 shear=vec2(rd[x],rd[y])/rd[z];
+    precise vec2 pa=vec2(a[x],a[y])-shear*a[z];
+    precise vec2 pb=vec2(b[x],b[y])-shear*b[z];
+    precise vec2 pc=vec2(c[x],c[y])-shear*c[z];
+    precise float ea=pb.x*pc.y-pb.y*pc.x;
+    precise float eb=pc.x*pa.y-pc.y*pa.x;
+    precise float ec=pa.x*pb.y-pa.y*pb.x;
+    if ((min(ea,min(eb,ec))<0.0) && (max(ea,max(eb,ec))>0.0)) return false;
+    float det=ea+eb+ec;
+    if (det==0.0) return false;
+    distance=(ea*a[z]+eb*b[z]+ec*c[z])/(det*rd[z]);
+    bary=vec2(eb,ec)/det;
+    return true;
+}
+#endif
 bool boxHit(vec3 ro, vec3 rd, vec3 lo, vec3 hi, float limit) {
     float nearT = frame.lighting.z, farT = limit;
     for (int axis=0; axis<3; axis++) {
@@ -185,15 +213,10 @@ Hit intersectScene(vec3 ro, vec3 rd, bool shadow, float limit) {
         if (!boxHit(ro,rd,node.lo.xyz,node.hi.xyz,h.t)) { nodeIndex=node.data.z; continue; }
         for (int j=0; j<node.data.y; j++) {
             int id=node.data.x+j; Triangle t=ptScene.triangles.items[id];
-            vec3 e1=t.b.xyz-t.a.xyz, e2=t.c.xyz-t.a.xyz, p=cross(rd,e2);
-            float det=dot(e1,p); if (abs(det)<1e-10) continue;
-            vec3 s=ro-t.a.xyz; float u=dot(s,p)/det;
-            if (u<0.0 || u>1.0) continue;
-            vec3 q=cross(s,e1); float v=dot(rd,q)/det;
-            if (v<0.0 || u+v>1.0) continue;
-            float distance=dot(e2,q)/det;
-            if (distance>frame.lighting.z && distance<h.t && acceptsHit(id,vec2(u,v),ro,rd)) {
-                h=Hit(distance,id,vec2(u,v)); if (shadow) return h;
+            float distance; vec2 bary;
+            if (triangleHit(ro,rd,t,distance,bary) && distance>frame.lighting.z && distance<h.t &&
+                acceptsHit(id,bary,ro,rd)) {
+                h=Hit(distance,id,bary); if (shadow) return h;
             }
         }
         nodeIndex++;

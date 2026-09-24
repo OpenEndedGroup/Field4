@@ -25,6 +25,39 @@ import kotlin.math.abs
 
 /** Real GPU readback assertions. Run from a Field box below a live renderer; no placeholder captures. */
 object PathTraceGpuSmoke {
+    /** A closed quad must have no pinholes along either diagonal, from either side.
+     * The camera-centred rays land exactly on shared edges where u/v rounding used to
+     * miss both triangles on NVIDIA. Black misses make this visible without temporal reuse.
+     */
+    suspend fun runSeams(renderer: Renderer) {
+        val backends = listOf(PathTracingRenderer.Backend.COMPUTE_BVH) +
+            if (renderer.device.supportsRayQuery) listOf(PathTracingRenderer.Backend.RAY_QUERY) else emptyList()
+        for (backend in backends) for (diagonal in 0..1) for (side in listOf(-1f, 1f)) {
+            val corners = listOf(Vector3f(-20f,-20f,0f),Vector3f(20f,-20f,0f),
+                Vector3f(20f,20f,0f),Vector3f(-20f,20f,0f))
+            val scene = PathTraceScene().apply {
+                val m = material(PathTraceMaterial.emissive(1f,1f,1f))
+                quad(corners[diagonal], corners[(diagonal+1)%4], corners[(diagonal+2)%4], corners[(diagonal+3)%4], m)
+            }
+            val camera = Camera(renderer).also { it.at.set(0f,0f,3f*side); it.target.set(0f,0f,0f); it.p.fov=0.7 }
+            PathTracingRenderer(renderer,scene,PathTraceEnvironment.constant(0f),48,32,camera,backend).use { t ->
+                t.maxBounces=1; t.pixelJitter=0f; t.paused=true; t.install()
+                t.materialModule.current.after["seam-step"] = afield.four.Target { _, _ -> t.paused=true }
+                for (shift in listOf(0f,0.8f,0f,-0.8f,0.02f)) {
+                    camera.at.x=shift; camera.target.x=shift; t.reset(); t.paused=false
+                    val deadline=System.nanoTime()+30_000_000_000L
+                    while (!t.paused) { check(System.nanoTime()<deadline) { "Seam dispatch timed out" }; delay(1) }
+                    val pixels=t.readLinear()
+                    val holes=(pixels.indices step 4).filter { i ->
+                        (0..3).any { !pixels[i+it].isFinite() || abs(pixels[i+it]-1f)>1e-5 }
+                    }
+                    check(holes.isEmpty()) { "$backend diagonal=$diagonal side=$side shift=$shift: ${holes.size} quad pinholes, first=${holes.take(8).map { (it/4%48) to (it/4/48) }}" }
+                }
+            }
+        }
+        println("PASS shared-edge coverage: both diagonals, both sides, translated cameras on $backends")
+    }
+
     suspend fun run(renderer: Renderer) {
         val backends = mutableListOf(PathTracingRenderer.Backend.COMPUTE_BVH)
         if (renderer.device.supportsRayQuery) backends += PathTracingRenderer.Backend.RAY_QUERY
@@ -330,7 +363,13 @@ object PathTraceGpuSmoke {
 
 /** Small reusable material study; the environment file is optional, with a constant white map as fallback. */
 object PathTraceDemo {
-    fun install(renderer: Renderer, environmentPath: String? = null, width: Int = 640, height: Int = 360): PathTracingRenderer {
+    fun install(renderer: Renderer, environmentPath: String? = null, width: Int = 640, height: Int = 360): PathTracingRenderer =
+        install(renderer, environmentPath, width, height, PathTracingRenderer.Backend.AUTO)
+
+    fun install(
+        renderer: Renderer, environmentPath: String? = null, width: Int = 640, height: Int = 360,
+        backend: PathTracingRenderer.Backend
+    ): PathTracingRenderer {
         val scene=PathTraceScene()
         val floor=scene.material(PathTraceMaterial.diffuse(0.48f,0.48f,0.48f))
         val red=scene.material(PathTraceMaterial.plastic(0.65f,0.055f,0.025f,0.22f))
@@ -342,6 +381,6 @@ object PathTraceDemo {
         scene.sphere(Vector3f(1.7f,0.8f,0f),0.8f,rough,48,24)
         val camera=Camera(renderer).also { it.at.set(3.5f,2.4f,7.5f); it.target.set(0f,0.65f,0f); it.p.fov=0.62 }
         return PathTracingRenderer(renderer,scene,environmentPath?.let { PathTraceEnvironment.fromFile(it) }
-            ?: PathTraceEnvironment.constant(),width,height,camera).install()
+            ?: PathTraceEnvironment.constant(),width,height,camera,backend).install()
     }
 }

@@ -213,7 +213,20 @@ uv run --project . --group backdoor python tools/field_backdoor.py \
 
 `println` from a box goes to the box's output, not the server's stdout, so the numbers
 are in `.field-backdoor/logs/*.managed-server.log` rather than on the terminal.
-About four minutes on an M1 Max. The captures land in `build/emitter-check/`.
+The original compute-only run took about four minutes on an M1 Max. The suite now runs
+`COMPUTE_BVH` and, when enabled, `RAY_QUERY`, writing captures in
+`build/emitter-check/<backend>/`. Every statistical assertion runs unchanged on each backend.
+
+For a standalone run with a durable audit verdict:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9730 --timeout 3900 \
+  --command 'run-jvm-main afield.four.fabricated.RayTracingGpuAudit --arg=--stage=emitters --timeout 3800'
+```
+
+That route writes `build/raytracing-audit/gpu/emitters/<backend>/` and `report.json`.
+[NVIDIA audit results](RAY_TRACING_AUDIT.md) distinguish the new measurements from the historical
+M1 numbers above.
 
 The loadable demo beside that transcript is
 [`dev_docs/agents/demos/path_tracing_emitters/`](agents/demos/path_tracing_emitters/README.md).

@@ -154,6 +154,7 @@ RUNNER_MEDIA_ENV = "FIELD_DOCS_RUNNER_MEDIA"
 RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
+RUNNER_GRADLE_ARGS_ENV = "FIELD_DOCS_RUNNER_GRADLE_ARGS"
 DEFAULT_RUNNER_PORT = 9477
 
 
@@ -1196,7 +1197,11 @@ class RunnerState:
         attempt failed so the caller can preserve and surface it.
         """
         gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
-        cmd = [str(self.repo_root / gradle_wrapper), "runJvm"]
+        extra_args = shlex.split(os.environ.get(RUNNER_GRADLE_ARGS_ENV, ""))
+        cmd = [str(self.repo_root / gradle_wrapper), "runJvm", *extra_args]
+        if extra_args:
+            LOG.info("Field docs runner extra Gradle arguments from %s: %s",
+                     RUNNER_GRADLE_ARGS_ENV, shlex.join(extra_args))
         workspace = os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(self.repo_root))
         cmd.append(f"--args=--workspace {shlex.quote(workspace)}")
 

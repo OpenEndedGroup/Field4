@@ -1,0 +1,215 @@
+{
+  "capabilities": {
+    "rgb32fAccelerationVertices": true,
+    "queueTimestampValidBits": [
+      64,
+      64,
+      64,
+      32,
+      32,
+      64
+    ],
+    "enabled": {
+      "extensions": [
+        "VK_EXT_dynamic_rendering_unused_attachments",
+        "VK_EXT_extended_dynamic_state",
+        "VK_EXT_extended_dynamic_state3",
+        "VK_EXT_external_memory_dma_buf",
+        "VK_EXT_image_drm_format_modifier",
+        "VK_EXT_present_timing",
+        "VK_EXT_queue_family_foreign",
+        "VK_KHR_16bit_storage",
+        "VK_KHR_acceleration_structure",
+        "VK_KHR_calibrated_timestamps",
+        "VK_KHR_create_renderpass2",
+        "VK_KHR_deferred_host_operations",
+        "VK_KHR_depth_stencil_resolve",
+        "VK_KHR_dynamic_rendering",
+        "VK_KHR_external_memory",
+        "VK_KHR_external_memory_fd",
+        "VK_KHR_maintenance7",
+        "VK_KHR_multiview",
+        "VK_KHR_present_id2",
+        "VK_KHR_push_descriptor",
+        "VK_KHR_ray_query",
+        "VK_KHR_ray_tracing_pipeline",
+        "VK_KHR_separate_depth_stencil_layouts",
+        "VK_KHR_shader_float_controls",
+        "VK_KHR_shader_non_semantic_info",
+        "VK_KHR_spirv_1_4",
+        "VK_KHR_swapchain"
+      ],
+      "accelerationStructure": true,
+      "rayQuery": true,
+      "rayTracingPipeline": true,
+      "bufferDeviceAddress": true
+    },
+    "driverInfo": "610.43.02",
+    "apiVersion": "1.4.341",
+    "java": "25.0.2+10-jvmci-b01",
+    "driver": "NVIDIA",
+    "maxStorageBufferRange": 4294967295,
+    "maxPushConstantsSize": 256,
+    "timestampPeriodNs": 1,
+    "device": "NVIDIA GeForce RTX 4090",
+    "limits": {
+      "maxPerStageAccelerationStructures": 1048576,
+      "maxDescriptorSetAccelerationStructures": 1048576,
+      "maxInstanceCount": 16777215,
+      "maxGeometryCount": 16777215,
+      "scratchAlignment": 128,
+      "maxPrimitiveCount": 536870911
+    },
+    "supported": {
+      "deferredHostOperations": true,
+      "accelerationStructure": true,
+      "rayQuery": true,
+      "rayTracingPipeline": true,
+      "bufferDeviceAddress": true
+    }
+  },
+  "stages": [
+    {
+      "stage": "pipeline",
+      "elapsedSeconds": 27.77800798,
+      "status": "PASS"
+    },
+    {
+      "stage": "benchmark",
+      "elapsedSeconds": 115.790985205,
+      "measurements": [
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 5.876224,
+            "max": 7.018048,
+            "p50": 6.252928,
+            "p95": 6.620128
+          },
+          "samplesPerFrame": 1,
+          "timingSamples": 256,
+          "width": 640,
+          "warmupFrames": 32,
+          "backend": "COMPUTE_BVH",
+          "bounces": 5,
+          "height": 360
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 6.41104,
+            "max": 22.067488,
+            "p50": 18.029216,
+            "p95": 20.957152
+          },
+          "samplesPerFrame": 4,
+          "timingSamples": 256,
+          "width": 640,
+          "warmupFrames": 32,
+          "backend": "COMPUTE_BVH",
+          "bounces": 5,
+          "height": 360
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 12.849888,
+            "max": 14.71648,
+            "p50": 14.093536,
+            "p95": 14.507584
+          },
+          "samplesPerFrame": 1,
+          "timingSamples": 256,
+          "width": 1280,
+          "warmupFrames": 32,
+          "backend": "COMPUTE_BVH",
+          "bounces": 5,
+          "height": 720
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 14.873568,
+            "max": 23.632576,
+            "p50": 19.341824,
+            "p95": 19.88112
+          },
+          "samplesPerFrame": 4,
+          "timingSamples": 256,
+          "width": 1280,
+          "warmupFrames": 32,
+          "backend": "COMPUTE_BVH",
+          "bounces": 5,
+          "height": 720
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 0.213184,
+            "max": 0.37664,
+            "p50": 0.344416,
+            "p95": 0.367552
+          },
+          "samplesPerFrame": 1,
+          "timingSamples": 256,
+          "width": 640,
+          "warmupFrames": 32,
+          "backend": "RAY_QUERY",
+          "bounces": 5,
+          "height": 360
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 1.461088,
+            "max": 1.655232,
+            "p50": 1.583808,
+            "p95": 1.636672
+          },
+          "samplesPerFrame": 4,
+          "timingSamples": 256,
+          "width": 640,
+          "warmupFrames": 32,
+          "backend": "RAY_QUERY",
+          "bounces": 5,
+          "height": 360
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 0.972768,
+            "max": 1.516576,
+            "p50": 1.44384,
+            "p95": 1.49904
+          },
+          "samplesPerFrame": 1,
+          "timingSamples": 256,
+          "width": 1280,
+          "warmupFrames": 32,
+          "backend": "RAY_QUERY",
+          "bounces": 5,
+          "height": 720
+        },
+        {
+          "triangles": 6626,
+          "gpuMs": {
+            "min": 4.535904,
+            "max": 5.258688,
+            "p50": 4.978784,
+            "p95": 5.158592
+          },
+          "samplesPerFrame": 4,
+          "timingSamples": 256,
+          "width": 1280,
+          "warmupFrames": 32,
+          "backend": "RAY_QUERY",
+          "bounces": 5,
+          "height": 720
+        }
+      ],
+      "status": "PASS"
+    }
+  ],
+  "startedAt": "2026-09-24T19:28:44.563960814Z",
+  "complete": true
+}

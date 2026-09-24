@@ -11,6 +11,7 @@ import afield.four.device.Fence
 import afield.four.modules.AccelerationStructure
 import afield.four.modules.AccelerationStructureAabbs
 import afield.four.modules.AccelerationStructureTriangles
+import afield.four.modules.HasAccelerationStructure
 import afield.four.modules.Mesh
 import afield.four.modules.Module
 import afield.four.modules.Parameters
@@ -59,6 +60,7 @@ import org.lwjgl.vulkan.VkImageSubresourceRange
 import java.io.File
 import java.util.ArrayDeque
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicReference
 import javax.imageio.ImageIO
 import kotlin.math.tan
 
@@ -105,7 +107,7 @@ object RayTracingDocsHarness {
         private val sphereAabbBuffer: VulkanBuffer,
         private val floorBlas: AccelerationStructure,
         private val sphereBlas: AccelerationStructure,
-        private val tlas: AccelerationStructure,
+        private val tlas: AtomicReference<AccelerationStructure>,
         private val rayTracingPointer: afield.four.modules.RayTracingModulePointer,
         private val blitPointer: afield.four.modules.ModulePointer,
         private val sampler: TextureSampler,
@@ -171,6 +173,13 @@ object RayTracingDocsHarness {
             return this
         }
 
+        /** Capture the actual storage image, independently of the window's size/exposure. */
+        suspend fun capture(outputPath: String): File {
+            check(!cleaned) { "Mirror scene is closed" }
+            waitForRendererFrames(renderer)
+            return captureRtImage(renderer, image, outputPath, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        }
+
         internal fun updateTlas(command: CommandBuffer) {
             animator?.invoke((System.nanoTime() - startedAtNanos) / 1_000_000_000.0, this)
             val snapshot = synchronized(sphereLock) {
@@ -178,7 +187,18 @@ object RayTracingDocsHarness {
                 builtRevision = revision
                 mirrorBallsInstances(floorBlas, sphereBlas, spheres)
             }
-            tlas.buildTopLevel(command, snapshot)
+            // An older frame may still traverse the previous TLAS. Keep both its storage and
+            // host-written instance input immutable until Field retires that frame. The static
+            // triangle/AABB BLASes are shared; only a changed instance list gets a new TLAS.
+            val next = AccelerationStructure(renderer, "$name-tlas-$builtRevision")
+            try {
+                next.buildTopLevel(command, snapshot)
+            } catch (t: Throwable) {
+                next.cleanup()
+                throw t
+            }
+            val previous = tlas.getAndSet(next)
+            renderer.cleanup += Runnable { previous.cleanup() }
         }
 
         fun cleanup() {
@@ -186,19 +206,21 @@ object RayTracingDocsHarness {
             cleaned = true
             rayTracingPointer.disable()
             blitPointer.disable()
-            renderer.computeList.rayTracingModules.remove(name)
-            renderer.renderList.modules.remove("$name-blit")
-            liveScenes[renderer]?.remove(name)
-            rayTracingPointer.current.cleanup()
-            blitPointer.current.cleanup()
-            sampler.cleanup()
-            imageView.cleanup()
-            image.cleanup()
-            floorVertexBuffer.cleanup()
-            sphereAabbBuffer.cleanup()
-            floorBlas.cleanup()
-            sphereBlas.cleanup()
-            tlas.cleanup()
+            renderer.computeList.rayTracingModules.remove(name, rayTracingPointer)
+            renderer.renderList.modules.remove("$name-blit", blitPointer)
+            liveScenes[renderer]?.remove(name, this)
+            renderer.cleanup += Runnable {
+                rayTracingPointer.current.cleanup()
+                blitPointer.current.cleanup()
+                sampler.cleanup()
+                imageView.cleanup()
+                image.cleanup()
+                tlas.get().cleanup()
+                floorBlas.cleanup()
+                sphereBlas.cleanup()
+                floorVertexBuffer.cleanup()
+                sphereAabbBuffer.cleanup()
+            }
         }
     }
 
@@ -264,8 +286,11 @@ object RayTracingDocsHarness {
         } finally {
             pointer.disable()
             renderer.computeList.rayTracingModules.remove(rtName)
-            image.cleanup()
-            imageView.cleanup()
+            renderer.cleanup += Runnable {
+                rtModule.cleanup()
+                imageView.cleanup()
+                image.cleanup()
+            }
         }
     }
 
@@ -346,8 +371,11 @@ object RayTracingDocsHarness {
         } finally {
             pointer.disable()
             renderer.computeList.rayTracingModules.remove(rtName)
-            image.cleanup(); imageView.cleanup()
-            vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
+            renderer.cleanup += Runnable {
+                rtModule.cleanup()
+                imageView.cleanup(); image.cleanup()
+                tlas.cleanup(); blas.cleanup(); vertexBuffer.cleanup()
+            }
         }
     }
 
@@ -425,8 +453,11 @@ object RayTracingDocsHarness {
         } finally {
             pointer.disable()
             renderer.computeList.rayTracingModules.remove(rtName)
-            image.cleanup(); imageView.cleanup()
-            vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
+            renderer.cleanup += Runnable {
+                rtModule.cleanup()
+                imageView.cleanup(); image.cleanup()
+                tlas.cleanup(); blas.cleanup(); vertexBuffer.cleanup()
+            }
         }
     }
 
@@ -543,6 +574,7 @@ object RayTracingDocsHarness {
             renderer = renderer,
             rayTracingGroups = groups,
             maxRayRecursionDepth = MIRROR_BALLS_REFLECTION_BOUNCES + 1,
+            uboResolver = { it.apply { perFrame = true } },
             name = rtName,
             imageResolver = { imageView },
             accelerationStructureResolver = { tlas },
@@ -579,9 +611,12 @@ object RayTracingDocsHarness {
         } finally {
             pointer.disable()
             renderer.computeList.rayTracingModules.remove(rtName)
-            image.cleanup(); imageView.cleanup()
-            floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
-            floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
+            renderer.cleanup += Runnable {
+                rtModule.cleanup()
+                imageView.cleanup(); image.cleanup()
+                tlas.cleanup(); floorBlas.cleanup(); sphereBlas.cleanup()
+                floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
+            }
         }
     }
 
@@ -643,15 +678,21 @@ object RayTracingDocsHarness {
 
         val tlas = AccelerationStructure(renderer, "$name-tlas")
             .buildTopLevelNow(instances = instances)
+        val currentTlas = AtomicReference(tlas)
+        val tlasBinding = object : HasAccelerationStructure {
+            override val vkAccelerationStructure: Long get() = currentTlas.get().vkAccelerationStructure
+            override fun deviceAddress(): Long = currentTlas.get().deviceAddress()
+        }
 
         val errors = mutableListOf<String>()
         val p = Parameters(
             renderer = renderer,
             rayTracingGroups = mirrorBallsGroups(),
             maxRayRecursionDepth = MIRROR_BALLS_REFLECTION_BOUNCES + 1,
+            uboResolver = { it.apply { perFrame = true } },
             name = name,
             imageResolver = { imageView },
-            accelerationStructureResolver = { tlas },
+            accelerationStructureResolver = { tlasBinding },
             errorHandler = { msg, throwable ->
                 errors += msg
                 throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
@@ -698,7 +739,7 @@ object RayTracingDocsHarness {
             sphereAabbBuffer = sphereAabbBuffer,
             floorBlas = floorBlas,
             sphereBlas = sphereBlas,
-            tlas = tlas,
+            tlas = currentTlas,
             rayTracingPointer = rtPointer,
             blitPointer = blitPointer,
             sampler = sampler,
@@ -1057,7 +1098,9 @@ object RayTracingDocsHarness {
         }
     }
 
-    private suspend fun captureRtImage(renderer: Renderer, image: Image, outputPath: String): File {
+    private suspend fun captureRtImage(
+        renderer: Renderer, image: Image, outputPath: String, layout: Int = VK_IMAGE_LAYOUT_GENERAL
+    ): File {
         val targetFile = File(outputPath)
         targetFile.parentFile?.mkdirs()
         targetFile.delete()
@@ -1067,9 +1110,9 @@ object RayTracingDocsHarness {
             renderer = renderer,
             vkImage = image.vkImage,
             format = image.format,
-            srcWidth = OUTPUT_WIDTH,
-            srcHeight = OUTPUT_HEIGHT,
-            currentLayout = VK_IMAGE_LAYOUT_GENERAL,
+            srcWidth = image.imageData.width,
+            srcHeight = image.imageData.height,
+            currentLayout = layout,
             maxDim = CAPTURE_MAX_DIM
         ) ?: error("could not read back ray tracing output image")
 
@@ -1151,10 +1194,11 @@ object RayTracingDocsHarness {
         }
         return Camera(renderer).also {
             it.lookAt(
-                Vector3f(0.0f, 0.18f, -3.45f),
-                Vector3f(0.0f, -0.05f, 2.1f),
+                Vector3f(0.0f, 1.1f, -2.6f),
+                Vector3f(0.0f, -0.2f, 2.1f),
                 Vector3f(0.0f, 1.0f, 0.0f)
             )
+            it.p.fov = 0.62
         }
     }
 
@@ -1212,10 +1256,8 @@ object RayTracingDocsHarness {
             ivec2 px  = ivec2(gl_LaunchIDEXT.xy);
             vec2  uv  = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
 
-            vec3 origin = vec3(0.0, 2.0, -2.0);
-            vec3 dir    = normalize(vec3(uv.x * 2.0 - 1.0,
-                                         -(uv.y * 2.0 - 1.0) - 0.75,
-                                          1.0));
+            vec3 origin = vec3(0.0, 0.0, -1.25);
+            vec3 dir = normalize(vec3((uv * 2.0 - 1.0) * vec2(0.7, -0.7), 1.0));
 
             payload = vec3(0.05, 0.05, 0.12);
             traceRayEXT(topLevelAS,
@@ -1268,8 +1310,8 @@ object RayTracingDocsHarness {
             ivec2 px  = ivec2(gl_LaunchIDEXT.xy);
             vec2  uv  = (vec2(px) + 0.5) / vec2(max(gl_LaunchSizeEXT.xy, uvec2(1)));
 
-            vec3 origin = vec3(0.0, 0.45, -2.6);
-            vec3 dir    = normalize(vec3((uv * 2.0 - 1.0) * vec2(1.05, -0.72), 1.0));
+            vec3 origin = vec3(0.0, 1.4, -1.6);
+            vec3 dir = normalize(vec3((uv * 2.0 - 1.0) * vec2(0.75, -0.55) + vec2(0.0, -0.65), 1.0));
 
             payload = vec3(0.03, 0.04, 0.08);
             traceRayEXT(topLevelAS,

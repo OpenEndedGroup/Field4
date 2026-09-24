@@ -457,7 +457,7 @@ over(C) :- cell(C, V), V > 5.
 
 Run a `#why` next to it and the box answers with the derivation rather than the row:
 
-```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box_why.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" name="datalog-box-why" w="900" h="300"}
+```diffstatic_runner {data-lang=datalog screenshot="assets/datalog/box_why.png" capture="editor" outputs="inline" wait="4" wait-output=true wait-output-kind="all" padding="10" timeout="240" name="datalog-box-why" w="900" h="300" embed=true}
 :::static
 cell(a1, 3). cell(a3, 10).
 over(C) :- cell(C, V), V > 5.

@@ -7,6 +7,7 @@ import afield.four.device.CommandBuffer
 import afield.four.device.Fence
 import afield.four.device.nameObject
 import afield.four.util.vkCheck
+import afield.four.util.AutoDisposer
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRAccelerationStructure.*
@@ -78,6 +79,7 @@ class AccelerationStructure(
     private var instancesBuffer: VulkanBuffer? = null
     private var type: Int = VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR
     private var cachedDeviceAddress: Long = 0L
+    private var handleDisposer: AutoDisposer.Token? = null
 
     override fun deviceAddress(): Long {
         if (cachedDeviceAddress != 0L) return cachedDeviceAddress
@@ -97,7 +99,7 @@ class AccelerationStructure(
         aabbs: List<AccelerationStructureAabbs> = emptyList(),
         flags: Int = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
     ): AccelerationStructure {
-        require(renderer.device.supportsRayTracing) { "Device does not support VK_KHR_ray_tracing_pipeline." }
+        require(renderer.device.supportsAccelerationStructures) { "Device has no enabled VK_KHR_acceleration_structure." }
         require(triangles.isNotEmpty() || aabbs.isNotEmpty()) { "BLAS build needs at least one triangles or AABB geometry." }
 
         MemoryStack.stackPush().use { stack ->
@@ -163,7 +165,7 @@ class AccelerationStructure(
         instances: List<RayTracingInstance>,
         flags: Int = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
     ): AccelerationStructure {
-        require(renderer.device.supportsRayTracing) { "Device does not support VK_KHR_ray_tracing_pipeline." }
+        require(renderer.device.supportsAccelerationStructures) { "Device has no enabled VK_KHR_acceleration_structure." }
         require(instances.isNotEmpty()) { "TLAS build needs at least one instance." }
 
         val byteSize = instances.size * VkAccelerationStructureInstanceKHR.SIZEOF.toLong()
@@ -232,16 +234,19 @@ class AccelerationStructure(
     private fun submitBuildNow(build: (CommandBuffer) -> Unit): AccelerationStructure {
         val cmd = CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true)
         val fence = Fence(renderer.device, signaled = true)
-        cmd.beginRecording()
-        build(cmd)
-        cmd.endRecording()
-        fence.reset()
-        MemoryStack.stackPush().use { stack ->
-            renderer.graphQueue.submit(stack.pointers(cmd.vkCommandBuffer), null, null, null, fence)
+        try {
+            cmd.beginRecording()
+            build(cmd)
+            cmd.endRecording()
+            fence.reset()
+            MemoryStack.stackPush().use { stack ->
+                renderer.graphQueue.submit(stack.pointers(cmd.vkCommandBuffer), null, null, null, fence)
+            }
+            fence.fenceWait()
+        } finally {
+            cmd.cleanup()
+            fence.cleanup()
         }
-        fence.fenceWait()
-        cmd.cleanup()
-        fence.cleanup()
         return this
     }
 
@@ -321,6 +326,13 @@ class AccelerationStructure(
             )
             vkAccelerationStructure = out[0]
             cachedDeviceAddress = 0L
+            // Register after the backing buffer so device shutdown destroys the handle first.
+            // Capture only native values: the cleanup must not retain this object's graph.
+            val device = renderer.device.vkDevice
+            val handle = vkAccelerationStructure
+            handleDisposer = AutoDisposer.register(this, debugName, owner = renderer.device) {
+                vkDestroyAccelerationStructureKHR(device, handle, null)
+            }
             renderer.device.nameObject(
                 vkAccelerationStructure,
                 VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR,
@@ -343,7 +355,9 @@ class AccelerationStructure(
 
     private fun destroyHandle() {
         if (vkAccelerationStructure != 0L) {
-            vkDestroyAccelerationStructureKHR(renderer.device.vkDevice, vkAccelerationStructure, null)
+            if (handleDisposer?.disable() == true)
+                vkDestroyAccelerationStructureKHR(renderer.device.vkDevice, vkAccelerationStructure, null)
+            handleDisposer = null
             vkAccelerationStructure = 0L
             cachedDeviceAddress = 0L
         }
@@ -369,7 +383,7 @@ fun accelerationStructureBuildBarrier(command: CommandBuffer) {
             .sType(VK_STRUCTURE_TYPE_MEMORY_BARRIER_2)
             .srcStageMask(VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR)
             .srcAccessMask(VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR)
-            .dstStageMask(VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR or VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR or VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+            .dstStageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
             .dstAccessMask(VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR or VK_ACCESS_2_SHADER_READ_BIT)
 
         val dep = VkDependencyInfo.calloc(stack)

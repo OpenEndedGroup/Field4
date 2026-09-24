@@ -4,12 +4,13 @@
 path tracer for `afield.four`. It runs on ordinary
 Vulkan compute devices, including MoltenVK on macOS. When Field has enabled
 `VK_KHR_ray_query`, `AUTO` selects hardware triangle traversal. Both backends use
-the same lighting, material evaluation and accumulation code. Every type this page calls is
+the same lighting, material evaluation and accumulation code. The Linux/NVIDIA GPU audit
+checks both backends, including shared triangle edges, camera motion, glass and textured glTF. Every type this page calls is
 browsable on the [Renderers](reference/renderers.md) reference page, with the KDoc that sits beside
 it in the source, next to the real-time deferred renderer this one is an alternative to and the
 splat renderer that is neither.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by the compute path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by Field’s progressive path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_materials.yaml.
 ```
 
@@ -42,6 +43,19 @@ tracer.blitToScreen() // separate pass sampling tracer.output
 The checkout also includes a complete renderer-and-scene example in
 `dev_docs/agents/transcripts/path_tracing_materials.yaml`, which can be run as an
 OperationTranscript.
+
+For an explicit backend comparison, pass `backend` to the demo installer:
+
+```diffstatic {data-lang=kotlin}
+val tracer = PathTraceDemo.install(renderer, width=640, height=360,
+    backend=PathTracingRenderer.Backend.RAY_QUERY)
+tracer.blitToScreen()
+println(tracer.backend)
+```
+
+`RAY_QUERY` fails with a capability error when unavailable; `AUTO` falls back to `COMPUTE_BVH`.
+Re-running the installer replaces the named tracer and retires its previous GPU resources.
+
 
 ## Supply your own scene
 
@@ -919,7 +933,7 @@ setting slightly brighter, and on this scene that difference is 1.9% of the imag
 
 ## Current limits
 
-This is a basic static-scene renderer. It does not yet include scattering volumes,
+This is a basic static-scene renderer. It does not yet include heterogeneous scattering volumes,
 nested dielectric media, deformation/refitting, motion blur, spatial denoising or an
 OpenXR stereo pass. Emissive triangles are importance-sampled by area and power (see
 above), but there is no spatial or directional light hierarchy, so a scene with
@@ -932,7 +946,9 @@ The intended interactive resolution is a workload choice, not a frame-rate guara
 You can run the GPU checks against your own machine — they cover readback colours, material
 placement, image orientation, accumulation resets, white-furnace energy, glTF textures and
 transforms, the glass models, and the clamp. `dev_docs/PATH_TRACING_MEASUREMENTS.md` says what each
-one covers. From a launched renderer child:
+one covers. The standalone `RayTracingGpuAudit` also runs camera, temporal, fog and ray-pipeline
+checks; `--all` adds the statistical emitter/medium suites and a GPU timing sweep. Its report
+records the actual device and enabled backends. From a launched renderer child:
 
 ```diffstatic {data-lang=kotlin}
 val renderer: Renderer = fromContext()

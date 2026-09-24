@@ -395,6 +395,7 @@ object DemoTranscriptExecSmokeTest {
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
         "graphics_renderer_launch",
+        "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
         // Box 1 opens a Window because `afield.four` has no headless mode — a compute-only dispatch
         // still needs one for the device to exist — so the bench cannot be replayed here. What this
         // entry buys is the thing that was actually missing: all four box bodies are compiled

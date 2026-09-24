@@ -58,13 +58,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 148 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 149 transcripts on every build, at three
 depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-59 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+60 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2253,6 +2253,20 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 ![A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window](assets/puppet_browser/youtube-stereo.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/youtube_vr_browser/metadata.edn)
+
+### direct_lighting
+
+A floor and three boxes lit by one animated rectangle, using Fabricate's raster G-buffer and a
+compute ray query for each shadow sample. Switch the original renderer, unshadowed lighting and
+opaque ray-query shadows without restarting. Controls expose sample budget, radiance, light phase,
+effect weight and diagnostics; the native window has a keyboard camera. The independent GPU smoke
+compares 8-sample ensembles against 256-sample references and checks transforms and shader rollback.
+After the optional SDK build, the same [direct-lighting laboratory](direct_lighting.md) adds real RTXDI
+initial, temporal and spatial resampling, multiple stable-ID lights, reference comparison and history controls.
+
+![Live area-light experiment in Field](assets/direct_lighting/live.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
 
 ### path_tracing_camera
 

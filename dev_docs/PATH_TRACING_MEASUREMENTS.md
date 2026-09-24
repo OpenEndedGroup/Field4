@@ -1,5 +1,9 @@
 # Path tracing: what is checked, and what was measured
 
+The [Linux/NVIDIA audit](RAY_TRACING_AUDIT.md) adds measured ray-query coverage, real ray-pipeline
+captures, the shared-edge regression and reproduction commands. The M1 measurements below remain
+historical observations on that hardware.
+
 Displaced from `public/docs/path_tracing.md` on 2026-09-15. That page had three consecutive
 sections — `## Verification and export`, `## Noise comparison`, `## Measured baseline` — running
 from 81% to 91% of its length, between "Current limits" and "Reading a running tracer". A reader

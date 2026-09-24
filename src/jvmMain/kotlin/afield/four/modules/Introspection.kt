@@ -377,6 +377,8 @@ enum class PrimitiveType(
         "afield.stdlib.linalg.Vector4f", "vec(0,0,0,1)",
         "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z); buffer.putf16(x.w)"
     ),
+    uint64_t(1, 8, -1, "Long", "0L", "buffer.putLong(x)"),
+    int64_t(1, 8, -1, "Long", "0L", "buffer.putLong(x)"),
     deviceptr(
         1, 8, -1,
         "Long", "0L",
@@ -467,6 +469,23 @@ open class Introspected {
      */
     fun memberComment(member: String, block: String? = null): String? =
         block?.let { memberComments["$it.$member"] } ?: memberComments[member]
+
+    /** Fixed compute workgroup dimensions from SPIRV-Cross; null for other stages or specialized sizes. */
+    var fixedWorkgroupSize: List<Int>? = null
+        private set
+
+    protected fun readFixedWorkgroupSize(reflection: JSONObject) {
+        val entries = reflection.optJSONArray("entryPoints") ?: return
+        for (index in 0 until entries.length()) {
+            val entry = entries.getJSONObject(index)
+            if (entry.optString("mode") != "comp") continue
+            val specialized = entry.optJSONArray("workgroup_size_is_spec_constant_id")
+            if (specialized != null && (0 until specialized.length()).any { specialized.getBoolean(it) }) return
+            val size = entry.optJSONArray("workgroup_size") ?: return
+            fixedWorkgroupSize = (0 until size.length()).map { size.getInt(it) }
+            return
+        }
+    }
 
     lateinit var code: ShaderSPIRVUtils.SPIRV
     override fun toString(): String {
@@ -745,6 +764,8 @@ private fun validateSupportedPushConstantMembers(blockName: String, members: Lis
                     PrimitiveType.uint,
                     PrimitiveType.mat2,
                     PrimitiveType.mat4,
+                    PrimitiveType.uint64_t,
+                    PrimitiveType.int64_t,
                     PrimitiveType.deviceptr -> Unit
 
                     PrimitiveType.mat3 ->
@@ -833,6 +854,7 @@ class Introspection private constructor(
     }
 
     private fun populateFromSpvcReflection(j: JSONObject) {
+        readFixedWorkgroupSize(j)
         val slangStorageBlockAliases = extractSlangStorageBlockAliases(source)
         lprintln("debug,graphics", j.toString())
 
@@ -865,11 +887,19 @@ class Introspection private constructor(
                     val typeKey = m.getString("type")
                     val memberType = types[typeKey]?.right()
                         ?: throw IllegalArgumentException("Unknown member type '$typeKey' for '$n2'")
-                    Member(n2, offset, memberType, 0, physicalPointer)
+                    Member(n2, offset, memberType, m.optInt("array_stride", 0), physicalPointer)
                 })
             }
         }
 
+        // Binary-only HLSL shaders have no GLSL declarations to recover struct names from.
+        if (source.isEmpty()) j.optJSONObject("types")?.let { reflected ->
+            reflected.keySet().forEach { key ->
+                val members = types[key] ?: return@forEach
+                if (members.isNotEmpty()) structureTypes += StructureType(
+                    reflected.getJSONObject(key).optString("name", key), members, members.membersLayoutSizeInBytes())
+            }
+        }
         val declaredStructures = parseGlslDeclaredStructures(source)
         declaredStructures.forEach { declaration ->
             val reflectedMembers = types.values.firstOrNull { members ->
@@ -1168,6 +1198,14 @@ class Introspection private constructor(
     }
 
     companion object {
+        /** Reflect external SPIR-V with the same SPIRV-Cross path as Field's GLSL compiler. */
+        fun fromSpirv(sourceName: String, kind: ShaderKind, bytes: ByteArray): Introspection {
+            val data = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+            data.put(bytes).flip()
+            return Introspection("", kind, { _, throwable -> throw throwable }, sourceName, null,
+                ShaderSPIRVUtils.SPIRV(0L, data), null)
+        }
+
         fun fromSlangReflection(
             source: String,
             kind: ShaderKind,

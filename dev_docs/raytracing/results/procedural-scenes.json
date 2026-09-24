@@ -1,0 +1,62 @@
+[
+  {
+    "scene": "skinned_volume_path_trace",
+    "status": "PASS",
+    "backend": "RAY_QUERY",
+    "capture": "skinned_volume_path_trace.png",
+    "dimensions": [
+      6528,
+      3672
+    ]
+  },
+  {
+    "scene": "rectsl_spacetime_path_trace",
+    "status": "PASS",
+    "backend": "RAY_QUERY",
+    "capture": "rectsl_spacetime_path_trace.png",
+    "dimensions": [
+      6528,
+      3672
+    ]
+  },
+  {
+    "scene": "polytope_path_trace_lineage",
+    "status": "PASS",
+    "backend": "RAY_QUERY",
+    "capture": "polytope_path_trace_lineage.png",
+    "dimensions": [
+      6528,
+      3672
+    ]
+  },
+  {
+    "scene": "polytope_manifold_path_trace",
+    "status": "PASS",
+    "backend": "RAY_QUERY",
+    "capture": "polytope_manifold_path_trace.png",
+    "dimensions": [
+      6528,
+      3672
+    ]
+  },
+  {
+    "scene": "physics_manifold_path_trace",
+    "status": "PASS",
+    "backend": "RAY_QUERY",
+    "capture": "physics_manifold_path_trace.png",
+    "dimensions": [
+      6528,
+      3672
+    ]
+  },
+  {
+    "scene": "life3d_manifold_path_trace",
+    "status": "PASS",
+    "backend": "RAY_QUERY",
+    "capture": "life3d_manifold_path_trace.png",
+    "dimensions": [
+      6528,
+      3672
+    ]
+  }
+]

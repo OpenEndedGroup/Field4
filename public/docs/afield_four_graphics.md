@@ -1,5 +1,7 @@
 # afield.four Graphics
 
+For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct-lighting laboratory](direct_lighting.md).
+
 `afield.four` is Field's direct Vulkan path. A graphics box usually has three parts:
 
 - Kotlin code that creates modules, meshes, buffers, cameras, textures, and renderer connections.

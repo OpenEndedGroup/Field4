@@ -203,6 +203,7 @@ nav:
       - Aperture Playground: aperture_playground.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
+      - Direct Lighting Laboratory: direct_lighting.md
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md

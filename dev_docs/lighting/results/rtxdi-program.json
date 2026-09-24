@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "sdkCommit": "f12037fa8e97ebc08e9e3edfd2de528ed1772a4b",
+  "dxcUrl": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2505.1/linux_dxc_2025_07_14.x86_64.tar.gz",
+  "dxcVersion": "libdxcompiler.so: 1.9(dev;4950-b106a961); libdxil.so: 1.9",
+  "dxcSha256": "25927f0c2eb2eb22ebdf72ecf4798345a53b997ef1b05fea0280410d220427bb",
+  "dxcFiles": {
+    "bin/dxc": "25927f0c2eb2eb22ebdf72ecf4798345a53b997ef1b05fea0280410d220427bb",
+    "lib/libdxcompiler.so": "72832c39c5dfdf537586ca6500de94ef28cbf69d148ab3abe573da6ea209bad0",
+    "lib/libdxil.so": "51f6a6eb5c77391a86c03b82a79affdb7fa5ea9a3a67be37f5f573ca112ad931"
+  },
+  "sourceSha256": "74e4b65a06fe13c9cbb66b5ba63a6570e6e9363148f13cffd5eb9b99efcd2409",
+  "spirvSha256": "592e3c24a83e6377fc99b9b5632a6cfa14d4b8dc843107964a239df1022524a2",
+  "spirv": "build/lighting-experiment/rtxdi-shaders/ff37a5dca288d26b2bc3417b187933eb6103861b10d3663e898b28f00c30164f/lighting.spv",
+  "command": [
+    "/home/marc/Field4/build/lighting-experiment/upstream/RTXDI/External/dxc/bin/dxc",
+    "-spirv",
+    "-T",
+    "cs_6_6",
+    "-E",
+    "main",
+    "-fspv-target-env=vulkan1.3",
+    "-fvk-use-scalar-layout",
+    "-I",
+    "/home/marc/Field4/build/lighting-experiment/upstream/RTXDI/Libraries/Rtxdi/Include",
+    "-Fo",
+    "/home/marc/Field4/build/lighting-experiment/rtxdi-shaders/ff37a5dca288d26b2bc3417b187933eb6103861b10d3663e898b28f00c30164f/lighting.pending.spv",
+    "/home/marc/Field4/src/jvmMain/resources/afield/four/lighting/rtxdi/lighting.hlsl"
+  ],
+  "license": "/home/marc/Field4/build/lighting-experiment/upstream/RTXDI/Libraries/Rtxdi/LICENSE.txt"
+}

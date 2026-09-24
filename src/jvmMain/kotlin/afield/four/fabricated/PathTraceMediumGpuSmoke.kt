@@ -1226,6 +1226,7 @@ object PathTraceMediumGpuSmoke {
      * as per pass, so there is still one file with the whole run in it.
      */
     suspend fun run(renderer: Renderer, outputDirectory: String) {
+        report.clear()
         val root = File(outputDirectory)
         val backends = buildList {
             add(PathTracingRenderer.Backend.COMPUTE_BVH)
