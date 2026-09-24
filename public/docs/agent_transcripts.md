@@ -58,8 +58,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 147 transcripts on every build, at three
-depths. 81 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 148 transcripts on every build, at three
+depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -1437,6 +1437,26 @@ backup, a screenshot, history metrics and an operation transcript back into the 
 which is why every demo under `dev_docs/agents/demos/` tells you to pass the flag.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
+
+### certified_envelope
+
+**A bound no feature can slip between.** Five pure-CPU boxes, no window and no setup. The signal is
+an hour of a slow 40-second swing plus a glitch 10 ms wide at 1234.57 s, placed halfway between two
+of the signal viewer's 0.02 s samples and built from `Functions` ops rather than a `fn { }` lambda.
+The first box draws it the way the function workbench does, a min/max envelope per bin, and the
+glitch is simply not there: its peak is 0.7994, the sampled maximum in its bin is 0.3038, and nothing
+in the picture says so. The second box turns on the viewer's certified band, interval arithmetic
+over `FnFormulas`, and the amber spike appears at 1234 s, bounded at 0.7995. The third finds the
+global maximum by branch-and-bound, with its witness, and proves `f <= 0.8` while refuting
+`f <= 0.7`. The fourth shows what refuses: a `fn { }` lambda is refused by name rather than bounded
+by a guess, while one event rebuilt from formula ops holds exactly 1.0 over its plateau, proved
+exactly rather than to a tolerance. The fifth takes the function workbench's own worked example,
+rebuilt bit-for-bit from formula ops, and certifies its claims. Every plateau holds exactly
+(1, 1, 1), but the recorded assumption "all channels stay in [0, 1]" is refuted by 4 ulps at
+x = 284.999942779541, where the original lambda returns 1.0000000000000009 and the viewer's sampling
+grid never looks. `dev_docs/FN_INTERVAL.md` is the write-up.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/certified_envelope/metadata.edn)
 
 ### solidsl_inverse
 
