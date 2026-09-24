@@ -1281,8 +1281,6 @@ Each channel array must contain `point_count` values. The tiny two-value arrays 
 abbreviated for readability. Keep the response cacheable: the component aborts stale requests while
 the user pans and asks for a fresh, pixel-sized envelope after zooming or resizing.
 
-![Zoomable recorded-audio player with a vertical playhead](assets/visualizers-recorded-audio.png)
-
 ## Signal and synth visualizers
 
 Field's synth layer also comes with ready-made HTML and SVG visualizers for audio patches, scopes, envelopes, compressors, and related objects.
