@@ -726,7 +726,7 @@ as a picture.
 
 ### Read, any format
 
-Load a mesh through the format-dispatching entry point; convert imported scene or PLY data when you need a `TriMesh`.
+Load a mesh through the format-dispatching entry point.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -734,7 +734,7 @@ Load a mesh through the format-dispatching entry point; convert imported scene o
 | --- | --- |
 | `meshFromAnyFile(path)` | Loads OBJ, STL, PLY or an Assimp-supported scene into a CPU `TriMesh`. Scene parts are baked through their transforms; unreadable paths throw instead of returning an empty mesh. |
 | `fun Box.showMesh(mesh: TriMesh, channel: String = "main", view: MeshView = MeshView(), caption: String? = null, title: String? = null, renderer: MeshRenderer = MeshRenderer.GPU, height: Int = 430)` | Push a rendered view of `mesh` to one of this box's output channels, with its measurements as a caption. [API](reference/graphics.md#mesh-field-kt). |
-| `assimpToTriMesh(path, keepColors = true)` | Flattens a supported scene file into a `TriMesh`, applying node transforms. Retain per-vertex colours when present; textured materials require the renderer path. |
+| `assimpToTriMesh(path, keepColors = true)` | Flattens a supported scene file into a `TriMesh`, applying node transforms, keeping per-vertex colours where the file has them. Textured materials do not survive the flattening. Those need the renderer path. |
 | `fun VoronoiLattice.toTriMesh(shrink: Double = 0.92, boundedOnly: Boolean = false): TriMesh` | Every cell of a 3D Voronoi lattice as one [`TriMesh`](reference/graphics.md#mesh-kt-trimesh), one connected component per cell. [API](reference/graphics.md#mesh-field-kt). |
 
 </div>
@@ -773,7 +773,7 @@ Write OBJ or STL files for other tools. Check the format comparison above before
 
 ### Look at it
 
-Inspect shape and appearance in an output panel. Choose a grid for comparisons and a turntable for views from several angles.
+Inspect shape and appearance in an output panel.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -785,8 +785,8 @@ Inspect shape and appearance in an output panel. Choose a grid for comparisons a
 | `MeshView` | How to draw a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) in a preview: where the camera stands and what the frame looks like. [API](reference/graphics.md#mesh-field-kt). |
 | `fun TriMesh.summary(): String` | A one-line factual summary of a mesh: counts, extent, topology and volume — the thing to `print` when you want the numbers rather than the picture. [API](reference/graphics.md#mesh-field-kt). |
 | `three(subject = mesh)` | Opens an orbitable Three.js view of a mesh. Use a scene block to combine solids and line annotations. |
-| `threeGrid(…)` | Displays several subjects as titled viewports. Use it for side-by-side geometry comparisons. |
-| `threeTurntable(…)` | Displays a subject from a sequence of viewing directions. Use it to inspect shape beyond one fixed camera. |
+| `threeGrid(…)` | Displays several subjects as titled viewports. |
+| `threeTurntable(…)` | Displays a subject from a sequence of viewing directions. |
 
 </div>
 
@@ -831,10 +831,10 @@ Load an asset directly into a native renderer when drawing is the next step rath
 
 | Entry point | Behavior |
 | --- | --- |
-| `plyModelHere("model.ply")` | Loads a PLY model into the current renderer’s module context. Choose this path for GPU drawing rather than CPU mesh processing. |
+| `plyModelHere("model.ply")` | Loads a PLY model into the current renderer’s module context. |
 | `plyPointCloudHere("scan.ply")` | Loads PLY data for point-cloud drawing in the current renderer. Use it when samples should remain points instead of forming a triangle surface. |
 | `gltfModelHere("model.glb")` | Loads glTF geometry, materials and textures into the renderer. This requires a live renderer and preserves rendering data a flattened CPU mesh does not. |
-| `modelWithTextureHere(…)` | Loads geometry with a texture for a renderer module. Use the material-aware scene path when appearance matters alongside vertex positions. |
+| `modelWithTextureHere(…)` | Loads geometry with a texture for a renderer module: the material-aware scene path. |
 
 </div>
 
@@ -847,7 +847,7 @@ Register geometry locations with Field’s AI tools so it can resolve and inspec
 | Entry point | Behavior |
 | --- | --- |
 | `GeometryAgentTools.addSearchRoot(directory)` | Registers a directory to search when an AI geometry tool resolves assets. The argument is a `File` naming the directory. |
-| `GeometryAgentTools.register()` | Registers the geometry inspection tools with Field’s AI tool registry. Add asset search roots so those tools can find the intended files. |
+| `GeometryAgentTools.register()` | Registers the geometry inspection tools with Field’s AI tool registry. |
 
 </div>
 
