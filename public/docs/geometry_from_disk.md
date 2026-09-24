@@ -790,7 +790,7 @@ Inspect shape and appearance in an output panel. Choose a grid for comparisons a
 
 </div>
 
-### Look at it without a gpu
+### Look at it without a GPU
 
 Render a still or an interactive figure using the CPU path when a native GPU renderer is unavailable.
 
@@ -823,7 +823,7 @@ Repair connectivity before solid operations. Normal generation and normalization
 
 </div>
 
-### On the gpu instead
+### On the GPU instead
 
 Load an asset directly into a native renderer when drawing is the next step rather than CPU mesh processing.
 
@@ -838,7 +838,7 @@ Load an asset directly into a native renderer when drawing is the next step rath
 
 </div>
 
-### Let the ai read it
+### Let the AI read it
 
 Register geometry locations with Field’s AI tools so it can resolve and inspect those assets.
 
