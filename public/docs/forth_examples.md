@@ -24,7 +24,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/basic_stack_and_words.png" wait="1.0" capture="box" embed=true name="forth-basic-stack"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/basic_stack_and_words.png" alt="one output panel labelled stdout, holding a single line of green monospace on black: hypot^2 = 25.0" wait="1.0" capture="box" embed=true name="forth-basic-stack"}
 :::static
 : sqr ( n -- n2 ) dup * ;
 : hypot2 ( x y -- d2 ) sqr swap sqr + ;
@@ -52,7 +52,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="two output panels. The one labelled output holds the sentence Forth can emit HTML into Field output areas, wrapped in the literal markup for bold with its angle brackets shown as text rather than applied, and the one labelled debug holds count = 6.0. The first line is not what the code beside it produces: this capture predates the change that stopped the example asking display to emit HTML, and a re-render is owed. See docs_capture_staleness in dev_docs" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
 :::static
 variable count
 0 count !
@@ -85,7 +85,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/stroke_ribbon.png" wait="1.0" capture="box" embed=true name="forth-stroke-ribbon"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/stroke_ribbon.png" alt="an output panel labelled lines holding one thick orange stroke on black. It falls in a shallow straight run from the upper left, turns at a corner about a third of the way across into a smooth curve down to a rounded minimum just past centre, then rises and turns at a second corner into a straight climb to the upper right" wait="1.0" capture="box" embed=true name="forth-stroke-ribbon"}
 :::static
 : stroke-ribbon ( -- f )
   fline
@@ -121,7 +121,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/vec2_zig.png" wait="1.0" capture="box" embed=true name="forth-vec2-zig"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/vec2_zig.png" alt="an output panel labelled lines holding a bright cyan zigzag of four straight segments on black: down from the upper left to a corner, up to the highest point near the middle, down to the lowest point, and up again to finish at the right edge at about the height it started" wait="1.0" capture="box" embed=true name="forth-vec2-zig"}
 :::static
 : zig ( -- f )
   fline
@@ -159,7 +159,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/reflection_fline.png" wait="1.0" capture="box" embed=true name="forth-reflection-fline"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/reflection_fline.png" alt="an output panel labelled lines holding one white stroke on black. It falls gently from the upper left to a shallow corner a quarter of the way across, rises gently to a second corner just past centre, then curves down to a rounded minimum and sweeps back up to the right edge" wait="1.0" capture="box" embed=true name="forth-reflection-fline"}
 :::static
 variable f
 s"FLine" class-for @? newInstance f !
@@ -268,7 +268,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" wait="1.0" capture="box" trim=true embed=true name="forth-visualization-helpers"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/visualization_helpers.png" alt="five stacked output panels from one Forth box. output holds the rendered sentence Hello from raw Forth HTML, this time as text rather than tags. progress is a blue bar filled most of the way, labelled 72.0% and 0.72 of 1.0. answer holds answer = 42.0 in bold. stack is a three-column table of depth, value and type: 0 16.0 Double, 1 9.0 Double, 2 4.0 Double, 3 1.0 Double. plot is a small chart of four blue bars climbing left to right" wait="1.0" capture="box" trim=true embed=true name="forth-visualization-helpers"}
 :::static
 s"<b>Hello from raw ForthField HTML.</b>" html
 
