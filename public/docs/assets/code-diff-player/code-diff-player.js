@@ -1,5 +1,10 @@
 (function() {
-  const HIGHLIGHT_URL = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js";
+  // Vendored beside this script (highlight.js 11.8.0, common build) so highlighting works offline.
+  // Resolved against this script's own URL, not the page's, because pages load it from any depth.
+  const HIGHLIGHT_URL = new URL(
+    "highlight-11.8.0.min.js",
+    (document.currentScript && document.currentScript.src) || location.href
+  ).href;
   let highlightPromise = null;
   let forthRegistered = false;
   let morphoRegistered = false;
