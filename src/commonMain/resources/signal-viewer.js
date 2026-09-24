@@ -303,19 +303,30 @@
         ...(lane.ticks ? {tickvals: lane.ticks.vals, ticktext: lane.ticks.text} : lane.yZoom ? {nticks: 7} :
           {tickvals: [lane.minimum, (lane.minimum + lane.maximum) / 2, lane.maximum].map(v => Number(v.toPrecision(4)))}),
         title: lane.yTitle ? {text: esc(lane.yTitle), standoff: 10, font: {...axisFont, color: 'rgba(255,255,255,.72)'}} : undefined};
-      // Zero axes as shapes: Plotly hides a zeroline that lands on the range edge, and x = 0 at the
-      // left edge is exactly the case a function plot starts from.
-      const orange = secondary || 'rgba(255,136,0,.55)';
-      const strict = config.zeroLines === 'inside';
-      if (config.zeroLines && (strict ? 0 > domainStart && 0 < domainEnd : 0 >= domainStart && 0 <= domainEnd)) l.shapes.push({type: 'line', layer: 'below', xref: 'x' + suffix, yref: 'y' + suffix + ' domain', x0: 0, x1: 0, y0: 0, y1: 1, line: {color: orange, width: 1.25}});
-      if (lane.zeroLine || (config.zeroLines && (!strict || (0 > lane.minimum && 0 < lane.maximum)))) l.shapes.push({type: 'line', layer: 'below', xref: 'x' + suffix + ' domain', yref: 'y' + suffix, x0: 0, x1: 1, y0: 0, y1: 0,
-        line: {color: config.zeroLines ? orange : 'rgba(255,255,255,.22)', width: config.zeroLines ? 1.25 : 1}});
       if (count > 1 || config.laneLabels) l.annotations.push({xref: 'paper', yref: 'paper', x: 0, y: top, xanchor: 'left', yanchor: 'top',
         xshift: 5, yshift: -3, text: esc(lane.name), showarrow: false, font: {...axisFont, size: 10, color: 'rgba(255,255,255,.62)'},
         bgcolor: 'rgba(5,5,5,.78)', borderpad: 2});
       top = y0 - gap;
     });
+    l.shapes = zeroShapes(lanes);
     return l;
+  };
+  // Zero axes as shapes: Plotly hides a zeroline that lands on the range edge, and x = 0 at the left
+  // edge is exactly the case a function plot starts from. Only lines inside the CURRENT view are
+  // emitted: a clipped line far outside still has a bounding box, and box screenshots union the
+  // rects of every SVG node (a y = 0 line 2000 px below a 0.55..0.64 plot made a 4192 px capture).
+  const zeroShapes = lanes => {
+    const shapes = [], orange = colors.secondary || 'rgba(255,136,0,.55)', strict = config.zeroLines === 'inside';
+    const inside = (v, lo, hi) => strict ? v > lo && v < hi : v >= lo && v <= hi;
+    lanes.forEach((lane, i) => {
+      const suffix = i ? i + 1 : '', [ylo, yhi] = yRanges[i] || [lane.minimum, lane.maximum];
+      if (config.zeroLines && inside(0, domainStart, domainEnd) && 0 >= start && 0 <= start + span)
+        shapes.push({type: 'line', layer: 'below', xref: 'x' + suffix, yref: 'y' + suffix + ' domain', x0: 0, x1: 0, y0: 0, y1: 1, line: {color: orange, width: 1.25}});
+      if ((lane.zeroLine || (config.zeroLines && (!strict || inside(0, lane.minimum, lane.maximum)))) && 0 >= ylo && 0 <= yhi)
+        shapes.push({type: 'line', layer: 'below', xref: 'x' + suffix + ' domain', yref: 'y' + suffix, x0: 0, x1: 1, y0: 0, y1: 0,
+          line: {color: config.zeroLines ? orange : 'rgba(255,255,255,.22)', width: config.zeroLines ? 1.25 : 1}});
+    });
+    return shapes;
   };
   const traces = () => (model?.lanes || []).flatMap((lane, i) => lane.traces.map(t => ({...t, xaxis: 'x' + (i ? i + 1 : ''), yaxis: 'y' + (i ? i + 1 : ''), hoverinfo: 'skip'})));
   const plotConfig = {displaylogo: false, displayModeBar: false, scrollZoom: false, responsive: false, doubleClick: false, staticPlot: !interactive, showTips: false};
@@ -334,7 +345,7 @@
     if (!initialized) return;
     rendering = rendering.then(async () => {
       if (disposed) return; applying++;
-      try { await Plot.relayout(plot, Object.fromEntries(lanesOf().map((_, i) => ['xaxis' + (i ? i + 1 : '') + '.range', [start, start + span]]))); }
+      try { await Plot.relayout(plot, {...Object.fromEntries(lanesOf().map((_, i) => ['xaxis' + (i ? i + 1 : '') + '.range', [start, start + span]])), shapes: zeroShapes(lanesOf())}); }
       finally { applying--; }
       placeLines();
     });
@@ -392,7 +403,9 @@
     }, delay);
   };
   const changed = (broadcast = true, native = false) => {
-    normalize(); if (!native) relayoutAxes(); schedule();
+    normalize(); if (!native) relayoutAxes(); else if (initialized) rendering = rendering.then(async () => {
+      if (disposed) return; applying++; try { await Plot.relayout(plot, {shapes: zeroShapes(lanesOf())}); } finally { applying--; } });
+    schedule();
     if (broadcast) publish('field-time-window', {start: start + offset, duration: span});
   };
 
