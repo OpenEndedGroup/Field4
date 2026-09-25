@@ -323,11 +323,11 @@ println("interaction erase ready")
 
 ## Two fans that commute, run to a fixed point
 
-The four examples above each take one step, and one step is not enough to see `fan-fan` at all — a rule book reaches its fan meetings and its facing erasers at the *end* of a reduction, which is why those four passed unchanged on the day `fan-fan` and `erase-erase` were added.
+The four examples above each take one step, and one step is not enough to see `fan-fan` at all — a rule book reaches its fan meetings and its facing erasers at the *end* of a reduction.
 
 This one runs to a fixed point. Two `DUP` fans face each other with **different** labels, 1 and 2, so `fan-fan` takes its commuting branch rather than its annihilating one: each duplication has to be applied to the other, and one fan pair becomes four fans wired in a 2×2 crossing. The count goes up before it goes down. Those four fans are then facing the four constants, so four `dup-const` reactions follow and the four constants come out as eight copies — five reactions in total, 6 agents to 8, and not one fan left standing. Give the two fans the *same* label and the first step is an annihilation instead: two reactions, and the constants are spliced straight through in pairs.
 
-Read the last card carefully, because it is the point of running a net to its end rather than one step: it says **4 active pairs** and it is nevertheless finished. The eight constants are wired principal to principal in four pairs, and no rule in the book covers `CONST ⟂ CONST`, so `stepDetailed` returns null. An active pair is a wiring, not a promise — the number to watch is the rule that fires, and until 2026-09-18 two facing fans and two facing erasers looked exactly like this and were not finished at all.
+The last card says **4 active pairs** and is nevertheless finished. The eight constants are wired principal to principal in four pairs, and no rule in the book covers `CONST ⟂ CONST`, so `stepDetailed` returns null. An active pair is a wiring, not a promise — the number to watch is the rule that fires.
 
 <!--
 FIELD_TEST
