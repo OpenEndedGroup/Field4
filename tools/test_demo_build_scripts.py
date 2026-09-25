@@ -80,6 +80,17 @@ CORPUS = {
     "chart_primitive",
     "completion_rank_at_scale",
     "confluence_grid",
+    # Lighting/neural examples use transcript sources and their separate GPU verification.
+    # They ship no build.yaml; the measured build-script count below is unchanged.
+    "direct_lighting",
+    "learned_from_module",
+    "learned_shader",
+    "neural_reconstruction",
+    "optical_flow",
+    "optical_flow_pingpong",
+    "ray_reconstruction",
+    "reconstruction_plumbing",
+    "rr_plumbing",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
     # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`

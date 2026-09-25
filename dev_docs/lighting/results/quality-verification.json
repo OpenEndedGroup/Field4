@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-25",
+  "quality": {
+    "command": "run-jvm-main afield.four.lighting.DirectLightingQualitySmoke --arg=--clip --timeout 840",
+    "ok": true,
+    "exitCode": 0,
+    "validationVuidCount": 0,
+    "completionMarker": "DIRECT LIGHTING QUALITY CHECK DONE"
+  },
+  "regressions": [
+    {
+      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --arg=--fallback --timeout 360",
+      "ok": true,
+      "exitCode": 0,
+      "validationVuidCount": 0,
+      "completionMarker": "DIRECT LIGHTING CHECK DONE"
+    },
+    {
+      "command": "run-jvm-main afield.four.lighting.RtxdiLightingSmoke --timeout 540",
+      "ok": true,
+      "exitCode": 0,
+      "validationVuidCount": 0,
+      "completionMarker": "RTXDI LIGHTING CHECK DONE"
+    }
+  ],
+  "jvmLightingTests": 7,
+  "rayDocsContractTests": 10,
+  "startingPointsVerified": true,
+  "docsRecaptures": 10,
+  "browser": {
+    "pages": [
+      "direct_lighting",
+      "path_tracing",
+      "ray_tracing_examples"
+    ],
+    "rawMarkdownVisible": false,
+    "brokenImages": 0,
+    "controlsWhitePixelFraction": 0,
+    "galleryCapturePixels": 1024,
+    "galleryCssPixelsAtDpr2": 512,
+    "videoPlayed": true,
+    "videoWidth": 1280,
+    "videoHeight": 720,
+    "videoFrames": 180
+  }
+}

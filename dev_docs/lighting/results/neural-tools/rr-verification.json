@@ -1,0 +1,8 @@
+{
+  "entrypoint": "afield.four.reconstruction.RayReconstructionSmoke",
+  "exitCode": 0,
+  "completionMarker": "RAY RECONSTRUCTION CHECK DONE",
+  "vulkanValidationErrors": 0,
+  "durationMs": 76456,
+  "framesPerClip": 120
+}

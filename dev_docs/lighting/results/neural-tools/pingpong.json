@@ -1,0 +1,17 @@
+{
+  "commandsPassed": 32,
+  "movingPair": true,
+  "pausedPairSubpixelMotion": true,
+  "reset": true,
+  "rerunParentAndConsumer": true,
+  "normalStop": true,
+  "rendererStoppedBeforeChildren": true,
+  "vulkanValidationErrors": 0,
+  "measurements": [
+    "PINGPONG MOVING CHECK DONE median=3.0962741 p95=3.18995 max=73.00011 difference=0.63964844 medianError=0.19811885 p95Error=0.2661226",
+    "PINGPONG PAUSED CHECK DONE median=0.0 p95=0.03125 max=0.1682864 difference=0.0 medianError=0.0 p95Error=0.03125",
+    "PINGPONG PAUSED CHECK DONE median=0.0 p95=0.03125 max=0.1682864 difference=0.0 medianError=0.0 p95Error=0.03125",
+    "PINGPONG MOVING CHECK DONE median=4.6519485 p95=4.7673407 max=65.665886 difference=0.63980865 medianError=0.07511744 p95Error=0.24242409",
+    "PINGPONG MOVING CHECK DONE median=7.7384615 p95=7.9463534 max=61.2539 difference=0.6398697 medianError=0.13843681 p95Error=0.36915365"
+  ]
+}

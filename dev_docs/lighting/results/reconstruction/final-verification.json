@@ -1,0 +1,14 @@
+[
+  {
+    "command": "run-jvm-main afield.four.reconstruction.ReconstructionSmoke --timeout 420",
+    "exitCode": 0,
+    "completionMarker": true,
+    "vulkanValidationErrors": 0
+  },
+  {
+    "command": "run-jvm-main afield.four.reconstruction.ReconstructionSmoke --arg=--fallback --timeout 240",
+    "exitCode": 0,
+    "completionMarker": true,
+    "vulkanValidationErrors": 0
+  }
+]

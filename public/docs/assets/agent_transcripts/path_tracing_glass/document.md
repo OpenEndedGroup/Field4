@@ -31,18 +31,16 @@ start(renderer::run)
 <!-- field-box id="path_trace_glass" index="1" -->
 
 ```edn [field-box id="path_trace_glass" role="properties"]
-{"id" "path_trace_glass" "index" 1 "name" "glass material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "glass material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_glass_code_.kt" "lines" 18 "characters" 759 "sha256" "308dcaed51ef4be2428f4abb2d9bad1f24b7148b0b995a2309d79f391fc44155"}]}
+{"id" "path_trace_glass" "index" 1 "name" "glass material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "glass material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_glass_code_.kt" "lines" 16 "characters" 721 "sha256" "ad217d6f8682950195f48b3fc5150322c9026b8fa65f9391f8faa2c550149a8d"}]}
 ```
 
 ```kotlin [field-property box="path_trace_glass" name="code" path="path_trace_glass_code_.kt"]
 import afield.four.fabricated.PathTraceGlassDemo
 import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
 import java.io.File
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceGlassDemo.install(renderer,
-    File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceGlassDemo.install(renderer, width=1280, height=720,
+    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 10
 tracer.exposure = 1.5f

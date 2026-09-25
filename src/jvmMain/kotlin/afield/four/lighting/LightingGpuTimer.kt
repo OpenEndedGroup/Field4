@@ -10,8 +10,8 @@ import org.lwjgl.vulkan.VkQueryPoolCreateInfo
 
 /** Per-swapchain-image timestamps. Reuse occurs after Renderer waits for that image's fence.
  * Read availability without a CPU wait; bounded samples are inspectable from a live box. */
-internal class LightingGpuTimer(private val renderer: Renderer) : AutoCloseable {
-    private val validBits=renderer.device.physicalDevice.vkQueueFamilyProps[renderer.graphQueue.queueFamilyIndex].timestampValidBits()
+internal class LightingGpuTimer(private val renderer: Renderer,queueFamily: Int=renderer.graphQueue.queueFamilyIndex) : AutoCloseable {
+    private val validBits=renderer.device.physicalDevice.vkQueueFamilyProps[queueFamily].timestampValidBits()
     private val pool: Long
     private val disposer: AutoDisposer.Token?
     private val used=BooleanArray(64)

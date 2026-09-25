@@ -71,6 +71,7 @@ CARRIER_PAGES = {
     "public/docs/afield_four_graphics.md",
     "public/docs/agent_transcripts.md",
     "public/docs/aperture_playground.md",
+    "public/docs/direct_lighting.md",
     "public/docs/faust.md",
     "public/docs/fieldml_host_bridge.md",
     "public/docs/fline_examples.md",

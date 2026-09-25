@@ -1,0 +1,37 @@
+{
+  "output": [
+    1920,
+    1080
+  ],
+  "staticMseAgainst4096Candidates": {
+    "ray_reconstruction": 4.700453413254389E-5,
+    "raw": 1.5045717216057217E-4,
+    "spatial": 9.131154359965461E-6,
+    "spatial_dlaa": 3.396082208645482E-5
+  },
+  "ray_reconstruction": {
+    "gpuMs": {
+      "count": 100,
+      "p50": 6.215936,
+      "p95": 6.22704
+    },
+    "sdkAllocatedBytes": 94046948
+  },
+  "raw": {
+    "gpuMs": null,
+    "sdkAllocatedBytes": 0
+  },
+  "sdk": "310.9.1",
+  "spatial": {
+    "gpuMs": null,
+    "sdkAllocatedBytes": 0
+  },
+  "spatial_dlaa": {
+    "gpuMs": {
+      "count": 100,
+      "p50": 1.344288,
+      "p95": 1.364992
+    },
+    "sdkAllocatedBytes": 94046948
+  }
+}

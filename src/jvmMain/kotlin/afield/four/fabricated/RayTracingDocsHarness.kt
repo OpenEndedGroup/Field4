@@ -92,8 +92,8 @@ import kotlin.math.tan
 object RayTracingDocsHarness {
 
     private const val WAIT_FRAMES = 60
-    private const val OUTPUT_WIDTH = 512
-    private const val OUTPUT_HEIGHT = 512
+    private const val OUTPUT_WIDTH = 1024
+    private const val OUTPUT_HEIGHT = 1024
     private const val CAPTURE_MAX_DIM = 2048
     private const val MIRROR_BALLS_REFLECTION_BOUNCES = 2
     private val liveScenes = java.util.WeakHashMap<Renderer, MutableMap<String, LiveMirrorBallsScene>>()

@@ -29,7 +29,11 @@ internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProg
     private val matrices=Array(renderer.numImages) { allocate(192,true) }
     private val lights=Array(renderer.numImages) { allocate(4096*80L,true) }
     private val previousLights=Array(renderer.numImages) { allocate(4096*80L,true) }
-    private val timers=List(6) { LightingGpuTimer(renderer) }
+    private val timers=List(7) { LightingGpuTimer(renderer) }
+    private lateinit var reconstruction: ComputeModule
+    private lateinit var reconstructionTask: ComputeMesh
+    private var filterBuffers: List<VulkanBuffer> = emptyList()
+    var displayPixels: VulkanBuffer = pixels; private set
     private lateinit var snapshot: ComputeModule
     private lateinit var shader: ComputeModule
     private lateinit var snapshotTask: ComputeMesh
@@ -46,7 +50,7 @@ internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProg
     var resetCount=0; private set
     var resetReason="initial"; private set
     val workingBytes get()=owned.sumOf { it.requestedSize }
-    val timings get()=listOf("surfaceSnapshot","initialCandidates","temporalReuse","spatialReuse","visibilityShading","reference")
+    val timings get()=listOf("surfaceSnapshot","initialCandidates","temporalReuse","spatialReuse","visibilityShading","reference","reconstruction")
         .zip(timers.map { it.samples.toList() }).toMap()
 
     init {
@@ -60,6 +64,10 @@ internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProg
             snapshotTask=mesh(snapshot)
             shader=compile(program)
             task=mesh(shader)
+            reconstruction=ComputeModule(Parameters(renderer,name="direct-light-reconstruction",
+                compute=javaClass.getResource("/afield/four/lighting/reconstruct.comp")!!.readText()))
+            check(reconstruction.valid) { "Direct-light reconstruction compilation failed" }
+            reconstructionTask=mesh(reconstruction)
             // A fixed disk sequence; the SDK rotates/indexes this per pixel. Unlike its optional
             // SNORM texture path, StructuredBuffer<float2> needs no quantization or C++ helper.
             bindings.getValue("offsets").result!!.get().mapAndWrite {
@@ -69,7 +77,7 @@ internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProg
         } catch(t: Throwable) { close();throw t }
     }
     private fun allocate(size: Long,host: Boolean=false): VulkanBuffer = VulkanBuffer(renderer,size,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         if(host) VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT else VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         needsDeviceAddress=true).also { owned+=it }
 
@@ -147,6 +155,25 @@ internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProg
             task.push["stage"]=stage
             timers[stage+1].begin(cmd,index);shader.render(cmd,Rectanglef());timers[stage+1].end(cmd,index)
         }
+        displayPixels=pixels
+        // Reconstruction never feeds the estimator or reservoir history. Diagnostics bypass it.
+        if(!reference && settings.denoisePasses>0 && owner.view==DirectLighting.View.RADIANCE && owner.effectWeight>0f) {
+            if(filterBuffers.isEmpty())filterBuffers=List(2) { allocate(count*16L) }
+            timers[6].begin(cmd,index)
+            repeat(settings.denoisePasses) { pass ->
+                val destination=filterBuffers[pass and 1]
+                DirectLighting.barrier(cmd,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT or VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
+                reconstructionTask.push.apply {
+                    this["surfaces"]=surfaces;this["inputPixels"]=displayPixels;this["outputPixels"]=destination
+                    this["width"]=owner.width;this["height"]=owner.height;this["page"]=page;this["stepWidth"]=1 shl pass
+                    this["weight"]=owner.effectWeight;this["firstPass"]=if(pass==0)1 else 0
+                    this["lastPass"]=if(pass==settings.denoisePasses-1)1 else 0
+                }
+                reconstruction.render(cmd,Rectanglef());displayPixels=destination
+            }
+            timers[6].end(cmd,index)
+        }
         hasHistory=!reference;epoch=settings.epoch;geometry=owner.visibility.tlasBuilds;signature=nextSignature
         previous=current;previousView=view;previousProjection=projection;frame++
     }
@@ -159,6 +186,7 @@ internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProg
         } }
     }
     override fun close() {
+        if(::reconstruction.isInitialized)reconstruction.cleanup()
         if(::shader.isInitialized)shader.cleanup()
         if(::snapshot.isInitialized)snapshot.cleanup()
         bindings.values.flatMap { it.result?.buffers ?: emptyList() }.forEach { if(it !in owned)owned+=it }

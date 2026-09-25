@@ -16,6 +16,8 @@ import org.lwjgl.vulkan.VK11
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
 
 class Device(val physicalDevice: PhysicalDevice, private val instance: Instance) {
+    private val ngxDelegate = lazy { afield.four.reconstruction.NgxRuntime.open(this, instance) }
+    internal val ngxRuntime by ngxDelegate
     data class RayTracingLimits(
         val shaderGroupHandleSize: Int,
         val shaderGroupHandleAlignment: Int,
@@ -46,6 +48,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsRayTracing: Boolean
     val supportsRayQuery: Boolean
     val rayTracingLimits: RayTracingLimits?
+    /** Optional shader/vision features. SDKs are not required to enable these Vulkan features. */
+    val supportsOpticalFlow: Boolean
+    val supportsCooperativeVector: Boolean
 
     var usePresentIndexing = !Options.isMac
     var enableMeshShading = !Options.isMac
@@ -176,6 +181,19 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             supportsRayTracing = enableRayTracing
             supportsRayQuery = Options.enableRayTracing && raySupport.queryUsable
             rayTracingLimits = if (raySupport.accelerationUsable) queryRayTracingLimits(stack) else null
+            val opticalFeatures=VkPhysicalDeviceOpticalFlowFeaturesNV.calloc(stack).`sType$Default`()
+            val vectorFeatures=VkPhysicalDeviceCooperativeVectorFeaturesNV.calloc(stack).`sType$Default`()
+            val replicatedFeatures=VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT.calloc(stack).`sType$Default`()
+            val memoryModelFeatures=VkPhysicalDeviceVulkanMemoryModelFeatures.calloc(stack).`sType$Default`()
+            fun probeExtra(address: Long) = VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice,
+                VkPhysicalDeviceFeatures2.calloc(stack).`sType$Default`().pNext(address))
+            if(hasExt(NVOpticalFlow.VK_NV_OPTICAL_FLOW_EXTENSION_NAME))probeExtra(opticalFeatures.address())
+            if(hasExt(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME))probeExtra(vectorFeatures.address())
+            if(hasExt(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME))probeExtra(replicatedFeatures.address())
+            probeExtra(memoryModelFeatures.address())
+            supportsOpticalFlow=opticalFeatures.opticalFlow() && !java.lang.Boolean.getBoolean("afield.opticalFlow.disabled")
+            supportsCooperativeVector=vectorFeatures.cooperativeVector() && replicatedFeatures.shaderReplicatedComposites() &&
+                memoryModelFeatures.vulkanMemoryModel() && !java.lang.Boolean.getBoolean("afield.cooperativeVector.disabled")
 
             // SteamVR's Linux XR_KHR_vulkan_enable2 implementation appends a
             // VkPhysicalDeviceTimelineSemaphoreFeatures while creating the device. Vulkan forbids
@@ -187,6 +205,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             // Build extension list defensively.
             val extNames = ArrayList<String>(12).apply {
                 add(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME) // not optional
+                if(supportsOpticalFlow)add(NVOpticalFlow.VK_NV_OPTICAL_FLOW_EXTENSION_NAME)
+                if(supportsCooperativeVector){add(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);add(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME)}
                 addIfSupported(KHRDynamicRendering.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
                 addIfSupported(KHRDepthStencilResolve.VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
                 addIfSupported(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
@@ -282,6 +302,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 }
 
             }
+            extNames.addAll(afield.four.reconstruction.NgxSupport.deviceExtensions(instance, physicalDevice.vkPhysicalDevice.address(), supportedExtensions))
             val dedupedExtNames = extNames.distinct()
             enabledExtensions = dedupedExtNames.toSet()
 
@@ -296,6 +317,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 features().fragmentStoresAndAtomics(true)
                 features().vertexPipelineStoresAndAtomics(true)
                 features().shaderInt64(true)
+                features().shaderInt16(supportedCoreFeatures.features().shaderInt16())
                 // Guard: geometryShader is unsupported on Apple Silicon / MoltenVK.
                 features().geometryShader(physicalDevice.vkPhysicalDeviceFeatures.geometryShader())
                 features().robustBufferAccess(Options.robustness)
@@ -319,6 +341,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
                 bufferDeviceAddress(true)
                 timelineSemaphore(true)
+                vulkanMemoryModel(supportsCooperativeVector)
 
                 // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
                 descriptorIndexing(true)
@@ -386,12 +409,25 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .shaderStorageBufferArrayNonUniformIndexing(true)
                 memPutAddress(featureTail + VkBaseOutStructure.PNEXT, descriptorIndexing.address())
                 featureTail = descriptorIndexing.address()
+                if(supportsCooperativeVector) {
+                    memoryModelFeatures.vulkanMemoryModelDeviceScope(false).vulkanMemoryModelAvailabilityVisibilityChains(false).pNext(0L)
+                    memPutAddress(featureTail+VkBaseOutStructure.PNEXT,memoryModelFeatures.address());featureTail=memoryModelFeatures.address()
+                }
             } else {
                 memPutAddress(featureTail + VkBaseOutStructure.PNEXT, features12.address())
                 featureTail = features12.address()
             }
             memPutAddress(featureTail + VkBaseOutStructure.PNEXT, features13.address())
             var tail = features13.address()
+            if(supportsOpticalFlow) {
+                opticalFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,opticalFeatures.address());tail=opticalFeatures.address()
+            }
+            if(supportsCooperativeVector) {
+                // Offline training is separate; the Field shader adapter only requests inference.
+                vectorFeatures.cooperativeVectorTraining(false).pNext(0L)
+                memPutAddress(tail+VkBaseOutStructure.PNEXT,vectorFeatures.address());tail=vectorFeatures.address()
+                replicatedFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,replicatedFeatures.address());tail=replicatedFeatures.address()
+            }
 
             if (supportsExtendedDynamicState) {
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, eds.address()); tail = eds.address()
@@ -555,6 +591,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     }
 
     fun cleanup() {
+        if (ngxDelegate.isInitialized()) ngxRuntime.getOrNull()?.close()
         vkDestroyDevice(vkDevice, null)
     }
 

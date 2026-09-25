@@ -1,0 +1,14 @@
+{
+  "rtxnsCommit": "f309ae68677a67060cc6ded2d0af925a3931435f",
+  "rtxnsPath": "optional/lighting/RTXNS",
+  "host": "linux-x86_64",
+  "slangVersion": "2026.10",
+  "slangArchiveUrl": "https://github.com/shader-slang/slang/releases/download/v2026.10/slang-2026.10-linux-x86_64.zip",
+  "slangArchiveSha256": "709bd134c74bc56aa8101ebb0d3cc0bb15e154fbf1bab63e7e7fae112803d22e",
+  "slangSha256": "80c66ea17b5d482a635e7bb239f91f016fcd7369ee9e895e58aaa5ec3b9e1ec2",
+  "sourceSha256": "6135d81ff8838de1abb631f91591ac6e5b3f9afcf837702496f590047cd0e2d7",
+  "binaries": {
+    "scalar": "f57f61c8953756e00554ef83faeca7cc634a36344f864561ebd3dddba3b61e2a",
+    "coop": "1a13cd36710bf031300d2ae2f2941e5f255ea9b7075d665ddb624386a6f30181"
+  }
+}

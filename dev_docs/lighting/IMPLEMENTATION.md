@@ -272,3 +272,55 @@ black materials, recreation at non-tiled 173x119 resolution and one 800x600 wind
 relaunched/detached without VUIDs. A real-device limit check caught and fixed uint32
 maxStorageBufferRange interpretation (4294967295, not signed -1); capability JSON now reports it
 correctly. Verification tooling here used uv 0.11.26 and Python 3.14.6.
+
+## User-facing reconstruction and full-resolution captures (25 September 2026)
+
+The original 256×192 figures were acceptance-test readbacks, not a presentation-quality demo.
+RTXDI reuse retained a single stochastic final-visibility sample and there was no image filter.
+Scene-average agreement did not establish low per-pixel error. The public walkthrough now opens
+with a 1280×720 reconstructed image and movie, retains a clearly labelled raw comparison, and
+uses Field's Starting points entry rather than backdoor commands as its user launch path.
+
+`RtxdiSettings.denoisePasses` adds an optional current-frame spatial reconstruction stage. Its
+5×5 binomial kernel runs with spacings 1, 2 and 4 for the starting point (14-pixel support radius).
+World normals, world-space plane distance and albedo reject incompatible surfaces. This is not
+an unbiased estimator, SVGF, DLSS, or a temporal color filter: shadow edges can soften and correlated
+low-frequency noise can remain. No radiance clamp is applied. The filter does not write reservoirs
+or raw pixels. `RAW_RADIANCE`, all diagnostics and the reference estimator bypass reconstruction.
+Fractional effect weights retain the original source term; zero preserves it exactly.
+
+Two FP32 temporary buffers are allocated on first use and reused. They retire with the engine
+through Field's frames-in-flight cleanup. Each filter pass has an explicit compute dependency,
+followed by the existing fragment resolve dependency. Memory accounting and a separate
+`reconstruction` timestamp interval include the new stage. The standalone defaults remain raw
+(`denoisePasses=0`); the editable starting point explicitly selects three passes and 16 candidates,
+eight spatial neighbors, and 1280×720. The example inherits `renderer` from its parent property.
+
+`DirectLightingQualitySmoke` compares linear RGB against a 4096-sample reference at 1280×720:
+raw per-pixel MSE 0.000422774; reconstructed MSE 0.0000180775 (95.72% reduction). Mean scene
+brightness changed by +0.03497%. A 64-frame raw average reaches MSE 0.0000176681, independently
+checking convergence rather than using the filter as estimator validation. The same run verifies
+raw/diagnostic bypass, zero, subnormal and fractional effect weights, finite output, and immediate darkness
+after deleting every light. It produced no VUIDs. Existing small-scene estimator tests remain separate.
+
+96 measured frames after 32 warm-up frames gave reconstruction p50/p95 5.080/5.142 ms. The full
+stage distributions and 274,762,304-byte working allocation count are in `results/quality-measurements.json`.
+That allocation excludes Fabricate inputs, acceleration structures, padding and query pools;
+the timing excludes rasterization, final resolve and presentation. No application FPS is inferred.
+
+Reproduce, with the optional shader bundle prepared and a fresh isolated Field running on PORT
+(use the private-source launch workaround above if needed):
+
+```bash
+uv run --project . --group backdoor python tools/lighting/capture_docs.py --port PORT
+```
+
+This gates GPU captures on the quality assertions, encodes 180 actual successive current-frame
+readbacks as a six-second 30 Hz movie, and runs the editable scene to capture real controls.
+`--only gpu` and `--only controls` support focused recapture. Logs remain under
+`build/lighting-experiment/`. Nothing is upscaled to manufacture detail.
+
+The controls capture disables only Field's animated WebGL canvas backdrop, matching the existing
+frame-synchronous recorder. Chromium otherwise composites that backdrop as white in this headless
+clipped capture despite the correct dark DOM styles. No control content or captured pixels are
+replaced. This capture setup is recorded in `tools/lighting/capture_background.js`.

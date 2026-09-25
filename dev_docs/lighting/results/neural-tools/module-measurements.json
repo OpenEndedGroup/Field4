@@ -1,0 +1,29 @@
+{
+  "output": [
+    1920,
+    1080
+  ],
+  "sourceShaderDigest": "990a414e09dcc0540f920ed2347f0262409c6bec16dabae4cad53dc363461bdc",
+  "frameCount": 120,
+  "heldOutParameter": 0.173,
+  "learnedViewGpuMs": {
+    "count": 100,
+    "p50": 2.769184,
+    "p95": 3.21136
+  },
+  "incompatibleModelPreservedWorkingView": true,
+  "learnedComputeGpuMs": {
+    "count": 100,
+    "p50": 0.218432,
+    "p95": 0.487744
+  },
+  "fullImageLinearRgbMse": 2.61594839968798E-5,
+  "sourceViewGpuMs": {
+    "count": 100,
+    "p50": 0.538624,
+    "p95": 0.940384
+  },
+  "sourcePassSkippedInReplacement": true,
+  "cooperative": true,
+  "maxAbsoluteRgbError": 0.02882564
+}

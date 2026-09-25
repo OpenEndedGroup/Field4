@@ -99,7 +99,16 @@ binding table paths. `KNOWN_PLACEHOLDERS` is empty; the pixel detector remains e
 A device must enable `VK_KHR_ray_tracing_pipeline` to regenerate these particular figures.
 A compute path tracer using `VK_KHR_ray_query` needs a different feature set; Field probes the two
 independently. An unsupported device can build HTML from committed figures with runner mode
-`never`. Forced recapture must fail honestly. Neither a Vulkan version nor Metal hardware support
+`never`. These ten path-tracing/gallery fences now also carry `capture-profile="linux-nvidia"`:
+all runner modes retain their committed assets by default. Recapture requires explicit
+`FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia` on Linux; macOS retains them even if that variable is set.
+Missing retained media is a build error, never an invitation to generate a fallback replacement.
+The explicit profile is a capture-host assertion, not a substitute for checking enabled GPU features.
+The newer lighting/reconstruction/optical-flow/learned-shader pages use committed media and separate
+GPU verification/publishing helpers, which ordinary docs builds never invoke. Regression tests in
+`tools/test_neural_docs_gating.py` exercise the actual pages under simulated macOS `always` mode.
+See [the complete policy](lighting/NEURAL_TOOLS.md#docs-on-machines-without-rtx).
+Neither a Vulkan version nor Metal hardware support
 establishes that a Vulkan-to-Metal driver implements these extensions.
 
 The former four permissive box-screenshot tests (which allowed execution errors and missing

@@ -1,0 +1,10 @@
+{
+  "status": "not-certified",
+  "platform": "Wayland",
+  "glfwPlatform": 393219,
+  "visibleBeforeIconify": true,
+  "initialAssertion": "Invalid: GLFW_ICONIFIED is always false on Wayland",
+  "frameYieldingProbe": "No completion marker before session stop",
+  "remainingCheck": "Interactive compositor minimize and restore with continued rendering",
+  "resolutionRecreation": "Passed separately; does not certify window minimize and restore"
+}

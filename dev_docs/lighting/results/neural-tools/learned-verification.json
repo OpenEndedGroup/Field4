@@ -1,0 +1,8 @@
+{
+  "entrypoint": "afield.four.neural.LearnedShaderSmoke",
+  "exitCode": 0,
+  "completionMarker": "LEARNED SHADER CHECK DONE",
+  "vulkanValidationErrors": 0,
+  "durationMs": 52960,
+  "framesPerClip": 120
+}

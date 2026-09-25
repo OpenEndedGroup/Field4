@@ -33,12 +33,12 @@ println("agent graphics renderer ready")
 start(renderer::run)
 ```
 
-## 2. direct lighting laboratory
+## 2. direct lighting
 
 <!-- field-box id="direct_light_lab" index="1" -->
 
 ```edn [field-box id="direct_light_lab" role="properties"]
-{"id" "direct_light_lab" "index" 1 "name" "direct lighting laboratory" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting laboratory" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 86 "characters" 4080 "sha256" "5d9de1b6cafb3631143c024831d188428e683522062da0cc9dd5ce3b91e383ea"}]}
+{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 85 "characters" 4006 "sha256" "50f734ae28e65243651b7fb24ba6b4083be7c285a1ebfd01011797a990e43746"}]}
 ```
 
 ```kotlin [field-property box="direct_light_lab" name="code" path="direct_light_lab_code_.kt"]
@@ -48,17 +48,13 @@ import afield.four.lighting.*
 import afield.four.fabricated.rtxdiSettings
 import afield.stdlib.linalg.Vector3f
 import kotlin.math.*
-import afield.four.modules.fromContext
 import afield.four.modules.fromContextWithNameOrNull
-import afield.four.device.lightingCapabilityReport
 import afield.four.util.keyCamera
 
-val renderer: Renderer = fromContext()
 prop<DirectLightingDemo>(lab)
 // Re-executing this box replaces the experiment at a frame boundary.
 fromContextWithNameOrNull<DirectLightingDemo>("lab")?.close()
-lab = DirectLightingDemo(renderer, 640, 360)
-println(renderer.device.lightingCapabilityReport().toString(2))
+lab = DirectLightingDemo(renderer, 1280, 720)
 var cameraControl by keyCamera(renderer, lab.bundle.scene.camera)
 
 val restir = lab.bundle.rtxdiSettings()
@@ -68,13 +64,14 @@ val sdkReady = lab.visibility.available && runCatching {
 var useRtxdi = sdkReady
 var reference = false
 var temporal = true
-var neighbors = 4
+var neighbors = 8
 var lightCount = 16
 var reset = false
 var source = false
 var shadows = lab.visibility.available
 var animate = true
-var budget = if (sdkReady) 4 else 16
+var budget = 16
+var reconstruct = true
 var weight = 1f
 var power = 60f
 var phase = 0.0
@@ -85,8 +82,9 @@ controlGroup("lighting") {
     if (sdkReady) {
         checkbox("RTXDI", initialValue = useRtxdi) { useRtxdi = it }
         checkbox("Reference estimator", initialValue = reference) { reference = it }
+        checkbox("Reconstruct lighting", initialValue = reconstruct) { reconstruct = it }
         checkbox("Temporal reuse", initialValue = temporal) { temporal = it }
-        slider("Spatial neighbors", min = 0.0, max = 16.0, step = 1.0, initialValue = 4.0) { neighbors = it.toInt() }
+        slider("Spatial neighbors", min = 0.0, max = 16.0, step = 1.0, initialValue = 8.0) { neighbors = it.toInt() }
         slider("Area lights", min = 1.0, max = 128.0, step = 1.0, initialValue = 16.0) { lightCount = it.toInt() }
         button("Reset history") { if (it) reset = true }
     }
@@ -95,7 +93,7 @@ controlGroup("lighting") {
     slider("Effect weight", initialValue = 1.0) { weight = it.toFloat() }
     slider("Radiance", min = 0.0, max = 150.0, initialValue = 60.0) { power = it.toFloat() }
     slider("Light phase", min = 0.0, max = 6.283, initialValue = 0.0) { phase = it }
-    slider("View: RGB / normal / depth / visibility / motion / IDs / M / weight / rejection", min = 0.0, max = if (sdkReady) 8.0 else 4.0, step = 1.0, initialValue = 0.0) { diagnostic = it.toInt() }
+    slider("View (0: lit, 9: raw)", min = 0.0, max = if (sdkReady) 9.0 else 4.0, step = 1.0, initialValue = 0.0) { diagnostic = it.toInt() }
 }
 displayOpen("lighting")
 println("Direct lighting ready: use the lighting controls and arrow-key camera.")
@@ -103,6 +101,7 @@ println("Direct lighting ready: use the lighting controls and arrow-key camera."
 frames {
     var seconds = 0.0
     while (true) {
+        restir.denoisePasses = if (reconstruct) 3 else 0
         restir.temporal = temporal
         restir.spatialSamples = neighbors
         restir.shadows = shadows
@@ -110,7 +109,7 @@ frames {
         if (sdkReady) restir.commitLights(List(lightCount) { i ->
             val a = i * 2.0 * PI / lightCount + seconds + phase
             IdentifiedAreaLight(100 + i, AreaEmitter(
-                Vector3f((cos(a)*3.0).toFloat(), 4.5f, (sin(a)*2.0).toFloat()),
+                Vector3f((cos(a)*3.0 + sin(seconds + phase)*1.5).toFloat(), 4.5f, (sin(a)*2.0).toFloat()),
                 Vector3f(0.6f,0f,0f), Vector3f(0f,0f,0.6f), Vector3f(power*3f/lightCount)))
         })
         lab.lighting.mode = if (source) DirectLighting.Mode.SOURCE

@@ -33,3 +33,12 @@ reference/initial/temporal/spatial/full, static/moving history rejection, alloca
 records source/SPIR-V/DXC hashes and SDK pin; `rtxdi-verification.json` records the completion marker
 and zero VUID verdict. The corresponding `rtxdi-*.png` and `rtxdi-moving.mp4` are real GPU captures.
 These are raw estimators without a denoiser, at 256x192, on the same 4090/driver.
+
+### Presentation update, 25 September 2026
+
+`quality-measurements.json` supersedes the tiny-scene figures as the public presentation's
+resolution/settings record: 1280×720, 16 candidates, eight spatial neighbors, optional three-pass
+spatial reconstruction. The opening image and 180-frame movie are reconstructed; the raw comparison
+and 4096-sample reference are explicitly labelled. Old 256×192 reports above remain historical
+acceptance evidence. `tools/lighting/capture_docs.py` regenerates the current figures and real dark
+controls, including a baseline run with SDK activation disabled. No NVIDIA driver or SDK was changed.

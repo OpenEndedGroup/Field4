@@ -452,6 +452,17 @@ class RunnerOptions:
     # shows. Asserted in both directions -- a fence carrying it whose box runs cleanly fails too,
     # so it cannot become a way of muting a capture that quietly stopped demonstrating anything.
     expects_error: bool
+    # Hardware-specific reference captures are retained unless explicitly requested on their host.
+    capture_profile: str | None = None
+
+
+def capture_profile_enabled(profile: str | None) -> bool:
+    if profile is None:
+        return True
+    if profile != "linux-nvidia":
+        raise RuntimeError(f"Unknown docs capture profile {profile!r}")
+    requested = {p.strip() for p in os.environ.get("FIELD_DOCS_CAPTURE_PROFILES", "").split(",")}
+    return sys.platform.startswith("linux") and profile in requested
 
 
 def derive_sidecar_port(repo_root: Path) -> int:
@@ -2633,6 +2644,13 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 line_number=start_line,
                 block_index=block_index,
             )
+            retained_profile = not capture_profile_enabled(options.capture_profile)
+            reuse_only = state.runner_mode == "never" or retained_profile
+            if retained_profile:
+                LOG.info("Retaining %s capture in %s (explicit profile not enabled on this host)", options.capture_profile, page_path.name)
+                for asset in (options.screenshot, options.video, options.audio):
+                    if asset and not resolve_output_path(page_path, asset).is_file():
+                        raise RuntimeError(f"Missing retained {options.capture_profile} capture {asset}; restore the committed asset or recapture on its supported host")
             code = extract_runnable_code(
                 lines=rewritten_body,
                 fence_name=fence_name,
@@ -2655,7 +2673,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 # One drive run produces the video and/or the still together.
                 ui_screenshot_path = resolve_output_path(page_path, options.screenshot) if options.screenshot else None
                 ui_video_path = resolve_output_path(page_path, options.video) if options.video else None
-                if state.runner_mode == "never" or (state.runner_media == "video" and not options.video):
+                if reuse_only or (state.runner_media == "video" and not options.video):
                     screenshot_available = bool(ui_screenshot_path and ui_screenshot_path.exists())
                     video_available = bool(ui_video_path and ui_video_path.exists())
                     for ok, path in ((screenshot_available, ui_screenshot_path), (video_available, ui_video_path)):
@@ -2685,7 +2703,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=site_dir, use_directory_urls=use_dir_urls, output_path=ui_video_path)
             elif options.screenshot:
                 screenshot_path = resolve_output_path(page_path, options.screenshot)
-                if state.runner_mode == "never" or state.runner_media == "video":
+                if reuse_only or state.runner_media == "video":
                     screenshot_available = screenshot_path.exists()
                     if screenshot_available:
                         state.assets_reused += 1
@@ -2693,7 +2711,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         state.missing_assets += 1
                     LOG.info(
                         "Field docs runner %s: %s screenshot asset %s",
-                        "mode=never" if state.runner_mode == "never" else "media=video",
+                        "retained profile" if retained_profile else ("mode=never" if state.runner_mode == "never" else "media=video"),
                         "using existing" if screenshot_available else "skipping missing",
                         screenshot_path,
                     )
@@ -2710,7 +2728,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
             if options.video and options.capture != "ui":
                 video_path = resolve_output_path(page_path, options.video)
-                if state.runner_mode == "never":
+                if reuse_only:
                     video_available = video_path.exists()
                     if video_available:
                         state.assets_reused += 1
@@ -2734,7 +2752,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
             if options.audio and options.capture != "ui":
                 audio_path = resolve_output_path(page_path, options.audio)
-                if state.runner_mode == "never" or state.runner_media == "video":
+                if reuse_only or state.runner_media == "video":
                     audio_available = audio_path.exists()
                     if audio_available:
                         state.assets_reused += 1
@@ -2880,6 +2898,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
             default_box_h = 120.0
 
     return RunnerOptions(
+        capture_profile=first_attr(attrs, "capture-profile", "capture_profile"),
         screenshot=screenshot,
         source_image=source_image,
         capture=capture,

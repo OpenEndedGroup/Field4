@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8684 of 14781 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 8690 of 14789 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**735 undocumented entry points** (types, top-level functions and values) and 5037 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**735 undocumented entry points** (types, top-level functions and values) and 5039 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -108,8 +108,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Conway.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
 | [Tetgen.kt](../src/jvmMain/kotlin/afield/tetgen/Tetgen.kt) | Simulation | tetgen | 0 | 5 | 68% |
 | [charts.kt](../src/jvmMain/kotlin/afield/visualization/charts.kt) | Visualization | chart, tetgen | 0 | 5 | 91% |
+| [PathTraceGpuSmoke.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceGpuSmoke.kt) | Renderers | path_tracing | 0 | 4 | 50% |
 | [FaustBox.kt](../src/jvmMain/kotlin/afield/four/synth/FaustBox.kt) | Synthesis | faust | 0 | 4 | 73% |
-| [PathTraceGpuSmoke.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceGpuSmoke.kt) | Renderers | path_tracing | 0 | 3 | 50% |
 | [PatPianoRollGallery.kt](../src/jvmMain/kotlin/afield/four/synth/PatPianoRollGallery.kt) | Patterns | pattern_language | 0 | 3 | 82% |
 | [MorphoSearchFLines.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSearchFLines.kt) | Languages | morpho_examples | 0 | 3 | 72% |
 | [RectSLFit.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLFit.kt) | Languages | rectsl_inverse_animation | 0 | 3 | 85% |
@@ -228,6 +228,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatClock.kt](../src/jvmMain/kotlin/afield/four/synth/PatClock.kt) | Patterns | — | 0 | 2 | 78% |
 | [MorphoSim.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSim.kt) | Languages | — | 0 | 2 | 77% |
 | [PathTraceGltf.kt](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceGltf.kt) | Renderers | — | 0 | 1 | 75% |
+| [RayTracingGpuAudit.kt](../src/jvmMain/kotlin/afield/four/fabricated/RayTracingGpuAudit.kt) | Renderers | — | 0 | 1 | 66% |
 | [FM.kt](../src/jvmMain/kotlin/afield/four/synth/FM.kt) | Synthesis | — | 0 | 1 | 90% |
 | [HeadTrackedSpatialSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/HeadTrackedSpatialSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
 | [MarfSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/MarfSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |

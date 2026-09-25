@@ -36,6 +36,11 @@ int main(int argc,char** argv) {
     for(auto device:devices) {
         VkPhysicalDeviceProperties properties;vkGetPhysicalDeviceProperties(device,&properties);
         std::cout<<"device="<<properties.deviceName<<"\n";
+        info.FeatureID=NVSDK_NGX_Feature_SuperSampling;
+        uint32_t deviceExtensionCount=0;VkExtensionProperties* deviceExtensions=nullptr;
+        auto extensionResult=NVSDK_NGX_VULKAN_GetFeatureDeviceExtensionRequirements(instance,device,&info,&deviceExtensionCount,&deviceExtensions);
+        std::cout<<"SR device extensions result=0x"<<std::hex<<extensionResult<<std::dec<<" count="<<deviceExtensionCount<<"\n";
+        if(NVSDK_NGX_SUCCEED(extensionResult))for(uint32_t e=0;e<deviceExtensionCount;e++)std::cout<<"  "<<deviceExtensions[e].extensionName<<"\n";
         for(int i=0;i<3;i++) {
             info.FeatureID=features[i];NVSDK_NGX_FeatureRequirement requirements{};
             auto r=NVSDK_NGX_VULKAN_GetFeatureRequirements(instance,device,&info,&requirements);

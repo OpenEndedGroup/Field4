@@ -1,0 +1,20 @@
+INFO: Enabled Vulkan instance extensions:
+INFO:     VK_EXT_debug_utils
+INFO:     VK_KHR_xcb_surface
+INFO:     VK_KHR_surface
+INFO:     VK_KHR_get_physical_device_properties2
+INFO: Enabled Vulkan layers:
+INFO: Enabled Vulkan device extensions:
+INFO:     VK_EXT_mutable_descriptor_type
+INFO:     VK_EXT_descriptor_indexing
+INFO:     VK_KHR_swapchain_mutable_format
+INFO:     VK_KHR_fragment_shading_rate
+INFO:     VK_EXT_mesh_shader
+INFO:     VK_KHR_buffer_device_address
+INFO:     VK_EXT_shader_atomic_float
+INFO:     VK_NV_cooperative_vector
+INFO:     VK_EXT_shader_replicated_composites
+INFO:     VK_KHR_swapchain
+INFO:     VK_KHR_external_memory_fd
+INFO: Created Vulkan device: NVIDIA GeForce RTX 4090
+FIELD RTXNS INFERENCE DONE frames=120 gpuMs=0.015936 capture=1

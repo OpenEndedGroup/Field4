@@ -79,6 +79,8 @@ object StandardRenderer {
 		data class SceneDefaults(
 			val camera: Camera,
 			val projection: Projection,
+            /** Raster-only NDC offset. Camera matrices and motion remain unjittered. */
+            val rasterJitterNdc: afield.stdlib.linalg.Vector2f = afield.stdlib.linalg.Vector2f(),
 			val lightDirection: Vector3f = Vector3f(DEFAULT_LIGHT_DIRECTION).normalize(),
 			val lightTarget: Vector3f = Vector3f(0f, 0f, 0f),
 		val lightColor: Vector3f = Vector3f(DEFAULT_LIGHT_COLOR),
@@ -1604,6 +1606,7 @@ object StandardRenderer {
 			camera.seedDefaultBinding("prevView") { viewHistory.previous() }
 			camera.seedDefaultBinding("prevProj") { projHistory.previous() }
 			camera.seedDefaultBinding("cameraPos") { cameraPosHistory.current() }
+            camera.seedDefaultBinding("rasterJitterNdc") { scene.rasterJitterNdc }
 		}
 	}
 
@@ -1677,6 +1680,7 @@ object StandardRenderer {
 				mat4 prevView;
 				mat4 prevProj;
 				vec3 cameraPos;
+                vec2 rasterJitterNdc;
 			} uCamera;
 
 			layout(push_constant) uniform ModelData {
@@ -1717,6 +1721,7 @@ object StandardRenderer {
 				vCurrentClip = uCamera.proj * uCamera.view * worldPos;
 				vPreviousClip = uCamera.prevProj * uCamera.prevView * prevWorldPos;
 				gl_Position = vCurrentClip;
+                gl_Position.xy += uCamera.rasterJitterNdc * gl_Position.w;
 			}
 		"""
 
@@ -1792,6 +1797,7 @@ object StandardRenderer {
 				mat4 prevView;
 				mat4 prevProj;
 				vec3 cameraPos;
+                vec2 rasterJitterNdc;
 			} uCamera;
 
 			layout(push_constant) uniform ModelData {
@@ -1833,6 +1839,7 @@ object StandardRenderer {
 				vPreviousClip = uCamera.prevProj * uCamera.prevView * prevWorldPos;
 				vTangent = vec4(normalize(mat3(push.model) * tangent.xyz), tangent.w);
 				gl_Position = vCurrentClip;
+                gl_Position.xy += uCamera.rasterJitterNdc * gl_Position.w;
 			}
 		"""
 

@@ -1,0 +1,24 @@
+{
+  "sameJvmRendererCycles": [
+    {
+      "run": "stress-controls-verify",
+      "commandsPassed": 11,
+      "liveInputSize": [
+        640,
+        360
+      ],
+      "mode": "ULTRA_PERFORMANCE"
+    },
+    {
+      "run": "stress-controls-reopen",
+      "commandsPassed": 12,
+      "liveInputSize": [
+        640,
+        360
+      ],
+      "mode": "ULTRA_PERFORMANCE"
+    }
+  ],
+  "vulkanValidationErrors": 0,
+  "requirementsAfterReinitialization": true
+}

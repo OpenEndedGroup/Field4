@@ -31,18 +31,16 @@ start(renderer::run)
 <!-- field-box id="path_trace_materials" index="1" -->
 
 ```edn [field-box id="path_trace_materials" role="properties"]
-{"id" "path_trace_materials" "index" 1 "name" "progressive material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "progressive material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_materials_code_.kt" "lines" 19 "characters" 833 "sha256" "b2668fb35c417b0c854557bef735fa58c7e2e3697cf677c9ac4ad26eedf52831"}]}
+{"id" "path_trace_materials" "index" 1 "name" "progressive material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "progressive material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_materials_code_.kt" "lines" 17 "characters" 795 "sha256" "f65605bc2aae0f65a1a908ec3251132601392512f73335890baeee5a511790a4"}]}
 ```
 
 ```kotlin [field-property box="path_trace_materials" name="code" path="path_trace_materials_code_.kt"]
 import afield.four.fabricated.PathTraceDemo
 import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
 import java.io.File
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceDemo.install(renderer,
-    File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceDemo.install(renderer, width=1280, height=720,
+    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.

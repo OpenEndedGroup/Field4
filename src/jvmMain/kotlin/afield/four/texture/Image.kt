@@ -85,6 +85,10 @@ class Image(private val device: Device, val imageData: ImageData) {
                     }
                 )
                 .usage(imageData.usage)
+            if(imageData.queueFamilies.distinct().size>1)imageCreateInfo
+                .sharingMode(VK10.VK_SHARING_MODE_CONCURRENT).pQueueFamilyIndices(stack.ints(*imageData.queueFamilies))
+
+            if(imageData.opticalFlowUsage!=0)imageCreateInfo.pNext(VkOpticalFlowImageFormatInfoNV.calloc(stack).`sType$Default`().usage(imageData.opticalFlowUsage).address())
 
             // Back the image with an externally-created IOSurface (MoltenVK), or make its backing
             // MTLTexture IOSurface-exportable. Both are for zero-copy hand-off to a hardware video
@@ -343,6 +347,10 @@ class Image(private val device: Device, val imageData: ImageData) {
         var memoryPropertyFlags: Int = VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         var sampleCount: Int = 1
         var usage: Int = 0
+        /** Concurrent ownership for explicit cross-queue adapters; empty keeps exclusive sharing. */
+        var queueFamilies: IntArray = intArrayOf()
+        /** Optional VK_NV_optical_flow format usage, independent of ordinary image usage. */
+        var opticalFlowUsage: Int = 0
 
         /**
          * MoltenVK only: create the backing MTLTexture as IOSurface-exportable

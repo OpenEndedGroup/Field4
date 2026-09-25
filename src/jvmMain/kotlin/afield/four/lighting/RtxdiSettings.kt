@@ -11,6 +11,12 @@ data class IdentifiedAreaLight(val id: Int, val emitter: AreaEmitter)
  * Geometry commits invalidate all history; material semantics edits must call resetHistory.
  */
 class RtxdiSettings(val view: () -> Matrix4f, val projection: () -> Matrix4f) {
+    /** Surface-guided spatial reconstruction, separate from reservoir reuse. Zero preserves raw output.
+     * No color history is stored, so moving lights and camera cuts cannot leave color trails.
+     * Each pass doubles the pixel spacing; three passes have a 14-pixel support radius.
+     */
+    var denoisePasses = 0
+        set(value) { require(value in 0..4); field=value }
     var temporal = true
     var spatialSamples = 4
         set(value) { require(value in 0..32);field=value }

@@ -100,6 +100,7 @@ class Instance(private val validate: Boolean) {
                 // VK_EXT_swapchain_colorspace enables HDR surface format enumeration (scRGB, HDR10, etc.)
                 if (Options.enableHDR && SWAPCHAIN_COLORSPACE_EXTENSION in supportedExts) add(SWAPCHAIN_COLORSPACE_EXTENSION)
             }
+            extNames.addAll(afield.four.reconstruction.NgxSupport.instanceExtensions(supportedExts))
             val dedupedExtNames = extNames.distinct()
             enabledExtensions = dedupedExtNames.toSet()
 

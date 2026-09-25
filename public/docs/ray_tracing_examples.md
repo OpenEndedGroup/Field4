@@ -2,14 +2,14 @@
 
 Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`. The four examples below run from a raygen shader writing straight into a storage image to procedural spheres reflecting a traced floor, and between them they cover image binding, acceleration structures, shader groups, dispatch, and GLSL.
 
-These are real 512 × 512 captures from Field on Linux with an RTX 4090. The examples
+These are real 1024 × 1024 captures from Field on Linux with an RTX 4090. The examples
 require an enabled `VK_KHR_ray_tracing_pipeline`; Field checks device features, independently
 of the operating system or GPU brand. The [path tracer](path_tracing.md) also has a compute
 BVH backend for devices without hardware ray tracing.
 
 ??? aside "Capture and test provenance"
 
-    Regenerated on 24 September 2026, NVIDIA driver 610.43.02. The old “Not Available” cards
+    Regenerated on 25 September 2026, NVIDIA driver 610.43.02. The old “Not Available” cards
     have been removed, along with their placeholder-check exceptions. `RayTracingGpuAudit`
     exercises these four captures with GPU pixel assertions, alongside the path tracer's two
     backends. It reports unsupported pipeline captures as skipped; pass `--require-pipeline`
@@ -34,7 +34,7 @@ val module = RayTracingModule(
     )
 ).pointer()
 
-module += "dispatch" to RayTracingDispatch(module, width = 512, height = 512)
+module += "dispatch" to RayTracingDispatch(module, width = 1024, height = 1024)
 renderer += "my ray tracing module" to module
 ```
 
@@ -64,7 +64,7 @@ val module = RayTracingModule(
     )
 ).pointer()
 
-module += "dispatch" to RayTracingDispatch(module, 512, 512)
+module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-uv-gradient" to module
 ```
 
@@ -83,9 +83,9 @@ void main() {
 }
 ```
 
-`RayTracingDocsHarness.renderUvGradient` runs exactly this, at 512 by 512, and reads the storage image back to a PNG.
+`RayTracingDocsHarness.renderUvGradient` runs exactly this, at 1024 by 1024, and reads the storage image back to a PNG.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-uv-gradient.png" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-uv-gradient.png" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -150,7 +150,7 @@ val module = RayTracingModule(
         name = "rt-triangle"
     )
 ).pointer()
-module += "dispatch" to RayTracingDispatch(module, 512, 512)
+module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-triangle" to module
 ```
 
@@ -192,7 +192,7 @@ void main() {
 
 `renderTriangleScene` builds that BLAS and TLAS and dispatches over them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-triangle-scene.png" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-triangle-scene.png" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -269,7 +269,7 @@ void main() {
 
 `renderShaderTileScene` traces the one quad; the checkerboard is entirely shader-side.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-shader-tiles.png" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-shader-tiles.png" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -426,7 +426,7 @@ void main() {
 
 `renderMirrorBallsScene` puts all of it together: the triangle floor hit group, the procedural sphere hit group, and two reflected bounces. It is also the only example here that drives its camera from a uniform rather than a literal, via `seedRayCameraUniforms`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rt-mirror-balls.png" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-mirror-balls.png" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -452,7 +452,7 @@ import kotlin.math.sin
 val renderer: Renderer = fromContext()
 prop<RayTracingDocsHarness.LiveMirrorBallsScene>(mirrors)
 mirrors = RayTracingDocsHarness.installMirrorBallsSceneInWindow(
-    renderer, name = "mirror-study", width = 768, height = 512
+    renderer, name = "mirror-study", width = 1536, height = 1024
 )
 val rest = mirrors.sphere(1)
 mirrors.animate { seconds, scene ->

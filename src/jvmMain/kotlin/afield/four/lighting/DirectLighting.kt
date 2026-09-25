@@ -42,7 +42,7 @@ data class DirectLightSurfaces(val position: HasImageView, val normal: HasImageV
 class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, val visibility: OpaqueRayScene,
     val width: Int, val height: Int, val name: String = "direct-light") : Target, AutoCloseable {
     enum class Mode { SOURCE, UNSHADOWED, RAY_QUERY, RTXDI_REFERENCE, RTXDI }
-    enum class View { RADIANCE, NORMALS, DEPTH, VISIBILITY, MOTION, LIGHT_ID, RESERVOIR_M, RESERVOIR_WEIGHT, HISTORY_REJECTION }
+    enum class View { RADIANCE, NORMALS, DEPTH, VISIBILITY, MOTION, LIGHT_ID, RESERVOIR_M, RESERVOIR_WEIGHT, HISTORY_REJECTION, RAW_RADIANCE }
     var mode = if (visibility.available) Mode.RAY_QUERY else Mode.SOURCE
         set(value) { require(value != Mode.RAY_QUERY || visibility.available) { "Ray queries are not enabled; use SOURCE or UNSHADOWED" };
             require(value.ordinal<3 || rtxdi!=null) { "Call enableRtxdi first" }
@@ -67,6 +67,7 @@ class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, 
     private var compute: ComputeModule
     private var invocation: ComputeMesh
     private val resolve: Module
+    private val resolveMesh: Mesh
     private var closed = false
     private var frames = 0
     private val attached = mutableSetOf<afield.four.targets.RenderTarget>()
@@ -94,6 +95,7 @@ class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, 
         check(resolve.valid) { "Direct-light resolve shader failed" }
         val pointer=resolve.pointer()
         val screen=Mesh(renderer,pointer).also { it.resize(3,0,pointer) }
+        resolveMesh=screen
         screen.push.setMembers(resolve.fi.pushConstants.single().members)
         screen.push["pixels"]=pixels; screen.push["width"]=width
         resolve.meshes["resolve"]=screen
@@ -151,10 +153,12 @@ class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, 
         check(!visibility.closed)
         if(mode==Mode.RTXDI || mode==Mode.RTXDI_REFERENCE) {
             rtxdi!!.render(command,index,mode==Mode.RTXDI_REFERENCE)
+            resolveMesh.push["pixels"]=rtxdi!!.displayPixels
             barrier(command,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,VK_ACCESS_2_SHADER_READ_BIT)
             output.render(command,index);frames++;return
         }
+        resolveMesh.push["pixels"]=pixels
         emitter.validate()
         invocation.push.apply {
             this["pixels"]=pixels; this["width"]=width; this["height"]=height
@@ -181,15 +185,21 @@ class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, 
     }
 
     /** Blocking raw FP32 readback: RGB is linear lighting (or diagnostic), W is visibility (-1 for background), not coverage. SOURCE preserves input alpha. */
-    fun readLinear(): FloatArray {
+    fun readLinear(): FloatArray = readPixels(pixels)
+
+    /** The linear RGB presented by [output], including optional reconstruction. Raw readback is unchanged. */
+    fun readPresentedLinear(): FloatArray = readPixels(
+        if(mode==Mode.RTXDI || mode==Mode.RTXDI_REFERENCE)rtxdi!!.displayPixels else pixels)
+
+    private fun readPixels(buffer: VulkanBuffer): FloatArray {
         check(!closed && frames>0)
-        val staging=VulkanBuffer(renderer,pixels.requestedSize,VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        val staging=VulkanBuffer(renderer,buffer.requestedSize,VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
         val cmd=CommandBuffer(renderer.commandPool,true,true); val fence=Fence(renderer.device,false)
         try {
             cmd.beginRecording()
             barrier(cmd,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,VK_ACCESS_2_MEMORY_WRITE_BIT,VK_PIPELINE_STAGE_2_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_READ_BIT)
-            MemoryStack.stackPush().use { stack -> vkCmdCopyBuffer(cmd.vkCommandBuffer,pixels.buffer,staging.buffer,VkBufferCopy.calloc(1,stack).size(pixels.requestedSize)) }
+            MemoryStack.stackPush().use { stack -> vkCmdCopyBuffer(cmd.vkCommandBuffer,buffer.buffer,staging.buffer,VkBufferCopy.calloc(1,stack).size(buffer.requestedSize)) }
             barrier(cmd,VK_PIPELINE_STAGE_2_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_2_HOST_BIT,VK_ACCESS_2_HOST_READ_BIT)
             cmd.endRecording()
             MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(cmd.vkCommandBuffer),null,null,null,fence) }

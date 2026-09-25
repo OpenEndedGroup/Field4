@@ -1,0 +1,47 @@
+{
+  "compositor": "KWin Wayland",
+  "cycles": [
+    {
+      "id": "{f333d45b-1802-4b10-bf0c-66563a2c9657}",
+      "minimized": true,
+      "caption": "Field Wayland reconstruction check",
+      "heartbeatIterations": 120
+    },
+    {
+      "id": "{f333d45b-1802-4b10-bf0c-66563a2c9657}",
+      "minimized": false,
+      "caption": "Field Wayland reconstruction check"
+    },
+    {
+      "id": "{f333d45b-1802-4b10-bf0c-66563a2c9657}",
+      "minimized": true,
+      "caption": "Field Wayland reconstruction check",
+      "heartbeatIterations": 120
+    },
+    {
+      "id": "{f333d45b-1802-4b10-bf0c-66563a2c9657}",
+      "minimized": false,
+      "caption": "Field Wayland reconstruction check"
+    },
+    {
+      "id": "{f333d45b-1802-4b10-bf0c-66563a2c9657}",
+      "minimized": true,
+      "caption": "Field Wayland reconstruction check",
+      "heartbeatIterations": 120
+    },
+    {
+      "id": "{f333d45b-1802-4b10-bf0c-66563a2c9657}",
+      "minimized": false,
+      "caption": "Field Wayland reconstruction check"
+    }
+  ],
+  "field": {
+    "phase": "finish",
+    "maxRenderMs": 18.751473,
+    "ready": true,
+    "resetCount": 4,
+    "iterations": 429
+  },
+  "vulkanValidationErrors": 0,
+  "completionMarker": true
+}

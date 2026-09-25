@@ -1,0 +1,52 @@
+{
+  "expectedDisplacement": [
+    12,
+    -8
+  ],
+  "opticalFlowGpuMs": {
+    "count": 100,
+    "p50": 0.523264,
+    "p95": 0.53296
+  },
+  "opticalQueueTimestampBits": 64,
+  "input": [
+    960,
+    540
+  ],
+  "unpackGpuMs": {
+    "count": 100,
+    "p50": 0.082656,
+    "p95": 0.083712
+  },
+  "grid": 4,
+  "costRange": [
+    0,
+    544
+  ],
+  "allocatedBytes": 10611840,
+  "consecutiveFrameWiggle": {
+    "medianEndpointErrorPixels": 0.14947492,
+    "directionQuadrants": [
+      18030,
+      18848,
+      15038,
+      17852
+    ],
+    "oldConstantVectorMedianErrorPixels": 14.4072695,
+    "p95EndpointErrorPixels": 0.34766915,
+    "pairStepSeconds": 0.033333335,
+    "samples": 85696
+  },
+  "medianL1ErrorPixels": 0,
+  "conversionGpuMs": {
+    "count": 100,
+    "p50": 0.039168,
+    "p95": 0.041952
+  },
+  "p95L1ErrorPixels": 0.03125,
+  "pairWallMsIncludingConversionAndFence": {
+    "count": 100,
+    "p50": 1.197134,
+    "p95": 1.563828
+  }
+}

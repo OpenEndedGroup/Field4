@@ -1,0 +1,174 @@
+[
+  {
+    "url": "http://100.110.104.26:8000/field4/optical_flow/",
+    "title": "Optical flow",
+    "images": [
+      {
+        "src": "../assets/optical_flow/advection.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/optical_flow/controls.png",
+        "width": 1128,
+        "height": 646
+      },
+      {
+        "src": "../assets/optical_flow/pingpong.png",
+        "width": 3264,
+        "height": 1836
+      }
+    ],
+    "videos": [
+      {
+        "src": "../assets/optical_flow/advection.mp4",
+        "width": 1920,
+        "height": 1080,
+        "playedTo": 0.354488
+      }
+    ],
+    "rawMarkdown": false
+  },
+  {
+    "url": "http://100.110.104.26:8000/field4/learned_shader/",
+    "title": "A learned shader function",
+    "images": [
+      {
+        "src": "../assets/learned_shader/cooperative.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/learned_shader/controls.png",
+        "width": 1128,
+        "height": 514
+      },
+      {
+        "src": "../assets/learned_shader/from-module.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/learned_shader/module-controls.png",
+        "width": 1128,
+        "height": 534
+      }
+    ],
+    "videos": [
+      {
+        "src": "../assets/learned_shader/animation.mp4",
+        "width": 1920,
+        "height": 1080,
+        "playedTo": 0.307954
+      },
+      {
+        "src": "../assets/learned_shader/from-module.mp4",
+        "width": 1920,
+        "height": 1080,
+        "playedTo": 0.306827
+      }
+    ],
+    "rawMarkdown": false
+  },
+  {
+    "url": "http://100.110.104.26:8000/field4/reconstruction_plumbing/",
+    "title": "From modules to reconstruction",
+    "images": [
+      {
+        "src": "../assets/reconstruction_plumbing/sr.png",
+        "width": 3264,
+        "height": 1836
+      },
+      {
+        "src": "../assets/reconstruction_plumbing/graph.svg",
+        "width": 1600,
+        "height": 590
+      },
+      {
+        "src": "../assets/reconstruction_plumbing/rr.png",
+        "width": 3264,
+        "height": 1836
+      }
+    ],
+    "videos": [],
+    "rawMarkdown": false
+  },
+  {
+    "url": "http://100.110.104.26:8000/field4/ray_reconstruction/",
+    "title": "Ray Reconstruction",
+    "images": [
+      {
+        "src": "../assets/ray_reconstruction/ray_reconstruction.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/ray_reconstruction/controls.png",
+        "width": 1128,
+        "height": 514
+      }
+    ],
+    "videos": [
+      {
+        "src": "../assets/ray_reconstruction/comparison.mp4",
+        "width": 3840,
+        "height": 2160,
+        "playedTo": 0.305495
+      }
+    ],
+    "rawMarkdown": false
+  },
+  {
+    "url": "http://100.110.104.26:8000/field4/neural_reconstruction/",
+    "title": "Neural reconstruction",
+    "images": [
+      {
+        "src": "../assets/neural_reconstruction/dlaa.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/neural_reconstruction/controls.png",
+        "width": 1112,
+        "height": 686
+      },
+      {
+        "src": "../assets/neural_reconstruction/depth.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/neural_reconstruction/motion.png",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "videos": [
+      {
+        "src": "../assets/neural_reconstruction/geometry.mp4",
+        "width": 3840,
+        "height": 2160,
+        "playedTo": 0.312856
+      },
+      {
+        "src": "../assets/neural_reconstruction/abstract.mp4",
+        "width": 3840,
+        "height": 2160,
+        "playedTo": 0.306167
+      },
+      {
+        "src": "../assets/neural_reconstruction/stress-geometry.mp4",
+        "width": 3840,
+        "height": 2160,
+        "playedTo": 0.316169
+      },
+      {
+        "src": "../assets/neural_reconstruction/stress-abstract.mp4",
+        "width": 3840,
+        "height": 2160,
+        "playedTo": 0.309081
+      }
+    ],
+    "rawMarkdown": false
+  }
+]

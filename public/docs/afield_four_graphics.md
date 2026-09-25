@@ -1,6 +1,6 @@
 # afield.four Graphics
 
-For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct-lighting laboratory](direct_lighting.md).
+For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct lighting](direct_lighting.md).
 
 `afield.four` is Field's direct Vulkan path. A graphics box usually has three parts:
 
@@ -1416,7 +1416,7 @@ The corpus box for this lesson (`7. slang — hello triangle`) is also the best-
 
 A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is the texturing code from earlier, unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
 
-Slang requires `slangc` to be available; without it the `vertex_fragment` property cannot be compiled, which is why neither carries a figure.
+Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC` or `-Dafield.slangc` override, then `PATH`, then the optional compiler prepared by `./gradlew buildLearnedShaders`. That task uses a pinned shared cache; live compilation itself does not download anything. See the [optional toolchain](learned_shader.md#optional-toolchain). These two historical lesson captures have not yet been regenerated.
 
 ## Diffusion-limited aggregation
 

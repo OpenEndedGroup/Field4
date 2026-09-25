@@ -10,7 +10,7 @@ browsable on the [Renderers](reference/renderers.md) reference page, with the KD
 it in the source, next to the real-time deferred renderer this one is an alternative to and the
 splat renderer that is neither.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by Field’s progressive path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by Field’s progressive path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_materials.yaml.
 ```
 
@@ -47,7 +47,7 @@ OperationTranscript.
 For an explicit backend comparison, pass `backend` to the demo installer:
 
 ```diffstatic {data-lang=kotlin}
-val tracer = PathTraceDemo.install(renderer, width=640, height=360,
+val tracer = PathTraceDemo.install(renderer, width=1280, height=720,
     backend=PathTracingRenderer.Backend.RAY_QUERY)
 tracer.blitToScreen()
 println(tracer.backend)
@@ -84,7 +84,7 @@ val camera = Camera(renderer).also {
     it.target.set(0f, 1f, 0f)
 }
 val tracer = PathTracingRenderer(renderer, scene, env,
-    width = 640, height = 360, camera = camera).install()
+    width = 1280, height = 720, camera = camera).install()
 ```
 
 `PathTraceEnvironment` accepts OpenEXR, Radiance HDR, STB-supported ordinary image
@@ -116,7 +116,7 @@ tracer.apertureRadius = 0.25f
 tracer.focusDistance = null // follow the target
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/camera.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="camera study converged" embed=true hidden=true timeout="180" name="path-tracing-camera" alt="A sharp gold sphere at the focus plane between a blurred near red sphere and distant blue sphere, over a checkerboard" macro-file="../../dev_docs/agents/transcripts/path_tracing_camera.yaml" capture-box="path_trace_camera"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/camera.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="camera study converged" embed=true hidden=true timeout="180" name="path-tracing-camera" alt="A sharp gold sphere at the focus plane between a blurred near red sphere and distant blue sphere, over a checkerboard" macro-file="../../dev_docs/agents/transcripts/path_tracing_camera.yaml" capture-box="path_trace_camera"}
 // Camera, antialiasing and depth of field in a live Field scene.
 ```
 
@@ -154,7 +154,7 @@ motion blur, diffraction or a multi-element photographic lens.
 
 ## Loading glTF and GLB models
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/gltf.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glTF study converged" embed=true hidden=true timeout="240" name="path-tracing-gltf" alt="Textured Toy Car imported from GLB and path traced on a grey floor with hidden sunset environment lighting" macro-file="../../dev_docs/agents/transcripts/path_tracing_gltf.yaml" capture-box="path_trace_gltf"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/gltf.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glTF study converged" embed=true hidden=true timeout="240" name="path-tracing-gltf" alt="Textured Toy Car imported from GLB and path traced on a grey floor with hidden sunset environment lighting" macro-file="../../dev_docs/agents/transcripts/path_tracing_gltf.yaml" capture-box="path_trace_gltf"}
 // Imported and rendered by dev_docs/agents/transcripts/path_tracing_gltf.yaml.
 ```
 
@@ -267,7 +267,7 @@ without disposing a caller-owned RTT.
 
 ## Environment lighting without a visible sky
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/hidden_environment.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="hidden environment study converged" embed=true hidden=true timeout="150" name="path-tracing-hidden-environment" alt="The sunset environment illuminates and reflects in three PBR spheres while camera-visible sky pixels are black" macro-file="../../dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml" capture-box="path_trace_hidden_environment"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/hidden_environment.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="hidden environment study converged" embed=true hidden=true timeout="150" name="path-tracing-hidden-environment" alt="The sunset environment illuminates and reflects in three PBR spheres while camera-visible sky pixels are black" macro-file="../../dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml" capture-box="path_trace_hidden_environment"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml.
 ```
 
@@ -302,7 +302,7 @@ tracer.fogStartDistance = 5f
 tracer.fogBackground = true
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
 import afield.four.fabricated.*
 import afield.four.util.Camera
 import afield.four.modules.fromContext
@@ -325,7 +325,7 @@ val camera = Camera(renderer).also {
     it.at.set(6f,3.5f,10f); it.target.set(0f,0.65f,-3f); it.p.fov=0.65
 }
 val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
-val tracer = PathTracingRenderer(renderer, scene, env, 640, 360, camera).install()
+val tracer = PathTracingRenderer(renderer, scene, env, 1280, 720, camera).install()
 tracer.samplesPerFrame = 8
 tracer.indirectClamp = 10f
 tracer.fogColor = Vector3f(0.25f, 0.35f, 0.5f)
@@ -643,7 +643,7 @@ separate buffer pointer in SceneBuffers, so no descriptor-indexing extension is 
 
 ## Clear, tinted, thin and frosted glass
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/glass.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glass study converged" embed=true hidden=true timeout="180" name="path-tracing-glass" alt="Clear, green absorbing and frosted glass spheres beside a thin blue pane, over a checkerboard and striped background" macro-file="../../dev_docs/agents/transcripts/path_tracing_glass.yaml" capture-box="path_trace_glass"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/glass.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glass study converged" embed=true hidden=true timeout="180" name="path-tracing-glass" alt="Clear, green absorbing and frosted glass spheres beside a thin blue pane, over a checkerboard and striped background" macro-file="../../dev_docs/agents/transcripts/path_tracing_glass.yaml" capture-box="path_trace_glass"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_glass.yaml.
 ```
 
@@ -974,11 +974,27 @@ The optional traversal uses the
 
 ## What a frame costs
 
-On an Apple M1 Max through MoltenVK, at 640 × 360 with one sample per frame, the bundled
-three-sphere opaque scene traces in about **4.3 ms**, and the glass study — ten bounces through
-clear, absorbing, frosted and thin panes — in about **10 ms**. Both are GPU module time and exclude
-presentation, and both describe that scene on that machine; use them to pick a resolution and a
-sample budget, not as a benchmark.
+On an **RTX 4090 with Vulkan ray queries**, the three-sphere scene takes **1.44 ms at
+1280 × 720**, one sample per frame and five bounces. On the same GPU, the software BVH
+path takes 14.09 ms. These are GPU tracing times; scene construction, readback and
+presentation are outside the interval.
+
+| Resolution | Samples/frame | Ray query median / p95 | Software BVH median / p95 |
+| --- | ---: | ---: | ---: |
+| 640 × 360 | 1 | 0.344 / 0.368 ms | 6.253 / 6.620 ms |
+| 640 × 360 | 4 | 1.584 / 1.637 ms | 18.029 / 20.957 ms |
+| 1280 × 720 | 1 | 1.444 / 1.499 ms | 14.094 / 14.508 ms |
+| 1280 × 720 | 4 | 4.979 / 5.159 ms | 19.342 / 19.881 ms |
+
+Measured on Linux, NVIDIA 610.43.02, 24 September 2026: 6,626 triangles, a unit environment,
+32 warm-up frames and 256 measured dispatches per setting, without denoising. `AUTO`
+selects `RAY_QUERY` when its required features are enabled; the tracer's live summary
+reports which backend it actually selected. More geometry, glass and longer paths change
+the cost, so measure your own scene before choosing its sample budget.
+
+For comparison, earlier Apple M1 Max / MoltenVK measurements at 640 × 360 and one sample
+per frame were about 4.3 ms for the opaque scene and 10 ms for the ten-bounce glass study.
+Those are different hardware and traversal paths, not a like-for-like GPU comparison.
 
 `indirectClamp = 10f` is the cheapest thing you can do about caustic specks. On the sunset material
 study it took a patch from twenty strong specks to none, for about 0.14% off the patch's mean

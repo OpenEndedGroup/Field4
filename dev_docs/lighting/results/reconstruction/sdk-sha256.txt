@@ -1,0 +1,2 @@
+3321c4ca9adf71f345550d10bf2148ed38003151b03ec5f81c99d00949ab8202  build/lighting-experiment/upstream/DLSS/lib/Linux_x86_64/libnvsdk_ngx.a
+7561f16cab74e2b7ccf791bf44bb9cc43abb44bcf78f33c5663520ad4e857e02  build/lighting-experiment/upstream/DLSS/lib/Linux_x86_64/rel/libnvidia-ngx-dlss.so.310.9.1

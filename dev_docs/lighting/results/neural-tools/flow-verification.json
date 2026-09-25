@@ -1,0 +1,8 @@
+{
+  "entrypoint": "afield.four.vision.OpticalFlowSmoke",
+  "exitCode": 0,
+  "completionMarker": "OPTICAL FLOW CHECK DONE",
+  "vulkanValidationErrors": 0,
+  "durationMs": 27199,
+  "framesPerClip": 120
+}

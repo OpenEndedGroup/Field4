@@ -248,11 +248,14 @@ class SwapChain(
             }
             val ip = stack.mallocInt(1)
             val err = KHRSwapchain.vkAcquireNextImageKHR(
-                device.vkDevice, vkSwapChain, 0L.inv(),
+                // Hidden Wayland surfaces may stop producing images indefinitely. Keep the
+                // Runloop responsive so the compositor, UI and other windows can make progress.
+                device.vkDevice, vkSwapChain, 16_000_000L,
                 syncSemaphoresList[currentFrame].imgAcquisitionSemaphore.vkSemaphore, MemoryUtil.NULL, ip
             )
-            // timeline semaphore is signaled by acquire; bump our tracking value
-            syncSemaphoresList[currentFrame].imgAcquisitionSemaphore.markExternallySignaled()
+            if (err == VK10.VK_TIMEOUT || err == VK10.VK_NOT_READY) {
+                throw Renderer.ImageNotAvailable("Swapchain image is temporarily unavailable", retryable = true)
+            }
             if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
                 return@logTime -1
             } else if (err == KHRSwapchain.VK_SUBOPTIMAL_KHR) {
@@ -260,6 +263,8 @@ class SwapChain(
             } else if (err != VK10.VK_SUCCESS) {
                 throw Renderer.ImageNotAvailable("Failed to acquire image: $err")
             }
+            // Only successful acquisition signals the binary semaphore.
+            syncSemaphoresList[currentFrame].imgAcquisitionSemaphore.markExternallySignaled()
             imageIndex = ip[0]
         }
         return@logTime imageIndex

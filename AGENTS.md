@@ -67,12 +67,20 @@ As a safety net, the agent-facing entrypoints (`tools/field_backdoor.py`, `tools
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
 ```
 
-- Full Zensical docs build with all Field screenshots/videos regenerated:
+- Full Zensical docs build with eligible Field screenshots/videos regenerated:
 
 ```bash
 FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
   uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
+
+Hardware reference captures marked `capture-profile="linux-nvidia"` are retained by default,
+including in `always` and `strict` modes. Regenerating those fences requires Linux and explicit
+`FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia` on a machine with the required enabled GPU features.
+macOS always retains them, even if that environment variable is set. A missing retained asset
+fails the build rather than attempting a replacement. The neural-tool pages use committed media
+and separate GPU verification/publishing scripts; ordinary docs builds do not run those scripts
+or prepare optional NVIDIA SDKs. See `dev_docs/lighting/NEURAL_TOOLS.md`.
 
 - Fast docs build using existing captures:
 
@@ -105,7 +113,7 @@ the matrix below as the quick command crib.
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Rebuild Zensical docs without starting Field or recapturing assets. |
 | Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Reuse valid captures and run only changed or missing ones. |
 | Runner/API change | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Invalidate captures when runner code or transcript behavior changes. |
-| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Regenerate every screenshot and video through Field. |
+| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Regenerate eligible screenshots and videos; hardware capture profiles still require explicit opt-in. |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` | Verify canonical Monaco/font/offline assets exist and generated copies are not tracked. |
 
 Run these verification entrypoints one at a time in a checkout. The smoke, UI,
@@ -323,7 +331,7 @@ selectors or ids in either register.
 - Run the smallest relevant gate once, inspect its first concrete failure, and make a specific repair. Re-run the affected gate after the change, then finish with one full verification pass. An unchanged retry is diagnostic comparison only and never evidence that the system is green.
 - Use `FIELD_DOCS_RUNNER_MODE=incremental` for fast local iteration against an already-clean cache.
 - Use `FIELD_DOCS_RUNNER_MODE=strict` when runner logic changes should invalidate cached captures through `public/docs_hooks.py` digest changes.
-- Use `FIELD_DOCS_RUNNER_MODE=always` when you need every screenshot/video to be regenerated regardless of cache state.
+- Use `FIELD_DOCS_RUNNER_MODE=always` to regenerate eligible screenshots/videos regardless of cache state. Hardware capture profiles remain opt-in, as described above.
 - Use `FIELD_DOCS_RUNNER_MODE=never` when you want the docs build to skip all capture execution entirely and just use whatever screenshot/video files already exist on disk.
 - The docs runner reuses a server only when its identity proves the same checkout and no runtime source changed after it started. A foreign, old, or stale server fails closed; use a dedicated high `FIELD_DOCS_RUNNER_PORT` rather than taking over another run's process.
 - When docs screenshots show the red Field error marker or empty/incorrect output, treat that as a real failure: capture the compiler/runtime error from the backdoor/test runner, fix the snippet or runtime, and rerun the docs page.

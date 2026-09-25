@@ -7,6 +7,13 @@ import java.io.File
 import kotlin.test.*
 
 class RtxdiTest {
+    @Test fun reconstructionShaderLayout() {
+        val source=javaClass.getResource("/afield/four/lighting/reconstruct.comp")!!.readText()
+        val shader=afield.four.modules.Introspection(source,afield.four.modules.ShaderKind.COMPUTE_SHADER)
+        assertTrue(shader.valid)
+        assertEquals(listOf(8,8,1),shader.fixedWorkgroupSize)
+        assertEquals(listOf(0,8,16,24,28,32,36,40,44,48),shader.pushConstants.single().members.map { it.offset })
+    }
     @Test fun lightIdentityAndSnapshot() {
         val settings=RtxdiSettings({ Matrix4f() },{ Matrix4f() })
         val emitter=AreaEmitter(Vector3f(0f,4f,0f),Vector3f(1f,0f,0f),Vector3f(0f,0f,1f),Vector3f(5f))
