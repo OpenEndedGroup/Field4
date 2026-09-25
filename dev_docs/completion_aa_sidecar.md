@@ -904,6 +904,38 @@ inside a live box runtime, not the headless spike.
   (`gatherPreambleUpwards`) and implicit receivers actually reached the sidecar (they're logged), and see
   `AaCompleter.splitPreamble`.
 
+## 6b. What `/complete` returns for a bare `FLine` dot
+
+Moved out of `public/docs/completion_ranking.md` on 2026-09-25, where it was a census of that page's
+own figure sitting in the middle of the how-to. The page keeps the behaviour; the counts live here.
+
+Asking a live sidecar's `/complete` for `val f = FLine()` then `f.`, with the running JVM's own
+classpath, returns **254 candidates, 248 of them carrying `receiverQualifiedName =
+afield.graphics.FLine`** — the exact key `CommonMemberPrior.rankOf` looks up. All eight of `FLine`'s
+`@CommonMembers` are among them, across every overload:
+
+| member | rows returned | all carry the receiver | prior position |
+|---|---|---|---|
+| `moveTo` | 5 | yes | 1 |
+| `lineTo` | 5 | yes | 2 |
+| `cubicTo` | 4 | yes | 3 |
+| `close` | 1 | yes | 4 |
+| `here` | 1 | yes | 5 |
+| `rot` | 8 | yes | 6 |
+| `scale` | 11 | yes | 7 |
+| `copy` | 2 | yes | 8 |
+
+Thirty-seven rows over eight names, which is the measured argument for the annotation taking
+*names* rather than callable references. `moveTo`'s five rows against `FLine.kt`'s four declared
+overloads is the `StandardDrawing.kt` extension `FLine.moveTo(v, style)`; a reader who counts
+declarations and counts completion rows gets two different numbers for a good reason.
+
+**What a K1 result carries less of**, over and above the missing `declaredIn` that
+`completion_ranking.md` describes: no
+`declarationProximity`, so nothing pushes `also`/`apply`/`let` below the names that are about the
+receiver type, and no expected-type match. The rows are the compiler's own and the prior applies;
+the *sections* are the part to distrust for the second or two before the session exists.
+
 ## 7. Related docs
 
 - [`completion_k2_migration_plan.md`](completion_k2_migration_plan.md) — migration narrative & stage log.
