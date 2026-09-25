@@ -64,6 +64,7 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `check_links.py` | relative links | targets that do not resolve |
 | `check_fences.py` | Kotlin `diffstatic` fences | that no fence moved between two revisions. `tools/completion-corpus/rank-carets.tsv` indexes them **by ordinal** |
 | `check_kdoc_mirror.py` | generated reference pages | that a page still matches the KDoc it mirrors |
+| `kdoc_overviews.py` | one file-overview KDoc at a time | the unit somebody wrote, rather than the reference page that concatenates twenty of them and dilutes a bad heading to nothing. Splits **published** from **queued** — an overview whose root `StdlibReferenceGenerator.kt` does not read yet, which publishes the day it does |
 | `build_machinery.py` | page openers, `##` headings, whole sections | the docs build, the capture harness and the docs runner explained to a reader who has none. Skips provenance tables, collapsed asides, fences, and the pages whose subject *is* the pipeline |
 
 ## Running them
