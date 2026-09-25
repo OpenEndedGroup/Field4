@@ -55,6 +55,15 @@ object SlangCompiler {
         return buildList {
             if (isWindows) add(SlangExecutableCandidate("slangc.exe", "PATH"))
             add(SlangExecutableCandidate("slangc", "PATH"))
+            // The optional build prepares the compiler in the shared native cache. Its local
+            // pointer avoids duplicating platform/cache/version rules in the live compiler.
+            // Explicit overrides above remain authoritative; an installed PATH compiler wins.
+            val prepared = Path.of("build/lighting/slangc.path")
+            if (Files.isRegularFile(prepared)) {
+                prepared.readText(StandardCharsets.UTF_8).trim().takeIf { it.isNotEmpty() }?.let {
+                    add(SlangExecutableCandidate(it, "buildLearnedShaders"))
+                }
+            }
         }
     }
 
@@ -331,7 +340,8 @@ object SlangCompiler {
             Searched:
             $searched$detail
 
-            Install the Vulkan SDK (it includes `slangc`) and ensure `slangc` is on PATH,
+            Run ./gradlew buildLearnedShaders to prepare Field's optional pinned compiler,
+            install a compiler on PATH,
             or set an explicit override with `AFIELD_SLANGC` or `-Dafield.slangc=/full/path/to/slangc`.
         """.trimIndent()
     }

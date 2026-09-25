@@ -38,9 +38,8 @@ a shipped figure that matches a known placeholder card.
 (A capture can also fail to a *black* frame, a different failure with different tells,
 not detected here; see ``dev_docs/DOCS_RUNNER_GPU_CAPTURES.md``.)
 
-One placeholder is *known* and grandfathered -- see ``KNOWN_PLACEHOLDERS`` -- because the
-renders can only be produced on hardware this project does not universally have. Those are
-reported on every run but do not gate. Any other placeholder fails immediately.
+No placeholder exceptions remain. A docs build can reuse the committed real captures when
+its device cannot regenerate them; it must never replace them with an availability card.
 
 Exit status is non-zero when any published page references an untracked asset, or ships an
 unexpected placeholder in place of a real capture, so this can gate a merge or run at the
@@ -125,7 +124,7 @@ def resolve_candidates(page: Path, ref: str) -> list[Path]:
 #
 # The harness no longer writes cards, but the detector stays: it is what makes the failure
 # mode *unrepeatable* by any future harness that reaches for the same convenience, and it
-# is what keeps the four cards still in the tree visible on every single build.
+# prevents a future regression back to availability cards.
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PLACEHOLDER_PALETTE = ((0x1A, 0x1A, 0x22), (0x44, 0x44, 0x55), (0x88, 0x88, 0xAA))
 PLACEHOLDER_TOLERANCE = 6          # per channel, to absorb antialiased glyph edges
@@ -273,21 +272,9 @@ def looks_like_placeholder_card(path: Path) -> bool:
     return coverage >= PLACEHOLDER_MIN_COVERAGE and grid_score >= PLACEHOLDER_MIN_GRID_LINE
 
 
-# Recorded 2026-08-30. These four figures on `ray_tracing_examples.md` are the cards
-# described above, committed 2026-07-09 in f91613648 and shipped ever since. They are
-# reported on every run but do not gate, because the real renders can only be produced on
-# a machine with VK_KHR_ray_tracing_pipeline -- Linux CI has one, MoltenVK on macOS does
-# not -- and no one should be unable to build docs in the meantime.
-#
-# This is a debt, not a policy. Each entry is a promise that a real capture is owed, and
-# `tools/test_check_doc_assets.py` fails if an entry outlives the placeholder it names, so
-# the list cannot quietly become permanent. Any placeholder *not* listed here fails now.
-KNOWN_PLACEHOLDERS = {
-    "public/docs/assets/rt-uv-gradient.png",
-    "public/docs/assets/rt-triangle-scene.png",
-    "public/docs/assets/rt-shader-tiles.png",
-    "public/docs/assets/rt-mirror-balls.png",
-}
+# The four historical RT cards were replaced by verified NVIDIA captures on 2026-09-24.
+# Keep detection and stale-exception checking; no published placeholder is currently allowed.
+KNOWN_PLACEHOLDERS: set[str] = set()
 
 
 def stale_placeholder_exceptions(root: Path) -> list[str]:
@@ -300,7 +287,9 @@ def stale_placeholder_exceptions(root: Path) -> list[str]:
     return stale
 
 
-DIFFSTATIC_FENCE = re.compile(r"```diffstatic_runner \{([^}]*)\}")
+# A quoted alt/title can contain Kotlin braces (e.g. `.every(4) { it.fast(2) }`).
+# Those must not truncate the header before its embed attribute.
+DIFFSTATIC_FENCE = re.compile(r'```diffstatic_runner \{((?:[^{}"\n]|"(?:\\.|[^"\\])*")*)\}')
 FENCE_ASSET = re.compile(r'(?:screenshot|video|audio)="([^"]+)"')
 
 

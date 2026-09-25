@@ -172,7 +172,7 @@ object Options {
         System.getenv("AFIELD_FOUR_SHADER_DEBUG_PRINTF") ?: "false"
     ).toBoolean()
     var preferredDevice: String? = null
-    var enableRayTracing: Boolean = !isMac
+    var enableRayTracing: Boolean = true
     var requestedImages = 3
     var vsync = true
     /**

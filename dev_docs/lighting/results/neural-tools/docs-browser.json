@@ -1,0 +1,71 @@
+[
+  {
+    "url": "http://100.110.104.26:8000/field4/ray_reconstruction/?v=neural-tools",
+    "title": "Ray Reconstruction",
+    "images": [
+      {
+        "src": "../assets/ray_reconstruction/ray_reconstruction.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/ray_reconstruction/controls.png",
+        "width": 1128,
+        "height": 514
+      }
+    ],
+    "video": {
+      "width": 3840,
+      "height": 2160,
+      "duration": 4,
+      "playedTo": 0.361254
+    },
+    "rawMarkdown": false
+  },
+  {
+    "url": "http://100.110.104.26:8000/field4/optical_flow/?v=neural-tools",
+    "title": "Optical flow",
+    "images": [
+      {
+        "src": "../assets/optical_flow/translation.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/optical_flow/controls.png",
+        "width": 1128,
+        "height": 870
+      }
+    ],
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "duration": 4,
+      "playedTo": 0.318884
+    },
+    "rawMarkdown": false
+  },
+  {
+    "url": "http://100.110.104.26:8000/field4/learned_shader/?v=neural-tools",
+    "title": "A learned shader function",
+    "images": [
+      {
+        "src": "../assets/learned_shader/cooperative.png",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "src": "../assets/learned_shader/controls.png",
+        "width": 1128,
+        "height": 514
+      }
+    ],
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "duration": 4,
+      "playedTo": 0.306812
+    },
+    "rawMarkdown": false
+  }
+]

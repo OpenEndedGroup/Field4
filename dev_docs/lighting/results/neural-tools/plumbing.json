@@ -1,0 +1,51 @@
+{
+  "reconstruction_plumbing": {
+    "commandsPassed": 20,
+    "bypassToggles": [
+      true,
+      false
+    ],
+    "cut": true,
+    "rerun": true,
+    "normalStop": true,
+    "captureDimensions": [
+      [
+        3264,
+        1836
+      ],
+      [
+        3264,
+        1836
+      ],
+      [
+        3264,
+        1836
+      ]
+    ]
+  },
+  "rr_plumbing": {
+    "commandsPassed": 20,
+    "bypassToggles": [
+      true,
+      false
+    ],
+    "cut": true,
+    "rerun": true,
+    "normalStop": true,
+    "captureDimensions": [
+      [
+        3264,
+        1836
+      ],
+      [
+        3264,
+        1836
+      ],
+      [
+        3264,
+        1836
+      ]
+    ]
+  },
+  "vulkanValidationErrors": 0
+}

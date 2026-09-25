@@ -1,3 +1,6 @@
 [submodule "services/field-audio-ai"]
 	path = services/field-audio-ai
 	url = https://github.com/OpenEndedGroup/field-audio-ai.git
+[submodule "optional/lighting/RTXNS"]
+	path = optional/lighting/RTXNS
+	url = https://github.com/NVIDIA-RTX/RTXNS.git

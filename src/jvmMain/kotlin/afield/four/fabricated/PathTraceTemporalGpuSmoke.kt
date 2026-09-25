@@ -209,7 +209,13 @@ object PathTraceTemporalGpuSmoke {
                     val weights=t.readHistorySampleCounts()
                     // Only compare pixels inside both views; the larger move exposes the right edge.
                     val count=(12 until 20).flatMap { y -> (16 until 32).map { x -> weights[y*48+x].toDouble() } }.average()
-                    check(abs(count-(1+16*(1-sensitivity)))<0.02) { "Motion sensitivity $sensitivity retained unexpected weight: $count" }
+                    check(abs(count-(1+16*(1-sensitivity)))<0.02) {
+                        "Motion sensitivity $sensitivity retained unexpected weight: $count; " +
+                            (12 until 20).flatMap { y -> (16 until 32).mapNotNull { x ->
+                                weights[y*48+x].takeIf { abs(it-(1+16*(1-sensitivity)))>0.02 }
+                                    ?.let { "($x,$y)=$it" }
+                            } }.joinToString()
+                    }
                 }
                 t.temporalMotionSensitivity=0f;step(t)
                 check(t.readHistorySampleCounts().all { it==1f }) { "Motion policy edit failed to reset history" }

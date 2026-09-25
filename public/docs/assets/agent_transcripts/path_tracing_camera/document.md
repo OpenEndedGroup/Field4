@@ -31,16 +31,14 @@ start(renderer::run)
 <!-- field-box id="path_trace_camera" index="1" -->
 
 ```edn [field-box id="path_trace_camera" role="properties"]
-{"id" "path_trace_camera" "index" 1 "name" "camera and depth of field" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "camera and depth of field" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_camera_code_.kt" "lines" 43 "characters" 2001 "sha256" "a46bed080b4012cf3173c29d294003dc8e934a5ea0ee560137bf7076bb1aa799"}]}
+{"id" "path_trace_camera" "index" 1 "name" "camera and depth of field" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "camera and depth of field" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_camera_code_.kt" "lines" 41 "characters" 1947 "sha256" "f99b4e57d8e8d558eb9e6c89e565ae5f1138644167b9e1d94117ad20193d2f50"}]}
 ```
 
 ```kotlin [field-property box="path_trace_camera" name="code" path="path_trace_camera_code_.kt"]
 import afield.four.fabricated.*
 import afield.four.util.Camera
 import afield.four.util.keyCamera
-import afield.four.modules.fromContext
 import afield.stdlib.linalg.Vector3f
-val renderer: Renderer = fromContext()
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.35f, 0.35f, 0.35f))
 val light = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
@@ -62,7 +60,7 @@ val camera = Camera(renderer).also {
 }
 val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
 prop<PathTracingRenderer>(tracer)
-tracer = pathTracingHere(scene, env, camera = camera)
+tracer = pathTracingHere(scene, env, width=1280, height=720, camera = camera)
 tracer.apertureRadius = 0.25f // world units; zero switches depth of field off
 tracer.focusDistance = null // keep the camera target in focus
 tracer.pixelJitter = 1f // full-pixel antialiasing; zero samples pixel centres

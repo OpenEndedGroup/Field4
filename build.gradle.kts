@@ -3289,6 +3289,24 @@ tasks.register<JavaExec>("hrtfProbe") {
     )
 }
 
+// Explicit optional build, following the Ceres/TetGen download-cache convention. Normal build/check
+// stays dependency-free; the script initializes only the pinned RTXNS submodule when requested.
+tasks.register<Exec>("buildLearnedShaders") {
+    group = "build"
+    description = "Prepares the pinned optional lighting toolchain and builds scalar/cooperative learned shaders."
+    inputs.file("tools/lighting/build_learned_shader.py")
+    inputs.file("tools/native_download_cache.py")
+    inputs.file("optional/lighting/toolchains.json")
+    inputs.file("src/jvmMain/resources/afield/four/neural/learned.slang")
+    outputs.dir(layout.buildDirectory.dir("lighting/learned-shader"))
+    outputs.file(layout.buildDirectory.file("lighting/slangc.path"))
+    // Revalidate the submodule/compiler pins on each explicit invocation. Downloads remain cached.
+    outputs.upToDateWhen { false }
+    commandLine(rootPythonCommand + listOf("tools/lighting/build_learned_shader.py") +
+        if (gradle.startParameter.isOffline) listOf("--offline") else emptyList())
+    if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
+}
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —

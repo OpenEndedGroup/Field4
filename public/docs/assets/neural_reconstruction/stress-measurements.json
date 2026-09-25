@@ -1,0 +1,176 @@
+{
+  "sdkRevision": "374959484e79a640feaba44c93ac8cfb0a03f5b5",
+  "enabledInstanceExtensions": [
+    "VK_KHR_surface",
+    "VK_KHR_wayland_surface",
+    "VK_EXT_debug_utils",
+    "VK_EXT_layer_settings",
+    "VK_KHR_get_surface_capabilities2",
+    "VK_KHR_get_physical_device_properties2"
+  ],
+  "rgb32fAccelerationVertices": true,
+  "enabledDeviceExtensions": [
+    "VK_KHR_swapchain",
+    "VK_KHR_dynamic_rendering",
+    "VK_KHR_depth_stencil_resolve",
+    "VK_KHR_create_renderpass2",
+    "VK_KHR_separate_depth_stencil_layouts",
+    "VK_KHR_push_descriptor",
+    "VK_KHR_maintenance7",
+    "VK_EXT_dynamic_rendering_unused_attachments",
+    "VK_KHR_16bit_storage",
+    "VK_KHR_external_memory",
+    "VK_KHR_external_memory_fd",
+    "VK_EXT_external_memory_dma_buf",
+    "VK_EXT_image_drm_format_modifier",
+    "VK_EXT_queue_family_foreign",
+    "VK_EXT_present_timing",
+    "VK_KHR_present_id2",
+    "VK_KHR_calibrated_timestamps",
+    "VK_KHR_shader_non_semantic_info",
+    "VK_EXT_extended_dynamic_state",
+    "VK_EXT_extended_dynamic_state3",
+    "VK_KHR_multiview",
+    "VK_NVX_binary_import",
+    "VK_NVX_image_view_handle",
+    "VK_KHR_buffer_device_address"
+  ],
+  "nonOptimalInputCheck": "Performance created at SDK optimal 960x540; evaluated at 1280x720",
+  "staticMseAgainst4spp": {
+    "bypass": 2.3293237808719446E-4,
+    "performance": 9.258099094053998E-5,
+    "ultra_performance": 1.1688798712245324E-4
+  },
+  "queueTimestampValidBits": [
+    64,
+    64,
+    64,
+    32,
+    32,
+    64
+  ],
+  "ultra_performance": {
+    "gpuMs": {
+      "count": 100,
+      "p50": 5.250016,
+      "p95": 5.291072
+    },
+    "outputWidth": 1920,
+    "motionMaxErrorPixels": 7.247925E-5,
+    "outputAllocatedBytes": 17694720,
+    "outputHeight": 1080,
+    "inputHeight": 360,
+    "warmupFrames": 72,
+    "sdkSizes": {
+      "optimal": [
+        640,
+        360
+      ],
+      "maximum": [
+        640,
+        360
+      ],
+      "minimum": [
+        640,
+        360
+      ]
+    },
+    "sdkAllocatedBytes": 109549222,
+    "inputWidth": 640
+  },
+  "enabled": {
+    "extensions": [
+      "VK_EXT_dynamic_rendering_unused_attachments",
+      "VK_EXT_extended_dynamic_state",
+      "VK_EXT_extended_dynamic_state3",
+      "VK_EXT_external_memory_dma_buf",
+      "VK_EXT_image_drm_format_modifier",
+      "VK_EXT_present_timing",
+      "VK_EXT_queue_family_foreign",
+      "VK_KHR_16bit_storage",
+      "VK_KHR_buffer_device_address",
+      "VK_KHR_calibrated_timestamps",
+      "VK_KHR_create_renderpass2",
+      "VK_KHR_depth_stencil_resolve",
+      "VK_KHR_dynamic_rendering",
+      "VK_KHR_external_memory",
+      "VK_KHR_external_memory_fd",
+      "VK_KHR_maintenance7",
+      "VK_KHR_multiview",
+      "VK_KHR_present_id2",
+      "VK_KHR_push_descriptor",
+      "VK_KHR_separate_depth_stencil_layouts",
+      "VK_KHR_shader_non_semantic_info",
+      "VK_KHR_swapchain",
+      "VK_NVX_binary_import",
+      "VK_NVX_image_view_handle"
+    ],
+    "accelerationStructure": false,
+    "rayQuery": false,
+    "rayTracingPipeline": false,
+    "bufferDeviceAddress": true
+  },
+  "bypass": {
+    "outputWidth": 1920,
+    "motionMaxErrorPixels": 3.1232834E-4,
+    "outputAllocatedBytes": 0,
+    "outputHeight": 1080,
+    "inputHeight": 1080,
+    "warmupFrames": 40,
+    "sdkAllocatedBytes": 0,
+    "inputWidth": 1920
+  },
+  "driverInfo": "610.43.02",
+  "apiVersion": "1.4.341",
+  "java": "25.0.2+10-jvmci-b01",
+  "performance": {
+    "gpuMs": {
+      "count": 100,
+      "p50": 6.268608,
+      "p95": 6.327936
+    },
+    "outputWidth": 1920,
+    "motionMaxErrorPixels": 6.556511E-5,
+    "outputAllocatedBytes": 17694720,
+    "outputHeight": 1080,
+    "inputHeight": 540,
+    "warmupFrames": 40,
+    "sdkSizes": {
+      "optimal": [
+        960,
+        540
+      ],
+      "maximum": [
+        1920,
+        1080
+      ],
+      "minimum": [
+        960,
+        540
+      ]
+    },
+    "sdkAllocatedBytes": 121936262,
+    "inputWidth": 960
+  },
+  "driver": "NVIDIA",
+  "maxStorageBufferRange": 4294967295,
+  "maxPushConstantsSize": 256,
+  "timestampPeriodNs": 1,
+  "device": "NVIDIA GeForce RTX 4090",
+  "limits": {
+    "maxPerStageAccelerationStructures": 1048576,
+    "maxDescriptorSetAccelerationStructures": 1048576,
+    "maxInstanceCount": 16777215,
+    "maxGeometryCount": 16777215,
+    "scratchAlignment": 128,
+    "maxPrimitiveCount": 536870911
+  },
+  "ngx": "DLAA / DLSS SR available; SDK 310.9.1 (374959484e79a640feaba44c93ac8cfb0a03f5b5), NGX API 0x15",
+  "supported": {
+    "deferredHostOperations": true,
+    "accelerationStructure": true,
+    "rayQuery": true,
+    "rayTracingPipeline": true,
+    "bufferDeviceAddress": true
+  }
+}

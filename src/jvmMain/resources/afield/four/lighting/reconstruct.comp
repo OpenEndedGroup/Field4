@@ -1,0 +1,49 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x=8,local_size_y=8) in;
+struct Surface { vec4 position; vec4 normal; vec4 albedo; vec4 source; vec4 reprojection; };
+layout(buffer_reference,std430) readonly buffer Surfaces { Surface values[]; };
+layout(buffer_reference,std430) readonly buffer InputPixels { vec4 values[]; };
+layout(buffer_reference,std430) writeonly buffer OutputPixels { vec4 values[]; };
+layout(push_constant) uniform Reconstruction {
+    Surfaces surfaces; InputPixels inputPixels; OutputPixels outputPixels;
+    int width; int height; int page; int stepWidth;
+    float weight; int firstPass; int lastPass;
+} p;
+
+// A separable B-spline kernel applied in two dimensions with surface compatibility.
+// This is intentionally spatial only: no stale color after lighting edits or motion.
+// Normal, plane distance and diffuse color prevent mixing across geometric/material edges.
+// No radiance clamp or brightness-dependent weight: black visibility samples participate.
+float kernel(int offset) { return offset==0 ? 6.0 : (abs(offset)==1 ? 4.0 : 1.0); }
+void main() {
+    ivec2 xy=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(xy,ivec2(p.width,p.height))))return;
+    int index=xy.y*p.width+xy.x;
+    int base=p.page*p.width*p.height;
+    Surface center=p.surfaces.values[base+index];
+    vec4 original=p.inputPixels.values[index];
+    if(center.normal.w<=0) { p.outputPixels.values[index]=original;return; }
+    vec3 sum=vec3(0);float total=0;
+    for(int y=-2;y<=2;y++)for(int x=-2;x<=2;x++) {
+        ivec2 q=xy+ivec2(x,y)*p.stepWidth;
+        if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,ivec2(p.width,p.height))))continue;
+        int qi=q.y*p.width+q.x;
+        Surface neighbor=p.surfaces.values[base+qi];
+        if(neighbor.normal.w<=0 || dot(center.normal.xyz,neighbor.normal.xyz)<0.95
+            || any(greaterThan(abs(center.albedo.rgb-neighbor.albedo.rgb),vec3(0.02))))continue;
+        vec3 delta=neighbor.position.xyz-center.position.xyz;
+        float planeError=max(abs(dot(delta,center.normal.xyz)),abs(dot(delta,neighbor.normal.xyz)));
+        float planeTolerance=max(0.0001,center.normal.w*0.0002);
+        float w=kernel(x)*kernel(y)*exp(-planeError/planeTolerance);
+        vec3 lighting=p.inputPixels.values[qi].rgb;
+        // Filter only the lighting term. Source colors retain their original sharpness.
+        // Keep the effect weight in this term: dividing it back out would be unstable
+        // for tiny weights and can produce NaNs when the GPU flushes subnormals to zero.
+        if(p.firstPass!=0)lighting-= (1.0-p.weight)*neighbor.source.rgb;
+        sum+=lighting*w;total+=w;
+    }
+    vec3 result=sum/max(total,1e-20);
+    if(p.lastPass!=0)result+=(1.0-p.weight)*center.source.rgb;
+    p.outputPixels.values[index]=vec4(result,original.a);
+}

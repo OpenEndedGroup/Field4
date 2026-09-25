@@ -1,0 +1,7 @@
+instanceExtensions feature=1 result=0x1 count=1
+instanceExtensions feature=13 result=0x1 count=1
+instanceExtensions feature=11 result=0x1 count=1
+device=NVIDIA GeForce RTX 4090
+SuperResolution result=0x1 supportFlags=0 minArch=352 minOS=any
+RayReconstruction result=0x1 supportFlags=0 minArch=352 minOS=any
+FrameGeneration result=0x1 supportFlags=0 minArch=400 minOS=any

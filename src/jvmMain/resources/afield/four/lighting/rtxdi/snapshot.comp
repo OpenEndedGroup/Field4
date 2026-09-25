@@ -1,0 +1,32 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x=8,local_size_y=8) in;
+layout(set=0,binding=0) uniform sampler2D positions;
+layout(set=0,binding=1) uniform sampler2D normals;
+layout(set=0,binding=2) uniform sampler2D albedo;
+layout(set=0,binding=3) uniform sampler2D source;
+struct Surface { vec4 position; vec4 normal; vec4 albedo; vec4 source; vec4 reprojection; };
+layout(buffer_reference,std430) buffer Surfaces { Surface values[]; };
+layout(buffer_reference,std430) readonly buffer Matrices { mat4 view; mat4 previousView; mat4 previousVP; };
+layout(push_constant) uniform Snapshot { Surfaces surfaces; Matrices matrices; int width; int height; int page; } p;
+void main() {
+    ivec2 xy=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(xy,ivec2(p.width,p.height))))return;
+    Surface s;
+    s.position=texelFetch(positions,xy,0);
+    s.normal=vec4(texelFetch(normals,xy,0).xyz,0);
+    s.albedo=texelFetch(albedo,xy,0);
+    s.source=texelFetch(source,xy,0);
+    s.reprojection=vec4(0,0,0,1);
+    if(s.position.w<1 && dot(s.normal.xyz,s.normal.xyz)>0.1) {
+        s.normal.xyz=normalize(s.normal.xyz);
+        s.normal.w=-(p.matrices.view*vec4(s.position.xyz,1)).z;
+        vec4 prevClip=p.matrices.previousVP*vec4(s.position.xyz,1);
+        vec2 previousPixel=(vec2(prevClip.x,-prevClip.y)/prevClip.w*0.5+0.5)*vec2(p.width,p.height)-0.5;
+        // Field raster viewport flips Y for Vulkan. SDK expects previousPixel-currentPixel, pixels.
+        s.reprojection.xy=prevClip.w>0?previousPixel-vec2(xy):vec2(1e6);
+        float previousDepth=-(p.matrices.previousView*vec4(s.position.xyz,1)).z;
+        s.reprojection.z=previousDepth-s.normal.w;
+    }
+    p.surfaces.values[(p.page*p.height+xy.y)*p.width+xy.x]=s;
+}

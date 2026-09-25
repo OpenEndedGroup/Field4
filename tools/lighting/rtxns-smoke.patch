@@ -1,0 +1,16 @@
+diff --git a/samples/SimpleInferencing/SimpleInferencing.cpp b/samples/SimpleInferencing/SimpleInferencing.cpp
+index 717e550..2785955 100644
+--- a/samples/SimpleInferencing/SimpleInferencing.cpp
++++ b/samples/SimpleInferencing/SimpleInferencing.cpp
+@@ -334,2 +334,11 @@ public:
+         GetDevice()->executeCommandList(m_commandList);
++        if (std::getenv("FIELD_RTXNS_SMOKE") && GetFrameIndex()==120) {
++            engine::CommonRenderPasses passes(GetDevice(), m_shaderFactory);
++            const bool saved=engine::SaveTextureToFile(GetDevice(), &passes, framebuffer->getDesc().colorAttachments[0].texture,
++                nvrhi::ResourceStates::RenderTarget, std::getenv("FIELD_RTXNS_SMOKE"), false);
++            GetDevice()->waitForIdle();
++            std::printf("FIELD RTXNS INFERENCE DONE frames=%u gpuMs=%.6f capture=%d\n",GetFrameIndex(),GetDevice()->getTimerQueryTime(m_neuralTimer)*1000.0,saved);
++            std::fflush(stdout);
++            glfwSetWindowShouldClose(GetDeviceManager()->GetWindow(), true);
++        }
+     }

@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-24",
+  "gpuRuns": [
+    {
+      "command": "run-jvm-main afield.four.lighting.RtxdiLightingSmoke --arg=--clip --timeout 540",
+      "ok": true,
+      "validationVuidCount": 0
+    },
+    {
+      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --timeout 300",
+      "ok": true,
+      "validationVuidCount": 0
+    },
+    {
+      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --arg=--fallback --timeout 300",
+      "ok": true,
+      "validationVuidCount": 0
+    }
+  ],
+  "focusedJvmTests": 20,
+  "jvmSkipped": 0,
+  "failedDxcBuildPreservesManifest": true,
+  "scope": "SDK stages/reference, camera, light ID deletion/reorder, instance edits, tiny bright emitters, black materials, bypass/reload, resolution recreation and window resize, baseline and disabled-ray fallback",
+  "log": "build/lighting-experiment/rtxdi-final-run.json",
+  "liveDocument": {
+    "commandsPassed": [
+      "macro write direct_lighting --file dev_docs/agents/transcripts/direct_lighting.yaml",
+      "macro run direct_lighting",
+      "wait-native-renderer agent_graphics_context --frames 12",
+      "native-screenshot public/docs/assets/direct_lighting/rtxdi-live.png --uid agent_graphics_context",
+      "screenshot-box direct_light_lab public/docs/assets/direct_lighting/rtxdi-controls.png --padding 16",
+      "sleep 1",
+      "native-screenshot build/lighting-experiment/rtxdi-live-next.png --uid agent_graphics_context",
+      "launch direct_light_lab",
+      "wait-native-renderer agent_graphics_context --frames 12"
+    ],
+    "sdkActivated": true,
+    "animatedCapturesDiffer": true,
+    "relaunchPassed": true,
+    "validationVuidCountIncludingTeardown": 0
+  },
+  "documentation": {
+    "htmlBuildPassed": true,
+    "localReferencesResolved": 1669,
+    "transcriptBundlePassed": true,
+    "transcriptIndexPassed": true,
+    "assetAuditExistingFailures": [
+      "datalog.md: assets/datalog/box_why.png",
+      "petri_nets.md: assets/petri_nets/language.png"
+    ],
+    "newLightingAssetFailures": 0
+  }
+}

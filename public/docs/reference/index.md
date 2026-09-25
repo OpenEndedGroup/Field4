@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14781 public symbols across 377 source files**, 8684 of them (58%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**14789 public symbols across 379 source files**, 8690 of them (58%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -13,7 +13,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 354 (50%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 31 | 1444 | 1209 (83%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 27 | 638 | 305 (47%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 29 | 646 | 311 (48%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 29 | 873 | 505 (57%) | Making a shape behave. |
@@ -118,6 +118,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [essentiaAnalysis.kt](audio.md#essentiaanalysis-kt) | Audio | 126 | 0 | Readers for two on-disk audio-analysis products, so a box can query them by time. |  |
 | [Evaluator.kt](languages.md#evaluator-kt) | Languages | 25 | 25 | The FieldML runtime: it walks a lowered `CoreExpr` tree and returns the `FieldMLValue` the tree evaluates to. |  |
 | [Expr.kt](languages.md#expr-kt) | Languages | 92 | 3 | FieldML's surface syntax tree: one node per piece of written syntax, each carrying the source range it was parsed from. | [FieldML stage by stage](../fieldml_stages.md), [Rewriting your own syntax](../pattern_rewrite.md) |
+| [FabricateDirectLighting.kt](renderers.md#fabricatedirectlighting-kt) | Renderers | 3 | 3 |  | [Direct lighting](../direct_lighting.md) |
 | [FabricateFrameGraph.kt](renderers.md#fabricateframegraph-kt) | Renderers | 12 | 1 | The renderer's off-screen passes as a named, ordered list, and the one place that order is written into a `RenderTarget`. |  |
 | [FabricateGltfBridge.kt](renderers.md#fabricategltfbridge-kt) | Renderers | 4 | 4 | The glTF side of the fabricated scene model: one call that turns a loaded `GltfSupport.GltfModel` into a `FabricateScene`, and two conversions beside it. |  |
 | [FabricateMaterialLibrary.kt](renderers.md#fabricatemateriallibrary-kt) | Renderers | 17 | 2 | The flattened per-material record a render queue carries, and the table that hands out its ids. |  |
@@ -286,7 +287,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PathTraceEmitterGpuSmoke.kt](renderers.md#pathtraceemittergpusmoke-kt) | Renderers | 2 | 2 | Real GPU checks for `PathTracingRenderer.emitterSampling`, the path tracer's direct sampling of emissive triangles: four scenes, each measured against a number that exists outside this file. |  |
 | [PathTraceGlassDemo.kt](renderers.md#pathtraceglassdemo-kt) | Renderers | 2 | 2 | All four of the path tracer's glass materials in one scene: clear, absorbing, frosted, and a thin pane. |  |
 | [PathTraceGltf.kt](renderers.md#pathtracegltf-kt) | Renderers | 4 | 3 | glTF and GLB into a `PathTraceScene`: hierarchy baked to world space, PBR parameters mapped onto `PathTraceMaterial`, and an extension check that refuses rather than renders the wrong thing. |  |
-| [PathTraceGpuSmoke.kt](renderers.md#pathtracegpusmoke-kt) | Renderers | 6 | 3 | GPU smoke tests and a demo entry point for `PathTracingRenderer`. | [Progressive path tracing](../path_tracing.md) |
+| [PathTraceGpuSmoke.kt](renderers.md#pathtracegpusmoke-kt) | Renderers | 8 | 4 | GPU smoke tests and a demo entry point for `PathTracingRenderer`. | [Progressive path tracing](../path_tracing.md) |
 | [PathTraceInstrument.kt](renderers.md#pathtraceinstrument-kt) | Renderers | 53 | 23 | The path tracer's instrument: what it is doing, why it restarted, and how fast it is converging. | [Progressive path tracing](../path_tracing.md) |
 | [PathTraceMediumGpuSmoke.kt](renderers.md#pathtracemediumgpusmoke-kt) | Renderers | 6 | 6 | Real GPU checks for the path tracer's participating medium: `PathTracingRenderer.mediumDensity` and everything that is sampled along a ray rather than at a surface. |  |
 | [PathTraceScene.kt](renderers.md#pathtracescene-kt) | Renderers | 23 | 6 | What the path tracer traces: triangles, materials, textures and an environment map, all as plain Kotlin with no device attached. | [Progressive path tracing](../path_tracing.md), [A polytope, cut open, and traced](../chain_polytope_render.md) |
@@ -327,6 +328,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. | [Python in a box](../python.md) |
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 53 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Measuring dependence between two signals](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Flow Matching](../flow_matching.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
+| [RayTracingGpuAudit.kt](renderers.md#raytracinggpuaudit-kt) | Renderers | 3 | 2 |  |  |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [RectSL.kt](languages.md#rectsl-kt) | Languages | 556 | 40 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |

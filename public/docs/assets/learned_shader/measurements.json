@@ -1,0 +1,62 @@
+{
+  "cooperativeVectorInferenceEnabled": true,
+  "opticalFlowEnabled": true,
+  "enabledExtensions": [
+    "VK_KHR_swapchain",
+    "VK_NV_optical_flow",
+    "VK_NV_cooperative_vector",
+    "VK_EXT_shader_replicated_composites",
+    "VK_KHR_dynamic_rendering",
+    "VK_KHR_depth_stencil_resolve",
+    "VK_KHR_create_renderpass2",
+    "VK_KHR_separate_depth_stencil_layouts",
+    "VK_KHR_push_descriptor",
+    "VK_KHR_maintenance7",
+    "VK_EXT_dynamic_rendering_unused_attachments",
+    "VK_KHR_16bit_storage",
+    "VK_KHR_external_memory",
+    "VK_KHR_external_memory_fd",
+    "VK_EXT_external_memory_dma_buf",
+    "VK_EXT_image_drm_format_modifier",
+    "VK_EXT_queue_family_foreign",
+    "VK_EXT_present_timing",
+    "VK_KHR_present_id2",
+    "VK_KHR_calibrated_timestamps",
+    "VK_KHR_shader_non_semantic_info",
+    "VK_EXT_extended_dynamic_state",
+    "VK_EXT_extended_dynamic_state3",
+    "VK_KHR_multiview",
+    "VK_NVX_binary_import",
+    "VK_NVX_image_view_handle",
+    "VK_KHR_buffer_device_address"
+  ],
+  "cooperativeVectorTrainingEnabled": false,
+  "arithmetic": {
+    "allocatedBytes": 68570496,
+    "cpuMaxError": 3.5762787E-7,
+    "originalGpuMs": {
+      "count": 100,
+      "p50": 0.2624,
+      "p95": 0.269344
+    },
+    "learnedGpuMs": {
+      "count": 100,
+      "p50": 5.62592,
+      "p95": 5.670848
+    }
+  },
+  "cooperative": {
+    "allocatedBytes": 68570496,
+    "cpuMaxError": 9.133816E-4,
+    "originalGpuMs": {
+      "count": 100,
+      "p50": 0.26272,
+      "p95": 0.268064
+    },
+    "learnedGpuMs": {
+      "count": 100,
+      "p50": 0.266816,
+      "p95": 0.276608
+    }
+  }
+}

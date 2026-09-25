@@ -69,7 +69,7 @@ picture on disk is a true capture of it. Concretely:
   (`docs_hooks.py#if options.screenshot and screenshot_succeeded`), and the error path leaves that
   flag false, so no `![…]` is ever written. The log line reads `capture FAILED, falling back to
   committed asset on disk`, which is true of the *file* and not of the *page*. Measured on
-  `ray_tracing_examples.md`, whose four figures no Mac can render: forcing all four captures
+  `ray_tracing_examples.md` on a device without the required ray-tracing features: forcing all four captures
   produced a built page with **zero** `<img>` elements, while the same page built with
   `FIELD_DOCS_RUNNER_MODE=never` emitted all four. A normal build is unaffected, because `never`
   and a cache hit both take the branch that only asks whether the file exists. So do not review, or
@@ -82,67 +82,44 @@ picture on disk is a true capture of it. Concretely:
 
 Prefer building the wrapper when the figure is what you are changing. Skipping is for when it is not.
 
-## Captures with a *platform* prerequisite — macOS cannot produce these at all
+## Captures with a device-feature prerequisite
 
-The Ceres case above is a prerequisite you can satisfy: run a Gradle task and the figure comes
-out. Ray tracing is the other kind. `Device.kt#supportsRayTracing = enableRayTracing` takes its
-value from a conjunction carrying an unconditional `!Options.isMac`, so no command, flag, property
-or environment variable makes these four captures possible on a Mac; every render method instead
-reaches `RayTracingDocsHarness.kt#private fun rayTracingUnavailable`, which throws rather than
-writing a stand-in. An agent on this machine cannot pay this debt however long it tries.
+If unrelated local private sources prevent `runJvm`, the docs runner accepts explicit extra
+Gradle arguments, for example
+`FIELD_DOCS_RUNNER_GRADLE_ARGS='-x compilePersonalKotlinJvm -x personalJar'`.
+This is opt-in and logged; it does not alter normal builds. Environment-checked captures require
+a runner-owned server, so manually starting a server with those exclusions is not sufficient.
+An existing private JAR may still load. Do not use this to exclude the public sources being tested.
 
-| page | assets | prerequisite |
-|---|---|---|
-| `public/docs/ray_tracing_examples.md` | `assets/rt-uv-gradient.png`, `assets/rt-triangle-scene.png`, `assets/rt-shader-tiles.png`, `assets/rt-mirror-balls.png` | a **Linux** device exposing `VK_KHR_ray_tracing_pipeline` |
+As of 2026-09-24, ray tracing is negotiated from supported device extensions and feature bits,
+without the former OS/vendor gate. The four figures in `ray_tracing_examples.md` are now real
+RTX 4090 captures, verified through Field's raygen, triangle, procedural intersection and shader
+binding table paths. `KNOWN_PLACEHOLDERS` is empty; the pixel detector remains enforced.
 
-The gate is in Field, not in the driver:
+A device must enable `VK_KHR_ray_tracing_pipeline` to regenerate these particular figures.
+A compute path tracer using `VK_KHR_ray_query` needs a different feature set; Field probes the two
+independently. An unsupported device can build HTML from committed figures with runner mode
+`never`. These ten path-tracing/gallery fences now also carry `capture-profile="linux-nvidia"`:
+all runner modes retain their committed assets by default. Recapture requires explicit
+`FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia` on Linux; macOS retains them even if that variable is set.
+Missing retained media is a build error, never an invitation to generate a fallback replacement.
+The explicit profile is a capture-host assertion, not a substitute for checking enabled GPU features.
+The newer lighting/reconstruction/optical-flow/learned-shader pages use committed media and separate
+GPU verification/publishing helpers, which ordinary docs builds never invoke. Regression tests in
+`tools/test_neural_docs_gating.py` exercise the actual pages under simulated macOS `always` mode.
+See [the complete policy](lighting/NEURAL_TOOLS.md#docs-on-machines-without-rtx).
+Neither a Vulkan version nor Metal hardware support
+establishes that a Vulkan-to-Metal driver implements these extensions.
 
-```kotlin
-// Device.kt
-enableRayTracing = Options.enableRayTracing && !Options.isMac && rayFeatureProbe.pipeline
-```
+The former four permissive box-screenshot tests (which allowed execution errors and missing
+output) have been replaced by `four.raytracing.gpu-audit`. It reads actual GPU pixels and checks
+UV coordinates, triangle barycentrics, checker geometry and captures. The audit always exercises
+the compute path tracer, additionally exercises ray queries when enabled, and explicitly records
+an unsupported pipeline as skipped. Use its `--require-ray-query --require-pipeline` flags for a
+hardware acceptance run. See [the NVIDIA audit](RAY_TRACING_AUDIT.md) for commands and evidence.
 
-`!Options.isMac` is unconditional, and `Options.enableRayTracing` itself defaults to `!isMac`.
-The device never reaches `rayFeatureProbe`, so this is not a MoltenVK capability question that a
-driver update could change — though MoltenVK does not expose the extension either. The gate
-arrived in `03ad66360`, the commit that added ray tracing, so ray tracing has never once been
-enabled on macOS in this project.
-
-Every `RayTracingDocsHarness` render method therefore reaches `rayTracingUnavailable`, which
-**throws and writes nothing**. That refusal is deliberate and recent. The harness used to write a
-"Ray Tracing / Not Available" card instead, and on 2026-07-09 four of those cards were committed
-as this page's figures under prose claiming they were renders — a placeholder is a perfectly valid
-PNG, so nothing in the build could tell.
-
-**What holds the line now.** `KNOWN_PLACEHOLDERS` in `tools/check_doc_assets.py` carries the four
-paths. They are reported on every run and do not gate, so docs stay buildable; but
-`tools/test_check_doc_assets.py` fails if an entry outlives the placeholder it names, so the list
-cannot quietly become permanent. Any placeholder *not* on that list fails immediately. Run the
-checker to see the current position — it prints `KNOWN GAP — 4 published figure(s) are still
-placeholder cards` and still exits 0.
-
-**Two traps specific to this page.**
-
-- **`citationGates` is vacuous here.** `ray_tracing_examples.md` is not in
-  `CitationContractTest.GUARDED_PAGES`. That map holds **35** entries, **13** of them under
-  `public/docs/` — including `gpu_state.md`, the sibling GPU page — so "it only guards `dev_docs`"
-  is not the reason this page is uncovered; the reason is simply that nobody added it. A green
-  `citationGates` says nothing about this page, so do not quote it as cover for an edit here.
-  Re-derive with `grep -oE '"public/docs/[a-z_]+\.md"' src/jvmTest/kotlin/afield/docs/CitationContractTest.kt | sort -u | wc -l`.
-- **The page's only test coverage is the four fences, and all four `skipOn: [darwin]`.** They are
-  the entire ray tracing test population: no file under `src/jvmTest` mentions ray tracing at all,
-  and these four are the *only* `skipOn: [darwin]` entries in the whole `discover_field_tests.py`
-  corpus. On a Mac, coverage of everything this page teaches is zero, and nothing local
-  compensates.
-
-**What a macOS agent should do instead.** The pictures are unavailable; the code is not. The page
-prints fifteen GLSL and Kotlin excerpts — nineteen fences, of which four are the
-`diffstatic_runner` captures — and asserts the harness runs them, and that is checkable by
-reading `RayTracingDocsHarness.kt` — the shader sources are `val` constants near the bottom of the
-file, so the excerpts can be compared directly against what compiles. Drift found that way is a
-real defect on a page whose figures cannot back it up. Correcting prose to match the *code* is
-always allowed; what the section above forbids is the opposite move, editing prose to match a
-*picture* you did not regenerate.
+The docs capture snippets resolve their renderer before starting coroutine work and wait for the
+completion marker. Citation gates and a PNG's existence are not substitutes for GPU assertions.
 
 ## Decision guide (what works today)
 

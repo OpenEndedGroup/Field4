@@ -186,7 +186,12 @@ fun PathTracingRenderer.status(): PathTraceStatus {
             "fogDensity" to fogDensity,
             "fogStartDistance" to fogStartDistance,
             "fogColor" to fogColor,
-            "fogBackground" to fogBackground
+            "fogBackground" to fogBackground,
+            "emitterSampling" to emitterSampling,
+            "mediumDensity" to mediumDensity,
+            "mediumAlbedo" to mediumAlbedo,
+            "mediumAnisotropy" to mediumAnisotropy,
+            "mediumBounds" to mediumBounds
         ),
         recorded = convergence?.summary
     )
@@ -271,7 +276,7 @@ internal fun pathTraceStatusHtml(s: PathTraceStatus): String {
  * tracer's own sub-objects.
  *
  * Deliberately a superset of the reflective tree it replaces. `H2Reflect` was already showing all
- * 33 public properties, flat; this shows the same values grouped, adds the derived camera basis and
+ * public properties, flat; this shows the same values grouped, adds the derived camera basis and
  * the reset bookkeeping that are not properties at all, and keeps the four heavyweight sub-objects
  * under `objects` so each still resolves onto its own `FourVisualizers` printer when clicked.
  * [objects] is passed in rather than read here so this function stays deviceless.

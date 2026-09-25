@@ -1,0 +1,28 @@
+{
+  "jvm": [
+    {
+      "name": "ReconstructionTest[jvm]",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "OpticalFlowFormatTest[jvm]",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "RtxdiTest[jvm]",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "pythonDatasetChecks": 4,
+  "transcripts": 156,
+  "materializedStartingPoints": 151
+}

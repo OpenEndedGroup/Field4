@@ -31,18 +31,16 @@ start(renderer::run)
 <!-- field-box id="path_trace_hidden_environment" index="1" -->
 
 ```edn [field-box id="path_trace_hidden_environment" role="properties"]
-{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 20 "characters" 873 "sha256" "1a865dc90ee9340dfff728bb1ef4b5e4fbd7422902e233fed18e849f3d929f4f"}]}
+{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 18 "characters" 835 "sha256" "73c76e92d317480d52b092d121ffff046b225e2a0358a9bd90a2a93ea99e0c1e"}]}
 ```
 
 ```kotlin [field-property box="path_trace_hidden_environment" name="code" path="path_trace_hidden_environment_code_.kt"]
 import afield.four.fabricated.PathTraceDemo
 import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
 import java.io.File
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceDemo.install(renderer,
-    File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceDemo.install(renderer, width=1280, height=720,
+    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.

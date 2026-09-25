@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-24",
+  "standaloneChecks": [
+    {
+      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --timeout 300",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "vulkanValidationVUIDs": [],
+      "completion": [
+        "DIRECT LIGHTING CHECK DONE"
+      ]
+    },
+    {
+      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --arg=--fallback --timeout 300",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "vulkanValidationVUIDs": [],
+      "completion": [
+        "DIRECT LIGHTING CHECK DONE"
+      ]
+    },
+    {
+      "command": "run-jvm-main afield.examples.DemoTranscriptExecSmokeTest --arg=direct_lighting --timeout 180",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "vulkanValidationVUIDs": [],
+      "completion": [
+        "DemoTranscriptExecSmokeTest ok \u2014 1 demos verified (82 executed, 60 compiled, 7 kotlinjs)"
+      ]
+    }
+  ],
+  "focusedJvmTests": {
+    "tests": 7,
+    "failures": 0,
+    "treeWriteGuard": "clean"
+  },
+  "liveDemo": {
+    "launch": true,
+    "animationFramesDiffer": true,
+    "relaunch": true,
+    "detachVulkanValidationVUIDs": []
+  }
+}

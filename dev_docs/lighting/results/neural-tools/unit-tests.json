@@ -1,0 +1,20 @@
+[
+  {
+    "name": "OpticalFlowFormatTest[jvm]",
+    "tests": "2",
+    "failures": "0",
+    "errors": "0"
+  },
+  {
+    "name": "ReconstructionTest[jvm]",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0"
+  },
+  {
+    "name": "RtxdiTest[jvm]",
+    "tests": "3",
+    "failures": "0",
+    "errors": "0"
+  }
+]

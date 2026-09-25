@@ -1,0 +1,46 @@
+{
+  "rawMse": 4.227742230383461E-4,
+  "workingBytes": 274762304,
+  "spatialNeighbors": 8,
+  "gpuMilliseconds": {
+    "temporalReuse": {
+      "count": 96,
+      "p50": 3.258112,
+      "p95": 3.269152
+    },
+    "surfaceSnapshot": {
+      "count": 96,
+      "p50": 0.880128,
+      "p95": 1.109664
+    },
+    "visibilityShading": {
+      "count": 96,
+      "p50": 1.772096,
+      "p95": 1.77856
+    },
+    "initialCandidates": {
+      "count": 96,
+      "p50": 2.039424,
+      "p95": 2.072128
+    },
+    "spatialReuse": {
+      "count": 96,
+      "p50": 2.218016,
+      "p95": 2.230912
+    },
+    "reconstruction": {
+      "count": 96,
+      "p50": 5.080256,
+      "p95": 5.141504
+    }
+  },
+  "candidates": 16,
+  "reconstructedMse": 1.8077531944848308E-5,
+  "width": 1280,
+  "denoisePasses": 3,
+  "referenceSamples": 4096,
+  "raw64FrameMeanMse": 1.7668125270720295E-5,
+  "referenceMean": 0.19955449481125156,
+  "reconstructedMean": 0.19962428583328573,
+  "height": 720
+}

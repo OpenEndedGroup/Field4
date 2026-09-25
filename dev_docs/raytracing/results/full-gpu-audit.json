@@ -1,0 +1,115 @@
+{
+  "capabilities": {
+    "rgb32fAccelerationVertices": true,
+    "queueTimestampValidBits": [
+      64,
+      64,
+      64,
+      32,
+      32,
+      64
+    ],
+    "enabled": {
+      "extensions": [
+        "VK_EXT_dynamic_rendering_unused_attachments",
+        "VK_EXT_extended_dynamic_state",
+        "VK_EXT_extended_dynamic_state3",
+        "VK_EXT_external_memory_dma_buf",
+        "VK_EXT_image_drm_format_modifier",
+        "VK_EXT_present_timing",
+        "VK_EXT_queue_family_foreign",
+        "VK_KHR_16bit_storage",
+        "VK_KHR_acceleration_structure",
+        "VK_KHR_calibrated_timestamps",
+        "VK_KHR_create_renderpass2",
+        "VK_KHR_deferred_host_operations",
+        "VK_KHR_depth_stencil_resolve",
+        "VK_KHR_dynamic_rendering",
+        "VK_KHR_external_memory",
+        "VK_KHR_external_memory_fd",
+        "VK_KHR_maintenance7",
+        "VK_KHR_multiview",
+        "VK_KHR_present_id2",
+        "VK_KHR_push_descriptor",
+        "VK_KHR_ray_query",
+        "VK_KHR_ray_tracing_pipeline",
+        "VK_KHR_separate_depth_stencil_layouts",
+        "VK_KHR_shader_float_controls",
+        "VK_KHR_shader_non_semantic_info",
+        "VK_KHR_spirv_1_4",
+        "VK_KHR_swapchain"
+      ],
+      "accelerationStructure": true,
+      "rayQuery": true,
+      "rayTracingPipeline": true,
+      "bufferDeviceAddress": true
+    },
+    "driverInfo": "610.43.02",
+    "apiVersion": "1.4.341",
+    "java": "25.0.2+10-jvmci-b01",
+    "driver": "NVIDIA",
+    "maxStorageBufferRange": 4294967295,
+    "maxPushConstantsSize": 256,
+    "timestampPeriodNs": 1,
+    "device": "NVIDIA GeForce RTX 4090",
+    "limits": {
+      "maxPerStageAccelerationStructures": 1048576,
+      "maxDescriptorSetAccelerationStructures": 1048576,
+      "maxInstanceCount": 16777215,
+      "maxGeometryCount": 16777215,
+      "scratchAlignment": 128,
+      "maxPrimitiveCount": 536870911
+    },
+    "supported": {
+      "deferredHostOperations": true,
+      "accelerationStructure": true,
+      "rayQuery": true,
+      "rayTracingPipeline": true,
+      "bufferDeviceAddress": true
+    }
+  },
+  "stages": [
+    {
+      "stage": "seams",
+      "elapsedSeconds": 2.731838054,
+      "status": "PASS"
+    },
+    {
+      "stage": "base",
+      "elapsedSeconds": 154.414834814,
+      "status": "PASS"
+    },
+    {
+      "stage": "camera",
+      "elapsedSeconds": 22.486584338,
+      "status": "PASS"
+    },
+    {
+      "stage": "temporal",
+      "elapsedSeconds": 34.199397401,
+      "status": "PASS"
+    },
+    {
+      "stage": "fog",
+      "elapsedSeconds": 3.449496063,
+      "status": "PASS"
+    },
+    {
+      "stage": "pipeline",
+      "elapsedSeconds": 12.181666124,
+      "status": "PASS"
+    },
+    {
+      "stage": "emitters",
+      "elapsedSeconds": 412.427186079,
+      "status": "PASS"
+    },
+    {
+      "stage": "medium",
+      "elapsedSeconds": 1416.458406412,
+      "status": "PASS"
+    }
+  ],
+  "startedAt": "2026-09-24T18:53:10.747963259Z",
+  "complete": true
+}

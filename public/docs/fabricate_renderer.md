@@ -1,5 +1,7 @@
 # Fabricate Renderer
 
+For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct lighting](direct_lighting.md).
+
 [`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer) is the quick path into the fabricated renderer: a scene you have only registered geometry into comes back lit, shadowed and ambient-occluded by the stock setup, so the first picture you get is one you can judge. Metalness changes the material, shadows land where objects touch the ground, and ambient occlusion darkens contacts rather than adding noise. Tone mapping is the one thing you have to ask for — see [Tone mapping and bloom](#tone-mapping-and-bloom).
 
 This page shows the renderer working. The [Renderers](reference/renderers.md) reference page is the other half of it: every public declaration in the fabricated package with the KDoc that sits beside it in the source, including the scene graph and pass machinery the examples below reach through, and the two renderers this page does not cover — the progressive path tracer and the Gaussian splat renderer.

@@ -1,0 +1,55 @@
+{
+  "commandsPassed": 12,
+  "vulkanValidationErrors": 0,
+  "completionMarker": "MODULE SHADER LEARNING CHECK DONE",
+  "modelDirectory": "/home/marc/Field4/build/shader-learning/module-1790343661755/model",
+  "training": {
+    "schema": 1,
+    "shape": [
+      16,
+      32,
+      32,
+      3
+    ],
+    "offsets": [
+      0,
+      1024,
+      1088,
+      3136,
+      3200,
+      3392
+    ],
+    "matrixLayout": "row-major",
+    "dtype": "float16 little-endian",
+    "alignment": 64,
+    "seed": 4090,
+    "steps": 12000,
+    "batch": 512,
+    "validationSamples": 26624,
+    "validationMse": 2.911868978117127e-05,
+    "sha256": "72d8295e92eb5dc5f81609e78aee1330c2e8ecd1a22b6fba7d3f732566901062",
+    "trainingSeconds": 3.1438454420000426,
+    "numpyVersion": "2.5.3",
+    "pythonVersion": "3.14.6",
+    "trainerSha256": "2514f4284f12debebcd4ea372fe90750e61c9e8daae01f95acf9309b4571e46a",
+    "sourceKind": "captured-module",
+    "sourceShaderDigest": "990a414e09dcc0540f920ed2347f0262409c6bec16dabae4cad53dc363461bdc",
+    "parameterRange": [
+      -1,
+      1
+    ],
+    "fixedState": "Fixed camera, geometry, textures and all other uniforms",
+    "resolution": [
+      1920,
+      1080
+    ],
+    "datasetSha256": "6486e1ac1705f2ce4cf7860142f9020392a8b86cc548164990a8a5e854104599",
+    "validation": "held-out parameter slices; measured after FP16 weight conversion",
+    "validationP95AbsoluteError": 0.010663703083992004,
+    "validationMaxAbsoluteError": 0.03053039312362671,
+    "validationTargetRange": [
+      0.17608940601348877,
+      0.8259760141372681
+    ]
+  }
+}

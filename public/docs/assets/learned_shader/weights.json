@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "shape": [
+    16,
+    32,
+    32,
+    3
+  ],
+  "offsets": [
+    0,
+    1024,
+    1088,
+    3136,
+    3200,
+    3392
+  ],
+  "matrixLayout": "row-major",
+  "dtype": "float16 little-endian",
+  "alignment": 64,
+  "seed": 4090,
+  "steps": 6000,
+  "batch": 512,
+  "validationSamples": 8192,
+  "validationMse": 0.0003262809186708182,
+  "sha256": "8b109d359438d0f5a7cbcb1e45bfc103dfa114a3a03cef1cfa9d5666183b72ea"
+}

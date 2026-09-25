@@ -53,6 +53,8 @@ data class RTTParameters(
     // Useful for mirroring / copying into OpenXR swapchains.
     var colorTransferSrc: Boolean = true,
     var colorTransferDst: Boolean = false,
+    /** Opt in when an external compute pass writes the color attachment as a storage image. */
+    var colorStorage: Boolean = false,
 
     // Automatic mip generation for color (when mipLevels > 1)
     var generateColorMipmaps: Boolean = true,
@@ -626,6 +628,7 @@ open class RenderToTexture(
                     .arrayLayers(colorLayerCount.coerceAtLeast(1))
                     .usage(
                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT or
+                                (if (this.parameters.colorStorage) VK_IMAGE_USAGE_STORAGE_BIT else 0) or
                                 (if (this.parameters.colorSampled) VK_IMAGE_USAGE_SAMPLED_BIT else 0) or
                                 (if (this.parameters.colorTransferSrc || needsMipTransfers) VK_IMAGE_USAGE_TRANSFER_SRC_BIT else 0) or
                                 (if (this.parameters.colorTransferDst || needsMipTransfers) VK_IMAGE_USAGE_TRANSFER_DST_BIT else 0)

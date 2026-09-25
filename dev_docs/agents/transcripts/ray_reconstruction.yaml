@@ -1,0 +1,65 @@
+name: ray_reconstruction
+description: Compare raw RTXDI, spatial filtering, DLAA and DLSS Ray Reconstruction at 1080p.
+operations:
+- create:
+    box: agent_graphics_context
+    name: renderer
+    frame:
+      x: 40.0
+      y: 40.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
+        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
+        Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+- launch:
+    box: agent_graphics_context
+    property: code
+    type: code
+    strand: renderer
+    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
+      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
+      Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+- wait:
+    frames: 3
+- create:
+    box: ray_reconstruction
+    name: ray reconstruction
+    frame:
+      x: 400.0
+      y: 160.0
+      w: 420.0
+      h: 100.0
+    properties:
+      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.reconstruction.*\nimport\
+        \ afield.four.modules.fromContextWithNameOrNull\n\nprop<RayReconstructionDemo>(lab)\nfromContextWithNameOrNull<RayReconstructionDemo>(\"\
+        lab\")?.close()\nNgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()\nlab = RayReconstructionDemo(renderer)\n\
+        var requested = 3\nvar animate = true\nvar camera = true\nvar cut = false\ncontrolGroup(\"ray reconstruction\"\
+        ) {\n    slider(\"0: Raw · 1: Spatial · 2: Spatial + DLAA · 3: RR\", min=0.0,max=3.0,step=1.0,initialValue=3.0)\
+        \ { requested=it.toInt() }\n    checkbox(\"Move light\",initialValue=true) { animate=it }\n    checkbox(\"\
+        Move camera\",initialValue=true) { camera=it }\n    button(\"Cut / reset history\") { if(it)cut=true }\n\
+        }\ndisplayOpen(\"ray reconstruction\")\nprintln(\"1920 × 1080. RR consumes raw RTXDI. The spatial filter\
+        \ and DLAA are alternative paths.\")\nframes {\n    while(true) {\n        lab.path=RayReconstructionDemo.Path.entries[requested]\n\
+        \        lab.animate=animate;lab.cameraMotion=camera\n        if(cut){lab.time+=4;lab.reset(\"live cut\"\
+        );cut=false}\n        frame()\n    }\n}.end { lab.close() }\n"
+- connect:
+    parent: agent_graphics_context
+    child: ray_reconstruction
+- launch:
+    box: ray_reconstruction
+    property: code
+    type: code
+    strand: scene
+    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.reconstruction.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
+      \nprop<RayReconstructionDemo>(lab)\nfromContextWithNameOrNull<RayReconstructionDemo>(\"lab\")?.close()\nNgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()\n\
+      lab = RayReconstructionDemo(renderer)\nvar requested = 3\nvar animate = true\nvar camera = true\nvar cut =\
+      \ false\ncontrolGroup(\"ray reconstruction\") {\n    slider(\"0: Raw · 1: Spatial · 2: Spatial + DLAA · 3:\
+      \ RR\", min=0.0,max=3.0,step=1.0,initialValue=3.0) { requested=it.toInt() }\n    checkbox(\"Move light\",initialValue=true)\
+      \ { animate=it }\n    checkbox(\"Move camera\",initialValue=true) { camera=it }\n    button(\"Cut / reset\
+      \ history\") { if(it)cut=true }\n}\ndisplayOpen(\"ray reconstruction\")\nprintln(\"1920 × 1080. RR consumes\
+      \ raw RTXDI. The spatial filter and DLAA are alternative paths.\")\nframes {\n    while(true) {\n        lab.path=RayReconstructionDemo.Path.entries[requested]\n\
+      \        lab.animate=animate;lab.cameraMotion=camera\n        if(cut){lab.time+=4;lab.reset(\"live cut\");cut=false}\n\
+      \        frame()\n    }\n}.end { lab.close() }\n"
+- wait:
+    frames: 12

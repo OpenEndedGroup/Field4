@@ -203,6 +203,12 @@ nav:
       - Aperture Playground: aperture_playground.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
+      - Direct Lighting: direct_lighting.md
+      - Neural Reconstruction: neural_reconstruction.md
+      - Ray Reconstruction: ray_reconstruction.md
+      - From Modules to Reconstruction: reconstruction_plumbing.md
+      - Optical Flow: optical_flow.md
+      - A Learned Shader Function: learned_shader.md
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md

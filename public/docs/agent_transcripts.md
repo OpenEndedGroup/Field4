@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 148 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 157 transcripts on every build, at three
 depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-59 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+68 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2251,7 +2251,77 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/youtube_vr_browser/metadata.edn)
 
+### direct_lighting
+
+A floor and three boxes lit by one animated rectangle, using Fabricate's raster G-buffer and a
+compute ray query for each shadow sample. Switch the original renderer, unshadowed lighting and
+opaque ray-query shadows without restarting. Controls expose sample budget, radiance, light phase,
+effect weight and diagnostics; the native window has a keyboard camera. The independent GPU smoke
+compares 8-sample ensembles against 256-sample references and checks transforms and shader rollback.
+After the optional SDK build, the same [direct-lighting scene](direct_lighting.md) adds real RTXDI
+initial, temporal and spatial resampling, multiple stable-ID lights, reference comparison and history controls.
+The scene renders at 1280 × 720; surface-guided reconstruction is enabled, with a switch back to raw lighting.
+
+![Direct lighting with sixteen area emitters](assets/direct_lighting/rtxdi-reconstructed.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
+
+### neural_reconstruction
+
+Compare the unmodified source, native-resolution DLAA, and two DLSS Super Resolution modes at
+1920 × 1080. Thin crossing geometry, textured surfaces and moving highlights expose edge behavior;
+a second scene adds flat colors, procedural animation and particles. Edit the box's vertex/fragment
+shaders and reload transactionally. The Starting Point works in source mode without the optional NGX
+library. See [Neural Reconstruction](neural_reconstruction.md) for setup and measured comparisons.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/neural_reconstruction/metadata.edn)
+
+### ray_reconstruction
+
+Compare raw RTXDI, Field's spatial filter, spatial filtering plus DLAA, and Ray Reconstruction at
+1920 × 1080. A moving light, camera cuts and instance edits expose the difference between denoising
+and temporal reconstruction. Requires the optional NGX and RTXDI builds.
+See [Ray Reconstruction](ray_reconstruction.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ray_reconstruction/metadata.edn)
+
+### optical_flow
+
+Turn two images into a GPU motion field, inspect vectors and hardware cost, and drive a feedback
+image with the result. The known-translation setting verifies direction and pixel units; deformation
+makes a more exploratory instrument. Requires enabled Vulkan optical flow.
+See [Optical Flow](optical_flow.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/optical_flow/metadata.edn)
+
+### optical_flow_pingpong
+
+Render one editable shader into `PingPongRenderToTexture`, compare the previous and latest frames,
+then sample the resulting motion texture in a second `moduleHere()` box. Pause and reset make the
+frame ordering visible. Requires enabled Vulkan optical flow.
+See [Optical Flow](optical_flow.md#keep-the-previous-frame-with-ping-pong).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/optical_flow_pingpong/metadata.edn)
+
+### learned_shader
+
+Render a user-trained RGB function using ordinary arithmetic or cooperative vectors. Compare it with
+the original and an amplified error view, then reload frozen weights at a frame boundary.
+Requires the optional Slang shader build. See [A Learned Shader Function](learned_shader.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/learned_shader/metadata.edn)
+
+### learned_from_module
+
+Capture the output of an editable `moduleHere()` shader, train a small network in a separate CPU
+process, and compare the original with its learned replacement and error view. The model learns
+screen coordinates and one parameter; all other scene state stays fixed.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/learned_from_module/metadata.edn)
+
+
 ### path_tracing_camera
+
 
 A keyboard-controlled perspective camera with subpixel antialiasing
 and thin-lens depth of field. The middle sphere stays sharp while the nearer and farther spheres
@@ -2549,6 +2619,19 @@ bit-identity rather than a tolerance, and the captured frames are under
 `dev_docs/agents/evidence/skinning/` and `dev_docs/agents/evidence/gpu_skinning/`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/skinned_characters/metadata.edn)
+
+### reconstruction_plumbing
+
+The explicit `moduleHere()` → three `RenderToTexture` attachments → DLAA/SR pipeline, with source bypass and history reset. Read [From modules to reconstruction](reconstruction_plumbing.md) alongside its editable Kotlin and shaders. Requires a Vulkan window; NGX is optional and unavailable machines display the source.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/reconstruction_plumbing/metadata.edn)
+
+### rr_plumbing
+
+The same pass ordering extended to raw RTXDI and five RR guide attachments. The editable `moduleHere()` shader translates Field's motion and Lambertian surface data. Requires the optional RTXDI and NGX builds and an RR-capable Vulkan device. See the [capstone walkthrough](reconstruction_plumbing.md#extend-the-graph-to-ray-reconstruction).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rr_plumbing/metadata.edn)
+
 
 ## Graphics building blocks
 

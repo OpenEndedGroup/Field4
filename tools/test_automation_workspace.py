@@ -90,11 +90,17 @@ class AutomationWorkspaceTests(unittest.TestCase):
 
             process = mock.Mock()
             process.poll.return_value = None
-            with mock.patch.dict(os.environ, {docs_hooks.RUNNER_WORKSPACE_ENV: ""}):
+            with mock.patch.dict(os.environ, {
+                docs_hooks.RUNNER_WORKSPACE_ENV: "",
+                docs_hooks.RUNNER_GRADLE_ARGS_ENV: '-x compilePersonalKotlinJvm -x personalJar "-Pnote=two words"',
+            }):
                 with mock.patch.object(docs_hooks.subprocess, "Popen", return_value=process) as spawn:
                     self.assertIsNone(runner._start_shared_field_server_once())
 
             command, kwargs = spawn.call_args
+            self.assertEqual(command[0][1:7], [
+                "runJvm", "-x", "compilePersonalKotlinJvm", "-x", "personalJar", "-Pnote=two words",
+            ])
             self.assertIn(
                 f"--args=--workspace {automation_workspace(root)}",
                 command[0],

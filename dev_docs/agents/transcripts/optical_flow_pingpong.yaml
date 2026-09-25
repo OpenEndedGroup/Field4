@@ -1,0 +1,170 @@
+name: optical_flow_pingpong
+description: An editable moduleHere source, two ping-pong frames, hardware optical flow, and a shader sampling its
+  motion texture.
+operations:
+- create:
+    box: agent_graphics_context
+    name: renderer
+    frame:
+      x: 40.0
+      y: 40.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
+        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
+        Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+- launch:
+    box: agent_graphics_context
+    property: code
+    type: code
+    strand: renderer
+    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
+      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
+      Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+- wait:
+    frames: 3
+- create:
+    box: optical_flow_pingpong
+    name: optical_flow_pingpong
+    frame:
+      x: 400.0
+      y: 40.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.device.CommandBuffer\nimport\
+        \ afield.four.device.Fence\nimport afield.four.modules.fromContextWithNameOrNull\nimport afield.four.targets.PingPongRenderToTexture\n\
+        import afield.four.texture.HasImageView\nimport afield.four.vision.OpticalFlow\nimport afield.stdlib.linalg.Vector2f\n\
+        import org.lwjgl.system.MemoryStack\nimport org.lwjgl.vulkan.VK13.*\n\nprop<AutoCloseable>(flowSession)\n\
+        fromContextWithNameOrNull<AutoCloseable>(\"flowSession\")?.close()\ncheck(renderer.device.supportsOpticalFlow)\
+        \ { \"This device has no enabled VK_NV_optical_flow.\" }\n\n// One editable module, two retained frames.\
+        \ Rendering rotates the ring automatically.\nprop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer)\
+        \ {\n    width=960; height=540; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT\n}\nval scene = moduleHere\
+        \ { history.apply(); depthTest=false; depthWrite=false; blend=false }\nval triangle = Mesh(renderer,scene)\n\
+        triangle.resize(3,0,scene)\ntriangle.push.setMembers(scene.current.fi.pushConstants.single().members)\n\
+        scene += \"image\" to triangle\nhistory += \"image\" to scene\n\n// These providers follow the ring. Do\
+        \ not snapshot their .imageView handles.\nprop<HasImageView>(previousImage) = history.previousImageView\n\
+        prop<HasImageView>(currentImage) = history.latestImageView\nprop<OpticalFlow>(flow) = OpticalFlow(renderer,previousImage,currentImage,grid=4)\n\
+        prop<RenderToTexture>(motion) = flow.output\n\n// OpticalFlow.evaluate submits to its own queue, so run\
+        \ it between Field frames.\n// Submit the source first. The final fence makes the produced pair ready to\
+        \ sample.\nval owner=renderer\nval ownedHistory=history\nval ownedFlow=flow\nval command=CommandBuffer(owner.commandPool,true,false)\n\
+        val fence=Fence(owner.device,false)\nfun renderSource() {\n    vkResetCommandBuffer(command.vkCommandBuffer,0)\n\
+        \    command.beginRecording(); ownedHistory.render(command,0); command.endRecording()\n    MemoryStack.stackPush().use\
+        \ { owner.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }\n    fence.fenceWait();\
+        \ fence.reset()\n}\nvar animate=true\nvar reset=true\nvar time=0f\nvar previousTime=0f\n// Analytical displacement\
+        \ of this example, useful for checking the measured texture.\nprop<Vector2f>(expectedMotion)=Vector2f()\n\
+        var shaderVersion=scene.current.fi\nvar closed=false\nflowSession=AutoCloseable {\n    if(!closed) {\n \
+        \       closed=true\n        // A consumer must stop sampling before its parent's resources retire.\n  \
+        \      owner.renderList.modules.remove(\"pingpong flow texture\")\n        if(!owner.isClosed) {\n     \
+        \       ownedFlow.close()\n            val views=ownedHistory.frameImageViews.imageViewArray.map { it.imageView\
+        \ }.distinctBy { it.vkImageView }\n            owner.cleanup+=Runnable {\n                scene.current.cleanup();\
+        \ command.cleanup(); fence.cleanup()\n                views.forEach { it.cleanup(); it.underlyingImage?.cleanup()\
+        \ }\n                ownedHistory.defaultSampler?.cleanup()\n            }\n        }\n    }\n}\ncontrolGroup(\"\
+        pingpong motion\") {\n    checkbox(\"Animate source\",initialValue=true) { animate=it; reset=true }\n  \
+        \  button(\"Reset the pair\") { if(it)reset=true }\n}\ndisplayOpen(\"pingpong motion\")\nprintln(\"Render\
+        \ source → previous/current pair → optical flow → motion texture. Edit fragment here; edit the child to\
+        \ sample motion.\")\nval ownedSession=flowSession\nframes {\n    while(!closed && !owner.isClosed) {\n \
+        \       if(shaderVersion!==scene.current.fi) { shaderVersion=scene.current.fi; reset=true }\n        triangle.push[\"\
+        time\"]=time\n        if(reset)previousTime=time\n        expectedMotion=Vector2f(\n            (kotlin.math.sin(time)-kotlin.math.sin(previousTime))*180,\n\
+        \            (kotlin.math.cos(time*1.3f)-kotlin.math.cos(previousTime*1.3f))*120)\n        // Seed both\
+        \ slots on the first frame, a cut, or a shader edit: no old/new comparison.\n        if(reset)renderSource()\n\
+        \        renderSource()\n        // A paused pair is repeated, not a new consecutive observation.\n    \
+        \    ownedFlow.evaluate(reset=reset || !animate)\n        reset=false\n        previousTime=time\n     \
+        \   if(animate)time+=1f/30f\n        frame()\n    }\n}.end { ownedSession.close() }\n"
+      vertex: "#version 460\nlayout(location=0) out vec2 uv;\nvoid main() {\n    uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n\
+        \    gl_Position=vec4(uv*2-1,0,1);\n}\n"
+      fragment: "#version 460\nlayout(location=0) out vec4 color;\nlayout(push_constant) uniform Frame { float time;\
+        \ } frame;\nvoid main() {\n    vec2 p=gl_FragCoord.xy-vec2(sin(frame.time)*180,cos(frame.time*1.3)*120);\n\
+        \    vec2 cell=floor(p/34),local=fract(p/34)-.5;\n    float seed=fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453);\n\
+        \    vec3 pigment=.35+.3*cos(seed*6.283+vec3(0,2.094,4.189));\n    float disk=1-smoothstep(.20+.12*seed,.24+.12*seed,length(local));\n\
+        \    float checker=mod(cell.x+cell.y,2);\n    vec3 background=vec3(.05+.15*checker)+.04*sin(p.x*.27)*sin(p.y*.23);\n\
+        \    color=vec4(mix(background,pigment,disk),1);\n}\n"
+- connect:
+    parent: agent_graphics_context
+    child: optical_flow_pingpong
+- launch:
+    box: optical_flow_pingpong
+    property: code
+    type: code
+    strand: scene
+    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.device.CommandBuffer\nimport\
+      \ afield.four.device.Fence\nimport afield.four.modules.fromContextWithNameOrNull\nimport afield.four.targets.PingPongRenderToTexture\n\
+      import afield.four.texture.HasImageView\nimport afield.four.vision.OpticalFlow\nimport afield.stdlib.linalg.Vector2f\n\
+      import org.lwjgl.system.MemoryStack\nimport org.lwjgl.vulkan.VK13.*\n\nprop<AutoCloseable>(flowSession)\n\
+      fromContextWithNameOrNull<AutoCloseable>(\"flowSession\")?.close()\ncheck(renderer.device.supportsOpticalFlow)\
+      \ { \"This device has no enabled VK_NV_optical_flow.\" }\n\n// One editable module, two retained frames. Rendering\
+      \ rotates the ring automatically.\nprop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer)\
+      \ {\n    width=960; height=540; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT\n}\nval scene = moduleHere\
+      \ { history.apply(); depthTest=false; depthWrite=false; blend=false }\nval triangle = Mesh(renderer,scene)\n\
+      triangle.resize(3,0,scene)\ntriangle.push.setMembers(scene.current.fi.pushConstants.single().members)\nscene\
+      \ += \"image\" to triangle\nhistory += \"image\" to scene\n\n// These providers follow the ring. Do not snapshot\
+      \ their .imageView handles.\nprop<HasImageView>(previousImage) = history.previousImageView\nprop<HasImageView>(currentImage)\
+      \ = history.latestImageView\nprop<OpticalFlow>(flow) = OpticalFlow(renderer,previousImage,currentImage,grid=4)\n\
+      prop<RenderToTexture>(motion) = flow.output\n\n// OpticalFlow.evaluate submits to its own queue, so run it\
+      \ between Field frames.\n// Submit the source first. The final fence makes the produced pair ready to sample.\n\
+      val owner=renderer\nval ownedHistory=history\nval ownedFlow=flow\nval command=CommandBuffer(owner.commandPool,true,false)\n\
+      val fence=Fence(owner.device,false)\nfun renderSource() {\n    vkResetCommandBuffer(command.vkCommandBuffer,0)\n\
+      \    command.beginRecording(); ownedHistory.render(command,0); command.endRecording()\n    MemoryStack.stackPush().use\
+      \ { owner.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }\n    fence.fenceWait();\
+      \ fence.reset()\n}\nvar animate=true\nvar reset=true\nvar time=0f\nvar previousTime=0f\n// Analytical displacement\
+      \ of this example, useful for checking the measured texture.\nprop<Vector2f>(expectedMotion)=Vector2f()\n\
+      var shaderVersion=scene.current.fi\nvar closed=false\nflowSession=AutoCloseable {\n    if(!closed) {\n   \
+      \     closed=true\n        // A consumer must stop sampling before its parent's resources retire.\n      \
+      \  owner.renderList.modules.remove(\"pingpong flow texture\")\n        if(!owner.isClosed) {\n           \
+      \ ownedFlow.close()\n            val views=ownedHistory.frameImageViews.imageViewArray.map { it.imageView\
+      \ }.distinctBy { it.vkImageView }\n            owner.cleanup+=Runnable {\n                scene.current.cleanup();\
+      \ command.cleanup(); fence.cleanup()\n                views.forEach { it.cleanup(); it.underlyingImage?.cleanup()\
+      \ }\n                ownedHistory.defaultSampler?.cleanup()\n            }\n        }\n    }\n}\ncontrolGroup(\"\
+      pingpong motion\") {\n    checkbox(\"Animate source\",initialValue=true) { animate=it; reset=true }\n    button(\"\
+      Reset the pair\") { if(it)reset=true }\n}\ndisplayOpen(\"pingpong motion\")\nprintln(\"Render source → previous/current\
+      \ pair → optical flow → motion texture. Edit fragment here; edit the child to sample motion.\")\nval ownedSession=flowSession\n\
+      frames {\n    while(!closed && !owner.isClosed) {\n        if(shaderVersion!==scene.current.fi) { shaderVersion=scene.current.fi;\
+      \ reset=true }\n        triangle.push[\"time\"]=time\n        if(reset)previousTime=time\n        expectedMotion=Vector2f(\n\
+      \            (kotlin.math.sin(time)-kotlin.math.sin(previousTime))*180,\n            (kotlin.math.cos(time*1.3f)-kotlin.math.cos(previousTime*1.3f))*120)\n\
+      \        // Seed both slots on the first frame, a cut, or a shader edit: no old/new comparison.\n        if(reset)renderSource()\n\
+      \        renderSource()\n        // A paused pair is repeated, not a new consecutive observation.\n      \
+      \  ownedFlow.evaluate(reset=reset || !animate)\n        reset=false\n        previousTime=time\n        if(animate)time+=1f/30f\n\
+      \        frame()\n    }\n}.end { ownedSession.close() }\n"
+- create:
+    box: flow_texture
+    name: flow_texture
+    frame:
+      x: 760.0
+      y: 40.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: "// The parent publishes these three props: previousImage, currentImage, motion.\n// moduleHere() resolves\
+        \ the samplers by those names, just like any other texture.\nval view = moduleHere { depthTest=false; depthWrite=false;\
+        \ blend=false }\nval triangle = Mesh(renderer,view)\ntriangle.resize(3,0,view)\nview += \"display\" to triangle\n\
+        renderer.renderList.modules[\"pingpong flow texture\"]=view\nval owner=renderer\nframes { while(!owner.isClosed)frame()\
+        \ }.end {\n    owner.renderList.modules.remove(\"pingpong flow texture\",view)\n    if(!owner.isClosed)owner.cleanup+=Runnable\
+        \ { view.current.cleanup() }\n}\n"
+      vertex: "#version 460\nlayout(location=0) out vec2 uv;\nvoid main() {\n    uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n\
+        \    gl_Position=vec4(uv*2-1,0,1);\n}\n"
+      fragment: "#version 460\nlayout(location=0) in vec2 uv;\nlayout(location=0) out vec4 color;\nlayout(set=0,binding=0)\
+        \ uniform sampler2D previousImage;\nlayout(set=0,binding=1) uniform sampler2D currentImage;\nlayout(set=0,binding=2)\
+        \ uniform sampler2D motion;\nvoid main() {\n    vec2 panel=vec2(uv.x,1-uv.y)*2,st=fract(panel);\n    vec4\
+        \ field=texture(motion,st); // xy: input pixels, z: hardware matching cost\n    vec3 rgb;\n    if(panel.y<1)rgb=panel.x<1?texture(previousImage,st).rgb:texture(currentImage,st).rgb;\n\
+        \    else if(panel.x>=1)rgb=vec3(clamp(field.z/100,0,1));\n    else {\n        float angle=atan(field.y,field.x);\n\
+        \        rgb=(.5+.5*cos(angle+vec3(0,2.094,4.189)))*clamp(length(field.xy)/8,0,1);\n        vec2 cell=(fract(st*vec2(textureSize(currentImage,0))/40)-.5)*40;\n\
+        \        vec2 d=normalize(field.xy+vec2(.0001));\n        float along=dot(cell,d),across=abs(dot(cell,vec2(-d.y,d.x)));\n\
+        \        float arrow=float((abs(along)<12&&across<.8)||(along>6&&along<13&&abs(across-(13-along))<1));\n\
+        \        rgb=mix(rgb,vec3(1),arrow*.8*clamp(length(field.xy),0,1));\n    }\n    color=vec4(rgb,1);\n}\n"
+- connect:
+    parent: optical_flow_pingpong
+    child: flow_texture
+- launch:
+    box: flow_texture
+    property: code
+    type: code
+    strand: scene
+    code: "// The parent publishes these three props: previousImage, currentImage, motion.\n// moduleHere() resolves\
+      \ the samplers by those names, just like any other texture.\nval view = moduleHere { depthTest=false; depthWrite=false;\
+      \ blend=false }\nval triangle = Mesh(renderer,view)\ntriangle.resize(3,0,view)\nview += \"display\" to triangle\n\
+      renderer.renderList.modules[\"pingpong flow texture\"]=view\nval owner=renderer\nframes { while(!owner.isClosed)frame()\
+      \ }.end {\n    owner.renderList.modules.remove(\"pingpong flow texture\",view)\n    if(!owner.isClosed)owner.cleanup+=Runnable\
+      \ { view.current.cleanup() }\n}\n"
+- wait:
+    frames: 12

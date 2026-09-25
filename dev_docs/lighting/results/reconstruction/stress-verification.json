@@ -1,0 +1,16 @@
+{
+  "entrypoint": "afield.four.reconstruction.ReconstructionSmoke",
+  "exitCode": 0,
+  "completionMarker": true,
+  "vulkanValidationErrors": 0,
+  "framesPerClip": 120,
+  "output": [
+    1920,
+    1080
+  ],
+  "comparisonVideo": [
+    3840,
+    2160
+  ],
+  "rayTracingEnabled": false
+}

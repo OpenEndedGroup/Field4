@@ -395,6 +395,15 @@ object DemoTranscriptExecSmokeTest {
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
         "graphics_renderer_launch",
+        "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
+        "neural_reconstruction", // Optional NGX evaluation is covered by ReconstructionSmoke on the NVIDIA machine.
+        "ray_reconstruction", // Real NGX/RTXDI evaluation: RayReconstructionSmoke.
+        "optical_flow", // Dedicated optical-flow queue: OpticalFlowSmoke.
+        "optical_flow_pingpong", // Editable source history -> sampled motion: check_flow_pingpong.py.
+        "learned_shader", // Frozen weights / cooperative vectors: LearnedShaderSmoke.
+        "reconstruction_plumbing", // Live moduleHere MRT -> NGX; GPU checked by check_plumbing.py.
+        "rr_plumbing", // Raw RTXDI and editable guide conversion -> RR; same GPU check.
+        "learned_from_module", // Real moduleHere capture + asynchronous training: check_shader_learning.py.
         // Box 1 opens a Window because `afield.four` has no headless mode — a compute-only dispatch
         // still needs one for the device to exist — so the bench cannot be replayed here. What this
         // entry buys is the thing that was actually missing: all four box bodies are compiled

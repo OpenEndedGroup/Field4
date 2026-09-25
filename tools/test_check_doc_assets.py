@@ -35,6 +35,7 @@ from tools.check_doc_assets import (
     PLACEHOLDER_PALETTE,
     decode_png_rgb,
     looks_like_placeholder_card,
+    orphaned_capture_fences,
     placeholder_report,
     png_header,
     stale_placeholder_exceptions,
@@ -246,6 +247,13 @@ class Thresholds(unittest.TestCase):
         self.assertGreater(PLACEHOLDER_MIN_GRID_LINE, NEAREST_REAL_GRID)
 
 
+class CaptureFences(unittest.TestCase):
+    def test_braces_in_quoted_alt_do_not_hide_embed(self):
+        fence = '```diffstatic_runner {screenshot="assets/example.png" alt=".every(4) { it.fast(2) }" embed=true}\n'
+        self.assertEqual(orphaned_capture_fences(fence), [])
+        self.assertEqual(orphaned_capture_fences(fence.replace(' embed=true', '')), ['assets/example.png'])
+
+
 class KnownPlaceholders(unittest.TestCase):
     """The grandfathered list is a debt. These tests are what stop it becoming furniture."""
 
@@ -258,7 +266,7 @@ class KnownPlaceholders(unittest.TestCase):
         )
 
     def test_an_unlisted_placeholder_fails_the_check(self):
-        """The whole point: only the four recorded cards are tolerated, nothing else."""
+        """The whole point: every unlisted placeholder fails, even when no exceptions remain."""
         with TemporaryDirectory() as tmp:
             repo = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=repo, check=True)

@@ -1,0 +1,50 @@
+[
+  {
+    "check": "material-reload",
+    "status": "PASS",
+    "commands": [
+      {
+        "command": "macro write material --file dev_docs/agents/transcripts/path_tracing_material_shader_check.yaml",
+        "ok": true
+      },
+      {
+        "command": "macro run material",
+        "ok": true
+      },
+      {
+        "command": "wait-output path_trace_material_check --contains \"PASS EDITABLE MATERIAL BOX\" --timeout 120",
+        "ok": true
+      },
+      {
+        "command": "stop path_trace_renderer",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "check": "instrument",
+    "status": "PASS",
+    "commands": [
+      {
+        "command": "macro write instrument --file dev_docs/agents/transcripts/path_tracer_instrument.yaml",
+        "ok": true
+      },
+      {
+        "command": "macro run instrument",
+        "ok": true
+      },
+      {
+        "command": "run pt_restore --file build/raytracing-audit/instrument-check.kt",
+        "ok": true
+      },
+      {
+        "command": "native-screenshot build/raytracing-audit/instrument.png --uid pt_tracer --wait-frames 60 --timeout 90",
+        "ok": true
+      },
+      {
+        "command": "stop pt_renderer",
+        "ok": true
+      }
+    ]
+  }
+]

@@ -3,7 +3,7 @@ description: |
   Drives PathTraceEmitterGpuSmoke against real GPU pixels: the unbiasedness checks, the
   variance floor, and the before/after captures. About four minutes on an M1 Max.
 
-  Output goes to `build/emitter-check/`, relative to the checkout root, which is the
+  Output goes to `build/emitter-check/<backend>/`, relative to the checkout root, which is the
   backdoor-managed server's working directory. `println` from a box lands in the box's
   output, not the server's stdout, so the numbers are in
   `.field-backdoor/logs/*.managed-server.log`.

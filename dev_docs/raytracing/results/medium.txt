@@ -1,0 +1,110 @@
+backends on this device: COMPUTE_BVH, RAY_QUERY
+== backend COMPUTE_BVH: artifacts in /home/marc/Field4/build/raytracing-audit/full/medium/compute_bvh
+PASS extinction zero is bit-for-bit inert: 96x72, 6912 pixels, 96 samples, albedo/anisotropy/bounds all set and all ignored
+-- after: COMPUTE_BVH / inert without extinction
+untouched depthFog against the same closed form, sigma=0.25000 at 256 samples: whole-image per-channel 0.00000, worst per-channel 0.00000 over 6912 pixels
+PASS the closed-form reference is the shader's own ray: 6912 pixels, sigma=0.25000, worst per-channel 0.00000
+untouched depthFog against the same closed form, sigma=0.90000 at 256 samples: whole-image per-channel 0.00000, worst per-channel 0.00000 over 6912 pixels
+PASS the closed-form reference is the shader's own ray: 6912 pixels, sigma=0.90000, worst per-channel 0.00000
+-- after: COMPUTE_BVH / closed form through depthFog
+absorption against exp(-sigma_t*d), unbounded, thin, sigma_t=0.25000 at 65536 samples: 6912 px: global 0.00000 (signed 0.00000), worst of 24 tiles 0.00000 (tile 1,3), per-pixel median 0.00001, p95 0.00003; worst per-channel 0.00004, whole-image per-channel 0.00000, mean transmittance 0.43844
+PASS absorption matches the closed form (unbounded, thin): 96x72, 6912 pixels, 65536 samples, mean transmittance 0.43844
+absorption against exp(-sigma_t*d), unbounded, thick, sigma_t=0.90000 at 65536 samples: 6912 px: global 0.00000 (signed 0.00000), worst of 24 tiles 0.00001 (tile 4,0), per-pixel median 0.00009, p95 0.00024; worst per-channel 0.00043, whole-image per-channel 0.00000, mean transmittance 0.05192
+PASS absorption matches the closed form (unbounded, thick): 96x72, 6912 pixels, 65536 samples, mean transmittance 0.05192
+absorption against exp(-sigma_t*d), bounded slab z 0.5..2.0, sigma_t=0.60000 at 65536 samples: 6912 px: global 0.00000 (signed -0.00000), worst of 24 tiles 0.00000 (tile 0,3), per-pixel median 0.00001, p95 0.00003; worst per-channel 0.00005, whole-image per-channel 0.00000, mean transmittance 0.37188
+PASS absorption matches the closed form (bounded slab z 0.5..2.0): 96x72, 6912 pixels, 65536 samples, mean transmittance 0.37188
+-- after: COMPUTE_BVH / absorption against the closed form
+medium white furnace at g=-0.60000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 0.99999 against an analytic 1.0, per-pixel p95 0.00154, worst 0.00334, over 6912 pixels
+medium white furnace at g=-0.30000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00000 against an analytic 1.0, per-pixel p95 0.00122, worst 0.00316, over 6912 pixels
+medium white furnace at g=0.00000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 0.99999 against an analytic 1.0, per-pixel p95 0.00132, worst 0.00239, over 6912 pixels
+medium white furnace at g=0.30000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00000 against an analytic 1.0, per-pixel p95 0.00107, worst 0.00210, over 6912 pixels
+medium white furnace at g=0.60000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00001 against an analytic 1.0, per-pixel p95 0.00115, worst 0.00218, over 6912 pixels
+medium white furnace at g=0.85000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00000 against an analytic 1.0, per-pixel p95 0.00118, worst 0.00240, over 6912 pixels
+PASS the medium conserves energy: six anisotropies from -0.6 to 0.85, each within 0.0002 of an analytic 1.0 over 6912 pixels at 16384 samples
+-- after: COMPUTE_BVH / energy conservation
+furnace deficit against bounce budget at sigma_t=0.6 (a 2.4 optical-depth box), albedo 1, 6912 pixels, 16384 samples: 1 -> 0.46337, 2 -> 0.64054, 4 -> 0.85178, 8 -> 0.97776, 12 -> 0.99680
+PASS the remaining furnace deficit is bounce truncation: monotone from 0.46337 at one bounce to 0.99680 at twelve, never above 1.0, 6912 pixels
+-- after: COMPUTE_BVH / bounce truncation
+single scattering against a CPU quadrature of the transport equation, sigma_t=0.80000, albedo 1.00000, slab 1.5 thick, one bounce, 65536 samples: 6912 px: global 0.00000 (signed 0.00000), worst of 24 tiles 0.00001 (tile 4,3), per-pixel median 0.00003, p95 0.00009; mean 0.52483 against 0.52483
+PASS single scattering matches the transport equation: 6912 pixels, 65536 samples, sigma_t=0.80000, albedo 1.00000, mean 0.52483 against a quadrature's 0.52483
+single scattering against a CPU quadrature of the transport equation, sigma_t=1.60000, albedo 0.50000, slab 1.5 thick, one bounce, 65536 samples: 6912 px: global 0.00000 (signed -0.00000), worst of 24 tiles 0.00001 (tile 3,0), per-pixel median 0.00004, p95 0.00013; mean 0.17512 against 0.17512
+PASS single scattering matches the transport equation: 6912 pixels, 65536 samples, sigma_t=1.60000, albedo 0.50000, mean 0.17512 against a quadrature's 0.17512
+-- after: COMPUTE_BVH / single scattering against a quadrature
+albedo-one medium inside a uniformly emissive enclosure, black metal faces, f0 exactly zero, against the same scene with no medium, twelve bounces, 16384 samples: 6912 px: global 0.00011 (signed 0.00011), worst of 24 tiles 0.00030 (tile 3,2), per-pixel median 0.00057, p95 0.00164; the enclosure's own equilibrium is 1.00035, so its faces return 0.00035 of what they are lit by
+PASS the emitter connection through the medium is right: 96x72, 6912 pixels, 16384 samples, an albedo-one medium inside an enclosure that is within 0.00035 of a pure emitter is invisible to 0.00011 whole-image
+albedo-one medium inside a uniformly emissive enclosure, dielectric faces, f0 0.04, against the same scene with no medium, twelve bounces, 16384 samples: 6912 px: global 0.00108 (signed 0.00108), worst of 24 tiles 0.00154 (tile 2,1), per-pixel median 0.00118, p95 0.00275; the enclosure's own equilibrium is 1.03954, so its faces return 0.03954 of what they are lit by
+albedo-one medium inside a uniformly emissive enclosure, dielectric faces, emitter sampling OFF in both arms, against the same scene with no medium, twelve bounces, 16384 samples: 6912 px: global 0.00109 (signed 0.00109), worst of 24 tiles 0.00145 (tile 1,2), per-pixel median 0.00119, p95 0.00223; the enclosure's own equilibrium is 1.03954, so its faces return 0.03954 of what they are lit by
+the enclosure residual against its faces' reflectance: 0.00011 signed where the faces return 0.00035, and 0.00108 where they return 0.03954 -- a hundredfold more reflectance for about ten times the residual. Both positive, and the same comparison with the emitter connection switched off in BOTH arms gives 0.00109, which is the dielectric figure again. So the residual is the enclosure's own angular structure being averaged by a scattering medium, and not the connection this arm is about: removing the connection does not remove it, and removing the reflectance does.
+PASS the enclosure residual is the reference scene's physics, not the estimator's error: it survives removing the mechanism under test and disappears with the faces' reflectance, over 6912 pixels at 16384 samples
+-- after: COMPUTE_BVH / the emitter connection
+lamp-in-fog residual at 65536 samples: 0.00603 RMS, and as a relative figure, 6907 px: global 0.00002 (signed 0.00002), worst of 24 tiles 0.03246 (tile 1,0), per-pixel median 0.09731, p95 0.37544
+lamp-in-fog residual at 4096 samples: 0.02610 RMS
+lamp-in-fog residual decay 4.33044x OBSERVED. Separately: the reference budget grew 16.00000x, from 4096 to 65536 samples, and a residual that is the reference's own noise decays as the root of that, so the PREDICTED decay is 4.00000x. Bias would not decay at all. Those are two different numbers and this line is the only place they appear together.
+lamp-in-fog at EQUAL maxBounces, on against off both at six, 65536 samples: 6907 px: global 0.02915 (signed 0.02915), worst of 24 tiles 0.08535 (tile 0,0), per-pixel median 0.10022, p95 0.44361 -- against 0.00002 whole-image for the matched pair. The gap between those two is the extra next-event segment: more transport for the same budget, not bias. Its sign is reported and not asserted, because at this budget the off arm's own tail is heavy enough to move it.
+PASS the lamp-in-fog residual is reference noise, not bias: 6907 lit pixels of 6912, a 16.00000x budget growth shrank the RMS residual 4.33044x against a 4.00000x prediction, and the whole-image relative residual is 0.00002
+lamp-in-fog variance at 256 samples over 6907 lit pixels: RMSE 0.10327 with phase and BSDF sampling alone, 0.02091 with the light connections on, ratio 4.93910
+PASS light connections through the medium reduce error: RMSE ratio 4.93910 at 256 samples per pixel over 6907 lit pixels of 96x72, one small lamp, black environment, six bounces
+lamp-in-fog reference noise: the two references differ by 0.00603 RMS, and the off arm's own standard error at 65536 samples predicts 0.00645 (ratio 0.93373) over 6907 pixels
+PASS lamp-in-fog bias is below the reference's own resolution: 0.00603 against 0.00645 over 6907 lit pixels
+-- after: COMPUTE_BVH / lamp in fog
+PASS medium captures at 480x360: /home/marc/Field4/build/raytracing-audit/full/medium/compute_bvh/medium_*.png
+-- after: COMPUTE_BVH / captures
+god rays, over the 100920 pixels of 640x400 whose primary ray hits nothing: the medium puts mean 0.91481 radiance there with a spatial standard deviation of 2.02372; depthFog at the same density puts 0.34068 with a deviation of 0.00000; with neither, 0.00000 and 0.00000
+PASS the medium puts structured light where there is no surface, and a depth curve cannot: over 100920 background pixels of 640x400 at 1536 samples, spatial deviation 2.02372 against depthFog's 0.00000 and a clear render's 0.00000
+-- after: COMPUTE_BVH / god rays
+PASS backend COMPUTE_BVH: every arm
+== backend RAY_QUERY: artifacts in /home/marc/Field4/build/raytracing-audit/full/medium/ray_query
+PASS extinction zero is bit-for-bit inert: 96x72, 6912 pixels, 96 samples, albedo/anisotropy/bounds all set and all ignored
+-- after: RAY_QUERY / inert without extinction
+untouched depthFog against the same closed form, sigma=0.25000 at 256 samples: whole-image per-channel 0.00000, worst per-channel 0.00000 over 6912 pixels
+PASS the closed-form reference is the shader's own ray: 6912 pixels, sigma=0.25000, worst per-channel 0.00000
+untouched depthFog against the same closed form, sigma=0.90000 at 256 samples: whole-image per-channel 0.00000, worst per-channel 0.00000 over 6912 pixels
+PASS the closed-form reference is the shader's own ray: 6912 pixels, sigma=0.90000, worst per-channel 0.00000
+-- after: RAY_QUERY / closed form through depthFog
+absorption against exp(-sigma_t*d), unbounded, thin, sigma_t=0.25000 at 65536 samples: 6912 px: global 0.00000 (signed 0.00000), worst of 24 tiles 0.00000 (tile 1,3), per-pixel median 0.00001, p95 0.00003; worst per-channel 0.00004, whole-image per-channel 0.00000, mean transmittance 0.43844
+PASS absorption matches the closed form (unbounded, thin): 96x72, 6912 pixels, 65536 samples, mean transmittance 0.43844
+absorption against exp(-sigma_t*d), unbounded, thick, sigma_t=0.90000 at 65536 samples: 6912 px: global 0.00000 (signed 0.00000), worst of 24 tiles 0.00001 (tile 4,0), per-pixel median 0.00009, p95 0.00024; worst per-channel 0.00043, whole-image per-channel 0.00000, mean transmittance 0.05192
+PASS absorption matches the closed form (unbounded, thick): 96x72, 6912 pixels, 65536 samples, mean transmittance 0.05192
+absorption against exp(-sigma_t*d), bounded slab z 0.5..2.0, sigma_t=0.60000 at 65536 samples: 6912 px: global 0.00000 (signed -0.00000), worst of 24 tiles 0.00000 (tile 0,3), per-pixel median 0.00001, p95 0.00003; worst per-channel 0.00005, whole-image per-channel 0.00000, mean transmittance 0.37188
+PASS absorption matches the closed form (bounded slab z 0.5..2.0): 96x72, 6912 pixels, 65536 samples, mean transmittance 0.37188
+-- after: RAY_QUERY / absorption against the closed form
+medium white furnace at g=-0.60000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 0.99999 against an analytic 1.0, per-pixel p95 0.00154, worst 0.00334, over 6912 pixels
+medium white furnace at g=-0.30000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00000 against an analytic 1.0, per-pixel p95 0.00122, worst 0.00316, over 6912 pixels
+medium white furnace at g=0.00000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 0.99999 against an analytic 1.0, per-pixel p95 0.00132, worst 0.00239, over 6912 pixels
+medium white furnace at g=0.30000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00000 against an analytic 1.0, per-pixel p95 0.00107, worst 0.00210, over 6912 pixels
+medium white furnace at g=0.60000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00001 against an analytic 1.0, per-pixel p95 0.00115, worst 0.00218, over 6912 pixels
+medium white furnace at g=0.85000, sigma_t=0.15, albedo 1, twelve bounces, 16384 samples: mean 1.00000 against an analytic 1.0, per-pixel p95 0.00118, worst 0.00240, over 6912 pixels
+PASS the medium conserves energy: six anisotropies from -0.6 to 0.85, each within 0.0002 of an analytic 1.0 over 6912 pixels at 16384 samples
+-- after: RAY_QUERY / energy conservation
+furnace deficit against bounce budget at sigma_t=0.6 (a 2.4 optical-depth box), albedo 1, 6912 pixels, 16384 samples: 1 -> 0.46337, 2 -> 0.64054, 4 -> 0.85178, 8 -> 0.97776, 12 -> 0.99680
+PASS the remaining furnace deficit is bounce truncation: monotone from 0.46337 at one bounce to 0.99680 at twelve, never above 1.0, 6912 pixels
+-- after: RAY_QUERY / bounce truncation
+single scattering against a CPU quadrature of the transport equation, sigma_t=0.80000, albedo 1.00000, slab 1.5 thick, one bounce, 65536 samples: 6912 px: global 0.00000 (signed 0.00000), worst of 24 tiles 0.00001 (tile 4,3), per-pixel median 0.00003, p95 0.00009; mean 0.52483 against 0.52483
+PASS single scattering matches the transport equation: 6912 pixels, 65536 samples, sigma_t=0.80000, albedo 1.00000, mean 0.52483 against a quadrature's 0.52483
+single scattering against a CPU quadrature of the transport equation, sigma_t=1.60000, albedo 0.50000, slab 1.5 thick, one bounce, 65536 samples: 6912 px: global 0.00000 (signed -0.00000), worst of 24 tiles 0.00001 (tile 3,0), per-pixel median 0.00004, p95 0.00013; mean 0.17512 against 0.17512
+PASS single scattering matches the transport equation: 6912 pixels, 65536 samples, sigma_t=1.60000, albedo 0.50000, mean 0.17512 against a quadrature's 0.17512
+-- after: RAY_QUERY / single scattering against a quadrature
+albedo-one medium inside a uniformly emissive enclosure, black metal faces, f0 exactly zero, against the same scene with no medium, twelve bounces, 16384 samples: 6912 px: global 0.00011 (signed 0.00011), worst of 24 tiles 0.00030 (tile 3,2), per-pixel median 0.00057, p95 0.00164; the enclosure's own equilibrium is 1.00035, so its faces return 0.00035 of what they are lit by
+PASS the emitter connection through the medium is right: 96x72, 6912 pixels, 16384 samples, an albedo-one medium inside an enclosure that is within 0.00035 of a pure emitter is invisible to 0.00011 whole-image
+albedo-one medium inside a uniformly emissive enclosure, dielectric faces, f0 0.04, against the same scene with no medium, twelve bounces, 16384 samples: 6912 px: global 0.00108 (signed 0.00108), worst of 24 tiles 0.00154 (tile 2,1), per-pixel median 0.00118, p95 0.00275; the enclosure's own equilibrium is 1.03954, so its faces return 0.03954 of what they are lit by
+albedo-one medium inside a uniformly emissive enclosure, dielectric faces, emitter sampling OFF in both arms, against the same scene with no medium, twelve bounces, 16384 samples: 6912 px: global 0.00109 (signed 0.00109), worst of 24 tiles 0.00145 (tile 1,2), per-pixel median 0.00119, p95 0.00223; the enclosure's own equilibrium is 1.03954, so its faces return 0.03954 of what they are lit by
+the enclosure residual against its faces' reflectance: 0.00011 signed where the faces return 0.00035, and 0.00108 where they return 0.03954 -- a hundredfold more reflectance for about ten times the residual. Both positive, and the same comparison with the emitter connection switched off in BOTH arms gives 0.00109, which is the dielectric figure again. So the residual is the enclosure's own angular structure being averaged by a scattering medium, and not the connection this arm is about: removing the connection does not remove it, and removing the reflectance does.
+PASS the enclosure residual is the reference scene's physics, not the estimator's error: it survives removing the mechanism under test and disappears with the faces' reflectance, over 6912 pixels at 16384 samples
+-- after: RAY_QUERY / the emitter connection
+lamp-in-fog residual at 65536 samples: 0.00603 RMS, and as a relative figure, 6907 px: global 0.00002 (signed 0.00002), worst of 24 tiles 0.03246 (tile 1,0), per-pixel median 0.09731, p95 0.37544
+lamp-in-fog residual at 4096 samples: 0.02611 RMS
+lamp-in-fog residual decay 4.33215x OBSERVED. Separately: the reference budget grew 16.00000x, from 4096 to 65536 samples, and a residual that is the reference's own noise decays as the root of that, so the PREDICTED decay is 4.00000x. Bias would not decay at all. Those are two different numbers and this line is the only place they appear together.
+lamp-in-fog at EQUAL maxBounces, on against off both at six, 65536 samples: 6907 px: global 0.02915 (signed 0.02915), worst of 24 tiles 0.08535 (tile 0,0), per-pixel median 0.10022, p95 0.44361 -- against 0.00002 whole-image for the matched pair. The gap between those two is the extra next-event segment: more transport for the same budget, not bias. Its sign is reported and not asserted, because at this budget the off arm's own tail is heavy enough to move it.
+PASS the lamp-in-fog residual is reference noise, not bias: 6907 lit pixels of 6912, a 16.00000x budget growth shrank the RMS residual 4.33215x against a 4.00000x prediction, and the whole-image relative residual is 0.00002
+lamp-in-fog variance at 256 samples over 6907 lit pixels: RMSE 0.10327 with phase and BSDF sampling alone, 0.02091 with the light connections on, ratio 4.93910
+PASS light connections through the medium reduce error: RMSE ratio 4.93910 at 256 samples per pixel over 6907 lit pixels of 96x72, one small lamp, black environment, six bounces
+lamp-in-fog reference noise: the two references differ by 0.00603 RMS, and the off arm's own standard error at 65536 samples predicts 0.00645 (ratio 0.93370) over 6907 pixels
+PASS lamp-in-fog bias is below the reference's own resolution: 0.00603 against 0.00645 over 6907 lit pixels
+-- after: RAY_QUERY / lamp in fog
+PASS medium captures at 480x360: /home/marc/Field4/build/raytracing-audit/full/medium/ray_query/medium_*.png
+-- after: RAY_QUERY / captures
+god rays, over the 100920 pixels of 640x400 whose primary ray hits nothing: the medium puts mean 0.91481 radiance there with a spatial standard deviation of 2.02372; depthFog at the same density puts 0.34068 with a deviation of 0.00000; with neither, 0.00000 and 0.00000
+PASS the medium puts structured light where there is no surface, and a depth curve cannot: over 100920 background pixels of 640x400 at 1536 samples, spatial deviation 2.02372 against depthFog's 0.00000 and a clear render's 0.00000
+-- after: RAY_QUERY / god rays
+PASS backend RAY_QUERY: every arm
+PASS path-tracing participating-medium GPU smoke on COMPUTE_BVH, RAY_QUERY

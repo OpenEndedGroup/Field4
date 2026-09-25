@@ -16,6 +16,8 @@ import org.lwjgl.vulkan.VK11
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
 
 class Device(val physicalDevice: PhysicalDevice, private val instance: Instance) {
+    private val ngxDelegate = lazy { afield.four.reconstruction.NgxRuntime.open(this, instance) }
+    internal val ngxRuntime by ngxDelegate
     data class RayTracingLimits(
         val shaderGroupHandleSize: Int,
         val shaderGroupHandleAlignment: Int,
@@ -23,7 +25,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         val maxRayRecursionDepth: Int,
         val maxRayDispatchInvocationCount: Int,
         val maxRayHitAttributeSize: Int,
-        val minAccelerationStructureScratchOffsetAlignment: Int
+        val minAccelerationStructureScratchOffsetAlignment: Int,
+        val maxGeometryCount: Long,
+        val maxInstanceCount: Long,
+        val maxPrimitiveCount: Long,
+        val maxPerStageDescriptorAccelerationStructures: Int,
+        val maxDescriptorSetAccelerationStructures: Int
     )
 
     val vkDevice: VkDevice
@@ -35,9 +42,15 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsMaintenance11: Boolean
     val supportsDynamicRenderingUnusedAttachments: Boolean
     val supportsMultiview: Boolean
+    val raySupport: RayDeviceSupport
+    val enabledExtensions: Set<String>
+    val supportsAccelerationStructures: Boolean
     val supportsRayTracing: Boolean
     val supportsRayQuery: Boolean
     val rayTracingLimits: RayTracingLimits?
+    /** Optional shader/vision features. SDKs are not required to enable these Vulkan features. */
+    val supportsOpticalFlow: Boolean
+    val supportsCooperativeVector: Boolean
 
     var usePresentIndexing = !Options.isMac
     var enableMeshShading = !Options.isMac
@@ -162,11 +175,25 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             supportsExtendedDynamicState = hasExtDynamicState
             supportsExtendedDynamicState3 = hasExtDynamicState3
             supportsMultiview = hasExt(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
-            val rayFeatureProbe = queryRayTracingFeatures(stack, hasExt)
-            enableRayTracing = Options.enableRayTracing && !Options.isMac && rayFeatureProbe.pipeline
+            raySupport = RayDeviceSupport.probe(physicalDevice.vkPhysicalDevice, supportedExtensions)
+            supportsAccelerationStructures = Options.enableRayTracing && raySupport.accelerationUsable
+            enableRayTracing = Options.enableRayTracing && raySupport.pipelineUsable
             supportsRayTracing = enableRayTracing
-            supportsRayQuery = enableRayTracing && rayFeatureProbe.query
-            rayTracingLimits = if (enableRayTracing) queryRayTracingLimits(stack) else null
+            supportsRayQuery = Options.enableRayTracing && raySupport.queryUsable
+            rayTracingLimits = if (raySupport.accelerationUsable) queryRayTracingLimits(stack) else null
+            val opticalFeatures=VkPhysicalDeviceOpticalFlowFeaturesNV.calloc(stack).`sType$Default`()
+            val vectorFeatures=VkPhysicalDeviceCooperativeVectorFeaturesNV.calloc(stack).`sType$Default`()
+            val replicatedFeatures=VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT.calloc(stack).`sType$Default`()
+            val memoryModelFeatures=VkPhysicalDeviceVulkanMemoryModelFeatures.calloc(stack).`sType$Default`()
+            fun probeExtra(address: Long) = VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice,
+                VkPhysicalDeviceFeatures2.calloc(stack).`sType$Default`().pNext(address))
+            if(hasExt(NVOpticalFlow.VK_NV_OPTICAL_FLOW_EXTENSION_NAME))probeExtra(opticalFeatures.address())
+            if(hasExt(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME))probeExtra(vectorFeatures.address())
+            if(hasExt(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME))probeExtra(replicatedFeatures.address())
+            probeExtra(memoryModelFeatures.address())
+            supportsOpticalFlow=opticalFeatures.opticalFlow() && !java.lang.Boolean.getBoolean("afield.opticalFlow.disabled")
+            supportsCooperativeVector=vectorFeatures.cooperativeVector() && replicatedFeatures.shaderReplicatedComposites() &&
+                memoryModelFeatures.vulkanMemoryModel() && !java.lang.Boolean.getBoolean("afield.cooperativeVector.disabled")
 
             // SteamVR's Linux XR_KHR_vulkan_enable2 implementation appends a
             // VkPhysicalDeviceTimelineSemaphoreFeatures while creating the device. Vulkan forbids
@@ -178,6 +205,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             // Build extension list defensively.
             val extNames = ArrayList<String>(12).apply {
                 add(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME) // not optional
+                if(supportsOpticalFlow)add(NVOpticalFlow.VK_NV_OPTICAL_FLOW_EXTENSION_NAME)
+                if(supportsCooperativeVector){add(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);add(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME)}
                 addIfSupported(KHRDynamicRendering.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
                 addIfSupported(KHRDepthStencilResolve.VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
                 addIfSupported(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
@@ -205,10 +234,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
                 }
 
-                if (enableRayTracing) {
+                if (supportsAccelerationStructures) {
                     add(KHRDeferredHostOperations.VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
                     add(KHRAccelerationStructure.VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
-                    add(KHRRayTracingPipeline.VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
+                    if (supportsRayTracing) add(KHRRayTracingPipeline.VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
                     addIfSupported(KHRSpirv14.VK_KHR_SPIRV_1_4_EXTENSION_NAME)
                     addIfSupported(KHRShaderFloatControls.VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME)
                     if (supportsRayQuery) {
@@ -273,7 +302,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 }
 
             }
+            extNames.addAll(afield.four.reconstruction.NgxSupport.deviceExtensions(instance, physicalDevice.vkPhysicalDevice.address(), supportedExtensions))
             val dedupedExtNames = extNames.distinct()
+            enabledExtensions = dedupedExtNames.toSet()
 
             val requiredExtensions = stack.mallocPointer(dedupedExtNames.size).apply {
                 dedupedExtNames.forEach { put(ascii(it)) }
@@ -286,6 +317,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 features().fragmentStoresAndAtomics(true)
                 features().vertexPipelineStoresAndAtomics(true)
                 features().shaderInt64(true)
+                features().shaderInt16(supportedCoreFeatures.features().shaderInt16())
                 // Guard: geometryShader is unsupported on Apple Silicon / MoltenVK.
                 features().geometryShader(physicalDevice.vkPhysicalDeviceFeatures.geometryShader())
                 features().robustBufferAccess(Options.robustness)
@@ -309,6 +341,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
                 bufferDeviceAddress(true)
                 timelineSemaphore(true)
+                vulkanMemoryModel(supportsCooperativeVector)
 
                 // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
                 descriptorIndexing(true)
@@ -376,12 +409,25 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .shaderStorageBufferArrayNonUniformIndexing(true)
                 memPutAddress(featureTail + VkBaseOutStructure.PNEXT, descriptorIndexing.address())
                 featureTail = descriptorIndexing.address()
+                if(supportsCooperativeVector) {
+                    memoryModelFeatures.vulkanMemoryModelDeviceScope(false).vulkanMemoryModelAvailabilityVisibilityChains(false).pNext(0L)
+                    memPutAddress(featureTail+VkBaseOutStructure.PNEXT,memoryModelFeatures.address());featureTail=memoryModelFeatures.address()
+                }
             } else {
                 memPutAddress(featureTail + VkBaseOutStructure.PNEXT, features12.address())
                 featureTail = features12.address()
             }
             memPutAddress(featureTail + VkBaseOutStructure.PNEXT, features13.address())
             var tail = features13.address()
+            if(supportsOpticalFlow) {
+                opticalFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,opticalFeatures.address());tail=opticalFeatures.address()
+            }
+            if(supportsCooperativeVector) {
+                // Offline training is separate; the Field shader adapter only requests inference.
+                vectorFeatures.cooperativeVectorTraining(false).pNext(0L)
+                memPutAddress(tail+VkBaseOutStructure.PNEXT,vectorFeatures.address());tail=vectorFeatures.address()
+                replicatedFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,replicatedFeatures.address());tail=replicatedFeatures.address()
+            }
 
             if (supportsExtendedDynamicState) {
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, eds.address()); tail = eds.address()
@@ -446,7 +492,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, presentId2.address()); tail = presentId2.address()
             }
 
-            if (enableRayTracing) {
+            if (supportsAccelerationStructures) {
                 val accelerationStructure = VkPhysicalDeviceAccelerationStructureFeaturesKHR.calloc(stack)
                     .sType(KHRAccelerationStructure.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR)
                     .accelerationStructure(true)
@@ -457,8 +503,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, accelerationStructure.address()); tail =
                     accelerationStructure.address()
-                memPutAddress(tail + VkBaseOutStructure.PNEXT, rayTracingPipeline.address()); tail =
-                    rayTracingPipeline.address()
+                if (supportsRayTracing) {
+                    memPutAddress(tail + VkBaseOutStructure.PNEXT, rayTracingPipeline.address())
+                    tail = rayTracingPipeline.address()
+                }
 
                 if (supportsRayQuery) {
                     val rayQuery = VkPhysicalDeviceRayQueryFeaturesKHR.calloc(stack)
@@ -543,6 +591,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     }
 
     fun cleanup() {
+        if (ngxDelegate.isInitialized()) ngxRuntime.getOrNull()?.close()
         vkDestroyDevice(vkDevice, null)
     }
 
@@ -562,47 +611,6 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         return out
     }
 
-    private data class RayTracingFeatureProbe(val pipeline: Boolean, val query: Boolean)
-
-    private fun queryRayTracingFeatures(
-        stack: MemoryStack,
-        hasExt: (String) -> Boolean
-    ): RayTracingFeatureProbe {
-        val hasRequiredExtensions =
-            hasExt(KHRDeferredHostOperations.VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) &&
-                    hasExt(KHRAccelerationStructure.VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) &&
-                    hasExt(KHRRayTracingPipeline.VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
-        if (!hasRequiredExtensions) return RayTracingFeatureProbe(pipeline = false, query = false)
-
-        val features2 = VkPhysicalDeviceFeatures2.calloc(stack)
-            .sType(VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
-        val accelerationStructure = VkPhysicalDeviceAccelerationStructureFeaturesKHR.calloc(stack)
-            .sType(KHRAccelerationStructure.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR)
-        val rayTracingPipeline = VkPhysicalDeviceRayTracingPipelineFeaturesKHR.calloc(stack)
-            .sType(KHRRayTracingPipeline.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR)
-        val hasRayQueryExtension = hasExt(KHRRayQuery.VK_KHR_RAY_QUERY_EXTENSION_NAME)
-        val rayQuery = if (hasRayQueryExtension) {
-            VkPhysicalDeviceRayQueryFeaturesKHR.calloc(stack)
-                .sType(KHRRayQuery.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR)
-        } else {
-            null
-        }
-
-        features2.pNext(accelerationStructure.address())
-        accelerationStructure.pNext(rayTracingPipeline.address())
-        rayQuery?.let { rayTracingPipeline.pNext(it.address()) }
-        VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, features2)
-
-        val pipeline =
-            accelerationStructure.accelerationStructure() &&
-                    rayTracingPipeline.rayTracingPipeline()
-        val query =
-            pipeline &&
-                    hasRayQueryExtension &&
-                    rayQuery?.rayQuery() == true
-        return RayTracingFeatureProbe(pipeline, query)
-    }
-
     private fun queryRayTracingLimits(stack: MemoryStack): RayTracingLimits {
         val props2 = VkPhysicalDeviceProperties2.calloc(stack)
             .sType(VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2)
@@ -611,8 +619,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         val asProps = VkPhysicalDeviceAccelerationStructurePropertiesKHR.calloc(stack)
             .sType(KHRAccelerationStructure.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR)
 
-        props2.pNext(rtProps.address())
-        rtProps.pNext(asProps.address())
+        props2.pNext(asProps.address())
+        if (raySupport.pipelineExtension) asProps.pNext(rtProps.address())
         VK11.vkGetPhysicalDeviceProperties2(physicalDevice.vkPhysicalDevice, props2)
 
         return RayTracingLimits(
@@ -622,7 +630,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             maxRayRecursionDepth = rtProps.maxRayRecursionDepth(),
             maxRayDispatchInvocationCount = rtProps.maxRayDispatchInvocationCount(),
             maxRayHitAttributeSize = rtProps.maxRayHitAttributeSize(),
-            minAccelerationStructureScratchOffsetAlignment = asProps.minAccelerationStructureScratchOffsetAlignment()
+            minAccelerationStructureScratchOffsetAlignment = asProps.minAccelerationStructureScratchOffsetAlignment(),
+            maxGeometryCount = asProps.maxGeometryCount(),
+            maxInstanceCount = asProps.maxInstanceCount(),
+            maxPrimitiveCount = asProps.maxPrimitiveCount(),
+            maxPerStageDescriptorAccelerationStructures = asProps.maxPerStageDescriptorAccelerationStructures(),
+            maxDescriptorSetAccelerationStructures = asProps.maxDescriptorSetAccelerationStructures()
         )
     }
 

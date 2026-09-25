@@ -283,6 +283,8 @@ class Renderer(
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
     private var cleanedUp = false
+    /** True after cleanup begins; between-frame producers must stop before using this device again. */
+    val isClosed: Boolean get() = cleanedUp
 
     internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
         val key = graphicsRecordingContext.get()
@@ -360,7 +362,8 @@ class Renderer(
         return if (Thread.currentThread() === qt) {
             block()
         } else {
-            queueExecutor.submit<T> { block() }.get()
+            try { queueExecutor.submit<T> { block() }.get() }
+            catch (e: java.util.concurrent.ExecutionException) { throw e.cause ?: e }
         }
     }
 
@@ -534,6 +537,9 @@ class Renderer(
         ctx.fences[imageIndex].fenceWait()
         drainCompletedGraphicsCallbacks(ctx, windowIndex, imageIndex, requireSignaled = true)
 
+        unavailableWindows.remove(windowIndex)?.let { since ->
+            if(System.nanoTime()-since>250_000_000L)presentationRevision++
+        }
         ctx.currentImage = imageIndex
         if (windowIndex == 0) currentImage = imageIndex
         return imageIndex
@@ -792,7 +798,7 @@ class Renderer(
         deferredFailure?.let { throw it }
     }
 
-    /** Monotonic frame id incremented after each completed [render] call. */
+    /** Monotonic submitted-frame id; acquisition-only retries do not advance GPU retirement. */
     var frameCounter = 0L
     private var lastVertexUploadStatsLogNs = 0L
     private var lastRunFpsLogNs = 0L
@@ -1135,6 +1141,10 @@ class Renderer(
         return configured?.toIntOrNull()?.coerceIn(1, 100) ?: 82
     }
 
+    /** Changes after a presentation gap; temporal adapters must reject old history. */
+    var presentationRevision=0L; private set
+    private val unavailableWindows=mutableMapOf<Int,Long>()
+
     fun render() {
         check(!cleanedUp) { "Renderer has been cleaned up" }
         val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
@@ -1175,7 +1185,7 @@ class Renderer(
 
         windowContexts.forEachIndexed { ctxIndex, ctx ->
             val w = ctx.window
-            if (w.width <= 0 && w.height <= 0) return@forEachIndexed
+            if (w.width <= 0 || w.height <= 0) return@forEachIndexed
 
             var imageIndex = 0
             val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
@@ -1257,7 +1267,8 @@ class Renderer(
 
                 ctx.profilerState?.pending?.addLast(Pending(imageIndex))
             } catch (e: ImageNotAvailable) {
-                lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
+                unavailableWindows.putIfAbsent(ctxIndex,System.nanoTime())
+                if (!e.retryable) lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
             }
         }
 
@@ -1266,7 +1277,7 @@ class Renderer(
         clearPreAcquiredPrimaryImageForFrame(frameId)
 
         // Deferred cleanup queue (use max frames-in-flight across all contexts)
-        cleanupStack.add(frameCounter to cleanup)
+        if (cleanup.isNotEmpty()) cleanupStack.add(frameCounter to cleanup)
         cleanup = mutableListOf()
         val thresholdFrame = frameCounter - maxFramesInFlight * 8
         while (cleanupStack.isNotEmpty() && cleanupStack.first().first <= thresholdFrame) {
@@ -1289,7 +1300,9 @@ class Renderer(
             currentImage = (defaultContext.currentImage + 1) % defaultContext.numImages
         }
 
-        frameCounter++
+        // Failed acquire attempts must not age the GPU retirement queue while all windows
+        // are hidden. A later successful submission resumes its normal frame accounting.
+        if (computeSubmittedThisFrame || openXRHmdTarget != null) frameCounter++
         currentCommandBuffer = null
     }
 
@@ -1546,7 +1559,7 @@ class Renderer(
         return recordedWindowCaptures
     }
 
-    class ImageNotAvailable(s: String) : RuntimeException(s)
+    class ImageNotAvailable(s: String, val retryable: Boolean = false) : RuntimeException(s)
 
     fun submit(
         context: WindowContext,

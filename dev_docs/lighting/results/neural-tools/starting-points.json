@@ -1,0 +1,33 @@
+{
+  "ray_reconstruction": {
+    "commandsPassed": 14,
+    "glfwPlatform": "GLFW_PLATFORM_WAYLAND",
+    "controlToggle": [
+      false,
+      true
+    ],
+    "capture": "ray_reconstruction/controls.png",
+    "stoppedSceneAndRenderer": true
+  },
+  "optical_flow": {
+    "commandsPassed": 14,
+    "glfwPlatform": "GLFW_PLATFORM_WAYLAND",
+    "controlToggle": [
+      false,
+      true
+    ],
+    "capture": "optical_flow/controls.png",
+    "stoppedSceneAndRenderer": true
+  },
+  "learned_shader": {
+    "commandsPassed": 14,
+    "glfwPlatform": "GLFW_PLATFORM_WAYLAND",
+    "controlToggle": [
+      false,
+      true
+    ],
+    "capture": "learned_shader/controls.png",
+    "stoppedSceneAndRenderer": true
+  },
+  "vulkanValidationErrors": 0
+}

@@ -1,0 +1,71 @@
+name: learned_shader
+description: 'A user-trained function in a shader: original, approximation and error; ordinary arithmetic or cooperative
+  vectors.'
+operations:
+- create:
+    box: agent_graphics_context
+    name: renderer
+    frame:
+      x: 40.0
+      y: 40.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
+        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
+        Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+- launch:
+    box: agent_graphics_context
+    property: code
+    type: code
+    strand: renderer
+    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
+      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
+      Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+- wait:
+    frames: 3
+- create:
+    box: learned_shader
+    name: learned shader
+    frame:
+      x: 400.0
+      y: 160.0
+      w: 420.0
+      h: 100.0
+    properties:
+      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.neural.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
+        \nprop<LearnedShader>(lab)\nfromContextWithNameOrNull<LearnedShader>(\"lab\")?.close()\nvar cooperative=renderer.device.supportsCooperativeVector\n\
+        var active=cooperative\nvar requestedView=2\nvar animate=true\nvar reload=false\nlab=LearnedShader(renderer,cooperative=cooperative)\n\
+        controlGroup(\"learned shader\") {\n    checkbox(\"Cooperative vectors\",initialValue=cooperative) { cooperative=it\
+        \ }\n    slider(\"0: Original · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { requestedView=it.toInt()\
+        \ }\n    checkbox(\"Animate time\",initialValue=true) { animate=it }\n    button(\"Reload trained weights\"\
+        ) { if(it)reload=true }\n}\ndisplayOpen(\"learned shader\")\nprintln(\"Compare: original / learned / absolute\
+        \ RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.\")\nframes {\n    var time=0.0\n    while(true)\
+        \ {\n        if(cooperative!=active || reload) {\n            runCatching {\n                val next=LearnedShader(renderer,cooperative=cooperative,attach=false)\n\
+        \                lab.close();lab=next.attach();active=cooperative\n            }.onFailure { println(\"\
+        Keeping working shader: ${it.message}\");cooperative=active }\n            reload=false\n        }\n   \
+        \     lab.view=requestedView\n        if(animate)time+=.01\n        lab.time=kotlin.math.sin(time).toFloat()\n\
+        \        frame()\n    }\n}.end { lab.close() }\n"
+- connect:
+    parent: agent_graphics_context
+    child: learned_shader
+- launch:
+    box: learned_shader
+    property: code
+    type: code
+    strand: scene
+    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.neural.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
+      \nprop<LearnedShader>(lab)\nfromContextWithNameOrNull<LearnedShader>(\"lab\")?.close()\nvar cooperative=renderer.device.supportsCooperativeVector\n\
+      var active=cooperative\nvar requestedView=2\nvar animate=true\nvar reload=false\nlab=LearnedShader(renderer,cooperative=cooperative)\n\
+      controlGroup(\"learned shader\") {\n    checkbox(\"Cooperative vectors\",initialValue=cooperative) { cooperative=it\
+      \ }\n    slider(\"0: Original · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { requestedView=it.toInt()\
+      \ }\n    checkbox(\"Animate time\",initialValue=true) { animate=it }\n    button(\"Reload trained weights\"\
+      ) { if(it)reload=true }\n}\ndisplayOpen(\"learned shader\")\nprintln(\"Compare: original / learned / absolute\
+      \ RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.\")\nframes {\n    var time=0.0\n    while(true)\
+      \ {\n        if(cooperative!=active || reload) {\n            runCatching {\n                val next=LearnedShader(renderer,cooperative=cooperative,attach=false)\n\
+      \                lab.close();lab=next.attach();active=cooperative\n            }.onFailure { println(\"Keeping\
+      \ working shader: ${it.message}\");cooperative=active }\n            reload=false\n        }\n        lab.view=requestedView\n\
+      \        if(animate)time+=.01\n        lab.time=kotlin.math.sin(time).toFloat()\n        frame()\n    }\n\
+      }.end { lab.close() }\n"
+- wait:
+    frames: 12

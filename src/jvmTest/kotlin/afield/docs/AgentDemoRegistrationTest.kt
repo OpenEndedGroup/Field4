@@ -86,6 +86,16 @@ class AgentDemoRegistrationTest {
             "chart_primitive",
             "completion_rank_at_scale",
             "confluence_grid",
+            // Transcript sources, registered COMPILE_ONLY with separate Vulkan GPU checks.
+            "direct_lighting",
+            "learned_from_module",
+            "learned_shader",
+            "neural_reconstruction",
+            "optical_flow",
+            "optical_flow_pingpong",
+            "ray_reconstruction",
+            "reconstruction_plumbing",
+            "rr_plumbing",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
             // here (this set is the directory listing) and is invisible to the two assertions that
             // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under

@@ -57,10 +57,9 @@ import kotlin.math.sqrt
  */
 
 /**
- * Four arms measured at 96x72 on the software BVH backend, then three figures at 480x360. Each arm
- * prints a `PASS` line naming the population it measured. A live renderer is required throughout,
- * so this carries no `FIELD_TEST` annotation and is driven from a box instead:
- * `dev_docs/agents/demos/path_tracing_emitters/verify.yaml` is the transcript that does it.
+ * Four arms measured at 96x72 on each enabled backend, then three figures at 480x360. Each arm
+ * prints a `PASS` line naming the population it measured. Run through RayTracingGpuAudit's
+ * `--stage=emitters` or `dev_docs/agents/demos/path_tracing_emitters/verify.yaml` in a live box.
  */
 object PathTraceEmitterGpuSmoke {
     private const val WIDTH = 96
@@ -357,8 +356,16 @@ object PathTraceEmitterGpuSmoke {
      * Call from a suspend body in a box below a live renderer, as with the other path-trace smokes.
      */
     suspend fun run(renderer: Renderer, outputDirectory: String) {
-        val backend = PathTracingRenderer.Backend.COMPUTE_BVH
-        val out = File(outputDirectory)
+        val backends = listOf(PathTracingRenderer.Backend.COMPUTE_BVH) +
+            if (renderer.device.supportsRayQuery) listOf(PathTracingRenderer.Backend.RAY_QUERY) else emptyList()
+        for (backend in backends) {
+            println("== emitter backend $backend")
+            runBackend(renderer, backend, File(outputDirectory, backend.name.lowercase()))
+        }
+        println("PASS path-tracing emitter GPU smoke on ${backends.joinToString()}")
+    }
+
+    private suspend fun runBackend(renderer: Renderer, backend: PathTracingRenderer.Backend, out: File) {
         inertWithoutEmitters(renderer, backend)
         enclosureAgainstEnvironment(renderer, backend)
         enclosureComposition(renderer, backend)
@@ -383,11 +390,12 @@ object PathTraceEmitterGpuSmoke {
         val high = agree(referenceOn.pixels, referenceOff.pixels, pixels)
         val low = agree(lowOn.pixels, lowOff.pixels, pixels)
         val decay = low.median/high.median
-        val expected = sqrt(LAMP_REFERENCE.toDouble()/LAMP_LOW_REFERENCE)
+        val budgetGrowth = LAMP_REFERENCE.toDouble()/LAMP_LOW_REFERENCE
+        val expected = sqrt(budgetGrowth)
         println("lamp-box bias at ${referenceOff.samples} samples: $high")
         println("lamp-box bias at ${lowOff.samples} samples: $low")
-        println("lamp-box residual decay ${show(decay)} for a ${show(expected)} budget ratio: " +
-            "noise decays, bias does not")
+        println("lamp-box residual decay ${show(decay)} against a ${show(expected)} prediction " +
+            "for ${show(budgetGrowth)}x more samples: noise decays, bias does not")
         // A residual that shrinks with the reference's own budget is the reference's noise. Half of
         // the ideal square-root decay is a generous floor; a real bias would hold the ratio near one.
         check(decay > 3.0) { "Residual did not decay with budget: $decay against $expected" }
@@ -426,7 +434,7 @@ object PathTraceEmitterGpuSmoke {
             "${show(predicted)} over ${pixels.size} lit pixels")
 
         captures(renderer, backend, out)
-        println("PASS path-tracing emitter GPU smoke")
+        println("PASS emitter backend $backend")
     }
 
     /**

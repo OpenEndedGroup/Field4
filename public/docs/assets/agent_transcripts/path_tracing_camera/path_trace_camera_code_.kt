@@ -1,9 +1,7 @@
 import afield.four.fabricated.*
 import afield.four.util.Camera
 import afield.four.util.keyCamera
-import afield.four.modules.fromContext
 import afield.stdlib.linalg.Vector3f
-val renderer: Renderer = fromContext()
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.35f, 0.35f, 0.35f))
 val light = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
@@ -25,7 +23,7 @@ val camera = Camera(renderer).also {
 }
 val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
 prop<PathTracingRenderer>(tracer)
-tracer = pathTracingHere(scene, env, camera = camera)
+tracer = pathTracingHere(scene, env, width=1280, height=720, camera = camera)
 tracer.apertureRadius = 0.25f // world units; zero switches depth of field off
 tracer.focusDistance = null // keep the camera target in focus
 tracer.pixelJitter = 1f // full-pixel antialiasing; zero samples pixel centres

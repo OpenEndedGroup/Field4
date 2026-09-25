@@ -1,0 +1,12 @@
+{
+  "entrypoint": "afield.four.reconstruction.NeuralToolsFallbackSmoke",
+  "exitCode": 0,
+  "completionMarker": "NEURAL TOOLS FALLBACK CHECK DONE",
+  "vulkanValidationErrors": 0,
+  "durationMs": 3195,
+  "disabled": [
+    "NGX",
+    "optical flow",
+    "cooperative vectors"
+  ]
+}

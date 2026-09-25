@@ -1,0 +1,21 @@
+{
+  "visibilityShadingGpuMs": {
+    "min": 0.132448,
+    "max": 0.151712,
+    "count": 100,
+    "p50": 0.138304,
+    "p95": 0.14704
+  },
+  "shadowMeanAbsoluteDifference": 0.008877100340517549,
+  "width": 256,
+  "workingBytes": 1572864,
+  "tlasBuilds": 4,
+  "ensemble": {
+    "standardError": 5.752265330577542E-6,
+    "lowMean": 0.09909455016002221,
+    "referenceMean": 0.09909921969181752
+  },
+  "blasBuilds": 3,
+  "samples": 32,
+  "height": 192
+}

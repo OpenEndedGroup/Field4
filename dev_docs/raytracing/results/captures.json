@@ -1,0 +1,148 @@
+{
+  "date": "2026-09-24",
+  "baseCommit": "d72363a9007b5a959d3f0773645f2ff9cc4ff564",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "driver": "610.43.02",
+  "docsRunner": {
+    "regenerated": 10,
+    "failures": 0,
+    "elapsedSeconds": 126.4
+  },
+  "captures": [
+    {
+      "path": "public/docs/assets/rt-mirror-balls.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "sha256": "b08a467350e258a50cf205a720ed710bbf202f37316759931af80e72cf47af9a",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/rt-shader-tiles.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "sha256": "880f2c7f8f2a62e1d3ec813ad4924318027aebf7e655865d56fa4e1fa521e674",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/rt-triangle-scene.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "sha256": "cc777eb79d409d149f20e246c564f9fc20fbf9dba7fdc856e732db3b69d07c83",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/rt-uv-gradient.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "sha256": "4a23558b11e7b4e3369f0887ffedcb9f49fc4fb2e498e9b7351ac0773d4a55a3",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/camera.png",
+      "dimensions": [
+        6528,
+        3672
+      ],
+      "sha256": "af5865efc003d4cf8b86a63be5dc48d4f213561a1b1e8ad92e11035b2757245e",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/emitter_off.png",
+      "dimensions": [
+        480,
+        360
+      ],
+      "sha256": "4d3ab6279e1f5ffa7881f863b970474a689d5162aa91fcc157c278bd4bcbd60b",
+      "producer": "GPU audit / RAY_QUERY"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/emitter_on.png",
+      "dimensions": [
+        480,
+        360
+      ],
+      "sha256": "a26405e1c3b1c4235461225557942ee1b9aab3d6696ad9ad3c0ad65f42a69f32",
+      "producer": "GPU audit / RAY_QUERY"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/fog.png",
+      "dimensions": [
+        6528,
+        3672
+      ],
+      "sha256": "5d9e3a7bd2381b030041439dbc27b5e3731c454b2ddd0c2d6cb493915c766f8b",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/glass.png",
+      "dimensions": [
+        6528,
+        3672
+      ],
+      "sha256": "1c27de32f51ccd1a50b7718b5d801967308ae84e1b0eba414c21711bea95a3a2",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/gltf.png",
+      "dimensions": [
+        6528,
+        3672
+      ],
+      "sha256": "fd874b330845eccd56f630d50cd2aa1d1b4d08a5b398b96ff818f8d7601243e7",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/hidden_environment.png",
+      "dimensions": [
+        6528,
+        3672
+      ],
+      "sha256": "acc334c32996f563f6d7e9e6169613e6bbdfdcd7ae64af905a5b53c0d85c2bbd",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/materials.png",
+      "dimensions": [
+        6528,
+        3672
+      ],
+      "sha256": "435e36a286f177be0914c4f437b50aa72c3d68668783fce1327f99c049e85b45",
+      "producer": "docs runner"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/medium_depthfog.png",
+      "dimensions": [
+        640,
+        400
+      ],
+      "sha256": "5367819d9b66560af4335a1c9b56a46a12f14ddc531e74d9ffb17aedd75b1f58",
+      "producer": "GPU audit / RAY_QUERY"
+    },
+    {
+      "path": "public/docs/assets/path_tracing/medium_shafts.png",
+      "dimensions": [
+        640,
+        400
+      ],
+      "sha256": "263578ff8ff207ecc17143618f6c6773aaf3af3fbcac8d1030c48939b8b9b830",
+      "producer": "GPU audit / RAY_QUERY"
+    }
+  ],
+  "sourceHashes": {
+    "src/jvmMain/resources/afield/four/pathtracing/trace.comp": "6b360d868d20055d935f13d59a0948b78cba2522858ca676503b769521d26359",
+    "src/jvmMain/kotlin/afield/four/fabricated/RayTracingGpuAudit.kt": "b6da553af8143e44156c9fd0a4bfc0dc042b081d2338608d61dcb0320b6059ff",
+    "src/jvmMain/kotlin/afield/four/fabricated/PathTraceGpuSmoke.kt": "430df77cc5e81c857e25c3abc45733140d5139328b4056b2ce93da03114b1a1c",
+    "src/jvmMain/kotlin/afield/four/fabricated/RayTracingDocsHarness.kt": "cfa345b77feefc2aa3016cbd2f956aacb3fd65e8a25e644d32b9806cd0b8d599",
+    "public/docs_hooks.py": "3b32f1419f30ab34c35fef6b56c38f4bcd1aefe8f5816a2d31660c2f8e56e2ac"
+  },
+  "validationLayer": "VK_LAYER_KHRONOS_validation (loader insertion confirmed in full audit stdout)",
+  "vuidMessages": 0
+}

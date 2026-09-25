@@ -446,6 +446,8 @@ private fun primitiveTypeName(type: PrimitiveType): String = when (type) {
     PrimitiveType.f16vec2 -> "f16vec2"
     PrimitiveType.f16vec3 -> "f16vec3"
     PrimitiveType.f16vec4 -> "f16vec4"
+    PrimitiveType.uint64_t -> "uint64_t"
+    PrimitiveType.int64_t -> "int64_t"
     PrimitiveType.deviceptr -> "uint64_t"
 }
 
