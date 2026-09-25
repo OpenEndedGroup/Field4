@@ -288,8 +288,16 @@ class BoardsStayAlive(unittest.TestCase):
             if name in self.NOT_A_DIRECTORY_SCAN or name in self.NOT_A_BOARD:
                 continue
             with self.subTest(board=name):
+                # Through BOARD_ARGV, not a bare `public/docs`. This class predates
+                # that map and predates `kdoc_overviews.py`, whose root is a Kotlin
+                # source tree -- so the merge that brought both together had this
+                # gate calling it with the docs root, where it correctly refuses and
+                # exits 2. The fix is to share the one map rather than grow a third
+                # exemption set beside NOT_A_DIRECTORY_SCAN and NOT_A_BOARD: a board
+                # added tomorrow should not have to be registered in two places.
+                argv = BOARD_ARGV.get(name, [str(docs)])
                 done = subprocess.run(
-                    [sys.executable, str(DETECTORS / f"{name}.py"), str(docs)],
+                    [sys.executable, str(DETECTORS / f"{name}.py"), *argv],
                     capture_output=True, text=True, timeout=300,
                 )
                 self.assertEqual(
