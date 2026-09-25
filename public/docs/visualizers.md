@@ -463,6 +463,7 @@ In the editor you can add a marker rune (ᛟ), with f1, "Insert Stack Mark", or 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/insert-stack-mark.png" alt="Insert stack mark command" padding="6" wait="0" timeout="90" embed=true hidden=true name="insert-stack-mark"}
 ui.openEditor(id)
 ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
 ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("F1")

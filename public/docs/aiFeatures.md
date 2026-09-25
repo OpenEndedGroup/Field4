@@ -82,6 +82,7 @@ the same list when they arrive.
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor(id)
 ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
 ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("Control+A")
