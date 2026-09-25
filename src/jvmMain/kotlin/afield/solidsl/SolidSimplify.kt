@@ -17,7 +17,7 @@ package afield.solidsl
  * whether it is ever non-zero, or where; a node knows its own [SolidExpr.bounds] without sampling.
  * This file is what those two facts are worth.
  *
- * # The rules, and which ones are interesting
+ * # The rules
  *
  * The dull ones first, because a notation accumulates them the moment anyone generates code into it:
  * identity transforms drop out, adjacent [SolidExpr.Translate]s and [SolidExpr.Scale]s fold, nested

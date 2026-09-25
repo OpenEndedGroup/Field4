@@ -31,7 +31,7 @@ import afield.stdlib.valueAndGrad
  * // SolidGradientSample(value = 0.1, dPosition = [1, 0, 0], dParameters = [-1, 0])
  * ```
  *
- * # Why a third reading, and why *this* third reading
+ * # Why a third reading
  *
  * `SolidField.kt` opens by saying a lambda "cannot be printed, compared, serialized, rewritten, or
  * emitted as GLSL", and this package answered that with two readings that can:
@@ -59,10 +59,10 @@ import afield.stdlib.valueAndGrad
  * is for the opposite shape, one input and many outputs. The position gradient is only three inputs
  * and falls off the same tape for free, so there was never a reason to run two modes.
  *
- * # The reading is total. The *parameterisation* is where refusals live
+ * # The differentiable reading is total on the algebra
  *
  * `SolidExact.kt` puts every refusal in the type and enumerates five of them. This file has **none
- * of that flavour**, and that is a finding rather than an omission: the differentiable reading is
+ * of that flavour**: the differentiable reading is
  * total on the algebra for exactly the reason [toScalarField] is total on it — it is the same algebra
  * evaluated in a different arithmetic. Every node that has a field form has a differentiable form,
  * because `AD` is closed under everything `Field3` uses.
@@ -83,11 +83,13 @@ import afield.stdlib.valueAndGrad
  * [SolidExpr.gradientNotes] will tell you so about your own expression.
  *
  * What *is* refused, always with a stated reason, is **binding a parameter to a slot** — see
- * [SolidExpr.parameterize]. Seven distinct refusals, from "that path does not exist, here are the
- * ones that do" to "`segments` is an integer facet count that [toScalarField] ignores entirely, so
- * there is no derivative to take". Nothing guesses; a wrong derivative is worse than no derivative.
+ * [SolidExpr.parameterize]. They fall into three groups: the address is wrong, two names claim one
+ * number, or the seed is singular before the first step — from "that path does not exist, here are
+ * the ones that do" to "`segments` is an integer facet count that [toScalarField] ignores entirely,
+ * so there is no derivative to take". Nothing guesses; a wrong derivative is worse than no
+ * derivative.
  *
- * # Kinks, and the one fact that makes the whole night verifiable
+ * # Kinks and the 0.5/0.5 tie rule
  *
  * A distance field is full of kinks. `min` and `max` *are* CSG; `abs` is [SolidExpr.Shell] and
  * [SolidExpr.Gyroid]; `sqrt` at zero is every radial primitive's own centre. A derivative at a kink
@@ -96,7 +98,7 @@ import afield.stdlib.valueAndGrad
  * difference reports at a kink, so the analytic gradient and the finite-difference oracle *agree
  * there too*".
  *
- * That is load-bearing here. It means the CSG seam does not have to be carved out of the
+ * That matters here. It means the CSG seam does not have to be carved out of the
  * finite-difference census: a point sitting exactly on the boundary between two united children is a
  * point where the analytic answer and the numerical oracle still match. The convention is inherited
  * rather than re-chosen, so there is one place it is written down.

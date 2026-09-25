@@ -39,7 +39,7 @@ import kotlin.random.Random
  * the derivative of, and therefore a track you can **solve**: declare where a rect should be at some
  * instant and let a gradient find the numbers that put it there."
  *
- * # The target is a sampled field, and why that and not a mesh
+ * # The target is a sampled field, not a mesh
  *
  * A [SolidSamples] is a bag of points with a signed distance at each. Three things recommend it over
  * fitting against a mesh:

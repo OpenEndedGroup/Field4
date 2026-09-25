@@ -23,7 +23,7 @@ import kotlin.math.sqrt
  * val mesh = (cuboid(2, 2, 1) - cylinder(3, 0.3)).march(resolution = 96)
  * ```
  *
- * # Total, and never a refusal
+ * # This lowering always succeeds
  *
  * Unlike [exactSolid], this lowering always succeeds. Every node in the algebra has a field form —
  * that is where the algebra came from. What it does *not* always have is an **exact** distance

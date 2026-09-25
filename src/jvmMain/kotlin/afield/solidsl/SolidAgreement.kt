@@ -25,7 +25,7 @@ import kotlin.math.sin
  * println(bracket.crossCheck(SolidQuality(edgeLength = 0.02, segments = 256)).report())
  * ```
  *
- * # Why two lowerings of the same thing is worth measuring
+ * # Two implementations that share no code
  *
  * Almost nothing in a graphics codebase gets to do this. The usual options are to assert against a
  * remembered constant (which pins the current behaviour, not the correct one) or against a closed
@@ -52,10 +52,9 @@ import kotlin.math.sin
  * would have meant inventing a volume for something that has none. What the two share is the
  * argument, so each cross-references the other.
  *
- * # Agreement does not converge to zero, and saying so is the point
+ * # Agreement does not converge to zero
  *
- * There are two regimes, and conflating them would be the overclaim this measurement is designed to
- * avoid:
+ * There are two regimes:
  *
  *  - **Polyhedral shapes** — cuboids, polygon-profile extrusions, and booleans of those. The exact
  *    lowering *is* the truth, so the marched one converges to it and the residual goes to zero as

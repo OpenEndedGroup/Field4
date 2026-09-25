@@ -23,7 +23,7 @@ import kotlin.random.Random
  * val fit = template.fitToPointCloud(cloud, start = doubleArrayOf(0.3, 1.1, 0.4))
  * ```
  *
- * # Why this is a different problem from [fitParameters], and a harder one
+ * # Why a point cloud is a different problem from [fitParameters]
  *
  * [fitParameters] regresses against a [SolidSamples] — a bag of points *with a signed distance at
  * each*. That is a rich target and it is also a slightly circular one: the distances come from
@@ -35,8 +35,8 @@ import kotlin.random.Random
  * you trust, no correspondence to anything, some noise, and — nearly always — only the part of the
  * surface that faced the sensor.
  *
- * The loss is the obvious one and it is worth stating exactly, because everything interesting here
- * follows from what it does *not* contain:
+ * The loss is the obvious one, and worth stating exactly, because the three failure modes below all
+ * follow from what it does *not* contain:
  *
  * ```
  * L(θ) = (1/N) · Σ f(pᵢ; θ)²
@@ -45,12 +45,11 @@ import kotlin.random.Random
  * The model's own field, squared, at each cloud point. A surface point should be *on* the surface, so
  * `f` should be zero there. That is the whole objective.
  *
- * ## What the loss does not contain, and what goes wrong because of it
+ * ## The missing interior term
  *
  * There is **no term that wants the interior filled**. `L` is minimised by putting the model's
  * zero level set through the points, and a shape that puts *some* surface through them scores as well
- * as the shape that generated them. Three consequences, all of them real and all of them measured in
- * `SolidSLPointCloudTest` rather than asserted here:
+ * as the shape that generated them. Three consequences, each measured in `SolidSLPointCloudTest`:
  *
  *  - **A full cloud recovers well.** Points all round a closed surface pin it from every side, and
  *    the missing interior term does not get a chance to matter.
