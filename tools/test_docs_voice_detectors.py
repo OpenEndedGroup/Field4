@@ -102,7 +102,11 @@ class BoardsSurviveTheTree(unittest.TestCase):
     made `double_published.py` drop a fence silently and `check_doc_assets.py` report a
     visible figure as an orphan.
 
-    So: exit 0, and print a count. Twelve seconds for all eighteen.
+    So: exit 0, and print a count. Under a minute for the whole directory, whatever is in it.
+
+    (The sentence here used to say "for all eighteen", and by 2026-09-25 there were twenty.
+    A planted count in a docstring nobody re-derives is the same fault `number_restated.py`
+    in this directory now looks for on the docs pages.)
     """
 
     def boards(self):
@@ -111,7 +115,7 @@ class BoardsSurviveTheTree(unittest.TestCase):
     _ran = {}
 
     def run_board(self, path):
-        """One sweep, shared by both assertions: eighteen subprocesses, not thirty-six."""
+        """One sweep, shared by both assertions: one subprocess per board, not two."""
         if path.stem not in self._ran:
             argv = BOARD_ARGV.get(path.stem, ["public/docs"])
             self._ran[path.stem] = subprocess.run(

@@ -23,7 +23,19 @@ Fourteen hits on the hand-written surface at `adb32a31e`. Ten were read one at a
 branch). The four true ones are four of that firing's seven pages and **none of them was
 visible on any other board** -- every one scored 0 or was already at its residual.
 
-The six keeps are the shape to recognise and leave:
+The remaining rows were read on 2026-09-25, when this board supplied a whole batch on a
+night both `score_voice.py` and `git log` came back empty: **3 true, 4 more keeps**. Only
+one of the three left the board, which is worth knowing before reading a count as progress:
+a demotion to `???` removes a row, while trimming a block that is a keep at eight lines
+leaves it exactly where it was. True were `marf.md:150` (a warning about latching
+whose second half was the floating-point *reason* the count is approximate, moved to
+`dev_docs/MARF_FIELD_CLOCKS.md`), `neural_particles.md:249` (a requirements list that ended
+by disclaiming its own argument) and `chain_skinned_volume.md:141` (a note explaining one
+row of the table above it -- demoted to `???` and retitled for the question a reader has).
+That last one is the cleanest example of the rule below: seven lines is not the fault, and
+"three quarters of the way in" is not the fault; *explaining a figure* is.
+
+The ten keeps are the shape to recognise and leave:
 
 - `animation_time_model.md:17` "A frame is one unit of work" -- a page's opening premise,
   deliberately always-open, and the thing the rest of the page is built on.
@@ -32,6 +44,14 @@ The six keeps are the shape to recognise and leave:
 - `neural_particles.md:337` "The textbook weights do not flock, and the defaults are the
   textbook weights" -- a real trap, a design fact, and a tuning instruction.
 - `keyframer_examples.md:220` -- API semantics with source citations in house style.
+- `completion_ranking.md:7` -- the same shape as `animation_time_model.md:17`: a page's
+  opening premise, at 1%, that the rest of the page is built on.
+- `animation_time_model.md:188` "`frame()` returns `true`, or throws" -- why `loop` can
+  ignore the return value, and that the throw is what runs your `.end { }`. Behaviour.
+- `marf.md:251` "A space instance must copy before it writes" -- a trap for anyone writing
+  their own `MarfSpace`, with the out-parameter remedy under it.
+- `polytope_examples.md:881` "When the canonical form is unique" -- the guarantee a solver
+  does and does not give, which the task file names as a keep in as many words.
 
 A hit is a candidate to **read**, never to fix unseen. The distinguishing question is not
 length and not position: it is whether a reader who is mid-task wants this now. A limitation
