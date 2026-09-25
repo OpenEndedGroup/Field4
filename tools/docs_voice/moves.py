@@ -259,11 +259,19 @@ def pages(root, generated=False, assets=False):
         yield path
 
 
-def scan(root, generated=False, assets=False):
-    """Return {family: [(path, lineno, shape_index, matched_text, line, span)]}."""
+def scan(root, generated=False, assets=False, census=None):
+    """Return {family: [(path, lineno, shape_index, matched_text, line, span)]}.
+
+    `census`, if given a list, is appended the pages actually read, so the caller can
+    report how large the sweep was. Without that number "0 hit(s)" reads identically
+    whether the board swept 141 pages or was handed an empty root -- which is the bug
+    `test_no_board_is_blind_to_its_root` was added to catch, in 2026-09-25.
+    """
     found = collections.defaultdict(list)
     compiled = [(fam, re.compile(rx, re.I), loss) for fam, rx, loss in SHAPES]
     for path in pages(root, generated=generated, assets=assets):
+        if census is not None:
+            census.append(path)
         text = path.read_text(encoding="utf-8", errors="replace")
         for lineno, line in prose_lines(text):
             for idx, (fam, rx, loss) in enumerate(compiled):
@@ -311,7 +319,9 @@ def main():
             print(f"  {fam:<14} {n} pattern(s)   {loss}")
         return 0
 
-    found = scan(args.root, generated=args.generated, assets=args.assets)
+    swept = []
+    found = scan(args.root, generated=args.generated, assets=args.assets,
+                 census=swept)
 
     if args.calibrate and args.assets:
         print("No recorded keeps on the assets surface yet. Run --calibrate without --assets;\n"
@@ -380,7 +390,7 @@ def main():
             src = f"  <- {owner(path, lineno)}" if args.generated else ""
             print(f"  {path.name}:{lineno}  -> {matched!r}{src}")
             print(f"      {line.strip()[:160]}")
-    print(f"\n{total} hit(s) across {len(seen)} famil(y/ies). "
+    print(f"\n{total} hit(s) across {len(seen)} famil(y/ies), on {len(swept)} page(s). "
           f"Every one is a candidate to *read*, not a fault to fix.")
     return 0
 

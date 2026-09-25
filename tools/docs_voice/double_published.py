@@ -193,7 +193,12 @@ def main():
             print(f"  :{lineno} {base} is also published by the fence at "
                   f":{fence_lineno} ({state})")
             print(f"      the hand-written line says: {image_alt[:96]}")
-    print(f"\n{total} figure(s) published twice{' on ' + surface.lstrip('-') if surface else ''}.")
+    # The page count is not decoration. Without it "0 figure(s) published twice" reads the
+    # same whether the board swept 141 pages or was handed a root with nothing in it, and
+    # `test_every_board_prints_a_count` passes either way because "0" is a digit. Gated
+    # from 2026-09-25 by `test_no_board_is_blind_to_its_root`.
+    print(f"\n{total} figure(s) published twice{' on ' + surface.lstrip('-') if surface else ''}"
+          f", across {len(rows)} page(s).")
     if total:
         print("Fix: move the hand-written alt into the fence's alt= and delete the line.")
     return 0
