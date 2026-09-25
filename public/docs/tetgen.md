@@ -55,7 +55,7 @@ actually did stays hidden. `afield.tetgen` has three answers, and the figure bel
 `boundary()` for the skin, `filtered()` with a half-space test for a cutaway, and
 `toTriMesh(shrink = …)` for the view where each element stands slightly apart from its neighbours.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/cutaway.png" wait="10" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="cutaway" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/cutaway.png" alt="three views of the same bent bracket, side by side. 'the closed surface TetGen is given - 618 triangles' is a smooth flat-shaded grey solid with two cylindrical bores, its faces so large that the flat panels are single triangles. 'half the elements, skinned - 18523 tetrahedra' is the same shape cut in half lengthways and re-drawn from the tetrahedra, so the cut face is a crust of small facets and the mesh visibly tightens into a dense collar around each bore. 'the same half, elements shrunk to 0.72 - colour is radius ratio, dark is worse' pulls every element back from its neighbours so the interior shows as separated tetrahedra, coloured yellow through teal: yellow over most of the bulk, and the darker teal concentrated in the collars around the bores and along the cut" wait="10" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="cutaway" embed=true}
 :::static
 import afield.manifold.*
 import afield.tetgen.*
@@ -153,7 +153,7 @@ radius-edge ratio of `0.9263`, which is nearer the regular tetrahedron's floor o
 the bound. The criterion is not merely a loose proxy for the thing you care about; on the tail it
 ranks the two in opposite orders.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/quality.png" wait="12" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="quality" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/quality.png" alt="two stacked output panels. The upper one plots 'radius ratio over 66489 elements' as a histogram, x axis '3 r_in / r_circ' from 0 to about 1, y axis 'elements' to 6000: a long flat tail hugging zero from 0.05 up to about 0.5, then a steep climb to a peak just under 7000 elements around 0.9, and a sharp drop in the last bin. Almost the whole population sits in the good half of the axis. The lower panel, 'the 400 worst elements, in place', draws those elements alone against black, so they hang in space as a few hundred slivers and flat wedges holding the silhouette of the bracket; they are thickest in two dense knots where the bores are and thin everywhere else. Its footer reads 1459 verts, 1584 tris, extent 80.000 x 40.000 x 70.000, chi=709, open (0 boundary loops), and 'radius ratio 0.0362 to 0.2886 - densest around the three bores, and scattered everywhere else'" wait="12" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="quality" embed=true}
 :::static
 import afield.manifold.*
 import afield.tetgen.*
@@ -329,7 +329,7 @@ The comparison that matters is against the route this replaced. The figure below
 box out of its own distance function, which is what an embedded formulation does before it ever sees
 an edge, and measures how far the result sits from the true surface.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/sharp_edge.png" wait="14" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="sharp_edge" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/sharp_edge.png" alt="two stacked plots. The upper, 'the corner at (1.0, 1.5), in a 0.24 x 0.24 window', zooms far enough in to see one corner four times over: the orange 'exact, and TetGen's' outline turns a true right angle at x=1, y=1.5, while the three marched outlines cut it off short, the red h=0.4 lowest and flattest, the green h=0.2 above it, the blue h=0.1 nearly on the orange but still parting from it as it approaches the corner. Captioned 'halving h halves the bite the level set takes out of the corner'. The lower, 'worst boundary error against cell size', is a log-log plot of worst distance from the true surface against cell size h at 0.05, 0.1, 0.2 and 0.4: two straight lines of different slope, blue 'box - first order' running from about 0.003 to 0.03, green 'sphere - second order' from about 0.0002 to 0.01 and so steeper. Captioned 'log-log. The box halves when h halves; the sphere quarters.'" wait="14" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="sharp_edge" embed=true}
 :::static
 import afield.manifold.*
 import afield.tetgen.*
