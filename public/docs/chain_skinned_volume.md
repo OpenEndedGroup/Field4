@@ -138,15 +138,14 @@ integrates exactly to `0.75 · ∫₁³ (2 − y)² dy = 0.75 · ⅔`, and the t
 0.75 each. The total is 2.0, so a third of the limb is gone, and none of that loss comes from how
 the tube happens to be triangulated.
 
-!!! note "At an exact pinch, Manifold weighs its own triangulation"
+??? aside "Why the 180° row has a gap the others do not"
 
     At 180° exactly, the 50/50 ring does not quite shrink to a point. Float rounding in the
     half-turn quaternion leaves it about 2·10⁻⁷ across, which is under the tolerance Manifold
-    gives a mesh of this size (about 5·10⁻⁷). Manifold keeps every one of the 206 vertices and all
-    408 triangles, but it swaps edges in that collar, so the volume it reports is the volume of *its*
-    triangulation. That is the gap in the 180° row. At 179.9° the ring is well above tolerance and
-    the gap disappears. If a measured volume matters at a degenerate pose, compare it with
-    `signedVolume` on the mesh you handed over.
+    gives a mesh of this size (about 5·10⁻⁷). Manifold keeps every vertex and every triangle it was
+    handed, but it swaps edges in that collar, so the volume it reports is the volume of *its*
+    triangulation. At 179.9° the ring is well above tolerance and the gap disappears. If a measured
+    volume matters at a degenerate pose, compare it with `signedVolume` on the mesh you handed over.
 
 ## What crosses each hop
 
