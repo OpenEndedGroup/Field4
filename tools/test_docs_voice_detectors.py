@@ -80,15 +80,12 @@ BOARD_ARGV = {
 # directions, like `expected_test_failures.json`: an unregistered failure is an ordinary
 # failure, and a registered board that starts passing fails too -- so an entry cannot
 # outlive its bug the way a sentence in a commit message can.
-KNOWN_RED = {
-    "alt_text": (
-        "`ValueError: No closing quotation` out of shlex, on any tree containing a fence "
-        "whose alt= describes braced Kotlin (petri_nets.md:143). Already fixed by "
-        "9e8d7fd7c on the unlanded branch docs/voice-2026-09-23e, which also fixes the "
-        "same regex in double_published.py and tools/check_doc_assets.py. Delete this "
-        "entry when that branch lands; this test will tell you to."
-    ),
-}
+# Empty is the good state, and it was not empty for ten days: `alt_text` sat here from
+# 2026-09-15 until 9e8d7fd7c was cherry-picked onto this branch on 2026-09-25, and every
+# firing in between scanned no alt text at all. The entry said "delete this when that
+# branch lands; this test will tell you to", and it did, in the same run that made the
+# board pass. Keep entries this specific: one board, one failure, and where the fix is.
+KNOWN_RED = {}
 
 
 class BoardsSurviveTheTree(unittest.TestCase):
