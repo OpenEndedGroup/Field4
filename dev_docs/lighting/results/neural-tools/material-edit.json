@@ -1,0 +1,14 @@
+{
+  "captureSize": [
+    3264,
+    1836
+  ],
+  "commandsPassed": 18,
+  "sameKernel": true,
+  "sameOutputImage": true,
+  "bitIdenticalRawRgb": true,
+  "glslRecompiled": true,
+  "leftMeanByteError": 0.0,
+  "rightMeanByteChange": 60.413433067943956,
+  "vulkanValidationErrors": 0
+}

@@ -11,6 +11,7 @@
   let clojureRegistered = false;
   let rectslRegistered = false;
   let glslRegistered = false;
+  let slangRegistered = false;
 
   // A declared `data-lang` that highlight.js does not know is rendered PLAIN, never guessed.
   //
@@ -60,6 +61,73 @@
     // is the right failure -- uncoloured, not miscoloured.
     stacksl: "forth"
   };
+
+  // Slang fences and exported .slang properties use the editor's lexical vocabulary
+  // (src/commonMain/resources/slang.js), plus the cooperative-vector types/calls in
+  // Field's learned.slang. Keep this separate from GLSL: float3, resource generics,
+  // SV_ semantics and [shader]/[[vk::binding]] attributes have different spellings.
+  function registerSlangLanguage() {
+    if (!window.hljs || slangRegistered || hljs.getLanguage("slang")) {
+      slangRegistered = true;
+      return;
+    }
+    hljs.registerLanguage("slang", function(hljs) {
+      const KEYWORDS = [
+        "if", "else", "for", "while", "do", "switch", "case", "default", "break", "continue",
+        "return", "discard", "struct", "class", "interface", "namespace", "typedef", "using",
+        "public", "private", "internal", "static", "extern", "inline", "const", "volatile",
+        "precise", "uniform", "groupshared", "in", "out", "inout", "nointerpolation",
+        "noperspective", "row_major", "column_major", "import", "module", "extension",
+        "var", "let", "enum", "where", "associatedtype", "__generic", "__init", "this"
+      ];
+      const TYPES = [
+        "void", "vector", "matrix", "SamplerState", "SamplerComparisonState",
+        "Buffer", "RWBuffer", "StructuredBuffer", "RWStructuredBuffer",
+        "AppendStructuredBuffer", "ConsumeStructuredBuffer", "ByteAddressBuffer", "RWByteAddressBuffer",
+        "ConstantBuffer", "ParameterBlock", "RaytracingAccelerationStructure", "RayQuery",
+        "CoopVec", "CoopVecComponentType", "CoopVecMatrixLayout"
+      ];
+      const FUNCTIONS = [
+        "abs", "acos", "all", "any", "asin", "atan", "atan2", "ceil", "clamp", "cos", "cosh",
+        "cross", "ddx", "ddy", "determinant", "distance", "dot", "exp", "exp2", "floor", "fmod",
+        "frac", "fwidth", "isfinite", "isinf", "isnan", "length", "lerp", "log", "log2", "max",
+        "min", "mul", "normalize", "pow", "reflect", "refract", "round", "rsqrt", "saturate",
+        "sign", "sin", "sincos", "sinh", "smoothstep", "sqrt", "step", "tan", "tanh", "transpose",
+        "trunc", "asfloat", "asint", "asuint", "f16tof32", "f32tof16",
+        "GroupMemoryBarrierWithGroupSync", "DeviceMemoryBarrierWithGroupSync",
+        "InterlockedAdd", "InterlockedCompareExchange",
+        "coopVecMatMul", "coopVecMatMulAdd", "coopVecLoad", "coopVecStore"
+      ];
+      // Calls with generic arguments, e.g. coopVecMatMulAdd<half,32>(...), still
+      // get a function token. A variable named `max` is not a builtin call.
+      const callSuffix = "(?=\\s*(?:<[^;{}\\n()]*>)?\\s*\\()";
+      const builtinCall = new RegExp("\\b(?:" + FUNCTIONS.join("|") + ")\\b" + callSuffix);
+      const userCall = new RegExp("\\b(?!(?:" + KEYWORDS.join("|") + ")\\b)[A-Za-z_]\\w*" + callSuffix);
+      const number = { scope: "number", match: /\b0[xX][0-9a-fA-F]+[uUlL]*\b|(?:\b\d+\.\d*|\.\d+|\b\d+)(?:[eE][-+]?\d+)?[fFhHuUlL]*/, relevance: 0 };
+      const attributeContents = [hljs.QUOTE_STRING_MODE, hljs.C_LINE_COMMENT_MODE, hljs.C_BLOCK_COMMENT_MODE, number];
+      return {
+        name: "Slang",
+        keywords: { keyword: KEYWORDS.join(" "), type: TYPES.join(" "), literal: "true false null" },
+        contains: [
+          hljs.C_LINE_COMMENT_MODE, hljs.C_BLOCK_COMMENT_MODE,
+          hljs.QUOTE_STRING_MODE, hljs.APOS_STRING_MODE,
+          { scope: "meta", begin: /^[ \t]*#[ \t]*[A-Za-z_]\w*/, end: /$/, contains: attributeContents },
+          { scope: "meta", begin: /\[\[/, end: /\]\]/, contains: attributeContents },
+          // Match declaration attributes, not arbitrary array subscripts such as pixels[id].
+          { scope: "meta", begin: /\[(?:shader|numthreads|earlydepthstencil|domain|partitioning|outputtopology|outputcontrolpoints|patchconstantfunc|maxtessfactor|unroll|loop|branch|flatten|ForceUnroll|Differentiable|BackwardDerivative|ForwardDerivative)\b/, end: /\]/, contains: attributeContents },
+          { scope: "built_in", match: /\bSV_[A-Za-z_]\w*\b/, relevance: 0 },
+          { scope: "type", match: /\b(?:bool|int|uint|half|float|double)(?:[1-4](?:x[1-4])?)?\b|\b(?:u?int(?:8|16|32|64)|float(?:16|32|64))_t\b/, relevance: 0 },
+          { scope: "type", match: /\b(?:RW)?Texture(?:1D|2D|3D|Cube)(?:MS)?(?:Array)?\b/, relevance: 0 },
+          // Types must precede calls, so float3(...) and CoopVec<half,16>(...) stay types.
+          { scope: "type", match: new RegExp("\\b(?:" + TYPES.join("|") + ")\\b"), relevance: 0 },
+          { scope: "built_in", match: builtinCall, relevance: 0 },
+          { scope: "title.function", match: userCall, relevance: 0 },
+          number
+        ]
+      };
+    });
+    slangRegistered = true;
+  }
 
   /**
    * Resolve a fence's declared language to a grammar highlight.js actually has, or null.
@@ -624,6 +692,7 @@
     registerClojureLanguage();
     registerRectSLLanguage();
     registerGlslLanguage();
+    registerSlangLanguage();
     registerFieldMLLanguage();
     registerReferenceLanguages();
   }

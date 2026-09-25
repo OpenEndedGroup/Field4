@@ -23,7 +23,21 @@ const samples = [
   '# multiply(?x, 1) is a comment',
   '?x => @{ if (true) { value } else { value } }'
 ];
-const languages = samples.map((_, i) => i < 6 ? 'fieldml' : i < 10 ? 'kotlin' : i < 12 ? 'petri' : 'fnrewrite');
+const slangStart = samples.length;
+samples.push(
+  '[[vk::binding(0,0)]] ByteAddressBuffer weights;',
+  '[shader("compute")] [numthreads(8,8,1)]',
+  'void main(uint3 id : SV_DispatchThreadID) { float3 rgb = float3(.5h, 1e-3f, 0xffu); }',
+  'RWStructuredBuffer<float4> pixels; CoopVec<half,16> input;',
+  'var h = coopVecMatMulAdd<half,32>(input); return max(h, half(0));',
+  '// float3 fake = coopVecMatMulAdd<half,32>(input); [numthreads(8,8,1)]',
+  '"<script>float3 fake()</script>"',
+  'pixels[id] = values [index];',
+  '#if FIELD_COOPERATIVE // float3 is a comment here',
+  '/* float3 hidden;\n return coopVecMatMulAdd<half,32>(x); */\nfloat4 visible;',
+  fs.readFileSync('src/jvmMain/resources/afield/four/neural/learned.slang','utf8')
+);
+const languages = samples.map((_, i) => i < 6 ? 'fieldml' : i < 10 ? 'kotlin' : i < 12 ? 'petri' : i < slangStart ? 'fnrewrite' : 'slang');
 const nodes = samples.map((textContent, i) => ({textContent,innerHTML:'',dataset:{},classList:{add(){}},closest(){return {dataset:{codeLang:languages[i]}}}}));
 const context = {console,URL,location:{href:'https://example.test/field4/reference/math/'},document:{currentScript:{src:'https://example.test/field4/assets/code-diff-player/code-diff-player.js'},readyState:'loading',addEventListener(){},querySelectorAll(selector){return selector.startsWith('[data-code-lang]') ? nodes : []}}};
 context.window=context;
@@ -53,10 +67,36 @@ assert.match(nodes[12].innerHTML,/hljs-variable">\?x/);
 assert.match(nodes[13].innerHTML,/hljs-comment/);
 assert.doesNotMatch(nodes[13].innerHTML,/hljs-variable/);
 assert.match(nodes[14].innerHTML,/hljs-keyword">if/);
+const slang = nodes.slice(slangStart).map(n => n.innerHTML);
+assert.match(slang[0], /hljs-meta">\[\[vk::binding/);
+assert.match(slang[0], /hljs-type">ByteAddressBuffer/);
+assert.match(slang[1], /hljs-meta">\[shader/);
+assert.match(slang[1], /hljs-meta">\[numthreads/);
+assert.match(slang[1], /hljs-string">&quot;compute&quot;/);
+assert.match(slang[2], /hljs-type">uint3/);
+assert.match(slang[2], /hljs-built_in">SV_DispatchThreadID/);
+assert.match(slang[2], /hljs-number">\.5h/);
+assert.match(slang[2], /hljs-number">1e-3f/);
+assert.match(slang[2], /hljs-number">0xffu/);
+assert.match(slang[3], /hljs-type">RWStructuredBuffer/);
+assert.match(slang[3], /hljs-type">CoopVec/);
+assert.match(slang[4], /hljs-keyword">var/);
+assert.match(slang[4], /hljs-built_in">coopVecMatMulAdd/);
+assert.match(slang[4], /hljs-built_in">max/);
+assert.match(slang[5], /hljs-comment/);
+assert.doesNotMatch(slang[5], /hljs-(?:type|built_in|meta)/);
+assert.doesNotMatch(slang[6], /<script>|hljs-(?:type|title)/);
+assert.doesNotMatch(slang[7], /hljs-meta/);
+assert.match(slang[8], /hljs-meta/);
+assert.match(slang[8], /hljs-comment/);
+assert.equal((slang[9].match(/hljs-type/g) || []).length, 1);
+assert.doesNotMatch(slang[9], /hljs-built_in/);
+assert.match(slang[10], /hljs-built_in">coopVecMatMulAdd/);
+assert.match(slang[10], /hljs-title function_">learned/);
 for (let i = 0; i < nodes.length; i++) {
   const plain = nodes[i].innerHTML.replace(/<[^>]+>/g, '').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#x27;/g,"'").replace(/&amp;/g,'&');
   assert.equal(plain, samples[i], 'highlighting must preserve source text');
 }
 assert.ok(nodes.every(n => n.dataset.referenceHighlighted === 'true'));
-console.log('PASS: keywords, constructors, operators, line comments, nested comments, types, HTML escaping, reference mounting');
+console.log('PASS: reference languages and Slang kernel; types, attributes, semantics, generic calls, comments, HTML escaping and preserved source text');
 })();

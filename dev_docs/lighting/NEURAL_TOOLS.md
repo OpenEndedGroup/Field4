@@ -212,3 +212,20 @@ On this Linux machine, with no `slangc` on PATH, `tools/lighting/check_slang_com
 shared vertex/fragment SPIR-V and a per-stage compute GLSL result through that fallback, then checked
 the invalid-override failure. Run that snippet in a scratch box through the usual backdoor. Kotlin
 compilation and offline `buildLearnedShaders` also passed. macOS compiler execution was not tested.
+
+## Editing a material around a frozen network
+
+The `learned_shader` Starting point also includes an unlaunched **editable learned material** box.
+Stop the original comparison box and launch that scene: it schedules `LearnedShader` before a
+separate `moduleHere` that samples `learnedImage`. Its fragment is ordinary editable GLSL. The docs
+show the actual Slang compute kernel, the GLSL buffer-to-RTT resolve, and this consuming material.
+The GLSL does not contain an exported neural function; Slang compiles directly to SPIR-V.
+
+`tools/lighting/check_learned_material.py --port 9790 --server-log <actual-log>` changes the material
+with the real `moduleHere_reload` action. The 18-command run verifies unchanged kernel identity,
+unchanged RTT handle and bit-identical raw inferred RGB, alongside a changed graphics shader and
+changed displayed treatment. The raw left panel stayed pixel-identical; the right panel's largest
+mean channel change was 60.4134 byte levels. The 3264×1836 capture reflects this Wayland window's
+framebuffer scale. Ordinary Stop completed with zero VUIDs. The check stages its capture until all
+assertions pass; `results/neural-tools/material-edit.json` retains the result. No new optional
+component or automatic GPU capture was added to the docs build.

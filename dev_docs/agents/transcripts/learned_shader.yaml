@@ -69,3 +69,36 @@ operations:
       }.end { lab.close() }\n"
 - wait:
     frames: 12
+- create:
+    box: learned_material
+    name: editable learned material
+    frame:
+      x: 400.0
+      y: 340.0
+      w: 420.0
+      h: 100.0
+    properties:
+      code: "import afield.four.neural.LearnedShader\nimport afield.four.modules.fromContextWithNameOrNull\n\n//\
+        \ A separate scene: stop the original learned-shader box before launching this one.\n// Edit this box's\
+        \ fragment property while it runs; the network stays allocated.\nprop<AutoCloseable>(materialSession)\n\
+        fromContextWithNameOrNull<AutoCloseable>(\"materialSession\")?.close()\nval owner=renderer\nval passName=\"\
+        editable learned material\"\nval learned=LearnedShader(owner,name=passName,attach=false)\nlearned.view=1\n\
+        learned.setParameter(.25f)\nprop<RenderToTexture>(learnedImage)=learned.output\nval material=moduleHere\
+        \ { depthTest=false; depthWrite=false; blend=false }\nval triangle=Mesh(owner,material)\ntriangle.resize(3,0,material)\n\
+        material += \"fullscreen\" to triangle\n\n// Compute and resolve run before this ordinary fragment shader\
+        \ samples their RTT.\nowner.renderList.preTargets[passName]=learned\nowner.renderList.modules[passName]=material\n\
+        var closed=false\nmaterialSession=AutoCloseable {\n    if(!closed) {\n        closed=true\n        owner.renderList.modules.remove(passName,material)\n\
+        \        if(!owner.isClosed) {\n            learned.close()\n            owner.cleanup+=Runnable { material.current.cleanup()\
+        \ }\n        }\n    }\n}\nval ownedSession=materialSession\nprintln(\"Edit fragment: the learnedImage texture\
+        \ comes from the unchanged network. Stop the original comparison box to avoid rendering it too.\")\nframes\
+        \ { while(!closed && !owner.isClosed)frame() }.end { ownedSession.close() }\n"
+      vertex: "#version 460\nlayout(location=0) out vec2 uv;\nvoid main() {\n    vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n\
+        \    uv=vec2(p.x,1-p.y);\n    gl_Position=vec4(p*2-1,0,1);\n}\n"
+      fragment: "#version 460\nlayout(set=0,binding=0) uniform sampler2D learnedImage;\nlayout(location=0) in vec2\
+        \ uv;\nlayout(location=0) out vec4 color;\nvoid main() {\n    // The left half is the model's RGB; the right\
+        \ is an editable treatment.\n    vec2 st=vec2(fract(uv.x*2),uv.y);\n    vec3 base=texture(learnedImage,st).rgb;\n\
+        \    vec3 treatment=mix(base,base.gbr,.65);\n    treatment*=.85+.15*sin(st.y*160);\n    color=vec4(uv.x<.5\
+        \ ? base : treatment,1);\n}\n"
+- connect:
+    parent: agent_graphics_context
+    child: learned_material
