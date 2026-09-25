@@ -102,14 +102,14 @@ Worked: [Swizzles and constructors](stacksl_examples.md#swizzles-and-constructor
 | Word | Stack | Effect |
 | --- | --- | --- |
 | `.x`, `.xy`, `.rgb`, `w`, `rgba`, etc. | `a -- b` | swizzle; channels may use `xyzw` or `rgba`. |
-| `drop`<br>`1 2 drop` | `a --` | Discards the top value. |
+| `drop`<br>`1 2 drop` | `a --` | Discards the top value. Everything below it stays in the same order. |
 | `dup`<br>`uv dup` | `a -- a a` | Copies the top value without consuming it. Use the two copies when one result feeds two later operations. |
-| `nip`<br>`1 2 nip` | `a b -- b` | Removes the second value while keeping the top. |
-| `noop` | `--` | Leaves the stack unchanged. |
-| `over`<br>`1 2 over` | `a b -- a b a` | Copies the second value onto the top. |
-| `rot`<br>`1 2 3 rot` | `a b c -- b c a` | Moves the third value to the top while preserving the order of the other two. |
+| `nip`<br>`1 2 nip` | `a b -- b` | Removes the second value while keeping the top. This discards an earlier intermediate result. |
+| `noop` | `--` | Leaves the stack unchanged. It can occupy a program slot without changing the result. |
+| `over`<br>`1 2 over` | `a b -- a b a` | Copies the second value onto the top. Both original values remain available below it. |
+| `rot`<br>`1 2 3 rot` | `a b c -- b c a` | Moves the third value to the top while preserving the order of the other two. The stack effect is `a b c -- b c a`. |
 | `swap`<br>`1 2 swap` | `a b -- b a` | Exchanges the top two values. Use it to reverse operands before subtraction or division. |
-| `tuck`<br>`1 2 tuck` | `a b -- b a b` | Copies the top value below the previous value. |
+| `tuck`<br>`1 2 tuck` | `a b -- b a b` | Copies the top value below the previous value. The original top remains on top. |
 | `vec2`, `v2` | `x y -- vec` | construct from the `.x` channel of stack values. |
 | `vec3`, `v3` | `x y z -- vec` | construct from the `.x` channel of stack values. |
 | `vec4`, `v4` | `x y z w -- vec` | construct from the `.x` channel of stack values. |
