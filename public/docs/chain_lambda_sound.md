@@ -116,8 +116,8 @@ except in its order.
 Interaction nets are strongly confluent: two reactions available at once are on disjoint pairs of
 agents, so firing one cannot destroy the other, only move it — and a strongly confluent system that
 terminates reaches its normal form in the same number of steps down every path. That is Lafont's
-result and not a discovery of this page. What this page does is measure it in *this* implementation,
-where it is not a given, because the fan labelling is known to be wrong on some terms.
+result. It is not a given here, because the fan labelling is known to be wrong on some terms, so the
+counts below are taken under all four schedulers.
 
 The terms where the sharing is heaviest are the stress case: a confluence failure is exactly what
 could break the count. `stdlib.lambda-terms.property` pins four of them — a duplicated abstraction
@@ -127,7 +127,7 @@ until `readback` started scoping its binder names. `LambdaSoundDocs.CONFLUENCE_P
 four under the four schedulers and reports the counts: **26, 18, 19 and 12 reactions, the same under
 every order.** Three of the four answers are still wrong, and every one of those three says so.
 
-The counts did not move when the fourth was fixed, which is worth more than the fix: that repair was
+The counts did not move when the fourth was fixed: that repair was
 in the readback, so it changed what the walk reports and not what the reducer does, and 26 on either
 side of it is how you can tell.
 
