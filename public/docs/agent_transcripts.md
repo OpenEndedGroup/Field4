@@ -2309,7 +2309,9 @@ See [Optical Flow](optical_flow.md#keep-the-previous-frame-with-ping-pong).
 ### learned_shader
 
 Render a user-trained RGB function using ordinary arithmetic or cooperative vectors. Compare it with
-the original and an amplified error view, then reload frozen weights at a frame boundary.
+the original and an amplified error view, then reload frozen weights at a frame boundary. An
+additional **editable learned material** box samples the fixed network output in its own GLSL;
+stop the comparison box before launching it, then edit its fragment with **Reload Shader**.
 Requires the optional Slang shader build. See [A Learned Shader Function](learned_shader.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/learned_shader/metadata.edn)

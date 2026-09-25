@@ -313,9 +313,9 @@
    vs-dark, which `monacoInit` inherits); purple is the same purple RectSL added above, so
    the docs palette stays at seven hues rather than eight.
 
-   Both rules are scoped to `[data-language="glsl"]` rather than added globally, because
+   Both rules are scoped to GLSL and Slang fences rather than added globally, because
    `hljs-type` and `hljs-meta` are also emitted by the kotlin, python and bash fences —
    where they currently render as plain text and should keep doing so until someone looks
-   at those languages on purpose. A GLSL-only change cannot move any other page. */
-.code-diff-player[data-language="glsl"] .code-diff-pre .hljs-type { color: #4ec9b0; }
-.code-diff-player[data-language="glsl"] .code-diff-pre .hljs-meta { color: #cba6f7; }
+   at those languages on purpose. Shader highlighting cannot move any other language's palette. */
+.code-diff-player:is([data-language="glsl"], [data-language="slang"]) .code-diff-pre .hljs-type { color: #4ec9b0; }
+.code-diff-player:is([data-language="glsl"], [data-language="slang"]) .code-diff-pre .hljs-meta { color: #cba6f7; }

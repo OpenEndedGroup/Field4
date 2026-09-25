@@ -118,6 +118,153 @@ renderer.renderList.preTargets["learned function"] = learned
 
 Captured models use inference-only mode by default. They never compare themselves with the unrelated built-in analytic function. Values outside the captured parameter range are rejected. Load/reload at a frame boundary; the comparison checks the compiled source fingerprint and rejects weights for a changed shader. The fingerprint cannot identify changes to every bound texture or uniform, so the fixed-state contract still matters.
 
+## What shader actually runs?
+
+The trained result is a **buffer of weights**, used by a fixed **Slang compute shader** compiled directly to SPIR-V. Training changes the weights; it does not generate a new GLSL translation of your source. The current draw path is:
+
+**normalized x, y, parameter → Slang network → RGB buffer → GLSL resolve → `learned.output` RTT → your GLSL material**
+
+The Kotlin `LearnedShader` owns and schedules these passes. It uploads the weights once, passes their byte offsets and the current parameter to compute, and places a compute-write → fragment-read barrier before the resolve. The whole rendering path stays on the GPU.
+
+### The actual inference kernel
+
+This is the complete `src/jvmMain/resources/afield/four/neural/learned.slang` used by the experiment. `learned(v)` is the fitted function: feature encoding, two ReLU layers, then RGB. `FIELD_COOPERATIVE` selects accelerated matrix-vector instructions or the ordinary arithmetic loops; both read the same model. The `original` function and three-panel routing belong to the bundled analytic comparison. A model captured from your own module always uses the learned branch (`view = 1`); its source is not embedded in this kernel.
+
+```diffstatic {data-lang=slang}
+// Field's tiny MLP. Slang stays separate from the Forth/GLSL compiler.
+// 16 features -> 32 ReLU -> 32 ReLU -> RGB. FP16 row-major weights, 64-byte offsets.
+[[vk::binding(0,0)]] ByteAddressBuffer weights;
+[[vk::binding(1,0)]] RWStructuredBuffer<float4> pixels;
+struct Params {uint width;uint height;float time;uint view;uint w0;uint b0;uint w1;uint b1;uint w2;uint b2;};
+[[vk::push_constant]] Params p;
+float3 original(float3 v) {
+    float3 result=0;
+    for(int k=1;k<=48;k++){float a=k*.61803399;
+        for(int c=0;c<3;c++)result[c]+=sin((v.x*cos(a)+v.y*sin(a))*3+v.z*(.3+.1*c)+c*2+a)*(.35/k);}
+    return .5+.35*tanh(result*3);
+}
+void features(float3 v,out float f[16]) {
+    float x=v.x,y=v.y,t=v.z;const float pi=3.14159265359;
+    f[0]=x;f[1]=y;f[2]=t;f[3]=1;f[4]=sin(x*pi);f[5]=cos(x*pi);f[6]=sin(y*pi);f[7]=cos(y*pi);
+    f[8]=sin(t*pi);f[9]=cos(t*pi);f[10]=sin((x+y)*pi);f[11]=cos((x-y)*pi);
+    f[12]=sin(2*x*pi);f[13]=sin(2*y*pi);f[14]=cos(2*x*pi);f[15]=cos(2*y*pi);
+}
+float value(uint offset){uint word=weights.Load(offset&~3u);return f16tof32((word>>((offset&2u)*8))&65535u);}
+float3 learned(float3 v) {
+    float f[16];features(v,f);
+#if FIELD_COOPERATIVE
+    CoopVec<half,16> input;for(int i=0;i<16;i++)input[i]=half(f[i]);
+    var h1=coopVecMatMulAdd<half,32>(input,CoopVecComponentType::Float16,weights,p.w0,CoopVecComponentType::Float16,
+        weights,p.b0,CoopVecComponentType::Float16,CoopVecMatrixLayout::RowMajor,false,32);
+    h1=max(h1,CoopVec<half,32>(half(0)));
+    var h2=coopVecMatMulAdd<half,32>(h1,CoopVecComponentType::Float16,weights,p.w1,CoopVecComponentType::Float16,
+        weights,p.b1,CoopVecComponentType::Float16,CoopVecMatrixLayout::RowMajor,false,64);
+    h2=max(h2,CoopVec<half,32>(half(0)));
+    var outv=coopVecMatMulAdd<half,3>(h2,CoopVecComponentType::Float16,weights,p.w2,CoopVecComponentType::Float16,
+        weights,p.b2,CoopVecComponentType::Float16,CoopVecMatrixLayout::RowMajor,false,64);
+    return float3(outv[0],outv[1],outv[2]);
+#else
+    float h1[32],h2[32];float3 result;
+    for(int j=0;j<32;j++){float sum=value(p.b0+j*2);for(int i=0;i<16;i++)sum+=f[i]*value(p.w0+(j*16+i)*2);h1[j]=max(sum,0);}
+    for(int j=0;j<32;j++){float sum=value(p.b1+j*2);for(int i=0;i<32;i++)sum+=h1[i]*value(p.w1+(j*32+i)*2);h2[j]=max(sum,0);}
+    for(int j=0;j<3;j++){float sum=value(p.b2+j*2);for(int i=0;i<32;i++)sum+=h2[i]*value(p.w2+(j*32+i)*2);result[j]=sum;}
+    return result;
+#endif
+}
+[shader("compute")]
+[numthreads(8,8,1)]
+void main(uint3 id:SV_DispatchThreadID){
+    if(id.x>=p.width||id.y>=p.height)return;
+    float2 uv=(float2(id.xy)+.5)/float2(p.width,p.height);int panel=p.view==2?min(int(uv.x*3),2):0;
+    if(p.view==2)uv.x=frac(uv.x*3);
+    float3 v=float3(uv*2-1,p.time);float3 result;
+    if(p.view==0 || (p.view==2 && panel==0))result=original(v);
+    else {result=learned(v);if(p.view==2 && panel==2)result=abs(result-original(v))*8;}
+    pixels[id.y*p.width+id.x]=float4(result,1);
+}
+```
+
+There are 8 × 8 invocations per workgroup and one `float4` output per pixel. Pixel centers are mapped to −1…1; `setParameter()` maps your capture's parameter interval to that same range. RGB remains linear and unclamped, with alpha set to one. The Slang source, trained weights and host-side layout checks are separate, inspectable pieces.
+
+### The actual GLSL bridge to an image
+
+The compute output is a storage buffer. This is the fragment shader in `LearnedShader.kt` that copies it into the RGBA32F `learned.output` RTT (formatted here for readability):
+
+```diffstatic {data-lang=glsl}
+#version 460
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(buffer_reference, std430) readonly buffer Pixels {
+    vec4 data[];
+};
+layout(push_constant, scalar) uniform P {
+    Pixels pixels;
+    uint width;
+} p;
+layout(location=0) out vec4 color;
+
+void main() {
+    uvec2 xy = uvec2(gl_FragCoord.xy);
+    color = p.pixels.data[xy.y * p.width + xy.x];
+}
+```
+
+`p.pixels` is a Vulkan buffer device address supplied by Field. This bridge does not evaluate the network; it makes its already-computed RGB available through the same texture interface as other RTTs. A full-screen triangle covers the target.
+
+### Keep learning finished, keep the material editable
+
+Open **Starting points → learned_shader**. Stop the original comparison box and launch **editable learned material** under the same renderer. This second scene loads the same trained model at a fixed parameter and presents its output to an ordinary `moduleHere()`. The left panel shows the raw learned image; the right shows a color-and-stripe treatment.
+
+![The fixed learned image on the left and an editable GLSL treatment on the right](assets/learned_shader/material.png)
+
+The connection in the box's Kotlin is:
+
+```diffstatic
+val learned = LearnedShader(renderer, attach = false)
+learned.view = 1
+learned.setParameter(.25f)
+prop<RenderToTexture>(learnedImage) = learned.output
+
+val material = moduleHere { depthTest = false; depthWrite = false; blend = false }
+// The Starting point supplies the full-screen mesh and cleanup.
+renderer.renderList.preTargets["editable learned material"] = learned
+renderer.renderList.modules["editable learned material"] = material
+```
+
+This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (Alt-R)**:
+
+```diffstatic {data-lang=glsl}
+#version 460
+layout(set=0,binding=0) uniform sampler2D learnedImage;
+layout(location=0) in vec2 uv;
+layout(location=0) out vec4 color;
+void main() {
+    // The left half is the model's RGB; the right is an editable treatment.
+    vec2 st=vec2(fract(uv.x*2),uv.y);
+    vec3 base=texture(learnedImage,st).rgb;
+    vec3 treatment=mix(base,base.gbr,.65);
+    treatment*=.85+.15*sin(st.y*160);
+    color=vec4(uv.x<.5 ? base : treatment,1);
+}
+```
+
+Reloading this fragment recompiles the material while keeping the inference kernel, weight allocation and output texture. In the live check, changing the right-hand treatment left the network object, texture handle and every raw RGB value unchanged; only the treated half of the displayed image changed. You do not need to recapture or retrain. The Starting point keeps this material in a separate scene so its shader property is independent of the original teacher and comparison controls.
+
+For your own captured model, give `LearnedShader` the `weightsFile` and `manifestFile` produced by training, as in the earlier example. The texture connection is identical. `learnedImage` can be composited with other RTTs, sampled through warped coordinates, or used to drive another effect. Warping those UVs resamples the inferred image; the current public API does not inject a callable `learned(x,y,t)` into an arbitrary GLSL fragment shader.
+
+There are three useful kinds of edits:
+
+| What you edit | What can stay fixed? |
+| --- | --- |
+| GLSL that samples `learnedImage` | Kernel and trained weights. This is the normal live-coding path above. |
+| Slang around `learned(v)`, such as combining its RGB with an analytic effect | Weights can stay fixed if the feature encoding, architecture and weight layout stay compatible. Rebuild the compute shader and recreate its `LearnedShader` view to load that binary. |
+| The original teacher, its textures, or other captured inputs | The old model can still be used as its old approximation, but it does not learn the edit. Capture and train again if it should approximate the changed teacher. `ShaderLearningView.load` rejects a changed source-shader fingerprint; standalone inference does not need the teacher. |
+
+Changing the network's inputs, layer sizes or feature encoding is a model change: update training and host layout validation together. Adding an effect after inference is just ordinary shader editing.
+
+You can also treat `learned(v)` as an ingredient inside the Slang source itself—for example, multiply its RGB by an analytic pattern in `main()`. That requires recompiling the kernel, but can reuse the saved weights. Keep `v` inside the model's training domain; changing the surrounding source does not give the network knowledge of new inputs.
+
 ## The original analytic example
 
 The original combines 48 weak waves into RGB. Sixteen input features feed two 32-unit ReLU layers and three output channels. Training uses NumPy on the CPU, a fixed seed, and Adam; the rendering loop only reads the result.
