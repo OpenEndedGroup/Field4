@@ -770,7 +770,7 @@ Measure a surface or query where points and rays meet it.
 
 </div>
 
-### I/o
+### I/O
 
 Read or write mesh files. OBJ and STL use the direct helpers; the broader loader also accepts PLY and scene formats such as glTF.
 

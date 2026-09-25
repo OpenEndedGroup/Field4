@@ -35,14 +35,14 @@ The block is a scene description, not a sequence of draw calls, and `three` retu
 | in the block | what it does |
 | --- | --- |
 | `mesh(m, label, wireframe, cullBackFaces, flatShading, opacity, panel)` | Adds a solid to the scene. The options control its label, surface drawing, visibility and panel placement. |
-| `lines(…)` — a `Collection<FLine>` or a vararg | Adds line geometry with the picking, hover, fill and click behavior supported by `threeLines`. Use it to annotate a solid in the same view. |
-| `camera(yaw, pitch, distance, fieldOfView)` | Sets the initial view and disables automatic framing. This preserves the angle you chose rather than recomputing it from the geometry. |
-| `camera(view: MeshView)` | Uses an existing `MeshView` as the initial camera. This is the convenient migration path for a figure that already defines its view. |
-| `panel(title, caption, facts, camera, bounds)` | Adds a titled viewport with its own annotations and framing. Calls establish panel order. |
-| `columns(n)` | Sets the number of panels in each row. Use fewer columns when individual subjects need a larger view. |
-| `title(text)` / `caption(text)` | Labels a one-panel scene without constructing a separate panel description. The caption can explain what the reader should inspect. |
-| `background(css)` | Sets the scene background using a CSS colour. Choose a colour that keeps both mesh edges and annotations visible. |
-| `helpers(on)` | Shows or hides the reference grid and axis tripod. Leave them visible when position and orientation are part of the comparison. |
+| `lines(…)` — a `Collection<FLine>` or a vararg | Adds line geometry with the picking, hover, fill and click behavior supported by `threeLines`. |
+| `camera(yaw, pitch, distance, fieldOfView)` | Sets the initial view and disables automatic framing. |
+| `camera(view: MeshView)` | Uses an existing `MeshView` as the initial camera. |
+| `panel(title, caption, facts, camera, bounds)` | Adds a titled viewport with its own annotations and framing; panels appear in call order. |
+| `columns(n)` | Sets the number of panels in each row. |
+| `title(text)` / `caption(text)` | Labels a one-panel scene without constructing a separate panel description. |
+| `background(css)` | Sets the scene background using a CSS colour. |
+| `helpers(on)` | Shows or hides the reference grid and axis tripod. |
 
 </div>
 

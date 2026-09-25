@@ -50,12 +50,12 @@ The arguments are a tuple, and a tuple is spread, so `(1, 0, 0)` is three argume
 
 | Form | Arguments |
 | --- | --- |
-| `hostCall "m" () t` | Calls `m` on target `t` with no arguments. Unit `()` is the empty argument bundle. |
-| `hostCall0 "m" t` | Calls the same zero-argument method without an explicit bundle. Use this form when there is no value to spread. |
-| `hostCall1 "m" x t` | Passes exactly one argument, preserving `x` even when it is a list, tuple or record. Use it when the method expects a collection. |
-| `hostCall "m" (a, b, c) t` | Spreads the tuple into three positional arguments in order. The method’s result is returned through the host bridge. |
-| `hostCall "m" [a, b, c] t` | Spreads the list into three positional arguments. This differs from passing a single list value. |
-| `hostCall1 "m" [a, b, c] t` | Passes one list argument without spreading it. Choose this when the JVM method accepts a list. |
+| `hostCall "m" () t` | Calls `m` on target `t` with no arguments; `()` is the empty bundle. |
+| `hostCall0 "m" t` | Calls the same zero-argument method without an explicit bundle. |
+| `hostCall1 "m" x t` | Passes exactly one argument, preserving `x` even when it is a list, tuple or record. |
+| `hostCall "m" (a, b, c) t` | Spreads the tuple into three positional arguments, in order. |
+| `hostCall "m" [a, b, c] t` | Spreads the list into three positional arguments. |
+| `hostCall1 "m" [a, b, c] t` | Passes the list as one argument, without spreading it. |
 
 </div>
 

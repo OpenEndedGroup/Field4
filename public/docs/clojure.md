@@ -131,14 +131,14 @@ referred into every box, so there is nothing to require:
 
 | form | what it does |
 | --- | --- |
-| `(box)` | Returns the `Box` currently executing the code. Use it for Field operations that need an explicit box receiver. |
-| `(display v)`, `(display channel v)` | Renders a value in a box output panel using Field’s value renderer. Supply a channel name to update that output independently. |
+| `(box)` | Returns the `Box` this code is running in. |
+| `(display v)`, `(display channel v)` | Renders a value in an output panel using Field’s value renderer. Supply a channel name to update that output independently. |
 | `(lines ls :w 700 :h 350 :fit true)` | Draws the supplied `FLine` collection in a 700 × 350 output. `:fit true` fits the drawing to the view. |
-| `(polyline [[x y] …])` | Builds an `FLine` through the points in sequence. Pass the resulting line to `lines` to draw it. |
-| `(color line r g b a)`, `(thickness line w)` | Sets line colour or stroke thickness and returns the line. The returned value makes these helpers compose with `->`. |
+| `(polyline [[x y] …])` | Builds an `FLine` through the points in sequence. |
+| `(color line r g b a)`, `(thickness line w)` | Sets line colour or stroke thickness and returns the line, so `->` threads. |
 | `(animate f)` | Builds a per-frame animation around `f`. Return the animation from the box to launch it. |
-| `(frame)`, `(end)` | Reads the current frame number or stops the running animation. These helpers are used inside the animation body. |
-| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property on the current box. Use the same property name to exchange values with other Field code. |
+| `(frame)`, `(end)` | Inside an animation body: reads the current frame number, or stops now. |
+| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property of this box. |
 
 </div>
 

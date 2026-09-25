@@ -429,25 +429,25 @@ a live-coding environment: a slow first compile is a warm-up, whereas a missing 
 | Call | Behavior |
 | --- | --- |
 | `Box.faust(source, …)` | Compiles the source and starts playback, returning a `FaustLaunch`. Keep the launch to change controls or inspect meters while it plays. |
-| `Box.faustCompile(source)` | Compiles without starting playback. Inspect the resulting program’s interface or diagram before creating a live node. |
+| `Box.faustCompile(source)` | Compiles without starting playback, returning a program whose interface and diagram can be inspected. |
 | `Box.faustControls(launch)` | Builds the control group for an existing launch. Use it when automatic controls were disabled with `controls = false`. |
-| `Box.faustDiagram(program)` | Displays the compiled program’s block diagram. This reads the program structure without playing it. |
+| `Box.faustDiagram(program)` | Displays the compiled program’s block diagram. |
 | `Box.faustWaveform(program)` | Renders the program offline and plots the result. No audio output device is needed. |
 | `Box.faustPoly(source, voices)` | Compiles a polyphonic instrument and returns a `FaustPolyLaunch`. `voices` limits how many simultaneous note instances the bank can run. |
 | `FaustPolyLaunch.play(pattern, …)` | Schedules a Pat pattern into the voice bank. Supply `automate` to vary controls shared by the instrument. |
-| `FaustPolyLaunch.chord(midis)` | Starts all supplied MIDI notes on the same audio frame. Use it when simultaneity matters more than a pattern’s sequential rhythm. |
-| `Box.showFaustPattern(source, pattern)` | Renders a finite pattern offline and displays a player plus waveform. Use it to inspect an instrument without live playback. |
-| `faustPatternRender(…)` | Returns the offline pattern render as data. Choose it when you need samples for analysis or writing a file rather than a display. |
+| `FaustPolyLaunch.chord(midis)` | Starts all supplied MIDI notes on the same audio frame. |
+| `Box.showFaustPattern(source, pattern)` | Renders a finite pattern offline and displays a player plus waveform. |
+| `faustPatternRender(…)` | Returns the same offline render as data rather than a display, for analysis or writing a file. |
 | `faustParamAutomation(values, control, …)` | Turns a numeric pattern into timed changes for a shared control. The control changes apply across the voice bank. |
 | `faustOnsets` / `faustSilentGaps` | Finds attack frames and silent gaps in rendered audio. These measurements check whether a scheduled pattern produced distinct notes. |
 | `faustFundamentalHz` / `faustSpectrumPeaks` | Estimates the fundamental by autocorrelation and spectral partials by FFT. Compare both when a strong harmonic could be mistaken for the played pitch. |
 | `FaustLaunch["label"] = v` | Sets a running control by label, address or qualified name. Use a qualified name when several controls share the same label. |
 | `FaustLaunch.press(label)` | Pulses a Faust button control. This is a momentary trigger rather than a persistent slider value. |
-| `FaustLaunch.meter(label)` | Reads the current value of a Faust bargraph. Use meters to observe DSP state without changing it. |
-| `FaustEngine.compile(name, src)` | Invokes the compiler directly and returns WebAssembly bytes with interface metadata. Playback is a separate step. |
-| `FaustEngine.blockDiagram(…)` | Returns the program’s SVG diagram set. Use it for a custom display or export. |
+| `FaustLaunch.meter(label)` | Reads the current value of a Faust bargraph. |
+| `FaustEngine.compile(name, src)` | Invokes the compiler directly and returns WebAssembly bytes with interface metadata. |
+| `FaustEngine.blockDiagram(…)` | Returns the program’s SVG diagram set. |
 | `FaustEngine.warmInBackground()` | Starts compiler warm-up in the background. Call it ahead of a performance to move the cold-start delay out of the first edit. |
-| `FaustEngine.libfaustVersion()` | Reports the version of the loaded compiler. Record it with a compiler diagnostic when comparing environments. |
+| `FaustEngine.libfaustVersion()` | Reports the version of the loaded compiler. |
 
 </div>
 
