@@ -12,18 +12,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
 
-from verification_runtime import run_with_watchdog, verification_lock
+from verification_runtime import automation_port_is_available, run_with_watchdog, verification_lock
 
 
 TOOLS_ROOT = Path(__file__).resolve().parent
@@ -4492,6 +4495,101 @@ def run_with_retries(
     return result
 
 
+SIDECAR_URL_ENV = "AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL"
+SIDECAR_START_DEADLINE_SEC = 180.0
+
+
+def sidecar_serves_this_workspace(url: str) -> bool:
+    """Whether `url` is a healthy sidecar for *this* checkout.
+
+    The workspace check is the point: a sidecar for a sibling worktree answers `/health` happily
+    and then resolves the wrong symbols, which is a far worse failure than no sidecar at all.
+    """
+    try:
+        with urllib.request.urlopen(f"{url}/health", timeout=5) as response:  # noqa: S310 - loopback only
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return False
+    return bool(payload.get("ok")) and payload.get("workspaceRoot") == str(REPO_ROOT)
+
+
+def ensure_completion_sidecar(selected: list[UiRegression], *, telemetry: bool) -> subprocess.Popen[Any] | None:
+    """Start the AA completion sidecar the completion regressions need, if one is not already up.
+
+    These tests assert against the Abstract Analysis backend, and they refuse — by design — to
+    grade the K1 fallback, failing with "AA is not serving". The Field this harness drives does
+    not inherit a sidecar URL, so before 2026-09-25 the prerequisite lived only in a comment above
+    `COMPLETION_OWN_IMPORT_SNIPPET` telling a human to export one. Nothing did, and the whole
+    suite is in no certification contract, so the three completion regressions had simply never
+    been seen to pass. Starting it here is what makes the suite self-sufficient.
+
+    Only started when a completion regression is actually selected, so `--id remote-ar-head` does
+    not pay ~45s for a backend it will not use. An externally supplied URL always wins, and is
+    never torn down by us.
+    """
+    if not any(test.id.startswith("completion-") for test in selected):
+        return None
+
+    existing = os.environ.get(SIDECAR_URL_ENV, "").strip()
+    if existing:
+        if not sidecar_serves_this_workspace(existing):
+            print(f"WARNING {SIDECAR_URL_ENV}={existing} is not a healthy sidecar for {REPO_ROOT}; "
+                  "completion regressions will fail rather than grade the K1 fallback.", flush=True)
+        return None
+
+    port = next((p for p in range(17971, 18040) if automation_port_is_available(p)), None)
+    if port is None:
+        print("WARNING no free port for the completion sidecar", flush=True)
+        return None
+    url = f"http://127.0.0.1:{port}"
+    log_path = REPO_ROOT / "build" / "code-use-semantic-sidecar" / "ui-regressions-sidecar.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    wrapper = "gradlew.bat" if os.name == "nt" else "gradlew"
+    command = [
+        str(REPO_ROOT / wrapper), "--no-daemon", "-p", "tools/code-use-semantic-sidecar", "run",
+        f"--args=--port {port} --workspace {REPO_ROOT}",
+    ]
+    if telemetry:
+        print(f"SIDECAR starting completion backend on {url} (log: {log_path})", flush=True)
+    process = subprocess.Popen(  # noqa: S603
+        command, cwd=str(REPO_ROOT), stdout=log_path.open("w", encoding="utf-8"),
+        stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, start_new_session=True,
+    )
+    deadline = time.monotonic() + SIDECAR_START_DEADLINE_SEC
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            print(f"WARNING completion sidecar exited with {process.returncode} before becoming "
+                  f"healthy; see {log_path}", flush=True)
+            return None
+        if sidecar_serves_this_workspace(url):
+            os.environ[SIDECAR_URL_ENV] = url
+            if telemetry:
+                print(f"SIDECAR ready on {url}", flush=True)
+            return process
+        time.sleep(1.0)
+    print(f"WARNING completion sidecar did not become healthy in {SIDECAR_START_DEADLINE_SEC:.0f}s; "
+          f"see {log_path}", flush=True)
+    stop_completion_sidecar(process)
+    return None
+
+
+def stop_completion_sidecar(process: subprocess.Popen[Any] | None) -> None:
+    """Tear down a sidecar we started. Backlog #84 is the cost of not doing this."""
+    if process is None or process.poll() is not None:
+        return
+    try:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+    except (ProcessLookupError, PermissionError, OSError):
+        process.terminate()
+    try:
+        process.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            process.kill()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--id", action="append", dest="ids", help="Run only the named regression id.")
@@ -4517,32 +4615,36 @@ def run(args: argparse.Namespace) -> int:
     results: list[dict[str, Any]] = []
     passed = 0
     failed = 0
-    for index, test in enumerate(selected):
-        result = run_with_retries(
-            test,
-            port=args.port + index,
-            timeout=args.timeout,
-            retries=max(0, args.retries),
-            telemetry=not args.json,
-            progress_label=f"[{index + 1}/{len(selected)}] ",
-            heartbeat_interval=args.heartbeat_interval,
-        )
-        results.append(result)
-        if result["ok"]:
-            passed += 1
-        else:
-            failed += 1
-        if not args.json:
-            status = "PASS" if result["ok"] else "FAIL"
-            attempt_text = f" attempt {result['attempt']}" if result.get("attempt", 1) > 1 else ""
-            print(f"{status} {test.id} ({result['durationMs']} ms){attempt_text}")
-            for failure in result["failures"]:
-                print(f"  {failure}")
-            retained = result.get("screenshots", {}).get("retained")
-            if retained:
-                print(f"  screenshot: {retained}")
-        if failed and args.fail_fast:
-            break
+    sidecar = ensure_completion_sidecar(selected, telemetry=not args.json)
+    try:
+        for index, test in enumerate(selected):
+            result = run_with_retries(
+                test,
+                port=args.port + index,
+                timeout=args.timeout,
+                retries=max(0, args.retries),
+                telemetry=not args.json,
+                progress_label=f"[{index + 1}/{len(selected)}] ",
+                heartbeat_interval=args.heartbeat_interval,
+            )
+            results.append(result)
+            if result["ok"]:
+                passed += 1
+            else:
+                failed += 1
+            if not args.json:
+                status = "PASS" if result["ok"] else "FAIL"
+                attempt_text = f" attempt {result['attempt']}" if result.get("attempt", 1) > 1 else ""
+                print(f"{status} {test.id} ({result['durationMs']} ms){attempt_text}")
+                for failure in result["failures"]:
+                    print(f"  {failure}")
+                retained = result.get("screenshots", {}).get("retained")
+                if retained:
+                    print(f"  screenshot: {retained}")
+            if failed and args.fail_fast:
+                break
+    finally:
+        stop_completion_sidecar(sidecar)
 
     report = {
         "selectedCount": len(selected),

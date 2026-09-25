@@ -30,7 +30,7 @@ The field can be useful even when the correspondence is imperfect. Repetition, n
 
 `OpticalFlow(renderer, firstImage, secondImage, grid = 4)` creates a reusable operation. Its two image arguments have type **`HasImageView`**, Field's interface for a GPU image view. **A `RenderToTexture` implements that interface**, so two RTTs can be passed directly:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 // firstTarget and secondTarget are already-rendered RTTs of the same size.
 val flow = OpticalFlow(renderer, firstTarget, secondTarget, grid = 4)
 
@@ -52,7 +52,7 @@ prop<RenderToTexture>(motion) = flow.output
 
 For two attachments of one RTT, select them explicitly:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val flow = OpticalFlow(renderer,
     pair.imageViewArray[0], pair.imageViewArray[1], grid = 4)
 ```
@@ -65,7 +65,7 @@ Inputs are opaque linear RGB images of equal size. A GPU pass applies the same t
 
 **`flow` is the operation; `flow.output` is the texture.** Publishing the latter as `prop<RenderToTexture>(motion)` lets a `moduleHere()` in this box or a child resolve `sampler2D motion` by name, just like a color RTT. A fragment or compute shader can read it with:
 
-```diffstatic
+```diffstatic {data-lang=glsl}
 layout(set=0,binding=0) uniform sampler2D motion;
 
 // In your shader, at normalized image coordinates uv:
@@ -84,7 +84,7 @@ Open **Starting points → optical_flow_pingpong** for the complete editable exa
 
 ![One editable shader, retained previous/current frames, and the motion texture sampled by another module](assets/optical_flow/pingpong.png)
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 prop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
     width = 960; height = 540; useDepth = false
     format = VK_FORMAT_R16G16B16A16_SFLOAT
@@ -99,7 +99,7 @@ Those two image-view providers follow the ring as it rotates; keep the providers
 
 The example's frame loop is:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 // renderSource() is a helper defined in the example: it records history.render(),
 // submits that command buffer, and waits for the source to finish.
 if (reset) renderSource()   // Seed both slots with the same time on startup/reset.

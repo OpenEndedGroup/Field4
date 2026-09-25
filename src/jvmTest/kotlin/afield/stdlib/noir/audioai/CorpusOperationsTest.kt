@@ -71,8 +71,11 @@ class CorpusOperationsTest {
         val html = corpusMicroscopeHtml(preview, queryAudio)
         assertTrue("corpus microscope" in html)
         assertTrue("query → neighbour splice" in html)
-        assertTrue("data-time-offset=\"-18.000000000\"" in html)
-        assertTrue("data-time-offset=\"-31.000000000\"" in html)
+        // Relative time reaches the player through the time-axis viewer's JSON config rather
+        // than a data-time-offset attribute. The assertion is unchanged in substance: the query
+        // at t=18 and the neighbour at t=31 each play against their own zero.
+        assertTrue("\"syncOffset\":-18.0" in html)
+        assertTrue("\"syncOffset\":-31.0" in html)
         assertTrue("representations/neighbour/waveform" in html)
         assertTrue("42 eligible indexed windows" in html)
     }

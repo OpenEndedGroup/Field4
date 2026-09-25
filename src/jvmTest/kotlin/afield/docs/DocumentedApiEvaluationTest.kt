@@ -166,6 +166,36 @@ class DocumentedApiEvaluationTest {
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
         // Visible since the page census includes bare API names, not only call syntax (W1).
+        // The 2026-09-24 NVIDIA/RTXDI landing. Every one of these needs hardware this repository's
+        // CI does not have — an NVIDIA device with the RTXDI and DLSS paths — so the pages teach
+        // them and nothing headless can run them. Recorded here rather than left to fail, and
+        // recorded as six rows rather than a raised ceiling so that each says what it is waiting
+        // for and a reader can tell when one becomes reachable.
+        "enableRtxdi" to
+            "direct_lighting.md; DirectLighting.enableRtxdi installs NVIDIA's RTXDI resampling. " +
+                "It needs an NVIDIA device exposing that path; MoltenVK does not, and the page's " +
+                "transcript compiles the Kotlin only.",
+        "rtxdiSettings" to
+            "direct_lighting.md; the Bundle extension that builds the settings enableRtxdi takes. " +
+                "Same gate as enableRtxdi — reachable only where the RTXDI path exists.",
+        "trainAsync" to
+            "learned_shader.md; ShaderTraining.trainAsync starts a 12000-step training run against " +
+                "a GPU and returns a handle. Minutes of device work, so no headless evaluator " +
+                "invokes it; the page's transcript compiles the call.",
+        "fromViews" to
+            "reconstruction_plumbing.md; builds a mip-aware TextureSampler over live image views, " +
+                "and its own KDoc says that case 'needs a live graphics context on this thread'. " +
+                "The reconstruction transcripts are COMPILE_ONLY for exactly that reason.",
+        "evaluateUniform" to
+            "keyframe_autosweep.md, reconstruction_plumbing.md, ray_reconstruction.md; an " +
+                "Interpolant override sampled by the reconstruction jitter path. The documents that " +
+                "teach it are reconstruction documents, and those transcripts need a supporting " +
+                "device.",
+        "modelView" to
+            "afield_four_graphics.md and three reconstruction pages; this is the scene-local view " +
+                "matrix a caller passes in, not a Field entry point — the same shape as modelWorld " +
+                "above. The lexical census sees the name; the containing graphics transcripts are " +
+                "COMPILE_ONLY.",
         "computeMemoryBarrier" to
             "agent_transcripts.md; a Vulkan command-buffer barrier. Its compiled graphics " +
                 "transcripts need a live device to submit and observe the dependency.",
@@ -210,15 +240,9 @@ class DocumentedApiEvaluationTest {
         "getName" to
             "path_tracing.md; path_tracer_instrument is COMPILE_ONLY. The name is the live " +
                 "integrator's, read off the pipeline currently installed on the device.",
-        "blitToScreen" to
-            "path_tracing.md; path-tracing transcripts are COMPILE_ONLY because presentation needs " +
-                "a native Vulkan window. Live GPU checks exercise the separate display pass.",
         "pathTracingHere" to
             "path_tracing.md; creating the tracer needs a live renderer in Field graph context. " +
                 "Live material-box checks exercise installation and shader reload outside headless CI.",
-        "readLinear" to
-            "path_tracing.md; accumulation readback needs a live Vulkan render target. " +
-                "PathTraceGpuSmoke and PathTraceGltfGpuSmoke exercise it in live renderer checks.",
         "shadeMaterial" to
             "path_tracing.md; this is a GLSL material hook in the editable compute shader. " +
                 "Live material-box checks exercise it on a GPU; headless CI compiles the transcript.",
@@ -345,7 +369,7 @@ class DocumentedApiEvaluationTest {
      * exercised. None of them runs it.
      */
     private fun callersUnder(sources: List<Pair<String, String>>, api: String): List<String> {
-        val rx = Regex("""\b${Regex.escape(api)}\s*(?:<[^<>\n]{0,60}>)?\s*\(""")
+        val rx = Regex("""\b${Regex.escape(api)}\s*(?:<[^<>\n]{0,60}>)?\s*[({]""")
         return sources.filter { (_, text) -> rx.containsMatchIn(text) }.map { it.first }
     }
 

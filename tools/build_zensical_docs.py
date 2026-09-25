@@ -106,6 +106,48 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def browser_bridge_library_path(repo_root: Path) -> Path:
+    """Where `BrowserHandleTransport.forThisPlatform` will look, from Python.
+
+    Mirrors `MacMachSurfaceTransport`/`LinuxDmaBufTransport`, which build the path as
+    `File(projectRoot, "build/field-browser-bridge/<platform>")` and nothing else — there is
+    deliberately no environment override here, because the Kotlin side honours none either and
+    inventing one would let this checker pass while a capture still fails.
+
+    Windows has no producer bridge at all (`forThisPlatform` errors there), so no path can
+    satisfy this on Windows; the returned path is then a diagnostic rather than a target.
+    """
+    if sys.platform.startswith("win"):
+        return repo_root / "build" / "field-browser-bridge" / "unsupported-on-windows"
+    platform_dir, name = (
+        ("linux", "libfield_browser_bridge.so") if sys.platform.startswith("linux")
+        else ("macos", "libfield_browser_bridge.dylib")
+    )
+    return repo_root / "build" / "field-browser-bridge" / platform_dir / name
+
+
+def electron_runtime_path(repo_root: Path) -> Path:
+    """Where `fieldElectronBinary` will look, from Python.
+
+    The second half of the browser-texture prerequisite and a genuinely separate artifact: the
+    bridge is a compiled dylib under `build/`, this is the Electron runtime under
+    `electron/node_modules/`, which `clean` does *not* remove and a fresh worktree does *not*
+    carry. Two artifacts, two remedies, so two entries.
+
+    Mirrors `fieldElectronBinary`'s candidate list, including that `electronInstall` may rename
+    the app to `Field4`, and falls back to the last candidate so a miss names a plausible place.
+    """
+    dist = repo_root / "electron" / "node_modules" / "electron" / "dist"
+    if sys.platform != "darwin":
+        return dist / "electron"
+    candidates = [
+        dist / "Field4.app" / "Contents" / "MacOS" / "Field4",
+        dist / "Electron.app" / "Contents" / "MacOS" / "Field4",
+        dist / "Electron.app" / "Contents" / "MacOS" / "Electron",
+    ]
+    return next((c for c in candidates if c.is_file()), candidates[-1])
+
+
 # A capture that cannot run without a native artifact declares it with `requires="<key>"`
 # on its fence. Each key maps to where the artifact lives and the one command that builds
 # it. Nothing else reads the attribute -- docs_hooks ignores unknown fence attributes, so
@@ -222,6 +264,8 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
+    "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "jep": (
         jep_library_path,
         "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "

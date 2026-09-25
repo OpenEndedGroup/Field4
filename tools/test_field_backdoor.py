@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import contextlib
 import io
+import json
 import re
 import shlex
 import sys
@@ -56,6 +57,41 @@ class SessionLoggerTests(unittest.TestCase):
             self.assertGreater(logger.dropped_records, 0)
             self.assertIn('"event": "session_log_capped"', text)
             self.assertLess(logger.path.stat().st_size, 4_000)
+
+    def test_a_long_value_is_logged_whole_rather_than_previewed(self) -> None:
+        """A log exists for the reader who cannot re-run the failure.
+
+        On 2026-09-25 a nightly CI run hit `petri.gallery` failing with a 2366-character message
+        enumerating every cheatsheet operator that lacked a worked example. The logger saved the
+        first 512 characters as a `truncated-string` preview, and the list — the entire content of
+        the diagnosis — was destroyed at write time. Truncating on read is free and reversible;
+        truncating on write is neither. The byte budgets above remain the bound on a session log.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            logger = SessionLogger(Path(root), ["test"])
+            needle = "operator-" + "z" * 4_000 + "-tail"
+            logger.log("print_result", stderr=needle)
+            logger.close()
+
+            text = logger.path.read_text()
+            self.assertNotIn("truncated-string", text)
+            self.assertIn("-tail", text, "the END of a long value must survive, not just its head")
+            record = next(
+                json.loads(line)
+                for line in text.splitlines()
+                if line.strip() and json.loads(line).get("event") == "print_result"
+            )
+            self.assertEqual(record["stderr"], needle)
+
+    def test_a_long_collection_keeps_every_element(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            logger = SessionLogger(Path(root), ["test"])
+            logger.log("print_result", errors=[f"item-{index}" for index in range(500)])
+            logger.close()
+
+            text = logger.path.read_text()
+            self.assertNotIn("__truncated_items__", text)
+            self.assertIn("item-499", text)
 
     def test_log_write_failure_never_escapes_into_the_receiver(self) -> None:
         class FullDisk:

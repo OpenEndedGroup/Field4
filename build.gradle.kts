@@ -1441,7 +1441,40 @@ val expectedFailureTests = tasks.register<org.gradle.api.tasks.testing.Test>("ex
     shouldRunAfter(jvmTestTask)
 }
 
-val rootPythonCommand = listOf("uv", "run", "--project", ".", "--frozen", "python")
+// Resolve `uv` to an absolute path rather than trusting PATH.
+//
+// Every gate that shells Python goes through here, and a bare "uv" makes all of them depend on
+// the PATH of whichever process happened to start the Gradle daemon. A daemon captures its
+// environment at first start and is then reused for hours, so the same commit can pass from one
+// shell and fail from another with nothing but an opaque
+//
+//     A problem occurred starting process 'command 'uv''
+//
+// Measured 2026-09-25: the pre-commit guard runs `./gradlew` *with* the daemon while the nightly
+// CI runs everything `--no-daemon`, so a commit that had just passed four gates by hand was
+// rejected by a stale daemon whose PATH lacked `uv`. `./gradlew --stop` cleared it. That is a
+// repair, not a fix — the next long-lived daemon reintroduces it.
+//
+// This is the `uv` instance of the hazard already recorded for `python3` (backlog #73): a build
+// task may not depend on PATH order. Probe for the executable instead of remembering a location,
+// because this machine has had `uv` at two different absolute paths and a run has already been
+// lost to a remembered path that did not exist that night. `AFIELD_UV` overrides everything.
+val resolvedUvExecutable: String = run {
+    val exeName = if (osName.startsWith("Windows")) "uv.exe" else "uv"
+    val candidates = sequence {
+        System.getenv("AFIELD_UV")?.trim()?.takeIf { it.isNotEmpty() }?.let { yield(File(it)) }
+        System.getenv("PATH").orEmpty().split(File.pathSeparator)
+            .filter { it.isNotBlank() }
+            .forEach { yield(File(it, exeName)) }
+        yield(File("/opt/homebrew/bin", exeName))
+        yield(File("/opt/homebrew/Caskroom/miniconda/base/bin", exeName))
+        yield(File(System.getProperty("user.home"), ".local/bin/$exeName"))
+        yield(File("/usr/local/bin", exeName))
+    }
+    candidates.firstOrNull { it.isFile && it.canExecute() }?.absolutePath ?: exeName
+}
+
+val rootPythonCommand = listOf(resolvedUvExecutable, "run", "--project", ".", "--frozen", "python")
 
 val checkExpectedTestFailures = tasks.register<Exec>("checkExpectedTestFailures") {
     group = "verification"
@@ -2212,6 +2245,12 @@ tasks.named("check") {
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
+    // Wired 2026-09-25. A drift guard of exactly the same species as `checkCodebaseReference`
+    // — "generated linear-algebra sources are current" — that was registered, grouped under
+    // `verification`, described, and reachable from NOTHING: absent from both `check` and
+    // `docsGates`, so it ran zero times in a full nightly. It costs 6 seconds. An unreachable
+    // gate is worse than no gate, because it reads as coverage.
+    dependsOn("checkGeneratedLinalg")
     dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
 }
@@ -2251,6 +2290,12 @@ tasks.register("docsGates") {
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentDemos")
+    // Wired 2026-09-25. A drift guard of exactly the same species as `checkCodebaseReference`
+    // — "generated linear-algebra sources are current" — that was registered, grouped under
+    // `verification`, described, and reachable from NOTHING: absent from both `check` and
+    // `docsGates`, so it ran zero times in a full nightly. It costs 6 seconds. An unreachable
+    // gate is worse than no gate, because it reads as coverage.
+    dependsOn("checkGeneratedLinalg")
     dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
 }
@@ -2320,9 +2365,7 @@ tasks.register<JavaExec>("runImGuiVrPanelDemo") {
 tasks.register<JavaExec>("runDocsSearchRetrievalHarness") {
     group = "verification"
     description = "Eyeball the local docs-search retrieval (Lucene hybrid + GLSL includes) for a fixed or --args query set; no LLM call."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.DocsSearchRetrievalHarness")
     jvmArgs(vectorizationJvmArgs)
@@ -3434,13 +3477,23 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres and TetGen are built here; Manifold and JEP remain system/interpreter dependencies and the
-// checker reports their exact resolved paths and remedies. The source archives used by the two
-// builds live in the shared per-user cache owned by tools/native_download_cache.py.
+// Ceres, TetGen, the native browser bridge and the Electron runtime are built here; Manifold and
+// JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
+// and remedies. The source archives used by the downloaded builds live in the shared per-user
+// cache owned by tools/native_download_cache.py.
+//
+// The last two joined this list on 2026-09-25, after a clean nightly CI build spent 3h47m reaching
+// `puppet_browser.md` and failed there — twice, on two different artifacts, each revealed only by
+// fixing the one before it. `buildFieldBrowserBridge`'s dylib lives under `build/` and `clean`
+// deletes it; `electronInstall`'s runtime lives under `electron/node_modules/` and a fresh
+// worktree simply never had it. Neither is rebuilt by anything on the compile or docs path, and
+// the page declared no `requires=` at all, so the preflight that exists precisely to catch this
+// could not see either of them. The bridge is skipped on Windows, where
+// BrowserHandleTransport.forThisPlatform has no producer bridge to offer.
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildFieldBrowserBridge, electronInstall)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

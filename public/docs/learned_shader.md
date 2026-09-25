@@ -37,7 +37,7 @@ The example deliberately keeps the teacher in ordinary GLSL. No Python copy of i
 
 If your module already renders into a `RenderToTexture`, use that target. Otherwise, make one when creating the module and keep your existing meshes, textures and uniforms:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val source = RenderToTexture(renderer) {
     width = 1920
     height = 1080
@@ -55,7 +55,7 @@ The target needs one opaque, linear RGBA16F or RGBA32F attachment. Capture reads
 
 This first model learns **(screen x, screen y, one parameter) → RGB**. The parameter can be time, a morph amount, or another scalar you choose. A callback sets that value in the real shader before each capture:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val setTime: (Float) -> Unit = { seconds ->
     mesh.push["time"] = seconds
 }
@@ -73,7 +73,7 @@ Keep every input not represented by x, y or the chosen parameter fixed. If your 
 
 ### Train, inspect, and load
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val trainingJob = ShaderTraining.trainAsync(
     dataset, File("build/my-shader/model-001"), steps = 12000
 )
@@ -83,7 +83,7 @@ val trainingJob = ShaderTraining.trainAsync(
 
 The same job can run from a terminal:
 
-```diffstatic
+```diffstatic {data-lang=bash}
 uv run --project . --group docs python tools/lighting/train_shader.py \
     --dataset build/my-shader/capture-001 \
     --out build/my-shader/model-001 --steps 12000
@@ -93,7 +93,7 @@ The dataset has separate training and validation **parameter slices**. Validatio
 
 For the comparison and replacement interface used by the Starting Point:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val comparison = ShaderLearningView(renderer, source,
     setSourceParameter = setTime)
 comparison.load(File("build/my-shader/model-001"))
@@ -106,7 +106,7 @@ comparison.view = 2         // source / learned / error
 
 If you only want the learned texture in an existing pipeline:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val learned = LearnedShader(renderer,
     weightsFile = File("build/my-shader/model-001/weights.f16"),
     manifestFile = File("build/my-shader/model-001/weights.json"),
@@ -122,7 +122,7 @@ Captured models use inference-only mode by default. They never compare themselve
 
 The original combines 48 weak waves into RGB. Sixteen input features feed two 32-unit ReLU layers and three output channels. Training uses NumPy on the CPU, a fixed seed, and Adam; the rendering loop only reads the result.
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val function = LearnedShader(renderer, cooperative = true)
 function.view = 2       // original / learned / error × 8
 function.time = .25f    // training domain: −1 … 1
@@ -130,7 +130,7 @@ function.time = .25f    // training domain: −1 … 1
 
 The training script is `tools/lighting/train_shader.py`. For this older analytic example only, change its `target` function and the corresponding `original` function in `src/jvmMain/resources/afield/four/neural/learned.slang`, then retrain and rebuild. Keep the feature encoding and declared architecture consistent. Press **Reload trained weights** to replace the view at a frame boundary; a failed replacement preserves the previous view.
 
-```diffstatic
+```diffstatic {data-lang=bash}
 uv run --project . --group docs python tools/lighting/train_shader.py
 ./gradlew buildLearnedShaders
 ```
@@ -151,7 +151,7 @@ This is an approximation, and the error panel is part of the instrument. The net
 
 Prepare the optional shader toolchain once from the Field checkout:
 
-```diffstatic
+```diffstatic {data-lang=bash}
 ./gradlew buildLearnedShaders
 ```
 

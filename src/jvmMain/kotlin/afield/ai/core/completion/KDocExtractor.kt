@@ -248,8 +248,15 @@ object KDocExtractor {
      * to stop at and the whole delegate expression would otherwise be taken for the name — which
      * fails to parse, dropping the declaration and sliding its KDoc onto the next one.
      */
+    // ` get(` is cut for the same reason as `:` and `=`: an accessor that follows the name directly,
+    // with no explicit type between them, otherwise stays in the head and takes the parentheses with
+    // it — `val n get()=x` reduces to `nget()`, which is not an identifier, so the declaration is
+    // unparseable and its KDoc slides onto whatever parses next. A type is what normally saves this
+    // (`val n: T get()=x` is already cut at the colon), so the gap is invisible until someone writes
+    // a documented accessor without one. `DlssReconstruction.sdkAllocatedBytes` was the first.
     private fun propertyNameHead(remainder: String): String =
-        remainder.substringBefore(" by ").substringBefore(":").substringBefore("=").trim()
+        remainder.substringBefore(" by ").substringBefore(":").substringBefore(" get(")
+            .substringBefore("=").trim()
 
     private fun parseQualifiedName(raw: String): String? {
         if (raw.isBlank()) return null

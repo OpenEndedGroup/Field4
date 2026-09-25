@@ -25,7 +25,7 @@ Top left: raw. Top right: spatial. Bottom left: spatial + DLAA. Bottom right: RR
 
 The adapter records into Field's command buffer and consumes Field-owned images. `DlssReconstruction(..., rayReconstruction=true)` selects RR. `evaluate` then requires a `RayReconstructionGuides` value in addition to color, depth, motion, and frame state.
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val rr = DlssReconstruction(renderer, size, size, ReconstructionMode.DLAA,
     rayReconstruction = true)
 

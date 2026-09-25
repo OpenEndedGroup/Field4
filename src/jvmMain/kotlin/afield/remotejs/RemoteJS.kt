@@ -484,67 +484,75 @@ class RemoteJSExectution : BoxExecution {
 
     override val languageName: String = "Javascript"
 
-    override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        configureOutputProxies(inside, reply)
-        val watermark = ++inside.fragmentGeneration
-        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
+    /**
+     * One remote-JS execution, wrapped in the receipt contract every other engine already honours.
+     *
+     * RemoteJS was the only engine that built no [ExecutionTrace], so it never published an
+     * `execution-verdict`. Since 2026-09-14 `field_backdoor.py`'s `run`/`launch` *wait* for that
+     * verdict, which made every awaited remote-JS execution look like a timeout — including ones
+     * that worked. The `remote-ar-head` UI regression is the case that surfaced it: the box ran,
+     * printed `42`, lowered its own running stripe, and the caller still failed after 45 s.
+     *
+     * The stripe and the receipt are lowered together, in the same place, because they are the
+     * same fact. Output goes through `trace.reply` rather than `reply` so a fragment that reports
+     * completion while printing an error still earns a failed receipt.
+     */
+    private fun withRemoteReceipt(
+        inside: Box,
+        execute: Execute,
+        mode: String,
+        stripe: Boolean,
+        announce: String,
+        reply: (Message) -> Unit,
+        body: (done: () -> Unit) -> Unit,
+    ) {
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
+        configureOutputProxies(inside, trace.reply)
+        val watermark = if (stripe) ++inside.fragmentGeneration else 0
+        if (stripe) send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
+
+        fun settle(success: Boolean, reason: String = "") {
+            if (stripe) send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+            trace.finish(success, reason)
+        }
 
         if (knownOpenRemoteClients.isEmpty())
             notify("Warning! no connected remote clients", "remotejs")
         else
-            notify("executing remote JS fragment in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
+            notify("$announce in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
 
         try {
-            afield.remotejs.executeFragment(inside, execute.code, execute.line) {
-                send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
-            }
+            body { settle(true) }
         } catch (e: Exception) {
             lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
             lprintln("error,remotejs", e.stackTraceToString())
             notify("Syntax Error in your Javascript", "remotejs")
-            send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+            settle(false, e.message ?: e.javaClass.name)
+        }
+    }
+
+    override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
+        withRemoteReceipt(inside, execute, "run", stripe = true,
+            announce = "executing remote JS fragment", reply = reply) { done ->
+            afield.remotejs.executeFragment(inside, execute.code, execute.line) { done() }
         }
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
-        configureOutputProxies(inside, reply)
-        val watermark = ++inside.fragmentGeneration
-        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
-
-        if (knownOpenRemoteClients.isEmpty())
-            notify("Warning! no connected remote clients", "remotejs")
-        else
-            notify("executing remote JS in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
-
-        try {
-            afield.remotejs.executeFragment(inside, execute.code, execute.line) {
-                send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
-            }
-        } catch (e: Exception) {
-            lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
-            lprintln("error,remotejs", e.stackTraceToString())
-            notify("Syntax Error in your Javascript", "remotejs")
-            send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+        withRemoteReceipt(inside, execute, "run", stripe = true,
+            announce = "executing remote JS", reply = reply) { done ->
+            afield.remotejs.executeFragment(inside, execute.code, execute.line) { done() }
         }
-
     }
 
     override fun launchAll(inside: Box, execute: Execute, code : String, strand: String, reply: (Message) -> Unit) {
-        configureOutputProxies(inside, reply)
-
-        if (knownOpenRemoteClients.isEmpty())
-            notify("Warning! no connected remote clients", "remotejs")
-        else
-            notify("launching remote JS in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
-
-        try {
+        // No running stripe here: `launchAll` installs work in the browser and returns, and this
+        // engine has never raised one. The receipt still settles, so an awaited launch resolves.
+        withRemoteReceipt(inside, execute, "launch", stripe = false,
+            announce = "launching remote JS", reply = reply) { done ->
             afield.remotejs.launchAll(inside, execute.code, 0)
-        } catch (e: Exception) {
-            lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
-            lprintln("error,remotejs", e.stackTraceToString())
-            notify("Syntax Error in your Javascript", "remotejs")
+            done()
         }
-
     }
 
     override fun stop(inside: Box) {

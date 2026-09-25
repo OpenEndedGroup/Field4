@@ -679,7 +679,26 @@ object PetriGallery {
         return Regex("(?<![A-Za-z0-9_-])" + Regex.escape(operator) + "(?![A-Za-z0-9_-])").containsMatchIn(corpus)
     }
 
-    /** First-column backticked tokens of every operator table, excluding the API section. */
+    /**
+     * The operator a reference row is about, taken from its first column.
+     *
+     * Reference tables on the public pages write that column as `` `name` ``, optionally followed
+     * by `<br>` and a worked `` `example` `` — the shape the 2026-09-24 presentation sweep
+     * standardised on, and the same one `StackSLVocabularyCoverageTest` reads with
+     * `substringBefore("<br>")`.
+     *
+     * Reading the token *before* the `<br>` is what keeps this a vocabulary check rather than a
+     * demand that an illustrative fragment appear verbatim in a real program. Cheatsheet examples
+     * are written with placeholder names — `pre -[ hit ]-> post` — which no worked example will
+     * ever contain, so treating the whole cell as the operator makes the guard unsatisfiable.
+     */
+    private fun firstColumnToken(line: String): String? {
+        if (!line.startsWith("|")) return null
+        val cell = line.split("|").getOrNull(1)?.substringBefore("<br>") ?: return null
+        return Regex("`([^`]+)`").find(cell)?.groupValues?.get(1)
+    }
+
+    /** First-column operator names of every operator table, excluding the API section. */
     private fun cheatsheetOperators(text: String): List<String> {
         val skip = setOf("Kotlin entry points")
         val out = LinkedHashSet<String>()
@@ -687,9 +706,9 @@ object PetriGallery {
         for (line in text.lineSequence()) {
             Regex("^##+\\s+(.*)").find(line)?.let { section = it.groupValues[1].trim() }
             if (section == null || section in skip) continue
-            val cell = Regex("^\\|\\s*`([^`]+)`\\s*\\|").find(line) ?: continue
+            val token = firstColumnToken(line) ?: continue
             // `"…"` and `'…'` are shapes rather than tokens; demonstrate the quote character.
-            out += when (val token = cell.groupValues[1]) {
+            out += when (token) {
                 "\"…\"" -> "\""
                 "'…'" -> "'"
                 else -> token
@@ -698,14 +717,14 @@ object PetriGallery {
         return out.toList()
     }
 
-    /** The backticked first-column tokens of one named section. */
+    /** The first-column operator names of one named section. */
     private fun cheatsheetSection(text: String, wanted: String): Set<String> {
         val out = LinkedHashSet<String>()
         var section: String? = null
         for (line in text.lineSequence()) {
             Regex("^##+\\s+(.*)").find(line)?.let { section = it.groupValues[1].trim() }
             if (section != wanted) continue
-            Regex("^\\|\\s*`([^`]+)`\\s*\\|").find(line)?.let { out += it.groupValues[1] }
+            firstColumnToken(line)?.let { out += it }
         }
         return out
     }

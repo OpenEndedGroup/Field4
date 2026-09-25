@@ -1,8 +1,10 @@
 version: 1
 
 # Ordinary OperationTranscript boxes are compact labels: see OPERATION_TRANSCRIPT.md.
-# Entries here are capture subjects whose box rectangle is part of the intended screenshot. The guard requires
-# one reason per file#box and rejects entries that no longer point at an oversized create.frame.
+# Two kinds of box earn an entry, and the reason should say which: a `docs_capture/` capture subject whose
+# rectangle is part of the intended screenshot, and a saved `metadata.edn` demo box that displays a wide
+# graphic into its own output area, where compacting the frame would clip the figure rather than tidy it.
+# The guard requires one reason per file#box and rejects entries that no longer point at an oversized frame.
 #
 # Six entries left on 2026-09-13, when the ordinary ceiling moved from 520 x 120 to 620 x 170: the
 # completion-header and four-panel-lifecycle cards are 620 x 150 and 560 x 150, so they now fit under it
@@ -18,3 +20,5 @@ largeFrames:
   interaction_nets_lambda/metadata.edn#lambda-normalise: Saved demo document rather than a transcript; the box holds the eight-term table it prints, which is 80 columns wide.
   interaction_nets_lambda/metadata.edn#lambda-reduction: Saved demo document; the box holds the five-panel reduction figure, which is ~1300px of graphic by design.
   interaction_nets_lambda/metadata.edn#lambda-oracle: Saved demo document; the box holds the 25-row corpus table and its four-scheduler summary.
+  function_conversation/metadata.edn#function_tools: Saved demo document; the box displays into itself the Plotly overview the README tells you to run it for, and SignalViewerOptions renders that at its default width of 1100px.
+  function_conversation_example/metadata.edn#function_tools: Saved demo document; the same tools box as the blank starter, holding the same 1100px SignalViewer overview and the 1050px preservation-checks panel.

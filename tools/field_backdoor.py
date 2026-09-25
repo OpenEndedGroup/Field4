@@ -71,15 +71,29 @@ JDWP_PORT_SCAN_RANGE = 64
 PLAYWRIGHT_ATTACH_FIRST_RUN_FLOOR = float(os.environ.get("AFIELD_PLAYWRIGHT_ATTACH_TIMEOUT", "180"))
 PLAYWRIGHT_READY_MARKER = REPO_ROOT / ".field-backdoor" / "playwright-ready"
 MAX_EVENTS = 4000
-LOG_STRING_PREVIEW = 512
+# Log values WHOLE by default. 0 means "do not truncate"; set a positive value to cap.
+#
+# These were 512 and 32, and the cost of that is not hypothetical: on 2026-09-25 a nightly CI run
+# hit `petri.gallery` failing with an IllegalStateException whose message enumerated every
+# cheatsheet operator lacking a worked example. The message was 2366 characters, the log saved the
+# first 512 as a `truncated-string` preview, and the list — the entire content of the diagnosis —
+# was destroyed at write time and could only be recovered by re-running the test.
+#
+# Truncating when a human or agent READS a log is free and reversible. Truncating when the log is
+# WRITTEN is neither. The defence against a runaway producer belongs one layer out, in the byte
+# budgets below, which drop whole records and say how many they dropped, rather than silently
+# amputating the one value someone needed.
+LOG_STRING_PREVIEW = int(os.environ.get("AFIELD_BACKDOOR_LOG_STRING_PREVIEW", "0"))
 # Each backdoor invocation writes a session log; historically these accumulated
 # unbounded (thousands of files / >100MB). Keep only the most recent N of each
 # kind. Override with AFIELD_BACKDOOR_LOG_KEEP, or 0 to disable pruning.
 LOG_KEEP = int(os.environ.get("AFIELD_BACKDOOR_LOG_KEEP", "300"))
-LOG_COLLECTION_PREVIEW = 32
+LOG_COLLECTION_PREVIEW = int(os.environ.get("AFIELD_BACKDOOR_LOG_COLLECTION_PREVIEW", "0"))
 # A busy graphics document can emit thousands of telemetry packets per second. Individual values are
-# summarized above, but the number of records is still unbounded unless the session and directory
-# have byte budgets too. Logging must never be able to stop the websocket receiver or fill the disk.
+# now written whole, so the byte budgets below are the ONLY bound on a session log, and they carry
+# the whole load that per-value truncation used to share. They drop entire records once a budget is
+# reached and record `droppedRecords`, which is a legible, countable loss rather than a silent one.
+# Logging must never be able to stop the websocket receiver or fill the disk.
 LOG_MAX_BYTES = int(os.environ.get("AFIELD_BACKDOOR_LOG_MAX_BYTES", str(16 * 1024 * 1024)))
 LOG_TOTAL_MAX_BYTES = int(os.environ.get("AFIELD_BACKDOOR_LOG_TOTAL_MAX_BYTES", str(256 * 1024 * 1024)))
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
@@ -340,8 +354,15 @@ def utc_timestamp() -> str:
 
 
 def _summarize_for_log(value: Any) -> Any:
+    """Prepare a value for the session log, writing it whole unless a cap is configured.
+
+    With the default caps of 0 this preserves content exactly and only normalises dict keys to
+    strings, which JSON requires anyway. See the LOG_STRING_PREVIEW comment for why the default
+    is "write everything": a log exists to be read after the fact by someone who cannot re-run
+    the failure, and the value most worth keeping is precisely the long one.
+    """
     if isinstance(value, str):
-        if len(value) <= LOG_STRING_PREVIEW:
+        if LOG_STRING_PREVIEW <= 0 or len(value) <= LOG_STRING_PREVIEW:
             return value
         return {
             "__type__": "truncated-string",
@@ -350,15 +371,17 @@ def _summarize_for_log(value: Any) -> Any:
         }
     if isinstance(value, dict):
         items = list(value.items())
-        summarized = {str(k): _summarize_for_log(v) for k, v in items[:LOG_COLLECTION_PREVIEW]}
-        if len(items) > LOG_COLLECTION_PREVIEW:
-            summarized["__truncated_items__"] = len(items) - LOG_COLLECTION_PREVIEW
+        keep = len(items) if LOG_COLLECTION_PREVIEW <= 0 else LOG_COLLECTION_PREVIEW
+        summarized = {str(k): _summarize_for_log(v) for k, v in items[:keep]}
+        if len(items) > keep:
+            summarized["__truncated_items__"] = len(items) - keep
         return summarized
     if isinstance(value, (list, tuple)):
         items = list(value)
-        summarized = [_summarize_for_log(v) for v in items[:LOG_COLLECTION_PREVIEW]]
-        if len(items) > LOG_COLLECTION_PREVIEW:
-            summarized.append({"__truncated_items__": len(items) - LOG_COLLECTION_PREVIEW})
+        keep = len(items) if LOG_COLLECTION_PREVIEW <= 0 else LOG_COLLECTION_PREVIEW
+        summarized = [_summarize_for_log(v) for v in items[:keep]]
+        if len(items) > keep:
+            summarized.append({"__truncated_items__": len(items) - keep})
         return summarized
     return value
 

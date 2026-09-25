@@ -27,17 +27,17 @@ Settings for the whole net. One per line, anywhere in the source.
 
 | Example | What it means |
 | --- | --- |
-| `!timing step` | Chooses maximal-step firing: every enabled, non-conflicting transition can fire on a grid tick. This is the default timing mode. |
-| `!grid 1/16` | Sets the tick to one sixteenth of a cycle. Durations and delays use cycles, so changing playback speed changes their duration in seconds. |
-| `!conflict priority` | Chooses which transition wins when enabled transitions compete for the same tokens. Priority ordering is the default. |
-| `!seed 7` | Seeds the random conflict order. Use the same seed and net to reproduce a trajectory. |
-| `!timing step` | Allows a maximal set of compatible firings at each tick. Competing firings still follow the chosen conflict policy. |
-| `!timing event` | Fires one enabled transition per tick, taking the first in conflict order. Use it to hear a net’s interleaving one step at a time. |
-| `!timing timed` | Holds consumed tokens for the transition’s duration before completing the firing. Choose this when simultaneous work must occupy resources. |
-| `!conflict order` | Resolves competition in declaration order. Moving a transition earlier can change the resulting rhythm. |
-| `!conflict priority` | Tries larger `pri=` values first. Use priorities to make an accented transition win over a competing ordinary hit. |
-| `!conflict round-robin` | Rotates the ordering from step to step. This prevents a permanently early declaration from always winning a shared token. |
-| `!conflict random` | Uses a seeded weighted shuffle to order competing transitions. Set each transition’s `w=` for relative weight and `!seed` for repeatability. |
+| `!timing` <br> `!timing step` | Chooses maximal-step firing: every enabled, non-conflicting transition can fire on a grid tick. This is the default timing mode. |
+| `!grid` <br> `!grid 1/16` | Sets the tick to one sixteenth of a cycle. Durations and delays use cycles, so changing playback speed changes their duration in seconds. |
+| `!conflict` <br> `!conflict priority` | Chooses which transition wins when enabled transitions compete for the same tokens. Priority ordering is the default. |
+| `!seed` <br> `!seed 7` | Seeds the random conflict order. Use the same seed and net to reproduce a trajectory. |
+| `step` <br> `!timing step` | Allows a maximal set of compatible firings at each tick. Competing firings still follow the chosen conflict policy. |
+| `event` <br> `!timing event` | Fires one enabled transition per tick, taking the first in conflict order. Use it to hear a net’s interleaving one step at a time. |
+| `timed` <br> `!timing timed` | Holds consumed tokens for the transition’s duration before completing the firing. Choose this when simultaneous work must occupy resources. |
+| `order` <br> `!conflict order` | Resolves competition in declaration order. Moving a transition earlier can change the resulting rhythm. |
+| `priority` <br> `!conflict priority` | Tries larger `pri=` values first. Use priorities to make an accented transition win over a competing ordinary hit. |
+| `round-robin` <br> `!conflict round-robin` | Rotates the ordering from step to step. This prevents a permanently early declaration from always winning a shared token. |
+| `random` <br> `!conflict random` | Uses a seeded weighted shuffle to order competing transitions. Set each transition’s `w=` for relative weight and `!seed` for repeatability. |
 
 </div>
 
@@ -50,13 +50,13 @@ marking, a capacity or a colour.
 
 | Example | What it means |
 | --- | --- |
-| `kick : 1` | Declares `kick` with one black token. A place mentioned only by an arc starts empty. |
-| `hats : 2` | Places two black tokens in `hats`. Bare whole numbers are token counts, rather than numeric token colours. |
-| `dst : 0 ^4` | Creates an empty place with capacity four. Firings must respect the destination’s capacity. |
-| `verse : "bd ~ sd ~"` | Stores one pattern-valued token containing a whole rhythm. Quoted patterns are not expanded into several tokens at declaration time. |
-| `label : 'lead'` | Stores one literal string colour. Single quotes distinguish a label from a double-quoted musical pattern. |
-| `notes : #60` | Stores one token whose numeric colour is 60. Use `#` when the number is a value to transform, rather than a token count. |
-| `notes : #60, #64, #67` | Stores three separately coloured tokens in one place. Commas separate tokens; the marking is three, not their numeric sum. |
+| `:` <br> `kick : 1` | Declares `kick` with one black token. A place mentioned only by an arc starts empty. |
+| `2` <br> `hats : 2` | Places two black tokens in `hats`. Bare whole numbers are token counts, rather than numeric token colours. |
+| `^` <br> `dst : 0 ^4` | Creates an empty place with capacity four. Firings must respect the destination’s capacity. |
+| `"…"` <br> `verse : "bd ~ sd ~"` | Stores one pattern-valued token containing a whole rhythm. Quoted patterns are not expanded into several tokens at declaration time. |
+| `'…'` <br> `label : 'lead'` | Stores one literal string colour. Single quotes distinguish a label from a double-quoted musical pattern. |
+| `#` <br> `notes : #60` | Stores one token whose numeric colour is 60. Use `#` when the number is a value to transform, rather than a token count. |
+| `,` <br> `notes : #60, #64, #67` | Stores three separately coloured tokens in one place. Commas separate tokens; the marking is three, not their numeric sum. |
 
 </div>
 
@@ -69,12 +69,12 @@ whole rhythm, and a place can hold a section of a song rather than a single hit.
 
 | Example | What it means |
 | --- | --- |
-| `pre -[ hit ]-> post` | Declares transition `hit`, consuming from `pre` and producing into `post`. Its name can be reused on another line to add more arcs. |
-| `pool -[ sink ]->` | Closes the transition with no output place, making a drain. Conversely, `-[ spawn ]-> pool` is a source. |
-| `kick + clock -[ hit ]-> hats` | Requires tokens from both input places in one firing. Use `+` on the output side to produce into several places. |
-| `2*hats -[ roll ]-> fill` | Consumes two tokens from `hats` for each firing. Arc weights apply independently to each named place. |
-| `~armed -[ fill ]-> hats` | Enables `fill` only while `armed` is empty. The inhibitor tests absence and consumes nothing. |
-| `&clock -[ tick ]-> bar` | Requires a token in `clock` but leaves it there. A read arc lets several transitions observe the same condition. |
+| `-[` <br> `pre -[ hit ]-> post` | Declares transition `hit`, consuming from `pre` and producing into `post`. Its name can be reused on another line to add more arcs. |
+| `]->` <br> `pool -[ sink ]->` | Closes the transition with no output place, making a drain. Conversely, `-[ spawn ]-> pool` is a source. |
+| `+` <br> `kick + clock -[ hit ]-> hats` | Requires tokens from both input places in one firing. Use `+` on the output side to produce into several places. |
+| `*` <br> `2*hats -[ roll ]-> fill` | Consumes two tokens from `hats` for each firing. Arc weights apply independently to each named place. |
+| `~` <br> `~armed -[ fill ]-> hats` | Enables `fill` only while `armed` is empty. The inhibitor tests absence and consumes nothing. |
+| `&` <br> `&clock -[ tick ]-> bar` | Requires a token in `clock` but leaves it there. A read arc lets several transitions observe the same condition. |
 
 </div>
 
@@ -89,12 +89,12 @@ Written after the name, inside the brackets, in any order.
 
 | Example | What it means |
 | --- | --- |
-| `pre -[ hit @1/16 : bd ]-> post` | Gives the emitted event a duration of one sixteenth of a cycle. Under timed semantics, the transition also holds its tokens for this duration. |
-| `pre -[ hit delay=1/32 : bd ]-> post` | Shifts the audible event later by one thirty-second of a cycle. The net’s enabling and token movement stay on their original schedule. |
-| `pre -[ hit pri=2 : bd ]-> post` | Gives this transition priority two. Larger values win when the conflict policy is `priority`. |
-| `pre -[ hit w=2 : bd ]-> post` | Assigns relative weight two in random conflict ordering. The weight matters only under `!conflict random`. |
-| `pre -[ hit : bd ]-> post` | Emits the sound token `bd` when the transition fires. A quoted string or `#number` can be emitted instead. |
-| `pre -[ move => rev ]-> post` | Transforms consumed colours before producing output tokens. Here the first consumed pattern is reversed. |
+| `@` <br> `pre -[ hit @1/16 : bd ]-> post` | Gives the emitted event a duration of one sixteenth of a cycle. Under timed semantics, the transition also holds its tokens for this duration. |
+| `delay=` <br> `pre -[ hit delay=1/32 : bd ]-> post` | Shifts the audible event later by one thirty-second of a cycle. The net’s enabling and token movement stay on their original schedule. |
+| `pri=` <br> `pre -[ hit pri=2 : bd ]-> post` | Gives this transition priority two. Larger values win when the conflict policy is `priority`. |
+| `w=` <br> `pre -[ hit w=2 : bd ]-> post` | Assigns relative weight two in random conflict ordering. The weight matters only under `!conflict random`. |
+| `:` <br> `pre -[ hit : bd ]-> post` | Emits the sound token `bd` when the transition fires. A quoted string or `#number` can be emitted instead. |
+| `=>` <br> `pre -[ move => rev ]-> post` | Transforms consumed colours before producing output tokens. Here the first consumed pattern is reversed. |
 
 </div>
 
@@ -108,20 +108,20 @@ DSL, where an output arc takes a lambda.
 
 | Example | What it means |
 | --- | --- |
-| `pre -[ move => carry ]-> post` | Passes the first consumed colour through unchanged. This is the default when no combinator is written. |
-| `pre -[ move => black ]-> post` | Produces an uncoloured black token. Use it when the next place needs occupancy rather than the incoming payload. |
-| `pre -[ move => swap ]-> post` | Selects the second consumed colour, falling back to the first when there is only one. Input ordering therefore matters. |
-| `pre -[ move => stack ]-> post` | Layers all consumed patterns simultaneously. Their events share the output pattern’s cycle. |
-| `pre -[ move => cat ]-> post` | Plays the consumed patterns one per cycle. This preserves each section’s full cycle length. |
-| `pre -[ move => fastcat ]-> post` | Fits all consumed patterns side by side into one cycle. More inputs make each section occupy a smaller fraction of that cycle. |
-| `pre -[ move => rev ]-> post` | Reverses the first consumed pattern. Use it to alternate a section with its backward version. |
-| `pre -[ move => palindrome ]-> post` | Alternates the first consumed pattern with its reverse. The output carries both directions as a pattern. |
-| `pre -[ move => degrade ]-> post` | Drops half the first consumed pattern’s events probabilistically. This thins a section without changing the net’s token logic. |
-| `pre -[ move => fast2 ]-> post` | Plays the first consumed pattern at double speed. Its material repeats twice over the original span. |
-| `pre -[ move => slow2 ]-> post` | Plays the first consumed pattern at half speed. Its material stretches across twice the original span. |
-| `pre -[ move => sum ]-> post` | Adds the numeric colours of the consumed tokens. Use numeric tokens such as `#60` for arithmetic payloads. |
-| `pre -[ move => inc ]-> post` | Adds one to the first consumed numeric colour. A loop through this transition can carry a counter. |
-| `pre -[ move => count ]-> post` | Produces the number of tokens consumed by this firing. This measures the firing’s inputs rather than the total marking of the net. |
+| `carry` <br> `pre -[ move => carry ]-> post` | Passes the first consumed colour through unchanged. This is the default when no combinator is written. |
+| `black` <br> `pre -[ move => black ]-> post` | Produces an uncoloured black token. Use it when the next place needs occupancy rather than the incoming payload. |
+| `swap` <br> `pre -[ move => swap ]-> post` | Selects the second consumed colour, falling back to the first when there is only one. Input ordering therefore matters. |
+| `stack` <br> `pre -[ move => stack ]-> post` | Layers all consumed patterns simultaneously. Their events share the output pattern’s cycle. |
+| `cat` <br> `pre -[ move => cat ]-> post` | Plays the consumed patterns one per cycle. This preserves each section’s full cycle length. |
+| `fastcat` <br> `pre -[ move => fastcat ]-> post` | Fits all consumed patterns side by side into one cycle. More inputs make each section occupy a smaller fraction of that cycle. |
+| `rev` <br> `pre -[ move => rev ]-> post` | Reverses the first consumed pattern. Use it to alternate a section with its backward version. |
+| `palindrome` <br> `pre -[ move => palindrome ]-> post` | Alternates the first consumed pattern with its reverse. The output carries both directions as a pattern. |
+| `degrade` <br> `pre -[ move => degrade ]-> post` | Drops half the first consumed pattern’s events probabilistically. This thins a section without changing the net’s token logic. |
+| `fast2` <br> `pre -[ move => fast2 ]-> post` | Plays the first consumed pattern at double speed. Its material repeats twice over the original span. |
+| `slow2` <br> `pre -[ move => slow2 ]-> post` | Plays the first consumed pattern at half speed. Its material stretches across twice the original span. |
+| `sum` <br> `pre -[ move => sum ]-> post` | Adds the numeric colours of the consumed tokens. Use numeric tokens such as `#60` for arithmetic payloads. |
+| `inc` <br> `pre -[ move => inc ]-> post` | Adds one to the first consumed numeric colour. A loop through this transition can carry a counter. |
+| `count` <br> `pre -[ move => count ]-> post` | Produces the number of tokens consumed by this firing. This measures the firing’s inputs rather than the total marking of the net. |
 
 </div>
 

@@ -92,9 +92,9 @@ No new Metal backend or software BVH is part of this experiment.
 ## Reproduce this machine's checks
 
 The standard smoke catalog entry is `four.direct-lighting.smoke`. On this checkout its automatic
-server prewarm encountered existing compile errors in the ignored personal source
-`src/personal/kotlin/paths/pointgame.kt` (`mDecayed` and scalar/vector operations). That private file
-was left unchanged. To verify core Field, the following isolated server excluded only the personal
+server prewarm encountered existing compile errors in this checkout's ignored personal source
+tree (a missing property, and some scalar/vector operations). Those private files are not
+readable from here and were left unchanged. To verify core Field, the following isolated server excluded only the personal
 compilation and jar tasks; it still built and ran Field's real JVM/JS application:
 
 ```bash

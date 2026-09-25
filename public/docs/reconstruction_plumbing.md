@@ -24,7 +24,7 @@ These are GPU passes in Field's existing command stream. The native NGX adapter 
 
 The output size is the image you want to display. Query the SDK before allocating the smaller source:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val outputSize = ReconstructionSize(1920, 1080)
 val mode = ReconstructionMode.QUALITY
 val inputSize = DlssReconstruction.recommend(renderer, outputSize, mode).optimal
@@ -39,7 +39,7 @@ In **reconstruction_plumbing**, change `mode` at the top of the box and rerun it
 
 A single raster module can write several attachments at once:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val source = RenderToTexture(renderer) {
     width = inputSize.width
     height = inputSize.height
@@ -63,7 +63,7 @@ source += "scene" to sceneModule
 
 `renderer` is inherited from the parent renderer box. `source.apply()` configures the module's attachments and render pass. The corresponding fragment outputs are:
 
-```diffstatic
+```diffstatic {data-lang=glsl}
 layout(location=0) out vec4 color;
 layout(location=1) out float depth;
 layout(location=2) out vec2 motion;
@@ -83,13 +83,13 @@ If your existing target contains only RGBA, that is the first piece, not the com
 
 Reconstruction asks for slightly different subpixel observations of the scene. Each rendered frame uses:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val jitter = ReconstructionJitter.halton(frameIndex, inputSize, outputSize)
 ```
 
 The sample's vertex shader projects each point at the current and previous camera/object state, keeping those two clip positions **unjittered** for motion. Only the raster position receives jitter:
 
-```diffstatic
+```diffstatic {data-lang=glsl}
 gl_Position = nowClip;
 gl_Position.xy += vec2(2*jitter.x/inputWidth, -2*jitter.y/inputHeight)
                   * gl_Position.w;
@@ -97,7 +97,7 @@ gl_Position.xy += vec2(2*jitter.x/inputWidth, -2*jitter.y/inputHeight)
 
 The Y sign here follows Field's Vulkan viewport convention. The fragment shader converts the unjittered positions into top-left-origin UVs, then input-pixel displacement:
 
-```diffstatic
+```diffstatic {data-lang=glsl}
 vec2 nowUV  = nowClip.xy / nowClip.w * vec2(.5, -.5) + .5;
 vec2 prevUV = oldClip.xy / oldClip.w * vec2(.5, -.5) + .5;
 motion = (prevUV - nowUV) * inputSize;
@@ -112,7 +112,7 @@ A shader can change color without moving a surface. That appearance change is no
 
 The Starting Point installs one `Target` in `renderer.renderList.preTargets`. Its `render` method owns the sequence:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 source.render(command, index)
 neural.evaluate(command,
     ReconstructionInputs(
@@ -126,7 +126,7 @@ neural.evaluate(command,
 
 `source.render` ends its render pass and leaves the attachments available for sampled reads. `evaluate` runs **outside** a render pass, on the same graphics queue, and handles the NGX output's storage/read transitions. It validates sizes, formats, sampled usage and the single mip/layer contract. Its output is an ordinary Field `RenderToTexture`:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 neural.output.blitToScreen(name = "finished image")
 ```
 
@@ -148,7 +148,7 @@ Open **Starting points → rr_plumbing**. It reuses the existing Fabricate scene
 
 The source is the **raw** RTXDI output. The conversion module samples surface data with nearest filtering; it does not infer materials from the finished RGB image. Zero specular and roughness one describe this actual diffuse model. Copying those constants into a glossy renderer would misdescribe its lighting. The current adapter does not supply optional specular hit distance.
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 scene.bundle.gBuffer.render(command, index)
 scene.lighting.render(command, index)
 guides.render(command, index)

@@ -111,7 +111,8 @@ still run. Test optional-feature disablement with `--arg=--fallback --arg=--stag
 separate output directory. The `--require-*` switches prevent a hardware acceptance run from
 quietly turning into fallback coverage.
 
-This checkout has unrelated private-source errors in `src/personal/kotlin/paths/pointgame.kt`.
+This checkout had unrelated compile errors in its personal source tree, which is excluded from
+the public build and is not something a reader of this document can open.
 For this session the server was built with public sources and the private rebuild excluded:
 
 ```bash

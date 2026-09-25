@@ -56,6 +56,7 @@ For anything advanced pressing `f1` reveals a searchable command palette. This w
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/command-palette.png" padding="6" wait="0" timeout="90" embed=true hidden=true name="command-palette"}
 ui.openEditor(id)
 ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
 ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("F1")
@@ -72,6 +73,7 @@ One of the most useful keyboard shortcuts of all is autocomplete — `ctrl-space
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor(id)
 ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
 ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("Control+A")
