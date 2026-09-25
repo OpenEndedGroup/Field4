@@ -178,6 +178,10 @@ class DocumentedApiEvaluationTest {
         "rtxdiSettings" to
             "direct_lighting.md; the Bundle extension that builds the settings enableRtxdi takes. " +
                 "Same gate as enableRtxdi — reachable only where the RTXDI path exists.",
+        "setParameter" to
+            "learned_shader.md; LearnedShader.setParameter maps a capture parameter into the " +
+                "network's normalized time, on an object whose construction needs the trained model " +
+                "and a live renderer. Same gate as the rest of this group.",
         "trainAsync" to
             "learned_shader.md; ShaderTraining.trainAsync starts a 12000-step training run against " +
                 "a GPU and returns a handle. Minutes of device work, so no headless evaluator " +
