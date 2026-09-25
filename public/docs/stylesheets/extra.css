@@ -617,14 +617,16 @@ code {
     border-bottom: 1px solid var(--mono-border);
     vertical-align: top;
     text-align: left;
-    min-width: 0;
+    /* A floor, so a column of short values (`true`, `null`, `0f`) is never
+       squeezed narrower than a word by its neighbour's prose. */
+    min-width: 5rem;
 }
 
 .md-typeset table:not(.highlighttable) th {
     background: #171717;
     color: #eee;
     font-family: var(--md-code-font);
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 500;
     letter-spacing: 0.02em;
 }
@@ -638,10 +640,13 @@ code {
     padding: 0;
     margin: 0;
     background: transparent;
-    font-size: 0.7rem;
+    font-size: 0.62rem;
     line-height: inherit;
     white-space: normal;
-    overflow-wrap: anywhere;
+    /* `break-word`, not `anywhere`: both split an identifier too long for its
+       cell, but `anywhere` also lets auto layout size a code column to a single
+       character, which is what split `true` into `tru`/`e`. */
+    overflow-wrap: break-word;
     word-break: normal;
     font-weight: 400;
 }
