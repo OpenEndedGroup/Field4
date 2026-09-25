@@ -2320,9 +2320,7 @@ tasks.register<JavaExec>("runImGuiVrPanelDemo") {
 tasks.register<JavaExec>("runDocsSearchRetrievalHarness") {
     group = "verification"
     description = "Eyeball the local docs-search retrieval (Lucene hybrid + GLSL includes) for a fixed or --args query set; no LLM call."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.DocsSearchRetrievalHarness")
     jvmArgs(vectorizationJvmArgs)
