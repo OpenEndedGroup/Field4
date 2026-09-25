@@ -85,7 +85,7 @@ void main() {
 
 `RayTracingDocsHarness.renderUvGradient` runs exactly this, at 1024 by 1024, and reads the storage image back to a PNG.
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-uv-gradient.png" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-uv-gradient.png" alt="a square filled corner to corner by a smooth two-axis colour ramp, with no geometry in it: bright green at bottom-left, bright red at top-right, yellow at bottom-right where both are strong, and near-black at top-left where neither is. Every ray hit the image plane and nothing else, so what is drawn is the launch index itself" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -192,7 +192,7 @@ void main() {
 
 `renderTriangleScene` builds that BLAS and TLAS and dispatches over them.
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-triangle-scene.png" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-triangle-scene.png" alt="one large triangle, point up, centred on a flat very dark blue background. Its three vertices carry red at bottom-left, green at bottom-right and blue at the apex, interpolated smoothly across the face so the middle is a muddy brown-grey. The edges are clean and hard against the background, and nothing else is in the scene" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -269,7 +269,7 @@ void main() {
 
 `renderShaderTileScene` traces the one quad; the checkerboard is entirely shader-side.
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-shader-tiles.png" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-shader-tiles.png" alt="a grey and near-black checkerboard floor seen in steep perspective from just above it, filling the lower two thirds of the square and receding to a hard horizon edge; above that edge is flat very dark blue where rays miss the plane entirely. The squares are large in the foreground and compress towards the back, and the pale ones dim slightly with distance" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 
@@ -426,7 +426,7 @@ void main() {
 
 `renderMirrorBallsScene` puts all of it together: the triangle floor hit group, the procedural sphere hit group, and two reflected bounces. It is also the only example here that drives its camera from a uniform rather than a literal, via `seedRayCameraUniforms`.
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-mirror-balls.png" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-mirror-balls.png" alt="three reflective spheres standing in a row on a black and white checkerboard floor, the middle one slightly further back, under a plain dark slate sky. Each sphere is dark and matte-looking across its upper half where it reflects that sky, and its lower half carries a sharply bent reflection of the checkerboard, the squares curving into a tight band just above where the sphere meets the floor. The two outer spheres also pick up small reflections of each other. Soft shadows run back from each sphere across the tiles" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
 import afield.four.fabricated.RayTracingDocsHarness
 import afield.four.modules.fromContext
 

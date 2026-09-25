@@ -105,6 +105,13 @@ ALT = re.compile(r'\balt="(?P<text>[^"]*)"')
 SCREENSHOT = re.compile(r"\bscreenshot=")
 # A published figure the page author wrote by hand, rather than one the fence embeds.
 MARKDOWN_IMAGE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<src>[^)]+)\)")
+# The same line, for alt text that itself contains brackets. CommonMark allows those as
+# long as they balance, and eleven real figures use them -- `linear_algebra.md` quotes a
+# matrix header as `mat2d [1, 3 / 2, 4]`, `pattern_language.md` names a pattern as
+# `bd [sd sd]`. `[^\]]*` stops at the inner `]`, the line then fails to parse as an image
+# at all, and the figure is counted as neither published nor covered. So it is not a
+# false *negative* on alt quality; it is eleven figures missing from the denominator.
+MARKDOWN_IMAGE_OPEN = re.compile(r"!\[")
 MIN_WORDS = 4
 # docs_hooks.TRUE_VALUES, so `embed=true`, `embed="1"` and `embed=on` all agree here.
 TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -183,8 +190,28 @@ def markdown_images(text):
             continue
         if in_fence:
             continue
-        for m in MARKDOWN_IMAGE.finditer(raw):
-            yield lineno, m.group("alt").strip()
+        for alt in markdown_image_alts(raw):
+            yield lineno, alt
+
+
+def markdown_image_alts(line):
+    """Every `![alt](src)` alt string on one line, counting brackets rather than banning them.
+
+    Scans from each `![` and tracks depth, so `![a pattern of bd [sd sd]](x.png)` yields
+    the whole alt instead of stopping at the inner `]`. Requires the `(` that follows, so
+    a reference-style `![alt][ref]` or a bare `![text]` is still not an image.
+    """
+    for opener in MARKDOWN_IMAGE_OPEN.finditer(line):
+        i, depth = opener.end(), 1
+        while i < len(line) and depth:
+            if line[i] == "[":
+                depth += 1
+            elif line[i] == "]":
+                depth -= 1
+            i += 1
+        if depth or i >= len(line) or line[i] != "(":
+            continue
+        yield line[opener.end() : i - 1].strip()
 
 
 def coverage(text):
@@ -269,15 +296,21 @@ def live_fire():
         "![a coiled space curve with a bright green spanning tree following it](h.png)",
         "![The two flocks](i.png)",
         "![](j.png)",
+        # Balanced brackets inside the alt. CommonMark renders this; a `[^\\]]*` alt
+        # group stopped at the inner `]` and dropped the figure from BOTH counts.
+        "![a piano roll of `bd [sd sd]` over 2 cycles, drawn above `bd sd`](k.png)",
+        # Not an image: no `(` after the closing bracket, so a reference-style link
+        # and a bare bracketed phrase must both stay out of the denominator.
+        "![a reference-style figure][ref]",
         # Inside a fence, so a sample rather than a figure.
         "```markdown",
         "![](not-a-figure.png)",
         "```",
     ])
     got = coverage(published)
-    assert got == (6, 2), f"coverage miscounted the publishing surfaces: {got}"
-    print("live-fire coverage: 6 published, 2 covered; embed-less fences and "
-          "in-fence samples both excluded")
+    assert got == (7, 3), f"coverage miscounted the publishing surfaces: {got}"
+    print("live-fire coverage: 7 published, 3 covered; embed-less fences, in-fence "
+          "samples and reference-style links all excluded, bracketed alt counted")
 
     # An alt string describing Kotlin code contains braces, and the whole board used
     # to die on one: `[^}]*` cut the block at the inner `}`, severing `alt="` from its
