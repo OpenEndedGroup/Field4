@@ -20,7 +20,7 @@ render](#a-browser-you-do-not-have-to-render).
 ratio. Your clicks, wheel motion, physical keys, modifiers and text input go back to the original
 Chromium page.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/puppet_browser/youtube-desktop.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-desktop-browser" alt="A complete live YouTube page rendered into a native Field Vulkan window" macro-file="../../dev_docs/agents/transcripts/youtube_mouse_keyboard_browser.yaml" capture-box="youtube_desktop_renderer"}
+```diffstatic_runner {data-lang=kotlin requires="browser-bridge,electron-runtime" screenshot="assets/puppet_browser/youtube-desktop.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-desktop-browser" alt="A complete live YouTube page rendered into a native Field Vulkan window" macro-file="../../dev_docs/agents/transcripts/youtube_mouse_keyboard_browser.yaml" capture-box="youtube_desktop_renderer"}
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
@@ -246,7 +246,7 @@ window ray, intersect its own geometry, and return whichever UV belongs under th
 quad. It is rendered once per eye, so the panel has actual stereo distance instead of being pasted
 over the final headset image.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/puppet_browser/youtube-stereo.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-vr-browser" alt="A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window" macro-file="../../dev_docs/agents/transcripts/youtube_vr_browser.yaml" capture-box="youtube_vr_renderer"}
+```diffstatic_runner {data-lang=kotlin requires="browser-bridge,electron-runtime" screenshot="assets/puppet_browser/youtube-stereo.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-vr-browser" alt="A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window" macro-file="../../dev_docs/agents/transcripts/youtube_vr_browser.yaml" capture-box="youtube_vr_renderer"}
 val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
 val panel = PuppetBrowserVrPanel(
     renderer = renderer,
@@ -281,7 +281,7 @@ This example points Chromium back at the current Field document and samples that
 mesh. It performs a page-to-Field-to-JavaScript promise round trip and publishes its live
 `browserControl` property for neighbouring boxes:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/browser_texture/field-ui-on-texture.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true hidden=true name="field-ui-browser-texture" alt="Field's own live UI, produced by Chromium and sampled back onto a Vulkan surface" macro-file="../../dev_docs/agents/transcripts/field_ui_browser_texture.yaml" capture-box="field_ui_texture_renderer"}
+```diffstatic_runner {data-lang=kotlin requires="browser-bridge,electron-runtime" screenshot="assets/browser_texture/field-ui-on-texture.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true hidden=true name="field-ui-browser-texture" alt="Field's own live UI, produced by Chromium and sampled back onto a Vulkan surface" macro-file="../../dev_docs/agents/transcripts/field_ui_browser_texture.yaml" capture-box="field_ui_texture_renderer"}
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -302,7 +302,7 @@ Once the browser is an ordinary native texture, a rectangle is only a convention
 a YouTube watch page, handles the EU consent page, starts its real video element, and fractures the
 complete tab into 224 animated triangles:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/puppet_browser/youtube-kaleidoscope.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-kaleidoscope" alt="A live YouTube page fractured into 224 animated triangular Vulkan shards" macro-file="../../dev_docs/agents/transcripts/youtube_kaleidoscope.yaml" capture-box="youtube_kaleidoscope_renderer"}
+```diffstatic_runner {data-lang=kotlin requires="browser-bridge,electron-runtime" screenshot="assets/puppet_browser/youtube-kaleidoscope.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-kaleidoscope" alt="A live YouTube page fractured into 224 animated triangular Vulkan shards" macro-file="../../dev_docs/agents/transcripts/youtube_kaleidoscope.yaml" capture-box="youtube_kaleidoscope_renderer"}
 val shards = PuppetBrowserKaleidoscope(
     renderer = renderer,
     browser = browser,

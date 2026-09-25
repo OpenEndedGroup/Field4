@@ -3416,13 +3416,23 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres and TetGen are built here; Manifold and JEP remain system/interpreter dependencies and the
-// checker reports their exact resolved paths and remedies. The source archives used by the two
-// builds live in the shared per-user cache owned by tools/native_download_cache.py.
+// Ceres, TetGen, the native browser bridge and the Electron runtime are built here; Manifold and
+// JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
+// and remedies. The source archives used by the downloaded builds live in the shared per-user
+// cache owned by tools/native_download_cache.py.
+//
+// The last two joined this list on 2026-09-25, after a clean nightly CI build spent 3h47m reaching
+// `puppet_browser.md` and failed there — twice, on two different artifacts, each revealed only by
+// fixing the one before it. `buildFieldBrowserBridge`'s dylib lives under `build/` and `clean`
+// deletes it; `electronInstall`'s runtime lives under `electron/node_modules/` and a fresh
+// worktree simply never had it. Neither is rebuilt by anything on the compile or docs path, and
+// the page declared no `requires=` at all, so the preflight that exists precisely to catch this
+// could not see either of them. The bridge is skipped on Windows, where
+// BrowserHandleTransport.forThisPlatform has no producer bridge to offer.
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildFieldBrowserBridge, electronInstall)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
