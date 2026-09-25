@@ -16,7 +16,7 @@ import kotlin.reflect.KType
  * object made by gen-1 `kiwi.Solver` are unrelated types, and mixing them produces the JVM's least
  * helpful error, `class kiwi.Solver cannot be cast to class kiwi.Solver`.
  *
- * Two halves, and the second is the one that matters:
+ * Two halves, a scan up front and a diagnosis at the point of failure:
  *
  *  * [scanForStaleClasses] is a shallow, best-effort look at what an engine is holding, so the
  *    common case — a box with a personal object in a top-level `val` — gets caught and reset up

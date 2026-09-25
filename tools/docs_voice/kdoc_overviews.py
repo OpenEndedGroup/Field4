@@ -33,6 +33,27 @@ So the ordering matters: fix the voice of a queued overview *before* the roots l
 after. Publishing it is a one-line change to a list in `StdlibReferenceGenerator.kt`, and
 on the day it happens nine `solidsl` overviews arrive on `languages.md` at once.
 
+## Every row this board has ever printed, and its verdict
+
+Recorded so nobody re-walks it. The unresolved fraction of a board is a queue; the way to
+see it is to diff the live rows against this list.
+
+| row | verdict |
+|---|---|
+| `SolidGradient.kt` 16 | **true**, and the headline: it carried Marc's own 2026-09-13 quote, twelve days and sixty firings after the page beside it was fixed. Three headings, a `load-bearing`, a self-grading clause, and `Seven distinct refusals` -- the same planted count already found wrong on `solid_notation.md` and replaced there by the three families the code has. Fixed |
+| `SolidPointCloudFit.kt` 19 | **true**. Two headings and "everything interesting here". Fixed |
+| `SolidSimplify.kt` 10 | **true in half**. `The rules, and which ones are interesting` fixed; `## What it does not do` is a genuine limitations section and stays |
+| `SolidAgreement.kt` 9 | **true in half**. The methodology heading (ungrammatical as well) and a defence of the measurement against nobody, both cut. `# Agreement does not converge to zero` stays: it is a *result*, and `dev_docs/SOLIDSL_AGREEMENT.md` already spells the heading that way |
+| `SolidInverse.kt` 8 | **true**. `, and why that and not a mesh` -> `, not a mesh`. Fixed |
+| `SolidField.kt` 2 | **true**. `Total, and never a refusal` -> `This lowering always succeeds`. Fixed |
+| `PersonalReload.kt` 7 | **true**. "the second is the one that matters" ranked two halves the bullets already distinguish. Fixed |
+| `MeshFromDisk.kt` 6 | **true**. "the honest list" -> what the list is of. Fixed |
+| `CaSoundDocs.kt` 2, `LambdaSoundDocs.kt` 2 | keeps, and already recorded in `score_voice.STANDING_KEEPS`: "What it does not do" over a capability list |
+
+**A fixed row does not always leave the board.** `SolidAgreement` and `SolidSimplify` went
+9 -> 2 and 10 -> 2 and are still here, because the kept half is what scores. Read the
+score, not the row count.
+
 ## em-dash density is excluded from the ranking, on purpose
 
 An overview is 100 to 600 words. `em-dash-density`'s per-1000-word threshold is noisy at
@@ -121,7 +142,9 @@ def report(src_root: pathlib.Path, ref_root: pathlib.Path) -> int:
 # innocent neighbour. The boundary fixtures are written first, because four firings
 # running have now found a control that did nothing.
 MUST_FIRE = [
-    # The three heading shapes the queued overviews actually carry, verbatim.
+    # The three heading shapes the queued overviews carried on 2026-09-25, verbatim. They
+    # are fixed in the tree now; a fixture is a fixture, and these stay as the record of
+    # what the board was built to find.
     "## What the loss does not contain, and what goes wrong because of it\n\n"
     "The residual is a signed distance difference at each sample point.\n",
     "## Agreement does not converge to zero, and saying so is the point\n\n"

@@ -45,7 +45,7 @@ import java.io.File
  *
  * What is *not* here, because nothing in the tree can read it: **STEP / IGES / BREP**. There is no CAD
  * kernel on the classpath, and a NURBS-to-mesh tessellation is not a weekend's work — see
- * `public/docs/geometry_from_disk.md` for the honest list.
+ * `public/docs/geometry_from_disk.md` for the full list of what does and does not load.
  */
 
 // ==============================================================================================
