@@ -82,6 +82,39 @@ that length -- a 107-word overview with three dashes is "1 over" -- and the task
 in as many words not to chase em-dashes. Excluding it takes the board from 36 nonzero to
 8. The count is still printed, so the signal is set aside rather than lost.
 
+## `src/personal/` is not ranked, and that is the third guard in this tree to say so
+
+Measured 2026-09-25 (sixty-first firing): run from `/Users/marc/field4` this board found
+**426 overviews and 12 nonzero rows**; run from any worktree, **370 and 4**. The eight
+extra rows were all `src/personal/kotlin/house/`, they scored 15/8/8/8/8/5/5/2, and they
+sat *above every real row in the tree* -- whose top is 2.
+
+`src/personal/` is gitignored (the `src/personal/` rule in `.gitignore`), so it exists
+only on the machine of whoever wrote it and in no worktree at all. A board that ranks it
+is broken three ways at once: its census is unreproducible between two checkouts of the
+same commit, its top eight rows name files an agent cannot commit, and it buries the rows
+that can be fixed. `KDocAttachmentGuard.kt` and `SourcePartitionGuard.kt` each already
+carry `EXCLUDED_ROOTS = listOf("src/personal/")` with this rationale written out; this is
+the same exclusion, arrived at the hard way because a new analyser did not check what its
+two siblings in the same package had already settled.
+
+The count is still printed when the directory is there, so the population is set aside
+rather than hidden. The eight rows as measured are reported in the sixty-first firing's
+night log; only their owner can act on them.
+
+## A root with no Kotlin in it is an error, not a clean sweep
+
+Every other analyser here takes `public/docs` as its first positional argument. This one
+takes `src`. Handed `public/docs` -- which is what a loop over the directory does, and
+what the sixty-first firing did -- it used to `rglob("*.kt")` over a tree with no Kotlin
+in it and print `overviews=0 ... sum=0` and **exit 0**. A clean bill of health, from an
+input that had collapsed.
+
+That is the third time in three firings that a sweep has reported nothing because its
+input was empty rather than because the tree was clean (the fifty-ninth's `| head` and its
+zsh word-splitting were the first two). So `report()` now refuses: a root holding no
+file-overview KDoc at all is a usage error with a message naming the argument order.
+
 ## Scoring is imported, never copied
 
 `score_voice.score` and `check_kdoc_mirror.file_overview` are imported. A second copy of a
@@ -106,6 +139,11 @@ import score_voice as sv  # noqa: E402
 # sentences and start being labels.
 MIN_WORDS = 25
 
+# Gitignored, machine-local, and absent from every worktree. Same list, same reason, as
+# `KDocAttachmentGuard.EXCLUDED_ROOTS` and `SourcePartitionGuard.EXCLUDED_ROOTS`. See the
+# docstring for what it cost to leave it out.
+EXCLUDED_ROOTS = ("src/personal/",)
+
 # The one family `score_voice` scores that this board does not rank on. See the docstring.
 NOT_RANKED = "em-dash-density"
 
@@ -119,9 +157,17 @@ def score_overview(body: str):
     return sum(ranked.values()), ranked, detail, dashes
 
 
+def is_excluded(kt: pathlib.Path) -> bool:
+    """True for a machine-local root no other checkout has. See EXCLUDED_ROOTS."""
+    posix = kt.as_posix()
+    return any(r in posix for r in EXCLUDED_ROOTS)
+
+
 def overviews(src_root: pathlib.Path, ref_root: pathlib.Path):
     pages = {p: p.read_text().splitlines() for p in sorted(ref_root.glob("*.md"))}
     for kt in sorted(src_root.rglob("*.kt")):
+        if is_excluded(kt):
+            continue
         block = km.file_overview(kt)
         if not block:
             continue
@@ -153,9 +199,28 @@ def report(src_root: pathlib.Path, ref_root: pathlib.Path) -> int:
         for family, items in sorted(detail.items()):
             for _line, snippet in items:
                 print(f"          {family}: {snippet}")
+    if not scanned:
+        print(f"\nNO FILE-OVERVIEW KDoc UNDER {src_root}. This board's first argument is a\n"
+              "Kotlin source root, not a docs root -- every sibling analyser here takes\n"
+              "`public/docs` and this one takes `src`. Usage:\n"
+              "    kdoc_overviews.py [src] [public/docs/reference]\n"
+              "Refusing rather than reporting a clean sweep; see the docstring.")
+        return 2
     print(f"\noverviews={scanned} published={published} queued={scanned - published} "
           f"nonzero={len(rows)} sum={sum(r[0] for r in rows)} "
           f"(em-dash points set aside: {dashes_total})")
+    # Counted on exactly the terms the ranked population is, MIN_WORDS included, so that
+    # `overviews=` here plus this number is the census a pre-exclusion board printed.
+    local = 0
+    for kt in src_root.rglob("*.kt"):
+        if not is_excluded(kt):
+            continue
+        block = km.file_overview(kt)
+        if block and len("\n".join(km._body(block)).split()) >= MIN_WORDS:
+            local += 1
+    if local:
+        print(f"not ranked: {local} overview(s) under {', '.join(EXCLUDED_ROOTS)} -- gitignored,"
+              "\n  machine-local, absent from every worktree. See the docstring.")
     return 0
 
 

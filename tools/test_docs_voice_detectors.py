@@ -27,6 +27,7 @@ from __future__ import annotations
 import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -71,9 +72,28 @@ crease by splitting a vertex rather than by marking an edge.
 # Boards that need something other than a docs root on the command line. Every board is
 # run; none is skipped. A skip list is how a board goes dark, which is the whole subject
 # of BoardsSurviveTheTree below.
+# The default below -- `public/docs` -- is load-bearing, and a board that takes a
+# different root is invisible to this gate rather than gated by it. `kdoc_overviews.py`
+# takes a *Kotlin source* root. From 2026-09-25 to 2026-09-25 it was run here with
+# `public/docs`, found no `*.kt` under it, printed `overviews=0 ... sum=0` and exited 0 --
+# so both assertions below passed on a scan of **zero files**, including the one whose own
+# failure message is "a reader cannot tell a clean board from one that scanned zero
+# files". A wrong argv looks exactly like a clean tree. Add the root when you add a board.
 BOARD_ARGV = {
     "check_fences": ["HEAD", "HEAD"],
     "check_kdoc_mirror": ["--sweep"],
+    "kdoc_overviews": ["src", "public/docs/reference"],
+}
+
+# Exempt from `test_no_board_is_blind_to_its_root`, each with why. A board belongs here
+# only if it genuinely does not take a filesystem root -- not because making it print its
+# sweep size was inconvenient.
+ROOT_BLIND_BY_DESIGN = {
+    # Takes two git refs and reads the trees behind them, so a directory argument is not
+    # a root it could be blind to.
+    "check_fences",
+    # `--sweep` walks the repo from the tool's own location and takes no root at all.
+    "check_kdoc_mirror",
 }
 
 # Boards known to die on this base, each with where the fix already is. Enforced in BOTH
@@ -151,6 +171,44 @@ class BoardsSurviveTheTree(unittest.TestCase):
                     any(c.isdigit() for c in out),
                     f"{path.name} printed no number, so a reader cannot tell a clean "
                     f"board from one that scanned zero files:\n{out[-500:]}")
+
+    def test_no_board_is_blind_to_its_root(self):
+        """Run each board against an EMPTY directory. The output must change.
+
+        `test_every_board_prints_a_count` above asks for a digit, and a digit is not
+        enough: `overviews=0`, `0 hit(s)`, and `0 figure(s) published twice` all contain
+        one and all three were printed by boards that had read nothing. On 2026-09-25
+        three boards were blind at once -- `kdoc_overviews.py` because this file passed it
+        a docs root when it takes a Kotlin source root, and `moves.py` and
+        `double_published.py` because they reported hits without ever reporting how many
+        pages they had swept. All three were green on every assertion in this file.
+
+        An empty root is the cheapest possible collapsed input, so if a board says the
+        same thing about it as about 618 real files, that board cannot distinguish clean
+        from collapsed and neither can its reader. This is the fourth appearance in three
+        firings of a sweep reporting nothing because its input was empty; the other two
+        were a `| head` that truncated a completeness check and a zsh string that did not
+        word-split. Those were one-off mistakes in a shell. This one is in a file.
+        """
+        with tempfile.TemporaryDirectory() as void:
+            for path in self.boards():
+                if path.stem in ROOT_BLIND_BY_DESIGN or path.stem in KNOWN_RED:
+                    continue
+                with self.subTest(board=path.name):
+                    real = self.run_board(path).stdout
+                    argv = [void if not a.startswith("-") else a
+                            for a in BOARD_ARGV.get(path.stem, ["public/docs"])]
+                    empty = subprocess.run(
+                        [sys.executable, str(path), *argv],
+                        cwd=DETECTORS.parent.parent, capture_output=True,
+                        text=True, timeout=300).stdout
+                    self.assertNotEqual(
+                        real, empty,
+                        f"{path.name} says exactly the same thing about an empty "
+                        f"directory as about the real tree, so its report cannot "
+                        f"distinguish a clean sweep from one whose input collapsed. "
+                        f"Print the size of the sweep, or add it to "
+                        f"ROOT_BLIND_BY_DESIGN with the reason.\n{real[-400:]}")
 
 
 class DetectorsImport(unittest.TestCase):
