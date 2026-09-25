@@ -197,7 +197,7 @@ expect:
         lighter: [0.28, 0.28, 0.44, 0.34]
         marginGt: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-default-scene.png" source-image="/tmp/docs-fabricate-default-native.png" wait="15.0" timeout="120" execution="launch" embed=true graphics-context=true name="fabricate-default-scene" hidden=true fabricate-scene="default-scene"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-default-scene.png" alt="three torii seen face-on against black, lit from above so each carries a soft sheen along its upper edge: green on the left, yellow in the middle, dusty red on the right. All three lie in one plane and overlap, and the renderer resolves the interpenetration rather than blending it, so the middle ring is cut into curved patches of green and red wherever the outer two pass through it" source-image="/tmp/docs-fabricate-default-native.png" wait="15.0" timeout="120" execution="launch" embed=true graphics-context=true name="fabricate-default-scene" hidden=true fabricate-scene="default-scene"}
 ```
 
 ## Shiny torii on checkerboard planes
@@ -263,7 +263,7 @@ expect:
         lighter: [0.50, 0.30, 0.16, 0.16]
         marginGt: 8
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shiny-checkerboard.png" source-image="/tmp/docs-fabricate-shiny-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shiny-torii-checkerboard" hidden=true fabricate-scene="shiny-torii-checkerboard"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shiny-checkerboard.png" alt="a floor of separate square tiles receding to a horizon, each tile catching its own small specular highlight, with black above. Three glossy torii stand on it and overlap left to right: a dull red one furthest back, a teal one in the middle, and an olive-yellow one nearest and largest. Each meets the tiles in a dark contact shadow" source-image="/tmp/docs-fabricate-shiny-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shiny-torii-checkerboard" hidden=true fabricate-scene="shiny-torii-checkerboard"}
 ```
 
 ## Two camera framings over one scene
@@ -300,7 +300,7 @@ expect:
         b: [0.70, 0.28, 0.24, 0.40]
         meanAbsDiffGt: 8
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-camera-depth-study.png" source-image="/tmp/docs-fabricate-camera-depth-study-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-camera-depth-study" hidden=true fabricate-scene="camera-depth-study"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-camera-depth-study.png" alt="two framings of one checkerboard-and-torii scene, side by side. In the near framing the floor fills the lower half, a brown torus stands behind a teal one, and the olive torus is so close to the camera that only a crescent of it fits against the edge of the panel. In the far framing the same three rings sit smaller and higher with more floor visible, the olive one in front, the teal behind it, and the brown showing through both openings" source-image="/tmp/docs-fabricate-camera-depth-study-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-camera-depth-study" hidden=true fabricate-scene="camera-depth-study"}
 ```
 
 ## Shader-generated checkerboard
@@ -361,7 +361,7 @@ expect:
         # assigning a fixed light/dark direction.
         meanAbsDiffGt: 8
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard" hidden=true fabricate-scene="shader-generated-checkerboard"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" alt="a brown torus and a larger teal one against black. The floor is a single scaled cube rather than a grid of tiles, and the checker is a fine procedural pattern on its surface: a narrow band of it shows through the teal ring and tapers away to a point beyond the ring, with the tiles far smaller and denser than the mesh-split floor renders them" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard" hidden=true fabricate-scene="shader-generated-checkerboard"}
 ```
 
 ## Blended transparency
@@ -420,7 +420,7 @@ expect:
         b: [0.58, 0.28, 0.22, 0.32]
         meanAbsDiffGt: 5
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-blended-transparency.png" source-image="/tmp/docs-fabricate-blended-transparency-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-blended-transparency" hidden=true fabricate-scene="blended-transparency"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-blended-transparency.png" alt="a tiled floor with an opaque brown torus on the left and a large translucent teal one on the right, the floor tiles clearly visible through the teal ring's lower band. Two translucent spheres sit between them, a blue-grey one behind and a warm tan one in front, overlapping: the tan reads through the blue-grey, and both read through the teal ring in front of them, so three layers of blending are legible at once" source-image="/tmp/docs-fabricate-blended-transparency-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-blended-transparency" hidden=true fabricate-scene="blended-transparency"}
 ```
 
 ## Lights and skybox
@@ -466,7 +466,7 @@ expect:
         b: [0.66, 0.60, 0.20, 0.30]
         meanAbsDiffGt: 6
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-multi-light-skybox.png" source-image="/tmp/docs-fabricate-multi-light-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-multi-light-skybox" hidden=true fabricate-scene="multi-light-skybox"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-multi-light-skybox.png" alt="the Venice Sunset environment map drawn as the scene backdrop, not a flat colour: a blurred paved square with an ochre palazzo, a stone pine and an arcaded building under a pale evening sky. Three chrome torii stand on a checkerboard of translucent tiles laid over the paving. Their mirror surfaces carry the buildings and the sky, the middle ring takes the brightest highlight, and the tiles pick up pink and blue from the point and spot lights" source-image="/tmp/docs-fabricate-multi-light-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-multi-light-skybox" hidden=true fabricate-scene="multi-light-skybox"}
 ```
 
 ## Post stack
@@ -519,7 +519,7 @@ expect:
         lighter: [0.42, 0.28, 0.18, 0.18]
         marginGt: 6
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" alt="a magenta torus and a teal one in front of it, with a floor of grey tiles. The vignette pass darkens the frame towards its corners and warms what it leaves, so the tiles nearest the middle stay bright and the rest of the image falls away to black. This capture is the one figure on the page that is upside down: the tile floor runs across the top and the rings hang below it, and each ring's specular highlight sits at its bottom rather than its top. See CAPTURE_ROW_ORDER in dev_docs for why, and for the re-capture it is owed" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
 ```
 
 ## Tone mapping and bloom
@@ -555,7 +555,7 @@ expect:
         b: [0.55, 0.20, 0.40, 0.55]
         meanAbsDiffGt: 5
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-tonemap-bloom.png" source-image="/tmp/docs-fabricate-tonemap-bloom-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-tonemap-bloom" hidden=true fabricate-scene="tonemap-bloom"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-tonemap-bloom.png" alt="the same pink and blue torii on a bright white tiled floor, rendered twice side by side. With tone mapping alone the two rings hold their colour and the tiles stay white without spreading. With bloom added the highlights bleed into soft haloes, the blue ring glows along its upper edge, the floor reads brighter overall, and small out-of-focus flecks of light scatter across the black above the scene" source-image="/tmp/docs-fabricate-tonemap-bloom-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-tonemap-bloom" hidden=true fabricate-scene="tonemap-bloom"}
 ```
 
 ## glTF loading and animation
@@ -623,7 +623,7 @@ expect:
         lighter: [0.36, 0.34, 0.28, 0.24]
         marginGt: 6
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-toy-car-gltf.png" source-image="/tmp/docs-fabricate-toy-car-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-toy-car-gltf" hidden=true fabricate-scene="toy-car-gltf"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-toy-car-gltf.png" alt="the Khronos ToyCar sample, a dark green 1950s two-door coupe seen from the front three-quarter against black. An orange flame decal runs back from the headlights and a black-and-white chequer stripe follows it along the hood. The bumper, grille surround and side spears are chrome, the tyres are whitewall over mirrored hubcaps, and the tinted glass shows a red interior. It stands on a crumpled dark red cloth" source-image="/tmp/docs-fabricate-toy-car-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-toy-car-gltf" hidden=true fabricate-scene="toy-car-gltf"}
 // Scene + camera live in StandardRendererDocsHarness.renderToyCarGltf.
 // Camera lowered to a flatter, near-roofline vantage to match the three.js reference.
 ```
@@ -702,7 +702,7 @@ expect:
         b: [0.60, 0.22, 0.24, 0.46]
         meanAbsDiffGt: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-metalness.png" source-image="/tmp/docs-fabricate-metalness-native.png" wait="15.0" timeout="120" execution="launch" embed=true graphics-context=true name="fabricate-metalness" hidden=true fabricate-scene="metalness"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-metalness.png" alt="two torii of the same pale blue-grey base colour and the same roughness, side by side against black. The dielectric one takes a broad soft highlight across its upper right and a wide bright crescent along the inside of its lower left. The metallic one, under the same light, keeps only two small hard glints, at the top and inside the lower edge, and the rest of the ring stays dark" source-image="/tmp/docs-fabricate-metalness-native.png" wait="15.0" timeout="120" execution="launch" embed=true graphics-context=true name="fabricate-metalness" hidden=true fabricate-scene="metalness"}
 ```
 
 ## Shadows
@@ -741,7 +741,7 @@ expect:
         lighter: [0.75, 0.63, 0.12, 0.10]
         marginGt: 18
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shadows" hidden=true fabricate-scene="shadows"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" alt="one dark olive torus standing on a large pale grey sphere used as the ground, rendered twice side by side. Unshadowed, the ring meets the ground with nothing beneath it and the two shapes read as separate. Shadowed, a soft dark ellipse lies on the ground offset from where the ring touches down, and that contact is the whole of the difference: the lighting on the ring itself is unchanged" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shadows" hidden=true fabricate-scene="shadows"}
 ```
 
 ## Ambient occlusion
@@ -780,5 +780,5 @@ expect:
         lighter: [0.20, 0.62, 0.03, 0.05]
         marginGt: 7
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-ao" hidden=true fabricate-scene="ambient-occlusion"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" alt="six matte grey spheres resting together in two rows on a large pale dome, rendered twice side by side. Without ambient occlusion the spheres cast soft drop shadows onto the dome but the seams where they touch each other stay the same grey as the rest of them. With it, those contact valleys darken to firm creases while the lit tops of the spheres are unchanged" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-ao" hidden=true fabricate-scene="ambient-occlusion"}
 ```

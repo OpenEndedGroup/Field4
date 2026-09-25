@@ -291,5 +291,36 @@ class KnownPlaceholders(unittest.TestCase):
         self.assertNotIn("assets/real.png", done.stdout)
 
 
+class OrphanedCaptureFences(unittest.TestCase):
+    """The attribute block runs to the last `}` on the line, not the first.
+
+    An alt string describing Kotlin code contains braces. `petri_nets.md:143`
+    describes `.every(4) { it.fast(2) }`, and cutting the block at that inner brace
+    dropped `embed=true` off the end -- so a figure the page shows perfectly well was
+    reported as an orphaned capture fence, and the check failed on `main`.
+    """
+
+    def fence(self, attrs):
+        return f"```diffstatic_runner {{{attrs}}}\n// body\n```\n"
+
+    def test_embedding_fence_is_not_an_orphan(self):
+        text = self.fence('screenshot="a/b.png" embed=true')
+        self.assertEqual(orphaned_capture_fences(text), [])
+
+    def test_a_brace_in_an_alt_string_does_not_hide_embed(self):
+        text = self.fence(
+            'screenshot="a/b.png" '
+            'alt="a ring where .every(4) { it.fast(2) } doubles the onsets" embed=true')
+        self.assertEqual(orphaned_capture_fences(text), [])
+
+    def test_a_fence_with_no_embed_and_no_reference_is_an_orphan(self):
+        text = self.fence('screenshot="a/b.png"')
+        self.assertEqual(orphaned_capture_fences(text), ["a/b.png"])
+
+    def test_a_hand_written_reference_excuses_a_missing_embed(self):
+        text = self.fence('screenshot="a/b.png"') + "\n![a description](a/b.png)\n"
+        self.assertEqual(orphaned_capture_fences(text), [])
+
+
 if __name__ == "__main__":
     unittest.main()

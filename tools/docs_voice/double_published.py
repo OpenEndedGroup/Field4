@@ -64,7 +64,12 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import score_voice as sv  # noqa: E402
 
-OPENER = re.compile(r"^\s*(?:```|~~~)[a-z_]*\s*\{(?P<attrs>[^}]*)\}")
+# `attrs` runs to the LAST `}` on the line. With the first-`}` form this used to
+# carry, an alt string containing a Kotlin lambda -- petri_nets.md's
+# `.every(4) { it.fast(2) }` -- truncated the block before `embed=true`, and the
+# fence was silently dropped from the scan. `docs_hooks` never had the bug: it
+# splits the line on the fence name and flattens every brace to a space.
+OPENER = re.compile(r"^\s*(?:```|~~~)[a-z_]*\s*\{(?P<attrs>.*)\}\s*$")
 IMAGE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<target>[^)\s]+)")
 TRUE_VALUES = {"1", "true", "yes", "on"}
 
@@ -166,7 +171,18 @@ def live_fire():
                            "![A real description of the figure](../assets/p/a.png)")
     assert len(list(scan(relative))) == 1, "a ../ spelling of the same asset was missed"
 
-    print("live-fire: 1 duplicate; embed-less fence, unrelated image both silent")
+    # An alt string describing Kotlin code contains braces. With the first-`}` form
+    # this file used to carry, the block was cut before `embed=true`, the fence was
+    # dropped, and the duplicate went unreported. petri_nets.md:143 is the real line.
+    braced = hit.replace(
+        'embed=true name="the-box"',
+        'embed=true alt="a ring where .every(4) { it.fast(2) } doubles the onsets"')
+    found = list(scan(braced))
+    assert len(found) == 1, f"a brace in an alt string hid the fence: {found}"
+    assert found[0][3] and found[0][3].endswith("doubles the onsets"), found[0][3]
+
+    print("live-fire: 1 duplicate; embed-less fence, unrelated image both silent; "
+          "a braced alt string still parses")
     return 0
 
 

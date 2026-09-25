@@ -31,7 +31,7 @@ expect:
     - "PathSet"
     - "carrier/freq"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/pathset.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-pathset" w="760" h="320"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/pathset.png" alt="an output panel labelled main holding a PathSet of 9, as a two-column table of path and value: carrier is an Osc, carrier/freq 220, carrier/gain 0.800, carrier/label sine, modulator is an Osc, modulator/freq 440, modulator/gain 0.200, modulator/label saw, and name rig. Paths are in blue, values in white" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-pathset" w="760" h="320"}
 :::static
 class Osc(var freq: Float, var gain: Float, var label: String)
 class Rig(val carrier: Osc, val modulator: Osc, var name: String)
@@ -100,7 +100,7 @@ Because `|` separates *whole* patterns, `"**/freq|gain"` means `"**/freq"` or
 
 Patterns say where a slot lives. To filter on what it holds, add a predicate.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/predicates.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-predicates" w="760" h="300"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/predicates.png" alt="the same panel and table headings, now holding a PathSet of 1: the single row modulator/freq 440. Everything the unfiltered query returned has been narrowed to one slot" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-predicates" w="760" h="300"}
 :::static
 class Osc(var freq: Float, var gain: Float, var label: String)
 class Rig(val carrier: Osc, val modulator: Osc, var name: String)
@@ -123,7 +123,7 @@ Numbers aren't special. `lenses<T>()` narrows a `PathSet` to the slots holding a
 `T` and gives you typed reads and writes: strings, booleans, enums, vectors,
 whatever your graph is made of.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/lenses.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-lenses" w="760" h="300"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/lenses.png" alt="an output panel holding a LensSet of Mode with 2 rows, and a third column beyond path and value: lamp/mode is a Mode and writable, strip/mode is a Mode and writable" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-lenses" w="760" h="300"}
 :::static
 enum class Mode { OFF, ON }
 class Light(var name: String, var on: Boolean, var mode: Mode, var level: Float)
@@ -151,7 +151,7 @@ the segments you named, one property read each. A pattern with a literal prefix
 descends that prefix directly and then searches only the subtree below it. On a
 graph of any size that is a large difference, and you can measure it:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/cost.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-cost" w="760" h="220"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/cost.png" alt="an output panel holding one line of text, the two measurements the example prints: naming a path: 4 edge reads — walking all 4443 slots: 1666 edge reads" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-cost" w="760" h="220"}
 :::static
 var reads = 0
 
@@ -209,7 +209,7 @@ In that second category a plain `Float` or `Int` property
 on an ordinary object gains base/supplier/modulation semantics, so anything with
 numbers in it can be driven like a synth parameter.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/paramset.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-paramset" w="760" h="300"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/paramset.png" alt="an output panel holding a ParamSet of 6, with columns path, base and state: a/freq 110, a/gain 0.100, b/freq 220, b/gain 0.500, c/freq 440, c/gain 0.900, and every one of the six marked scalar" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-paramset" w="760" h="300"}
 :::static
 class Osc(var freq: Float, var gain: Float)
 class Rig(val a: Osc, val b: Osc, val c: Osc)
