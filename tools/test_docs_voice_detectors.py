@@ -254,6 +254,57 @@ class TargetVoice(unittest.TestCase):
         self.assertEqual(total, 0, f"fired on plain documentation prose: {dict(hits)}")
 
 
+class BoardsStayAlive(unittest.TestCase):
+    """Every board still runs to completion over the real tree, and says something.
+
+    This is the gap the import test above could not see, and it cost a day. On
+    2026-09-23 `alt_text.py` died on every invocation with `ValueError: No closing
+    quotation` out of `shlex.split`, because one page's `alt=` described a Kotlin lambda
+    and a first-`}` attribute regex cut the quoted value in half. It imported fine. Its
+    `live_fire()` passed, because the fixture had no braces in it. And a board that dies
+    is indistinguishable from a board that is clean unless a human reads its stderr --
+    so a firing ran it, saw no rows, and recorded the queue as empty. Twice.
+
+    What is asserted is deliberately weak and therefore stable: exit 0, and at least one
+    non-blank line of output. NOT a row count, NOT a page, NOT a score -- those are live
+    decisions about the docs tree, which this suite's own docstring says a test must not
+    make quietly. A board legitimately reporting zero hits still prints its summary line.
+    """
+
+    # Boards that take two git revisions or a generated-page pairing rather than a
+    # directory, so `<script> public/docs` is not their calling convention.
+    NOT_A_DIRECTORY_SCAN = {"check_fences", "check_kdoc_mirror"}
+    # Not boards: a shared helper, the surface-scoring library, and the census harness.
+    NOT_A_BOARD = {"build_machinery", "in_fences", "test_census"}
+
+    def test_every_board_exits_zero_and_prints_something(self):
+        import subprocess
+
+        docs = DETECTORS.parent.parent / "public" / "docs"
+        self.assertTrue(docs.is_dir(), f"expected a docs tree at {docs}")
+        checked = []
+        for name in module_names():
+            if name in self.NOT_A_DIRECTORY_SCAN or name in self.NOT_A_BOARD:
+                continue
+            with self.subTest(board=name):
+                done = subprocess.run(
+                    [sys.executable, str(DETECTORS / f"{name}.py"), str(docs)],
+                    capture_output=True, text=True, timeout=300,
+                )
+                self.assertEqual(
+                    done.returncode, 0,
+                    f"{name}.py exited {done.returncode} over the real tree. A board that "
+                    f"dies reports nothing about any page.\n{done.stderr[-1500:]}")
+                self.assertTrue(
+                    done.stdout.strip(),
+                    f"{name}.py exited 0 and printed nothing. Silence and cleanliness "
+                    f"must not look the same.")
+                checked.append(name)
+        self.assertGreater(
+            len(checked), 8,
+            f"only {len(checked)} board(s) were run; the exclusion sets have swallowed the suite")
+
+
 class Narrowings(unittest.TestCase):
     """Both directions of the narrowings a firing paid to derive.
 

@@ -60,7 +60,7 @@ That is already a working guide. It opens a note, selects a box, and leaves the 
 
 A step usually explains the current stage with a note and moves the UI to the place it is talking about in the same breath. Use `selectBox(box, property = "code")` when you already have the target box in scope, and `selectBoxByName(...)` when the guide is driving another named box in the document.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28" alt="The selected guide box on the left, a green running dot in its corner, and the slide note floating to its right: the heading Welcome to Field and the sentence about the slideshow system. The capture is caught part-way through the note's reveal animation, so the three bullets below show their markers with no text yet and the Home and Continue links have not appeared."}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -101,7 +101,7 @@ Pair notes with view changes. A note that talks about code should leave that cod
 
 An interactive step wants a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. The three template slots around them are empty in this capture: the line reads Version: with nothing after it, and the footer reads Count: Choice: with neither value filled in."}
 :::static
 import afield.logger.lprintln
 import afield.markdownNote
@@ -173,7 +173,7 @@ Chat is optional. It belongs to the step that asks for it.
 - `withChat()` creates a thread for that slide.
 - `withChat(id = "shared-id")` shares one thread across repeated guide instances.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28" alt="The guide box beside a note headed Per-slide Chat, giving the two withChat forms in inline code, then a Back and Next link pair, a horizontal rule, and a collapsed Discussion disclosure with its triangle still closed. The second code span prints its quotes with literal backslashes, as backslash-quote templateId backslash-quote, because the snippet escaped them inside a Kotlin raw string."}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -249,7 +249,7 @@ Annotations let a note point at an exact target.
 
 Use them when a sentence is about one box, one property, or one line.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" padding="12"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" padding="12" alt="The whole Field window. On the left the guide box is outlined in cyan as the selected box, with a small green annotation arrowhead at its top-right corner. The note overlay sits between box and editor, headed Annotation Lines, and both of its bullets have rendered: the green line targets the box, the orange dashed line targets line 21. An orange dashed path runs from the note down the editor gutter. On the right Monaco shows the whole snippet, with a red marker in the gutter at line 21 against selectBox(host, property = code, line = 21, highlight = 21), and the annotate and annotateToLine calls with their rgba colours below it."}
 :::static
 import afield.markdownNote
 import afield.slideShow

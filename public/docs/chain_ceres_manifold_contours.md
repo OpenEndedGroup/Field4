@@ -319,16 +319,16 @@ The vertex turns — at most `9.581°` for `gC` and `5.388°` for `gD` — are w
 allowed. Had they been large, the two stacks would have been cut along different axes and every
 difference above would have been a rotation wearing a shape's clothes.
 
-## A self-intersecting solid every diagnostic calls a success
+## `kkC`, and the solver that reaches it
 
-A midpoint Riemann sum over the layer areas has to return the volume the layers came from. That
-makes the slicer an *independent* measurement of everything upstream: the area integral and
-Manifold's `volume` share no code, one integrating regions in 2D and the other the surface in 3D.
+A midpoint Riemann sum over the layer areas has to return the volume the layers came from, and the
+two numbers share no code: the area integral works on regions in 2D, Manifold's `volume` on the
+surface in 3D. So a stack that sums to the right volume is telling you something about the form it
+was cut from, not just about the slicer.
 
-Every form above passes it. `kkC` — kis applied twice to the cube — does not, and it is the input
+Every form above sums correctly. `kkC` — kis applied twice to the cube — does not. It is the input
 `dev_docs/POLYTOPE_ALGEBRA.md` has on record as the one neither iteration in `canonicalize()`
-solves. `relaxWithCeres` reaches it, in twelve iterations, and this is where the page stops being
-about contours.
+solves, and reaching it needs the other solver: `relaxWithCeres` gets there in twelve iterations.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static

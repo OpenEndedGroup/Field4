@@ -137,7 +137,7 @@ the stroke tangent before constructing its screen normal: falling particles beco
 vertical strokes, including under camera rotation. Length is in world units; width is
 in pixels. The vertex and fragment shaders remain editable in the strokes box.
 
-## Reset, parameters and measurement
+## Restarting the simulation
 
 `SimulationReset.request()` queues a ticket. The owner consumes it with
 `atFrame(frameId) { ... }`. Requests coalesce; a request arriving during reset remains
@@ -148,19 +148,21 @@ without an automatic retry or an implied rollback.
 The demo resets tile generations, time and correspondence. GPU resources stay outside
 the callback. Keep this boundary inside the normal box-owned loop or render hook.
 
+## Asking a parameter what it actually did
+
 `EffectiveParameter` makes a finite scalar's requested value, effective clamped value,
-bounds, units and description inspectable. It is explicit: it cannot discover clamps
-buried inside unrelated code or shaders. The parameters box returns these snapshots
-through Field's existing object viewer, and shader push constants read the effective values.
+bounds, units and description inspectable. That is how `force.requested = 100` in the
+table above turns out to be 12. It is explicit: it cannot discover clamps buried inside
+unrelated code or shaders. The parameters box returns these snapshots through Field's
+existing object viewer, and shader push constants read the effective values.
 
-The profile box uses `frameProfile`, named scopes and `CoroutineProfiles`. CPU time and
-allocated bytes are exact counters on the measured thread; JFR stacks are statistical
-attribution. GPU pass timings remain in the renderer profiler. Compare the same reset,
-warm-up, camera path and parameters, and keep capture overhead consistent. See
-[Profiling Timeline](profiling_timeline.md) and [Holding a Frame Budget](frame_budget.md).
+## Profiling this graph
 
-To include GPU queries, set `Options.profiling = true` in the renderer box before
-restarting the numbered graph. The existing renderer profiler reports frame and module
-timings; support for pipeline statistics varies by device. Keep that setting the same
-for both sides of a comparison. The Profile box captures CPU and allocations only, and
-switching GPU queries on always costs you a restart.
+The profile box uses `frameProfile`, named scopes and `CoroutineProfiles`, and captures
+CPU and allocations only; GPU pass timings stay in the renderer profiler. To get GPU
+queries too, set `Options.profiling = true` in the renderer box and relaunch the numbered
+graph. The setting is read at startup, so switching it on always costs you a restart, and
+which pipeline statistics you get back varies by device.
+
+What each instrument measures, and what it is fair to compare, is in
+[Holding a Frame Budget](frame_budget.md) and [Profiling Timeline](profiling_timeline.md).
