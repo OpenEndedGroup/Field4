@@ -615,7 +615,7 @@ Construct indexed triangle meshes and transform or colour them. These operations
 
 ### Topology
 
-Inspect connectivity before treating a mesh as a solid. Welding and winding repair address different defects; check the resulting topology after repair.
+Inspect connectivity before treating a mesh as a solid.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -641,7 +641,7 @@ Inspect connectivity before treating a mesh as a solid. Welding and winding repa
 
 ### Generators
 
-Build a starting shape from primitives, profiles or a height field. Resolution controls the number of triangles produced.
+Build a starting shape from primitives, profiles or a height field.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -671,7 +671,7 @@ Build a starting shape from primitives, profiles or a height field. Resolution c
 
 ### Fields / marching cubes
 
-Define a solid by a scalar field and extract its surface with marching cubes. Bounds and sampling resolution control the region and detail captured.
+Define a solid by a scalar field and extract its surface with marching cubes.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -716,7 +716,7 @@ Define a solid by a scalar field and extract its surface with marching cubes. Bo
 
 ### Processing
 
-Change surface normals, density or smoothness. Subdivision adds detail to the mesh structure; decimation reduces triangles and should be followed by a quality check.
+Change surface normals, density or smoothness.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -736,7 +736,7 @@ Change surface normals, density or smoothness. Subdivision adds detail to the me
 
 ### Measure / query
 
-Measure a surface or query where points and rays meet it. Build a BVH when repeated spatial queries justify an acceleration structure.
+Measure a surface or query where points and rays meet it.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -793,7 +793,7 @@ Read or write mesh files. OBJ and STL use the direct helpers; the broader loader
 
 ### Field integration
 
-Convert a mesh for display, renderer upload or further Field drawing. Choose a still image, an interactive view or a turntable according to the inspection you need.
+Convert a mesh for display, renderer upload or further Field drawing.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 

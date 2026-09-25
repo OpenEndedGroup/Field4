@@ -1328,7 +1328,7 @@ Partition space into volumetric cells. Keep the cell and face structure when ins
 
 ### Marching squares
 
-Extract level curves from a two-dimensional scalar field. Sampling step controls detail; smoothing changes the resulting contours after extraction.
+Extract level curves from a two-dimensional scalar field.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -1388,7 +1388,7 @@ Partition observations into groups. Hierarchical linkage gives nested cuts; medo
 
 ### Field integration
 
-Convert graphs, cells or clusters into Field drawings and interactive views. Use the geometry helpers first, then choose the display adapter for the result.
+Convert graphs, cells or clusters into Field drawings and interactive views.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
