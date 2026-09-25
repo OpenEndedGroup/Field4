@@ -62,6 +62,7 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `double_published.py` | capture fences against markdown image lines | a figure the build publishes **twice**, because `embed=true` emits its own image line and the page wrote a second one. Not a voice fault: the reader sees the picture twice |
 | `section_shape.py`, `shape_census.py` | page structure | how much of a page is verification rather than use |
 | `section_leads.py` | the one-paragraph lead above each `field-reference` table | a Reference section whose every lead is the same two-sentence template. A per-page ratio, because the second sentence is lexically identical whether it adds a fact or re-says the rows; `--audit` re-derives its vocabulary |
+| `number_restated.py` | page prose, fences and code spans blanked | one measured figure written into a page twice, far apart, with nothing holding the two in step |
 | `check_anchors.py` | `](#slug)` links | in-page links to headings that no longer exist |
 | `check_links.py` | relative links | targets that do not resolve |
 | `check_fences.py` | Kotlin `diffstatic` fences | that no fence moved between two revisions. `tools/completion-corpus/rank-carets.tsv` indexes them **by ordinal** |

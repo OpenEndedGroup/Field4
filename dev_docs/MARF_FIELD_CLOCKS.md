@@ -142,6 +142,12 @@ So the framing that makes `STEPS` easy to hold in the head: **`STEPS` subdivides
   negative control runs all three new checks against the two listings exactly as they shipped in
   `bc71ed216` and asserts each fails — five reader calls, five defects, no clock named anywhere —
   then that the corrected snippet passes.
+- **Counting the distinct addresses a latched reader visits needs rounding.** A probe instant is an
+  exact rational and `PatQ.toDouble()` rounds it at twelve places, so an aliased address comes back
+  to within a few parts in 10⁴ rather than bit-exactly. `distinct()` on the raw doubles reports a
+  four-value cycle as many more than four. (Moved off `public/docs/marf.md` on 2026-09-25, where
+  this was the second half of an always-open warning about latching; the page keeps the
+  instruction and not the reason.)
 - **Regenerating the reference is not optional.** Any KDoc edit under a `SOURCE_ROOTS` path makes
   `public/docs/reference/patterns.md`, `reference/index.md` and `dev_docs/kdoc_worklist.md` stale,
   and the pre-commit hook runs `checkCodebaseReference` and refuses the commit. `./gradlew
