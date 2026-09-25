@@ -48,6 +48,7 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 |---|---|---|
 | `score_voice.py` | page prose, headings, admonition titles, bullet runs | the main board: heading faults, slide labels, plan language, methodology defences, oversized always-open admonitions, measurement mass, em-dash density |
 | `table_cells.py` | markdown table cells | the same families inside a table, which `score_voice` routes past `prose` and never scores |
+| `table_advice.py` | whole markdown tables | a reference table where most cells have grown a second sentence that re-says the first in the imperative. A per-*table* ratio, because the imperative tail on its own is good documentation 107 times out of 107 |
 | `alt_text.py` | `alt="..."` in capture-fence openers | the same families in figure alt text, which is dropped with the fence opener line. Also reports alt coverage |
 | `in_fences.py` | code comments and headings *inside* fences | prose a reader sees in a code sample. A fix here is three coupled edits, not a prose edit |
 | `embedded_prose.py` | prose emitted by box code | strings a box prints into its own output panel |

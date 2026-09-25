@@ -626,11 +626,10 @@ orange path is what you get by lerping the two positions. It cuts the corner, an
 camera is **6.0000** away instead of 8.2462, **27.2% nearer**. On screen that reads as the subject lunging
 toward the viewer and retreating again, which is not a move anyone asked for.
 
-The right panel is the same fact plotted. The aiming error printed underneath is what makes this a
-*camera* feature rather than a maths curiosity: over the whole move, the furthest the sclerp path's
-aim ever strays from the origin is **0.000003 world units**, three millionths, which is `Float`
-rounding rather than a wobble. The subject stays framed for free, with no look-at constraint
-anywhere in the loop.
+The right panel is the same fact plotted, with the aiming error printed underneath it: over the
+whole move, the furthest the sclerp path's aim ever strays from the origin is **0.000003 world
+units**, three millionths, which is `Float` rounding rather than a wobble. The subject stays framed
+for free, with no look-at constraint anywhere in the loop.
 
 All of this is asserted in `aCameraPoseSclerpsItsTransformAndLerpsItsFocusDistance`: the constant
 distance, the constant height and the aim are each checked at **eleven** sample points across the

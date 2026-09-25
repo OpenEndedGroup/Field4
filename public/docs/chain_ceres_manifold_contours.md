@@ -105,7 +105,7 @@ its two horizontal edges. A point and a segment have no area, so there is no reg
     a part whose height is an exact multiple of the layer height loses its top layer outright.
     Every stack below is `z = zₘᵢₙ + h·(i + ½)/n`.
 
-## Canonicalisation, and the gauge you have to remove first
+## Canonicalisation, scale and orientation
 
 `canonicalize()` seeks the representative with every edge tangent to one common sphere, the centroid
 of those tangency points at the origin, and every face planar
@@ -319,7 +319,7 @@ The vertex turns — at most `9.581°` for `gC` and `5.388°` for `gD` — are w
 allowed. Had they been large, the two stacks would have been cut along different axes and every
 difference above would have been a rotation wearing a shape's clothes.
 
-## The layer stack as a check on the realizer
+## A self-intersecting solid every diagnostic calls a success
 
 A midpoint Riemann sum over the layer areas has to return the volume the layers came from. That
 makes the slicer an *independent* measurement of everything upstream: the area integral and
