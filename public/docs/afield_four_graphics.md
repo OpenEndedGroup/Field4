@@ -521,7 +521,7 @@ void main()
 
 `gl_VertexIndex/6` picks the particle and `gl_VertexIndex%6` picks the corner: 100,000 particles drawn as 600,000 vertices with no index buffer and no per-particle CPU work.
 
-There is no captured image for this section: it is a two-box scene, and the capture harness on this page drives one box per figure. To see it, open the corpus document in the viewer above, or replay it as a transcript: `dev_docs/agents/transcripts/threebox.yaml` is the same renderer/compute/draw shape built as a runnable three-box scene.
+To see it running, open the corpus document in the viewer above, or replay `dev_docs/agents/transcripts/threebox.yaml`, which is the same renderer/compute/draw shape built as a runnable three-box scene.
 
 ## Texturing
 
@@ -851,7 +851,7 @@ void main()
 
 Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `afield.four` composes.
 
-Both boxes together are one scene, so there is no single-box figure for it here; the graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
+The graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
 
 ## Ping-pong render to texture
 
@@ -1054,7 +1054,7 @@ layout(push_constant) uniform matrices {
 } pc;
 ```
 
-Reflection happens *after* the include is expanded, so `pos`, `col`, `p` and `m` still produce the generated Kotlin writers: a shared header does not cost you the reflected API. There is no figure for this pair either: the include resolves against a box that has to exist alongside it, so the fence on this page has nothing to include.
+Reflection happens *after* the include is expanded, so `pos`, `col`, `p` and `m` still produce the generated Kotlin writers: a shared header does not cost you the reflected API. The include resolves against a box that has to exist alongside the one including it, so this pair only compiles once both boxes are in the document.
 
 `5. lygia` shows the same mechanism reaching a third-party shader library. `registerLygiaIncludeRoot()` in Kotlin registers [Lygia](https://lygia.xyz)'s source tree as an include root, after which the shader uses ordinary `#include`:
 
@@ -1299,7 +1299,7 @@ void main()
 
 A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display (`AdaptiveQuantileWarp` and `QuantileWarpConfig`). Reach for that when the interesting variation is buried in a narrow part of the range and a linear readout flattens it.
 
-There is no figure here, and there should not be. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window, so a native-window capture of this example shows only the textured quads, pixel-identical to the texturing figure, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
+In the Vulkan window the 100 quads stack along z, so from the camera they land on top of one another and look like one. Everything this example is for is in the box's output area.
 
 ## Streaming a target over the network
 
@@ -1329,7 +1329,7 @@ target += "boo" to module
 
 The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `target.apply()`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `@exported` publishes `target` for child boxes.
 
-There is no figure: the picture this produces arrives at a receiver on `127.0.0.1:9001`, not in a window.
+The picture this produces arrives at a receiver on `127.0.0.1:9001` rather than in a window.
 
 ## A GPU radix sort
 
@@ -1365,7 +1365,7 @@ Two things to take from it. The `buffer { … }` builder spells out usage explic
 
 Note `hosted()` for readback. For a GPU→CPU read that happens every frame, host-cached memory is the right choice instead; see the readback notes in [Field probes](field_probes.md).
 
-There is no figure: this box sorts and prints, and draws nothing.
+This box sorts and prints, and draws nothing.
 
 ## Slang
 
@@ -1473,7 +1473,7 @@ void main() {
 
 `push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. The reflected-interface contract this page opened with still holds at a million particles: the shader is the thing you edit.
 
-No figure, and the reason is a property of DLA rather than of Field. Aggregation is a race between walker density and canvas area, and the legible window between the two failure modes is narrow. Captured as written, a million walkers over a 4112×2524 window, eight seconds and 600 frames grow a cluster a few pixels across on a field of near-black walkers: correct, and invisible at page scale. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on the first step, so the whole field sticks at once and the picture is uniform magenta noise. A good still needs a density between those and more frames than a docs build should spend, so it is left to run live.
+Run this one live, and expect to tune it: aggregation is a race between walker density and canvas area, and the window between the two failure modes is narrow. As written, a million walkers over a 4112×2524 window grow a cluster a few pixels across in eight seconds and 600 frames, which is correct and far too small to see. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on its first step, so the whole field sticks at once and goes uniform magenta. A legible cluster wants a density between those two, and more frames than 600.
 
 ## Where these examples come from
 
