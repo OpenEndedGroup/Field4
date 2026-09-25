@@ -154,12 +154,9 @@ The bank stops being five slots and becomes a sampled one-dimensional family of 
     bottom lane above is `sine().range(0, 4)` against quarter-cycle stages: four addresses,
     `2, 4, 2, 0`, forever. The middle lane is `saw().slow(8)` against the same stages, which is
     thirty-two of them and reads as a glide. An aperiodic address (`perlin()`, `rand()`) never
-    repeats.
-
-    The repeat is numerically approximate. A probe instant is an exact rational and
-    `PatQ.toDouble()` rounds it at twelve places, so an aliased address comes back to within a few
-    parts in 10⁴ rather than bit-exactly. Compare rounded addresses; a raw `distinct()` counts a
-    four-value cycle as many more than four.
+    repeats. Count them by rounding: an aliased address returns to within a few parts in 10⁴ and
+    not bit-exactly, so a raw `distinct()` will tell you a four-value cycle has many more than
+    four values in it.
 
 ---
 
@@ -403,11 +400,10 @@ alternation, `<…>`, which is one step a cycle, or ask for the sequence you wro
 with fields = MarfFieldClock.STEPS.
 ```
 
-This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale. Under
-`STAGES`, most of the ways of writing a stepped address collapsed onto something strictly simpler
-than what was typed: `"1 <0 3>"` was the constant `1`, `"<0 3>*2"` was the constant `0`, and
-`"<0 3> 1"` was byte-identical to `"<0 3>"`, so there was no way to tell whether the layer had
-disagreed with you or ignored you. The spellings, against all three clocks, are tabulated in
+This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale: under
+a sequence clock most stepped spellings collapse onto something strictly simpler than what was
+typed, and a silent collapse gives you no way to tell whether the layer disagreed with you or
+ignored you. Every spelling, against all three clocks, is tabulated in
 `dev_docs/MARF_FIELD_CLOCKS.md`.
 
 A **stack** is the one case no clock reads. `"<0 3>, 1"` puts two layers on a single instant, a
