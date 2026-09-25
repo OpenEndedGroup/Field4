@@ -21,7 +21,7 @@ let height = 25.0
 
 | Example | What it means |
 | --- | --- |
-| `let x = 10` | **Binding.** Gives a value a name for the expressions that follow. This binds `x` to the integer `10`. |
+| `let x = 10` | **Binding.** Gives a value a name for the expressions that follow. |
 | `let add a b = a + b` | **Function.** Defines a curried function: `add 5` is itself a function, waiting for its second argument. |
 | `let x = 6 in x * 7` | **Local binding.** Limits the name to the expression after `in`. This expression evaluates to `42`. |
 | `fun x -> x + 1` | **Anonymous function.** Produces a function without naming it. Pass it to a helper such as `map` to transform each element. |
