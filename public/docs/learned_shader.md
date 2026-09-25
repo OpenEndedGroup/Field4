@@ -220,7 +220,7 @@ Open **Starting points → learned_shader**. Stop the original comparison box an
 
 The connection in the box's Kotlin is:
 
-```diffstatic
+```diffstatic {data-lang=kotlin}
 val learned = LearnedShader(renderer, attach = false)
 learned.view = 1
 learned.setParameter(.25f)
