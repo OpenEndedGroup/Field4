@@ -2245,6 +2245,12 @@ tasks.named("check") {
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
+    // Wired 2026-09-25. A drift guard of exactly the same species as `checkCodebaseReference`
+    // — "generated linear-algebra sources are current" — that was registered, grouped under
+    // `verification`, described, and reachable from NOTHING: absent from both `check` and
+    // `docsGates`, so it ran zero times in a full nightly. It costs 6 seconds. An unreachable
+    // gate is worse than no gate, because it reads as coverage.
+    dependsOn("checkGeneratedLinalg")
     dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
 }
@@ -2284,6 +2290,12 @@ tasks.register("docsGates") {
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentDemos")
+    // Wired 2026-09-25. A drift guard of exactly the same species as `checkCodebaseReference`
+    // — "generated linear-algebra sources are current" — that was registered, grouped under
+    // `verification`, described, and reachable from NOTHING: absent from both `check` and
+    // `docsGates`, so it ran zero times in a full nightly. It costs 6 seconds. An unreachable
+    // gate is worse than no gate, because it reads as coverage.
+    dependsOn("checkGeneratedLinalg")
     dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
 }
