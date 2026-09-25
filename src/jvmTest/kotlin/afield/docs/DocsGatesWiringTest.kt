@@ -80,13 +80,35 @@ class DocsGatesWiringTest {
             """withPropertyName("nativeCaptureOrientationWitness")""" in build,
             "broad jvmTest can inherit an UP-TO-DATE result after its committed orientation witness changes",
         )
+        // The interpreter half: root-owned gates must run `uv run --project . --frozen python`,
+        // so they get the project-pinned interpreter rather than an ambient one.
         assertTrue(
-            """val rootPythonCommand = listOf("uv", "run", "--project", ".", "--frozen", "python")""" in build,
+            """"run", "--project", ".", "--frozen", "python"""" in build,
             "root-owned Python gates no longer use the project-pinned interpreter",
+        )
+        // The executable half, added 2026-09-25. This used to be pinned as the literal
+        // `listOf("uv", …)`, which asserted the interpreter and the lookup together. They are
+        // separate properties, and the second one was wrong: a bare "uv" resolves against the
+        // PATH of whichever process started the Gradle daemon, so the pre-commit guard (which
+        // uses the daemon) failed with an opaque "A problem occurred starting process 'command
+        // 'uv''" on a commit whose gates had just passed under `--no-daemon`.
+        assertTrue(
+            "val rootPythonCommand = listOf(resolvedUvExecutable," in build,
+            "rootPythonCommand no longer uses the resolved uv, so every Python gate depends " +
+                "again on the PATH of whichever shell started the Gradle daemon",
+        )
+        assertTrue(
+            Regex("""System\.getenv\("AFIELD_UV"\)""").containsMatchIn(build),
+            "the uv resolver lost its explicit override, leaving no way to point a build at a " +
+                "specific uv when probing finds the wrong one",
         )
         assertTrue(
             !Regex("""commandLine\(\s*"python3"""").containsMatchIn(build),
             "a Gradle gate has reintroduced a PATH-dependent bare python3",
+        )
+        assertTrue(
+            !Regex("""listOf\(\s*"uv",\s*"run"""").containsMatchIn(build),
+            "a Gradle gate has reintroduced a PATH-dependent bare uv",
         )
         // The same argument, for the two input kinds added on 2026-08-27 after each was measured
         // going UP-TO-DATE over a file its guard reads. Swift is on no JVM classpath;
