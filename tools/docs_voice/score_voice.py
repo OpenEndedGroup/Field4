@@ -163,6 +163,23 @@ BODY_TELLS = [
     # reachable and retires the false one. Observed, not invented -- the same method the `point`
     # lookahead was built by. (`keyframer_worked_example`'s "the argument makes itself" is the
     # rhetorical sense too, but it is not the `is the` form and was never matched.)
+    # THE FOUR LOOKBEHINDS ARE LOAD-BEARING, AND `whole-design`'s COMMENT BELOW WILL TALK YOU
+    # OUT OF THEM. It says they were "deliberately NOT reused" there because `it is the whole
+    # design` is the purest form of that fault, which is true of `whole design` and emphatically
+    # NOT true of `point`. Measured 2026-09-25 (sixtieth firing) by removing them from the
+    # `point` branch alone and diffing: **129 instances appear**, across `public/docs`, `src` and
+    # `dev_docs`, and the sample read is overwhelmingly one idiom -- `which is the point` /
+    # `that is the point` meaning *this is deliberate, not an accident*. "no welding tolerance,
+    # which is the point: a tolerance here would…", "It never averages, which is the point",
+    # "No `view` argument, and that is the point: the camera aims itself at the worst defect."
+    # That is the by-design idiom `RETIRED` already keeps by name, and it is a reader being told
+    # not to file a bug. A separate `(?!\s+of\b)` would be needed on top, because `the point of
+    # X` is purpose ("which is the point of [PolytopeAttributes] being typed as `Any`") -- and
+    # even with it the family stays overwhelmingly false.
+    #
+    # So: do not remove them, and do not take the `whole-design` note as precedent. The
+    # difference is that `is the whole design` has no benign pronoun-led form in this tree and
+    # `is the point` has almost nothing else.
     ("slide-label", r"(?<!which )(?<!that )(?<!it )(?<!this )"
                     r"\b(is|are) the (sanity check|payoff|"
                     r"point(?!\s+(at which|where|when|on|of no return)\b)(?!-)|argument(?=\s+for\b)|"

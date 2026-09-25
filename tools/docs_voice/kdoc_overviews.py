@@ -50,6 +50,27 @@ see it is to diff the live rows against this list.
 | `MeshFromDisk.kt` 6 | **true**. "the honest list" -> what the list is of. Fixed |
 | `CaSoundDocs.kt` 2, `LambdaSoundDocs.kt` 2 | keeps, and already recorded in `score_voice.STANDING_KEEPS`: "What it does not do" over a capability list |
 
+## The level below this one was measured, and it is NOT a queue
+
+The obvious next question is whether the *member* KDoc of the same queued files is as bad
+as their overviews were. Measured 2026-09-25 by scoring every member block in a queued
+file: **14 nonzero, 10 of them in `solidsl`**, and reading them, they are not the fault.
+
+They are `honest` ("the honest encoding of 'this number is a literal'", "the honest
+comparison is X not Y") and `is the point` in the by-design sense, and the `is the point`
+half is the *same* benign idiom the `slide-label` note in `score_voice.py` measures at 129
+instances tree-wide. Over-editing is a cost; these were left alone deliberately, and this
+paragraph is here so the measurement is not repeated. The two worth a second look if
+anybody wants them are `SolidGradient.kt:1032` ("it is worth saying how it hid" -- a bug
+postmortem inside a KDoc that will publish) and `BriefLowering.kt:1272`.
+
+**Published member KDoc needs no board and has none for a reason**: `score_voice
+--generated` sums every hit on a page, so a bad member description raises that page's
+score whether or not it ranks. It reports one nonzero generated page, a recorded keep. The
+dilution argument that motivates *this* file applies to ranking, not to detection -- which
+is why the overviews it found were all **queued**, where `--generated` cannot see them at
+all rather than merely rank them low.
+
 **A fixed row does not always leave the board.** `SolidAgreement` and `SolidSimplify` went
 9 -> 2 and 10 -> 2 and are still here, because the kept half is what scores. Read the
 score, not the row count.
