@@ -30,6 +30,39 @@ sentence frames by construction, so every row from one is a false positive about
 best a note about the generator. Run it against the hand-written surface, which is where a human
 wrote the same sentence fifty times.
 
+## Every row read, 2026-09-25 (fifty-ninth firing), at `a88f62b96`: 68 rows, ONE true
+
+The board had been run nightly for firings without a single recorded verdict, which is why this
+section exists. Do not re-walk it row by row; re-walk it when the *shape* of a row is new.
+
+The one true row: `afield_four_graphics.md` `there is no` x5 -- five passages explaining why a
+section carries no figure, two of them by explaining the docs capture harness. Fixed.
+
+The 67 others fall into four families, and all four are keeps:
+
+  markup            `video src assets`, `div class field`, `div data code`, `img src assets`,
+                    `min px source`, `div div class`, `div class pat`. Raw HTML and the
+                    `field-reference` wrappers. ~40 rows, the bulk of the board.
+  code-span collapse `code is the`, `code and code`, `code code code`, `code is a`, `code or code`.
+                    The `§`-artefact the docstring above already names. Spot-checked on
+                    `agent_transcripts.md`, where the underlying shape is "`x.md` is the write-up"
+                    repeated per entry -- a functional signpost, not a rhetorical move.
+  per-entry signpost `the first box` (8), `box is the` (8), `every box is` (6), `open the same`
+                    (5), `the fourth box` (4) on `agent_transcripts.md`; `simple produces a` (12),
+                    `creative code creates` (6), `simple interpolates the` (4) on
+                    `functions_examples.md`; `open vision geometry` (4); `the raygen shader` (4);
+                    `the vertex shader` / `the fragment shader` (4 each). A convention, and often
+                    the only prose an entry has. The task file says keep these.
+  ordinary English  `this is the` (5), `that is the` (4), `this is a` (4), `there is no` elsewhere,
+                    `the third panel` (4), `the scene graph` (4). Varied payload under a common
+                    three-word opening, which is what English does.
+
+TWO LESSONS FOR READING THIS BOARD. First, a `code`-prefixed row is not always noise: collapse
+hides the real shape, so expand one before dismissing the family (`expand.py` recipe -- re-run
+`census()`'s normalisation and print the matching sentences). Second, the one true row was
+**fifth from the bottom of the board**, at n=5, under forty markup rows. Rank here is a
+function of markup density, not of fault severity: read the English rows at every n, not the top.
+
     python3 shape_census.py [root] [--min N]
 """
 
