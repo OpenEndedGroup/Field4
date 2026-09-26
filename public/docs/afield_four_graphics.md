@@ -1477,6 +1477,19 @@ void main() {
 
 Run this one live, and expect to tune it: aggregation is a race between walker density and canvas area, and the window between the two failure modes is narrow. As written, a million walkers over a 4112×2524 window grow a cluster a few pixels across in eight seconds and 600 frames, which is correct and far too small to see. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on its first step, so the whole field sticks at once and goes uniform magenta. A legible cluster wants a density between those two, and more frames than 600.
 
+## Stopping the renderer
+
+Stopping the box that owns `renderer` also stops every running box connected beneath it, then
+frees the GPU device. The same happens when you close the Field window. Field waits up to two
+seconds for those boxes to finish; a `loop {}` stops within a frame. So a child box that writes
+buffers every frame no longer outlives the memory it writes into, which used to crash Field.
+Start the children again once the renderer is back.
+
+Anything that is not a box job, such as a raw `thread {}` or a renderer stashed in a global, is
+not stopped. If it writes a buffer after the device is gone, it gets an `IllegalStateException`
+that says so. Stop that work yourself, from a box you can stop. The order is written up in
+`dev_docs/renderer_teardown_order.md`.
+
 ## Where these examples come from
 
 Every example on this page is a box in a real Field document, `canonical_graphics`, which is

@@ -282,8 +282,13 @@ class Renderer(
 
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
+    @Volatile
     private var cleanedUp = false
-    /** True after cleanup begins; between-frame producers must stop before using this device again. */
+    /**
+     * True after cleanup begins; between-frame producers must stop before using this device again.
+     * Volatile because the flag is read by [afield.four.buffers.VulkanBuffer.map] on whichever
+     * thread writes a buffer, to refuse a write into memory this cleanup has freed.
+     */
     val isClosed: Boolean get() = cleanedUp
 
     internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
