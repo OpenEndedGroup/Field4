@@ -60,7 +60,8 @@ threshold is a call about the docs tree, not a call a test should make quietly.
 | `page_self_vouching.py` | page prose | a page arguing for its own trustworthiness instead of stating the fact and citing it |
 | `heading_case.py` | heading text and heading levels | a section heading in Title Case, a heading that down-cases an acronym the tree writes uppercase (`### Let the ai read it`), and a page whose sections skip `##`. Structural, not lexical: no other detector here reads casing or level. `--audit` re-derives the acronym vocabulary from the tree; run it before adding a term |
 | `double_published.py` | capture fences against markdown image lines | a figure the build publishes **twice**, because `embed=true` emits its own image line and the page wrote a second one. Not a voice fault: the reader sees the picture twice |
-| `section_shape.py`, `shape_census.py` | page structure | how much of a page is verification rather than use |
+| `section_shape.py` | `##`/`###` section prose | a section that names test classes, guards and build tasks densely enough to be an inventory of the harness rather than a thing to do. Its two heading-regex columns (verification mass, tail verification) were audited **0 true out of 31** and deleted on 2026-09-26; the file's docstring records what each false positive was |
+| `shape_census.py` | page structure | how much of a page is verification rather than use |
 | `section_leads.py` | the one-paragraph lead above each `field-reference` table | a Reference section whose every lead is the same two-sentence template. A per-page ratio, because the second sentence is lexically identical whether it adds a fact or re-says the rows; `--audit` re-derives its vocabulary |
 | `number_restated.py` | page prose, fences and code spans blanked | one measured figure written into a page twice, far apart, with nothing holding the two in step |
 | `check_anchors.py` | `](#slug)` links | in-page links to headings that no longer exist |

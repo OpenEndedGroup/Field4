@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A reference TABLE whose every cell has grown a second sentence of generic advice.
+r"""A reference TABLE whose every cell has grown a second sentence of generic advice.
 
 Marc, 2026-09-13:
 
@@ -52,8 +52,11 @@ session's uncommitted rewrite of about fifty pages' tables, gave **8 tables** ac
 `clojure.md`, `faust.md`, `rectsl_cheatsheet.md` x2, `petri_cheatsheet.md`,
 `three_output.md`, `fieldml_host_bridge.md` and `sound.md` -- and the density half alone
 went 8 -> 80. So the board is at zero on what has landed and fires on exactly the shape
-that is arriving. That is the `exercis\w*` precedent in `section_shape.py`: a board added
-for the next one, not to score a backlog.
+that is arriving. That is the `exercis\w*` precedent -- a term added to a board for the
+next instance, not to score a backlog. (Read that precedent as a warning as well as a
+licence: `exercis\w*` lived in `section_shape.py`'s verification-mass regex, and that whole
+column was deleted on 2026-09-26 after an audit found 0 true out of 31 rows. A term added
+for the next one still has to sit in a column that works.)
 
 ## Reading a hit
 
