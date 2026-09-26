@@ -846,25 +846,28 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
  * This cancels the box's jobs, then schedules the native teardown on the main render thread
  * (so it runs after the render loop has unwound). Returns true if a renderer was disposed.
  *
+ * **Dependents stop first.** [Renderer.cleanup] frees every device-owned buffer, including ones a
+ * *child* box is still writing from a launched `loop {}`. Freeing them under that loop was a
+ * SIGSEGV in `VulkanBuffer.mapAndWrite` on the next runloop tick (reproduced 2/2 on 2026-09-26,
+ * via stop-box on the renderer box and via the document's last session detaching). So the boxes
+ * that can reach this renderer — [rendererDependents] — are stopped here, and the teardown waits
+ * for their jobs to finish, bounded by [RENDERER_TEARDOWN_JOIN_MS], before touching the device.
+ * See `dev_docs/renderer_teardown_order.md`.
+ *
  * Idempotent: the renderer/window properties are removed up-front, so a second call — e.g.
  * stop-box followed by document detach — finds nothing and does not double-free.
  */
 internal fun disposeBoxRenderer(box: Box): Boolean {
     val renderer = box.getPropertyRaw("renderer") as? Renderer ?: return false
 
-    // Stop the render loop and cancel any jobs still driving it.
+    // Stop the render loop; its jobs are cancelled with the dependents' below.
     renderer.running = false
-    val jobsToCancel = box.jobs.toList()
-    box.jobs.clear()
-    box.clearRunningStates()
-    box.runGeneration["default"] = (box.runGeneration["default"] ?: -1) + 1
-    jobsToCancel.forEach { it.cancel() }
 
     // Drop the references before scheduling teardown so a concurrent dispose is a no-op.
     box.properties.remove("renderer")
     box.properties.remove("window")
 
-    inMain {
+    beginRendererTeardown(box) {
         runCatching {
             val before = openWindowsSnapshot().size
             try {
@@ -882,6 +885,83 @@ internal fun disposeBoxRenderer(box: Box): Boolean {
         }
     }
     return true
+}
+
+/** How long renderer teardown waits for stopped dependents to unwind before disposing anyway. */
+internal const val RENDERER_TEARDOWN_JOIN_MS = 2_000L
+
+/**
+ * The boxes that can reach [owner]'s renderer: its transitive children. That is the population
+ * `fromContext()` and inherited properties (`prop<Renderer>(renderer)`) search — both walk
+ * *up* `parents` — so a box outside it can only hold the renderer through a global or a captured
+ * reference, which teardown cannot see.
+ */
+internal fun rendererDependents(owner: Box): List<Box> {
+    val seen = LinkedHashSet<Box>()
+    val queue = ArrayDeque(owner.children.toList())
+    while (queue.isNotEmpty()) {
+        val next = queue.removeFirst()
+        if (next === owner || !seen.add(next)) continue
+        queue.addAll(next.children.toList())
+    }
+    return seen.toList()
+}
+
+/**
+ * The ordering behind [disposeBoxRenderer], without the renderer, so it can be tested with no GPU:
+ * stop [owner] and every running [rendererDependents] box *now* (on the caller's thread, the way
+ * stop-box does), then on the render thread wait for all their jobs to complete — bounded by
+ * [joinTimeoutMs] — and only then run [dispose].
+ *
+ * The wait suspends rather than blocks: the jobs being cancelled are usually dispatched on the
+ * same main runloop that runs [dispose], so blocking it would wait for work that can never run.
+ * A dependent that has not finished by the deadline is logged by name and [dispose] runs anyway;
+ * device-owned resources then refuse use loudly (see `VulkanBuffer.map`) rather than fault.
+ */
+internal fun beginRendererTeardown(
+    owner: Box,
+    joinTimeoutMs: Long = RENDERER_TEARDOWN_JOIN_MS,
+    onRenderThread: (suspend () -> Unit) -> Unit = { block -> inMain { block() } },
+    stopBox: (Box) -> Unit = { it.ke.stop(it) },
+    dispose: () -> Unit,
+) {
+    val dependents = rendererDependents(owner).filter {
+        it.jobs.isNotEmpty() || it.currentRunningStates.isNotEmpty() || it.stopHooks.isNotEmpty()
+    }
+    val pending = (listOf(owner) + dependents).flatMap { b -> b.jobs.toList().map { b to it } }
+
+    // The owner's own jobs (typically `start(renderer::run)`) are cancelled directly, as before.
+    val ownerJobs = owner.jobs.toList()
+    owner.jobs.clear()
+    owner.clearRunningStates()
+    owner.runGeneration["default"] = (owner.runGeneration["default"] ?: -1) + 1
+    ownerJobs.forEach { it.cancel() }
+
+    dependents.forEach { dependent ->
+        runCatching { stopBox(dependent) }.onFailure {
+            lprintln("warning,agent_backdoor", "stopping ${dependent.id} before renderer teardown threw: $it")
+        }
+    }
+    if (dependents.isNotEmpty()) {
+        lprintln(
+            "info,agent_backdoor",
+            "renderer teardown for box ${owner.id}: stopped ${dependents.size} dependent box(es) first: " +
+                dependents.joinToString { it.name.ifBlank { it.id } }
+        )
+    }
+
+    onRenderThread {
+        withTimeoutOrNull(joinTimeoutMs) { pending.forEach { (_, job) -> job.join() } }
+        val stragglers = pending.filter { (_, job) -> !job.isCompleted }.map { it.first }.distinct()
+        if (stragglers.isNotEmpty()) {
+            lprintln(
+                "warning,agent_backdoor",
+                "renderer teardown for box ${owner.id}: ${stragglers.size} box(es) still running after " +
+                    "${joinTimeoutMs} ms, disposing anyway: " + stragglers.joinToString { it.name.ifBlank { it.id } }
+            )
+        }
+        dispose()
+    }
 }
 
 /**
