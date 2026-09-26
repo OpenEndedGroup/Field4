@@ -16,7 +16,7 @@ traces the result.
 
 Both tubes are the same file at the same pose: the upper bone turned 180° about its own axis. The
 nearer, cyan tube was skinned by linear blending and the tan one behind it by dual quaternions. The
-cyan tube's middle ring is not just thin. It is a single point.
+cyan tube's middle ring has shrunk to a single point.
 
 Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 [Fabricate demo assets](assets/fabricate_demo/ATTRIBUTION.md).
@@ -129,7 +129,7 @@ Manifold's `volume` and Field's `signedVolume` share no code. One integrates Man
 half-edge solid in double precision, the other sums signed tetrahedra over the float triangles.
 Where they agree, the skinned mesh reached Manifold intact.
 
-**Linear blending at 180° has a closed form, and it is two thirds.** At the 50/50 ring the blend
+The two thirds that linear blending keeps at 180° can be worked out by hand. At the 50/50 ring the blend
 averages the identity with its own half turn, `½·diag(1,1,1) + ½·diag(−1,1,−1) = diag(0,1,0)`, so
 every vertex of that ring lands on the axis. In general, a ring whose weight is `w` gets
 `diag(1 − 2w, 1, 1 − 2w)`: a pure scale with no rotation left in it. Its scale `1 − 2w = 2 − y`

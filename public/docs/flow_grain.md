@@ -148,7 +148,7 @@ without an automatic retry or an implied rollback.
 The demo resets tile generations, time and correspondence. GPU resources stay outside
 the callback. Keep this boundary inside the normal box-owned loop or render hook.
 
-## Asking a parameter what it actually did
+## Requested and effective parameter values
 
 `EffectiveParameter` makes a finite scalar's requested value, effective clamped value,
 bounds, units and description inspectable. That is how `force.requested = 100` in the
