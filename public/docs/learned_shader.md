@@ -8,9 +8,9 @@ A small network can approximate a function that is expensive to evaluate at ever
 
 Open **Starting points → learned_shader** after building the optional shaders. **Compare** shows the original function, the learned approximation, and absolute RGB error multiplied by eight. The other views fill the image with either the original or the approximation.
 
-Switch **Cooperative vectors** to compare NVIDIA's accelerated matrix-vector operations with ordinary shader arithmetic. Both use the same weights. **Animate time** traverses the training interval; the API rejects time outside −1 to 1 instead of implying that extrapolation has been tested.
+Switch **Cooperative vectors** to compare NVIDIA's accelerated matrix-vector operations with ordinary shader arithmetic. Both use the same weights. **Animate time** traverses the training interval, which is −1 to 1; the API rejects a time outside it rather than extrapolating.
 
-![Learned shader controls](assets/learned_shader/controls.png)
+![The learned shader box's four controls: Cooperative vectors and Animate time as checkboxes, a view slider at 2 of 0/1/2, and a hold-to-press Reload trained weights button](assets/learned_shader/controls.png)
 
 <video controls muted loop playsinline preload="metadata" src="assets/learned_shader/animation.mp4" width="1920" height="1080" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
@@ -118,7 +118,7 @@ renderer.renderList.preTargets["learned function"] = learned
 
 Captured models use inference-only mode by default. They never compare themselves with the unrelated built-in analytic function. Values outside the captured parameter range are rejected. Load/reload at a frame boundary; the comparison checks the compiled source fingerprint and rejects weights for a changed shader. The fingerprint cannot identify changes to every bound texture or uniform, so the fixed-state contract still matters.
 
-## What shader actually runs?
+## The compiled draw path
 
 The trained result is a **buffer of weights**, used by a fixed **Slang compute shader** compiled directly to SPIR-V. Training changes the weights; it does not generate a new GLSL translation of your source. The current draw path is:
 
@@ -126,7 +126,7 @@ The trained result is a **buffer of weights**, used by a fixed **Slang compute s
 
 The Kotlin `LearnedShader` owns and schedules these passes. It uploads the weights once, passes their byte offsets and the current parameter to compute, and places a compute-write → fragment-read barrier before the resolve. The whole rendering path stays on the GPU.
 
-### The actual inference kernel
+### The inference kernel
 
 This is the complete `src/jvmMain/resources/afield/four/neural/learned.slang` used by the experiment. `learned(v)` is the fitted function: feature encoding, two ReLU layers, then RGB. `FIELD_COOPERATIVE` selects accelerated matrix-vector instructions or the ordinary arithmetic loops; both read the same model. The `original` function and three-panel routing belong to the bundled analytic comparison. A model captured from your own module always uses the learned branch (`view = 1`); its source is not embedded in this kernel.
 
@@ -186,7 +186,7 @@ void main(uint3 id:SV_DispatchThreadID){
 
 There are 8 × 8 invocations per workgroup and one `float4` output per pixel. Pixel centers are mapped to −1…1; `setParameter()` maps your capture's parameter interval to that same range. RGB remains linear and unclamped, with alpha set to one. The Slang source, trained weights and host-side layout checks are separate, inspectable pieces.
 
-### The actual GLSL bridge to an image
+### The GLSL bridge to an image
 
 The compute output is a storage buffer. This is the fragment shader in `LearnedShader.kt` that copies it into the RGBA32F `learned.output` RTT (formatted here for readability):
 
@@ -249,7 +249,7 @@ void main() {
 }
 ```
 
-Reloading this fragment recompiles the material while keeping the inference kernel, weight allocation and output texture. In the live check, changing the right-hand treatment left the network object, texture handle and every raw RGB value unchanged; only the treated half of the displayed image changed. You do not need to recapture or retrain. The Starting point keeps this material in a separate scene so its shader property is independent of the original teacher and comparison controls.
+Reloading this fragment recompiles the material while keeping the inference kernel, weight allocation and output texture: the raw left panel does not change, only the treated half. You do not need to recapture or retrain. The Starting point keeps this material in a separate scene so its shader property is independent of the original teacher and comparison controls.
 
 For your own captured model, give `LearnedShader` the `weightsFile` and `manifestFile` produced by training, as in the earlier example. The texture connection is identical. `learnedImage` can be composited with other RTTs, sampled through warped coordinates, or used to drive another effect. Warping those UVs resamples the inferred image; the current public API does not inject a callable `learned(x,y,t)` into an arbitrary GLSL fragment shader.
 
@@ -284,15 +284,13 @@ uv run --project . --group docs python tools/lighting/train_shader.py
 
 The bundled model is 3,456 bytes of little-endian FP16 weights and biases, with row-major matrices and 64-byte alignment. It uses a supported row-major cooperative-vector layout directly; there is no opaque matrix-layout conversion to hide. The manifest records offsets, dimensions, seed, training settings, validation error, and a checksum. Input/output and matrix type support are checked before using the cooperative path.
 
-## What was measured
+## What inference costs
 
-The held-out training set has RGB MSE 0.000326 across 8,192 points after FP16 weight conversion. The GPU check compares both execution paths with an independent CPU evaluation of those quantized weights. [Recorded timings and numerical errors](assets/learned_shader/measurements.json) compare the original function, ordinary network arithmetic, and cooperative-vector inference at 1920 × 1080 after warm-up.
+On an RTX 4090 at 1920 × 1080, the bundled network takes **5.63 ms** with ordinary arithmetic and **0.267 ms** with cooperative vectors — about 21 times faster. The original wave function itself takes about **0.26 ms**, so this particular approximation does **not** beat the shader it approximates. Its held-out RGB MSE is 0.000326 across 8,192 points after FP16 weight conversion.
 
-On this RTX 4090, the network takes **5.63 ms** with ordinary arithmetic and **0.267 ms** with cooperative vectors—about 21 times faster. Maximum sampled disagreement with the CPU is 0.000914 RGB for cooperative inference. The original wave function itself takes about **0.26 ms**, so this particular approximation does **not** beat the original shader. It demonstrates a fast learned function and an inspectable tradeoff, rather than a reason to replace every analytic function with a network.
+Inference is not the whole cost. In the **learned_from_module** 1080p run, cooperative inference alone was **0.218 ms median**, but the learned view including buffer-to-texture resolve and comparison display was **2.77 ms**, against **0.539 ms** for the source view; neither span includes window presentation. Use the full-path number, not the inference number, when deciding whether to replace your shader.
 
-The newer **learned_from_module** workflow measures the complete comparison target as well as inference. In its current 1080p run, cooperative inference alone was **0.218 ms median**, but the learned view including buffer-to-texture resolve and comparison display was **2.77 ms**, versus **0.539 ms** for the source view. These spans exclude final window presentation. The original source pass was verified to be skipped in learned-only mode. This reusable capture/training/replacement path is working, but its extra passes currently outweigh any saving for this teacher; use the full-path timings when deciding whether to replace your shader.
-
-This is an approximation, and the error panel is part of the instrument. The network can lose small details or smooth a deliberate discontinuity. Its fixed training domain and small architecture are useful constraints for an experiment, not evidence that arbitrary shaders can be compressed this way.
+This is an approximation, and the error panel is part of the instrument: the network can lose small details or smooth a deliberate discontinuity. [Recorded timings and numerical errors](assets/learned_shader/measurements.json) compare the original function, ordinary network arithmetic, and cooperative-vector inference after warm-up; how each was checked against an independent CPU evaluation is in `dev_docs/lighting/NEURAL_TOOLS.md`.
 
 ## Optional toolchain
 
@@ -310,9 +308,9 @@ Field already has [live Slang support](afield_four_graphics.md#slang): `moduleHe
 
 The learned function uses a specific **direct-to-SPIR-V compute build**, with `sm_6_6` and the cooperative-vector capability. Field's ordinary `compute_s` path currently translates Slang through GLSL; its shared `vertex_fragment` path also produces SPIR-V and Slang reflection. These are different compilation recipes using the same compiler. Editing your source shader through `moduleHere()` remains the normal way to define the function you want to capture and train.
 
-The task is explicit: ordinary Field builds and startup do not fetch these optional dependencies. Existing SDK checkouts with a changed revision or local edits are preserved and reported. Linux x86-64 is the validated build here; the recipe also selects pinned Windows, macOS and Linux ARM compiler archives, whose builds have not been run in this session.
+Ordinary Field builds and startup never fetch these optional dependencies. An SDK checkout you have moved to another revision, or edited, is left alone and reported rather than reset. Linux x86-64 is the only platform whose build has been run; the recipe also selects pinned Windows, macOS and Linux ARM compiler archives.
 
-The NVIDIA upstream inference example was also built and run on this machine before the Field integration. The recorded compiler and binary hashes accompany the implementation notes in `dev_docs/lighting/NEURAL_TOOLS.md`.
+Compiler and binary hashes, and the rest of the implementation notes, are in `dev_docs/lighting/NEURAL_TOOLS.md`.
 
 Field loads the compiled SPIR-V and frozen weights; it does not load the SDK at runtime. Ordinary arithmetic remains available without cooperative vectors. GPU training, online weight updates, neural texture compression, and custom DLSS weights are separate projects.
 
