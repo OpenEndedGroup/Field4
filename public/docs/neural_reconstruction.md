@@ -27,11 +27,12 @@ appears in the native graphics window.
 - **Camera cut / reset** jumps the scene forward and discards temporal history.
 
 The mode control replaces the reconstruction context at a frame boundary. You can return to Source
-immediately. If NGX is unavailable, the scene opens in Source mode and prints the reason.
+immediately. If NGX is unavailable, the scene opens in Source mode and prints the reason. Minimizing
+Field's window and restoring it keeps the loop responsive and resumes DLAA output where it left off.
 
-![Field's dark reconstruction controls](assets/neural_reconstruction/controls.png)
+![The reconstruction box's controls: the mode slider set to 4 of Source/DLAA/Quality/Performance/Ultra, an unchecked Abstract colors and particles box, Animate and Move camera both checked, and hold-to-press Camera cut / reset and Reload edited shaders buttons](assets/neural_reconstruction/controls.png)
 
-## Movement matters
+## Comparing the modes in motion
 
 The following comparisons show consecutive rendered frames at 30 frames per second. Each includes a
 deliberate camera cut halfway through. All four modes use the same scene times and output size.
@@ -63,7 +64,7 @@ carry the smaller source through the comparison.
 
 <video controls muted loop playsinline preload="metadata" src="assets/neural_reconstruction/stress-geometry.mp4" poster="../assets/neural_reconstruction/stress-ultra_performance-geometry.png" width="3840" height="2160" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
-Top left: native Source. Top right: Performance. Bottom left: Ultra. Bottom right: Ultra's actual
+Top left: native Source. Top right: Performance. Bottom left: Ultra. Bottom right: Ultra's own
 360p input enlarged with **nearest-neighbour scaling**, without reconstruction. Each panel fills
 1920 × 1080; its label gives the source dimensions. Watch the crossing
 rods and checkerboards, especially after the cut halfway through.
@@ -152,24 +153,22 @@ On this Linux machine (RTX 4090, driver 610.43.02), 100 measurements after warm-
 | Performance | 960 × 540 → 1920 × 1080 | 6.23 / 6.30 ms |
 | Ultra Performance | 640 × 360 → 1920 × 1080 | 5.25 / 5.29 ms |
 
-Ultra was measured in the separate smaller-input run, after 72 warm-up frames, again with 100
-timed evaluations. It uses one ninth of the output pixel count as input; its reconstruction cost
-does not fall by the same factor.
+Read that table across rather than down: Ultra takes one ninth of the output pixel count as input
+and does **not** cost a ninth as much to reconstruct. A mode named Performance does not promise a
+cheaper reconstruction pass either — the saving is in rendering the smaller source, which is yours.
 
-Against an independently rendered four-sample spatial reference, static linear-RGB mean squared error
-fell from **0.000233** for Source to **0.0000708** for DLAA, a **69.6% reduction** in this scene.
-That is an edge-quality check, not a verdict about all abstract imagery. Camera cuts, mode replacement,
-resize and shader-reload rollback passed the GPU check with zero Vulkan validation errors.
+On the crossing rods, against an independently rendered four-sample reference, static linear-RGB mean
+squared error fell from **0.000233** for Source to **0.0000708** for DLAA, a **69.6% reduction**.
+That is a number about thin edges in this scene, and abstract imagery behaves differently.
 
 Each 1080p reconstruction output allocation is 16.9 MiB on this driver. The SDK reported 89.7, 172.4
 and 206.0 MiB of device allocations as DLAA, Quality and Performance were created in sequence; these figures include
 its retained device cache and must not be added together as independent per-view costs.
 
-The [measurement report](assets/neural_reconstruction/measurements.json) includes the device capability
-report, sample counts, memory and motion-vector errors.
-GPU timings cover NGX evaluation and its surrounding barriers after warm-up; they are not a claim
-about the complete frame time. The smaller input can reduce scene-rendering cost, but a mode named
-Performance does not guarantee a cheaper reconstruction pass with every SDK model.
+Every timing above is the NGX evaluation and its surrounding barriers, so add your own scene render
+to it to get a frame. The [measurement report](assets/neural_reconstruction/measurements.json)
+includes the device capability report, sample counts, memory and motion-vector errors; Ultra's row
+comes from the separate smaller-input run.
 
 ## Optional installation
 
@@ -191,10 +190,8 @@ Source view work without it.
     Configure these before creating the renderer, because NGX requires Vulkan extensions at creation.
     `FIELD_NGX_DISABLE=1` disables the adapter for fallback testing.
 
-The next experiments are now available as Starting Points: [Ray Reconstruction](ray_reconstruction.md),
+The next experiments are also Starting Points: [Ray Reconstruction](ray_reconstruction.md),
 [hardware optical flow](optical_flow.md), and [a learned shader function](learned_shader.md).
-Desktop minimize/restore has also been verified through KWin with GLFW’s native Wayland backend: three compositor-confirmed
-cycles retained a responsive Field loop and resumed DLAA output without Vulkan validation errors.
-Each feature has its own input contract and availability check.
+Each has its own input contract and availability check.
 
 For the complete editable pass graph—from `moduleHere()` and three render attachments to this adapter—continue with [From modules to reconstruction](reconstruction_plumbing.md) and its **reconstruction_plumbing** Starting Point.
