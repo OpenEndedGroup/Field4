@@ -98,7 +98,11 @@ CORPORA: tuple[Row, ...] = (
     Row(
         "demo_documents",
         "demo directories",
-        "ls -1d dev_docs/agents/demos/*/",
+        "git ls-files dev_docs/agents/demos/ | cut -d/ -f4 | sort -u",
+        "the COMMITTED demo directories, which is what a ledger can be stated over. `ls -1d` was "
+        "the derivation until 2026-09-25, and it counts anything on disk — so an ignored scratch "
+        "folder under `demos/` read as an undeclared demo and failed this guard in a working tree "
+        "while the committed corpus was correct. "
         "held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and "
         "`test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them "
         "(`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a "
@@ -108,7 +112,7 @@ CORPORA: tuple[Row, ...] = (
     Row(
         "demo_build_scripts",
         "demos shipping a `build.yaml`",
-        "ls -1 dev_docs/agents/demos/*/build.yaml",
+        "git ls-files 'dev_docs/agents/demos/*/build.yaml'",
         "the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars",
     ),
     Row(

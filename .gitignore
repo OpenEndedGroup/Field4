@@ -302,3 +302,9 @@ config/field4-local.p12
 # root is a PNG (tools/test_repository_root_inventory.py holds that down), and `git add -f` still
 # works if one ever should be.
 /*.png
+
+# Agent scratch and in-progress demo verification, not part of the demo corpus (2026-09-25).
+# `test_demo_build_scripts` and `AgentDemoRegistrationTest` enumerate this directory from the
+# filesystem, so an untracked folder here reads as an undeclared demo.
+dev_docs/agents/demos/.agent-scratch/
+dev_docs/agents/demos/ai4_loop_verification/

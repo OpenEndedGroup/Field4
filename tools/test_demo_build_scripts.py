@@ -46,6 +46,7 @@ Run directly with:  uv run --project . --group backdoor python -m unittest tools
 
 from __future__ import annotations
 
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -161,6 +162,34 @@ def _coded_boxes(build_yaml: Path) -> dict[str, str]:
     return out
 
 
+def committed_demo_directories() -> set[str]:
+    """The demo directories git is tracking, not the ones that happen to be on disk.
+
+    `DEMOS_ROOT.iterdir()` was the derivation until 2026-09-25 and it cannot tell a demo from a
+    scratch folder: an ignored `.agent-scratch/` beside the corpus read as an undeclared demo and
+    failed this guard in a working tree whose committed corpus was entirely correct. A ledger is a
+    statement about what is committed, so it is asked of git.
+
+    Falls back to the directory listing when git cannot answer — a source tarball with no `.git`
+    should still be checkable, and there the two are the same thing anyway.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z", "--", str(DEMOS_ROOT)],
+            cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True,
+        ).stdout.decode()
+    except (OSError, subprocess.SubprocessError):
+        return {p.name for p in DEMOS_ROOT.iterdir() if p.is_dir()}
+    root = DEMOS_ROOT.relative_to(REPO_ROOT).as_posix() + "/"
+    names = set()
+    for entry in out.split("\0"):
+        if entry.startswith(root):
+            rest = entry[len(root):]
+            if "/" in rest:
+                names.add(rest.split("/", 1)[0])
+    return names
+
+
 class DemoBuildScriptTest(unittest.TestCase):
     def setUp(self) -> None:
         self.scripts = sorted(DEMOS_ROOT.glob("*/build.yaml"))
@@ -168,7 +197,7 @@ class DemoBuildScriptTest(unittest.TestCase):
     def test_the_corpus_is_where_it_was_measured(self) -> None:
         """A demo that gains or loses a build script should make someone look at this file."""
         self.assertTrue(DEMOS_ROOT.is_dir(), f"no demo corpus at {DEMOS_ROOT}")
-        demos = {p.name for p in DEMOS_ROOT.iterdir() if p.is_dir()}
+        demos = committed_demo_directories()
         self.assertEqual(
             set(),
             demos - CORPUS,

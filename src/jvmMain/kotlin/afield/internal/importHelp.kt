@@ -227,7 +227,16 @@ private fun scanSimpleNames(loader: ClassLoader, excludePersonalOrigin: Boolean 
     ClassGraph().enableClassInfo().enableSystemJarsAndModules().enableMemoryMapping()
         .addClassLoader(loader)
         .scan().use { scanResult ->                // Start the scan
-            for (cz in scanResult.allStandardClasses) {
+            // `allClasses`, not `allStandardClasses`: ClassGraph defines a "standard class" as a
+            // non-interface, non-annotation class, so this index silently held no interface at all.
+            // Every consumer that asks it to name a type therefore could not see one —
+            // `kotlinImportStatementFor` returned null for every interface, so `prop<T>(name)` wrote
+            // `by Inheritance<T>()` with no import whenever T was an interface, and the preamble it
+            // produced could not compile. Found 2026-09-25 through `prop<HasImageView>` in
+            // `optical_flow_pingpong`: the pairing was exact, every type that preamble imported was a
+            // class and every type it declared without an import was an interface. It reads as a
+            // name-resolution problem and is really a scan that never offered the name.
+            for (cz in scanResult.allClasses) {
                 if (excludePersonalOrigin && cz.isPersonalOrigin()) continue
                 v.computeIfAbsent(cz.simpleName) { mutableListOf() }.add(cz.name)
             }
@@ -300,6 +309,12 @@ private val kotlinDefaultImportedTypeNames = setOf(
     // `kotlin.collections.MutableList`. Their absence made a box publishing
     // `prop<MutableList<T>>` look like a preamble that could not compile — which is the opposite
     // of true, since these are the types Kotlin has in scope before anything is imported.
+    // `AutoCloseable` resolves to `java.lang.AutoCloseable`, and `java.lang` is default-imported, so
+    // `importStatementFrom` correctly emits no import for it (the qualified-name check at its end).
+    // The checker below asks the same question of the *simple* name, which was not in this set — so a
+    // box writing `prop<AutoCloseable>(...)` produced a preamble the checker called uncompilable while
+    // the macro was right not to import it. Four of origin's 2026-09-24 demos hit that asymmetry.
+    "AutoCloseable",
     "AbstractList",
     "AbstractMap",
     "AbstractSet",
