@@ -12,11 +12,11 @@ Open **Starting points → optical_flow**. The top row shows the two input image
 
 Turn off the wiggle to run the separate **known translation** check: exactly 12 pixels right and 8 pixels up. That setting should produce a mostly uniform up-right field. **Advection gain**, **Feedback retention**, and **Reject cost above** control how the measured field moves the feedback image. Reset clears feedback and the engine's temporal hints.
 
-![Optical flow controls](assets/optical_flow/controls.png)
+![The optical flow box's controls: Advection gain at 1.00, Feedback retention at 0.98, Reject cost above at 80.00, a Consecutive-frame wiggle checkbox, and a hold-to-press Reset feedback and motion hints button](assets/optical_flow/controls.png)
 
 <video controls muted loop playsinline preload="metadata" src="assets/optical_flow/advection.mp4" width="1920" height="1080" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
-The wiggle is checked against the known local deformation, not just against a global shift. Across 85,696 interior samples at four animation phases, median endpoint error is **0.15 input pixels** and p95 is **0.35 pixels**. Measured vectors occupy all four direction quadrants. The identical-frame check stays below 0.25 pixel everywhere. These checks would fail if the output remained the old constant up-right field.
+On the wiggle, away from the borders, expect a median endpoint error of about **0.15 input pixels** against the known local deformation, and **0.35 pixels** at p95. Feed the same frame twice and the field stays under a quarter of a pixel everywhere.
 
 ??? aside "Why the earlier clip mostly pointed up and right"
 
@@ -26,7 +26,7 @@ The **COST** strip displays the hardware's matching cost at those same image coo
 
 The field can be useful even when the correspondence is imperfect. Repetition, newly revealed regions, lighting changes, and abrupt procedural edits all make it less reliable. The cost strip exposes some of that uncertainty; hardware cost is not a calibrated probability or confidence score.
 
-## What goes in, and what comes out
+## Constructing the operation
 
 `OpticalFlow(renderer, firstImage, secondImage, grid = 4)` creates a reusable operation. Its two image arguments have type **`HasImageView`**, Field's interface for a GPU image view. **A `RenderToTexture` implements that interface**, so two RTTs can be passed directly:
 
@@ -110,11 +110,11 @@ frame()                    // The child now samples the completed motion texture
 
 Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. When relaunching the parent, relaunch the child too so its texture bindings follow the new allocation.
 
-This source also publishes `expectedMotion`, its analytical displacement in input pixels. The live check compares the measured interior field against it through movement, pause, reset, and relaunch. The repeated circles still admit occasional wrong matches: bright patches in the motion panel coincide with higher matching cost. Inspect that cost before using a vector for feedback; the example deliberately shows the raw result.
+This source also publishes `expectedMotion`, its analytical displacement in input pixels, so you can hold the measured field against what the source actually did. The repeated circles still admit occasional wrong matches: bright patches in the motion panel coincide with higher matching cost. Inspect that cost before using a vector for feedback; the example deliberately shows the raw result.
 
 ## Measured on this machine
 
-On the RTX 4090, the 960 × 540 translation test has **zero median error** and **1/32 pixel p95 error**, measured away from the image borders. At a 4 × 4 grid, median GPU costs are 0.039 ms for conversion, 0.523 ms for optical flow, and 0.083 ms for unpacking. The complete call, including submissions and the final fence, takes 1.20 ms median / 1.56 ms p95. These are 100 warmed measurements using SLOW quality; the adapter owns about 10.6 MB of visible allocations. Driver-private session memory is not included.
+On the RTX 4090, a 960 × 540 pair at SLOW quality and a 4 × 4 grid costs 0.039 ms for conversion, 0.523 ms for flow, and 0.083 ms for unpacking, all median. Budget for the **complete call** — 1.20 ms median, 1.56 ms p95 — because `evaluate()` waits for its fence. The adapter owns about 10.6 MB of visible allocations, not counting driver-private session memory. On the same pair, a known pure translation comes back with zero median error and 1/32 pixel at p95, away from the borders.
 
 The [measurements](assets/optical_flow/measurements.json) retain the distribution summaries and numerical check. The implementation uses `VK_NV_optical_flow` through the existing LWJGL bindings, with no additional native library. Feature, format, grid, and queue checks decide availability; a missing extension does not affect other Field workflows.
 
