@@ -523,6 +523,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/LambdaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/four/synth/FnSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
                 // The only producer here that cannot render the path it belongs to. It publishes

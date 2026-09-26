@@ -96,8 +96,11 @@ const val PAT_PITCH_MIN_SEMITONES: Double = 0.5
  * could produce, kept because a rejected estimate is evidence about the rejection. Every consumer in
  * this file filters on [voiced] first, and so should any other.
  *
- * @param centerSample the middle of the analysed span, which is where this estimate is true. Not
- *   [startSample]: see the file comment.
+ * @param centerSample the middle of the analysed span. Not [startSample]: see the file comment. It is
+ *   exactly where the estimate belongs only for a pitch at `minHz`. The difference function at the
+ *   chosen lag `tau` compares `window + tau` samples, not all `window + tauMax`, so for a higher
+ *   pitch the estimate is centred `(tauMax − tau) / 2` samples earlier than this. `FnSoundDocs`
+ *   measures that on a rendered glide; see `chain_fn_sound_roundtrip.md`.
  * @param confidence `1 − d'(tau)`, so 1.0 is a perfectly periodic frame and 0.0 is noise.
  */
 data class PatF0Frame(
