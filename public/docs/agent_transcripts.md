@@ -2287,9 +2287,10 @@ See [Ray Reconstruction](ray_reconstruction.md).
 
 ### optical_flow
 
-Turn two images into a GPU motion field, inspect vectors and hardware cost, and drive a feedback
+Turn two images into a GPU motion field, inspect vectors and matching cost, and drive a feedback
 image with the result. The known-translation setting verifies direction and pixel units; deformation
-makes a more exploratory instrument. Requires enabled Vulkan optical flow.
+makes a more exploratory instrument. Uses the NVIDIA optical-flow engine where the device has one, and
+Field's portable shader flow everywhere else, macOS included.
 See [Optical Flow](optical_flow.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/optical_flow/metadata.edn)
@@ -2298,7 +2299,7 @@ See [Optical Flow](optical_flow.md).
 
 Render one editable shader into `PingPongRenderToTexture`, compare the previous and latest frames,
 then sample the resulting motion texture in a second `moduleHere()` box. Pause and reset make the
-frame ordering visible. Requires enabled Vulkan optical flow.
+frame ordering visible. Runs on either optical-flow backend.
 See [Optical Flow](optical_flow.md#keep-the-previous-frame-with-ping-pong).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/optical_flow_pingpong/metadata.edn)
