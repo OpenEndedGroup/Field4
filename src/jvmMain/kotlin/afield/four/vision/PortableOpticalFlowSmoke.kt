@@ -91,6 +91,17 @@ object PortableOpticalFlowSmoke {
                 // Known translation (+12, -8), through the demo's frame loop.
                 repeat(12){demo.update(reset=it==0);window.pollEvents();renderer.render()}
                 val translation=summary(errors(0f));report.put("translation",translation);println("TRANSLATION $translation")
+                // Cost: the three leftmost columns see content that entered from outside the first image (dx = 12 px),
+                // so no correct match exists there. Their residual should stand clear of the interior's.
+                run {
+                    val field=ReconstructionCapture.read(renderer,flow.output);val revealed=ArrayList<Float>();val interior=ArrayList<Float>()
+                    for(y in 16 until flow.flowHeight-16)for(x in 0 until flow.flowWidth-16){val z=field[(y*flow.flowWidth+x)*4+2]
+                        if(x<3)revealed+=z else if(x>=16)interior+=z}
+                    val cost=JSONObject().put("units","mean absolute window residual, grey levels 0-255")
+                        .put("revealedColumns",summary(revealed)).put("interior",summary(interior))
+                    report.put("translationCost",cost);println("COST $cost")
+                    expect(percentile(revealed.sorted(),.5)>maxOf(2f,2*percentile(interior.sorted(),.95))) { "Cost does not flag revealed content: $cost" }
+                }
                 ReconstructionCapture.save(File(dir,"translation.png"),ReconstructionCapture.read(renderer,demo.output),demo.width*2,demo.height*2)
                 expect(translation.getDouble("median")<TRANSLATION_MEDIAN && translation.getDouble("p95")<TRANSLATION_P95) { "Translation: $translation" }
 
@@ -134,7 +145,9 @@ object PortableOpticalFlowSmoke {
                 }
                 // What a zero field would score: the premise that the wiggle is motion the floors can tell apart.
                 val zero=summary(zeroField);check(zero.getDouble("median")>5*WIGGLE_MEDIAN) { "Wiggle too small to test: $zero" }
-                val wiggle=summary(local).put("zeroFieldError",zero).put("phases",4).put("pairStepSeconds",demo.pairStep).put("directionQuadrants",quadrants.toList())
+                val wiggleCost=ArrayList<Float>();ReconstructionCapture.read(renderer,flow.output).let { f ->
+                    for(y in 16 until flow.flowHeight-16)for(x in 16 until flow.flowWidth-16)wiggleCost+=f[(y*flow.flowWidth+x)*4+2] }
+                val wiggle=summary(local).put("zeroFieldError",zero).put("phases",4).put("costLastPhase",summary(wiggleCost)).put("pairStepSeconds",demo.pairStep).put("directionQuadrants",quadrants.toList())
                 report.put("consecutiveFrameWiggle",wiggle);println("WIGGLE $wiggle")
                 expect(wiggle.getDouble("median")<WIGGLE_MEDIAN && wiggle.getDouble("p95")<WIGGLE_P95) { "Wiggle: $wiggle" }
                 expect(quadrants.all { it>local.size/20 }) { "Wiggle field did not change direction: ${quadrants.toList()}" }

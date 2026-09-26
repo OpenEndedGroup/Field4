@@ -5,14 +5,13 @@ import afield.four.device.Fence
 import afield.four.modules.fromContextWithNameOrNull
 import afield.four.targets.PingPongRenderToTexture
 import afield.four.texture.HasImageView
-import afield.four.vision.OpticalFlow
+import afield.four.vision.opticalFlow
 import afield.stdlib.linalg.Vector2f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
 prop<AutoCloseable>(flowSession)
 fromContextWithNameOrNull<AutoCloseable>("flowSession")?.close()
-check(renderer.device.supportsOpticalFlow) { "This device has no enabled VK_NV_optical_flow." }
 
 // One editable module, two retained frames. Rendering rotates the ring automatically.
 prop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
@@ -28,10 +27,13 @@ history += "image" to scene
 // These providers follow the ring. Do not snapshot their .imageView handles.
 prop<HasImageView>(previousImage) = history.previousImageView
 prop<HasImageView>(currentImage) = history.latestImageView
-prop<OpticalFlow>(flow) = OpticalFlow(renderer,previousImage,currentImage,grid=4)
+// The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
+// Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
+prop<afield.four.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
+println("Optical flow backend: ${flow.backend}")
 prop<RenderToTexture>(motion) = flow.output
 
-// OpticalFlow.evaluate submits to its own queue, so run it between Field frames.
+// evaluate() submits (to the optical-flow queue, or the graphics queue) and waits, so run it between Field frames.
 // Submit the source first. The final fence makes the produced pair ready to sample.
 val owner=renderer
 val ownedHistory=history

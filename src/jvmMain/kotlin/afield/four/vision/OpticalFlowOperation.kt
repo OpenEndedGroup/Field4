@@ -4,7 +4,7 @@ import afield.four.Renderer
 import afield.four.targets.RenderToTexture
 import afield.four.texture.HasImageView
 
-/** Which implementation computes a [DenseOpticalFlow]. */
+/** Which implementation computes a [OpticalFlowOperation]. */
 enum class OpticalFlowBackend {
     /** [HARDWARE] when the device has VK_NV_optical_flow enabled, [PYRAMID] everywhere else. */
     AUTO,
@@ -28,7 +28,7 @@ enum class OpticalFlowBackend {
  * [output] is ready to sample. The inputs are borrowed — keep them alive, and at their construction size,
  * until [close].
  */
-interface DenseOpticalFlow : AutoCloseable {
+interface OpticalFlowOperation : AutoCloseable {
     val renderer: Renderer
     val first: HasImageView
     val second: HasImageView
@@ -61,7 +61,7 @@ interface DenseOpticalFlow : AutoCloseable {
  * [OpticalFlowBackend.HARDWARE] on a device without VK_NV_optical_flow fails, exactly as constructing [OpticalFlow] does.
  */
 fun opticalFlow(renderer: Renderer,first: HasImageView,second: HasImageView,grid: Int=4,
-    backend: OpticalFlowBackend=OpticalFlowBackend.AUTO): DenseOpticalFlow = when(backend.resolve(renderer)) {
+    backend: OpticalFlowBackend=OpticalFlowBackend.AUTO): OpticalFlowOperation = when(backend.resolve(renderer)) {
     OpticalFlowBackend.HARDWARE -> OpticalFlow(renderer,first,second,grid)
     else -> PyramidOpticalFlow(renderer,first,second,grid)
 }

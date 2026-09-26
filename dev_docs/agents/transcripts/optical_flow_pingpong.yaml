@@ -35,25 +35,27 @@ operations:
     properties:
       code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.device.CommandBuffer\nimport\
         \ afield.four.device.Fence\nimport afield.four.modules.fromContextWithNameOrNull\nimport afield.four.targets.PingPongRenderToTexture\n\
-        import afield.four.texture.HasImageView\nimport afield.four.vision.OpticalFlow\nimport afield.stdlib.linalg.Vector2f\n\
+        import afield.four.texture.HasImageView\nimport afield.four.vision.opticalFlow\nimport afield.stdlib.linalg.Vector2f\n\
         import org.lwjgl.system.MemoryStack\nimport org.lwjgl.vulkan.VK13.*\n\nprop<AutoCloseable>(flowSession)\n\
-        fromContextWithNameOrNull<AutoCloseable>(\"flowSession\")?.close()\ncheck(renderer.device.supportsOpticalFlow)\
-        \ { \"This device has no enabled VK_NV_optical_flow.\" }\n\n// One editable module, two retained frames.\
-        \ Rendering rotates the ring automatically.\nprop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer)\
+        fromContextWithNameOrNull<AutoCloseable>(\"flowSession\")?.close()\n\n// One editable module, two retained\
+        \ frames. Rendering rotates the ring automatically.\nprop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer)\
         \ {\n    width=960; height=540; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT\n}\nval scene = moduleHere\
         \ { history.apply(); depthTest=false; depthWrite=false; blend=false }\nval triangle = Mesh(renderer,scene)\n\
         triangle.resize(3,0,scene)\ntriangle.push.setMembers(scene.current.fi.pushConstants.single().members)\n\
         scene += \"image\" to triangle\nhistory += \"image\" to scene\n\n// These providers follow the ring. Do\
         \ not snapshot their .imageView handles.\nprop<HasImageView>(previousImage) = history.previousImageView\n\
-        prop<HasImageView>(currentImage) = history.latestImageView\nprop<OpticalFlow>(flow) = OpticalFlow(renderer,previousImage,currentImage,grid=4)\n\
-        prop<RenderToTexture>(motion) = flow.output\n\n// OpticalFlow.evaluate submits to its own queue, so run\
-        \ it between Field frames.\n// Submit the source first. The final fence makes the produced pair ready to\
-        \ sample.\nval owner=renderer\nval ownedHistory=history\nval ownedFlow=flow\nval command=CommandBuffer(owner.commandPool,true,false)\n\
-        val fence=Fence(owner.device,false)\nfun renderSource() {\n    vkResetCommandBuffer(command.vkCommandBuffer,0)\n\
-        \    command.beginRecording(); ownedHistory.render(command,0); command.endRecording()\n    MemoryStack.stackPush().use\
-        \ { owner.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }\n    fence.fenceWait();\
-        \ fence.reset()\n}\nvar animate=true\nvar reset=true\nvar time=0f\nvar previousTime=0f\n// Analytical displacement\
-        \ of this example, useful for checking the measured texture.\nprop<Vector2f>(expectedMotion)=Vector2f()\n\
+        prop<HasImageView>(currentImage) = history.latestImageView\n// The NV hardware engine where the device has\
+        \ one; portable pyramidal Lucas–Kanade everywhere else.\n// Fully qualified: prop<T> finds T's import in\
+        \ a classpath index that lists classes, not interfaces.\nprop<afield.four.vision.OpticalFlowOperation>(flow)\
+        \ = opticalFlow(renderer,previousImage,currentImage,grid=4)\nprintln(\"Optical flow backend: ${flow.backend}\"\
+        )\nprop<RenderToTexture>(motion) = flow.output\n\n// evaluate() submits (to the optical-flow queue, or the\
+        \ graphics queue) and waits, so run it between Field frames.\n// Submit the source first. The final fence\
+        \ makes the produced pair ready to sample.\nval owner=renderer\nval ownedHistory=history\nval ownedFlow=flow\n\
+        val command=CommandBuffer(owner.commandPool,true,false)\nval fence=Fence(owner.device,false)\nfun renderSource()\
+        \ {\n    vkResetCommandBuffer(command.vkCommandBuffer,0)\n    command.beginRecording(); ownedHistory.render(command,0);\
+        \ command.endRecording()\n    MemoryStack.stackPush().use { owner.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence)\
+        \ }\n    fence.fenceWait(); fence.reset()\n}\nvar animate=true\nvar reset=true\nvar time=0f\nvar previousTime=0f\n\
+        // Analytical displacement of this example, useful for checking the measured texture.\nprop<Vector2f>(expectedMotion)=Vector2f()\n\
         var shaderVersion=scene.current.fi\nvar closed=false\nflowSession=AutoCloseable {\n    if(!closed) {\n \
         \       closed=true\n        // A consumer must stop sampling before its parent's resources retire.\n  \
         \      owner.renderList.modules.remove(\"pingpong flow texture\")\n        if(!owner.isClosed) {\n     \
@@ -90,21 +92,23 @@ operations:
     strand: scene
     code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.device.CommandBuffer\nimport\
       \ afield.four.device.Fence\nimport afield.four.modules.fromContextWithNameOrNull\nimport afield.four.targets.PingPongRenderToTexture\n\
-      import afield.four.texture.HasImageView\nimport afield.four.vision.OpticalFlow\nimport afield.stdlib.linalg.Vector2f\n\
+      import afield.four.texture.HasImageView\nimport afield.four.vision.opticalFlow\nimport afield.stdlib.linalg.Vector2f\n\
       import org.lwjgl.system.MemoryStack\nimport org.lwjgl.vulkan.VK13.*\n\nprop<AutoCloseable>(flowSession)\n\
-      fromContextWithNameOrNull<AutoCloseable>(\"flowSession\")?.close()\ncheck(renderer.device.supportsOpticalFlow)\
-      \ { \"This device has no enabled VK_NV_optical_flow.\" }\n\n// One editable module, two retained frames. Rendering\
-      \ rotates the ring automatically.\nprop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer)\
+      fromContextWithNameOrNull<AutoCloseable>(\"flowSession\")?.close()\n\n// One editable module, two retained\
+      \ frames. Rendering rotates the ring automatically.\nprop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer)\
       \ {\n    width=960; height=540; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT\n}\nval scene = moduleHere\
       \ { history.apply(); depthTest=false; depthWrite=false; blend=false }\nval triangle = Mesh(renderer,scene)\n\
       triangle.resize(3,0,scene)\ntriangle.push.setMembers(scene.current.fi.pushConstants.single().members)\nscene\
       \ += \"image\" to triangle\nhistory += \"image\" to scene\n\n// These providers follow the ring. Do not snapshot\
       \ their .imageView handles.\nprop<HasImageView>(previousImage) = history.previousImageView\nprop<HasImageView>(currentImage)\
-      \ = history.latestImageView\nprop<OpticalFlow>(flow) = OpticalFlow(renderer,previousImage,currentImage,grid=4)\n\
-      prop<RenderToTexture>(motion) = flow.output\n\n// OpticalFlow.evaluate submits to its own queue, so run it\
-      \ between Field frames.\n// Submit the source first. The final fence makes the produced pair ready to sample.\n\
-      val owner=renderer\nval ownedHistory=history\nval ownedFlow=flow\nval command=CommandBuffer(owner.commandPool,true,false)\n\
-      val fence=Fence(owner.device,false)\nfun renderSource() {\n    vkResetCommandBuffer(command.vkCommandBuffer,0)\n\
+      \ = history.latestImageView\n// The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade\
+      \ everywhere else.\n// Fully qualified: prop<T> finds T's import in a classpath index that lists classes,\
+      \ not interfaces.\nprop<afield.four.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)\n\
+      println(\"Optical flow backend: ${flow.backend}\")\nprop<RenderToTexture>(motion) = flow.output\n\n// evaluate()\
+      \ submits (to the optical-flow queue, or the graphics queue) and waits, so run it between Field frames.\n\
+      // Submit the source first. The final fence makes the produced pair ready to sample.\nval owner=renderer\n\
+      val ownedHistory=history\nval ownedFlow=flow\nval command=CommandBuffer(owner.commandPool,true,false)\nval\
+      \ fence=Fence(owner.device,false)\nfun renderSource() {\n    vkResetCommandBuffer(command.vkCommandBuffer,0)\n\
       \    command.beginRecording(); ownedHistory.render(command,0); command.endRecording()\n    MemoryStack.stackPush().use\
       \ { owner.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }\n    fence.fenceWait();\
       \ fence.reset()\n}\nvar animate=true\nvar reset=true\nvar time=0f\nvar previousTime=0f\n// Analytical displacement\

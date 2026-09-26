@@ -19,7 +19,7 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
     val pair=RenderToTexture(renderer) { this.width=this@OpticalFlowDemo.width;this.height=this@OpticalFlowDemo.height;colorAttachments=2;useDepth=false;format=VK_FORMAT_R16G16B16A16_SFLOAT }
     private val source=Module(parameters(renderer) {this.name="$name-inputs";pair.apply();vertex=VERTEX;fragment=SOURCE;depthTest=false;depthWrite=false;blend=false})
     private val sourceMesh=quad(source,pair)
-    val flow: DenseOpticalFlow=opticalFlow(renderer,pair.imageViewArray[0],pair.imageViewArray[1],backend=backend)
+    val flow: OpticalFlowOperation=opticalFlow(renderer,pair.imageViewArray[0],pair.imageViewArray[1],backend=backend)
     private val feedback=List(2){RenderToTexture(renderer){this.width=this@OpticalFlowDemo.width;this.height=this@OpticalFlowDemo.height;useDepth=false;format=VK_FORMAT_R16G16B16A16_SFLOAT}}
     val output=RenderToTexture(renderer){this.width=this@OpticalFlowDemo.width*2;this.height=this@OpticalFlowDemo.height*2;useDepth=false;format=VK_FORMAT_R16G16B16A16_SFLOAT}
     private val sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_LINEAR)
@@ -39,7 +39,12 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
     var dy=-8f
     var gain=1f
     var damping=.98f
-    var costThreshold=80f
+    private val hardware=flow.backend==OpticalFlowBackend.HARDWARE
+    /** Cost at which the COST strip saturates. The backends' costs are on different scales (see [OpticalFlowOperation]):
+     * the hardware engine's raw cost, or [PyramidOpticalFlow]'s mean window residual in grey levels. */
+    val costDisplayRange=if(hardware)100f else 25f
+    /** Advection keeps the previous image only where cost is below this; defaults are per backend, see [costDisplayRange]. */
+    var costThreshold=if(hardware)80f else 8f
     var deformation=false
     /** Separation of the two source frames, in seconds. Advance update(time) by this amount. */
     var pairStep=1f/30f
@@ -57,6 +62,7 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
         val i=frame%2
         advectionMeshes[i].push["settings"]=Vector4f(gain,damping,costThreshold,if(reset||frame==0)1f else 0f)
         displayMeshes[i].push["range"]=displayRange
+        displayMeshes[i].push["cost"]=Vector4f(costDisplayRange,if(hardware)4f else 10f,if(hardware)6f else 5f,0f)
         output.modules["display"]=displays[i].pointer()
         submit {
             // Both feedback images need a defined initial layout even when the shader resets.
@@ -126,9 +132,10 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
         layout(set=0,binding=0) uniform sampler2D motion;layout(set=0,binding=1) uniform sampler2D firstImage;
         layout(set=0,binding=2) uniform sampler2D secondImage;layout(set=0,binding=3) uniform sampler2D feedback;
         layout(location=0) out vec4 color;
-        layout(push_constant) uniform P {float range;} settings;
-        // COST and 0 100+: 3x5 diagnostic glyphs, without an extra texture or font dependency.
-        const uint labelGlyphs[10]=uint[](29263u,31599u,31183u,9367u,31599u,0u,29850u,31599u,31599u,1488u);
+        layout(push_constant) uniform P {float range;vec4 cost;} settings;
+        // COST, "0 100+" and "0 25+": 3x5 diagnostic glyphs, without an extra texture or font dependency.
+        // cost = (saturating cost, first glyph of the scale label, its glyph count, unused).
+        const uint labelGlyphs[15]=uint[](29263u,31599u,31183u,9367u,31599u,0u,29850u,31599u,31599u,1488u,31599u,0u,29671u,31183u,1488u);
         float label(vec2 pixel,int start,int count,float scale) {
             ivec2 p=ivec2(floor(pixel/scale));
             if(p.x<0 || p.y<0 || p.y>=5 || p.x>=count*4)return 0;
@@ -142,11 +149,11 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
                 vec2 cell=(fract(uv*size/40)-.5)*40;vec2 d=normalize(flow.xy+vec2(.0001));float along=dot(cell,d),across=abs(dot(cell,vec2(-d.y,d.x)));
                 float arrow=float((abs(along)<12 && across<.8)||(along>6 && along<13 && abs(across-(13-along))<1));
                 rgb=mix(rgb,vec3(1),arrow*.8*clamp(length(flow.xy)*4,0,1));if(uv.x>.85) {
-                    rgb=vec3(clamp(flow.z/100,0,1));
+                    rgb=vec3(clamp(flow.z/settings.cost.x,0,1));
                     vec2 q=vec2((uv.x-.85)*size.x,uv.y*size.y);float stripWidth=size.x*.15;
                     if(q.y<62) {
                         rgb=vec3(.025,.035,.05);
-                        float ink=max(label(q-vec2(8,8),0,4,3),label(q-vec2(8,31),4,6,2));
+                        float ink=max(label(q-vec2(8,8),0,4,3),label(q-vec2(8,31),int(settings.cost.y),int(settings.cost.z),2));
                         rgb=mix(rgb,vec3(.92),ink);
                         if(q.y>=47 && q.y<55 && q.x>=8 && q.x<stripWidth-8)
                             rgb=vec3((q.x-8)/max(stripWidth-16,1));

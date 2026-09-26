@@ -31,7 +31,7 @@ import org.lwjgl.vulkan.NVOpticalFlow.*
  * The operation itself is not a texture and is not automatically scheduled by the renderer.
  */
 class OpticalFlow(override val renderer: Renderer,override val first: HasImageView,override val second: HasImageView,
-    override val grid: Int=4,val quality: Quality=Quality.SLOW) : DenseOpticalFlow {
+    override val grid: Int=4,val quality: Quality=Quality.SLOW) : OpticalFlowOperation {
     override val backend get()=OpticalFlowBackend.HARDWARE
     enum class Quality(internal val vk: Int) { FAST(VK_OPTICAL_FLOW_PERFORMANCE_LEVEL_FAST_NV),MEDIUM(VK_OPTICAL_FLOW_PERFORMANCE_LEVEL_MEDIUM_NV),SLOW(VK_OPTICAL_FLOW_PERFORMANCE_LEVEL_SLOW_NV) }
     private val device=renderer.device.also {

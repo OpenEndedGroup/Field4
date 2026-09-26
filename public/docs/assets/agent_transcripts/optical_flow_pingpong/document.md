@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="optical_flow_pingpong" index="1" -->
 
 ```edn [field-box id="optical_flow_pingpong" role="properties"]
-{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 96 "characters" 4172 "sha256" "790ddfc09da66e878dd9db3de5ab028ef0482b1f2bff184b7ff533d224a79863"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 13 "characters" 611 "sha256" "024f7def733f20fddca2f9402b13bc077cf3a0a4a7fb8e584c218a4692fb5d04"}]}
+{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 98 "characters" 4390 "sha256" "252837dcec2bb580c684c372b9800bb0282ef98c9e56f81a78cc767b0a34f27f"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 13 "characters" 611 "sha256" "024f7def733f20fddca2f9402b13bc077cf3a0a4a7fb8e584c218a4692fb5d04"}]}
 ```
 
 ```kotlin [field-property box="optical_flow_pingpong" name="code" path="optical_flow_pingpong_code_.kt"]
@@ -49,14 +49,13 @@ import afield.four.device.Fence
 import afield.four.modules.fromContextWithNameOrNull
 import afield.four.targets.PingPongRenderToTexture
 import afield.four.texture.HasImageView
-import afield.four.vision.OpticalFlow
+import afield.four.vision.opticalFlow
 import afield.stdlib.linalg.Vector2f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
 prop<AutoCloseable>(flowSession)
 fromContextWithNameOrNull<AutoCloseable>("flowSession")?.close()
-check(renderer.device.supportsOpticalFlow) { "This device has no enabled VK_NV_optical_flow." }
 
 // One editable module, two retained frames. Rendering rotates the ring automatically.
 prop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
@@ -72,10 +71,13 @@ history += "image" to scene
 // These providers follow the ring. Do not snapshot their .imageView handles.
 prop<HasImageView>(previousImage) = history.previousImageView
 prop<HasImageView>(currentImage) = history.latestImageView
-prop<OpticalFlow>(flow) = OpticalFlow(renderer,previousImage,currentImage,grid=4)
+// The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
+// Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
+prop<afield.four.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
+println("Optical flow backend: ${flow.backend}")
 prop<RenderToTexture>(motion) = flow.output
 
-// OpticalFlow.evaluate submits to its own queue, so run it between Field frames.
+// evaluate() submits (to the optical-flow queue, or the graphics queue) and waits, so run it between Field frames.
 // Submit the source first. The final fence makes the produced pair ready to sample.
 val owner=renderer
 val ownedHistory=history

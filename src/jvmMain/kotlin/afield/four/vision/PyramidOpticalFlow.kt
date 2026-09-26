@@ -15,7 +15,7 @@ import org.lwjgl.vulkan.VK13.*
 /** Portable dense optical flow: coarse-to-fine Lucas–Kanade in ordinary fragment passes.
  *
  * Runs on any Vulkan device Field runs on — MoltenVK included — because it asks for nothing beyond
- * float render targets and `texelFetch`. Same contract as the hardware [OpticalFlow] (see [DenseOpticalFlow]):
+ * float render targets and `texelFetch`. Same contract as the hardware [OpticalFlow] (see [OpticalFlowOperation]):
  * `output.xy` is [first] → [second] displacement in input pixels (X right, Y down), one texel per [grid] × [grid].
  *
  * The chain, recorded into one graphics command buffer per [evaluate]:
@@ -42,7 +42,7 @@ import org.lwjgl.vulkan.VK13.*
  * [evaluate]`(reset)` is accepted for contract parity; this backend keeps no temporal hints, so every pair is independent.
  */
 class PyramidOpticalFlow(override val renderer: Renderer,override val first: HasImageView,override val second: HasImageView,
-    override val grid: Int=4,val levels: Int=5,val radius: Int=4,val iterations: Int=8,val search: Int=4) : DenseOpticalFlow {
+    override val grid: Int=4,val levels: Int=5,val radius: Int=4,val iterations: Int=8,val search: Int=4) : OpticalFlowOperation {
     override val backend get()=OpticalFlowBackend.PYRAMID
     init {
         require(grid in listOf(1,2,4,8)) { "grid must be 1, 2, 4 or 8, not $grid" }
