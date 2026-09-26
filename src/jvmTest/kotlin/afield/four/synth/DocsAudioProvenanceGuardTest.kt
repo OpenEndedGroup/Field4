@@ -62,7 +62,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 40,
             Origin.DIRT_SAMPLES to 1,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 7,
+            Origin.DOUGH_DSP to 9,
             Origin.FAUST to 3,
             Origin.DOUGH_WASM to 2,
         )
@@ -220,7 +220,12 @@ class DocsAudioProvenanceGuardTest {
          * so they are necessarily the same length and the same level — [LambdaSoundDocs]'s own
          * FIELD_TEST correlates them at 0.375 rather than leaving "they sound different" to a
          * caption.
+         *
+         * The two after those are `chain_fn_sound_roundtrip.md`'s, and they are [Origin.DOUGH_DSP]:
+         * [FnSoundDocs] plays one `Functions.Fn` as the amplitude and then as the frequency of a
+         * `SineOsc`, through `FnSignal`, unnormalised so the analysed file and the published one are
+         * the same bytes — which its FIELD_TEST checks.
          */
-        const val EXPECTED_FENCE_COUNT = 54
+        const val EXPECTED_FENCE_COUNT = 56
     }
 }

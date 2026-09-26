@@ -113,6 +113,9 @@ object DocsAudioProvenance {
         // thing upstream of it. See chain_lambda_sound.md.
         "afield.four.synth.LambdaSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
+        // A SineOsc whose amplitude or frequency is a Functions.Fn, through FnSignal: the same
+        // Kotlin signal graph DoughDspSoundDocs renders. See chain_fn_sound_roundtrip.md.
+        "afield.four.synth.FnSoundDocs" to Origin.DOUGH_DSP,
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.four.synth.FaustPolySoundDocs" to Origin.FAUST,
