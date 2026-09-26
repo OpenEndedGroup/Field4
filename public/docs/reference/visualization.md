@@ -29,7 +29,7 @@ generated, or `Box.displayAudioBytes` for an encoded clip you have in memory.
 
 `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt` — [read the source](source/jvmMain/afield/stdlib/AudioVisualizer/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md)
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md), [A function, played and read back](../chain_fn_sound_roundtrip.md)
 
 ### Top-level functions { #audiovisualizer-kt-functions }
 
@@ -91,7 +91,7 @@ General-purpose waveform player for Field output areas.
 
 `src/jvmMain/kotlin/afield/stdlib/SignalViewer.kt` — [read the source](source/jvmMain/afield/stdlib/SignalViewer/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [A function, played and read back](../chain_fn_sound_roundtrip.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #signalviewer-kt-functions }
 
