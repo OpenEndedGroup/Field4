@@ -29,7 +29,7 @@ val f = with(Functions) {
 
 It is played two ways. As **loudness**, it is the amplitude of a sine at 375 Hz, a frequency chosen
 so one period is exactly 128 samples at 48 kHz. As **pitch**, it is the frequency of a sine at
-constant level, `220 · 2^f` Hz, so the curve spans a little under an octave. Both renders are
+constant level, `220 · 2^f` Hz, so the curve spans about half an octave. Both renders are
 written to disk without normalisation, so the amplitude in the file is the amplitude the function
 asked for. Both analyses read the file, not the buffer that was written to it.
 

@@ -75,7 +75,7 @@ object FnSoundDocs {
     const val RMS_WINDOW: Int = 256
     const val RMS_HOP: Int = 32
 
-    /** The register YIN is told about: [contour] stays inside 0.2..0.9, so 253..409 Hz. */
+    /** The register YIN is told about: [contour] stays inside 0.2..0.71, so about 253..360 Hz. */
     const val PITCH_MIN_HZ: Double = 200.0
     const val PITCH_MAX_HZ: Double = 450.0
 
