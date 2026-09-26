@@ -5,17 +5,19 @@ import afield.four.modules.fromContextWithNameOrNull
 
 prop<OpticalFlowDemo>(lab)
 fromContextWithNameOrNull<OpticalFlowDemo>("lab")?.close()
-check(renderer.device.supportsOpticalFlow) { "This device has no enabled VK_NV_optical_flow; other Field rendering is unaffected." }
-lab=OpticalFlowDemo(renderer)
+// AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
+lab=OpticalFlowDemo(renderer,backend=OpticalFlowBackend.AUTO)
+println("Optical flow backend: ${lab.flow.backend}")
 var gain=1f
 var damping=.98f
-var cost=80f
+// The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend default.
+var cost=lab.costThreshold
 var deform=true
 var reset=false
 controlGroup("optical flow") {
     slider("Advection gain",min=0.0,max=3.0,initialValue=1.0) { gain=it.toFloat() }
     slider("Feedback retention",min=0.0,max=.995,initialValue=.98) { damping=it.toFloat() }
-    slider("Reject cost above",min=0.0,max=600.0,initialValue=80.0) { cost=it.toFloat() }
+    slider("Reject cost above",min=0.0,max=6.0*lab.costDisplayRange,initialValue=lab.costThreshold.toDouble()) { cost=it.toFloat() }
     checkbox("Consecutive-frame wiggle",initialValue=true) { deform=it;reset=true }
     button("Reset feedback and motion hints") { if(it)reset=true }
 }

@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="optical_flow" index="1" -->
 
 ```edn [field-box id="optical_flow" role="properties"]
-{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 31 "characters" 1401 "sha256" "6b82ca8eeba837f3c2c4f63ba1baca45dc7a6f5d30131e9708ee41cd77050d66"}]}
+{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 33 "characters" 1646 "sha256" "b3ca5377464cce7e08c3abdcbf0b76890eda3cfe7e382c806fdbf69e755a5729"}]}
 ```
 
 ```kotlin [field-property box="optical_flow" name="code" path="optical_flow_code_.kt"]
@@ -49,17 +49,19 @@ import afield.four.modules.fromContextWithNameOrNull
 
 prop<OpticalFlowDemo>(lab)
 fromContextWithNameOrNull<OpticalFlowDemo>("lab")?.close()
-check(renderer.device.supportsOpticalFlow) { "This device has no enabled VK_NV_optical_flow; other Field rendering is unaffected." }
-lab=OpticalFlowDemo(renderer)
+// AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
+lab=OpticalFlowDemo(renderer,backend=OpticalFlowBackend.AUTO)
+println("Optical flow backend: ${lab.flow.backend}")
 var gain=1f
 var damping=.98f
-var cost=80f
+// The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend default.
+var cost=lab.costThreshold
 var deform=true
 var reset=false
 controlGroup("optical flow") {
     slider("Advection gain",min=0.0,max=3.0,initialValue=1.0) { gain=it.toFloat() }
     slider("Feedback retention",min=0.0,max=.995,initialValue=.98) { damping=it.toFloat() }
-    slider("Reject cost above",min=0.0,max=600.0,initialValue=80.0) { cost=it.toFloat() }
+    slider("Reject cost above",min=0.0,max=6.0*lab.costDisplayRange,initialValue=lab.costThreshold.toDouble()) { cost=it.toFloat() }
     checkbox("Consecutive-frame wiggle",initialValue=true) { deform=it;reset=true }
     button("Reset feedback and motion hints") { if(it)reset=true }
 }
