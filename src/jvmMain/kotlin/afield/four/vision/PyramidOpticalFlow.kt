@@ -41,9 +41,15 @@ import org.lwjgl.vulkan.VK13.*
  * `output.z` is the mean absolute residual over the final window, in 8-bit grey levels (0–255) — lower is better.
  * It is NOT on the same scale as the hardware engine's cost; a threshold tuned for one does not transfer.
  * [evaluate]`(reset)` is accepted for contract parity; this backend keeps no temporal hints, so every pair is independent.
+ *
+ * With [consistency], every [evaluate] also tracks [second] → [first] in the same command buffer and fills
+ * [consistencyMap]: `.x` is the forward–backward endpoint error |f(p) + b(p + f(p))| in input pixels, a geometric
+ * confidence independent of the photometric residual (occluded, disoccluded or mismatched samples score high);
+ * `.y` is the backward residual; `.w` is 1. It roughly doubles the cost of a pair.
  */
 class PyramidOpticalFlow(override val renderer: Renderer,override val first: HasImageView,override val second: HasImageView,
-    override val grid: Int=4,val levels: Int=5,val radius: Int=4,val iterations: Int=8,val finestIterations: Int=2,val search: Int=4) : OpticalFlowOperation {
+    override val grid: Int=4,val levels: Int=5,val radius: Int=4,val iterations: Int=8,val finestIterations: Int=2,val search: Int=4,
+    val consistency: Boolean=false) : OpticalFlowOperation {
     override val backend get()=OpticalFlowBackend.PYRAMID
     init {
         require(grid in listOf(1,2,4,8)) { "grid must be 1, 2, 4 or 8, not $grid" }
@@ -103,20 +109,38 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
             pass("optical median $l",smoothed[l],MEDIAN,mapOf("field" to raw[l]))
         }
     }
+    /** The backward chain, sharing no resources with this one. */
+    private val reverse=if(consistency) PyramidOpticalFlow(renderer,second,first,grid,levels,radius,iterations,finestIterations,search) else null
+    /** Forward–backward check, same dimensions as [output]; null unless [consistency]. See the class comment. */
+    val consistencyMap: RenderToTexture?=reverse?.let { back ->
+        target(flowWidth,flowHeight,"flow forward-backward error").also { pass("optical consistency",it,CONSISTENCY,mapOf("forward" to output,"backward" to back.output)).push["grid"]=grid.toFloat() }
+    }
     private val command=CommandBuffer(renderer.commandPool,true,false)
     private val fence=Fence(renderer.device,false)
     private val pyramidTimer=afield.four.lighting.LightingGpuTimer(renderer)
     private val levelTimers=List(levels){ afield.four.lighting.LightingGpuTimer(renderer) }
     /** "pyramid" covers conversion, downsampling and gradients; "levelN" covers level N's search, track and median. */
-    override val gpuTimings get()=mapOf("pyramid" to pyramidTimer.samples.toList())+levelTimers.mapIndexed { l,t -> "level$l" to t.samples.toList() }
+    override val gpuTimings: Map<String,List<Double>> get()=mapOf("pyramid" to pyramidTimer.samples.toList())+levelTimers.mapIndexed { l,t -> "level$l" to t.samples.toList() }+
+        (reverse?.gpuTimings?.mapKeys { "backward-"+it.key } ?: emptyMap())
     override val milliseconds=ArrayDeque<Double>()
-    override val allocatedBytes get()=(pyramid+gradients+raw+smoothed+listOfNotNull(candidates)).sumOf { r -> r.colorImageRefs.sumOf { it?.memorySize ?: 0L } }
+    override val allocatedBytes: Long get()=(pyramid+gradients+raw+smoothed+listOfNotNull(candidates,consistencyMap)).sumOf { r -> r.colorImageRefs.sumOf { it?.memorySize ?: 0L } }+
+        (reverse?.allocatedBytes ?: 0L)
     private var closed=false
 
     override fun evaluate(reset: Boolean) {
         check(!closed && renderer.currentCommandBuffer==null) { "Evaluate optical flow between frames, after input producers submit" }
         val start=System.nanoTime()
         vkResetCommandBuffer(command.vkCommandBuffer,0);command.beginRecording()
+        record(command)
+        reverse?.record(command);consistencyMap?.render(command,0)
+        command.endRecording()
+        MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }
+        fence.fenceWait();fence.reset()
+        milliseconds+=(System.nanoTime()-start)/1e6;while(milliseconds.size>1024)milliseconds.removeFirst()
+    }
+
+    /** Every pass of this chain, into a command buffer someone else submits. */
+    private fun record(command: CommandBuffer) {
         (first as? PreparesSampledImages)?.prepareSampledImagesFor(command);(second as? PreparesSampledImages)?.prepareSampledImagesFor(command)
         pyramidTimer.begin(command,0)
         pyramid.forEach { it.render(command,0) };gradients.forEach { it.render(command,0) }
@@ -127,18 +151,15 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
             raw[l].render(command,0);smoothed[l].render(command,0)
             levelTimers[l].end(command,0)
         }
-        command.endRecording()
-        MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }
-        fence.fenceWait();fence.reset()
-        milliseconds+=(System.nanoTime()-start)/1e6;while(milliseconds.size>1024)milliseconds.removeFirst()
     }
 
     override fun close() {
         if(closed)return;closed=true
+        reverse?.close()
         renderer.cleanup+=Runnable {
             modules.forEach { it.cleanup() };sampler.cleanup();command.cleanup();fence.cleanup()
             pyramidTimer.close();levelTimers.forEach { it.close() }
-            (pyramid+gradients+raw+smoothed+listOfNotNull(candidates)).forEach { r -> r.imageViewArray.forEach { it.imageView.cleanup() };r.colorImageRefs.forEach { it?.cleanup() };r.defaultSampler?.cleanup() }
+            (pyramid+gradients+raw+smoothed+listOfNotNull(candidates,consistencyMap)).forEach { r -> r.imageViewArray.forEach { it.imageView.cleanup() };r.colorImageRefs.forEach { it?.cleanup() };r.defaultSampler?.cleanup() }
         }
     }
 
@@ -220,6 +241,16 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
             for(int y=-r;y<=r;y++)for(int x=-r;x<=r;x++){ivec2 q=c+ivec2(x,y);residual+=abs(second(vec2(q)+d)-first(q).x);}
             if(residual>before){d=start;residual=before;}
             result=vec4(d*scale,255*residual/float((2*r+1)*(2*r+1)),1);}
+        """
+        /** Forward flow texel at input position p = (texel + .5)·grid; the backward field sampled bilinearly at p + f. */
+        private const val CONSISTENCY="""#version 460
+        layout(set=0,binding=0) uniform sampler2D forward;layout(set=0,binding=1) uniform sampler2D backward;
+        layout(push_constant) uniform P {float grid;} p;layout(location=0) out vec4 result;
+        void main(){ivec2 t=ivec2(gl_FragCoord.xy),n=textureSize(backward,0);vec4 f=texelFetch(forward,t,0);
+            vec2 u=clamp((vec2(t)+.5)+f.xy/p.grid-.5,vec2(0),vec2(n-1));ivec2 i=ivec2(floor(u)),j=min(i+1,n-1);vec2 w=u-vec2(i);
+            vec4 b=mix(mix(texelFetch(backward,i,0),texelFetch(backward,ivec2(j.x,i.y),0),w.x),
+                       mix(texelFetch(backward,ivec2(i.x,j.y),0),texelFetch(backward,j,0),w.x),w.y);
+            result=vec4(length(f.xy+b.xy),b.z,0,1);}
         """
         /** Vector median of the 3 × 3 neighbourhood: the member minimising summed distance to the other eight. */
         private const val MEDIAN="""#version 460

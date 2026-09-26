@@ -17,6 +17,18 @@ Field has two implementations behind one contract. `opticalFlow(...)` picks betw
 
 `PyramidOpticalFlow` is a coarse-to-fine Lucas–Kanade tracker written as ordinary fragment passes. It builds a five-level image pyramid and searches the coarsest level exhaustively for integer offsets. Each finer level then refines the upsampled estimate with Gauss–Newton steps over a 9 × 9 window, and a 3 × 3 vector median rejects isolated wrong matches. It needs no extension. Its constructor exposes `levels`, `radius`, `iterations`, `finestIterations` and `search`.
 
+### A forward–backward confidence map
+
+`PyramidOpticalFlow(renderer, first, second, consistency = true)` also tracks the images in reverse, inside the same submission, and fills `consistencyMap`: a texture the size of `output` whose `.x` is the **forward–backward error** in input pixels. It follows each forward vector, reads the backward vector where it lands, and reports how far the pair fails to return to the start. The residual in `output.z` asks whether the pixels look alike; this map asks whether the two directions agree about where they went. It is high where content is occluded, revealed, or leaves the frame, even when a wrong match happens to look plausible.
+
+```diffstatic {data-lang=kotlin}
+val flow = PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
+prop<RenderToTexture>(motion) = flow.output
+prop<RenderToTexture>(motionConfidence) = flow.consistencyMap!!
+```
+
+On the M1 Max's (+12, −8) pair, interior samples return to within 0.00003 pixels (p95, 21,424 samples). The two rightmost flow columns, whose content moves out of the second image, miss by a median of 43 pixels. On one wiggle phase the p95 is 0.19 pixels. A checked pair costs about twice an ordinary one, 24.6 ms median. The hardware engine has no equivalent output.
+
 ![The same starting point on an Apple M1 Max, running the portable backend](assets/optical_flow/macos_advection.png)
 
 ## Open the experiment
@@ -151,9 +163,11 @@ The same 960 × 540 pair was run through `PyramidOpticalFlow` at grid 4 with its
 
 A zero field would score a median of 1.98 pixels on the wiggle, so these errors are small compared with the motion they measure. On this synthetic wiggle the portable tracker's error is below the 4090 engine's 0.15 / 0.35. That result does not rank the two backends in general: the source is a clean procedural image with none of the noise, blur or lighting change of real footage, and it matches Lucas–Kanade's assumptions unusually well. In the ping-pong starting point, the moving pair's median error against its analytical `expectedMotion` was 0.13 and 0.07 pixels in two checks on 29,464 samples each (p95 0.35 and 0.13), and exactly 0 while paused.
 
+The residual flags the same content leaving the frame. The two rightmost flow columns have a median residual of 17.3 grey levels, and every interior sample has 0; the starting point's default rejection threshold for this backend is 8.
+
 The known translations are almost exact because the second image is the first shifted by whole pixels, the easiest possible case for this method. At (+40, −24), about 1.2% of samples lock onto the checkerboard's 64-pixel repeat. The coarse search compares colour as well as brightness for this reason: in a development run that used brightness alone, 11.5% of samples locked on.
 
-The portable backend is slower. One pair takes **12.1 ms** median and 12.6 ms p95 of wall time, including submission and the final fence (100 warmed pairs). GPU timestamps put 0.43 ms on the pyramid and 5.2 ms on the finest level, which reads widely spaced windows from the full-resolution image; the four coarser levels take 0.7 to 1.6 ms each. It allocates 30.3 MB. In the RTX 4090 run the hardware engine took 1.20 ms per pair. The [portable measurements](assets/optical_flow/portable_measurements.json) come from `PortableOpticalFlowSmoke`, the `four.vision.portable-optical-flow` smoke test. It forces the portable backend on any machine and asserts regression floors just above these numbers.
+The portable backend is slower. One pair takes **11.9 ms** median and 12.8 ms p95 of wall time, including submission and the final fence (100 warmed pairs). GPU timestamps put 0.43 ms on the pyramid and 5.2 ms on the finest level, which reads widely spaced windows from the full-resolution image; the four coarser levels take 0.7 to 1.6 ms each. It allocates 30.3 MB. In the RTX 4090 run the hardware engine took 1.20 ms per pair. The [portable measurements](assets/optical_flow/portable_measurements.json) come from `PortableOpticalFlowSmoke`, the `four.vision.portable-optical-flow` smoke test. It forces the portable backend on any machine and asserts regression floors just above these numbers.
 
 ![Ping-pong starting point on the M1 Max: previous and current frames, motion, and matching cost](assets/optical_flow/macos_pingpong.png)
 

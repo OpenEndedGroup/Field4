@@ -91,16 +91,17 @@ object PortableOpticalFlowSmoke {
                 // Known translation (+12, -8), through the demo's frame loop.
                 repeat(12){demo.update(reset=it==0);window.pollEvents();renderer.render()}
                 val translation=summary(errors(0f));report.put("translation",translation);println("TRANSLATION $translation")
-                // Cost: the three leftmost columns see content that entered from outside the first image (dx = 12 px),
-                // so no correct match exists there. Their residual should stand clear of the interior's.
+                // Cost: flow is first -> second, so first-image content in the rightmost 12 px (dx = +12) leaves the
+                // frame and has no correct match. The two rightmost flow columns (8 px) are wholly inside that band;
+                // their residual should stand clear of the interior's, and above the demo's default reject threshold (8).
                 run {
-                    val field=ReconstructionCapture.read(renderer,flow.output);val revealed=ArrayList<Float>();val interior=ArrayList<Float>()
-                    for(y in 16 until flow.flowHeight-16)for(x in 0 until flow.flowWidth-16){val z=field[(y*flow.flowWidth+x)*4+2]
-                        if(x<3)revealed+=z else if(x>=16)interior+=z}
+                    val field=ReconstructionCapture.read(renderer,flow.output);val leaving=ArrayList<Float>();val interior=ArrayList<Float>()
+                    for(y in 16 until flow.flowHeight-16)for(x in 16 until flow.flowWidth){val z=field[(y*flow.flowWidth+x)*4+2]
+                        if(x>=flow.flowWidth-2)leaving+=z else if(x<flow.flowWidth-16)interior+=z}
                     val cost=JSONObject().put("units","mean absolute window residual, grey levels 0-255")
-                        .put("revealedColumns",summary(revealed)).put("interior",summary(interior))
+                        .put("leavingColumns",summary(leaving)).put("interior",summary(interior))
                     report.put("translationCost",cost);println("COST $cost")
-                    expect(percentile(revealed.sorted(),.5)>maxOf(2f,2*percentile(interior.sorted(),.95))) { "Cost does not flag revealed content: $cost" }
+                    expect(percentile(leaving.sorted(),.5)>maxOf(8f,2*percentile(interior.sorted(),.95))) { "Cost does not flag content leaving the frame: $cost" }
                 }
                 ReconstructionCapture.save(File(dir,"translation.png"),ReconstructionCapture.read(renderer,demo.output),demo.width*2,demo.height*2)
                 expect(translation.getDouble("median")<TRANSLATION_MEDIAN && translation.getDouble("p95")<TRANSLATION_P95) { "Translation: $translation" }
@@ -130,6 +131,22 @@ object PortableOpticalFlowSmoke {
                 }
                 report.put("translationOtherGrids",grids);println("GRIDS $grids")
 
+                // Forward–backward consistency on the same (+12, -8) pair: near zero where both directions agree,
+                // large where first-image content leaves the frame (rightmost 12 px) and has no backward partner.
+                PyramidOpticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1],consistency=true).use { checked ->
+                    checked.evaluate(true)
+                    val map=ReconstructionCapture.read(renderer,checked.consistencyMap!!);val w=checked.flowWidth
+                    val leaving=ArrayList<Float>();val interior=ArrayList<Float>()
+                    for(y in 16 until checked.flowHeight-16)for(x in 16 until w){val e=map[(y*w+x)*4]
+                        if(x>=w-2)leaving+=e else if(x<w-16)interior+=e}
+                    repeat(20){checked.evaluate()}
+                    val times=checked.milliseconds.takeLast(20).sorted()
+                    val fb=JSONObject().put("units","forward-backward endpoint error, input pixels").put("interior",summary(interior))
+                        .put("leavingColumns",summary(leaving)).put("pairWallMsP50",times[times.size/2])
+                    report.put("translationConsistency",fb);println("CONSISTENCY $fb")
+                    expect(percentile(interior.sorted(),.95)<CONSISTENCY_INTERIOR_P95 && percentile(leaving.sorted(),.5)>CONSISTENCY_LEAVING_MEDIAN) { "Consistency: $fb" }
+                }
+
                 // Timing: 100 warmed pairs.
                 repeat(100){demo.update();window.pollEvents();renderer.render()}
                 val times=flow.milliseconds.takeLast(100).sorted()
@@ -156,6 +173,13 @@ object PortableOpticalFlowSmoke {
                 report.put("consecutiveFrameWiggle",wiggle);println("WIGGLE $wiggle")
                 expect(wiggle.getDouble("median")<WIGGLE_MEDIAN && wiggle.getDouble("p95")<WIGGLE_P95) { "Wiggle: $wiggle" }
                 expect(quadrants.all { it>local.size/20 }) { "Wiggle field did not change direction: ${quadrants.toList()}" }
+                // Consistency on the wiggle: both directions track a smooth warp, so the check should mostly agree.
+                PyramidOpticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1],consistency=true).use { checked ->
+                    checked.evaluate(true);val map=ReconstructionCapture.read(renderer,checked.consistencyMap!!);val e=ArrayList<Float>()
+                    for(y in 16 until checked.flowHeight-16)for(x in 16 until checked.flowWidth-16)e+=map[(y*checked.flowWidth+x)*4]
+                    val fb=summary(e);report.put("wiggleConsistencyLastPhase",fb);println("WIGGLE CONSISTENCY $fb")
+                    expect(percentile(e.sorted(),.95)<WIGGLE_CONSISTENCY_P95) { "Wiggle consistency: $fb" }
+                }
                 repeat(8){i->demo.update(1.5f+i*demo.pairStep);window.pollEvents();renderer.render()}
                 ReconstructionCapture.save(File(dir,"wiggle.png"),ReconstructionCapture.read(renderer,demo.output),demo.width*2,demo.height*2)
 
@@ -191,4 +215,9 @@ object PortableOpticalFlowSmoke {
     private const val WIGGLE_MEDIAN=.09f
     private const val WIGGLE_P95=.28f
     private const val IDENTICAL_MAX=.01f
+    // Forward-backward (consistency = true): translation interior p95 2.9e-5, leaving-content median 43 px (206
+    // samples); wiggle last phase p95 0.19 (21,424 samples); 24.6 ms per checked pair.
+    private const val CONSISTENCY_INTERIOR_P95=.01f
+    private const val CONSISTENCY_LEAVING_MEDIAN=10f
+    private const val WIGGLE_CONSISTENCY_P95=.21f
 }

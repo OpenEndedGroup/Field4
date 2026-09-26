@@ -1,13 +1,13 @@
 {
   "translationCost": {
-    "units": "mean absolute window residual, grey levels 0-255",
-    "revealedColumns": {
-      "fractionOver1px": 0.6019417475728155,
-      "median": 5.780977,
-      "max": 86.467735,
-      "p95": 42.996994,
-      "samples": 309
+    "leavingColumns": {
+      "fractionOver1px": 1,
+      "median": 17.302286,
+      "max": 112.55515,
+      "p95": 70.2141,
+      "samples": 206
     },
+    "units": "mean absolute window residual, grey levels 0-255",
     "interior": {
       "fractionOver1px": 0,
       "median": 0,
@@ -18,8 +18,8 @@
   },
   "gpuMs_pyramid": {
     "count": 100,
-    "p50": 0.430084,
-    "p95": 0.491167
+    "p50": 0.419833,
+    "p95": 0.502083
   },
   "identicalFrames": {
     "fractionOver1px": 0,
@@ -28,7 +28,6 @@
     "p95": 0,
     "samples": 32400
   },
-  "failures": [],
   "finestIterations": 2,
   "autoBackend": "PYRAMID",
   "largeTranslation40x24": {
@@ -40,8 +39,8 @@
   },
   "gpuMs_level3": {
     "count": 100,
-    "p50": 0.712792,
-    "p95": 0.739542
+    "p50": 0.7125,
+    "p95": 0.74125
   },
   "translationOtherGrids": {
     "grid8": {
@@ -61,48 +60,54 @@
   },
   "gpuMs_level4": {
     "count": 100,
-    "p50": 1.379208,
-    "p95": 1.462667
+    "p50": 1.383209,
+    "p95": 1.477375
+  },
+  "wiggleConsistencyLastPhase": {
+    "fractionOver1px": 0,
+    "median": 0.059835497,
+    "max": 0.8687275,
+    "p95": 0.19150455,
+    "samples": 21424
   },
   "gpuMs_level1": {
     "count": 100,
-    "p50": 1.578417,
-    "p95": 1.608125
+    "p50": 1.580416,
+    "p95": 1.604708
   },
   "gpuMs_level2": {
     "count": 100,
-    "p50": 0.663,
-    "p95": 0.678833
+    "p50": 0.663167,
+    "p95": 0.675125
   },
-  "iterations": 8,
   "gpuMs_level0": {
     "count": 100,
-    "p50": 5.247958,
-    "p95": 5.3355
+    "p50": 5.245292,
+    "p95": 5.365625
   },
-  "input": [
-    960,
-    540
-  ],
   "premise": {
     "greyStd": 0.18731882878152323,
     "meanAbsDifferenceUnmoved": 0.2120638210073731,
     "meanAbsDifferenceAfterKnownShift": 0
   },
-  "grid": 4,
-  "pairWallMsIncludingFence": {
-    "count": 100,
-    "p50": 12.050333,
-    "p95": 12.642
+  "translationConsistency": {
+    "pairWallMsP50": 25.055041,
+    "leavingColumns": {
+      "fractionOver1px": 1,
+      "median": 43.01666,
+      "max": 109.811424,
+      "p95": 93.36567,
+      "samples": 206
+    },
+    "units": "forward-backward endpoint error, input pixels",
+    "interior": {
+      "fractionOver1px": 0,
+      "median": 1.0271387E-5,
+      "max": 5.7915597E-5,
+      "p95": 2.8610231E-5,
+      "samples": 21424
+    }
   },
-  "translation": {
-    "fractionOver1px": 0,
-    "median": 6.67572E-6,
-    "max": 3.4079683E-5,
-    "p95": 1.7402923E-5,
-    "samples": 21424
-  },
-  "allocatedBytes": 30329344,
   "consecutiveFrameWiggle": {
     "fractionOver1px": 1.1669156086631815E-4,
     "median": 0.079750255,
@@ -133,6 +138,26 @@
     "pairStepSeconds": 0.033333335
   },
   "radius": 4,
+  "failures": [],
+  "iterations": 8,
+  "input": [
+    960,
+    540
+  ],
+  "grid": 4,
+  "pairWallMsIncludingFence": {
+    "count": 100,
+    "p50": 11.949125,
+    "p95": 12.774542
+  },
+  "translation": {
+    "fractionOver1px": 0,
+    "median": 6.67572E-6,
+    "max": 3.4079683E-5,
+    "p95": 1.7402923E-5,
+    "samples": 21424
+  },
+  "allocatedBytes": 30329344,
   "device": "Apple M1 Max",
   "levels": 5
 }
