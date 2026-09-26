@@ -125,8 +125,11 @@ SHAPES = [
     ("self-note",
      r"\b(the\s+)?(obvious\s+)?next\s+step\s+(here\s+)?(would|could|should)\s+be\b",
      "a plan on a user-facing page"),
+    # `later pass` is NOT in this alternation: on a rendering page a later pass is a render
+    # pass later in the frame. 2026-09-26, reconstruction_plumbing.md, the family's only hit
+    # in public/docs, was "good candidates for a later pass" -- draw UI after reconstruction.
     ("self-note",
-     r"\bfor\s+(a\s+)?(future|later)\s+(pass|revision|run|version)\b",
+     r"\bfor\s+(a\s+)?(future\s+(pass|revision|run|version)|later\s+(revision|run|version))\b",
      "a plan on a user-facing page"),
     ("self-note",
      r"\b(left|leaving)\s+as\s+(an\s+exercise|future\s+work|a\s+TODO)\b",
@@ -181,6 +184,8 @@ KEEPS = [
      "names the PURPOSE of a variant, which is a design fact, not a grade"),
     ("vision_geometry", "which is the part a shader cannot do",
      "states a capability boundary; the clause carries the fact, not an opinion"),
+    ("reconstruction_plumbing", "good candidates for a later pass",
+     "a render pass drawn after reconstruction, not a plan"),
 ]
 
 
