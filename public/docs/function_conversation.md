@@ -98,7 +98,7 @@ zoom, drag to pan, and use **all** to return to the whole duration. Hover to rea
 sampled values. Your time window survives accepted edits, and a previous revision
 can appear in dashed grey.
 
-Zooming requests finer samples from the actual functions. A wide envelope shows
+Zooming requests finer samples from the functions themselves. A wide envelope shows
 the range within each bin; it does not preserve the order of the oscillations
 inside that bin, and a feature narrower than a bin can fall between samples
 entirely. Zoom in before you judge a detail.
@@ -107,7 +107,7 @@ entirely. Zoom in before you judge a detail.
 
 [Download the developed example](assets/function_conversation/function_conversation_example.zip)
 to open **function_conversation_example**. It contains the finished source, the
-same tools, all nine saved revisions, and the actual conversations and plots.
+same tools, all nine saved revisions, and the recorded conversations and plots.
 Run its tools box to restore the checked composition and explore the viewer.
 Then select **The function — talk here (AI4)** and press **command/ctrl-4**.
 The seven recorded turns are already in that box's chat, with their original
@@ -115,7 +115,7 @@ prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening
 the saved chat and viewer does not make a model call.
 
-![An actual saved AI4 exchange inside the worked example's source-box chat](assets/function_conversation/saved-chat.png)
+![A saved AI4 exchange inside the worked example's source-box chat](assets/function_conversation/saved-chat.png)
 
 This is Field's chat panel, restored from the recorded run. Here the chat is
 scrolled back to the move-and-stretch exchange; the viewer shows the final saved
@@ -443,8 +443,8 @@ revision sources; the readable versions are here:
     An [independent replay](assets/function_conversation/independent-verification.json)
     recompiled every saved source and compared them on a grid no coarser than 11 ms,
     covering preserved regions, hold values, random-access evaluation order, failed
-    compilation, and protection against stale edits. It found no differences — which is
-    sampled evidence about these nine revisions, not a proof about arbitrary Kotlin.
+    compilation, and protection against stale edits. It found no differences. That
+    covers these nine revisions on that grid; it is not a proof about arbitrary Kotlin.
 
 ## The tools are part of the document
 
@@ -464,9 +464,9 @@ AgentToolExtensions.register(SampleFunctionStudy::class.java, available) { _, re
 The request class supplies the tool's input schema; the handler runs against the
 study held by that box. `available` scopes the tool to this document. You can
 change a measurement, add a plot, or register another request class here, then
-rerun the box and keep chatting. The observation tools return both numerical
-evidence and actual image inputs to AI4, so the assistant can inspect what its
-Kotlin does before making the next edit.
+rerun the box and keep chatting. The observation tools return both measurements
+and rendered plot images to AI4, so the assistant can inspect what its Kotlin
+does before making the next edit.
 
 | Tool | Purpose |
 | --- | --- |
