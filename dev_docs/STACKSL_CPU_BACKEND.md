@@ -118,7 +118,7 @@ That is chaos, not error, and it is reported as a distribution rather than bound
 there in the emitter, `StackSL.kt:2922#helperSource` — so it is an implementation-defined `sin` at a
 large argument, multiplied by 43758, then `fract`ed. Both mechanisms at once, and the worse one is
 unavoidable. Measured consequence: `sample-hold`, the one gallery program that reaches it, disagrees
-with the GPU by a mean of 96.7 levels out of 255, which is to say the colours are unrelated.
+with the GPU by a mean of 83.4 levels out of 255, which is to say the colours are unrelated.
 
 **`_hash11` and `_hash21` are not the same animal, and describing them as "the hashes" is how a
 false claim shipped in a KDoc and on a published page.** Only `_hash11` has a `sin` in it.
@@ -136,40 +136,54 @@ Two consequences worth naming:
   them, not a dump of expanded GLSL. So a CPU render that reads them is forced back through the live
   `StackSLCompiler`. A stale dump would have let both backends agree with each other while both
   disagreed with today's emitter.
-- the ground truth is **8-bit** (`VK_FORMAT_R8G8B8A8_UNORM`) and clamped to `[0,1]` by the harness's
-  own `main()`. So anything below half a level is invisible, "bit-exact" would be unfalsifiable, and
-  every number below is in 8-bit levels. It also means the oracle is **frozen** — it is a set of
-  committed PNGs, not a device — so there is no driver variance to leave headroom for, and the
-  asserted bounds sit one level above the measurement rather than an order of magnitude above it.
+- the ground truth is **8-bit sRGB** (`VK_FORMAT_R8G8B8A8_SRGB`, the window's encoding) and clamped
+  to `[0,1]` by the harness's own `main()`. So anything below half a level is invisible, "bit-exact"
+  would be unfalsifiable, and every number below is in 8-bit sRGB levels, with the CPU side put
+  through the same curve (`StackSLCpuGallery.galleryArgb`). It also means the oracle is **frozen** —
+  it is a set of committed PNGs, not a device — so there is no driver variance to leave headroom
+  for, and the asserted bounds sit one level above the measurement rather than an order of magnitude
+  above it.
+- sRGB is **steep at the dark end**: at linear 1/255 one linear level spans eleven sRGB levels. So a
+  float disagreement too small to move a linear byte can move a dark sRGB byte by two, and that is
+  where every miss larger than a level lands below. Until 2026-09-27 the stills were linear
+  `R8G8B8A8_UNORM`, which were darker than the window; the numbers here were re-measured against the
+  regenerated sRGB stills, and the linear-era figures are given where they differ.
 
 | tier | n | worst max | worst mean | worst % within one level |
 | --- | --- | --- | --- | --- |
-| `exact-ops` | 2 | 1 | 0.0000 | 100.0000% |
-| `transcendental` | 5 | 1 | 0.0009 | 100.0000% |
-| `hash21-chaos` | 21 | 255 | 0.1673 | 96.2620% |
-| `hash11-chaos` | 1 | 250 | 96.6836 | 1.7578% |
+| `exact-ops` | 2 | 1 | 0.0130 | 100.0000% |
+| `transcendental` | 5 | 2 | 0.0247 | 99.9996% |
+| `hash21-chaos` | 21 | 255 | 0.1856 | 96.1403% |
+| `hash11-chaos` | 1 | 250 | 83.3724 | 1.7578% |
 | `feedback` | 2 | — | — | out of scope |
 
 Headline numbers:
 
-- **`uv-coordinates` (`uv saturate`) is bit-identical: all 262144 pixels.** That is also the only
-  unarguable proof of the raster convention — a Y flip, a half-pixel offset or a truncating
-  quantiser each makes it impossible.
-- **24 of the 29 comparable programs agree at *every* pixel to within one 8-bit level.**
+- **`uv-coordinates` (`uv saturate`) misses only at rounding ties.** The GPU's sRGB conversion is
+  not correctly rounded: 10 of 512 columns in red and 10 of 512 rows in green come out one level
+  from the correctly rounded value, and every one is a value within 0.0164 of a tie. That is still
+  the only unarguable proof of the raster convention — measured against the committed still, a
+  half-pixel offset puts 224 of the 1024 channel values outside a 0.02 tie band and a Y flip puts
+  493 there. (When the stills were linear this program was bit-identical, all 262144 pixels.)
+- **21 of the 29 comparable programs agree at *every* pixel to within one 8-bit level** (24 when
+  the stills were linear; see the three dark-end rows below).
 - **28 of 29 agree at more than 96% of pixels.**
 - **325 of 325 documentable StackSL words execute on the CPU backend** (`stackSLDocumentableWords`,
   compiled as `input <word>` and evaluated). Note this is a *different, weaker* claim than the
   pixel comparison: it means the word compiled, parsed, every construct in it was implemented, and
   it produced a finite colour. It does not mean the answer was checked against a GPU.
 
-### The five that do not agree everywhere, each with its mechanism
+### The eight that do not agree everywhere, each with its mechanism
 
 | program | max | % within one | mechanism |
 | --- | --- | --- | --- |
-| `posterize-shaper` | 255 | 99.9546% | a hard threshold turning a sub-ulp `fbm` difference into a full black-to-orange flip. The difference image shows it as isolated specks strung along the contours and nowhere else. |
+| `posterize-shaper` | 251 | 99.9546% | a hard threshold turning a sub-ulp `fbm` difference into a full black-to-orange flip. The difference image shows it as isolated specks strung along the contours and nowhere else. |
 | `hard-threshold` | 255 | 99.9874% | the same, with fewer contours. |
-| `subroutine-ridges` | 7 | 96.2620% | accumulated `_fbm` rounding, spread as a faint haze over the smooth regions. Invisible to the eye. |
-| `word-reference` | 6 | 98.0061% | the same. |
+| `subroutine-ridges` | 8 | 96.1403% | accumulated `_fbm` rounding, spread as a faint haze over the smooth regions. Invisible to the eye. |
+| `word-reference` | 8 | 97.9080% | the same. |
+| `tonemap-grade` | 6 | 99.7623% | dark-end magnification: the worst pixel is `(0, 0, 7)`, a blue at linear 1/255. It agreed everywhere to within a level while the stills were linear. |
+| `sigmoid-punch` | 2 | 99.9996% | the same; the worst pixel's green is sRGB 10. |
+| `phasor-noise` | 2 | 99.9996% | the same, at one pixel whose green is sRGB 18. A smooth transcendental, so this is the only miss above a level in that tier. |
 | `sample-hold` | 250 | 1.7578% | `_hash11`. Unrelated colours — see below. |
 
 `sample-hold` is the interesting one, because it is where "the hash is unbounded" has to be
@@ -206,8 +220,8 @@ ever fired. An all-black readback is a silent success, not a swallowed exception
 `renderGallery` now routes feedback entries through the same ping-pong path as their mp4 and
 captures frame `ANIM_FRAMES / 2` of the identical sweep, so the still is a real mid-clip frame.
 
-That fix is also why the `feedback` rows of `gallery_agreement.md` are now large (mean 13.6 and
-68.5 levels, up from 1.7 and 1.9). The old small numbers were not agreement: `renderStill` has no
+That fix is also why the `feedback` rows of `gallery_agreement.md` are now large (mean 35.3 and
+90.2 sRGB levels; 13.6 and 68.5 while the stills were linear, up from 1.7 and 1.9). The old small numbers were not agreement: `renderStill` has no
 feedback history, so a near-black CPU still was being compared against a *black* GPU still. Two
 black images agree perfectly and mean nothing. The comparison remains out of scope, but the number
 now says so honestly.

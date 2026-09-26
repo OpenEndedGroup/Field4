@@ -83,7 +83,7 @@ object StackSLCpuContactSheet {
 
             val tier = StackSLCpuGallery.tierOf(entry)
             val cpu = StackSLCpuGallery.render(entry)
-            val cpuArgb = cpu.toArgb()
+            val cpuArgb = StackSLCpuGallery.galleryArgb(cpu)
             val gpu = entry.gpuPng?.let { readArgb(it) }
 
             drawTile(g, x0, y0 + LABEL_H, cpuArgb, cpu.width)

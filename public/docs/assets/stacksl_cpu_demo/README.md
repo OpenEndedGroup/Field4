@@ -19,8 +19,9 @@ from the emitter.
 ## Agreement with a GPU
 
 Bounded by GLSL's own promises, which differ per program. Measured against the 31 committed gallery
-stills: 24 of 29 comparable programs agree at **every** pixel to within one 8-bit level, `uv
-saturate` is bit-identical across all 262144 pixels, and each outlier has a named mechanism.
+stills, which are sRGB like the window: 21 of 29 comparable programs agree at **every** pixel to
+within one 8-bit level, `uv saturate` misses only where the GPU's sRGB conversion rounds a tie the
+other way, and each outlier has a named mechanism.
 `dev_docs/STACKSL_CPU_BACKEND.md` has the table and the reasons;
 `dev_docs/assets/stacksl_cpu_backend/gallery_contact_sheet.png` is the picture.
 

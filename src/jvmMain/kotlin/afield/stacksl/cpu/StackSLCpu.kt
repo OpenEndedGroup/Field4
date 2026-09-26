@@ -60,9 +60,38 @@ class CpuRaster(val width: Int, val height: Int, val rgba: FloatArray) {
         (a shl 24) or (r shl 16) or (g shl 8) or b
     }
 
+    /**
+     * Quantise to 8-bit ARGB the way a `VK_FORMAT_R8G8B8A8_SRGB` attachment does — the window
+     * swapchain's encoding, and the StackSL gallery's: clamp to `[0,1]`, put red, green and blue
+     * through the sRGB transfer function (IEC 61966-2-1), leave alpha linear, then round. This is
+     * the picture a person sees; [toArgb] is the value the shader wrote, which is markedly darker
+     * (`0.5` is 128 there and 188 here).
+     */
+    fun toSrgbArgb(): IntArray = IntArray(width * height) { i ->
+        val r = quantiseSrgb(rgba[i * 4])
+        val g = quantiseSrgb(rgba[i * 4 + 1])
+        val b = quantiseSrgb(rgba[i * 4 + 2])
+        val a = quantise(rgba[i * 4 + 3])
+        (a shl 24) or (r shl 16) or (g shl 8) or b
+    }
+
     fun toPngBytes(): ByteArray = PngEncoder.encode(toArgb(), width, height)
 
     private fun quantise(v: Float): Int = Math.round(v.coerceIn(0f, 1f) * 255f)
+
+    private fun quantiseSrgb(v: Float): Int = Math.round(linearToSrgb(v) * 255.0).toInt()
+
+    companion object {
+        /**
+         * The sRGB transfer function (IEC 61966-2-1) of [linear] clamped to `[0,1]`, unrounded.
+         * [toSrgbArgb] rounds it; a comparison that needs to know how close a value came to a
+         * rounding tie reads it directly.
+         */
+        fun linearToSrgb(linear: Float): Double {
+            val l = linear.coerceIn(0f, 1f).toDouble()
+            return if (l <= 0.0031308) l * 12.92 else 1.055 * Math.pow(l, 1.0 / 2.4) - 0.055
+        }
+    }
 }
 
 /**
