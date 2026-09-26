@@ -328,8 +328,23 @@ class VulkanBuffer(
         return this
     }
 
+    /**
+     * After [Renderer.cleanup], AutoDisposer has destroyed this buffer's allocation (or freed its
+     * host copy) through a snapshot that cannot clear `mappedMemory`, so that pointer dangles and
+     * the allocator behind flush/invalidate is gone. Writing through it was a SIGSEGV, not an
+     * error; this makes it an exception that names the cause. See
+     * `dev_docs/renderer_teardown_order.md`.
+     */
+    private fun requireLiveRenderer() {
+        check(!renderer.isClosed) {
+            "$this used after its Renderer was disposed; stop the box writing it before the renderer " +
+                "(or its window, or its document) goes away"
+        }
+    }
+
     /** Map via VMA (or host-only); keep persistently mapped (recommended). */
     fun map(): Long {
+        requireLiveRenderer()
         if (cpuOnly) return mappedMemory
         if (mappedMemory == MemoryUtil.NULL) {
             MemoryStack.stackPush().use { stack ->
@@ -344,12 +359,14 @@ class VulkanBuffer(
 
     /** Flush writes for non-coherent memory. We keep it mapped. */
     fun unmap(offset: Long = 0, size: Long = requestedSize) {
+        requireLiveRenderer()
         if (!cpuOnly) {
             Vma.vmaFlushAllocation(allocatorForRenderer(renderer), allocation, offset, size)
         }
     }
 
     private fun invalidate(offset: Long = 0, size: Long = requestedSize) {
+        requireLiveRenderer()
         if (!cpuOnly) {
             Vma.vmaInvalidateAllocation(allocatorForRenderer(renderer), allocation, offset, size)
         }
