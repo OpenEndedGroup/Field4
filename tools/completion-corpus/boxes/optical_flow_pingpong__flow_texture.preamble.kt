@@ -2,7 +2,6 @@ import afield.four.Renderer
 import afield.four.util.Window
 import afield.stdlib.linalg.Vector2f
 import afield.four.targets.RenderToTexture
-import afield.four.vision.OpticalFlow
 import afield.four.texture.HasImageView
 import java.nio.*
 import arrow.core.right
@@ -19,8 +18,8 @@ var Box.previousImage by Inheritance<HasImageView>() /**/
 val Once.previousImage by Onceing<HasImageView>() /**/
 var Box.currentImage by Inheritance<HasImageView>() /**/
 val Once.currentImage by Onceing<HasImageView>() /**/
-var Box.flow by Inheritance<OpticalFlow>() /**/
-val Once.flow by Onceing<OpticalFlow>() /**/
+var Box.flow by Inheritance<afield.four.vision.OpticalFlowOperation>() /**/
+val Once.flow by Onceing<afield.four.vision.OpticalFlowOperation>() /**/
 var Box.motion by Inheritance<RenderToTexture>() /**/
 val Once.motion by Onceing<RenderToTexture>() /**/
 var Box.expectedMotion by Inheritance<Vector2f>() /**/
