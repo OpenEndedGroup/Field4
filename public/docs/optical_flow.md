@@ -138,7 +138,24 @@ frame()                    // The child now samples the completed motion texture
 
 Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. When relaunching the parent, relaunch the child too so its texture bindings follow the new allocation.
 
-This source also publishes `expectedMotion`, its analytical displacement in input pixels. The live check compares the measured interior field against it through movement, pause, reset, and relaunch. The repeated circles still admit occasional wrong matches: bright patches in the motion panel coincide with higher matching cost. Inspect that cost before using a vector for feedback; the example deliberately shows the raw result.
+This source also publishes `expectedMotion`, its analytical displacement in input pixels. The live check compares the measured interior field against it through movement, pause, reset, and relaunch. The brightness texture between the circles gives the matcher distinctive details to follow. If you replace it with a repeating pattern, one circle can match a neighboring cell instead of itself. The example shows the raw field: matching cost often rises in wrong patches, but a wrong match can also have low cost. Cost is useful for rejecting vectors, not a guarantee of their accuracy.
+
+??? aside "Why the source has a brightness texture"
+
+    The original 32-command NVIDIA result was one successful run. Repeating it exposed a raw
+    p95 endpoint error of 48.04 pixels despite a median of 0.106 pixels: 7.43% of the interior
+    matched neighboring cells. Another phase had 14.46% large errors, including low-cost wrong
+    matches. A larger border exclusion and cost filtering did not solve the ambiguity.
+
+    The source now has an aperiodic brightness pattern that moves with the circles. The check
+    keeps its original limits: median error below 0.5 input pixel and p95 below 1 pixel over
+    the whole measured interior, with no cost filtering. Repeated runs retain raw fields and
+    both inputs, check that readback stays within one evaluation, and exercise pause, reset,
+    relaunch and shutdown. The raw cost and outlier statistics remain visible in the report.
+    On 26 September, three complete runs on the RTX 4090 passed all 111 commands: 72 moving
+    pairs and six paused pairs. The worst moving p95 was 0.324 pixels, with no interior errors
+    above five pixels and no Vulkan validation errors. This checks the revised source; arbitrary
+    repeating images can still produce ambiguous matches.
 
 ## Measured
 
@@ -161,7 +178,7 @@ The same 960 × 540 pair was run through `PyramidOpticalFlow` at grid 4 with its
 | Consecutive-frame wiggle, four phases | 85,696 | **0.080** | **0.26** |
 | Identical frames | 32,400 | 0 | 0 (maximum 0) |
 
-A zero field would score a median of 1.98 pixels on the wiggle, so these errors are small compared with the motion they measure. On this synthetic wiggle the portable tracker's error is below the 4090 engine's 0.15 / 0.35. That result does not rank the two backends in general: the source is a clean procedural image with none of the noise, blur or lighting change of real footage, and it matches Lucas–Kanade's assumptions unusually well. In the ping-pong starting point, the moving pair's median error against its analytical `expectedMotion` was 0.13 and 0.07 pixels in two checks on 29,464 samples each (p95 0.35 and 0.13), and exactly 0 while paused.
+A zero field would score a median of 1.98 pixels on the wiggle, so these errors are small compared with the motion they measure. On this synthetic wiggle the portable tracker's error is below the 4090 engine's 0.15 / 0.35. That result does not rank the two backends in general: the source is a clean procedural image with none of the noise, blur or lighting change of real footage, and it matches Lucas–Kanade's assumptions unusually well. On the original repeating-circle ping-pong source, the moving pair's median error against its analytical `expectedMotion` was 0.13 and 0.07 pixels in two checks on 29,464 samples each (p95 0.35 and 0.13), and exactly 0 while paused. The revised brightness-textured source has been checked on the RTX 4090; it has not yet been rerun on the M1 Max.
 
 The residual flags the same content leaving the frame. The two rightmost flow columns have a median residual of 17.3 grey levels, while no interior sample exceeds 0.0002; the starting point's default rejection threshold for this backend is 8.
 

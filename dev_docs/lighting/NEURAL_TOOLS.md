@@ -191,15 +191,110 @@ into two retained frames, evaluates between Field frames, and publishes the fiel
 A completed source submission precedes conversion. Cuts seed both ring slots; paused pairs disable
 hints on every evaluation. Ring providers are retained rather than snapshotting native image handles.
 
-The live check `tools/lighting/check_flow_pingpong.py --port 9788 --server-log <actual-log>` passed
-32 commands: analytical moving-field checks, byte-identical paused inputs with subpixel output,
-reset, relaunching parent and consumer, ordinary Stop, and stopping the renderer before its children.
-The three moving checks had interior median endpoint errors 0.1981/0.0751/0.1384 input pixels,
-p95 0.2661/0.2424/0.3692; paused median was zero and maximum 0.1683 pixels. Raw border/repeated-pattern
-outliers remain visible, with matching cost. The test does not claim every motion vector is accurate.
-`results/neural-tools/pingpong.json` records the run. It publishes the 1920×1080 capture only after
-all checks and shutdown pass. `Renderer.isClosed` lets between-frame producers stop before touching
-a destroyed device. No extra native dependency was added.
+### Correction and repeated verification, 26 September 2026
+
+The earlier **"passed 32 commands" was one successful end-to-end run**, after development
+iterations that had failed. It was not repeated certification. It ran on `a0`, CachyOS / KDE
+KWin Wayland, RTX 4090, NVIDIA 610.43.02, Vulkan device API 1.4.341, on Field port 9788 with
+`VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json` and validation enabled. The source was
+960×540, flow 240×135 (grid 4), and GLFW was asked for a 1920×1080 logical window; actual captures
+can be larger under desktop scaling. The original moving median/p95 values were
+0.1981/0.2661, 0.0751/0.2424, and 0.1384/0.3692 input pixels. The original evidence is preserved in
+[`pingpong-single-run-2026-09-25.json`](results/neural-tools/pingpong-single-run-2026-09-25.json).
+Those three observations did not establish that raw p95 stayed below 1 pixel at other phases.
+
+The reported failure reproduces on unchanged `d5b2d8929`: after relaunch, raw median EPE
+0.1060 px, p95 48.04 px, and **2,190 / 29,464 interior samples (7.4328%) above 5 px**.
+The image-view handles, analytical vector and Field frame counter were identical before and
+after blocking readback. Of those outliers, 2,094 round to a residual of (-34,+34) input pixels,
+the diagonal repeat of the source's 34 px cell. The patches extend well into the image.
+Increasing the exclusion from 4 to 16 flow texels changes the outlier fraction from 7.43% to
+8.97%; this is not just a border problem. These measurements support repeated-pattern matches,
+not a stale readback pair or a unit/sign error. The ping-pong ownership and hardware adapter are unchanged by this correction.
+
+![Captured source, raw endpoint error, outlier locations, matching cost and residuals](results/neural-tools/pingpong-tail.png)
+
+[`pingpong-tail.json`](results/neural-tools/pingpong-tail.json) records the spatial/border and
+cost sweeps. All three raw RGBA float32 images from that failing pair remain under the local
+`build/neural-tools/pingpong-investigation/original/live/pair-7109912007472/`. Cost and error
+correlate, but some incorrect vectors have even zero matching cost. No cost is labelled confidence.
+
+A later original-source pair was worse: **14.46%** of the interior had EPE >5 px, with
+raw p95 69.32 px. Even selecting cost ≤64 left p95 68.94 px, at 75.91% coverage.
+Most residuals rounded to (+68,0), two checker cells. This defeated the proposed cost-selected
+check; its limits were not widened. [`pingpong-low-cost-alias.json`](results/neural-tools/pingpong-low-cost-alias.json)
+retains that counterexample.
+
+The Starting point's source now contains a fixed, aperiodic **brightness** texture between
+circles and varied per-circle brightness, using an integer cell hash. Both move with the same
+analytical translation. The original mostly chromatic differences and repeating checkerboard
+were an ambiguous tracking fixture; the replacement gives the brightness matcher actual local
+information. Its GLSL remains editable. Arbitrary user shaders can still be ambiguous: this is
+a correction to the example, not a claim that the engine resolves every repeated pattern.
+
+**The original accuracy bounds remain:** raw interior median EPE <0.5 input pixel and raw p95
+<1 pixel, over all 29,464 samples after excluding the same four-flow-texel (16 input pixel) border.
+Cost does not affect acceptance. The check additionally records >5 px outlier fraction, maximum
+error, rounded cell residuals and cost-selected statistics for diagnosis. It checks all channels
+for finite values and retains both input images and the unfiltered output.
+Paused inputs must be identical, expected displacement zero, and the entire motion texture
+(including borders, without cost rejection) must stay below the original median/p95/max speed
+bounds of 0.125/0.25/0.5 input pixels. Readback must stay within one Field frame with unchanged
+image handles and expected motion. Nine CPU fault-model tests cover zero/reversed/stale motion,
+large high- and low-cost tails, cost-independent grading, non-finite values, unchanged moving
+images and motion at paused borders.
+
+The completed repeated check on 26 September used the revised source on the same `a0` RTX 4090,
+NVIDIA 610.43.02, Vulkan 1.4.341 and KDE/Wayland setup, with JDK 25.0.2, LWJGL 3.4.3+4 and
+validation enabled. All **three runs passed: 111/111 commands, 72 moving pairs and six paused
+pairs**, in one fresh Field JVM. Each table entry is the worst observed value among that run's
+24 moving pairs; errors are input pixels, without cost rejection.
+
+| Run | Maximum median EPE | Maximum p95 EPE | Maximum individual interior EPE | Interior EPE >5 px |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 0.2150 | 0.3235 | 0.5552 | 0 / 707,136 |
+| 2 | 0.2194 | 0.3221 | 0.5599 | 0 / 707,136 |
+| 3 | 0.2132 | 0.3157 | 0.4807 | 0 / 707,136 |
+
+All paused source pairs were identical, with full-field median/p95 speed 0/0 and maximum speed
+at most 0.125 px, including borders. Every readback retained the same frame, handles and analytical
+motion. No `VUID` validation errors or Field execution errors appeared. The complete per-pair
+report is [`pingpong.json`](results/neural-tools/pingpong.json); raw images and logs are retained
+locally in `build/neural-tools/pingpong-investigation/batched-result/`. This replaces the earlier
+single-run claim; the original failed-pattern evidence remains alongside it.
+The report's top-level `desktopEnvironment` records the Python checker's shell (a tty here),
+not the separately launched Field process. Each captured pair reports GLFW platform 393219
+(`GLFW_PLATFORM_WAYLAND`); Field was launched with `WAYLAND_DISPLAY=wayland-0` and `DISPLAY=:0`.
+
+Run against an isolated Field started with the environment above (port 9802 for this verification):
+
+```bash
+UV_CACHE_DIR=/tmp/field4-uv-cache uv run --project . --group backdoor python \
+  tools/lighting/check_flow_pingpong.py --port 9802 \
+  --server-log build/neural-tools/server-9802.log --repeats 3 --samples-per-stage 8
+```
+
+The default is three independent documents, eight moving samples at each of initial launch,
+resume, and parent/consumer relaunch, plus two paused samples per document. Each run also tests
+normal Stop and stopping the renderer before its children. Animation phases follow actual Field
+frames, with 15 frames between captures in each moving stage; this is repeated phase sampling,
+not an exhaustive or fixed-phase accuracy certificate.
+A unique output directory retains each pair's `flow.f32`, `first.f32`, `second.f32`, metadata and
+metrics, and every command/server log, even on failure. Files are little-endian RGBA float32,
+row-major: 240×135 flow, 960×540 sources. Flow XY are displacement in input pixels; Z is raw NV cost.
+Each run has 37 commands, including completion barriers for the three sampling jobs. A new
+browser/document-ready barrier prevents controls being emitted before the page is ready; their
+presence is checked in the DOM, and pause/reset still use the actual UI controls. The native-window
+capture remains. Readback arrays live inside a callback compiled once per check box. Each moving
+stage collects its samples in one running Field job, avoiding a new REPL compilation per sample.
+Earlier extended checks exhausted the JVM heap, first with retained top-level arrays and then
+with repeated snippet compilations; those incomplete runs and logs remain under
+`build/neural-tools/pingpong-investigation/`. The default retains about 1.3 GB of raw image data.
+`--publish` explicitly copies the proof and first native capture into the repository only after
+all requested runs pass. Ordinary checks and docs builds do not replace the committed capture.
+`Renderer.isClosed` lets between-frame producers stop before touching a destroyed device.
+No renderer change or native dependency was needed. The source change has been run on the
+RTX 4090; the revised ping-pong source has not yet been rerun on the M1 Max.
 
 Field already has `SlangCompiler` for `vertex_fragment` and the per-stage Slang properties. The
 learned-shader task now writes `build/lighting/slangc.path` only after both SPIR-V variants compile;
