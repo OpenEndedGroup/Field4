@@ -163,7 +163,7 @@ The same 960 × 540 pair was run through `PyramidOpticalFlow` at grid 4 with its
 
 A zero field would score a median of 1.98 pixels on the wiggle, so these errors are small compared with the motion they measure. On this synthetic wiggle the portable tracker's error is below the 4090 engine's 0.15 / 0.35. That result does not rank the two backends in general: the source is a clean procedural image with none of the noise, blur or lighting change of real footage, and it matches Lucas–Kanade's assumptions unusually well. In the ping-pong starting point, the moving pair's median error against its analytical `expectedMotion` was 0.13 and 0.07 pixels in two checks on 29,464 samples each (p95 0.35 and 0.13), and exactly 0 while paused.
 
-The residual flags the same content leaving the frame. The two rightmost flow columns have a median residual of 17.3 grey levels, and every interior sample has 0; the starting point's default rejection threshold for this backend is 8.
+The residual flags the same content leaving the frame. The two rightmost flow columns have a median residual of 17.3 grey levels, while no interior sample exceeds 0.0002; the starting point's default rejection threshold for this backend is 8.
 
 The known translations are almost exact because the second image is the first shifted by whole pixels, the easiest possible case for this method. At (+40, −24), about 1.2% of samples lock onto the checkerboard's 64-pixel repeat. The coarse search compares colour as well as brightness for this reason: in a development run that used brightness alone, 11.5% of samples locked on.
 
