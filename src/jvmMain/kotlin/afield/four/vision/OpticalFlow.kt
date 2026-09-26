@@ -30,18 +30,19 @@ import org.lwjgl.vulkan.NVOpticalFlow.*
  * [output] is an owned [RenderToTexture], usable as an ordinary sampled texture after [evaluate].
  * The operation itself is not a texture and is not automatically scheduled by the renderer.
  */
-class OpticalFlow(val renderer: Renderer,val first: HasImageView,val second: HasImageView,
-    val grid: Int=4,val quality: Quality=Quality.SLOW) : AutoCloseable {
+class OpticalFlow(override val renderer: Renderer,override val first: HasImageView,override val second: HasImageView,
+    override val grid: Int=4,val quality: Quality=Quality.SLOW) : DenseOpticalFlow {
+    override val backend get()=OpticalFlowBackend.HARDWARE
     enum class Quality(internal val vk: Int) { FAST(VK_OPTICAL_FLOW_PERFORMANCE_LEVEL_FAST_NV),MEDIUM(VK_OPTICAL_FLOW_PERFORMANCE_LEVEL_MEDIUM_NV),SLOW(VK_OPTICAL_FLOW_PERFORMANCE_LEVEL_SLOW_NV) }
     private val device=renderer.device.also {
         check(it.supportsOpticalFlow) { "VK_NV_optical_flow is not enabled" }
         require(grid in listOf(1,2,4,8))
         require(first.imageView.underlyingImage!=null && second.imageView.underlyingImage!=null)
     }
-    val width=first.imageView.underlyingImage!!.imageData.width
-    val height=first.imageView.underlyingImage!!.imageData.height
-    val flowWidth=(width+grid-1)/grid
-    val flowHeight=(height+grid-1)/grid
+    override val width=first.imageView.underlyingImage!!.imageData.width
+    override val height=first.imageView.underlyingImage!!.imageData.height
+    override val flowWidth=(width+grid-1)/grid
+    override val flowHeight=(height+grid-1)/grid
     private val family=(0 until device.physicalDevice.vkQueueFamilyProps.capacity()).firstOrNull {
         device.physicalDevice.vkQueueFamilyProps[it].queueFlags() and VK_QUEUE_OPTICAL_FLOW_BIT_NV!=0
     } ?: error("No optical-flow queue family")
@@ -50,7 +51,7 @@ class OpticalFlow(val renderer: Renderer,val first: HasImageView,val second: Has
     private val conversionTimer=afield.four.lighting.LightingGpuTimer(renderer)
     private val opticalTimer=afield.four.lighting.LightingGpuTimer(renderer,family)
     private val unpackTimer=afield.four.lighting.LightingGpuTimer(renderer)
-    val gpuTimings get()=mapOf("conversion" to conversionTimer.samples.toList(),"opticalFlow" to opticalTimer.samples.toList(),"unpack" to unpackTimer.samples.toList())
+    override val gpuTimings get()=mapOf("conversion" to conversionTimer.samples.toList(),"opticalFlow" to opticalTimer.samples.toList(),"unpack" to unpackTimer.samples.toList())
     private val pool=CommandPool(device,family)
     private val commands=listOf(CommandBuffer(renderer.commandPool,true,false),CommandBuffer(pool,true,false),CommandBuffer(renderer.commandPool,true,false))
     private val ready=Semaphore(device,false)
@@ -67,7 +68,7 @@ class OpticalFlow(val renderer: Renderer,val first: HasImageView,val second: Has
     }
     /** Sampled RGBA32F texture: XY displacement in input pixels, Z matching cost, W = 1.
      * Dimensions are ceil(input width/grid) by ceil(input height/grid), owned by this operation. */
-    val output=RenderToTexture(renderer) { width=flowWidth;height=flowHeight;format=VK_FORMAT_R32G32B32A32_SFLOAT;useDepth=false;debugName="motion field and cost" }
+    override val output=RenderToTexture(renderer) { width=flowWidth;height=flowHeight;format=VK_FORMAT_R32G32B32A32_SFLOAT;useDepth=false;debugName="motion field and cost" }
     private val sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_NEAREST)
     private val convert=Module(parameters(renderer) {
         name="optical input conversion";conversion.apply();vertex=VERTEX;fragment=CONVERT;depthTest=false;depthWrite=false;blend=false
@@ -78,8 +79,8 @@ class OpticalFlow(val renderer: Renderer,val first: HasImageView,val second: Has
     private val resolve=Module(parameters(renderer) {name="optical unpack";output.apply();vertex=VERTEX;fragment=UNPACK;depthTest=false;depthWrite=false;blend=false})
     private var closed=false
     private var firstPair=true
-    val milliseconds=ArrayDeque<Double>()
-    val allocatedBytes get()=inputs.sumOf { it.memorySize }+outputs.sumOf { it.memorySize }+
+    override val milliseconds=ArrayDeque<Double>()
+    override val allocatedBytes get()=inputs.sumOf { it.memorySize }+outputs.sumOf { it.memorySize }+
         conversion.colorImageRefs.sumOf { it?.memorySize ?: 0 }+output.colorImageRefs.sumOf { it?.memorySize ?: 0 }+packed.requestedSize+costs.requestedSize
     init {
         check(device.supportsOpticalFlow) { "VK_NV_optical_flow is not enabled" }
@@ -133,7 +134,7 @@ class OpticalFlow(val renderer: Renderer,val first: HasImageView,val second: Has
     }
     private fun gridFlag()=when(grid){1->VK_OPTICAL_FLOW_GRID_SIZE_1X1_BIT_NV;2->VK_OPTICAL_FLOW_GRID_SIZE_2X2_BIT_NV;4->VK_OPTICAL_FLOW_GRID_SIZE_4X4_BIT_NV;else->VK_OPTICAL_FLOW_GRID_SIZE_8X8_BIT_NV}
     /** Reset temporal hints for a cut, image-order change or nonconsecutive pair. */
-    fun evaluate(reset: Boolean=false) {
+    override fun evaluate(reset: Boolean) {
         check(!closed && renderer.currentCommandBuffer==null) { "Evaluate optical flow between frames, after input producers submit" }
         val start=System.nanoTime()
         val prep=commands[0];val flow=commands[1];val finish=commands[2]

@@ -17,7 +17,7 @@ object OpticalFlowSmoke {
         val window=Window("Field optical flow");val renderer=Renderer(window);val box=Box("flow-check")
         box.setPropertyRaw("renderer",renderer,doResync=false)
         try { Box.withBoxContextNow(box) {
-            OpticalFlowDemo(renderer).use { demo ->
+            OpticalFlowDemo(renderer,backend=OpticalFlowBackend.HARDWARE).use { demo ->
                 repeat(12){demo.update(reset=it==0);window.pollEvents();renderer.render()}
                 val pixels=ReconstructionCapture.read(renderer,demo.flow.output)
                 val errors=mutableListOf<Float>();val costs=mutableListOf<Float>()
@@ -34,7 +34,7 @@ object OpticalFlowSmoke {
                 repeat(100){demo.update();window.pollEvents();renderer.render()}
                 val times=demo.flow.milliseconds.takeLast(100).sorted()
                 report.put("pairWallMsIncludingConversionAndFence",JSONObject().put("count",times.size).put("p50",times[50]).put("p95",times[95]))
-                report.put("opticalQueueTimestampBits",demo.flow.opticalTimestampBits)
+                report.put("opticalQueueTimestampBits",(demo.flow as OpticalFlow).opticalTimestampBits)
                 demo.flow.gpuTimings.forEach { (name,values) -> val sorted=values.takeLast(100).sorted()
                     report.put(name+"GpuMs",if(sorted.isEmpty())JSONObject.NULL else JSONObject().put("count",sorted.size).put("p50",sorted[sorted.size/2]).put("p95",sorted[(sorted.size*.95).toInt()])) }
                 demo.deformation=true;demo.dx=0f;demo.dy=0f;demo.displayRange=3f
@@ -71,7 +71,7 @@ object OpticalFlowSmoke {
                 File(dir,"measurements.json").writeText(report.toString(2))
             }
             // A stopped parent renderer must also retire an otherwise still-reachable flow view.
-            val unclosed=OpticalFlowDemo(renderer,128,128,name="unclosed-flow-check")
+            val unclosed=OpticalFlowDemo(renderer,128,128,name="unclosed-flow-check",backend=OpticalFlowBackend.HARDWARE)
             unclosed.update(reset=true)
         } } finally {renderer.cleanup();window.cleanup()}
         println("OPTICAL FLOW CHECK DONE");exitProcess(0)

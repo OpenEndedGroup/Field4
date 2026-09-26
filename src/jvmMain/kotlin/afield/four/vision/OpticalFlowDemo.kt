@@ -12,12 +12,14 @@ import afield.stdlib.linalg.Vector4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
-/** Two generated images, hardware motion/cost, and a feedback image driven by that motion. */
-class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=540,val name: String="optical-flow") : AutoCloseable {
+/** Two generated images, their motion/cost, and a feedback image driven by that motion.
+ * [backend] defaults to [OpticalFlowBackend.AUTO]: the NV engine where it exists, [PyramidOpticalFlow] elsewhere. */
+class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=540,val name: String="optical-flow",
+    backend: OpticalFlowBackend=OpticalFlowBackend.AUTO) : AutoCloseable {
     val pair=RenderToTexture(renderer) { this.width=this@OpticalFlowDemo.width;this.height=this@OpticalFlowDemo.height;colorAttachments=2;useDepth=false;format=VK_FORMAT_R16G16B16A16_SFLOAT }
     private val source=Module(parameters(renderer) {this.name="$name-inputs";pair.apply();vertex=VERTEX;fragment=SOURCE;depthTest=false;depthWrite=false;blend=false})
     private val sourceMesh=quad(source,pair)
-    val flow=OpticalFlow(renderer,pair.imageViewArray[0],pair.imageViewArray[1])
+    val flow: DenseOpticalFlow=opticalFlow(renderer,pair.imageViewArray[0],pair.imageViewArray[1],backend=backend)
     private val feedback=List(2){RenderToTexture(renderer){this.width=this@OpticalFlowDemo.width;this.height=this@OpticalFlowDemo.height;useDepth=false;format=VK_FORMAT_R16G16B16A16_SFLOAT}}
     val output=RenderToTexture(renderer){this.width=this@OpticalFlowDemo.width*2;this.height=this@OpticalFlowDemo.height*2;useDepth=false;format=VK_FORMAT_R16G16B16A16_SFLOAT}
     private val sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_LINEAR)
@@ -79,7 +81,7 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
             (listOf(pair,output)+feedback).forEach { t->t.imageViewArray.forEach { it.imageView.cleanup() };t.colorImageRefs.forEach { it?.cleanup() };t.defaultSampler?.cleanup() }}
     }
     /** Invert the known source warp: a feature at (x,y) in the first image moves to this offset.
-     * Diagnostic only; the runtime motion field still comes exclusively from hardware optical flow.
+     * Diagnostic only; the runtime motion field comes exclusively from [flow].
      */
     fun expectedDisplacement(x: Float,y: Float,time: Float): afield.stdlib.linalg.Vector2f {
         if(!deformation)return afield.stdlib.linalg.Vector2f(dx,dy)
