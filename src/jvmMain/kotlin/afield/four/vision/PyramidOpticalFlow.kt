@@ -24,7 +24,8 @@ import org.lwjgl.vulkan.VK13.*
  * 2. **downsample** — a [1 3 3 1]² binomial filter halves it [levels] − 1 times; each level also gets its
  *    first-image central-difference gradient, once;
  * 3. **track** — from the coarsest level down, every flow sample starts from the bilinearly upsampled coarser field
- *    and takes up to [iterations] Gauss–Newton steps over a (2·[radius]+1)² window, using first-image gradients
+ *    and takes up to [iterations] Gauss–Newton steps ([finestIterations] at the finest level, which starts sub-pixel
+ *    close and is the expensive one) over a (2·[radius]+1)² window, using first-image gradients
  *    (the inverse-compositional simplification: the structure tensor is computed once per sample);
  * 4. **smooth** — a 3 × 3 vector median after every level rejects isolated wrong matches: before they are
  *    upsampled, and, at the finest level, before they are published in [output].
@@ -42,11 +43,11 @@ import org.lwjgl.vulkan.VK13.*
  * [evaluate]`(reset)` is accepted for contract parity; this backend keeps no temporal hints, so every pair is independent.
  */
 class PyramidOpticalFlow(override val renderer: Renderer,override val first: HasImageView,override val second: HasImageView,
-    override val grid: Int=4,val levels: Int=5,val radius: Int=4,val iterations: Int=8,val search: Int=4) : OpticalFlowOperation {
+    override val grid: Int=4,val levels: Int=5,val radius: Int=4,val iterations: Int=8,val finestIterations: Int=2,val search: Int=4) : OpticalFlowOperation {
     override val backend get()=OpticalFlowBackend.PYRAMID
     init {
         require(grid in listOf(1,2,4,8)) { "grid must be 1, 2, 4 or 8, not $grid" }
-        require(levels in 1..8 && radius in 1..8 && iterations in 1..32 && search in 0..8)
+        require(levels in 1..8 && radius in 1..8 && iterations in 1..32 && finestIterations in 1..32 && search in 0..8)
         require(first.imageView.underlyingImage!=null && second.imageView.underlyingImage!=null)
     }
     override val width=first.imageView.underlyingImage!!.imageData.width
@@ -95,7 +96,7 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
         for(l in top downTo 0) {
             val coarser=if(l==top)null else smoothed[l+1]
             pass("optical track $l",raw[l],TRACK,mapOf("pyramid" to gradients[l],"coarse" to (coarser ?: candidates ?: gradients[l]))).apply {
-                push["level"]=Vector4f(scale(l).toFloat(),spacing(l).toFloat(),if(coarser==null)0f else spacing(l+1).toFloat(),iterations.toFloat())
+                push["level"]=Vector4f(scale(l).toFloat(),spacing(l).toFloat(),if(coarser==null)0f else spacing(l+1).toFloat(),(if(l==0)finestIterations else iterations).toFloat())
                 // Only the coarsest level searches: every finer level starts within a pixel or two of its answer.
                 push["window"]=Vector4f(radius.toFloat(),1e-6f*(2*radius+1)*(2*radius+1),if(coarser==null && candidates!=null)search.toFloat() else 0f,0f)
             }
@@ -188,9 +189,11 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
         layout(location=0) out vec4 result;
         ivec2 size;
         vec4 first(ivec2 q){return texelFetch(pyramid,clamp(q,ivec2(0),size-1),0);}
-        float second(vec2 x){x=clamp(x,vec2(0),vec2(size-1));ivec2 i=ivec2(floor(x)),j=min(i+1,size-1);vec2 f=x-vec2(i);
-            return mix(mix(texelFetch(pyramid,i,0).y,texelFetch(pyramid,ivec2(j.x,i.y),0).y,f.x),
-                       mix(texelFetch(pyramid,ivec2(i.x,j.y),0).y,texelFetch(pyramid,j,0).y,f.x),f.y);}
+        // Exact fp32 bilinear from one gather (clamp-to-edge sampler): no linear-filter format support needed.
+        // Gather order: x=(i,j+1) y=(i+1,j+1) z=(i+1,j) w=(i,j).
+        float second(vec2 x){x=clamp(x,vec2(0),vec2(size-1));vec2 i=floor(x),f=x-i;
+            vec4 g=textureGather(pyramid,(i+1)/vec2(size),1);
+            return mix(mix(g.w,g.z,f.x),mix(g.x,g.y,f.x),f.y);}
         vec2 upsampled(vec2 inputPixel){ivec2 n=textureSize(coarse,0);vec2 u=clamp(inputPixel/p.level.z-.5,vec2(0),vec2(n-1));
             ivec2 i=ivec2(floor(u)),j=min(i+1,n-1);vec2 f=u-vec2(i);
             return mix(mix(texelFetch(coarse,i,0).xy,texelFetch(coarse,ivec2(j.x,i.y),0).xy,f.x),

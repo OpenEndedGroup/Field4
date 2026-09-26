@@ -58,7 +58,7 @@ object PortableOpticalFlowSmoke {
                 check(flow is PyramidOpticalFlow && flow.backend==OpticalFlowBackend.PYRAMID)
                 check(flow.flowWidth==(demo.width+3)/4 && flow.flowHeight==(demo.height+3)/4) { "Output dimensions break the grid contract" }
                 report.put("input",listOf(demo.width,demo.height)).put("grid",flow.grid).put("levels",flow.levels)
-                    .put("radius",flow.radius).put("iterations",flow.iterations).put("allocatedBytes",flow.allocatedBytes)
+                    .put("radius",flow.radius).put("iterations",flow.iterations).put("finestIterations",flow.finestIterations).put("allocatedBytes",flow.allocatedBytes)
 
                 // Premise: the pair is textured, differs, and the second is exactly the first moved by (dx, dy).
                 demo.update(reset=true)
@@ -111,10 +111,15 @@ object PortableOpticalFlowSmoke {
                 expect(large.getDouble("median")<LARGE_MEDIAN && large.getDouble("p95")<LARGE_P95 &&
                     large.getDouble("fractionOver1px")<LARGE_OUTLIER_FRACTION) { "Large translation: $large" }
 
-                // Other grids, on the same pair, with the class used directly.
+                // Other grids, on the same pair, through the public factory.
                 demo.dx=12f;demo.dy=-8f;demo.update(reset=true)
                 val grids=JSONObject()
-                for(g in listOf(2,8)) PyramidOpticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1],grid=g).use { other ->
+                // AUTO must pick the class that matches this device.
+                opticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1]).use { auto ->
+                    check((auto is OpticalFlow)==renderer.device.supportsOpticalFlow && (auto is PyramidOpticalFlow)!=renderer.device.supportsOpticalFlow) { "AUTO chose ${auto.backend}" }
+                }
+                for(g in listOf(2,8)) opticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1],grid=g,backend=OpticalFlowBackend.PYRAMID).use { other ->
+                    check(other is PyramidOpticalFlow)
                     other.evaluate(true)
                     check(other.flowWidth==(demo.width+g-1)/g && other.flowHeight==(demo.height+g-1)/g)
                     val field=ReconstructionCapture.read(renderer,other.output);val margin=64/g;val e=ArrayList<Float>()
@@ -176,14 +181,14 @@ object PortableOpticalFlowSmoke {
         println("PORTABLE OPTICAL FLOW CHECK PASSED");exitProcess(0)
     }
     // Regression floors in input pixels. Measured 2026-09-26, Apple M1 Max / MoltenVK, 960 × 540, grid 4, defaults:
-    // translation median 6.7e-6 / p95 1.7e-5 (21,424 samples); 40 × 24 median 6.9e-6 / p95 1.6e-5 with 1.0% of
-    // samples over 1 px; wiggle median 0.0802 / p95 0.2745 (85,696 samples, 4 phases); identical frames max 0.
+    // translation median 6.7e-6 / p95 1.7e-5 (21,424 samples); 40 × 24 median 6.9e-6 / p95 1.6e-5 with 1.25% of
+    // samples over 1 px; wiggle median 0.0798 / p95 0.259 (85,696 samples, 4 phases); identical frames max 0.
     private const val TRANSLATION_MEDIAN=.005f
     private const val TRANSLATION_P95=.01f
     private const val LARGE_MEDIAN=.005f
     private const val LARGE_P95=.01f
     private const val LARGE_OUTLIER_FRACTION=.02
     private const val WIGGLE_MEDIAN=.09f
-    private const val WIGGLE_P95=.30f
+    private const val WIGGLE_P95=.28f
     private const val IDENTICAL_MAX=.01f
 }

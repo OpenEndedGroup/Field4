@@ -1,0 +1,138 @@
+{
+  "translationCost": {
+    "units": "mean absolute window residual, grey levels 0-255",
+    "revealedColumns": {
+      "fractionOver1px": 0.6019417475728155,
+      "median": 5.780977,
+      "max": 86.467735,
+      "p95": 42.996994,
+      "samples": 309
+    },
+    "interior": {
+      "fractionOver1px": 0,
+      "median": 0,
+      "max": 1.8558015E-4,
+      "p95": 0,
+      "samples": 21424
+    }
+  },
+  "gpuMs_pyramid": {
+    "count": 100,
+    "p50": 0.430084,
+    "p95": 0.491167
+  },
+  "identicalFrames": {
+    "fractionOver1px": 0,
+    "median": 0,
+    "max": 0,
+    "p95": 0,
+    "samples": 32400
+  },
+  "failures": [],
+  "finestIterations": 2,
+  "autoBackend": "PYRAMID",
+  "largeTranslation40x24": {
+    "fractionOver1px": 0.012462658700522778,
+    "median": 6.8770432E-6,
+    "max": 100.156456,
+    "p95": 1.57284E-5,
+    "samples": 21424
+  },
+  "gpuMs_level3": {
+    "count": 100,
+    "p50": 0.712792,
+    "p95": 0.739542
+  },
+  "translationOtherGrids": {
+    "grid8": {
+      "fractionOver1px": 0,
+      "median": 6.8770432E-6,
+      "max": 3.2438948E-5,
+      "p95": 1.7172759E-5,
+      "samples": 5408
+    },
+    "grid2": {
+      "fractionOver1px": 0,
+      "median": 7.6293945E-6,
+      "max": 1.8033525E-4,
+      "p95": 2.1067353E-5,
+      "samples": 85696
+    }
+  },
+  "gpuMs_level4": {
+    "count": 100,
+    "p50": 1.379208,
+    "p95": 1.462667
+  },
+  "gpuMs_level1": {
+    "count": 100,
+    "p50": 1.578417,
+    "p95": 1.608125
+  },
+  "gpuMs_level2": {
+    "count": 100,
+    "p50": 0.663,
+    "p95": 0.678833
+  },
+  "iterations": 8,
+  "gpuMs_level0": {
+    "count": 100,
+    "p50": 5.247958,
+    "p95": 5.3355
+  },
+  "input": [
+    960,
+    540
+  ],
+  "premise": {
+    "greyStd": 0.18731882878152323,
+    "meanAbsDifferenceUnmoved": 0.2120638210073731,
+    "meanAbsDifferenceAfterKnownShift": 0
+  },
+  "grid": 4,
+  "pairWallMsIncludingFence": {
+    "count": 100,
+    "p50": 12.050333,
+    "p95": 12.642
+  },
+  "translation": {
+    "fractionOver1px": 0,
+    "median": 6.67572E-6,
+    "max": 3.4079683E-5,
+    "p95": 1.7402923E-5,
+    "samples": 21424
+  },
+  "allocatedBytes": 30329344,
+  "consecutiveFrameWiggle": {
+    "fractionOver1px": 1.1669156086631815E-4,
+    "median": 0.079750255,
+    "directionQuadrants": [
+      18879,
+      19357,
+      16206,
+      18327
+    ],
+    "max": 1.1050831,
+    "costLastPhase": {
+      "fractionOver1px": 0.5308532486930545,
+      "median": 1.0852839,
+      "max": 6.7532263,
+      "p95": 3.7434683,
+      "samples": 21424
+    },
+    "zeroFieldError": {
+      "fractionOver1px": 0.9143717326362958,
+      "median": 1.984405,
+      "max": 3.7979674,
+      "p95": 3.0542772,
+      "samples": 85696
+    },
+    "p95": 0.259073,
+    "samples": 85696,
+    "phases": 4,
+    "pairStepSeconds": 0.033333335
+  },
+  "radius": 4,
+  "device": "Apple M1 Max",
+  "levels": 5
+}
