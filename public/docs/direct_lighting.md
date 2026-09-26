@@ -49,7 +49,7 @@ Neither switch averages the final image. **Reconstruct lighting** is the separat
 filter that turns those noisy estimates into the opening image. **Reset history** clears
 reservoir history when you want to watch it start again.
 
-![Direct-lighting controls in Field](assets/direct_lighting/rtxdi-controls.png)
+![The full RTXDI control stack: Ray-query shadows, RTXDI, Reconstruct lighting and Temporal reuse checked, Original renderer and Reference estimator unchecked, Spatial neighbors 8, Area lights 16, Samples 16, Effect weight 1.00, Radiance 60.00, Light phase 0.00, View 0, and a hold-to-press Reset history](assets/direct_lighting/rtxdi-controls.png)
 
 **View** switches among the presented image, normals, depth, visibility, motion, light IDs,
 reservoir count, reservoir weight, history rejection and raw lighting. These views bypass
@@ -59,14 +59,14 @@ original source at zero.
 
 ??? aside "Baseline controls without the optional SDK"
 
-    ![Baseline lighting controls](assets/direct_lighting/controls.png)
+    ![The same box without the optional SDK: only Original renderer, Ray-query shadows, Animate light, Samples, Effect weight, Radiance, Light phase and View, with every RTXDI row absent](assets/direct_lighting/controls.png)
 
-## What reuse does — and what reconstruction does
+## Reuse against reconstruction
 
 A reservoir retains one selected light sample per pixel. Even after reuse, that sample can
 be occluded: a dark pixel among bright neighbors is often Monte Carlo variance, not missing
 geometry. Reuse improves which samples survive; reconstruction combines their image estimates.
-The raw image remains available because a smooth picture alone cannot validate the sampler.
+Keep the raw view to hand — a smooth picture tells you nothing about the sampler under it.
 
 **Raw temporal and spatial reuse — the same frame as the opening image:**
 
@@ -76,10 +76,10 @@ The raw image remains available because a smooth picture alone cannot validate t
 
 ![High-sample direct-light reference](assets/direct_lighting/rtxdi-reference.png)
 
-All three use the same geometry, camera, lights and display transform. The reference and
-raw estimator are compared in linear RGB before tone mapping. Reconstruction is deliberately
-separate from reservoir storage: it cannot change later sample selection. It is a small
-surface-guided filter, not DLSS or a learned denoiser.
+All three use the same geometry, camera, lights and display transform, so they can be read
+against each other. Reconstruction is deliberately separate from reservoir storage: it
+cannot change later sample selection. It is a small surface-guided filter, not DLSS or a
+learned denoiser.
 
 ## Edit the scene
 
