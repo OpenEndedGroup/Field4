@@ -154,14 +154,41 @@ object CompletionCorpus {
                 val code = rec.props["code"]!!
                 runCatching { ki.applyMacros(box, code, emptySet(), false) }
                     .onFailure { onProblem("${doc.name}/${rec.id}", it) }
-                val preamble = runCatching { normalizePreambleText(gatherPreambleUpwards(box)) }.getOrDefault("")
-                out += Case(doc.name, rec.id, code, preamble)
+                val gathered = runCatching { normalizePreambleText(gatherPreambleUpwards(box)) }.getOrDefault("")
+                out += Case(doc.name, rec.id, code, withImportsForDeclaredTypes(gathered))
             }
         }
         return out
     }
 
     // ── self-consistency ────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Restore an import for any type the preamble *declares a property of* and does not bring into
+     * scope, when this classpath can resolve it unambiguously.
+     *
+     * [typesDeclaredWithoutAnImport] asserts the result should always be empty because the macro
+     * writes T's import alongside `by Inheritance<T>()`. A preamble is persisted per box, though,
+     * so it records whatever the macro could resolve *on the machine that authored it* — and a
+     * contested simple name makes `importStatementFrom` emit nothing at all. That is the `Window`
+     * failure the import helper is written around, and `optical_flow_pingpong` arrived carrying it
+     * for `HasImageView`: the box code imports `afield.four.texture.HasImageView` on its own line 7,
+     * the saved preamble declares `Inheritance<HasImageView>` and imports nothing, and the fixture
+     * it harvests into cannot compile as written.
+     *
+     * Resolving again here, at harvest, is not a second opinion — it is the same
+     * [kotlinImportStatementFor] the macro uses, asked on the machine doing the harvesting, which
+     * for a hermetic harvest is the clean-checkout answer. Types it cannot resolve are left alone,
+     * so a genuinely ambiguous name still reaches the checker and is still reported rather than
+     * papered over with a guess.
+     */
+    internal fun withImportsForDeclaredTypes(preamble: String): String {
+        val missing = typesDeclaredWithoutAnImport(preamble)
+        if (missing.isEmpty()) return preamble
+        val added = missing.mapNotNull { kotlinImportStatementFor(it) }
+        if (added.isEmpty()) return preamble
+        return (added.sorted() + preamble.lines()).joinToString("\n")
+    }
 
     /** `var Box.window by Inheritance<Window>()` — the declaration a `prop<T>(name)` macro writes. */
     private val PROP_DECL = Regex("""\bby\s+(?:Inheritance|Onceing)<([A-Za-z_][A-Za-z0-9_.]*)""")

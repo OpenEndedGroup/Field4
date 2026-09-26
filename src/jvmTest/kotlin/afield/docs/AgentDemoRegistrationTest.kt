@@ -174,16 +174,16 @@ class AgentDemoRegistrationTest {
          */
         val UNVERIFIED = mapOf(
             "function_conversation" to
-                "Landed 2026-09-23 in `948602d5a` with no transcript; its box Kotlin is compiled by " +
-                "nothing. Fix: write `dev_docs/agents/transcripts/function_conversation.yaml` as " +
-                "COMPILE_ONLY (the tools box opens no window and needs no model to compile) and add " +
-                "its `### function_conversation` entry to public/docs/agent_transcripts.md — or " +
-                "decide the gallery should not carry it and say so here instead.",
+                "Kept out of the transcript registry by decision (Marc, 2026-09-26): the demo is an " +
+                "AI4 conversation and needs an OpenAI platform key to use, so it ships as the zip " +
+                "download on public/docs/function_conversation.md rather than as a gallery transcript. " +
+                "Its box Kotlin is therefore compiled by nothing here. A COMPILE_ONLY transcript would " +
+                "compile the tools box without a key (compiling calls no model), should that change.",
             "function_conversation_example" to
-                "Landed 2026-09-23 in `7fc49b2ed`, the worked example beside the blank starter; same " +
-                "byte-identical tools box, same gap. Fix: the same COMPILE_ONLY transcript plus " +
-                "gallery entry, or a recorded decision that the zip download on " +
-                "public/docs/function_conversation.md is how these two ship.",
+                "The worked example beside the blank starter (`7fc49b2ed`), kept out for the same " +
+                "reason and shipped the same way: the zip download on " +
+                "public/docs/function_conversation.md. Same byte-identical tools box, same " +
+                "COMPILE_ONLY option if the decision changes.",
         )
     }
 
