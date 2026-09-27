@@ -301,6 +301,37 @@ class DmxServicesTest {
     }
 
     @Test
+    fun ltpTakesTheLatestPacketAndOnFrameSeesTheMergedUniverse() {
+        val input = DmxInput(DmxProtocol.ARTNET, port = freePort(), merge = MergeMode.LTP, bindAddress = "127.0.0.1")
+        val buf = ByteArray(ArtNet.DMX_MAX_PACKET)
+        val lo = InetAddress.getLoopbackAddress()
+        val frames = mutableListOf<Int>()
+        input.onFrame { universe, data -> if (universe == 6) frames += data[0].toInt() and 0xff }
+        try {
+            input.handle(buf, ArtNet.encodeDmx(buf, PortAddress(6), byteArrayOf(200.toByte(), 0), 2), lo, 1000)
+            Thread.sleep(2) // lastSeen is nanoTime; make "latest" unambiguous
+            input.handle(buf, ArtNet.encodeDmx(buf, PortAddress(6), byteArrayOf(30, 0), 2), lo, 2000)
+            assertEquals(2, input.sources(6).size, "two sources, told apart by port")
+            assertEquals(30, input.channel(6, 1), "LTP: the latest packet wins even though it is lower")
+            assertEquals(listOf(200, 30), frames)
+        } finally {
+            input.close()
+        }
+    }
+
+    @Test
+    fun serpentineGridReversesOddRowsAndGrbSwapsTheFirstTwoSlots() {
+        val p = Patch()
+        val g = p.grid(3, 2, spacing = 1.0, serpentine = true, profile = FixtureProfile.GRB)
+        assertEquals(listOf(0f, 1f, 2f, 2f, 1f, 0f), g.map { it.position.x })
+        assertEquals(listOf(1, 4, 7, 10, 13, 16), g.map { it.address })
+        val data = ByteArray(512)
+        g[0].rgb(1.0, 0.0, 0.0)
+        p.renderInto { data }
+        assertEquals(listOf(0, 255, 0), (0..2).map { data[it].toInt() and 0xff }, "GRB puts red second")
+    }
+
+    @Test
     fun artSyncPutsTheNodeInSynchronousMode() {
         val input = DmxInput(DmxProtocol.ARTNET, port = freePort(), bindAddress = "127.0.0.1")
         val buf = ByteArray(ArtNet.DMX_MAX_PACKET)

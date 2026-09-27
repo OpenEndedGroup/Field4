@@ -14,7 +14,7 @@ is `public/docs/dmx_lighting.md`; the loadable demo is `public/docs/assets/dmx_l
 | `src/jvmMain/kotlin/afield/dmx/Patch.kt` | `Slot`, `FixtureProfile`, `Fixture`, `Patch` (allocation, mappers, `animate`) |
 | `src/jvmMain/kotlin/afield/dmx/DmxVisual.kt` | `toFLines`, `universeToFLines`, `showPatch`, `showUniverse`, `renderLinesPng` |
 | `src/jvmMain/kotlin/afield/dmx/DmxBox.kt` | box ownership (`artnetOut`/`sacnOut`/`artnetIn`/`sacnIn`), `artPoll` |
-| `src/jvmTest/kotlin/afield/dmx/*` | 11 byte-layout tests, 15 service tests, 2 demo-bundle tests |
+| `src/jvmTest/kotlin/afield/dmx/*` | 11 byte-layout tests, 17 service tests, 2 demo-bundle tests |
 | `dev_docs/dmx/independent_decode.py` | Python decoders/senders written from the protocol documents |
 
 ## Design decisions
@@ -58,7 +58,7 @@ These were written from knowledge of the specifications, not checked against the
 ## Verification record (2026-09-27)
 
 **JVM tests.** `./gradlew jvmTest --tests 'afield.dmx.*'`: `DmxProtocolTest` 11/11,
-`DmxServicesTest` 15/15, `DmxLightingDemoBundleTest` 2/2. The byte tests spell out expected bytes
+`DmxServicesTest` 17/17, `DmxLightingDemoBundleTest` 2/2. The byte tests spell out expected bytes
 from the spec tables rather than round-tripping, so a field in the wrong place fails.
 
 **Independent decoder, Field → Python.** A box sent a static 200-pixel strip (universes 1–2) as
@@ -135,7 +135,7 @@ that sent the ArtDmx. No hardware was driven: every test was loopback on one Mac
 category page — this package's category is `Lighting`, which has no page — and corpus-global
 evidence links), so it was left for one.
 
-## Scale (measured 2026-09-27, one box, loopback, M-series Mac under a concurrent nightly build)
+## Scale (measured 2026-09-27, one box, loopback, an aarch64 Mac that other agents were also building on)
 
 64 universes of RGB pixels — 10,880 fixtures — per frame, mean over 200 frames after 20 warm-up:
 
