@@ -292,6 +292,9 @@ class VulkanBuffer(
      */
     fun realloc(bytes: Long) {
         synchronized(writeLock) {
+            // After teardown began the allocator is about to go, and a retirement added now could
+            // miss the final drain.
+            requireLiveRenderer()
             val oldBuffer = buffer
             val oldAlloc = allocation
             val oldHost = hostBuffer
