@@ -34,8 +34,10 @@ enum class MergeMode {
  *   silence. Data carrying a synchronization address is held until the matching sync packet arrives
  *   (E1.31 §6.3.3.1). Preview data is ignored unless [acceptPreview].
  * - **Art-Net** — sources are told apart by IP and port; [merge] decides; a source silent for 10 s
- *   is dropped, which is the Art-Net 4 merge timeout. An ArtPoll is answered with an ArtPollReply
- *   describing [node], so consoles and discovery tools list Field as a node.
+ *   is dropped, which is the Art-Net 4 merge timeout. Once an ArtSync has arrived, ArtDmx frames are
+ *   held and applied together on the next ArtSync, until 4 s pass without one (Art-Net 4's
+ *   synchronous mode). An ArtPoll is answered with an ArtPollReply describing [node], so consoles
+ *   and discovery tools list Field as a node.
  *
  * Multicast sACN needs the socket to join each universe's group: pass the universes to watch in
  * [multicastUniverses]. Unicast sACN (a sender pointed at this machine's IP or 127.0.0.1) needs
@@ -86,6 +88,9 @@ class DmxInput(
     }
 
     private val sources = ConcurrentHashMap<Int, ConcurrentHashMap<String, Source>>()
+
+    @Volatile
+    private var lastArtSyncNanos = Long.MIN_VALUE / 2
     private val versions = ConcurrentHashMap<Int, AtomicLong>()
     private val listeners = CopyOnWriteArrayList<(Int, ByteArray) -> Unit>()
     private val received = AtomicLong()
@@ -173,13 +178,26 @@ class DmxInput(
         when (ArtNet.opCode(buf, length)) {
             ArtNet.OP_DMX -> {
                 val n = ((buf[16].toInt() and 0xff) shl 8) or (buf[17].toInt() and 0xff)
+                if (n > 512 || length < ArtNet.DMX_HEADER + n) { discarded.incrementAndGet(); return }
                 val key = "${from.hostAddress}:$fromPort"
                 val universe = ((buf[15].toInt() and 0x7f) shl 8) or (buf[14].toInt() and 0xff)
                 val src = sourceFor(universe, key, key)
-                val pa = ArtNet.decodeDmxInto(buf, length, src.data)
-                if (pa < 0) { discarded.incrementAndGet(); return }
-                if (n < 512) java.util.Arrays.fill(src.data, n, 512, 0)
-                accepted(universe, src, n, Sacn.DEFAULT_PRIORITY)
+                val now = System.nanoTime()
+                val synchronous = now - lastArtSyncNanos < ART_SYNC_TIMEOUT_NANOS
+                val target = if (synchronous) src.pending else src.data
+                ArtNet.decodeDmxInto(buf, length, target)
+                if (n < 512) java.util.Arrays.fill(target, n, 512, 0)
+                if (synchronous) {
+                    // Synchronous mode: hold the frame until the next ArtSync (see OP_SYNC below).
+                    src.pendingSync = ART_SYNC_PENDING
+                    src.pendingSinceNanos = now
+                    src.length = n
+                    src.lastSeenNanos = now
+                    src.packets++
+                } else {
+                    src.pendingSync = 0 // a frame held from synchronous mode is older than this one
+                    accepted(universe, src, n, Sacn.DEFAULT_PRIORITY)
+                }
             }
             ArtNet.OP_POLL -> if (answerPolls) {
                 val reply = ByteArray(ArtNet.POLL_REPLY_LENGTH)
@@ -194,7 +212,18 @@ class DmxInput(
                     .onFailure { lastError = it }
             }
             ArtNet.OP_POLL_REPLY -> ArtNet.decodePollReply(buf, length)?.let { pollReplies[it.address] = it }
-            ArtNet.OP_SYNC -> {}
+            ArtNet.OP_SYNC -> {
+                // Art-Net 4: a node that has seen ArtSync buffers ArtDmx and outputs it on the next
+                // ArtSync, and drops back to immediate output after 4 s without one.
+                lastArtSyncNanos = System.nanoTime()
+                for ((u, table) in sources) for (src in table.values) {
+                    if (src.pendingSync == ART_SYNC_PENDING) {
+                        System.arraycopy(src.pending, 0, src.data, 0, 512)
+                        src.pendingSync = 0
+                        bump(u)
+                    }
+                }
+            }
             else -> discarded.incrementAndGet()
         }
     }
@@ -225,6 +254,7 @@ class DmxInput(
                 }
                 System.arraycopy(d.data, 0, src.data, 0, d.data.size)
                 if (d.data.size < 512) java.util.Arrays.fill(src.data, d.data.size, 512, 0)
+                src.pendingSync = 0 // anything still held for a sync is older than this
                 accepted(d.universe, src, d.data.size, d.priority)
             }
             Sacn.Kind.SYNC -> {
@@ -320,6 +350,12 @@ class DmxInput(
         isClosed = true
         runCatching { socket.close() }
         runCatching { thread.join(500) }
+    }
+
+    private companion object {
+        /** `Source.pendingSync` value meaning "held for the next ArtSync" (sACN uses the sync universe). */
+        const val ART_SYNC_PENDING = -1
+        const val ART_SYNC_TIMEOUT_NANOS = 4_000_000_000L
     }
 
     override fun toString() =

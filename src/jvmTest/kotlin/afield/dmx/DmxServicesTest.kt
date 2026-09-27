@@ -301,6 +301,26 @@ class DmxServicesTest {
     }
 
     @Test
+    fun artSyncPutsTheNodeInSynchronousMode() {
+        val input = DmxInput(DmxProtocol.ARTNET, port = freePort(), bindAddress = "127.0.0.1")
+        val buf = ByteArray(ArtNet.DMX_MAX_PACKET)
+        val lo = InetAddress.getLoopbackAddress()
+        try {
+            var n = ArtNet.encodeDmx(buf, PortAddress(4), byteArrayOf(10, 0), 2)
+            input.handle(buf, n, lo, 1)
+            assertEquals(10, input.channel(4, 1), "no ArtSync seen yet: applied at once")
+            input.handle(buf, ArtNet.encodeSync(buf), lo, 1)
+            n = ArtNet.encodeDmx(buf, PortAddress(4), byteArrayOf(20, 0), 2)
+            input.handle(buf, n, lo, 1)
+            assertEquals(10, input.channel(4, 1), "after an ArtSync, frames wait for the next one")
+            input.handle(buf, ArtNet.encodeSync(buf), lo, 1)
+            assertEquals(20, input.channel(4, 1))
+        } finally {
+            input.close()
+        }
+    }
+
+    @Test
     fun boxOwnedOutputSurvivesReRunAndClosesOnStop() {
         val box = Box("dmx-lifecycle")
         val port = freePort()

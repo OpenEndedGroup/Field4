@@ -184,8 +184,10 @@ artPoll("255.255.255.255").forEach { println(it) }   // every node on the networ
 A long strip spans universes, and universes are separate packets; without help, a fast animation can
 tear where one universe ends. `artnetOut(host, sync = true)` follows every frame with an ArtSync, and
 `sacnOut(sync = true)` sends E1.31 synchronization packets on universe 7962 and marks its data
-packets to wait for them. Receivers that support sync (Field's `DmxInput` does, for sACN) apply the
-frame's universes together.
+packets to wait for them. Receivers that support sync apply the frame's universes together. Field's
+`DmxInput` does for both protocols: sACN data carrying a sync address waits for that sync packet,
+and once an Art-Net input has seen an ArtSync it holds each ArtDmx for the next one, dropping back to
+immediate output after 4 s without.
 
 ## Without a box
 
@@ -196,8 +198,8 @@ their decoders) work outside a box too. Then nothing closes the sockets for you:
 ## What this does not do
 
 RDM (remote device management), Art-Net's ArtAddress/ArtIpProg node programming, and sACN
-per-channel priority (start code `0xDD`) are not implemented. `DmxInput` accepts ArtSync but does
-not hold Art-Net frames for it.
+per-channel priority (start code `0xDD`) are not implemented; an sACN packet with a non-zero start
+code is ignored on receive.
 
 ??? aside "How this page's pictures were made"
     Every picture is real output from the code on this page, run by an agent through Field's backdoor

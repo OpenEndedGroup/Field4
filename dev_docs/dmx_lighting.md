@@ -14,7 +14,7 @@ is `public/docs/dmx_lighting.md`; the loadable demo is `public/docs/assets/dmx_l
 | `src/jvmMain/kotlin/afield/dmx/Patch.kt` | `Slot`, `FixtureProfile`, `Fixture`, `Patch` (allocation, mappers, `animate`) |
 | `src/jvmMain/kotlin/afield/dmx/DmxVisual.kt` | `toFLines`, `universeToFLines`, `showPatch`, `showUniverse`, `renderLinesPng` |
 | `src/jvmMain/kotlin/afield/dmx/DmxBox.kt` | box ownership (`artnetOut`/`sacnOut`/`artnetIn`/`sacnIn`), `artPoll` |
-| `src/jvmTest/kotlin/afield/dmx/*` | 11 byte-layout tests, 13 service tests, 2 demo-bundle tests |
+| `src/jvmTest/kotlin/afield/dmx/*` | 11 byte-layout tests, 15 service tests, 2 demo-bundle tests |
 | `dev_docs/dmx/independent_decode.py` | Python decoders/senders written from the protocol documents |
 
 ## Design decisions
@@ -58,7 +58,7 @@ These were written from knowledge of the specifications, not checked against the
 ## Verification record (2026-09-27)
 
 **JVM tests.** `./gradlew jvmTest --tests 'afield.dmx.*'`: `DmxProtocolTest` 11/11,
-`DmxServicesTest` 13/13, `DmxLightingDemoBundleTest` 2/2. The byte tests spell out expected bytes
+`DmxServicesTest` 15/15, `DmxLightingDemoBundleTest` 2/2. The byte tests spell out expected bytes
 from the spec tables rather than round-tripping, so a field in the wrong place fails.
 
 **Independent decoder, Field → Python.** A box sent a static 200-pixel strip (universes 1–2) as
@@ -126,5 +126,24 @@ some headless paths); that capture is the page's first image. Multicast on this 
 ## Not done
 
 RDM; ArtAddress / ArtIpProg; sACN per-channel priority (0xDD) — the receiver discards non-zero
-start codes; Art-Net frames are not held for ArtSync on receive; no sequence-based reordering for
-Art-Net (optional in the spec). No hardware was driven: every test was loopback on one Mac.
+start codes; no sequence-based reordering for Art-Net (optional in the spec). ArtSync on receive
+treats any ArtSync as applying to every held source, where the spec narrows it to the controller
+that sent the ArtDmx. No hardware was driven: every test was loopback on one Mac.
+
+`afield.dmx` is not in `StdlibReferenceGenerator.SOURCE_ROOTS`, so it has no rows in
+`public/docs/reference/`. Adding a root is treated in that file as its own change (a blurb, a
+category page — this package's category is `Lighting`, which has no page — and corpus-global
+evidence links), so it was left for one.
+
+## Scale (measured 2026-09-27, one box, loopback, M-series Mac under a concurrent nightly build)
+
+64 universes of RGB pixels — 10,880 fixtures — per frame, mean over 200 frames after 20 warm-up:
+
+| protocol | `map` | `render` | `tick` (64 sends) | sent | received | discarded |
+| --- | --- | --- | --- | --- | --- | --- |
+| Art-Net | 0.166 ms | 0.579 ms | 0.603 ms | 14080 | 14080 | 0 |
+| sACN | 0.140 ms | 0.440 ms | 0.512 ms | 14080 | 14081 (+1 discovery) | 0 |
+
+So a 44 Hz frame (22.7 ms) is about 6 % used at that size. The population is one machine, one run
+per protocol; it says the design is not the bottleneck at installation scale, not what a slower host
+or a real network would do.
