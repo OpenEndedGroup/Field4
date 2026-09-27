@@ -3022,6 +3022,15 @@ class KotlinExecution : BoxExecution {
             return
         }
 
+        // StackSL inside the box's Kotlin — a `#stacksl` string, or one assigned to a stack.auto slot —
+        // completes as StackSL, from the compiler's vocabulary, rather than as a Kotlin string.
+        if (property == "code") {
+            afield.stacksl.study.EmbeddedStackSL.complete(inside, allCode, position)?.let {
+                reply(Message("complete").payload(it))
+                return
+            }
+        }
+
         // A small language's program kept in a property of a Kotlin box (the StackSL gallery's boxes)
         // completes in that language, as it would under a root of its own.
         if (property == "stackSL") {

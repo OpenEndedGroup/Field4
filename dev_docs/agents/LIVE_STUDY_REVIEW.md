@@ -311,3 +311,13 @@ Not done yet: line notes and completion inside the Kotlin string (step 4), writi
 the program is built rather than written out (step 3 needs a real region map), observing the host's
 own output (step 5), and a model-facing study for a slot (step 6). Ray-tracing stages keep baked
 numbers.
+
+Step 4, the same day: completion and line notes inside the Kotlin string (`EmbeddedStackSL`). A string
+is StackSL when it starts `#stacksl` or is assigned to one of the box's slot names (`.program =`), found
+in the text as typed, so help does not wait for a run. Completion routes through the existing
+`complete` request for `code`; line notes through `LineNotes` for `code`, drawn alone on the study's
+frame. Checked in a browser: `pal` inside `module.program = """…"""` offers `palette` with its
+cheatsheet entry, and the smoothstep line's note shows its stage on the GPU. The editor still colours
+a slot's string as Kotlin unless it has the `#stacksl` header: the client does not know slot names.
+Also fixed on the way: `computeModuleHere` gave a compute uniform block a graphics `ModulePointer`
+accessor, so `module.<block>` did not resolve on a compute module.

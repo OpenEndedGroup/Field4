@@ -2076,10 +2076,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             const offset = model.getOffsetAt(position)
             const scope = resolveStackSLScope(model, offset)
             if (!scope) return { suggestions: [] }
-            // A box's stackSL property is completed by Field (StackSLVocabulary.kt), from the compiler's
-            // whole vocabulary and the program's own names; the table here knows about half of it.
-            // Offering both would list every word it does know twice.
-            if (!scope.embedded && window.selectedProperty === "stackSL") return { suggestions: [] }
+            // A box's stackSL property, and StackSL inside a box's Kotlin (EmbeddedStackSL.kt), are
+            // completed by Field (StackSLVocabulary.kt), from the compiler's whole vocabulary and the
+            // program's own names; the table here knows about half of it. Offering both would list every
+            // word it does know twice. Anywhere else — an embedded editor with no box — the table serves.
+            if (window.selectedProperty === "stackSL" || (scope.embedded && window.selectedProperty === "code")) return { suggestions: [] }
             const prefix = stackSLCompletionPrefixAt(model, position)
             const start = model.getPositionAt(prefix.start)
             const range = new monaco.Range(start.lineNumber, start.column, position.lineNumber, position.column)
