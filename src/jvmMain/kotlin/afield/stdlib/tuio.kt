@@ -8,7 +8,6 @@ import com.illposed.osc.OSCMessage
 import com.illposed.osc.OSCMessageListener
 import com.illposed.osc.messageselector.OSCPatternAddressMessageSelector
 import com.illposed.osc.transport.OSCPortIn
-import com.illposed.osc.transport.OSCPortInBuilder
 import java.io.Closeable
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -21,9 +20,12 @@ import kotlin.concurrent.withLock
  * both the full state and the per-frame added / updated / removed lists.
  *
  * Call [TuioReceiver.start] to bind and [TuioReceiver.close] (or `stop()`) to release the port;
- * both are idempotent. Callbacks arrive on JavaOSC's receive thread, not yours, and all internal
- * state is guarded by one lock. Numeric OSC arguments are coerced leniently, and malformed `set`
- * messages are skipped rather than reported. [main] is a demo that prints frame deltas.
+ * both are idempotent, and starting a receiver closes the one previously started on its port, so a
+ * box can build a fresh receiver on every run. Callbacks arrive on JavaOSC's receive thread, not
+ * yours, and all internal state is guarded by one lock. Each profile's FSEQ emits a frame, so a
+ * tracker that sends both cursors and objects produces two frames per tracker frame, each carrying
+ * the full state of both. Numeric OSC arguments are coerced leniently, and malformed `set` messages
+ * are skipped rather than reported. [main] is a demo that prints frame deltas.
  */
 
 fun interface TuioListener {
@@ -109,23 +111,33 @@ class TuioReceiver(
 
     private var portIn: OSCPortIn? = null
 
+    private companion object {
+        /** The started receiver on each port; see [start]. */
+        val started = java.util.concurrent.ConcurrentHashMap<Int, TuioReceiver>()
+    }
+
+    /**
+     * Bind the port and start delivering frames. Idempotent.
+     *
+     * Starting a receiver closes any other receiver this JVM started on the same port. Re-running a
+     * box that builds a new `TuioReceiver` would otherwise leave the old one bound: JavaOSC sets
+     * `SO_REUSEADDR`, so the second bind succeeds, and measured on macOS the datagrams keep going to
+     * the first socket, whose listener belongs to the code you just replaced.
+     */
     fun start() {
+        started.put(localPort, this)?.takeIf { it !== this }?.close()
         lock.withLock {
             if (portIn != null) return
-            val builder = OSCPortInBuilder()
-                .setLocalPort(localPort)
-                .addMessageListener(
-                    OSCPatternAddressMessageSelector("/tuio/2Dcur"),
-                    OSCMessageListener { msg -> handleTuioMessage(msg.message) }
-                )
-                .addMessageListener(
-                    OSCPatternAddressMessageSelector("/tuio/2Dobj"),
-                    OSCMessageListener { msg -> handleTuioMessage(msg.message) }
-                )
-
-            portIn = builder.build().also { p ->
-                // Some JavaOSC versions want connect(); if yours doesn’t have it, just delete this call.
-                try { p.connect() } catch (_: Throwable) {}
+            // Not OSCPortInBuilder.addMessageListener: in JavaOSC 0.9 that throws a
+            // NullPointerException when it is the first thing called on a fresh builder, which made
+            // start() fail on every call. Nor connect(): a receive-only port has no remote address.
+            portIn = openOscPortIn(localPort).also { p ->
+                for (profile in listOf("/tuio/2Dcur", "/tuio/2Dobj")) {
+                    p.dispatcher.addListener(
+                        OSCPatternAddressMessageSelector(profile),
+                        OSCMessageListener { msg -> handleTuioMessage(msg.message) }
+                    )
+                }
                 p.startListening()
             }
         }
@@ -136,6 +148,7 @@ class TuioReceiver(
     }
 
     override fun close() {
+        started.remove(localPort, this)
         lock.withLock {
             portIn?.let { p ->
                 try { p.stopListening() } catch (_: Throwable) {}
@@ -196,7 +209,8 @@ class TuioReceiver(
 
                 val existed = cursors.containsKey(sId)
                 cursors[sId] = cursor
-                if (!existed && !cursorAdded.contains(sId)) cursorAdded.add(sId) else cursorUpdated.add(sId)
+                // A session first seen in this frame is an addition only, whether ALIVE or SET named it first.
+                if (!existed) cursorAdded.add(sId) else if (sId !in cursorAdded) cursorUpdated.add(sId)
             }
             "fseq" -> {
                 val fseq = args.getOrNull(1)?.toIntOrNullSafe() ?: return
@@ -244,7 +258,8 @@ class TuioReceiver(
 
                 val existed = objects.containsKey(sId)
                 objects[sId] = obj
-                if (!existed && !objectAdded.contains(sId)) objectAdded.add(sId) else objectUpdated.add(sId)
+                // A session first seen in this frame is an addition only, whether ALIVE or SET named it first.
+                if (!existed) objectAdded.add(sId) else if (sId !in objectAdded) objectUpdated.add(sId)
             }
             "fseq" -> {
                 val fseq = args.getOrNull(1)?.toIntOrNullSafe() ?: return

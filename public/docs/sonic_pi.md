@@ -30,7 +30,8 @@ once, to the daemon's stdout. `daemon.log` will not do instead: the boot-time lo
 out, and the one that survives runs inside the daemon's *exit* handler, so it arrives after the
 daemon has stopped. Whoever started the server is the only client that can ask it to run anything.
 (A Sonic Pi you launched yourself is still reachable, but only over the unauthenticated cue port:
-`SonicPi.cue`.)
+`SonicPi.cue`. For OSC to and from other programs, [OSC and TUIO](osc.md) covers `osc` and
+`oscClient`.)
 
 ## A box that is a piece of music
 
